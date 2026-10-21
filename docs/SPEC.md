@@ -257,3 +257,37 @@ A card is one of:
 - `chart` widgets: the snapshot carries `"history":[numbers…]` (oldest first, ≤ `opts.points`, max 300). A `value` delta with a number appends one point; a `value` delta with an array replaces the history.
 - Action values: `select`/`buttons` → one of `opts.options` (string); `number` → number in `min..max`, snapped to `step`; `text` → string ≤ `opts.maxLength` (default 64, max 256), control characters stripped. `indicator`, `progress`, `chart` are read-only (`not_interactive`).
 - `query_result` may carry `"error"` (`rate_limited`, `offline`, `unknown_widget`, `uplink_offline`) with empty `rows`.
+
+## v0.2 – Implementation notes (mod side)
+What the Java side actually does, where the sections above leave room. Packages: `uplink` (widget model, validation), `layout` (layout validation + SavedData), `bridge` (mod-independent bridge core), `compat/ae2` and `compat/rs` (the only code that touches AE2/RS classes).
+
+### Soft dependencies
+- `CCCloud` calls `Ae2Compat.init` / `RsCompat.init` only if `ModList.get().isLoaded("ae2" | "refinedstorage")`. Blocks, items, block entity types, capabilities (CC peripheral, AE2 `IN_WORLD_GRID_NODE_HOST`, RS `NetworkNodeContainerProvider`) and the bridge GameTests are registered inside these classes. Without the mods, nothing in `compat/` is class-loaded.
+- Recipes, loot tables and the bridge test instances carry `neoforge:conditions` with `neoforge:mod_loaded`; the pickaxe tag lists the bridges with `"required": false`.
+- `neoforge.mods.toml` declares both mods as `optional` (AE2 ≥ 26.1.13-beta, RS ≥ 3.2.1).
+
+### Bridges
+- ME Cloud Bridge: in-world AE2 grid node, `REQUIRE_CHANNEL`, idle 1 AE/t, connects on all sides. RS Cloud Bridge: RS2 `SimpleNetworkNode`, 2 FE/t, active while the network has energy.
+- `status`: `online` = node active (powered, AE2: with channel), `connecting` = part of a network that is not (yet) active, `offline` = alone.
+- Peripheral methods all run with `mainThread = true`. Listings are served from an index snapshot rebuilt at most every 10 ticks (max 50 000 item types) and limited to 20 listings/searches per second per bridge (Lua and dashboard together; Lua gets an error, the dashboard `rate_limited`). Items are aggregated per item id (component variants are summed); `craft` always requests the plain item.
+- Limits: `listItems` default 256 / max 1024, `findItems` default 50 / max 256, `listFluids` default/max 256/1024, filters ≤ 64 chars. Search: case-insensitive substring on id and display name, all words must match, `@modid` filters by namespace; results sorted by count (craftable items with 0 stored are included).
+- `getStorage()`: `itemsUsed` (items), `typesUsed`, `fluidsUsed` (mB), and when known `itemsTotal`, `typesTotal`, `fluidsTotal`. AE2: totals are the byte capacity of basic cells in drives/chests × 8 items/byte (approximate, ignores the per-type overhead). RS: `itemsTotal` = capacity of storage blocks and disk drives (`StorageNetworkNode`); RS does not separate item and fluid capacity, so fluid storage counts into it; no `typesTotal`/`fluidsTotal`.
+- `getEnergyUsage()`: AE2 average usage (AE/t); RS sum of the active nodes' usage (FE/t).
+- Crafting: `craft(name, count)` validates (`offline`, `unknown_item`, `too_many` (> `maxCraftAmount`, default 4096), `not_craftable`, `busy` = more than 4 requests planning at once) and returns `{ok=true, jobId}` right away; planning happens asynchronously (AE2 `beginCraftingCalculation` + `submitJob`; RS `getPreview` off-thread, then `startTask` on the server thread with a 250 ms planning budget) and is polled every tick. Plan errors: `missing_resources`, `no_cpu` (AE2), `timeout` (30 s). Jobs (16 per bridge, newest first, not persisted) have `status` `queued|running|done|failed|cancelled`, `progress` 0..1, `error?`, `user`. Jobs started elsewhere on the network (terminals) are appended as `running`.
+- Dashboard craft actions answer with `action_result` once the job is planned (`ok` + `jobId`, or the plan error); if planning takes longer than 5 s the answer is `ok` + `jobId` and the jobs widget shows the outcome. Lua-bound item_search widgets also queue `cloud_action` with `{op="craft", name, count, jobId}`.
+- Watchlist: ≤ 32 entries per bridge, stored in the bridge block entity; errors `already_watched`, `too_many`, `unknown_item` (not a registered item). Checked every second; an item dropping below `min` raises a `warn` alert once per crossing, sent by every uplink that shows that bridge's watchlist.
+- Direct mode: an uplink whose `facing` block is a bridge switches to the Storage template (title "ME Network"/"RS Network", widgets `storage`, `energy`, `items`, `types`, `usage`, `search`, `watch`, `jobs`; snapshot has `"template":"storage","bridge":"me"|"rs"`). Values refresh every second. Lua calls that change widgets fail on such an uplink. Removing the bridge clears the section.
+
+### Lua API v2 details
+- `cloud.page(id, title, {icon})`, `cloud.group(id, title, {page, cols})`: ≤ 8 pages and ≤ 16 groups per uplink; ids like widget ids. Declaring a page raises the widget limit from `maxWidgetsPerUplink` (32) to `maxWidgetsWithPages` (64). `cloud.clear()` also removes pages and groups.
+- Common widget options: `page`, `group` (ids), `span` 1–4, `order` 0–10000, `color` (cyan, green, yellow, red, gray), `icon` (the icon set above). `label(id, text, [opts])` accepts them too.
+- `chart`: `points` 10–300 (default 60), `interval` 0.5–3600 s (default 1), `style` `line|sparkline`, optional `min/max/unit`. `set()` only stores the current value; the uplink samples it every `interval` (game time) into the ring buffer and broadcasts each sample as a `value` delta (= one appended point). The history is saved with the uplink.
+- `select`/`buttons`: `options` is a list of 1–16 unique, non-empty strings ≤ 32 chars; `select` value defaults to the first option. `number`: `min/max` default to the 32-bit int range, `step` optional (snapping only with a step). `text`: `maxLength` 1–256 (default 64), optional `placeholder`; values from Lua must be plain text, values from the dashboard have control characters stripped. `pin`/`confirm` work on every interactive widget.
+- `itemSearch/watchlist/jobs(id, label, {bridge=name})`: `name` must be a bridge peripheral the computer can reach (a side or a wired-network name); the widget remembers the bridge's position. `itemSearch` also takes `max` (≤ `maxCraftAmount`) and `pin`/`confirm`.
+- `cloud.setMany(t)`: ≤ 64 entries, all validated before any is applied. `cloud.notify` = `cloud.alert`. `cloud.getClients()` = connected dashboards of the uplink's mainframe.
+
+### Protocol details
+- Every WebSocket message except `layout_set` is limited to 8 KB; the frame limit is 64 KB + 1 KB so a full layout fits (the 8 KB limit is enforced after parsing).
+- `layout_set` → `layout_result`: checks in this order: `read_only`, `rate_limited` (5 per 10 s per mainframe), `too_large`, `invalid_layout`; rights are re-checked on the server thread. Layouts live in `data/cccloud/layouts.dat`, are loaded into the hub on server start and deleted with the mainframe.
+- `query` needs an authenticated device but not `canControl` (read-only search). Besides the listed errors, `query_result.error` can be a rights error (`no_rights`, `banned`).
+- `action_result` for craft actions carries `jobId`. Possible bridge errors: `unavailable` (bridge not loaded/not found), plus the crafting and watchlist errors above.
