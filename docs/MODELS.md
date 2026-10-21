@@ -37,7 +37,18 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_advanced` | 10 |
 | `block/uplink_advanced_core` | 2 |
 | `block/uplink_direct_ring` | 4 |
+| `block/me_cloud_bridge` | 12 |
+| `block/rs_cloud_bridge` | 12 |
 
+
+## Cloud bridges (v0.2)
+
+`block/me_cloud_bridge`, `block/rs_cloud_bridge` (+ `_online/_connecting/_offline` children that swap
+`cloud_bridge_status_*`). Full blocks, front = north, blockstate `facing` (n/s/e/w, y-rotation like the
+mainframe) x `status`. No moving parts. Emissive: cloud emblem in the port, status strip, and the socket
+pins on the 5 connection faces (full-face overlay element with a mostly transparent texture, the same
+technique as CC's `computer_on.json`; those quads land in the CUTOUT layer automatically).
+Items: `items/{me,rs}_cloud_bridge.json` -> the `_online` block model (vanilla `block/block` display).
 
 ## Render types / translucency (MC 26.1)
 

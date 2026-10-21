@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/rs_cloud_bridge",
+  "textures": {
+    "status": "cccloud:block/cloud_bridge_status_online"
+  }
+}

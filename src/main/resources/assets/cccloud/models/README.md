@@ -36,3 +36,5 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_advanced` | 10 |
 | `block/uplink_advanced_core` | 2 |
 | `block/uplink_direct_ring` | 4 |
+| `block/me_cloud_bridge` | 12 |
+| `block/rs_cloud_bridge` | 12 |

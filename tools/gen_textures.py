@@ -62,6 +62,14 @@ RED_D = hx("8a2a2a")
 ENDER = hx("2fa37a")
 ENDER_L = hx("6fd3a9")
 ENDER_D = hx("1d6b50")
+FLUIX = hx("8a5ccf")    # AE2 accent (used sparingly)
+FLUIX_L = hx("b48ae8")
+FLUIX_D = hx("5b3a8f")
+RS_GREEN = hx("4fc35a")  # RS-ish status green / blue (subtle)
+RS_GREEN_L = hx("9be3a0")
+RS_BLUE = hx("4f8fd3")
+RS_DARK = [grey(0x3d), grey(0x40), grey(0x42), grey(0x3d), grey(0x3a)]
+RS_DARK_L = [grey(0x4d), grey(0x4f), grey(0x52), grey(0x4d)]
 OFF = hx("2a2d2e")      # unlit LED
 OFF_L = hx("3a3f41")
 CLEAR = (0, 0, 0, 0)
@@ -175,6 +183,14 @@ LAYOUTS = {
             "spinner": (0, 32, 2, 1), "spinner_grey": (4, 32, 2, 1),
             "eye": (8, 32, 3, 3),
         },
+    },
+    "bridge": {
+        "size": 64,
+        "tiles": {
+            # front: bezel (z 0..2) + port floor (z 2) sample this by position; side: the 5 other faces
+            "front": (0, 0), "side": (1, 0), "pins": (2, 0), "wall": (3, 0),
+        },
+        "regions": {},
     },
 }
 
@@ -428,6 +444,95 @@ def gen_uplink(advanced: bool):
     cv.save(os.path.join(TEX, "block", "uplink_advanced.png" if advanced else "uplink.png"))
 
 
+# --------------------------------------------------------------------------- cloud bridges (v0.2)
+def _bridge_port():
+    rows = [6, 8, 8, 8, 8, 8, 8, 6]  # 8x8 port, 1 px corners cut
+    return {(8 - w // 2 + i, 4 + r) for r, w in enumerate(rows) for i in range(w)}
+
+
+def gen_bridge(kind: str):
+    """Full-block network bridge in CC casing language.
+
+    kind = "me" (AE2: stone casing, fluix-purple accents) or "rs" (Refined Storage: darker front
+    bezel, green/blue pins). Front = recessed 8x8 port (2 px deep) holding the cloud emblem,
+    status strip under it; the other 5 faces carry a cable socket with a glowing pin (overlay).
+    """
+    L = LAYOUTS["bridge"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("bridge", n)
+    port = _bridge_port()
+    me = kind == "me"
+    front_body, front_band = (GREY, GREY_L) if me else (RS_DARK, RS_DARK_L)
+
+    # front tile
+    ox, oy = T("front")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, front_band if y >= 9 else front_body, 400 + y)
+    cv.outline(ox, oy, 16, 16, EDGE, 401)
+    for y in range(9, 15):
+        cv.set(ox, oy + y, EDGE_L[y % len(EDGE_L)])
+    for (x, y) in port:
+        cv.set(ox + x, oy + y, RECESS[_hash(x, y, 402) % len(RECESS)])
+    # dark lip around the port; accent only on the four cut corners
+    for y in range(3, 13):
+        for x in range(3, 13):
+            if (x, y) not in port and any((x + dx, y + dy) in port for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                cv.set(ox + x, oy + y, EDGE[_hash(x, y, 403) % len(EDGE)])
+    acc, acc_d = (FLUIX, FLUIX_D) if me else (RS_BLUE, hx("2f5f93"))
+    for (x, y) in ((4, 4), (11, 4), (4, 11), (11, 11)):
+        cv.set(ox + x, oy + y, acc_d)
+    for (x, y) in ((3, 4), (4, 3), (12, 4), (11, 3), (3, 11), (4, 12), (12, 11), (11, 12)):
+        cv.set(ox + x, oy + y, acc if (x + y) % 2 else acc_d)
+    # status strip slot (block y 1..2 -> row 14 is outline, use row 13) and corner screws
+    cv.hline(ox + 4, oy + 13, 8, SLOT, 404)
+    for (x, y) in ((2, 2), (13, 2), (2, 13), (13, 13)):
+        cv.set(ox + x, oy + y, grey(0x2b))
+
+    # side tile: CC face with a cable socket (6x6 dark frame, 4x4 recess, 2x2 pin)
+    ox, oy = T("side")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, GREY_L if y >= 9 else GREY, 410 + y)
+    cv.outline(ox, oy, 16, 16, EDGE, 411)
+    for y in range(9, 15):
+        cv.set(ox, oy + y, EDGE_L[y % len(EDGE_L)])
+    cv.ascii(ox + 5, oy + 5, ["oooooo", "orrrro", "orppro", "orppro", "orrrro", "oooooo"],
+             {"o": EDGE, "r": RECESS, "p": SLOT}, 412)
+
+    # pins overlay (transparent, emissive element on top of the 5 socket faces)
+    ox, oy = T("pins")
+    cv.rect(ox, oy, 16, 16, CLEAR)
+    if me:
+        cv.ascii(ox + 7, oy + 7, ["Lp", "pd"], {"L": FLUIX_L, "p": FLUIX, "d": FLUIX_D})
+    else:
+        cv.ascii(ox + 7, oy + 7, ["Gg", "gb"], {"G": RS_GREEN_L, "g": RS_GREEN, "b": RS_BLUE})
+
+    # port walls
+    ox, oy = T("wall")
+    cv.noise(ox, oy, 16, 16, CHASSIS if me else RS_DARK, 414)
+
+    cv.save(os.path.join(TEX, "block", f"{kind}_cloud_bridge.png"))
+
+
+BRIDGE_STATUS_REGIONS = {"cloud": (0, 0, 6, 4), "strip": (0, 8, 8, 1)}
+
+
+def gen_bridge_status(state):
+    """Status texture shared by both bridges: cloud emblem (6x4, alpha) + 8 px LED strip."""
+    cv = Canvas(16, 16, CLEAR)
+    if state == "online":
+        C, c, d = CYAN_L, CYAN, CYAN_D
+    elif state == "connecting":
+        C, c, d = CYAN, CYAN_D, hx("1f5f73")
+    else:
+        C, c, d = OFF_L, OFF, hx("232627")
+    cv.ascii(0, 0, [" CC   ", "CccC  ", "ccccCc", " dddd "], {"C": C, "c": c, "d": d})
+    s = STATUS[state]
+    cd, cm, cl = s["crystal"]
+    pattern = {"online": "LMMDLMMD", "connecting": "MMDOMMDO", "offline": "MDOOOOOO"}[state]
+    cv.ascii(0, 8, [pattern], {"L": cl, "M": cm, "D": cd, "O": OFF})
+    cv.save(os.path.join(TEX, "block", f"cloud_bridge_status_{state}.png"))
+
+
 # --------------------------------------------------------------------------- items / particle
 def gen_items():
     # Keycard: light grey card, dark outline, gold chip, small cyan cloud, magnetic stripe.
@@ -494,6 +599,10 @@ def main():
         gen_status("uplink_status", st)
     gen_uplink(False)
     gen_uplink(True)
+    gen_bridge("me")
+    gen_bridge("rs")
+    for st in STATUS:
+        gen_bridge_status(st)
     gen_items()
     print("textures written to", TEX)
 

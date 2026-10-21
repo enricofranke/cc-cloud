@@ -25,6 +25,8 @@ from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OURS = os.path.join(ROOT, "src", "main", "resources", "assets", "cccloud")
+# AE2 / Refined Storage assets extracted read-only from the ATM11 jars, used only for comparison renders
+MODREF = "~/ref/modref"
 DEFAULT_CC = ("~/ref/"
               "scratchpad/cct-26.1/projects/common/src")
 
@@ -36,6 +38,8 @@ class Assets:
             "cccloud": [OURS],
             "computercraft": [os.path.join(cc_src, "main/resources/assets/computercraft"),
                               os.path.join(cc_src, "generated/resources/assets/computercraft")],
+            "ae2": [os.path.join(MODREF, "ae2/assets/ae2")],
+            "refinedstorage": [os.path.join(MODREF, "rs/assets/refinedstorage")],
         }
         self.tex_cache = {}
 
@@ -86,6 +90,8 @@ class Assets:
 
 _FULL = {"from": [0, 0, 0], "to": [16, 16, 16]}
 VANILLA = {
+    "block/block": {"display": {"gui": {"rotation": [30, 225, 0], "translation": [0, 0, 0],
+                                        "scale": [0.625, 0.625, 0.625]}}},
     "block/cube": {"elements": [dict(_FULL, faces={d: {"texture": "#" + d, "cullface": d} for d in
                                                    ("north", "south", "west", "east", "up", "down")})]},
     "block/orientable": {"parent": "block/orientable_with_bottom",
@@ -271,7 +277,7 @@ def render(quads, size=520, yaw=225, pitch=30, zoom=None, center=None, night=Fal
             sub_d = depth[y0:y1 + 1, x0:x1 + 1]
             sub_c = col[y0:y1 + 1, x0:x1 + 1]
             if not blend:
-                m = m & (a > 0.1) & (z > sub_d)
+                m = m & (a > 0.1) & (z > sub_d - 1e-3)
                 sub_d[m] = z[m]
                 sub_c[m] = texel[..., :3][m] * shade * light
             else:
@@ -365,9 +371,42 @@ def side_by_side(a):
         q += cc(a, "computercraft:block/wired_modem_off", y=270, pos=(1, 0, 0))
         tiles.append(label(render(q, S, yaw=240, pitch=26, night=night),
                            "Uplink (left) vs Wired Modem (right)" + (" (night)" if night else "")))
+    # 4) cloud bridges next to the AE2 ME Interface / RS Interface (and CC computers)
+    for night in (False, True):
+        tiles.append(label(render(bridge_scene(a, night), S, yaw=195, pitch=22, night=night),
+                           "CC Adv. Computer | ME bridge | AE2 Interface | RS bridge | RS Interface"
+                           + (" (night)" if night else "")))
     out = grid(tiles, 2)
     out.save(os.path.join(HERE, "side_by_side.png"))
     return out
+
+
+def bridge_quads(a, kind, status="online", facing_y=0, pos=(0, 0, 0)):
+    return model_quads(a, f"cccloud:block/{kind}_cloud_bridge_{status}", blockstate_transform(y=facing_y, offset=pos))
+
+
+def bridge_scene(a, night=False):
+    """One line, left to right: CC Advanced Computer, ME bridge, AE2 Interface, RS bridge, RS Interface."""
+    have = os.path.isdir(MODREF)
+    q = cc(a, "computercraft:block/computer_advanced_on", pos=(2, 0, 0))
+    q += bridge_quads(a, "me", pos=(1, 0, 0))
+    q += bridge_quads(a, "rs", pos=(-1, 0, 0))
+    if have:
+        q += cc(a, "ae2:block/interface", pos=(0, 0, 0))
+        q += cc(a, "refinedstorage:block/interface/active", pos=(-2, 0, 0))
+    return q
+
+
+def bridge_renders(a):
+    os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
+    shots = []
+    for kind in ("me", "rs"):
+        for (yaw, pitch, nm) in ((200, 25, "front"), (150, 25, "front-right"), (20, 30, "back"), (245, 60, "top")):
+            shots.append(label(render(bridge_quads(a, kind), 340, yaw=yaw, pitch=pitch), f"{kind} bridge {nm}"))
+        for st in ("online", "connecting", "offline"):
+            shots.append(label(render(bridge_quads(a, kind, st), 340, yaw=200, pitch=25, night=True),
+                               f"{kind} bridge {st} night"))
+    grid(shots, 7).save(os.path.join(HERE, "renders", "bridges.png"))
 
 
 def detail_renders(a):
@@ -457,6 +496,8 @@ def main():
         side_by_side(a)
     if args.only in ("all", "detail"):
         detail_renders(a)
+    if args.only in ("all", "detail", "bridges"):
+        bridge_renders(a)
     if args.only in ("all", "contact"):
         contact_sheet()
 
@@ -471,9 +512,12 @@ def display_transform(assets, rid, key="gui"):
     while rid and disp is None:
         p = assets.find(rid, "models", ".json")
         if p is None:
-            break
-        with open(p) as f:
-            m = json.load(f)
+            m = VANILLA.get(rid.replace("minecraft:", ""))
+            if m is None:
+                break
+        else:
+            with open(p) as f:
+                m = json.load(f)
         disp = m.get("display", {}).get(key)
         rid = m.get("parent")
     disp = disp or {}
@@ -501,6 +545,8 @@ def item_sheet(a):
         ["cccloud:block/uplink_advanced_online", "cccloud:block/uplink_advanced_core"],
         ["computercraft:block/computer_advanced_on"],
         ["computercraft:block/wireless_modem_advanced_on"],
+        ["cccloud:block/me_cloud_bridge_online"],
+        ["cccloud:block/rs_cloud_bridge_online"],
     ]
     ims = [item_render(a, r) for r in rows]
     for p in ("item/cloud_link_card", "item/cloud_core"):
@@ -508,7 +554,7 @@ def item_sheet(a):
         bg = Image.new("RGBA", (160, 160), (139, 139, 139, 255))
         bg.alpha_composite(im)
         ims.append(bg.convert("RGB"))
-    grid(ims, 7).save(os.path.join(HERE, "renders", "items_gui.png"))
+    grid(ims, 9).save(os.path.join(HERE, "renders", "items_gui.png"))
 
 
 if __name__ == "__main__" and os.environ.get("ITEMS"):

@@ -67,6 +67,7 @@ TEMPLATE = r"""<!doctype html>
     <button data-g="show" data-v="mainframe">Mainframe</button>
     <button data-g="show" data-v="uplink">Uplink</button>
     <button data-g="show" data-v="advanced">Adv. Uplink</button>
+    <button data-g="show" data-v="bridges">Bridges</button>
   </div>
   <div class="row"><span>Status</span>
     <button data-g="status" data-v="online" class="on">online</button>
@@ -101,7 +102,7 @@ const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("c"),
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(35, 1, 0.05, 100);
-let yaw = 0.45, pitch = 0.42, dist = 8.5;
+let yaw = 0.3, pitch = 0.42, dist = 11;
 const target = new THREE.Vector3(0.5, 0.9, 0.5);
 
 function bgColor() { return getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#25282b"; }
@@ -255,6 +256,11 @@ function rebuild() {
     placed(adv ? "cccloud:block/uplink_advanced_core" : "cccloud:block/uplink_ring", x, 0, 1, "north", null,
       { at: [8, 8, 1.375], axis: "z", speed: spd });
     if (direct) placed("cccloud:block/uplink_direct_ring", x, 0, 1, "north");
+  }
+  if (show === "all" || show === "bridges") {
+    const all = show === "all";
+    placed(`cccloud:block/me_cloud_bridge_${s}`, all ? -4 : -0.75, 0, all ? -1 : 0, "south");
+    placed(`cccloud:block/rs_cloud_bridge_${s}`, all ? 4 : 0.75, 0, all ? -1 : 0, "south");
   }
   applyLight();
 }

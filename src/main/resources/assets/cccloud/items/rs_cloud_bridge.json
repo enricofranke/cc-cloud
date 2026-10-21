@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "cccloud:block/rs_cloud_bridge_online"
+  }
+}
