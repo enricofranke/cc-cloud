@@ -25,8 +25,9 @@ function fmtNumber(v: number) {
 function useValue(conn: MainframeConn, uplinkId: string, w: Widget): { value: Scalar | undefined; pending: boolean } {
   const key = keyOf(uplinkId, w.id);
   const p = conn.pending.value;
-  if (key in p) return { value: p[key], pending: true };
-  return { value: w.value ?? w.opts?.value, pending: false };
+  const scalar = (v: unknown): Scalar | undefined => (v === null || ["string", "number", "boolean"].includes(typeof v) ? (v as Scalar) : undefined);
+  if (key in p) return { value: scalar(p[key]), pending: true };
+  return { value: scalar(w.value) ?? w.opts?.value, pending: false };
 }
 
 /**

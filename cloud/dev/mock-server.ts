@@ -8,20 +8,28 @@ import { WebSocketServer, WebSocket } from "ws";
 import { CODE_ALPHABET, SECURITY_HEADERS, clientMessage, normalizeCode, pairRequest, parseJson, type Scalar } from "./protocol.ts";
 import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
+import { FakeAe2, search } from "./ae2-sim.ts";
+import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
 type Level = "info" | "warn" | "crit";
+type Row = Record<string, string | number | boolean | null>;
 interface Widget {
   id: string;
-  type: "button" | "toggle" | "slider" | "gauge" | "label";
+  type:
+    | "button" | "toggle" | "slider" | "gauge" | "label" | "item_search" | "watchlist" | "jobs"
+    | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons";
   label?: string;
   opts?: Record<string, unknown>;
-  value?: Scalar;
+  value?: Scalar | Row[];
+  history?: number[];
 }
 interface Uplink {
   uplinkId: string;
   title: string;
   online: boolean;
   widgets: Widget[];
+  pages?: { id: string; title: string; icon?: string }[];
+  groups?: { id: string; title: string; page?: string; cols?: number }[];
 }
 interface Client {
   ws: WebSocket;
@@ -30,6 +38,7 @@ interface Client {
   canControl: boolean;
   alive: boolean;
   hits: number[];
+  queryHits: number[];
 }
 interface Token {
   mainframeId: string;
@@ -55,9 +64,14 @@ interface Mainframe {
   uplinks: Map<string, Uplink>;
   alerts: { uplinkId?: string; text: string; level: Level; ts: number }[];
   clients: Set<Client>;
+  layout: object | null;
+  layoutSaves: number[];
   /** Simulates a Lua script that never answers (for rollback tests). */
   ignoreActions: boolean;
   onAction?: (uplinkId: string, id: string, value: Scalar, user: string) => void;
+  /** Structured operations (craft / watchlist). Synchronous so the result can carry a jobId. */
+  onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string };
+  onQuery?: (uplinkId: string, id: string, q: string) => { rows: object[]; truncated: boolean } | undefined;
   tick?: () => void;
 }
 
@@ -77,6 +91,10 @@ export interface MockOptions {
   actionDelayMs?: number;
   /** Add a second, disabled mainframe and an offline uplink. */
   extras?: boolean;
+  /** Add the fake AE2 network uplink (default true). */
+  ae2?: boolean;
+  /** Add the Lua v2 "Control Room" uplink with pages/groups (default true). */
+  controlRoom?: boolean;
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
   /** How long a pending pairing waits for approval (spec: 2 minutes). */
@@ -95,6 +113,8 @@ const fmt = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`;
 export const REACTOR = "8a1f2c4e-reactor";
 export const STORAGE = "3b7d9e10-storage";
 export const TURBINE = "5c2e8f77-turbine";
+export const ME = "c4e2b7a1-me-bridge";
+export const CONTROL = "7d3a9c02-control";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
 
 export async function createMockServer(opts: MockOptions = {}) {
@@ -159,6 +179,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     mainframe: info(mf),
     canControl: c?.canControl ?? true,
     uplinks: [...mf.uplinks.values()],
+    layout: mf.layout,
   });
   /** Rotates the code when it is used or older than 10 minutes. */
   function currentCode(mf: Mainframe) {
@@ -169,9 +190,17 @@ export async function createMockServer(opts: MockOptions = {}) {
     return mf.code;
   }
 
-  function setValue(mf: Mainframe, uplinkId: string, id: string, value: Scalar) {
+  function setValue(mf: Mainframe, uplinkId: string, id: string, value: Scalar | Row[]) {
     const w = mf.uplinks.get(uplinkId)?.widgets.find((x) => x.id === id);
-    if (!w || w.value === value) return;
+    if (w?.type === "chart" && typeof value === "number") {
+      // charts: the mod keeps a ring buffer; deltas carry only the new point
+      const cap = Math.min(300, Math.max(2, Number(w.opts?.points ?? 60)));
+      w.history = [...(w.history ?? []), value].slice(-cap);
+      w.value = value;
+      broadcast(mf, { t: "value", uplinkId, id, value });
+      return;
+    }
+    if (!w || w.value === value || (Array.isArray(value) && JSON.stringify(w.value) === JSON.stringify(value))) return;
     w.value = value;
     broadcast(mf, { t: "value", uplinkId, id, value });
   }
@@ -202,6 +231,8 @@ export async function createMockServer(opts: MockOptions = {}) {
       uplinks: new Map(),
       alerts: [],
       clients: new Set(),
+      layout: null,
+      layoutSaves: [],
       ignoreActions: false,
     };
     mainframes.set(mf.id, mf);
@@ -209,6 +240,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
 
   const base = addMainframe("Mainframe @ 12 64 -30", true);
+  let meSim: FakeAe2 | undefined;
   {
     const WARN = 900;
     const CRIT = 1100;
@@ -291,6 +323,126 @@ export async function createMockServer(opts: MockOptions = {}) {
     };
   }
 
+  // ---- fake AE2 network behind an ME Cloud Bridge (direct mode, v0.2) ----
+  if (opts.ae2 !== false) {
+    const ae2 = new FakeAe2();
+    const pct = (n: number) => Math.round(n * 1000) / 10;
+    const statWidgets = (): Widget[] => {
+      const st = ae2.stats;
+      return [
+        { id: "storage", type: "gauge", label: "Storage used", opts: { min: 0, max: 100, unit: "%", warn: 85, crit: 95 }, value: pct(st.total / st.capacity) },
+        { id: "energy", type: "gauge", label: "Energy", opts: { min: 0, max: 100, unit: "%", warn: 30, crit: 10 }, value: pct(ae2.energy) },
+        { id: "items", type: "label", label: "Total items", value: st.total.toLocaleString("en-US") },
+        { id: "types", type: "label", label: "Item types", value: st.types.toLocaleString("en-US") },
+        { id: "usage", type: "label", label: "Energy usage", value: "31.5 AE/t" },
+      ];
+    };
+    const me: Uplink = {
+      uplinkId: ME,
+      title: "ME Network",
+      online: true,
+      widgets: [
+        ...statWidgets(),
+        { id: "search", type: "item_search", label: "Search network", opts: { max: 4096 } },
+        { id: "watch", type: "watchlist", label: "Watchlist", value: ae2.watchRows() },
+        { id: "jobs", type: "jobs", label: "Crafting jobs", value: ae2.jobRows() },
+      ],
+    };
+    // the storage card is the main use case on phones: show it first
+    const rest = [...base.uplinks.entries()];
+    base.uplinks.clear();
+    base.uplinks.set(ME, me);
+    for (const [k, v] of rest) base.uplinks.set(k, v);
+
+    const publish = () => {
+      for (const w of statWidgets()) setValue(base, ME, w.id, w.value as Scalar);
+      setValue(base, ME, "watch", ae2.watchRows());
+      setValue(base, ME, "jobs", ae2.jobRows());
+    };
+    base.onQuery = (uplinkId, _id, q) => (uplinkId === ME ? search(ae2.items, q) : undefined);
+    base.onOp = (uplinkId, id, op, user) => {
+      if (uplinkId !== ME) return { ok: false, error: "unknown_uplink" };
+      if (id === "search" && op.op === "craft") {
+        const r = ae2.craft(op.name, op.count);
+        if (r.ok) {
+          later(actionDelayMs, publish);
+          later(actionDelayMs, () => alert(base, ME, `${user} started crafting ${op.count.toLocaleString("en-US")}× ${ae2.items.get(op.name)?.displayName}`, "info"));
+        }
+        return r;
+      }
+      if (id === "watch" && op.op !== "craft") {
+        const r = ae2.watchOp(op);
+        if (r.ok) later(actionDelayMs, publish);
+        return r;
+      }
+      return { ok: false, error: "invalid_value" };
+    };
+    const reactorTick = base.tick;
+    base.tick = () => {
+      reactorTick?.();
+      for (const e of ae2.tick()) alert(base, ME, e.text, e.level);
+      publish();
+    };
+    meSim = ae2;
+  }
+
+  // ---- a Lua v2 dashboard: pages, groups and the new widget types ----
+  if (opts.controlRoom !== false) {
+    const rand = (() => {
+      let s = 99;
+      return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+    })();
+    let load = 120;
+    const loadHistory = Array.from({ length: 60 }, (_, i) => Math.round(110 + 30 * Math.sin(i / 6) + rand() * 12));
+    const ioHistory = Array.from({ length: 40 }, (_, i) => Math.round(20 * Math.sin(i / 4) + rand() * 6));
+    const cr: Uplink = {
+      uplinkId: CONTROL,
+      title: "Control Room",
+      online: true,
+      pages: [
+        { id: "power", title: "Power", icon: "bolt" },
+        { id: "farm", title: "Farm", icon: "leaf" },
+      ],
+      groups: [
+        { id: "grid", title: "Power Grid", page: "power", cols: 2 },
+        { id: "matrix", title: "Induction Matrix", page: "power", cols: 1 },
+        { id: "trees", title: "Tree Farm", page: "farm", cols: 1 },
+      ],
+      widgets: [
+        { id: "load", type: "chart", label: "Grid load", opts: { group: "grid", min: 0, max: 200, unit: "kFE/t", warn: 160, crit: 185, points: 60 }, value: loadHistory.at(-1)!, history: loadHistory },
+        { id: "gens", type: "indicator", label: "Generators", opts: { group: "grid", onColor: "green" }, value: true },
+        { id: "fault", type: "indicator", label: "Fault", opts: { group: "grid", onColor: "red" }, value: false },
+        { id: "mode", type: "select", label: "Mode", opts: { group: "grid", options: ["eco", "normal", "boost"] }, value: "normal" },
+        { id: "priority", type: "buttons", label: "Priority", opts: { group: "grid", options: ["Low", "Mid", "High"] }, value: "Mid" },
+        { id: "charge", type: "progress", label: "Charge", opts: { group: "matrix", min: 0, max: 500, unit: "MFE", icon: "bolt" }, value: 312 },
+        { id: "io", type: "chart", label: "Net I/O", opts: { group: "matrix", style: "sparkline", unit: "kFE/t", points: 40 }, value: ioHistory.at(-1)!, history: ioHistory },
+        { id: "limit", type: "number", label: "Output limit", opts: { group: "matrix", min: 0, max: 500, step: 10, unit: "kFE/t" }, value: 250 },
+        { id: "running", type: "indicator", label: "Harvester running", opts: { group: "trees", onColor: "green" }, value: true },
+        { id: "saplings", type: "progress", label: "Saplings", opts: { group: "trees", min: 0, max: 64 }, value: 41 },
+        { id: "sign", type: "text", label: "Sign text", opts: { group: "trees", maxLength: 32 }, value: "Tree farm – keep out" },
+        { id: "harvest", type: "toggle", label: "Auto harvest", opts: { group: "trees" }, value: true },
+      ],
+    };
+    base.uplinks.set(CONTROL, cr);
+    const prevAction = base.onAction;
+    base.onAction = (uplinkId, id, value, user) => {
+      if (uplinkId !== CONTROL) return prevAction?.(uplinkId, id, value, user);
+      setValue(base, CONTROL, id, value);
+      if (id === "mode") alert(base, CONTROL, `Grid mode set to ${value} by ${user}`, "info");
+    };
+    const prevTick = base.tick;
+    base.tick = () => {
+      prevTick?.();
+      const mode = cr.widgets.find((w) => w.id === "mode")!.value;
+      const target = mode === "boost" ? 175 : mode === "eco" ? 90 : 125;
+      load = Math.max(0, Math.min(200, load + (target - load) * 0.15 + (rand() - 0.5) * 16));
+      setValue(base, CONTROL, "load", Math.round(load));
+      setValue(base, CONTROL, "io", Math.round((rand() - 0.45) * 40));
+      const charge = cr.widgets.find((w) => w.id === "charge")!;
+      setValue(base, CONTROL, "charge", Math.max(0, Math.min(500, Number(charge.value) + Math.round((rand() - 0.4) * 6))));
+    };
+  }
+
   if (opts.extras) {
     const outpost = addMainframe("Outpost @ -340 72 118", false);
     outpost.uplinks.set(GREENHOUSE, {
@@ -320,6 +472,21 @@ export async function createMockServer(opts: MockOptions = {}) {
       const step = o?.step ?? 1;
       return Math.min(max, Math.max(min, Number((min + Math.round((value - min) / step) * step).toFixed(6))));
     }
+    const o = (w.opts ?? {}) as { options?: unknown; min?: number; max?: number; step?: number; maxLength?: number };
+    if (w.type === "select" || w.type === "buttons")
+      return typeof value === "string" && Array.isArray(o.options) && o.options.includes(value) ? value : undefined;
+    if (w.type === "number") {
+      if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+      if ((o.min !== undefined && value < o.min) || (o.max !== undefined && value > o.max)) return undefined;
+      const step = o.step ?? 0;
+      const base = o.min ?? 0;
+      return step > 0 ? Number((base + Math.round((value - base) / step) * step).toFixed(6)) : value;
+    }
+    if (w.type === "text") {
+      if (typeof value !== "string") return undefined;
+      // plain text only: drop control characters, cap the length
+      return value.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, Math.min(256, o.maxLength ?? 64));
+    }
     return undefined;
   }
 
@@ -339,6 +506,11 @@ export async function createMockServer(opts: MockOptions = {}) {
 
     ws.on("message", (raw) => {
       lastSeen = Date.now();
+      const size = Buffer.isBuffer(raw) ? raw.length : Array.isArray(raw) ? raw.reduce((n, b) => n + b.length, 0) : (raw as ArrayBuffer).byteLength;
+      if (size > 8192) {
+        const head = (Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer)).subarray(0, 64).toString("utf8");
+        if (!client || !/"t"\s*:\s*"layout_set"/.test(head)) return void ws.close(1009, "message too big");
+      }
       try {
         const json = parseJson(raw) as { reqId?: unknown } | undefined;
         const parsed = clientMessage.safeParse(json);
@@ -350,7 +522,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (!t || !mainframes.has(t.mainframeId)) return reject("unauthorized");
           clearTimeout(authTimer);
           mf = mainframes.get(t.mainframeId)!;
-          client = { ws, tokenHash: hash, user: t.name, canControl: t.canControl, alive: true, hits: [] };
+          client = { ws, tokenHash: hash, user: t.name, canControl: t.canControl, alive: true, hits: [], queryHits: [] };
           t.pinFails = t.pinFails ?? 0;
           mf.clients.add(client);
           sendTo(ws, snapshot(mf, client));
@@ -364,6 +536,37 @@ export async function createMockServer(opts: MockOptions = {}) {
           return;
         }
         const msg = parsed.data;
+        if (msg.t === "layout_set") {
+          const lres = (ok: boolean, error?: string) => sendTo(ws, { t: "layout_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          if (!c.canControl) return lres(false, "read_only");
+          const now = Date.now();
+          m.layoutSaves = m.layoutSaves.filter((t) => now - t < 10_000);
+          if (m.layoutSaves.length >= 5) return lres(false, "rate_limited");
+          m.layoutSaves.push(now);
+          if (Buffer.byteLength(JSON.stringify(msg.layout ?? null)) > MAX_LAYOUT_BYTES) return lres(false, "too_large");
+          const doc = layoutDoc.safeParse(msg.layout);
+          if (!doc.success) return lres(false, "invalid_layout");
+          m.layout = doc.data;
+          log(`${c.user} saved the layout (${doc.data.pages.length} pages, ${Object.keys(doc.data.cards).length} cards)`);
+          lres(true);
+          broadcast(m, { t: "layout", layout: m.layout });
+          return;
+        }
+        if (msg.t === "query") {
+          const now = Date.now();
+          const qres = (rows: object[], truncated: boolean, error?: string) =>
+            sendTo(ws, { t: "query_result", reqId: msg.reqId, rows, truncated, ...(error ? { error } : {}) });
+          const recentQ = [...m.clients].filter((x) => x.tokenHash === c.tokenHash).flatMap((x) => x.queryHits).filter((h) => now - h < 1000);
+          if (recentQ.length >= 5) return qres([], false, "rate_limited");
+          c.queryHits = [...c.queryHits.filter((h) => now - h < 1000), now];
+          if (!m.online) return qres([], false, "offline");
+          const qu = m.uplinks.get(msg.uplinkId);
+          const qw = qu?.widgets.find((x) => x.id === msg.id);
+          if (!qu || !qw || qw.type !== "item_search") return qres([], false, "unknown_widget");
+          if (!qu.online) return qres([], false, "uplink_offline");
+          const r = m.onQuery?.(msg.uplinkId, msg.id, msg.q);
+          return r ? qres(r.rows, r.truncated) : qres([], false, "unavailable");
+        }
         if (msg.t !== "action") return; // pong / repeated auth
         const now = Date.now();
         // per-token sliding window: several tabs of one device share the budget
@@ -395,7 +598,16 @@ export async function createMockServer(opts: MockOptions = {}) {
           }
           t.pinFails = 0;
         }
-        const value = coerce(w, msg.value);
+        if (w.type === "item_search" || w.type === "watchlist") {
+          const op = opValue.safeParse(msg.value);
+          const allowed = w.type === "item_search" ? ["craft"] : ["add", "remove", "set_min"];
+          if (!op.success || !allowed.includes(op.data.op)) return result(msg.reqId, false, "invalid_value");
+          const r = m.onOp?.(msg.uplinkId, msg.id, op.data, c.user) ?? { ok: false, error: "unavailable" };
+          log(`${c.user} ${op.data.op} ${u.title}/${w.id} ${JSON.stringify(op.data)} -> ${r.ok ? "ok" : r.error}`);
+          return result(msg.reqId, r.ok, r.error, r.jobId ? { jobId: r.jobId } : {});
+        }
+        if (w.type === "jobs") return result(msg.reqId, false, "not_interactive");
+        const value = coerce(w, msg.value as Scalar | undefined);
         if (value === undefined) return result(msg.reqId, false, w.type === "gauge" || w.type === "label" ? "not_interactive" : "invalid_value");
         log(`${c.user} pressed ${u.title}/${w.id} = ${JSON.stringify(value)}`);
         result(msg.reqId, true);
@@ -548,7 +760,8 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (!res.headersSent) json(res, 500, { error: "internal" });
     }),
   );
-  const wss = new WebSocketServer({ noServer: true, maxPayload: 8192 });
+  // 64 KB frames so a layout_set fits; every other message is still limited to 8 KB below
+  const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_LAYOUT_BYTES + 1024 });
   server.on("upgrade", (req, socket, head) => {
     socket.on("error", () => {});
     const url = new URL(req.url ?? "/", "http://mock");
@@ -591,6 +804,10 @@ export async function createMockServer(opts: MockOptions = {}) {
     base,
     code: (mf: Mainframe = base) => fmt(currentCode(mf)),
     pairings,
+    /** The fake AE2 network (undefined with ae2:false). */
+    get ae2() {
+      return meSim;
+    },
     async close() {
       clearInterval(pinger);
       timers.forEach(clearTimeout);

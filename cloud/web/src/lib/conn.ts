@@ -4,8 +4,9 @@
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
 import { signal, batch } from "@preact/signals";
-import type { Alert, MainframeInfo, Scalar, Uplink, Widget } from "./types.ts";
+import { WIDGET_TYPES, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
+import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
 /** Outcome of an action as reported by action_result (plus extras like attemptsLeft/retryAfter). */
 export interface ActionOutcome {
@@ -13,6 +14,13 @@ export interface ActionOutcome {
   error?: string;
   attemptsLeft?: number;
   retryAfter?: number;
+  /** Set by successful craft actions. */
+  jobId?: string;
+}
+
+export interface QueryResult {
+  rows: ItemRow[];
+  truncated: boolean;
 }
 export interface ActionExtra {
   pin?: string;
@@ -52,7 +60,7 @@ export interface ConnOptions {
 
 interface Pending {
   reqId: string;
-  value: Scalar;
+  value: ActionValue;
   timer?: ReturnType<typeof setTimeout>;
 }
 
@@ -104,7 +112,7 @@ export class MainframeConn {
   readonly alerts = signal<Alert[]>([]);
   readonly unread = signal(0);
   /** Optimistic values by `uplinkId/id`, shown until the server confirms or we roll back. */
-  readonly pending = signal<Record<string, Scalar>>({});
+  readonly pending = signal<Record<string, ActionValue>>({});
   /** Widgets with an action in flight (e.g. a pressed button waiting for its result). */
   readonly busy = signal<Record<string, true>>({});
   /** Timestamp of the next reconnect attempt (for the UI countdown). */
@@ -115,6 +123,8 @@ export class MainframeConn {
   readonly lanOnly = signal(false);
   /** Set after too many wrong PINs: PIN-protected controls are locked until then (ms epoch). */
   readonly pinLockedUntil = signal(0);
+  /** Shared dashboard layout of this mainframe (null = defaults). */
+  readonly layout = signal<LayoutDoc | null>(null);
 
   private ws?: WebSocket;
   private stopped = true;
@@ -123,6 +133,8 @@ export class MainframeConn {
   private retryTimer?: ReturnType<typeof setTimeout>;
   private silenceTimer?: ReturnType<typeof setTimeout>;
   private authFailed = false;
+  private layoutReqs = new Map<string, { resolve: (server?: LayoutDoc) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  private queries = new Map<string, { resolve: (r: QueryResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private pendingMeta = new Map<string, Pending>();
   private requests = new Map<string, { key: string; label: string; timer: ReturnType<typeof setTimeout>; onResult?: ActionExtra["onResult"] }>();
   private readonly o: Required<Omit<ConnOptions, "onAlert" | "onNotice" | "WebSocketImpl">> & ConnOptions;
@@ -279,6 +291,7 @@ export class MainframeConn {
           this.info.value = normalizeInfo(msg.mainframe);
           this.uplinks.value = msg.uplinks.map(normalizeUplink).filter(Boolean) as Uplink[];
           if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
+          this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           const cc = msg.canControl ?? msg.device?.canControl ?? msg.mainframe?.canControl;
           if (typeof cc === "boolean") this.canControl.value = cc;
           this.status.value = "open";
@@ -315,7 +328,7 @@ export class MainframeConn {
         break;
       case "value": {
         if (typeof msg.uplinkId !== "string" || typeof msg.id !== "string") return;
-        const value = toScalar(msg.value);
+        const value = toValue(msg.value);
         let changed = false;
         const list = this.uplinks.value.map((u) => {
           if (u.uplinkId !== msg.uplinkId) return u;
@@ -324,6 +337,14 @@ export class MainframeConn {
             widgets: u.widgets.map((w) => {
               if (w.id !== msg.id) return w;
               changed = true;
+              if (w.type === "chart") {
+                const history = Array.isArray(msg.value)
+                  ? numbers(msg.value, chartCap(w))
+                  : typeof msg.value === "number" && Number.isFinite(msg.value)
+                    ? [...(w.history ?? []), msg.value].slice(-chartCap(w))
+                    : w.history ?? [];
+                return { ...w, history, value: history.at(-1) ?? null };
+              }
               return { ...w, value };
             }),
           };
@@ -347,8 +368,43 @@ export class MainframeConn {
           error: typeof msg.error === "string" ? msg.error : undefined,
           attemptsLeft: typeof msg.attemptsLeft === "number" ? msg.attemptsLeft : undefined,
           retryAfter: typeof msg.retryAfter === "number" ? msg.retryAfter : undefined,
+          jobId: msg.jobId != null ? String(msg.jobId) : undefined,
         });
+        this.queryFailed(String(msg.reqId ?? ""), typeof msg.error === "string" ? msg.error : "rejected");
         break;
+      case "layout":
+        this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
+        break;
+      case "layout_result": {
+        const l = this.layoutReqs.get(String(msg.reqId ?? ""));
+        if (!l) return;
+        this.layoutReqs.delete(String(msg.reqId));
+        clearTimeout(l.timer);
+        if (msg.ok === true) l.resolve(msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : undefined);
+        else l.reject(new Error(typeof msg.error === "string" ? msg.error : "rejected"));
+        break;
+      }
+      case "query_result": {
+        const q = this.queries.get(String(msg.reqId ?? ""));
+        if (!q) return;
+        this.queries.delete(String(msg.reqId));
+        clearTimeout(q.timer);
+        if (typeof msg.error === "string") {
+          q.reject(new Error(msg.error));
+          return;
+        }
+        const rows: ItemRow[] = (Array.isArray(msg.rows) ? msg.rows : [])
+          .filter((r: any) => r && typeof r.name === "string")
+          .slice(0, 50)
+          .map((r: any) => ({
+            name: r.name,
+            displayName: typeof r.displayName === "string" && r.displayName ? r.displayName : r.name,
+            count: typeof r.count === "number" ? r.count : 0,
+            craftable: r.craftable === true,
+          }));
+        q.resolve({ rows, truncated: msg.truncated === true });
+        break;
+      }
     }
   }
 
@@ -357,7 +413,7 @@ export class MainframeConn {
    * Sends an action. With `optimistic`, the value is shown immediately and
    * rolled back if the server rejects it or the computer does not confirm.
    */
-  action(uplinkId: string, widget: Widget, value: Scalar, optimistic = false, extra: ActionExtra = {}): string | undefined {
+  action(uplinkId: string, widget: Widget, value: ActionValue, optimistic = false, extra: ActionExtra = {}): string | undefined {
     const key = keyOf(uplinkId, widget.id);
     const reqId = newReqId();
     const msg = { t: "action", reqId, uplinkId, id: widget.id, value, ...(extra.pin ? { pin: extra.pin } : {}) };
@@ -412,7 +468,49 @@ export class MainframeConn {
     }
   }
 
-  private widgetValue(key: string): Scalar | undefined {
+  /** Saves the shared layout: {"t":"layout_set"} → layout_result. Rejects with the server error code. */
+  saveLayout(layout: LayoutDoc, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      if (!this.canControl.value) return reject(new Error("read_only"));
+      if (!this.send({ t: "layout_set", reqId, layout })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.layoutReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.layoutReqs.set(reqId, {
+        resolve: (server) => {
+          this.layout.value = server ?? layout;
+          resolve();
+        },
+        reject,
+        timer,
+      });
+    });
+  }
+
+  /** item_search: {"t":"query"} → query_result. Rejects with the server error code (or "timeout"/"disconnected"). */
+  query(uplinkId: string, id: string, q: string, timeoutMs = 5000): Promise<QueryResult> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      if (this.status.value !== "open" || !this.info.value?.online || !this.send({ t: "query", reqId, uplinkId, id, q: q.slice(0, 64) })) {
+        reject(new Error(this.status.value !== "open" ? "disconnected" : "offline"));
+        return;
+      }
+      const timer = setTimeout(() => this.queryFailed(reqId, "timeout"), timeoutMs);
+      this.queries.set(reqId, { resolve, reject, timer });
+    });
+  }
+
+  private queryFailed(reqId: string, error: string) {
+    const q = this.queries.get(reqId);
+    if (!q) return;
+    clearTimeout(q.timer);
+    this.queries.delete(reqId);
+    q.reject(new Error(error));
+  }
+
+  private widgetValue(key: string): WidgetValue | undefined {
     const [uplinkId, id] = key.split("/");
     return this.uplinks.value.find((u) => u.uplinkId === uplinkId)?.widgets.find((w) => w.id === id)?.value;
   }
@@ -437,6 +535,12 @@ export class MainframeConn {
   }
 
   private dropAllPending() {
+    for (const [id] of this.queries) this.queryFailed(id, "disconnected");
+    for (const [id, l] of this.layoutReqs) {
+      clearTimeout(l.timer);
+      l.reject(new Error("disconnected"));
+      this.layoutReqs.delete(id);
+    }
     for (const p of this.pendingMeta.values()) clearTimeout(p.timer);
     this.pendingMeta.clear();
     for (const r of this.requests.values()) {
@@ -471,6 +575,21 @@ function isAuthError(msg: any) {
   return /auth|token|revoked|forbidden/.test(why);
 }
 
+/** Scalars pass through; lists of plain objects (watchlist/jobs) are kept with scalar fields only. */
+function toValue(v: unknown): WidgetValue {
+  if (Array.isArray(v)) {
+    return v
+      .slice(0, 500)
+      .filter((r) => r && typeof r === "object" && !Array.isArray(r))
+      .map((r) => {
+        const out: Row = {};
+        for (const [k, x] of Object.entries(r as object)) if (x === null || ["string", "number", "boolean"].includes(typeof x)) out[k] = x as Row[string];
+        return out;
+      });
+  }
+  return toScalar(v);
+}
+
 function toScalar(v: unknown): Scalar {
   return typeof v === "number" || typeof v === "boolean" || typeof v === "string" ? v : null;
 }
@@ -487,15 +606,39 @@ function normalizeUplink(u: any): Uplink | null {
     title: typeof u.title === "string" ? u.title : "",
     online: u.online !== false,
     widgets: widgets
-      .filter((w: any) => w && typeof w.id === "string" && ["button", "toggle", "slider", "gauge", "label"].includes(w.type))
-      .map((w: any) => ({
-        id: w.id,
-        type: w.type,
-        label: typeof w.label === "string" ? w.label : undefined,
-        opts: w.opts && typeof w.opts === "object" && !Array.isArray(w.opts) ? w.opts : {},
-        value: w.value === undefined ? undefined : toScalar(w.value),
-      })),
+      .filter((w: any) => w && typeof w.id === "string" && WIDGET_TYPES.includes(w.type))
+      .map((w: any) => {
+        const out: Widget = {
+          id: w.id,
+          type: w.type,
+          label: typeof w.label === "string" ? w.label : undefined,
+          opts: w.opts && typeof w.opts === "object" && !Array.isArray(w.opts) ? w.opts : {},
+          value: w.value === undefined ? undefined : toValue(w.value),
+        };
+        if (w.type === "chart") {
+          // history either as `history` or as an array value
+          const raw = Array.isArray(w.history) ? w.history : Array.isArray(w.value) ? w.value : [];
+          out.history = numbers(raw, chartCap(out));
+          if (Array.isArray(w.value)) out.value = out.history.at(-1) ?? null;
+        }
+        return out;
+      }),
+    pages: Array.isArray(u.pages)
+      ? u.pages.filter((p: any) => p && typeof p.id === "string").slice(0, 12).map((p: any) => ({ id: p.id, title: str(p.title), icon: str(p.icon) }))
+      : undefined,
+    groups: Array.isArray(u.groups)
+      ? u.groups
+          .filter((g: any) => g && typeof g.id === "string")
+          .slice(0, 32)
+          .map((g: any) => ({ id: g.id, title: str(g.title), page: str(g.page), cols: typeof g.cols === "number" ? g.cols : undefined }))
+      : undefined,
   };
+}
+
+const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+const chartCap = (w: Widget) => Math.min(300, Math.max(2, typeof w.opts?.points === "number" ? w.opts.points : 60));
+function numbers(raw: unknown[], cap: number) {
+  return raw.filter((x): x is number => typeof x === "number" && Number.isFinite(x)).slice(-cap);
 }
 
 function normalizeAlert(a: any): Alert | null {

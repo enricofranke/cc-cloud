@@ -4,9 +4,9 @@ import { formatDuration } from "../lib/conn.ts";
 import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
-import { UplinkCard } from "../components/UplinkCard.tsx";
+import { Pages } from "./Pages.tsx";
 import { Sheet } from "../components/Overlays.tsx";
-import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert } from "../components/Icons.tsx";
+import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
 function useNow(active: boolean) {
   const [now, setNow] = useState(Date.now());
@@ -22,6 +22,7 @@ export function Dashboard({ id }: { id: string }) {
   const entry = saved.value.find((m) => m.mainframeId === id);
   const conn = getConn(id);
   const [sheet, setSheet] = useState<"alerts" | "settings" | null>(null);
+  const [editing, setEditing] = useState(false);
   const st = statusOf(conn);
   const retryAt = conn?.nextRetryAt.value ?? null;
   const pinLock = conn?.pinLockedUntil.value ?? 0;
@@ -65,6 +66,11 @@ export function Dashboard({ id }: { id: string }) {
           <IconBell />
           {unread > 0 && <span class="badge badge-dot">{unread > 9 ? "9+" : unread}</span>}
         </button>
+        {conn.canControl.value && conn.status.value === "open" && uplinks.length > 0 && (
+          <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => setEditing(!editing)}>
+            <IconPencil />
+          </button>
+        )}
         <button type="button" class="icon-btn" aria-label="Settings" onClick={() => setSheet("settings")}>
           <IconGear />
         </button>
@@ -125,11 +131,7 @@ cloud.gauge("temp", "Core temperature",
 cloud.button("scram", "SCRAM", {color="red", confirm=true})`}</pre>
           </div>
         ) : (
-          <div class={`grid ${st.kind !== "online" ? "grid-dim" : ""}`}>
-            {uplinks.map((u) => (
-              <UplinkCard key={u.uplinkId} uplink={u} conn={conn} locked={locked} />
-            ))}
-          </div>
+          <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.canControl.value} onExitEdit={() => setEditing(false)} />
         )}
       </main>
 

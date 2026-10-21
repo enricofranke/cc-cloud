@@ -10,7 +10,7 @@ const sockets: TestSocket[] = [];
 const base = () => `http://127.0.0.1:${mock.port}`;
 
 async function start(opts: MockOptions = {}) {
-  mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, approveDelayMs: 10, log: () => {}, ...opts });
+  mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, approveDelayMs: 10, ae2: false, controlRoom: false, log: () => {}, ...opts });
   return mock;
 }
 

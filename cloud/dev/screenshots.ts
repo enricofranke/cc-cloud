@@ -74,6 +74,70 @@ try {
   await shot(p, "phone-04-dashboard");
   await shot(p, "phone-05-dashboard-full", true);
 
+  // ---- pages (bottom tab bar) with the Lua v2 widgets
+  await p.click('.tabbar .tab:has-text("Power")');
+  await p.waitForSelector(".chart-svg");
+  await p.waitForTimeout(800);
+  await shot(p, "phone-p1-power-page");
+  await p.click('.seg-btn:has-text("High")');
+  await p.selectOption(".select", "boost");
+  await p.waitForTimeout(400);
+  await shot(p, "phone-p2-power-page-full", true);
+  await p.click('.tabbar .tab:has-text("Farm")');
+  await p.waitForSelector(".indicator");
+  await shot(p, "phone-p3-farm-page");
+  await p.click('.tabbar .tab:has-text("Overview")');
+  await p.waitForSelector(".search-input");
+
+  // ---- v0.2 storage card: search, craft sheet, watchlist, jobs
+  await p.click(".toast-close").catch(() => {});
+  await p.fill(".search-input", "iron");
+  await p.waitForSelector(".item-row");
+  await p.waitForTimeout(400);
+  await p.evaluate(() => {
+    const el = document.querySelector(".search-bar")!;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 120);
+  });
+  await shot(p, "phone-s1-search-results");
+  await p.evaluate(() => window.scrollBy(0, 420)); // the search bar sticks under the header
+  await shot(p, "phone-s2-search-sticky");
+  await p.fill(".search-input", "processor");
+  await p.waitForSelector('.item-row:has-text("Logic Processor")');
+  await p.click('.item-row:has-text("Logic Processor")');
+  await p.waitForSelector(".amounts");
+  await shot(p, "phone-s3-craft-sheet");
+  await p.click('.chip:has-text("Custom")');
+  await p.fill(".input-amount", "250");
+  await p.click('.pxbtn-gold:has-text("Craft")');
+  await p.waitForSelector(".result-ok");
+  await shot(p, "phone-s4-craft-started");
+  await p.keyboard.press("Escape");
+  await p.fill(".search-input", "singularity");
+  await p.waitForSelector('.item-row:has-text("Singularity")');
+  await p.click('.item-row:has-text("Singularity")');
+  await p.click('.chip:has-text("16")');
+  await p.click('.pxbtn-gold:has-text("Craft")');
+  await p.waitForSelector(".result-err");
+  await shot(p, "phone-s5-craft-error");
+  await p.keyboard.press("Escape");
+  await p.fill(".search-input", "");
+  await p.evaluate(() => {
+    const el = document.querySelector(".watch-list")!;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 140);
+  });
+  await p.waitForTimeout(1500); // let jobs progress a bit
+  await shot(p, "phone-s6-watchlist-jobs");
+  await p.click(".watch-row.tone-low");
+  await p.waitForSelector(".stepper");
+  await shot(p, "phone-s7-watch-edit");
+  await p.keyboard.press("Escape");
+  await p.click('.sec-head .btn:has-text("Add")');
+  await p.fill('.sheet .input[type="search"]', "diamond");
+  await p.waitForSelector('.sheet .item-row:has-text("Diamond")');
+  await shot(p, "phone-s8-watch-add");
+  await p.keyboard.press("Escape");
+  await p.evaluate(() => window.scrollTo(0, 0));
+
   // SCRAM is PIN-protected (mock PIN 1234): keypad, wrong PIN, then right PIN
   await p.click(".pxbtn-red");
   await p.waitForSelector(".pin-dialog");
@@ -121,6 +185,33 @@ try {
   await p.click(".pin-cancel");
   await p.evaluate(() => window.scrollTo(0, 0));
   await shot(p, "phone-14-pin-lock-banner");
+
+  // ---- layout editor on the phone: ▲▼, card settings, pages
+  await p.evaluate(() => window.scrollTo(0, 0));
+  await p.click('[aria-label="Edit layout"]');
+  await p.waitForSelector(".edit-bar");
+  await shot(p, "phone-e1-edit-mode");
+  await p.click('[aria-label="Move card down"]'); // ME Network below the reactor
+  await p.click('[aria-label^="Card settings for Fission Reactor"]');
+  await p.waitForSelector(".swatches");
+  await p.fill('.sheet .input', "Reactor Core");
+  await p.click(".swatch.sw-red");
+  await p.click('.icon-cell[aria-label="flame"]');
+  await shot(p, "phone-e2-card-settings");
+  await p.click('.sheet .pxbtn-gold');
+  await p.click('.tabbar .tab-add');
+  await p.waitForSelector(".icon-grid");
+  await p.fill('.sheet .input', "Base");
+  await p.click('.icon-cell[aria-label="home"]');
+  await shot(p, "phone-e3-new-page");
+  await p.click('.sheet .pxbtn-gold');
+  await p.click('.tabbar .tab:has-text("Overview")');
+  await p.waitForTimeout(300);
+  await shot(p, "phone-e4-edit-reordered");
+  await p.click('.edit-bar .pxbtn-gold');
+  await p.waitForSelector(".edit-bar", { state: "detached" });
+  await p.waitForTimeout(400);
+  await shot(p, "phone-e5-saved-layout");
 
   // second mainframe -> list
   await p.goto(`${origin}/#/pair`);
@@ -190,6 +281,34 @@ try {
   await pairVia(d, mock.code(), "Desktop");
   await d.waitForTimeout(800);
   await shot(d, "desktop-01-dashboard");
+  await d.click('.toptabs .tab:has-text("Power")');
+  await d.waitForSelector(".chart-svg");
+  await d.waitForTimeout(600);
+  await shot(d, "desktop-01b-power-page");
+  await d.click('.toptabs .tab:has-text("Overview")');
+  // edit mode: drag a card, resize one, then save
+  await d.click('[aria-label="Edit layout"]');
+  await d.waitForSelector(".grid-edit");
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-e1-edit-mode");
+  const handles = d.locator(".card-edit .card-head .drag-handle");
+  await handles.nth(2).dragTo(d.locator(".card-edit").nth(0));
+  const rh = d.locator(".card-edit").nth(1).locator(".resize-handle");
+  const box = (await rh.boundingBox())!;
+  await d.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await d.mouse.down();
+  await d.mouse.move(box.x + 330, box.y + box.height / 2, { steps: 8 });
+  await d.mouse.up();
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-e2-dragged-resized");
+  await d.click('.edit-w-main:has-text("Status")');
+  await d.waitForSelector(".seg-wide");
+  await shot(d, "desktop-e3-widget-settings");
+  await d.keyboard.press("Escape");
+  await d.click('.edit-bar .pxbtn-gold');
+  await d.waitForSelector(".edit-bar", { state: "detached" });
+  await d.waitForTimeout(500);
+  await shot(d, "desktop-e4-saved-layout");
   await d.click(".pxbtn-yellow"); // Vent steam (no PIN)
   await d.click('[aria-label^="Back"]');
   await d.waitForSelector(".mf-card");

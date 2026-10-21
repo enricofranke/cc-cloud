@@ -32,6 +32,7 @@ export const IconWifiOff = (p: P) => (<Svg {...p}><path d="M3 3l18 18M8.5 16.5a5
 export const IconPower = (p: P) => (<Svg {...p}><path d="M12 3v9M6.3 7.3a8 8 0 1 0 11.4 0" /></Svg>);
 export const IconAlert = (p: P) => (<Svg {...p}><path d="M12 3l10 18H2zM12 10v5M12 18v.5" /></Svg>);
 export const IconInfo = (p: P) => (<Svg {...p}><rect x="3" y="3" width="18" height="18" /><path d="M12 11v6M12 7v.5" /></Svg>);
+export const IconPencil = (p: P) => (<Svg {...p}><path d="M4 20l1-5L16 4l4 4L9 19zM14 6l4 4" /></Svg>);
 export const IconTrash = (p: P) => (<Svg {...p}><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14" /></Svg>);
 
 /** Pixel-art cloud with a terminal cursor: the CC: Cloud mark. 16x16 grid. */

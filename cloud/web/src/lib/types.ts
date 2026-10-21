@@ -1,5 +1,40 @@
 export type Scalar = number | boolean | string | null;
-export type WidgetType = "button" | "toggle" | "slider" | "gauge" | "label";
+export type WidgetType =
+  | "button" | "toggle" | "slider" | "gauge" | "label"
+  | "item_search" | "watchlist" | "jobs"
+  | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons";
+export const WIDGET_TYPES: readonly WidgetType[] = [
+  "button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs",
+  "chart", "progress", "indicator", "select", "number", "text", "buttons",
+];
+
+/** A row of structured widget values (watchlist / jobs). */
+export type Row = Record<string, string | number | boolean | null>;
+/** Widget value: a scalar, or a list of rows for watchlist/jobs. */
+export type WidgetValue = Scalar | Row[];
+/** Action value: a scalar, or an operation object for item_search/watchlist ({op:"craft",...}). */
+export type ActionValue = Scalar | Record<string, string | number | boolean>;
+
+export interface ItemRow {
+  name: string;
+  displayName: string;
+  count: number;
+  craftable: boolean;
+}
+export interface WatchRow {
+  name: string;
+  displayName: string;
+  count: number;
+  min: number;
+}
+export interface JobRow {
+  jobId: string;
+  name: string;
+  displayName?: string;
+  count: number;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: number;
+}
 export type Color = "cyan" | "green" | "yellow" | "red" | "gray";
 export type AlertLevel = "info" | "warn" | "crit";
 
@@ -15,6 +50,23 @@ export interface WidgetOpts {
   unit?: string;
   warn?: number;
   crit?: number;
+  /** select / buttons */
+  options?: string[];
+  /** text */
+  maxLength?: number;
+  /** indicator */
+  onColor?: string;
+  offColor?: string;
+  /** chart */
+  points?: number;
+  interval?: number;
+  style?: "line" | "sparkline";
+  /** Lua v2 layout hints */
+  page?: string;
+  group?: string;
+  span?: number;
+  order?: number;
+  icon?: string;
 }
 
 export interface Widget {
@@ -22,7 +74,9 @@ export interface Widget {
   type: WidgetType;
   label?: string;
   opts?: WidgetOpts;
-  value?: Scalar;
+  value?: WidgetValue;
+  /** chart: recent values, oldest first (snapshot); value deltas append to it */
+  history?: number[];
 }
 
 export interface Uplink {
@@ -30,6 +84,9 @@ export interface Uplink {
   title: string;
   online: boolean;
   widgets: Widget[];
+  /** Lua v2: cloud.page() / cloud.group() declarations */
+  pages?: { id: string; title?: string; icon?: string }[];
+  groups?: { id: string; title?: string; page?: string; cols?: number }[];
 }
 
 export interface Alert {
