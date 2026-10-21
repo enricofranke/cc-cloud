@@ -12,18 +12,19 @@ import { PixelIcon } from "./PixelIcon.tsx";
 /** Body columns: 2 for a 1-column card, 4 for wider cards (phones always use 2, see CSS). */
 const bodyCols = (span: number) => (span >= 2 ? 4 : 2);
 
-type Block = { kind: "gauges" | "labels"; items: ResolvedWidget[]; span: number } | { kind: "one"; item: ResolvedWidget; span: number };
+type Block = { kind: "gauges" | "labels" | "buttons"; items: ResolvedWidget[]; span: number } | { kind: "one"; item: ResolvedWidget; span: number };
 
-/** Consecutive gauges share one "screen", consecutive labels one readout list. */
+/** Consecutive gauges share one "screen", consecutive labels one readout list,
+ *  consecutive buttons one wrapping row (they stack instead of getting too narrow). */
 function blocks(widgets: ResolvedWidget[], cols: number): Block[] {
   const out: Block[] = [];
   for (const rw of widgets) {
     const last = out[out.length - 1];
-    const kind = rw.w.type === "gauge" ? "gauges" : rw.w.type === "label" ? "labels" : null;
+    const kind = rw.w.type === "gauge" ? "gauges" : rw.w.type === "label" ? "labels" : rw.w.type === "button" ? "buttons" : null;
     if (kind && last && last.kind === kind) {
       last.items.push(rw);
-      last.span = kind === "gauges" ? Math.min(cols, last.items.reduce((s, x) => s + x.span, 0)) : Math.max(last.span, rw.span);
-    } else if (kind) out.push({ kind, items: [rw], span: Math.min(cols, rw.span) });
+      last.span = kind === "gauges" ? Math.min(cols, last.items.reduce((s, x) => s + x.span, 0)) : kind === "buttons" ? cols : Math.max(last.span, rw.span);
+    } else if (kind) out.push({ kind, items: [rw], span: kind === "buttons" ? cols : Math.min(cols, rw.span) });
     else out.push({ kind: "one", item: rw, span: Math.min(cols, rw.span) });
   }
   return out;
@@ -88,6 +89,12 @@ export function Card({ card, conn, locked, children }: { card: ResolvedCard; con
                 </div>
               );
             const inner = b.items.map((rw) => <WidgetView key={rw.key} rw={rw} card={card} conn={conn} locked={cardLocked} />);
+            if (b.kind === "buttons")
+              return (
+                <div key={b.items[0].key} class={`btn-row s${b.span}`}>
+                  {inner}
+                </div>
+              );
             return b.kind === "gauges" ? (
               <div key={b.items[0].key} class={`screen gauges s${b.span}`}>
                 {inner}

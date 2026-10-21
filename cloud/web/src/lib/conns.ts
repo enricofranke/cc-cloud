@@ -14,10 +14,12 @@ function create(m: SavedMainframe) {
       const mfName = c.info.value?.name ?? m.name;
       const viewing = route.value.name === "mainframe" && route.value.id === m.mainframeId;
       const title = [a.uplinkTitle, viewing ? undefined : mfName].filter(Boolean).join(" · ") || mfName;
-      pushToast({ level: a.level, title, text: a.text });
+      // Lua alerts: warn/crit stay until dismissed, info fades after 4 s
+      pushToast({ level: a.level, title, text: a.text, sticky: a.level !== "info" });
       if (a.level === "crit" && (document.hidden || !viewing)) notifyCrit(`⚠ ${title}`, a.text, `cccloud-${m.mainframeId}`);
     },
-    onNotice: (n) => pushToast({ level: n.level, title: n.title, text: n.text }),
+    // rejected actions (wrong PIN, offline, rate limit, validation): auto-dismiss after 6 s
+    onNotice: (n) => pushToast({ level: n.level, title: n.title, text: n.text }, 6_000),
   });
   effect(() => {
     const name = conn.info.value?.name;

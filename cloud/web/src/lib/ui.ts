@@ -61,10 +61,15 @@ export interface Toast {
 export const toasts = signal<Toast[]>([]);
 let toastSeq = 0;
 
-export function pushToast(t: Omit<Toast, "id">, ttl = t.level === "crit" ? 12_000 : 5_000) {
+/**
+ * Toasts auto-dismiss (info 4 s, warn/crit 6 s) unless `sticky` is set.
+ * Only Lua alerts with level warn/crit are sticky (see conns.ts); they are also in the alert log.
+ */
+export function pushToast(t: Omit<Toast, "id">, ttl = t.level === "info" ? 4_000 : 6_000) {
   const id = ++toastSeq;
-  toasts.value = [...toasts.value.slice(-3), { ...t, id }];
-  if (!t.sticky) setTimeout(() => dismissToast(id), ttl);
+  const sticky = t.sticky === true;
+  toasts.value = [...toasts.value.slice(-3), { ...t, sticky, id }];
+  if (!sticky) setTimeout(() => dismissToast(id), ttl);
 }
 
 export function dismissToast(id: number) {

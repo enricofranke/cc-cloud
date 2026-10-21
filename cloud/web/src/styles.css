@@ -3140,3 +3140,72 @@ pre {
     flex-wrap: wrap;
   }
 }
+
+/* ================================================================ polish: opaque bars, compact toasts, wrapping buttons */
+.topbar,
+.dash-head {
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.tabbar {
+  background: var(--bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 -8px 20px -12px rgba(0, 0, 0, 0.6);
+}
+/* content never hides behind the tab bar (incl. the iOS home indicator) */
+.tabbar-spacer {
+  height: calc(76px + env(safe-area-inset-bottom));
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.btn-row > .pxbtn {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+@media (max-width: 719px) {
+  .toasts {
+    gap: 6px;
+    left: 8px;
+    right: 8px;
+  }
+  .toast {
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px 6px 10px;
+    border-left-width: 3px;
+  }
+  .toast-icon {
+    margin-top: 0;
+  }
+  .toast-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .toast-body {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+  .toast-title {
+    display: inline;
+    font-size: 10px;
+    margin-right: 6px;
+  }
+  .toast-text {
+    display: inline;
+    font-size: 13px;
+  }
+  .toast-close {
+    width: 32px;
+    height: 32px;
+  }
+}
