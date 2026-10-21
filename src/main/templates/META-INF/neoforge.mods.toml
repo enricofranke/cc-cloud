@@ -92,3 +92,18 @@ Connect CC: Tweaked computers and machines to a cloud dashboard you can use from
     versionRange="[${cct_version},)"
     ordering="AFTER"
     side="BOTH"
+
+# Soft dependencies: the ME / RS Cloud Bridges are only registered when these mods are present.
+[[dependencies.${mod_id}]]
+    modId="ae2"
+    type="optional"
+    versionRange="[26.1.13-beta,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="refinedstorage"
+    type="optional"
+    versionRange="[3.2.1,)"
+    ordering="AFTER"
+    side="BOTH"

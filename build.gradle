@@ -31,6 +31,17 @@ repositories {
         url = "https://maven.squiddev.cc"
         content { includeGroup("cc.tweaked") }
     }
+    // Applied Energistics 2 (+ GuideME, which AE2 needs at runtime) are published to the NeoForged maven.
+    maven {
+        url = "https://maven.neoforged.net/releases"
+        content { includeGroup("org.appliedenergistics") }
+    }
+    // Refined Storage 2 is only on GitHub Packages (needs a token) and Modrinth. Modrinth's maven is addressed by the
+    // Modrinth version id because the Fabric and NeoForge builds share the version number (see gradle.properties).
+    exclusiveContent {
+        forRepository { maven { url = "https://api.modrinth.com/maven" } }
+        filter { includeGroup("maven.modrinth") }
+    }
 }
 
 base {
@@ -124,6 +135,17 @@ dependencies {
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-common-api:${cct_version}"
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cct_version}"
     runtimeOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
+
+    // Soft dependencies for the Cloud Bridges (compat/ae2, compat/rs). Compile-only: the mod runs without them.
+    compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}:api"
+    compileOnly "maven.modrinth:refined-storage:${rs_modrinth_version}"
+    // Run the dev server / game test server WITH both mods: ./gradlew runGameTestServer -PstorageMods
+    // (without the property the runs have neither mod, which is the "soft dependency" smoke test).
+    if (project.hasProperty("storageMods")) {
+        localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
+        localRuntime "org.appliedenergistics:guideme:${guideme_version}"
+        localRuntime "maven.modrinth:refined-storage:${rs_modrinth_version}"
+    }
 
     // Plain JUnit tests for the logic that does not need a running game (auth, validation, limits, routing).
     testImplementation platform("org.junit:junit-bom:5.11.4")
