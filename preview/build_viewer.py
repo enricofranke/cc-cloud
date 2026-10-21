@@ -251,8 +251,9 @@ function rebuild() {
     const base = adv ? "uplink_advanced" : "uplink";
     // uplink in front of the dummy block (attached to its south face => facing north)
     placed(`cccloud:block/${base}_${s}`, x, 0, 1, "north");
-    placed(adv ? "cccloud:block/uplink_advanced_core" : "cccloud:block/uplink_dish", x, 0, 1, "north", null,
-      { at: adv ? [8, 8, 4.0] : [8, 8, 3.75], axis: "z", speed: adv ? 0.9 : 0.5, bob: adv });
+    const spd = s === "offline" ? 0 : s === "connecting" ? (adv ? 4 : 12) : (adv ? 1.6 : 3.1);
+    placed(adv ? "cccloud:block/uplink_advanced_core" : "cccloud:block/uplink_ring", x, 0, 1, "north", null,
+      { at: [8, 8, 1.375], axis: "z", speed: spd });
     if (direct) placed("cccloud:block/uplink_direct_ring", x, 0, 1, "north");
   }
   applyLight();
@@ -299,7 +300,6 @@ function frame() {
       const off = state.status === "offline", con = state.status === "connecting";
       a.spin.visible = !off && !(con && Math.sin(t * 23) > 0.6);
     }
-    if (a.bob) a.spin.position.z = Math.sin(t * 2.2) * 0.25;
   }
   camera.position.set(target.x + dist * Math.cos(pitch) * Math.sin(yaw), target.y + dist * Math.sin(pitch),
                       target.z + dist * Math.cos(pitch) * Math.cos(yaw));

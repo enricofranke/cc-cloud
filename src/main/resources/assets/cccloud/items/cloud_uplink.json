@@ -8,7 +8,7 @@
       },
       {
         "type": "minecraft:model",
-        "model": "cccloud:block/uplink_dish"
+        "model": "cccloud:block/uplink_ring"
       }
     ]
   }

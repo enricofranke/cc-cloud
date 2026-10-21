@@ -441,13 +441,14 @@ def st(name):
 
 
 UPLINK_DISPLAY = {
-    "gui": {"rotation": [30, 45, 0], "translation": [4.65, -2.35, 0], "scale": [1.2, 1.2, 1.2]},
-    "ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.4, 0.4, 0.4]},
-    "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, -7], "scale": [0.8, 0.8, 0.8]},
-    "thirdperson_righthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.55, 0.55, 0.55]},
-    "thirdperson_lefthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.55, 0.55, 0.55]},
-    "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.6, 0.6, 0.6]},
-    "firstperson_lefthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.6, 0.6, 0.6]},
+    # flat plate like the CC modem; gui translation re-centres the plate (model z 0..2.25)
+    "gui": {"rotation": [30, 45, 0], "translation": [3.66, -1.83, 0], "scale": [0.75, 0.75, 0.75]},
+    "ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.25, 0.25, 0.25]},
+    "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, 0], "scale": [0.5, 0.5, 0.5]},
+    "thirdperson_righthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
+    "thirdperson_lefthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
+    "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
+    "firstperson_lefthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
 }
 
 
@@ -457,84 +458,66 @@ def uplink_display():
     return m
 
 
-# Slim "sensor clip" layout (model space = attached to the north face, +Z = away from the block).
-# Depth budget: plate z 0..1, housing z 1..3, mast/dish/core end at z ~5.
-DISH_PIVOT = (8, 8, 3.75)
-CORE_PIVOT = (8, 8, 4.0)
+# Flat plate layout (CC modem language). Model space = attached to the north face, +Z = away
+# from the block. Depth budget: plate z 0..2, port floor at z 1, LED strip proud to z 2.25.
+SPIN_PIVOT = (8, 8, 1.375)   # ring (normal) and eye core (advanced) turn in place around Z
 
 
 def uplink_body(advanced):
     tex = f"{NS}:block/uplink_advanced" if advanced else f"{NS}:block/uplink"
     m = Model(parent=f"{NS}:block/uplink_display", textures={
         "particle": tex, "atlas": tex, "status": f"{NS}:block/uplink_status_online"})
-    body, body_l = ut("body"), ut("body_l")
-    # mounting plate 8x8x1 against the block (north = attached side)
-    m.box([4, 4, 0], [12, 12, 1], {"*": body_l, "south": ut("plate"), "north": ut("plate"), "up": body})
-    for (x, y) in ((4.75, 4.75), (10.75, 4.75), (4.75, 10.75), (10.75, 10.75)):
-        m.box([x, y, 1], [x + 0.5, y + 0.5, 1.25], ur("screw"), skip=("north",))
-    # housing 4x4x2 with a dark front frame + cyan window
-    m.box([6, 6, 1], [10, 10, 3], {"*": body_l, "south": ur("step_front"), "up": body}, skip=("north",))
-    # thin cooling fins, 2 per side
-    for y in (6.75, 8.75):
-        m.box([5.5, y, 1.25], [6, y + 0.5, 2.75], body, skip=("east",))
-        m.box([10, y, 1.25], [10.5, y + 0.5, 2.75], body, skip=("west",))
-    # small status crystal on top (about 1.2 px, diamond seen from the front), emissive
-    m.box([7.4, 10.25, 1.5], [8.6, 11.45, 2.7], st("crystal"), emit=15, rot=("z", 45, [8, 10.85, 2.1]))
-    if not advanced:
-        # thin, short mast (the dish is the separate, rotating uplink_dish model)
-        m.box([7.75, 7.75, 3], [8.25, 8.25, 3.6], body, skip=("north",))
-    else:
-        # gold cradle: 4 short prongs splayed 22.5 deg with emissive cyan tips; core = separate model
-        prong, tip = ur("prong"), ut("ring")
-        for (frm, to, tfrm, tto, rot) in (
-            ([7.75, 9.25, 3], [8.25, 9.75, 4.25], [7.7, 9.2, 4.25], [8.3, 9.8, 4.75], ("x", -22.5, [8, 9.5, 3])),
-            ([7.75, 6.25, 3], [8.25, 6.75, 4.25], [7.7, 6.2, 4.25], [8.3, 6.8, 4.75], ("x", 22.5, [8, 6.5, 3])),
-            ([9.25, 7.75, 3], [9.75, 8.25, 4.25], [9.2, 7.7, 4.25], [9.8, 8.3, 4.75], ("y", 22.5, [9.5, 8, 3])),
-            ([6.25, 7.75, 3], [6.75, 8.25, 4.25], [6.2, 7.7, 4.25], [6.8, 8.3, 4.75], ("y", -22.5, [6.5, 8, 3])),
-        ):
-            m.box(frm, to, prong, rot=rot, skip=("north",))
-            m.box(tfrm, tto, tip, rot=rot, emit=15)
+    plate, body_l, wall = ut("plate"), ut("body_l"), ut("chassis")
+    # back layer 14x14x1; its front face inside the port is the port floor (recess + hub)
+    m.box([1, 1, 0], [15, 15, 1], {"*": body_l, "south": plate, "north": plate})
+    # front layer 14x14x1 with a round 6x6 port (rows 4,6,6,6,6,4 wide)
+    f = {"*": body_l, "south": plate}
+    inner = {"*": wall, "south": plate}
+    m.box([1, 1, 1], [15, 5, 2], {**f, "up": wall}, skip=("north",))
+    m.box([1, 11, 1], [15, 15, 2], {**f, "down": wall}, skip=("north",))
+    m.box([1, 5, 1], [5, 11, 2], {**f, "east": wall}, skip=("north", "up", "down"))
+    m.box([11, 5, 1], [15, 11, 2], {**f, "west": wall}, skip=("north", "up", "down"))
+    for (x0, x1, y0, y1) in ((5, 6, 10, 11), (10, 11, 10, 11), (5, 6, 5, 6), (10, 11, 5, 6)):
+        m.box([x0, y0, 1], [x1, y1, 2], inner, skip=("north",))
+    # status LED strip along the bottom edge, 0.25 proud, emissive
+    m.box([4, 2, 2], [12, 3, 2.25], st("strip"), emit=15, skip=("north",))
     return m
 
 
-def uplink_dish():
-    """4 px dish (rounded rim + deeper cyan centre), tilted 22.5 deg; spins around the mast
-    (Z axis through x=8, y=8). Pivot DISH_PIVOT."""
+def uplink_ring():
+    """Spinner ring inside the port: 4 segments (2 lit cyan) with gaps at the corners, so the
+    rotation reads. Turns in place around Z through SPIN_PIVOT; stays inside the port (z 1..1.75)."""
     m = Model(parent=f"{NS}:block/uplink_display",
               textures={"particle": f"{NS}:block/uplink", "atlas": f"{NS}:block/uplink"})
-    tilt = ("x", -22.5, list(DISH_PIVOT))
-    body, body_l, cyan, dark = ut("body"), ut("body_l"), ut("cyan_d"), ut("chassis")
-    m.box([7, 7, 3.5], [9, 9, 3.9], {"*": cyan, "north": dark}, rot=tilt)
-    for (a, b) in (([7, 9, 3.75], [9, 10, 4.25]), ([7, 6, 3.75], [9, 7, 4.25]),
-                   ([6, 7, 3.75], [7, 9, 4.25]), ([9, 7, 3.75], [10, 9, 4.25])):
-        m.box(a, b, {"*": body, "south": body_l}, rot=tilt)
-    m.box([7.85, 7.85, 3.9], [8.15, 8.15, 4.6], dark, rot=tilt, skip=("north",))
-    m.box([7.65, 7.65, 4.6], [8.35, 8.35, 4.95], ur("feed_tip"), rot=tilt, emit=15)
+    lit, grey_ = ur("spinner"), ur("spinner_grey")
+    side = ut("cyan_d")
+    z0, z1 = 1, 1.75
+    m.box([7, 9.5, z0], [9, 10.25, z1], {"*": side, "south": lit}, emit=15, skip=("north",))
+    m.box([7, 5.75, z0], [9, 6.5, z1], {"*": side, "south": lit}, emit=15, skip=("north",))
+    m.box([5.75, 7, z0], [6.5, 9, z1], {"*": ut("body_l"), "south": grey_}, skip=("north",))
+    m.box([9.5, 7, z0], [10.25, 9, z1], {"*": ut("body_l"), "south": grey_}, skip=("north",))
     return m
 
 
 def uplink_core():
-    """Floating ender core: three 45 deg-rotated 1.5 px cubes + cyan heart, emissive.
-    Rotates around the Z axis through (8, 8); centre CORE_PIVOT."""
+    """Flush ender-eye core in the port (two 3x3 discs, one turned 45 deg = octagon), emissive.
+    Turns in place around Z through SPIN_PIVOT."""
     tex = f"{NS}:block/uplink_advanced"
     m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
-    c = CORE_PIVOT
-    face = ur("core_face")
-    h = 0.75
-    a, b = [c[0] - h, c[1] - h, c[2] - h], [c[0] + h, c[1] + h, c[2] + h]
-    for axis in ("z", "x", "y"):
-        m.box(a, b, face, rot=(axis, 45, list(c)), emit=15)
-    m.box([c[0] - 0.5, c[1] - 0.5, c[2] - 0.5], [c[0] + 0.5, c[1] + 0.5, c[2] + 0.5], ur("core_inner"), emit=15)
+    eye, rim = ur("eye"), ut("core")
+    m.box([6.5, 6.5, 1], [9.5, 9.5, 1.75], {"*": rim, "south": eye}, emit=15, skip=("north",))
+    m.box([6.5, 6.5, 1], [9.5, 9.5, 1.6], {"*": rim, "south": eye}, emit=15, skip=("north",),
+          rot=("z", 45, list(SPIN_PIVOT)))
     return m
 
 
 def uplink_direct_ring():
-    """Emissive cyan ring hugging the 8x8 mounting plate (shown when direct=true)."""
+    """Emissive cyan ring hugging the plate edge, flush (same depth as the plate)."""
     tex = f"{NS}:block/uplink"
     m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
     ring = ut("ring")
-    for (a, b) in (([3.5, 3.5, 0], [12.5, 4, 0.75]), ([3.5, 12, 0], [12.5, 12.5, 0.75]),
-                   ([3.5, 4, 0], [4, 12, 0.75]), ([12, 4, 0], [12.5, 12, 0.75])):
+    for (a, b) in (([0.5, 0.5, 0], [15.5, 1, 2]), ([0.5, 15, 0], [15.5, 15.5, 2]),
+                   ([0.5, 1, 0], [1, 15, 2]), ([15, 1, 0], [15.5, 15, 2])):
         m.box(a, b, ring, emit=15, skip=("north",))
     return m
 
@@ -569,7 +552,7 @@ def main():
         "block/mainframe_fan": fan, "block/mainframe_hologram": holo,
         "item/mainframe_item": mainframe_item(lower, upper, fan),
         "block/uplink_display": uplink_display(),
-        "block/uplink": uplink_body(False), "block/uplink_dish": uplink_dish(),
+        "block/uplink": uplink_body(False), "block/uplink_ring": uplink_ring(),
         "block/uplink_advanced": uplink_body(True), "block/uplink_advanced_core": uplink_core(),
         "block/uplink_direct_ring": uplink_direct_ring(),
     }
@@ -615,7 +598,7 @@ def main():
     write("items/cloud_mainframe.json", {"model": {"type": "minecraft:model", "model": f"{NS}:item/mainframe_item"}})
     write("items/cloud_uplink.json", {"model": {"type": "minecraft:composite", "models": [
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_online"},
-        {"type": "minecraft:model", "model": f"{NS}:block/uplink_dish"}]}})
+        {"type": "minecraft:model", "model": f"{NS}:block/uplink_ring"}]}})
     write("items/advanced_cloud_uplink.json", {"model": {"type": "minecraft:composite", "models": [
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_advanced_online"},
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_advanced_core"}]}})
@@ -723,8 +706,8 @@ PIVOTS = """\
 |---|---|---|---|---|
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
-| `block/uplink_dish` | normal uplink | (8, 8, 3.75) | Z (the mast) | slow sweep, ~0.25 rev/s; dish is pre-tilted 22.5 deg so it scans like a radar |
-| `block/uplink_advanced_core` | advanced uplink | (8, 8, 4.0) | Z (+ optional Y wobble) | rotate ~45 deg/s, bob +/-0.25 px along Z (keep it inside the 5 px depth) |
+| `block/uplink_ring` | normal uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place: ~0.5 rev/s online, fast ~2 rev/s connecting, stopped offline; no translation (it lives inside the 1 px port recess) |
+| `block/uplink_advanced_core` | advanced uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place ~0.25 rev/s (the diagonal cyan glints make it visible); no translation |
 """
 
 
@@ -741,6 +724,7 @@ blockstate rotation. Render order in the BER: translate to block, apply the same
 the blockstate uses (around the block centre 8,8,8), then rotate the part around its pivot.
 
 {PIVOTS}
+Uplink depth: plate z 0..2 (port floor z 1), LED strip to z 2.25, moving parts z 1..1.75.
 Uplink facing rotations (same as the CC modem): north = none, south = y180, east = y90,
 west = y270, up = x270, down = x90. Model space is "attached to the north face"; +Z points away
 from the block the uplink sits on.

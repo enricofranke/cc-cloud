@@ -172,9 +172,8 @@ LAYOUTS = {
             "chassis": (0, 1), "cyan_d": (1, 1), "ring": (2, 1), "core": (3, 1),
         },
         "regions": {
-            "step_front": (8, 32, 4, 4), "screw": (24, 32, 1, 1),
-            "feed_tip": (52, 32, 1, 1), "prong": (56, 32, 1, 1),
-            "core_face": (0, 40, 3, 3), "core_inner": (4, 40, 2, 2),
+            "spinner": (0, 32, 2, 1), "spinner_grey": (4, 32, 2, 1),
+            "eye": (8, 32, 3, 3),
         },
     },
 }
@@ -345,6 +344,7 @@ STATUS_REGIONS = {
     "led3": (0, 3, 3, 1), "led4": (0, 4, 3, 1), "led5": (0, 5, 3, 1),
     "lens": (4, 0, 4, 4), "lens_core": (8, 0, 2, 2), "port": (10, 0, 1, 1), "tip": (11, 0, 1, 1),
     "crystal": (12, 0, 2, 2),
+    "strip": (0, 8, 8, 1),   # uplink status LED strip (uplink_status_* only)
 }
 
 
@@ -361,25 +361,45 @@ def gen_status(prefix, state):
     cv.set(11, 0, s["tip"])
     cd, cm, cl = s["crystal"]
     cv.ascii(12, 0, ["lm", "md"], {"l": cl, "m": cm, "d": cd})
+    if prefix == "uplink_status":
+        # 8 px LED strip: lit segments separated by dark dividers
+        pattern = {"online": "LMMDLMMD", "connecting": "MMDOMMDO", "offline": "MDOOOOOO"}[state]
+        cv.ascii(0, 8, [pattern], {"L": cl, "M": cm, "D": cd, "O": OFF})
     cv.save(os.path.join(TEX, "block", f"{prefix}_{state}.png"))
 
 
 # --------------------------------------------------------------------------- uplink atlases
 def gen_uplink(advanced: bool):
+    """Flat uplink plate (CC modem language): 14x14 face with 1 px dark outline, a recessed round
+    port (8x8, dark floor + hub), pixel cloud emblem, dark slot for the LED strip, corner screws."""
     L = LAYOUTS["uplink"]
     cv = Canvas(L["size"], L["size"], grey(0x30))
     T = lambda n: tile_origin("uplink", n)
     R = L["regions"]
     body, body_l = (GOLD, GOLD_L) if advanced else (GREY, GREY_L)
 
-    # plate tile: the 8x8 mounting plate sits at block x/y 4..12 -> outline there (CC modem style)
     ox, oy = T("plate")
     for y in range(16):
         cv.hline(ox, oy + y, 16, body_l if y >= 9 else body, 200 + y)
-    cv.outline(ox + 4, oy + 4, 8, 8, EDGE, 201)
-    for y in range(9, 11):
-        cv.set(ox + 4, oy + y, EDGE_L[y % len(EDGE_L)])
-    # thin edge rows used by the 2 px plate sides (rows 0/1 = body, outline row at the back)
+    # plate is x/y 1..15 -> outline on tile cols/rows 1 and 14 (left edge lighter on the band, like CC)
+    cv.outline(ox + 1, oy + 1, 14, 14, EDGE, 201)
+    for y in range(9, 14):
+        cv.set(ox + 1, oy + y, EDGE_L[y % len(EDGE_L)])
+    # round 6x6 port (rows 5..10, widths 4,6,6,6,6,4): dark floor; the 1 px recess wall gives the lip
+    widths = [4, 6, 6, 6, 6, 4]
+    hole = {(8 - w // 2 + i, 5 + r) for r, w in enumerate(widths) for i in range(w)}
+    for (x, y) in hole:
+        cv.set(ox + x, oy + y, RECESS[_hash(x, y, 5) % len(RECESS)])
+    # hub in the port centre (the ring/core turns around it)
+    cv.ascii(ox + 7, oy + 7, ["hh", "hh"], {"h": CHASSIS})
+    # pixel cloud emblem (cyan accent), top-left
+    cv.ascii(ox + 2, oy + 2, [" Cc  ", "CccCc", "ccccc"], {"C": CYAN_L, "c": CYAN})
+    # dark slot for the status LED strip (block y 2..3, x 4..12)
+    cv.hline(ox + 4, oy + 13, 8, SLOT, 207)
+    # corner screws
+    for (x, y) in ((2, 13), (13, 13), (13, 2)):
+        cv.set(ox + x, oy + y, grey(0x2b))
+
     for name, shades, seed in (("body", body, 210), ("body_l", body_l, 211), ("recess", RECESS, 212),
                                ("chassis", CHASSIS, 213)):
         ox, oy = T(name)
@@ -395,22 +415,15 @@ def gen_uplink(advanced: bool):
         for x in range(16):
             cv.set(ox + x, oy + y, ENDER_L if (x + 2 * y) % 5 == 0 else ENDER)
 
-    pal = {"o": EDGE, "b": body, "l": body_l, "c": CYAN, "C": CYAN_L, "d": CYAN_D, "k": SLOT,
-           "r": RECESS, "h": CHASSIS}
-    x, y, _, _ = R["step_front"]
-    # housing front: dark frame with a cyan status window (accent)
-    cv.ascii(x, y, ["oooo", "odco", "occo", "oooo"], pal, 221)
-    x, y, _, _ = R["screw"]
-    cv.set(x, y, grey(0x2b))
-    x, y, _, _ = R["feed_tip"]
-    cv.set(x, y, CYAN_L)
-    x, y, _, _ = R["prong"]
-    cv.set(x, y, GOLD_L[0])
-    x, y, _, _ = R["core_face"]
-    cv.ascii(x, y, ["LEe", "EcE", "eEd"], {"L": ENDER_L, "E": ENDER, "e": hx("28926c"), "d": ENDER_D,
-                                         "c": CYAN}, 228)
-    x, y, _, _ = R["core_inner"]
-    cv.ascii(x, y, ["Cc", "cc"], {"C": CYAN_L, "c": CYAN})
+    # spinner segments (2x1 faces): lit cyan / plain body
+    x, y, _, _ = R["spinner"]
+    cv.ascii(x, y, ["Cc"], {"C": CYAN_L, "c": CYAN})
+    x, y, _, _ = R["spinner_grey"]
+    cv.ascii(x, y, ["ll"], {"l": body_l})
+    # ender eye (3x3): green iris, dark pupil, cyan glints on one diagonal -> rotation is visible
+    x, y, _, _ = R["eye"]
+    cv.ascii(x, y, ["dEC", "EkE", "CEd"],
+             {"d": ENDER_D, "E": ENDER, "k": hx("102a22"), "C": CYAN_L})
 
     cv.save(os.path.join(TEX, "block", "uplink_advanced.png" if advanced else "uplink.png"))
 
