@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {"n": "#c:nuggets/gold", "P": "minecraft:prismarine_crystals", "E": "#c:ender_pearls"},
+  "pattern": ["nPn", "PEP", "nPn"],
+  "result": {"count": 2, "id": "cccloud:cloud_core"}
+}

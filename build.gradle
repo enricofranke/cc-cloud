@@ -103,6 +103,12 @@ neoForge {
             sourceSet(sourceSets.main)
         }
     }
+
+    // Puts Minecraft/NeoForge (and their libraries: Netty, Gson, ...) on the unit test classpath.
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
 }
 
 // Sets up a dependency configuration called 'localRuntime'.
@@ -118,6 +124,11 @@ dependencies {
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-common-api:${cct_version}"
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cct_version}"
     runtimeOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
+
+    // Plain JUnit tests for the logic that does not need a running game (auth, validation, limits, routing).
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
@@ -176,6 +187,15 @@ publishing {
         maven {
             url "file://${project.projectDir}/repo"
         }
+    }
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    maxParallelForks = 1
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
     }
 }
 

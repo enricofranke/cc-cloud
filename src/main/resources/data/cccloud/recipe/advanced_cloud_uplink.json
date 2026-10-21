@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {"G": "#c:ingots/gold", "U": "cccloud:cloud_uplink", "E": "#c:ender_pearls"},
+  "pattern": ["GGG", "GUG", "GEG"],
+  "result": {"id": "cccloud:advanced_cloud_uplink"}
+}

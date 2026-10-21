@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:mainframe_break_lower_drops_one",
+  "max_ticks": 100,
+  "structure": "cccloud:test_floor"
+}

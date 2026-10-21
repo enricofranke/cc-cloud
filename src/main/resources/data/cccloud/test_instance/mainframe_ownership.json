@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:mainframe_ownership",
+  "max_ticks": 100,
+  "structure": "cccloud:test_floor"
+}

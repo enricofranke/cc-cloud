@@ -4,7 +4,7 @@
     python3 tools/gen_models.py
 
 Writes (all under src/main/resources/assets/cccloud/):
-  models/block/*.json, models/item/*.json, blockstates/*.json, items/*.json, models/README.md
+  models/block/*.json, models/item/*.json, blockstates/*.json, items/*.json, docs/MODELS_TABLE.md
 and docs/MODELS.md (pivots, render types, emissive notes).
 
 UVs are computed from the atlas layout in tools/gen_textures.py (LAYOUTS), so textures and
@@ -780,10 +780,10 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 |---|---|
 {rows}
 """
-    path = os.path.join(ASSETS, "models", "README.md")
+    path = os.path.join(ROOT, "docs", "MODELS_TABLE.md")
     with open(path, "w") as f:
         f.write(readme)
-    written.append("models/README.md")
+    written.append("docs/MODELS_TABLE.md")
 
     doc = f"""# CC: Cloud models: technical notes
 

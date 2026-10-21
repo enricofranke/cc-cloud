@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": ["minecraft:paper", "#c:nuggets/gold", "#c:dusts/redstone", "minecraft:prismarine_crystals"],
+  "result": {"id": "cccloud:cloud_link_card"}
+}
