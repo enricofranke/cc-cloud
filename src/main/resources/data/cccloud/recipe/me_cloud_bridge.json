@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "#c:ingots/gold",
+    "K": "cccloud:cloud_core",
+    "M": "computercraft:wired_modem",
+    "I": "ae2:interface"
+  },
+  "pattern": [
+    "GKG",
+    "MIM",
+    "GGG"
+  ],
+  "result": {
+    "id": "cccloud:me_cloud_bridge"
+  }
+}

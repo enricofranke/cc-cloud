@@ -6,6 +6,7 @@ import ai.ezfox.cccloud.network.CloudNetwork;
 import dan200.computercraft.api.peripheral.PeripheralCapability;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -22,6 +23,9 @@ public class CCCloud {
         modEventBus.addListener(CCCloud::registerCapabilities);
         CloudNetwork.init();
         CloudCommand.init();
+        // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
+        if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
+        if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

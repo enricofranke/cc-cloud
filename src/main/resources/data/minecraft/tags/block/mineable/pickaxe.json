@@ -1,3 +1,15 @@
 {
-  "values": ["cccloud:cloud_mainframe", "cccloud:cloud_uplink", "cccloud:advanced_cloud_uplink"]
+  "values": [
+    "cccloud:cloud_mainframe",
+    "cccloud:cloud_uplink",
+    "cccloud:advanced_cloud_uplink",
+    {
+      "id": "cccloud:me_cloud_bridge",
+      "required": false
+    },
+    {
+      "id": "cccloud:rs_cloud_bridge",
+      "required": false
+    }
+  ]
 }
