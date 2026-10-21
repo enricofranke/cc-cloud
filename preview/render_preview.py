@@ -313,7 +313,7 @@ def uplink_quads(a, advanced=False, status="online", facing="north", pos=(0, 0, 
     base = "uplink_advanced" if advanced else "uplink"
     q = model_quads(a, f"cccloud:block/{base}_{status}", blockstate_transform(x, y, pos))
     part = "cccloud:block/uplink_advanced_core" if advanced else "cccloud:block/uplink_dish"
-    q += model_quads(a, part, blockstate_transform(x, y, pos, extra=spin("z", t * 360, (8, 8, 10.5))))
+    q += model_quads(a, part, blockstate_transform(x, y, pos, extra=spin("z", t * 360, (8, 8, 3.75) if not advanced else (8, 8, 4.0))))
     if direct:
         q += model_quads(a, "cccloud:block/uplink_direct_ring", blockstate_transform(x, y, pos))
     return q
@@ -386,12 +386,12 @@ def detail_renders(a):
     for adv in (False, True):
         for (yaw, pitch, nm) in ((330, 25, "3/4"), (0, 0, "front"), (90, 0, "side"), (30, 30, "direct")):
             q = uplink_quads(a, adv, "online", "north", direct=(nm == "direct"), t=0.12)
-            shots.append(label(render(q, 360, yaw=yaw, pitch=pitch, center=np.array([8, 8, 8.0]),
-                                      zoom=360 * 0.86 / 18), f"{'adv ' if adv else ''}uplink {nm}"))
+            shots.append(label(render(q, 360, yaw=yaw, pitch=pitch, center=np.array([8, 8, 2.5]),
+                                      zoom=360 * 0.86 / 13), f"{'adv ' if adv else ''}uplink {nm}"))
         for st in ("connecting", "offline"):
             q = uplink_quads(a, adv, st, "north", t=0.12)
-            shots.append(label(render(q, 360, yaw=330, pitch=25, night=True, center=np.array([8, 8, 8.0]),
-                                      zoom=360 * 0.86 / 18), f"{'adv ' if adv else ''}uplink {st} night"))
+            shots.append(label(render(q, 360, yaw=330, pitch=25, night=True, center=np.array([8, 8, 2.5]),
+                                      zoom=360 * 0.86 / 13), f"{'adv ' if adv else ''}uplink {st} night"))
     grid(shots, 6).save(os.path.join(HERE, "renders", "uplinks.png"))
 
     # in-world facing test: uplinks on all 6 sides of a computer

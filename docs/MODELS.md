@@ -13,8 +13,8 @@ the blockstate uses (around the block centre 8,8,8), then rotate the part around
 |---|---|---|---|---|
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
-| `block/uplink_dish` | normal uplink | (8, 8, 10.5) | Z (the mast) | slow sweep, ~0.25 rev/s; dish is pre-tilted 22.5 deg so it scans like a radar |
-| `block/uplink_advanced_core` | advanced uplink | (8, 8, 10.5) | Z (+ optional Y wobble) | rotate ~45 deg/s, bob +/-0.5 px along Z |
+| `block/uplink_dish` | normal uplink | (8, 8, 3.75) | Z (the mast) | slow sweep, ~0.25 rev/s; dish is pre-tilted 22.5 deg so it scans like a radar |
+| `block/uplink_advanced_core` | advanced uplink | (8, 8, 4.0) | Z (+ optional Y wobble) | rotate ~45 deg/s, bob +/-0.25 px along Z (keep it inside the 5 px depth) |
 
 Uplink facing rotations (same as the CC modem): north = none, south = y180, east = y90,
 west = y270, up = x270, down = x90. Model space is "attached to the north face"; +Z points away
@@ -31,9 +31,9 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/mainframe_hologram` | 15 |
 | `item/mainframe_item` | 118 |
 | `block/uplink_display` | 0 |
-| `block/uplink` | 17 |
-| `block/uplink_dish` | 11 |
-| `block/uplink_advanced` | 24 |
+| `block/uplink` | 12 |
+| `block/uplink_dish` | 7 |
+| `block/uplink_advanced` | 19 |
 | `block/uplink_advanced_core` | 4 |
 | `block/uplink_direct_ring` | 4 |
 

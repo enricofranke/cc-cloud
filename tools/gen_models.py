@@ -441,13 +441,13 @@ def st(name):
 
 
 UPLINK_DISPLAY = {
-    "gui": {"rotation": [30, 45, 0], "translation": [1.5, -0.5, 0], "scale": [0.9, 0.9, 0.9]},
-    "ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.3, 0.3, 0.3]},
-    "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, -3], "scale": [0.6, 0.6, 0.6]},
-    "thirdperson_righthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.45, 0.45, 0.45]},
-    "thirdperson_lefthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.45, 0.45, 0.45]},
-    "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.5, 0.5, 0.5]},
-    "firstperson_lefthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.5, 0.5, 0.5]},
+    "gui": {"rotation": [30, 45, 0], "translation": [4.65, -2.35, 0], "scale": [1.2, 1.2, 1.2]},
+    "ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.4, 0.4, 0.4]},
+    "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, -7], "scale": [0.8, 0.8, 0.8]},
+    "thirdperson_righthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.55, 0.55, 0.55]},
+    "thirdperson_lefthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.55, 0.55, 0.55]},
+    "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.6, 0.6, 0.6]},
+    "firstperson_lefthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.6, 0.6, 0.6]},
 }
 
 
@@ -457,38 +457,40 @@ def uplink_display():
     return m
 
 
+# Slim "sensor clip" layout (model space = attached to the north face, +Z = away from the block).
+# Depth budget: plate z 0..1, housing z 1..3, mast/dish/core end at z ~5.
+DISH_PIVOT = (8, 8, 3.75)
+CORE_PIVOT = (8, 8, 4.0)
+
+
 def uplink_body(advanced):
     tex = f"{NS}:block/uplink_advanced" if advanced else f"{NS}:block/uplink"
     m = Model(parent=f"{NS}:block/uplink_display", textures={
         "particle": tex, "atlas": tex, "status": f"{NS}:block/uplink_status_online"})
     body, body_l = ut("body"), ut("body_l")
-    # mounting plate 10x10x2 against the block (north = attached side)
-    m.box([3, 3, 0], [13, 13, 2], {"*": body, "south": ut("plate"), "north": ut("plate"), "down": body_l})
-    for (x, y) in ((4, 4), (11, 4), (4, 11), (11, 11)):
-        m.box([x, y, 2], [x + 1, y + 1, 2.5], ur("screw"), skip=("north",))
-    # stepped housing: skirt 7x7x1, body 6x6x3, front step 4x4x1
-    m.box([4.5, 4.5, 2], [11.5, 11.5, 3], {"*": body_l, "south": ur("skirt"), "up": body}, skip=("north",))
-    m.box([5, 5, 3], [11, 11, 6], {"*": body_l, "south": ur("body_front"), "up": body}, skip=("north",))
-    m.box([6, 6, 6], [10, 10, 7], {"*": body_l, "south": ur("step_front"), "up": body}, skip=("north",))
-    # side cooling fins (3 per side)
-    for y in (5.5, 7.5, 9.5):
-        m.box([4, y, 3.25], [5, y + 1, 5.75], body_l, skip=("east",))
-        m.box([11, y, 3.25], [12, y + 1, 5.75], body_l, skip=("west",))
-    # status crystal on top, diamond seen from the front (45 deg about Z), emissive
-    m.box([6.5, 11, 3.5], [9.5, 11.5, 5.5], ut("chassis"), skip=("down",))
-    m.box([7, 11.6, 3.5], [9, 13.6, 5.5], st("crystal"), emit=15, rot=("z", 45, [8, 12.6, 4.5]))
+    # mounting plate 8x8x1 against the block (north = attached side)
+    m.box([4, 4, 0], [12, 12, 1], {"*": body_l, "south": ut("plate"), "north": ut("plate"), "up": body})
+    for (x, y) in ((4.75, 4.75), (10.75, 4.75), (4.75, 10.75), (10.75, 10.75)):
+        m.box([x, y, 1], [x + 0.5, y + 0.5, 1.25], ur("screw"), skip=("north",))
+    # housing 4x4x2 with a dark front frame + cyan window
+    m.box([6, 6, 1], [10, 10, 3], {"*": body_l, "south": ur("step_front"), "up": body}, skip=("north",))
+    # thin cooling fins, 2 per side
+    for y in (6.75, 8.75):
+        m.box([5.5, y, 1.25], [6, y + 0.5, 2.75], body, skip=("east",))
+        m.box([10, y, 1.25], [10.5, y + 0.5, 2.75], body, skip=("west",))
+    # small status crystal on top (about 1.2 px, diamond seen from the front), emissive
+    m.box([7.4, 10.25, 1.5], [8.6, 11.45, 2.7], st("crystal"), emit=15, rot=("z", 45, [8, 10.85, 2.1]))
     if not advanced:
-        # mast 1x1x5 (the dish itself is the separate, rotating uplink_dish model)
-        m.box([7.5, 7.5, 5.5], [8.5, 8.5, 10.5], body, skip=("north",))
+        # thin, short mast (the dish is the separate, rotating uplink_dish model)
+        m.box([7.75, 7.75, 3], [8.25, 8.25, 3.6], body, skip=("north",))
     else:
-        # gold cradle: 4 prongs splayed 22.5 deg with emissive cyan tips; core = separate model
-        prong = ur("prong")
-        tip = ut("ring")
+        # gold cradle: 4 short prongs splayed 22.5 deg with emissive cyan tips; core = separate model
+        prong, tip = ur("prong"), ut("ring")
         for (frm, to, tfrm, tto, rot) in (
-            ([7.75, 9.25, 6.5], [8.25, 9.75, 9.5], [7.65, 9.15, 9.5], [8.35, 9.85, 10.1], ("x", -22.5, [8, 9.5, 6.5])),
-            ([7.75, 6.25, 6.5], [8.25, 6.75, 9.5], [7.65, 6.15, 9.5], [8.35, 6.85, 10.1], ("x", 22.5, [8, 6.5, 6.5])),
-            ([9.25, 7.75, 6.5], [9.75, 8.25, 9.5], [9.15, 7.65, 9.5], [9.85, 8.35, 10.1], ("y", 22.5, [9.5, 8, 6.5])),
-            ([6.25, 7.75, 6.5], [6.75, 8.25, 9.5], [6.15, 7.65, 9.5], [6.85, 8.35, 10.1], ("y", -22.5, [6.5, 8, 6.5])),
+            ([7.75, 9.25, 3], [8.25, 9.75, 4.25], [7.7, 9.2, 4.25], [8.3, 9.8, 4.75], ("x", -22.5, [8, 9.5, 3])),
+            ([7.75, 6.25, 3], [8.25, 6.75, 4.25], [7.7, 6.2, 4.25], [8.3, 6.8, 4.75], ("x", 22.5, [8, 6.5, 3])),
+            ([9.25, 7.75, 3], [9.75, 8.25, 4.25], [9.2, 7.7, 4.25], [9.8, 8.3, 4.75], ("y", 22.5, [9.5, 8, 3])),
+            ([6.25, 7.75, 3], [6.75, 8.25, 4.25], [6.2, 7.7, 4.25], [6.8, 8.3, 4.75], ("y", -22.5, [6.5, 8, 3])),
         ):
             m.box(frm, to, prong, rot=rot, skip=("north",))
             m.box(tfrm, tto, tip, rot=rot, emit=15)
@@ -496,49 +498,43 @@ def uplink_body(advanced):
 
 
 def uplink_dish():
-    """Stepped parabolic dish, tilted 22.5 deg; spins around the mast (Z axis through x=8,y=8)."""
+    """4 px dish (rounded rim + deeper cyan centre), tilted 22.5 deg; spins around the mast
+    (Z axis through x=8, y=8). Pivot DISH_PIVOT."""
     m = Model(parent=f"{NS}:block/uplink_display",
               textures={"particle": f"{NS}:block/uplink", "atlas": f"{NS}:block/uplink"})
-    tilt = ("x", -22.5, [8, 8, 10.5])
+    tilt = ("x", -22.5, list(DISH_PIVOT))
     body, body_l, cyan, dark = ut("body"), ut("body_l"), ut("cyan_d"), ut("chassis")
-    m.box([7, 7, 10], [9, 9, 11], {"*": dark, "south": ur("dish_center")}, rot=tilt)
-    # middle ring (square 4x4 frame), cyan-dark accent
-    for (a, b) in (([6, 9, 10.75], [10, 10, 11.75]), ([6, 6, 10.75], [10, 7, 11.75]),
-                   ([6, 7, 10.75], [7, 9, 11.75]), ([9, 7, 10.75], [10, 9, 11.75])):
-        m.box(a, b, {"*": cyan, "north": dark}, rot=tilt)
-    # rim (6x6 with cut corners = round)
-    for (a, b) in (([6, 10, 11.5], [10, 11, 12.5]), ([6, 5, 11.5], [10, 6, 12.5]),
-                   ([5, 6, 11.5], [6, 10, 12.5]), ([10, 6, 11.5], [11, 10, 12.5])):
+    m.box([7, 7, 3.5], [9, 9, 3.9], {"*": cyan, "north": dark}, rot=tilt)
+    for (a, b) in (([7, 9, 3.75], [9, 10, 4.25]), ([7, 6, 3.75], [9, 7, 4.25]),
+                   ([6, 7, 3.75], [7, 9, 4.25]), ([9, 7, 3.75], [10, 9, 4.25])):
         m.box(a, b, {"*": body, "south": body_l}, rot=tilt)
-    # feed horn with emissive tip
-    m.box([7.75, 7.75, 11], [8.25, 8.25, 13.5], dark, rot=tilt, skip=("north",))
-    m.box([7.5, 7.5, 13.5], [8.5, 8.5, 14], ur("feed_tip"), rot=tilt, emit=15)
+    m.box([7.85, 7.85, 3.9], [8.15, 8.15, 4.6], dark, rot=tilt, skip=("north",))
+    m.box([7.65, 7.65, 4.6], [8.35, 8.35, 4.95], ur("feed_tip"), rot=tilt, emit=15)
     return m
 
 
 def uplink_core():
-    """Floating ender core: three 45 deg-rotated cubes (octahedron-like), emissive.
-    Rotates around the Z axis through (8, 8); centre (8, 8, 10.5)."""
+    """Floating ender core: three 45 deg-rotated 1.5 px cubes + cyan heart, emissive.
+    Rotates around the Z axis through (8, 8); centre CORE_PIVOT."""
     tex = f"{NS}:block/uplink_advanced"
     m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
-    c = (8, 8, 10.5)
+    c = CORE_PIVOT
     face = ur("core_face")
-    h = 1.25
+    h = 0.75
     a, b = [c[0] - h, c[1] - h, c[2] - h], [c[0] + h, c[1] + h, c[2] + h]
     for axis in ("z", "x", "y"):
         m.box(a, b, face, rot=(axis, 45, list(c)), emit=15)
-    m.box([c[0] - 0.75, c[1] - 0.75, c[2] - 0.75], [c[0] + 0.75, c[1] + 0.75, c[2] + 0.75],
-          ur("core_inner"), emit=15)
+    m.box([c[0] - 0.5, c[1] - 0.5, c[2] - 0.5], [c[0] + 0.5, c[1] + 0.5, c[2] + 0.5], ur("core_inner"), emit=15)
     return m
 
 
 def uplink_direct_ring():
-    """Emissive cyan ring around the mounting plate (shown when direct=true)."""
+    """Emissive cyan ring hugging the 8x8 mounting plate (shown when direct=true)."""
     tex = f"{NS}:block/uplink"
     m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
     ring = ut("ring")
-    for (a, b) in (([2, 2, 0], [14, 3, 0.75]), ([2, 13, 0], [14, 14, 0.75]),
-                   ([2, 3, 0], [3, 13, 0.75]), ([13, 3, 0], [14, 13, 0.75])):
+    for (a, b) in (([3.5, 3.5, 0], [12.5, 4, 0.75]), ([3.5, 12, 0], [12.5, 12.5, 0.75]),
+                   ([3.5, 4, 0], [4, 12, 0.75]), ([12, 4, 0], [12.5, 12, 0.75])):
         m.box(a, b, ring, emit=15, skip=("north",))
     return m
 
@@ -727,8 +723,8 @@ PIVOTS = """\
 |---|---|---|---|---|
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
-| `block/uplink_dish` | normal uplink | (8, 8, 10.5) | Z (the mast) | slow sweep, ~0.25 rev/s; dish is pre-tilted 22.5 deg so it scans like a radar |
-| `block/uplink_advanced_core` | advanced uplink | (8, 8, 10.5) | Z (+ optional Y wobble) | rotate ~45 deg/s, bob +/-0.5 px along Z |
+| `block/uplink_dish` | normal uplink | (8, 8, 3.75) | Z (the mast) | slow sweep, ~0.25 rev/s; dish is pre-tilted 22.5 deg so it scans like a radar |
+| `block/uplink_advanced_core` | advanced uplink | (8, 8, 4.0) | Z (+ optional Y wobble) | rotate ~45 deg/s, bob +/-0.25 px along Z (keep it inside the 5 px depth) |
 """
 
 

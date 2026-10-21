@@ -172,10 +172,8 @@ LAYOUTS = {
             "chassis": (0, 1), "cyan_d": (1, 1), "ring": (2, 1), "core": (3, 1),
         },
         "regions": {
-            "body_front": (0, 32, 6, 6), "step_front": (8, 32, 4, 4), "skirt": (16, 32, 7, 7),
-            "screw": (24, 32, 1, 1), "fin": (26, 32, 2, 1), "socket": (28, 32, 3, 2),
-            "dish_rim": (32, 32, 6, 6), "dish_mid": (40, 32, 4, 4), "dish_center": (48, 32, 2, 2),
-            "feed_tip": (52, 32, 1, 1), "mast": (54, 32, 1, 1), "prong": (56, 32, 1, 1),
+            "step_front": (8, 32, 4, 4), "screw": (24, 32, 1, 1),
+            "feed_tip": (52, 32, 1, 1), "prong": (56, 32, 1, 1),
             "core_face": (0, 40, 3, 3), "core_inner": (4, 40, 2, 2),
         },
     },
@@ -374,13 +372,13 @@ def gen_uplink(advanced: bool):
     R = L["regions"]
     body, body_l = (GOLD, GOLD_L) if advanced else (GREY, GREY_L)
 
-    # plate tile: the 10x10 mounting plate sits at block x/y 3..13 -> outline there (CC modem style)
+    # plate tile: the 8x8 mounting plate sits at block x/y 4..12 -> outline there (CC modem style)
     ox, oy = T("plate")
     for y in range(16):
         cv.hline(ox, oy + y, 16, body_l if y >= 9 else body, 200 + y)
-    cv.outline(ox + 3, oy + 3, 10, 10, EDGE, 201)
-    for y in range(9, 12):
-        cv.set(ox + 3, oy + y, EDGE_L[y % len(EDGE_L)])
+    cv.outline(ox + 4, oy + 4, 8, 8, EDGE, 201)
+    for y in range(9, 11):
+        cv.set(ox + 4, oy + y, EDGE_L[y % len(EDGE_L)])
     # thin edge rows used by the 2 px plate sides (rows 0/1 = body, outline row at the back)
     for name, shades, seed in (("body", body, 210), ("body_l", body_l, 211), ("recess", RECESS, 212),
                                ("chassis", CHASSIS, 213)):
@@ -399,30 +397,13 @@ def gen_uplink(advanced: bool):
 
     pal = {"o": EDGE, "b": body, "l": body_l, "c": CYAN, "C": CYAN_L, "d": CYAN_D, "k": SLOT,
            "r": RECESS, "h": CHASSIS}
-    x, y, _, _ = R["body_front"]
-    cv.ascii(x, y, ["bbbbbb", "bbbbbb", "bbbbbb", "llllll", "llllll", "llllll"], pal, 220)
     x, y, _, _ = R["step_front"]
-    # front step: dark frame with a cyan status window (accent)
+    # housing front: dark frame with a cyan status window (accent)
     cv.ascii(x, y, ["oooo", "odco", "occo", "oooo"], pal, 221)
-    x, y, _, _ = R["skirt"]
-    cv.ascii(x, y, ["bbbbbbb", "bbbbbbb", "bbbbbbb", "bbbbbbb", "lllllll", "lllllll", "lllllll"], pal, 222)
     x, y, _, _ = R["screw"]
     cv.set(x, y, grey(0x2b))
-    x, y, _, _ = R["fin"]
-    cv.ascii(x, y, ["lb"], pal, 223)
-    x, y, _, _ = R["socket"]
-    cv.ascii(x, y, ["hhh", "ooo"], pal, 224)
-    # dish (normal) - stepped parabola: light rim, cyan-dark middle ring, dark centre
-    x, y, _, _ = R["dish_rim"]
-    cv.ascii(x, y, [" llll ", "lbbbbl", "lb  bl", "lb  bl", "lbbbbl", " llll "], pal, 225)
-    x, y, _, _ = R["dish_mid"]
-    cv.ascii(x, y, [" dd ", "dddd", "dddd", " dd "], pal, 226)
-    x, y, _, _ = R["dish_center"]
-    cv.ascii(x, y, ["hr", "rr"], pal, 227)
     x, y, _, _ = R["feed_tip"]
     cv.set(x, y, CYAN_L)
-    x, y, _, _ = R["mast"]
-    cv.set(x, y, body[0])
     x, y, _, _ = R["prong"]
     cv.set(x, y, GOLD_L[0])
     x, y, _, _ = R["core_face"]
