@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:rom_contents",
+  "max_ticks": 20,
+  "structure": "cccloud:test_floor"
+}

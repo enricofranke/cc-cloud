@@ -89,6 +89,22 @@ public final class CloudGameTests {
         });
     }
 
+    /** The ROM files shipped through our datapack are visible in CC's ROM mount (require("cloud.ui"), help, programs). */
+    public static void romContents(GameTestHelper helper) {
+        var mount = dan200.computercraft.api.ComputerCraftAPI.createResourceMount(helper.getLevel().getServer(), "computercraft", "lua/rom");
+        helper.assertTrue(mount != null, "CC ROM mount missing");
+        try {
+            for (var path : new String[]{"modules/main/cloud/ui.lua", "help/cloud.txt", "programs/cloud-demo.lua", "programs/cloud-storage.lua",
+                "modules/main/cc/expect.lua"}) {
+                helper.assertTrue(mount.exists(path), "ROM is missing " + path);
+            }
+            helper.assertTrue(mount.getSize("modules/main/cloud/ui.lua") > 1000, "cloud/ui.lua is empty");
+        } catch (java.io.IOException e) {
+            throw helper.assertionException("Could not read the ROM mount: " + e);
+        }
+        helper.succeed();
+    }
+
     static Component text(String s) {
         return Component.literal(s);
     }
