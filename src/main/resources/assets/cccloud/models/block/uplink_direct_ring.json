@@ -1,0 +1,249 @@
+{
+  "parent": "cccloud:block/uplink_display",
+  "textures": {
+    "particle": "cccloud:block/uplink",
+    "atlas": "cccloud:block/uplink"
+  },
+  "elements": [
+    {
+      "from": [
+        2,
+        2,
+        0
+      ],
+      "to": [
+        14,
+        3,
+        0.75
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            8.5,
+            7.25,
+            11.5,
+            7.5
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            8,
+            7.25,
+            8.1875,
+            7.5
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            11.8125,
+            7.25,
+            12,
+            7.5
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            8.5,
+            4,
+            11.5,
+            4.1875
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            8.5,
+            7.8125,
+            11.5,
+            8
+          ],
+          "texture": "#atlas"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        13,
+        0
+      ],
+      "to": [
+        14,
+        14,
+        0.75
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            8.5,
+            4.5,
+            11.5,
+            4.75
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            8,
+            4.5,
+            8.1875,
+            4.75
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            11.8125,
+            4.5,
+            12,
+            4.75
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            8.5,
+            4,
+            11.5,
+            4.1875
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            8.5,
+            7.8125,
+            11.5,
+            8
+          ],
+          "texture": "#atlas"
+        }
+      }
+    },
+    {
+      "from": [
+        2,
+        3,
+        0
+      ],
+      "to": [
+        3,
+        13,
+        0.75
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            8.5,
+            4.75,
+            8.75,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            8,
+            4.75,
+            8.1875,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            11.8125,
+            4.75,
+            12,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            8.5,
+            4,
+            8.75,
+            4.1875
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            8.5,
+            7.8125,
+            8.75,
+            8
+          ],
+          "texture": "#atlas"
+        }
+      }
+    },
+    {
+      "from": [
+        13,
+        3,
+        0
+      ],
+      "to": [
+        14,
+        13,
+        0.75
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            11.25,
+            4.75,
+            11.5,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            8,
+            4.75,
+            8.1875,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            11.8125,
+            4.75,
+            12,
+            7.25
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            11.25,
+            4,
+            11.5,
+            4.1875
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            11.25,
+            7.8125,
+            11.5,
+            8
+          ],
+          "texture": "#atlas"
+        }
+      }
+    }
+  ]
+}

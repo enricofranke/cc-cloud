@@ -1,0 +1,15 @@
+{
+  "model": {
+    "type": "minecraft:composite",
+    "models": [
+      {
+        "type": "minecraft:model",
+        "model": "cccloud:block/uplink_advanced_online"
+      },
+      {
+        "type": "minecraft:model",
+        "model": "cccloud:block/uplink_advanced_core"
+      }
+    ]
+  }
+}

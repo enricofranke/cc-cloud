@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/mainframe_lower",
+  "textures": {
+    "leds": "cccloud:block/mainframe_leds_offline"
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "variants": {
+    "facing=north,half=lower,status=online": {
+      "model": "cccloud:block/mainframe_lower_online"
+    },
+    "facing=north,half=lower,status=connecting": {
+      "model": "cccloud:block/mainframe_lower_connecting"
+    },
+    "facing=north,half=lower,status=offline": {
+      "model": "cccloud:block/mainframe_lower_offline"
+    },
+    "facing=north,half=upper,status=online": {
+      "model": "cccloud:block/mainframe_upper_online"
+    },
+    "facing=north,half=upper,status=connecting": {
+      "model": "cccloud:block/mainframe_upper_connecting"
+    },
+    "facing=north,half=upper,status=offline": {
+      "model": "cccloud:block/mainframe_upper_offline"
+    },
+    "facing=east,half=lower,status=online": {
+      "model": "cccloud:block/mainframe_lower_online",
+      "y": 90
+    },
+    "facing=east,half=lower,status=connecting": {
+      "model": "cccloud:block/mainframe_lower_connecting",
+      "y": 90
+    },
+    "facing=east,half=lower,status=offline": {
+      "model": "cccloud:block/mainframe_lower_offline",
+      "y": 90
+    },
+    "facing=east,half=upper,status=online": {
+      "model": "cccloud:block/mainframe_upper_online",
+      "y": 90
+    },
+    "facing=east,half=upper,status=connecting": {
+      "model": "cccloud:block/mainframe_upper_connecting",
+      "y": 90
+    },
+    "facing=east,half=upper,status=offline": {
+      "model": "cccloud:block/mainframe_upper_offline",
+      "y": 90
+    },
+    "facing=south,half=lower,status=online": {
+      "model": "cccloud:block/mainframe_lower_online",
+      "y": 180
+    },
+    "facing=south,half=lower,status=connecting": {
+      "model": "cccloud:block/mainframe_lower_connecting",
+      "y": 180
+    },
+    "facing=south,half=lower,status=offline": {
+      "model": "cccloud:block/mainframe_lower_offline",
+      "y": 180
+    },
+    "facing=south,half=upper,status=online": {
+      "model": "cccloud:block/mainframe_upper_online",
+      "y": 180
+    },
+    "facing=south,half=upper,status=connecting": {
+      "model": "cccloud:block/mainframe_upper_connecting",
+      "y": 180
+    },
+    "facing=south,half=upper,status=offline": {
+      "model": "cccloud:block/mainframe_upper_offline",
+      "y": 180
+    },
+    "facing=west,half=lower,status=online": {
+      "model": "cccloud:block/mainframe_lower_online",
+      "y": 270
+    },
+    "facing=west,half=lower,status=connecting": {
+      "model": "cccloud:block/mainframe_lower_connecting",
+      "y": 270
+    },
+    "facing=west,half=lower,status=offline": {
+      "model": "cccloud:block/mainframe_lower_offline",
+      "y": 270
+    },
+    "facing=west,half=upper,status=online": {
+      "model": "cccloud:block/mainframe_upper_online",
+      "y": 270
+    },
+    "facing=west,half=upper,status=connecting": {
+      "model": "cccloud:block/mainframe_upper_connecting",
+      "y": 270
+    },
+    "facing=west,half=upper,status=offline": {
+      "model": "cccloud:block/mainframe_upper_offline",
+      "y": 270
+    }
+  }
+}
