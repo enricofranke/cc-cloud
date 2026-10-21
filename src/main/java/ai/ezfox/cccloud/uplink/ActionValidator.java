@@ -6,17 +6,22 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Validates an action from the dashboard against the widget definition before it reaches Lua. Lua scripts can rely on
- * only ever receiving: {@code true} for buttons, a boolean for toggles, and an in-range number snapped to the step for
- * sliders. Gauges and labels never produce actions.
+ * only ever receiving: {@code true} for buttons, a boolean for toggles, an in-range number snapped to the step for
+ * sliders and number inputs, one of the declared options for select/buttons, and plain text within maxLength for text
+ * inputs. Bridge widgets only accept their structured {@link Op}s. Read-only widgets never produce actions.
  */
 public final class ActionValidator {
-    public record Result(boolean ok, @Nullable JsonElement value, @Nullable String error) {
+    public record Result(boolean ok, @Nullable JsonElement value, @Nullable Op op, @Nullable String error) {
         static Result ok(JsonElement value) {
-            return new Result(true, value, null);
+            return new Result(true, value, null, null);
+        }
+
+        static Result ok(Op op) {
+            return new Result(true, null, op, null);
         }
 
         static Result fail(String error) {
-            return new Result(false, null, error);
+            return new Result(false, null, null, error);
         }
     }
 
@@ -24,24 +29,47 @@ public final class ActionValidator {
     }
 
     public static Result validate(@Nullable Widget widget, @Nullable JsonElement value) {
-        return validate(widget, value, false);
+        return validate(widget, value, null, false);
+    }
+
+    public static Result validate(@Nullable Widget widget, @Nullable JsonElement value, boolean pinVerified) {
+        return validate(widget, value, null, pinVerified);
     }
 
     /**
+     * @param op          the parsed operation if the action value was an object (see {@link Op#parse}).
      * @param pinVerified whether the mainframe PIN was checked for this action. Widgets with {@code opts.pin = true}
      *                    reject actions without it.
      */
-    public static Result validate(@Nullable Widget widget, @Nullable JsonElement value, boolean pinVerified) {
+    public static Result validate(@Nullable Widget widget, @Nullable JsonElement value, @Nullable Op op, boolean pinVerified) {
         if (widget == null) return Result.fail("unknown_widget");
         if (!widget.type().isInteractive()) return Result.fail("not_interactive");
         if (requiresPin(widget) && !pinVerified) return Result.fail("pin_required");
-        if (value == null || !value.isJsonPrimitive()) return Result.fail("invalid_value");
+        if (widget.type().takesOps()) return validateOp(widget, op);
+        if (op != null || value == null || !value.isJsonPrimitive()) return Result.fail("invalid_value");
         JsonPrimitive p = value.getAsJsonPrimitive();
         return switch (widget.type()) {
             case BUTTON -> p.isBoolean() && p.getAsBoolean() ? Result.ok(new JsonPrimitive(true)) : Result.fail("invalid_value");
             case TOGGLE -> p.isBoolean() ? Result.ok(new JsonPrimitive(p.getAsBoolean())) : Result.fail("invalid_value");
-            case SLIDER -> validateSlider(widget, p);
+            case SLIDER -> validateRange(widget, p, true);
+            case NUMBER -> validateRange(widget, p, widget.opts().has("step"));
+            case SELECT, BUTTONS -> p.isString() && hasOption(widget, p.getAsString()) ? Result.ok(new JsonPrimitive(p.getAsString())) : Result.fail("invalid_value");
+            case TEXT -> validateText(widget, p);
             default -> Result.fail("not_interactive");
+        };
+    }
+
+    private static Result validateOp(Widget widget, @Nullable Op op) {
+        if (op == null) return Result.fail("invalid_value");
+        return switch (widget.type()) {
+            case ITEM_SEARCH -> {
+                if (!(op instanceof Op.Craft craft)) yield Result.fail("invalid_value");
+                var max = widget.opts().get("max");
+                if (max != null && craft.count() > max.getAsLong()) yield Result.fail("too_many");
+                yield Result.ok(op);
+            }
+            case WATCHLIST -> op instanceof Op.Craft ? Result.fail("invalid_value") : Result.ok(op);
+            default -> Result.fail("invalid_value");
         };
     }
 
@@ -50,7 +78,14 @@ public final class ActionValidator {
         return pin != null && pin.isJsonPrimitive() && pin.getAsJsonPrimitive().isBoolean() && pin.getAsBoolean();
     }
 
-    private static Result validateSlider(Widget widget, JsonPrimitive p) {
+    public static boolean hasOption(Widget widget, String option) {
+        var options = widget.opts().get("options");
+        if (options == null || !options.isJsonArray()) return false;
+        for (var o : options.getAsJsonArray()) if (o.getAsString().equals(option)) return true;
+        return false;
+    }
+
+    private static Result validateRange(Widget widget, JsonPrimitive p, boolean snap) {
         if (!p.isNumber()) return Result.fail("invalid_value");
         double v = p.getAsDouble();
         if (!Double.isFinite(v)) return Result.fail("invalid_value");
@@ -59,7 +94,23 @@ public final class ActionValidator {
         double max = opts.has("max") ? opts.get("max").getAsDouble() : 100;
         double step = opts.has("step") ? opts.get("step").getAsDouble() : 1;
         if (v < min || v > max) return Result.fail("invalid_value");
-        return Result.ok(Json.number(snap(v, min, max, step)));
+        return Result.ok(Json.number(snap ? snap(v, min, max, step) : v));
+    }
+
+    private static Result validateText(Widget widget, JsonPrimitive p) {
+        if (!p.isString()) return Result.fail("invalid_value");
+        String s = stripControl(p.getAsString());
+        int maxLength = widget.opts().has("maxLength") ? widget.opts().get("maxLength").getAsInt() : Limits.STRING_VALUE;
+        if (s.length() > maxLength) return Result.fail("invalid_value");
+        return Result.ok(new JsonPrimitive(s));
+    }
+
+    /** Removes control characters (text inputs are plain text). */
+    public static String stripControl(String s) {
+        if (WidgetFactory.isPlainText(s)) return s;
+        var sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) if (!Character.isISOControl(s.charAt(i))) sb.append(s.charAt(i));
+        return sb.toString();
     }
 
     /** Snaps a value onto the step grid starting at min and keeps it within min..max. */

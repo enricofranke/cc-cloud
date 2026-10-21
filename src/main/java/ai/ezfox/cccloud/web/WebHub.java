@@ -39,6 +39,10 @@ public final class WebHub {
         final Map<String, Map<String, JsonObject>> widgetIndex = new ConcurrentHashMap<>();
         Map<String, JsonObject> outbox = new LinkedHashMap<>();
         int alertSeq;
+        /** Shared dashboard layout (validated), null = never edited. */
+        @Nullable JsonObject layout;
+        /** 5 layout saves per 10 s per mainframe. */
+        final TokenBucket layoutSaves = new TokenBucket(5, 0.5);
         /** Millis when the last client left, 0 = never had a client. */
         volatile long lastClientSeen;
         final Set<HubSession> sessions = ConcurrentHashMap.newKeySet();
@@ -122,6 +126,7 @@ public final class WebHub {
             var widget = index == null ? null : index.get(widgetId);
             if (widget == null) return;
             widget.add("value", value);
+            appendHistory(widget, value);
             var message = new JsonObject();
             message.addProperty("t", "value");
             message.addProperty("uplinkId", uplinkId);
@@ -129,6 +134,75 @@ public final class WebHub {
             message.add("value", value);
             view.outbox.put("v:" + uplinkId + ":" + widgetId, message);
         }
+    }
+
+    /**
+     * Charts: a number appends one point to the snapshot history (trimmed to opts.points), an array replaces it.
+     */
+    static void appendHistory(JsonObject widget, JsonElement value) {
+        var history = widget.get("history");
+        if (history == null || !history.isJsonArray()) return;
+        if (value.isJsonArray()) {
+            widget.add("history", value.deepCopy());
+            return;
+        }
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return;
+        var array = history.getAsJsonArray();
+        array.add(value);
+        int points = 60;
+        var opts = widget.get("opts");
+        if (opts != null && opts.isJsonObject() && opts.getAsJsonObject().has("points")) points = opts.getAsJsonObject().get("points").getAsInt();
+        while (array.size() > points) array.remove(0);
+    }
+
+    /** Loads a stored layout without broadcasting it (server start). */
+    public void setLayout(UUID mainframeId, @Nullable JsonObject layout) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            view.layout = layout == null ? null : layout.deepCopy();
+        }
+    }
+
+    /** Stores a new layout and sends {"t":"layout"} to every client of the mainframe. */
+    public void publishLayout(UUID mainframeId, @Nullable JsonObject layout) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            view.layout = layout == null ? null : layout.deepCopy();
+            var message = new JsonObject();
+            message.addProperty("t", "layout");
+            message.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout.deepCopy());
+            put(view, "layout", message);
+        }
+    }
+
+    /** Rate limit for layout_set: 5 saves per 10 s per mainframe. */
+    public boolean tryLayoutSave(UUID mainframeId) {
+        return view(mainframeId).layoutSaves.tryAcquire();
+    }
+
+    public @Nullable JsonObject layout(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            return view.layout == null ? null : view.layout.deepCopy();
+        }
+    }
+
+    /** Type id of a widget as published to the browsers, or null. */
+    public @Nullable String widgetType(UUID mainframeId, String uplinkId, String widgetId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var index = view.widgetIndex.get(uplinkId);
+            var widget = index == null ? null : index.get(widgetId);
+            return widget == null || !widget.has("type") ? null : widget.get("type").getAsString();
+        }
+    }
+
+    /** Number of connected dashboard clients of a mainframe. */
+    public int clientCount(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        return view == null ? 0 : view.sessions.size();
     }
 
     public void publishUplinkRemoved(UUID mainframeId, String uplinkId) {
@@ -210,6 +284,7 @@ public final class WebHub {
             var uplinks = new JsonArray();
             for (var uplink : view.uplinks.values()) uplinks.add(uplink);
             json.add("uplinks", uplinks);
+            json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
             snapshot = Json.GSON.toJson(json);
         }
         session.send(List.of(snapshot));

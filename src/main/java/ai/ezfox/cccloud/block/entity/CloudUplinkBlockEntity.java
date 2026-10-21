@@ -8,9 +8,18 @@ import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.peripheral.UplinkPeripheral;
+import ai.ezfox.cccloud.bridge.BridgeCore;
+import ai.ezfox.cccloud.bridge.BridgeHost;
+import ai.ezfox.cccloud.bridge.StorageTemplate;
 import ai.ezfox.cccloud.uplink.ActionValidator;
+import ai.ezfox.cccloud.uplink.BridgeRef;
 import ai.ezfox.cccloud.uplink.Json;
+import ai.ezfox.cccloud.uplink.Limits;
+import ai.ezfox.cccloud.uplink.Op;
 import ai.ezfox.cccloud.uplink.Widget;
+import ai.ezfox.cccloud.uplink.WidgetType;
+import ai.ezfox.cccloud.web.ActionResult;
+import ai.ezfox.cccloud.web.QueryResult;
 import ai.ezfox.cccloud.web.TokenBucket;
 import ai.ezfox.cccloud.web.WebHub;
 import com.google.gson.JsonArray;
@@ -25,7 +34,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -56,6 +69,14 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     private @Nullable MainframeLink link;
     private String title = "";
     private final LinkedHashMap<String, Widget> widgets = new LinkedHashMap<>();
+    /** Lua API v2: cloud.page() / cloud.group() declarations. */
+    private final LinkedHashMap<String, JsonObject> pages = new LinkedHashMap<>();
+    private final LinkedHashMap<String, JsonObject> groups = new LinkedHashMap<>();
+    /** Direct mode: attached to a Cloud Bridge, the section is the ready-made Storage template. */
+    private boolean template;
+    private String templateKind = "";
+    /** Last forwarded watchlist alert per bridge (key = bridge position). */
+    private final Map<String, Integer> bridgeAlertSeq = new java.util.HashMap<>();
 
     // Dirty tracking (guarded by this)
     private boolean structureDirty = true;
@@ -109,6 +130,10 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         link = input.read("link", MainframeLink.CODEC).orElse(null);
         synchronized (this) {
             title = input.getStringOr("title", "");
+            template = input.getBooleanOr("template", false);
+            templateKind = input.getStringOr("template_kind", "");
+            readDeclarations(input.getStringOr("pages", "[]"), pages);
+            readDeclarations(input.getStringOr("groups", "[]"), groups);
             widgets.clear();
             try {
                 var array = JsonParser.parseString(input.getStringOr("widgets", "[]")).getAsJsonArray();
@@ -130,10 +155,32 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         output.storeNullable("link", MainframeLink.CODEC, link);
         synchronized (this) {
             output.putString("title", title);
+            output.putBoolean("template", template);
+            output.putString("template_kind", templateKind);
+            output.putString("pages", Json.GSON.toJson(declarations(pages)));
+            output.putString("groups", Json.GSON.toJson(declarations(groups)));
             var array = new JsonArray();
-            for (var widget : widgets.values()) array.add(widget.toJson());
+            for (var widget : widgets.values()) array.add(widget.toSaveJson());
             output.putString("widgets", Json.GSON.toJson(array));
         }
+    }
+
+    private static void readDeclarations(String json, Map<String, JsonObject> into) {
+        into.clear();
+        try {
+            for (var element : JsonParser.parseString(json).getAsJsonArray()) {
+                var obj = element.getAsJsonObject();
+                String id = obj.get("id").getAsString();
+                if (Json.isValidId(id)) into.put(id, obj);
+            }
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private static JsonArray declarations(Map<String, JsonObject> map) {
+        var array = new JsonArray(map.size());
+        for (var obj : map.values()) array.add(obj.deepCopy());
+        return array;
     }
 
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
@@ -191,7 +238,10 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     }
 
     private void tick(ServerLevel level) {
-        if (tickCounter++ % STATUS_INTERVAL == 0) updateStatus(level);
+        if (tickCounter % STATUS_INTERVAL == 0) updateStatus(level);
+        if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
+        tickCounter++;
+        sampleCharts(level.getGameTime());
         if (link == null) {
             synchronized (this) {
                 dirtyValues.clear();
@@ -235,6 +285,116 @@ public class CloudUplinkBlockEntity extends BlockEntity {
             for (var alert : alerts) WebHub.INSTANCE.publishAlert(mainframeId, id, alert[0], alert[1]);
         }
         if (changed) setChanged();
+    }
+
+    private static final int BRIDGE_INTERVAL = 20;
+
+    private synchronized void sampleCharts(long gameTime) {
+        for (var widget : widgets.values()) {
+            if (widget.type() == WidgetType.CHART && widget.sample(gameTime)) dirtyValues.add(widget.id());
+        }
+    }
+
+    /** The bridge this uplink is attached to (direct mode), or null. */
+    private @Nullable BridgeHost attachedBridge(ServerLevel level) {
+        var pos = getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
+        if (!level.isLoaded(pos)) return null;
+        return level.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
+    }
+
+    private @Nullable BridgeHost resolveBridge(@Nullable BridgeRef ref) {
+        if (ref == null || !(level instanceof ServerLevel serverLevel)) return null;
+        var id = Identifier.tryParse(ref.dimension());
+        if (id == null) return null;
+        var target = serverLevel.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, id));
+        var pos = new BlockPos(ref.x(), ref.y(), ref.z());
+        if (target == null || !target.isLoaded(pos)) return null;
+        return target.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
+    }
+
+    /** Bridge serving a widget: the attached one in direct mode, otherwise the one the Lua widget was bound to. */
+    private @Nullable BridgeHost bridgeFor(Widget widget) {
+        if (template) return level instanceof ServerLevel serverLevel ? attachedBridge(serverLevel) : null;
+        return resolveBridge(widget.bridge());
+    }
+
+    /** Enters/leaves direct mode and refreshes all bridge-fed values (every second). */
+    private void updateBridges(ServerLevel level) {
+        var attached = attachedBridge(level);
+        if (attached != null && !template) enterTemplate(attached.bridgeCore().kind());
+        else if (attached == null && template) leaveTemplate();
+        else if (attached != null && !templateKind.equals(attached.bridgeCore().kind())) enterTemplate(attached.bridgeCore().kind());
+
+        List<Widget> bridgeWidgets = new ArrayList<>();
+        synchronized (this) {
+            for (var widget : widgets.values()) if (widget.type().isBridgeBound()) bridgeWidgets.add(widget);
+        }
+        if (template && attached != null) {
+            var stats = attached.bridgeCore().stats();
+            synchronized (this) {
+                for (var id : List.of("storage", "energy", "items", "types", "usage")) {
+                    Object v = stats.get(id);
+                    JsonElement json = v instanceof Number n ? Json.number(n.doubleValue()) : v instanceof String str ? new com.google.gson.JsonPrimitive(str)
+                        : id.equals("storage") || id.equals("energy") ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive("–");
+                    setValue(id, json);
+                }
+            }
+        }
+        var forwarded = new java.util.HashSet<BridgeHost>();
+        for (var widget : bridgeWidgets) {
+            var host = bridgeFor(widget);
+            if (host == null) continue;
+            var core = host.bridgeCore();
+            switch (widget.type()) {
+                case WATCHLIST -> setValue(widget.id(), core.watchRows());
+                case JOBS -> setValue(widget.id(), core.jobRows(BridgeCore.JOB_ROWS));
+                default -> {
+                }
+            }
+            if (widget.type() == WidgetType.WATCHLIST && forwarded.add(host)) forwardAlerts(host);
+        }
+    }
+
+    private void forwardAlerts(BridgeHost host) {
+        var pos = host.asBlockEntity().getBlockPos();
+        String key = pos.asLong() + "";
+        var core = host.bridgeCore();
+        Integer last = bridgeAlertSeq.get(key);
+        if (last == null || last > core.alertSeq()) {
+            bridgeAlertSeq.put(key, core.alertSeq());
+            return;
+        }
+        for (var alert : core.alertsSince(last)) {
+            synchronized (this) {
+                if (pendingAlerts.size() < 16) pendingAlerts.add(new String[]{alert.text(), alert.level()});
+            }
+        }
+        bridgeAlertSeq.put(key, core.alertSeq());
+    }
+
+    private synchronized void enterTemplate(String kind) {
+        template = true;
+        templateKind = kind;
+        title = StorageTemplate.title(kind);
+        widgets.clear();
+        pages.clear();
+        groups.clear();
+        for (var widget : StorageTemplate.widgets(BridgeCore.maxCraftAmount())) widgets.put(widget.id(), widget);
+        structureDirty = true;
+        setChanged();
+    }
+
+    private synchronized void leaveTemplate() {
+        template = false;
+        templateKind = "";
+        title = "";
+        widgets.clear();
+        structureDirty = true;
+        setChanged();
+    }
+
+    public synchronized boolean isTemplate() {
+        return template;
     }
 
     private void updateStatus(ServerLevel level) {
@@ -336,6 +496,12 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         var array = new JsonArray();
         for (var widget : widgets.values()) array.add(widget.toJson());
         json.add("widgets", array);
+        if (!pages.isEmpty()) json.add("pages", declarations(pages));
+        if (!groups.isEmpty()) json.add("groups", declarations(groups));
+        if (template) {
+            json.addProperty("template", "storage");
+            json.addProperty("bridge", templateKind);
+        }
         return json;
     }
 
@@ -351,10 +517,38 @@ public class CloudUplinkBlockEntity extends BlockEntity {
 
     /** Adds or replaces a widget (a replaced widget keeps its position). Returns false if the widget limit is reached. */
     public synchronized boolean putWidget(Widget widget) {
-        if (!widgets.containsKey(widget.id()) && widgets.size() >= CloudConfig.get(CloudConfig.MAX_WIDGETS_PER_UPLINK)) return false;
+        if (!widgets.containsKey(widget.id()) && widgets.size() >= maxWidgets()) return false;
         widgets.put(widget.id(), widget);
         structureDirty = true;
         return true;
+    }
+
+    /** 32 widgets per uplink, 64 once the script declares pages (both configurable). */
+    public synchronized int maxWidgets() {
+        return pages.isEmpty() ? CloudConfig.get(CloudConfig.MAX_WIDGETS_PER_UPLINK) : CloudConfig.get(CloudConfig.MAX_WIDGETS_WITH_PAGES);
+    }
+
+    public synchronized boolean putPage(JsonObject page) {
+        String id = page.get("id").getAsString();
+        if (!pages.containsKey(id) && pages.size() >= Limits.MAX_PAGES) return false;
+        if (page.equals(pages.get(id))) return true;
+        pages.put(id, page);
+        structureDirty = true;
+        return true;
+    }
+
+    public synchronized boolean putGroup(JsonObject group) {
+        String id = group.get("id").getAsString();
+        if (!groups.containsKey(id) && groups.size() >= Limits.MAX_GROUPS) return false;
+        if (group.equals(groups.get(id))) return true;
+        groups.put(id, group);
+        structureDirty = true;
+        return true;
+    }
+
+    /** Sets several values at once; all are validated before any is applied. */
+    public synchronized void setValues(Map<String, JsonElement> values) {
+        for (var entry : values.entrySet()) setValue(entry.getKey(), entry.getValue());
     }
 
     public synchronized @Nullable Widget getWidget(String id) {
@@ -365,7 +559,8 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         var widget = widgets.get(id);
         if (widget == null || widget.value().equals(value)) return;
         widget.setValue(value);
-        dirtyValues.add(id);
+        // Charts are broadcast when a point is sampled (each value delta appends one point in the browser).
+        if (widget.type() != WidgetType.CHART) dirtyValues.add(id);
     }
 
     public synchronized boolean removeWidget(String id) {
@@ -375,8 +570,10 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     }
 
     public synchronized void clearWidgets() {
-        if (widgets.isEmpty()) return;
+        if (widgets.isEmpty() && pages.isEmpty() && groups.isEmpty()) return;
         widgets.clear();
+        pages.clear();
+        groups.clear();
         structureDirty = true;
     }
 
@@ -418,27 +615,88 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     }
 
     /**
-     * Handles an action from the dashboard (server thread). Validates it against the widget definition, updates
-     * toggle/slider values and queues {@code cloud_action} on every attached computer.
-     *
-     * @return null on success, otherwise the error code.
+     * Handles an action from the dashboard (server thread). Validates it against the widget definition, updates stored
+     * values and queues {@code cloud_action} on every attached computer. Bridge operations (craft, watchlist) are run by
+     * the bridge; craft requests complete once the storage mod planned the job.
      */
-    public @Nullable String handleAction(String widgetId, JsonElement rawValue, String user, boolean pinVerified) {
-        if (!isOnline()) return "uplink_offline";
+    public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement rawValue, @Nullable Op op, String user, boolean pinVerified) {
+        if (!isOnline()) return ActionResult.done("uplink_offline");
         ActionValidator.Result result;
-        String type;
+        Widget widget;
         synchronized (this) {
-            var widget = widgets.get(widgetId);
-            result = ActionValidator.validate(widget, rawValue, pinVerified);
-            if (!result.ok()) return result.error();
-            type = widget.type().id();
-            if (!type.equals("button")) {
+            widget = widgets.get(widgetId);
+            result = ActionValidator.validate(widget, rawValue, op, pinVerified);
+            if (!result.ok()) return ActionResult.done(result.error());
+            var type = widget.type();
+            if (result.op() == null && type != WidgetType.BUTTON && type != WidgetType.BUTTONS) {
                 widget.setValue(result.value());
                 dirtyValues.add(widgetId);
             }
         }
         spawnDataPackets();
-        Object luaValue = Json.toLua(result.value());
+        if (result.op() != null) return handleOp(widget, result.op(), user);
+        queueAction(widgetId, Json.toLua(result.value()), user);
+        return ActionResult.done(null);
+    }
+
+    private CompletableFuture<ActionResult> handleOp(Widget widget, Op op, String user) {
+        var host = bridgeFor(widget);
+        if (host == null) return ActionResult.done("unavailable");
+        var core = host.bridgeCore();
+        if (op instanceof Op.Craft craft) {
+            var ticket = core.craft(craft.name(), craft.count(), user);
+            if (ticket.error() == null) {
+                setValueLater(core);
+                if (!template) {
+                    var event = new java.util.LinkedHashMap<String, Object>();
+                    event.put("op", "craft");
+                    event.put("name", craft.name());
+                    event.put("count", craft.count());
+                    event.put("jobId", ticket.jobId());
+                    queueAction(widget.id(), event, user);
+                }
+            }
+            return ticket.result();
+        }
+        String error = core.watchOp(op);
+        if (error == null) {
+            synchronized (this) {
+                for (var w : widgets.values()) {
+                    if (w.type() == WidgetType.WATCHLIST && bridgeFor(w) == host) setValue(w.id(), core.watchRows());
+                }
+            }
+        }
+        return ActionResult.done(error);
+    }
+
+    /** Shows a new job right away instead of after the next refresh. */
+    private void setValueLater(BridgeCore core) {
+        synchronized (this) {
+            for (var w : widgets.values()) {
+                if (w.type() == WidgetType.JOBS) setValue(w.id(), core.jobRows(BridgeCore.JOB_ROWS));
+            }
+        }
+    }
+
+    /** Item search on an item_search widget (server thread). */
+    public QueryResult handleQuery(String widgetId, String query) {
+        if (!isOnline()) return QueryResult.fail("uplink_offline");
+        Widget widget;
+        synchronized (this) {
+            widget = widgets.get(widgetId);
+        }
+        if (widget == null || widget.type() != WidgetType.ITEM_SEARCH) return QueryResult.fail("unknown_widget");
+        var host = bridgeFor(widget);
+        if (host == null || !host.bridgeCore().isConnected()) return QueryResult.fail("offline");
+        var core = host.bridgeCore();
+        if (!core.trySearch()) return QueryResult.fail("rate_limited");
+        var page = core.index().search(query, Limits.QUERY_ROWS);
+        var rows = new JsonArray(page.rows().size());
+        for (var row : page.rows()) rows.add(row.toJson());
+        return new QueryResult(rows, page.truncated(), null);
+    }
+
+    private void queueAction(String widgetId, @Nullable Object luaValue, String user) {
         for (var entry : computers.entrySet()) {
             var computer = entry.getKey();
             if (!entry.getValue().tryAcquire()) {
@@ -455,7 +713,6 @@ public class CloudUplinkBlockEntity extends BlockEntity {
                 computers.remove(computer);
             }
         }
-        return null;
     }
 
     /** Client-side animation state for the block entity renderer. */

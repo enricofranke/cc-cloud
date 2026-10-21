@@ -82,6 +82,7 @@ public final class ModRegistry {
             out.accept(ADVANCED_CLOUD_UPLINK_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
+            for (var bridge : ai.ezfox.cccloud.bridge.BridgeRegistry.ITEMS) out.accept(bridge.get());
         })
         .build());
 

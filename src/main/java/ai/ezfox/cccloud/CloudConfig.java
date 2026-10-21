@@ -19,6 +19,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
     public static final ModConfigSpec.IntValue UPLINK_RANGE;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
+    public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
+    public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -62,6 +64,15 @@ public final class CloudConfig {
         MAX_WIDGETS_PER_UPLINK = b.comment("Maximum number of widgets one uplink may register (the dashboard supports at most 32).")
             .translation("cccloud.configuration.maxWidgetsPerUplink")
             .defineInRange("maxWidgetsPerUplink", 32, 1, 32);
+        MAX_WIDGETS_WITH_PAGES = b.comment("Maximum number of widgets per uplink once the script declares pages with cloud.page().")
+            .translation("cccloud.configuration.maxWidgetsWithPages")
+            .defineInRange("maxWidgetsWithPages", 64, 1, 64);
+        b.pop();
+
+        b.push("bridges");
+        MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
+            .translation("cccloud.configuration.maxCraftAmount")
+            .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
         b.pop();
 
         SPEC = b.build();

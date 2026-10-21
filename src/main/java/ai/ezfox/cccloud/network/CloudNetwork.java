@@ -99,6 +99,11 @@ public final class CloudNetwork {
 
     private static void onServerStarted(ServerStartedEvent event) {
         server = event.getServer();
+        try {
+            ai.ezfox.cccloud.layout.LayoutData.get(event.getServer()).publishAll();
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] Could not load dashboard layouts", e);
+        }
         CloudWebServer.start(event.getServer());
     }
 

@@ -38,8 +38,20 @@ class RouteAuthTest {
         }
 
         @Override
-        public @Nullable String dispatchAction(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified, String ip) {
+        public java.util.concurrent.CompletableFuture<ActionResult> dispatchAction(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified, String ip) {
             fail("dispatchAction must not be reached without authentication");
+            return ActionResult.done(null);
+        }
+
+        @Override
+        public QueryResult dispatchQuery(AuthStore.Device device, ClientMessages.Query query) {
+            fail("dispatchQuery must not be reached without authentication");
+            return QueryResult.fail("x");
+        }
+
+        @Override
+        public @Nullable String setLayout(AuthStore.Device device, com.google.gson.@Nullable JsonObject layout) {
+            fail("setLayout must not be reached without authentication");
             return null;
         }
 

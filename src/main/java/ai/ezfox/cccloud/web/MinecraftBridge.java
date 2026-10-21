@@ -5,7 +5,10 @@ import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.uplink.Json;
 import java.util.ArrayList;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import ai.ezfox.cccloud.layout.LayoutData;
+import com.google.gson.JsonObject;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -84,34 +87,56 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
-    public @Nullable String dispatchAction(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified, String ip) {
-        String error;
+    public CompletableFuture<ActionResult> dispatchAction(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified, String ip) {
         String where = action.uplinkId() + "/" + action.id();
+        CompletableFuture<ActionResult> result;
         try {
             var uplink = CloudNetwork.uplink(action.uplinkId());
             if (uplink != null && !uplink.getTitle().isEmpty()) where = uplink.getTitle() + "/" + action.id();
-            error = checkRights(device);
-            if (error == null) error = run(device, action, pinVerified);
+            String error = checkRights(device);
+            if (error == null) error = checkUplink(device, action.uplinkId());
+            result = error != null ? ActionResult.done(error)
+                : uplink.handleAction(action.id(), action.value(), action.op(), device.name(), pinVerified);
         } catch (RuntimeException e) {
             CloudLog.LOGGER.error("[cccloud] Error while handling action {} from '{}'", where, device.name(), e);
-            error = "internal_error";
+            result = ActionResult.done("internal_error");
         }
+        String target = where;
         String value = Json.GSON.toJson(action.value());
-        if (error == null) {
-            CloudLog.LOGGER.info("[cccloud] {} pressed {} = {}", device.name(), where, value);
-        } else {
-            CloudLog.LOGGER.info("[cccloud] Rejected action of {} ({}) on {} = {}: {}", device.name(), ip, where, value, error);
-        }
-        return error;
+        return result.whenComplete((r, ex) -> {
+            if (r != null && r.ok()) {
+                CloudLog.LOGGER.info("[cccloud] {} pressed {} = {}{}", device.name(), target, value, r.jobId() != null ? " (job " + r.jobId() + ")" : "");
+            } else {
+                CloudLog.LOGGER.info("[cccloud] Rejected action of {} ({}) on {} = {}: {}", device.name(), ip, target, value, r == null ? ex : r.error());
+            }
+        });
     }
 
-    private static @Nullable String run(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified) {
+    /** Mainframe online + enabled, uplink loaded and linked to the device's mainframe. Null if all is fine. */
+    private static @Nullable String checkUplink(AuthStore.Device device, UUID uplinkId) {
         var mainframe = CloudNetwork.mainframe(device.mainframeId());
         if (mainframe == null || !mainframe.isOnline()) return "offline";
         if (!mainframe.isEnabled()) return "disabled";
-        var uplink = CloudNetwork.uplink(action.uplinkId());
+        var uplink = CloudNetwork.uplink(uplinkId);
         if (uplink == null || uplink.getLink() == null || !uplink.getLink().id().equals(device.mainframeId())) return "unknown_uplink";
-        return uplink.handleAction(action.id(), action.value(), device.name(), pinVerified);
+        return null;
+    }
+
+    @Override
+    public QueryResult dispatchQuery(AuthStore.Device device, ClientMessages.Query query) {
+        String error = checkRights(device);
+        if (error == null) error = checkUplink(device, query.uplinkId());
+        if (error != null) return QueryResult.fail(error.equals("disabled") || error.equals("unknown_uplink") ? (error.equals("disabled") ? "offline" : "unknown_widget") : error);
+        return CloudNetwork.uplink(query.uplinkId()).handleQuery(query.id(), query.q());
+    }
+
+    @Override
+    public @Nullable String setLayout(AuthStore.Device device, @Nullable JsonObject layout) {
+        String error = checkRights(device);
+        if (error != null) return error;
+        LayoutData.get(server).set(device.mainframeId(), layout);
+        CloudLog.LOGGER.info("[cccloud] {} saved the dashboard layout of {}", device.name(), mainframeName(device.mainframeId()));
+        return null;
     }
 
     @Override

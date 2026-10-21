@@ -1,7 +1,9 @@
 package ai.ezfox.cccloud.web;
 
+import ai.ezfox.cccloud.layout.LayoutValidator;
 import ai.ezfox.cccloud.uplink.Json;
 import ai.ezfox.cccloud.uplink.Limits;
+import ai.ezfox.cccloud.uplink.Op;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -11,23 +13,46 @@ import org.jspecify.annotations.Nullable;
 
 /** Parsing and validation of everything a browser sends. Plain Java, unit tested. */
 public final class ClientMessages {
+    /** Max size of every message except layout_set. */
     public static final int MAX_FRAME = 8 * 1024;
+    /** WebSocket frame limit: layout_set may carry a layout of up to 64 KB (plus a little envelope). */
+    public static final int MAX_LAYOUT_FRAME = LayoutValidator.MAX_BYTES + 1024;
     public static final int MAX_BODY = 4 * 1024;
     private static final Pattern REQ_ID = Pattern.compile("[A-Za-z0-9_.:-]{1,64}");
 
-    public sealed interface Message permits Auth, Action, Pong, Invalid {
+    public sealed interface Message permits Auth, Action, Query, LayoutSet, Pong, Invalid {
     }
 
     public record Auth(String token) implements Message {
     }
 
-    public record Action(@Nullable String reqId, UUID uplinkId, String id, JsonElement value, @Nullable String pin) implements Message {
+    /**
+     * @param value a scalar, or the raw object of a structured operation (then {@code op} is set).
+     */
+    public record Action(@Nullable String reqId, UUID uplinkId, String id, JsonElement value, @Nullable Op op, @Nullable String pin) implements Message {
+        public Action(@Nullable String reqId, UUID uplinkId, String id, JsonElement value, @Nullable String pin) {
+            this(reqId, uplinkId, id, value, null, pin);
+        }
+    }
+
+    /** Item search on an item_search widget: {@code {"t":"query","reqId","uplinkId","id","q"}}. */
+    public record Query(String reqId, UUID uplinkId, String id, String q) implements Message {
+    }
+
+    /**
+     * {@code {"t":"layout_set","reqId","layout":{...}}}. Validation happens while parsing; {@code error} is
+     * {@code too_large} or {@code invalid_layout} (answered with layout_result after the rights/rate checks).
+     */
+    public record LayoutSet(String reqId, @Nullable JsonObject layout, @Nullable String error) implements Message {
     }
 
     public record Pong() implements Message {
     }
 
-    public record Invalid(String reason, @Nullable String reqId) implements Message {
+    public record Invalid(String reason, @Nullable String reqId, @Nullable String detail) implements Message {
+        public Invalid(String reason, @Nullable String reqId) {
+            this(reason, reqId, null);
+        }
     }
 
     public record PairRequest(String code, String name) {
@@ -42,11 +67,12 @@ public final class ClientMessages {
     }
 
     public static Message parse(String text) {
-        if (text.length() > MAX_FRAME) return new Invalid("too_large", null);
+        if (text.length() > MAX_LAYOUT_FRAME) return new Invalid("too_large", null);
         JsonObject obj = parseObject(text);
-        if (obj == null) return new Invalid("invalid_message", null);
+        if (obj == null) return new Invalid(text.length() > MAX_FRAME ? "too_large" : "invalid_message", null);
         String t = string(obj, "t");
         if (t == null) return new Invalid("invalid_message", null);
+        if (text.length() > MAX_FRAME && !"layout_set".equals(t)) return new Invalid("too_large", null);
         return switch (t) {
             case "auth" -> {
                 String token = string(obj, "token");
@@ -54,6 +80,8 @@ public final class ClientMessages {
             }
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);
+            case "query" -> parseQuery(obj);
+            case "layout_set" -> parseLayoutSet(obj);
             default -> new Invalid("invalid_message", null);
         };
     }
@@ -67,13 +95,36 @@ public final class ClientMessages {
         if (uplinkId == null || !Json.isValidId(id)) return new Invalid("invalid_message", reqId);
         JsonElement value = obj.get("value");
         if (value == null || value.isJsonNull()) return new Invalid("invalid_value", reqId);
-        if (!value.isJsonPrimitive()) return new Invalid("invalid_value", reqId);
-        var p = value.getAsJsonPrimitive();
-        if (p.isString() && p.getAsString().length() > Limits.STRING_VALUE) return new Invalid("invalid_value", reqId);
-        if (p.isNumber() && !Double.isFinite(p.getAsDouble())) return new Invalid("invalid_value", reqId);
+        Op op = null;
+        if (value.isJsonObject()) {
+            op = Op.parse(value.getAsJsonObject());
+            if (op == null) return new Invalid("invalid_value", reqId);
+        } else {
+            if (!value.isJsonPrimitive()) return new Invalid("invalid_value", reqId);
+            var p = value.getAsJsonPrimitive();
+            if (p.isString() && p.getAsString().length() > Limits.STRING_VALUE) return new Invalid("invalid_value", reqId);
+            if (p.isNumber() && !Double.isFinite(p.getAsDouble())) return new Invalid("invalid_value", reqId);
+        }
         String pin = string(obj, "pin");
         if (pin != null && !AuthStore.isValidPin(pin)) return new Invalid("wrong_pin", reqId);
-        return new Action(reqId, uplinkId, id, value, pin);
+        return new Action(reqId, uplinkId, id, value, op, pin);
+    }
+
+    private static Message parseQuery(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+        String id = string(obj, "id");
+        String q = string(obj, "q");
+        if (uplinkId == null || !Json.isValidId(id) || q == null || q.length() > Limits.QUERY) return new Invalid("invalid_message", reqId);
+        return new Query(reqId, uplinkId, id, q.strip());
+    }
+
+    private static Message parseLayoutSet(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        var result = LayoutValidator.validate(obj.get("layout"));
+        return new LayoutSet(reqId, result.layout(), result.error());
     }
 
     public static @Nullable PairRequest parsePair(String body) {

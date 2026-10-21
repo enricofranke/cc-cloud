@@ -264,7 +264,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         String scheme = instance.ssl != null ? "wss://" : "ws://";
         String host = req.headers().get(HttpHeaderNames.HOST, "localhost");
-        var config = WebSocketDecoderConfig.newBuilder().maxFramePayloadLength(ClientMessages.MAX_FRAME).allowExtensions(false).build();
+        var config = WebSocketDecoderConfig.newBuilder().maxFramePayloadLength(ClientMessages.MAX_LAYOUT_FRAME).allowExtensions(false).build();
         var handshaker = new WebSocketServerHandshakerFactory(scheme + host + "/ws/client", null, config).newHandshaker(req);
         if (handshaker == null) {
             WebSocketServerHandshakerFactory.sendUnsupportedVersionResponse(ctx.channel());
@@ -276,7 +276,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         });
         pipeline.replace("idle", "idle", new IdleStateHandler(CloudWebServer.IDLE_TIMEOUT_S, 0, 0));
         pipeline.replace(this, "ws", new WebSocketSession(instance, handshaker, ip));
-        pipeline.addBefore("ws", "ws-aggregator", new WebSocketFrameAggregator(ClientMessages.MAX_FRAME));
+        pipeline.addBefore("ws", "ws-aggregator", new WebSocketFrameAggregator(ClientMessages.MAX_LAYOUT_FRAME));
     }
 
     /** Blocks cross-site WebSocket hijacking: the Origin (if sent) must match the Host header. */

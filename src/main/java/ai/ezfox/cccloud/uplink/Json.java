@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 
 /** JSON helpers shared by the uplink and the web server. */
 public final class Json {
-    public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
+    public static final Gson GSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static final Pattern WIDGET_ID = Pattern.compile("[a-z0-9_]{1,32}");
 
     private Json() {
@@ -26,9 +26,27 @@ public final class Json {
         return new JsonPrimitive(value);
     }
 
-    /** Converts a JSON scalar into a value CC can pass to Lua (Boolean, Double, String or null). */
+    /** Converts JSON into a value CC can pass to Lua (Boolean, Double, String, Map, List or null). */
     public static @Nullable Object toLua(@Nullable JsonElement element) {
-        if (element == null || element.isJsonNull() || !element.isJsonPrimitive()) return null;
+        if (element == null || element.isJsonNull()) return null;
+        if (element.isJsonObject()) {
+            var map = new java.util.LinkedHashMap<String, Object>();
+            for (var entry : element.getAsJsonObject().entrySet()) {
+                var v = toLua(entry.getValue());
+                if (v != null) map.put(entry.getKey(), v);
+            }
+            return map;
+        }
+        if (element.isJsonArray()) {
+            var map = new java.util.LinkedHashMap<Integer, Object>();
+            int i = 1;
+            for (var e : element.getAsJsonArray()) {
+                var v = toLua(e);
+                if (v != null) map.put(i, v);
+                i++;
+            }
+            return map;
+        }
         var p = element.getAsJsonPrimitive();
         if (p.isBoolean()) return p.getAsBoolean();
         if (p.isNumber()) return p.getAsDouble();

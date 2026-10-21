@@ -11,6 +11,13 @@ import dan200.computercraft.api.lua.LuaException;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IComputerAccess;
 import dan200.computercraft.api.peripheral.IPeripheral;
+import ai.ezfox.cccloud.bridge.BridgeCore;
+import ai.ezfox.cccloud.bridge.BridgePeripheral;
+import ai.ezfox.cccloud.uplink.BridgeRef;
+import ai.ezfox.cccloud.uplink.Json;
+import com.google.gson.JsonElement;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -54,6 +61,7 @@ public final class UplinkPeripheral implements IPeripheral {
     /** Sets the section title shown on the dashboard (max. 48 characters). */
     @LuaFunction
     public final void setTitle(IArguments args) throws LuaException {
+        checkEditable();
         uplink.setTitle(wrap(() -> WidgetFactory.checkText("title", args.get(0), Limits.TITLE)));
     }
 
@@ -77,14 +85,95 @@ public final class UplinkPeripheral implements IPeripheral {
         add(WidgetType.GAUGE, args);
     }
 
-    /** {@code label(id, text)} – a read-only text line. */
+    /** {@code label(id, text, [opts])} – a read-only text line. */
     @LuaFunction
     public final void label(IArguments args) throws LuaException {
+        checkEditable();
         String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
-        put(wrap(() -> WidgetFactory.create(WidgetType.LABEL, id, args.get(1), null)));
+        Map<?, ?> opts = opts(args, 2);
+        put(wrap(() -> WidgetFactory.create(WidgetType.LABEL, id, args.get(1), opts)));
     }
 
-    /** Updates the value of a gauge, label, toggle or slider. Cheap: only marks the value dirty. */
+    // ---- Lua API v2: layout ------------------------------------------------------------------------------------------
+
+    /** {@code page(id, title, [{icon=}])} – declares a dashboard page (tab). Raises the widget limit to 64. */
+    @LuaFunction
+    public final void page(IArguments args) throws LuaException {
+        checkEditable();
+        var page = wrap(() -> WidgetFactory.page(args.get(0), args.get(1), opts(args, 2)));
+        if (!uplink.putPage(page)) throw new LuaException("too many pages (max " + ai.ezfox.cccloud.uplink.Limits.MAX_PAGES + " per uplink)");
+    }
+
+    /** {@code group(id, title, [{page=, cols=1..4}])} – a card that widgets join with opts.group. */
+    @LuaFunction
+    public final void group(IArguments args) throws LuaException {
+        checkEditable();
+        var group = wrap(() -> WidgetFactory.group(args.get(0), args.get(1), opts(args, 2)));
+        if (!uplink.putGroup(group)) throw new LuaException("too many groups (max " + ai.ezfox.cccloud.uplink.Limits.MAX_GROUPS + " per uplink)");
+    }
+
+    // ---- Lua API v2: widgets -----------------------------------------------------------------------------------------
+
+    /** {@code chart(id, label, {min, max, unit, points=60, interval=1, style="line"|"sparkline"})} */
+    @LuaFunction
+    public final void chart(IArguments args) throws LuaException {
+        add(WidgetType.CHART, args);
+    }
+
+    @LuaFunction
+    public final void progress(IArguments args) throws LuaException {
+        add(WidgetType.PROGRESS, args);
+    }
+
+    /** {@code indicator(id, label, {value=false, onColor, offColor})} – a read-only LED. */
+    @LuaFunction
+    public final void indicator(IArguments args) throws LuaException {
+        add(WidgetType.INDICATOR, args);
+    }
+
+    /** {@code select(id, label, {options={...}, value})} */
+    @LuaFunction
+    public final void select(IArguments args) throws LuaException {
+        add(WidgetType.SELECT, args);
+    }
+
+    /** {@code number(id, label, {min, max, step, value})} – a validated number input. */
+    @LuaFunction
+    public final void number(IArguments args) throws LuaException {
+        add(WidgetType.NUMBER, args);
+    }
+
+    /** {@code text(id, label, {maxLength=64, value})} – a plain text input. */
+    @LuaFunction
+    public final void text(IArguments args) throws LuaException {
+        add(WidgetType.TEXT, args);
+    }
+
+    /** {@code buttons(id, label, {options={"A","B"}})} – a segmented button group; the event value is the option. */
+    @LuaFunction
+    public final void buttons(IArguments args) throws LuaException {
+        add(WidgetType.BUTTONS, args);
+    }
+
+    /** {@code itemSearch(id, label, {bridge="me_cloud_bridge_0", max=4096})} – search + craft on a Cloud Bridge. */
+    @LuaFunction
+    public final void itemSearch(IComputerAccess computer, IArguments args) throws LuaException {
+        addBridgeWidget(WidgetType.ITEM_SEARCH, computer, args);
+    }
+
+    /** {@code watchlist(id, label, {bridge=...})} – the bridge's watchlist (items with a minimum amount). */
+    @LuaFunction
+    public final void watchlist(IComputerAccess computer, IArguments args) throws LuaException {
+        addBridgeWidget(WidgetType.WATCHLIST, computer, args);
+    }
+
+    /** {@code jobs(id, label, {bridge=...})} – recent crafting jobs of the bridge. */
+    @LuaFunction
+    public final void jobs(IComputerAccess computer, IArguments args) throws LuaException {
+        addBridgeWidget(WidgetType.JOBS, computer, args);
+    }
+
+    /** Updates the value of a widget. Cheap: only marks the value dirty (charts sample it every opts.interval). */
     @LuaFunction
     public final void set(IArguments args) throws LuaException {
         String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
@@ -93,14 +182,47 @@ public final class UplinkPeripheral implements IPeripheral {
         uplink.setValue(id, wrap(() -> WidgetFactory.valueFor(widget, args.get(1))));
     }
 
+    /** {@code setMany({id=value, ...})} – validates every entry first, then applies all of them. */
     @LuaFunction
-    public final boolean remove(IArguments args) throws LuaException {
-        return uplink.removeWidget(wrap(() -> WidgetFactory.checkId(args.get(0))));
+    public final void setMany(IArguments args) throws LuaException {
+        var table = args.getTable(0);
+        if (table.size() > ai.ezfox.cccloud.uplink.Limits.SET_MANY) {
+            throw new LuaException("too many values (max " + ai.ezfox.cccloud.uplink.Limits.SET_MANY + " per setMany call)");
+        }
+        var values = new LinkedHashMap<String, JsonElement>();
+        for (var entry : table.entrySet()) {
+            String id = wrap(() -> WidgetFactory.checkId(entry.getKey()));
+            var widget = uplink.getWidget(id);
+            if (widget == null) throw new LuaException("no widget with id '" + id + "'");
+            values.put(id, wrap(() -> WidgetFactory.valueFor(widget, entry.getValue())));
+        }
+        uplink.setValues(values);
     }
 
     @LuaFunction
-    public final void clear() {
+    public final boolean remove(IArguments args) throws LuaException {
+        checkEditable();
+        return uplink.removeWidget(wrap(() -> WidgetFactory.checkId(args.get(0))));
+    }
+
+    /** Removes all widgets, pages and groups. */
+    @LuaFunction
+    public final void clear() throws LuaException {
+        checkEditable();
         uplink.clearWidgets();
+    }
+
+    /** Alias of alert(). */
+    @LuaFunction
+    public final boolean notify(IArguments args) throws LuaException {
+        return alert(args);
+    }
+
+    /** Number of dashboards currently connected to this uplink's mainframe. */
+    @LuaFunction
+    public final int getClients() {
+        var link = uplink.getLink();
+        return link == null ? 0 : ai.ezfox.cccloud.web.WebHub.INSTANCE.clientCount(link.id());
     }
 
     /**
@@ -132,15 +254,41 @@ public final class UplinkPeripheral implements IPeripheral {
     }
 
     private void add(WidgetType type, IArguments args) throws LuaException {
+        checkEditable();
         String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
-        Map<?, ?> opts = args.count() > 2 && args.get(2) != null ? args.getTable(2) : null;
-        var widget = wrap(() -> WidgetFactory.create(type, id, args.get(1), opts));
+        Map<?, ?> opts = opts(args, 2);
+        var widget = wrap(() -> WidgetFactory.create(type, id, args.get(1), opts, BridgeCore.maxCraftAmount()));
         put(widget);
+    }
+
+    /** Bridge widgets are bound to a bridge peripheral the computer can reach (side or wired network name). */
+    private void addBridgeWidget(WidgetType type, IComputerAccess computer, IArguments args) throws LuaException {
+        checkEditable();
+        String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
+        Map<?, ?> opts = opts(args, 2);
+        if (opts == null || !(opts.get("bridge") instanceof String name) || name.isEmpty() || name.length() > 64) {
+            throw new LuaException(type.id() + " needs {bridge=\"<peripheral name>\"}, e.g. peripheral.getName(peripheral.find(\"me_cloud_bridge\"))");
+        }
+        var peripheral = computer.getAvailablePeripheral(name);
+        if (!(peripheral instanceof BridgePeripheral bridge)) throw new LuaException("no Cloud Bridge named '" + name + "'");
+        var be = bridge.host().asBlockEntity();
+        if (be.getLevel() == null) throw new LuaException("the Cloud Bridge is not loaded");
+        var ref = new BridgeRef(be.getLevel().dimension().identifier().toString(), be.getBlockPos().getX(), be.getBlockPos().getY(), be.getBlockPos().getZ(), name);
+        var widget = wrap(() -> WidgetFactory.create(type, id, args.get(1), opts, BridgeCore.maxCraftAmount())).withBridge(ref);
+        put(widget);
+    }
+
+    private static @Nullable Map<?, ?> opts(IArguments args, int index) throws LuaException {
+        return args.count() > index && args.get(index) != null ? args.getTable(index) : null;
+    }
+
+    private void checkEditable() throws LuaException {
+        if (uplink.isTemplate()) throw new LuaException("this uplink is attached directly to a Cloud Bridge and shows the Storage template");
     }
 
     private void put(ai.ezfox.cccloud.uplink.Widget widget) throws LuaException {
         if (!uplink.putWidget(widget)) {
-            throw new LuaException("too many widgets (max " + CloudConfig.get(CloudConfig.MAX_WIDGETS_PER_UPLINK) + " per uplink)");
+            throw new LuaException("too many widgets (max " + uplink.maxWidgets() + " per uplink" + (uplink.maxWidgets() < 64 ? "; declare pages with cloud.page() for up to 64" : "") + ")");
         }
     }
 

@@ -35,6 +35,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private final WebSocketServerHandshaker handshaker;
     private final String ip;
     private final TokenBucket actionLimit = new TokenBucket(10, 10);
+    /** Item searches: 5 per second (docs/SPEC.md). */
+    private final TokenBucket queryLimit = new TokenBucket(5, 5);
     private @Nullable Channel channel;
     private volatile State state = State.NEW;
     private volatile AuthStore.@Nullable Device device;
@@ -106,10 +108,12 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     close(1008, "too many invalid messages");
                     return;
                 }
-                if (invalid.reqId() != null) sendResult(invalid.reqId(), invalid.reason());
+                if (invalid.reqId() != null) sendResult(invalid.reqId(), invalid.reason(), "detail", invalid.detail());
                 else send(List.of(errorJson(invalid.reason())));
             }
             case ClientMessages.Action action -> action(current, action);
+            case ClientMessages.Query query -> query(current, query);
+            case ClientMessages.LayoutSet layout -> layout(current, layout);
         }
     }
 
@@ -189,23 +193,118 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     private void runOnServer(AuthStore.Device current, ClientMessages.Action action, boolean pinVerified) {
         try {
-            instance.bridge.serverExecutor().execute(() -> sendResult(action.reqId(), instance.bridge.dispatchAction(current, action, pinVerified, ip)));
+            instance.bridge.serverExecutor().execute(() -> {
+                java.util.concurrent.CompletableFuture<ActionResult> result;
+                try {
+                    result = instance.bridge.dispatchAction(current, action, pinVerified, ip);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while dispatching an action from {}", ip, e);
+                    result = ActionResult.done("internal_error");
+                }
+                result.whenComplete((r, ex) -> {
+                    var outcome = ex != null || r == null ? ActionResult.fail("internal_error") : r;
+                    sendResult(action.reqId(), outcome.error(), "jobId", outcome.jobId());
+                });
+            });
         } catch (RejectedExecutionException e) {
             sendResult(action.reqId(), "offline");
         }
     }
 
+    /** Item search. Read-only, so devices without canControl may search too. */
+    private void query(AuthStore.Device current, ClientMessages.Query query) {
+        if (!queryLimit.tryAcquire()) {
+            sendQueryResult(query.reqId(), QueryResult.fail("rate_limited"));
+            return;
+        }
+        if (!"item_search".equals(WebHub.INSTANCE.widgetType(current.mainframeId(), query.uplinkId().toString(), query.id()))) {
+            sendQueryResult(query.reqId(), QueryResult.fail("unknown_widget"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                QueryResult result;
+                try {
+                    result = instance.bridge.dispatchQuery(current, query);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while running an item search from {}", ip, e);
+                    result = QueryResult.fail("internal_error");
+                }
+                sendQueryResult(query.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendQueryResult(query.reqId(), QueryResult.fail("offline"));
+        }
+    }
+
+    /**
+     * Saves the shared dashboard layout (validated during parsing). Needs canControl; at most 5 saves per 10 s per
+     * mainframe. Answered with layout_result; on success every client of the mainframe gets {"t":"layout"}.
+     */
+    private void layout(AuthStore.Device current, ClientMessages.LayoutSet layout) {
+        if (!current.canControl()) {
+            sendLayoutResult(layout.reqId(), "read_only");
+            return;
+        }
+        if (!WebHub.INSTANCE.tryLayoutSave(current.mainframeId())) {
+            sendLayoutResult(layout.reqId(), "rate_limited");
+            return;
+        }
+        if (layout.error() != null || layout.layout() == null) {
+            sendLayoutResult(layout.reqId(), layout.error() == null ? "invalid_layout" : layout.error());
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.setLayout(current, layout.layout());
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while saving a dashboard layout from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendLayoutResult(layout.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendLayoutResult(layout.reqId(), "offline");
+        }
+    }
+
+    private void sendLayoutResult(String reqId, @Nullable String error) {
+        var json = new JsonObject();
+        json.addProperty("t", "layout_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", error == null);
+        if (error != null) json.addProperty("error", error);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
+    private void sendQueryResult(String reqId, QueryResult result) {
+        var json = new JsonObject();
+        json.addProperty("t", "query_result");
+        json.addProperty("reqId", reqId);
+        json.add("rows", result.rows());
+        json.addProperty("truncated", result.truncated());
+        if (result.error() != null) json.addProperty("error", result.error());
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
     private void sendResult(@Nullable String reqId, @Nullable String error) {
-        sendResult(reqId, error, null, 0);
+        sendResult(reqId, error, null, null);
     }
 
     private void sendResult(@Nullable String reqId, @Nullable String error, @Nullable String extraKey, long extraValue) {
+        sendResult(reqId, error, extraKey, (Object) extraValue);
+    }
+
+    private void sendResult(@Nullable String reqId, @Nullable String error, @Nullable String extraKey, @Nullable Object extraValue) {
         var json = new JsonObject();
         json.addProperty("t", "action_result");
         if (reqId != null) json.addProperty("reqId", reqId);
         json.addProperty("ok", error == null);
         if (error != null) json.addProperty("error", error);
-        if (extraKey != null) json.addProperty(extraKey, extraValue);
+        if (extraKey != null && extraValue instanceof Number n) json.addProperty(extraKey, n);
+        if (extraKey != null && extraValue instanceof String str) json.addProperty(extraKey, str);
         send(List.of(Json.GSON.toJson(json)));
     }
 
