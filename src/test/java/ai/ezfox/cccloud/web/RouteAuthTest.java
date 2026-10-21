@@ -65,7 +65,7 @@ class RouteAuthTest {
         }
     }
 
-    private static WebInstance instance(boolean allowInternet) {
+    static WebInstance instance(boolean allowInternet) {
         var auth = new AuthStore(System::currentTimeMillis, () -> {
         });
         return new WebInstance(new StubBridge(), auth, null, List.of(), allowInternet, "http://localhost:8787", 8787);
@@ -142,13 +142,13 @@ class RouteAuthTest {
     void webSocketMessagesNeedAuthentication() {
         var instance = instance(true);
         var handshaker = new WebSocketServerHandshaker13("ws://localhost/ws/client", null, WebSocketDecoderConfig.newBuilder().build());
-        var channel = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1"));
+        var channel = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1", null));
         channel.writeInbound(new TextWebSocketFrame("{\"t\":\"action\",\"uplinkId\":\"" + UUID.randomUUID() + "\",\"id\":\"x\",\"value\":true}"));
         Object out = channel.readOutbound();
         var close = assertInstanceOf(CloseWebSocketFrame.class, out);
         assertEquals(4401, close.statusCode());
 
-        var second = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1"));
+        var second = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1", null));
         second.writeInbound(new TextWebSocketFrame("{\"t\":\"auth\",\"token\":\"wrong\"}"));
         TextWebSocketFrame error = second.readOutbound();
         assertTrue(error.text().contains("unauthorized"));

@@ -271,11 +271,25 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             return;
         }
         var pipeline = ctx.pipeline();
+        // Raw-byte guard in front of the frame decoder: 2 KB before auth, raised by the session after auth. Netty only
+        // installs "wsdecoder" once the 101 response is written, so the guard is added in the handshake listener (the
+        // client cannot send frames before it has that response). Without a decoder to guard: fail closed.
+        var guard = new FrameSizeGuard();
         handshaker.handshake(ctx.channel(), req).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) future.channel().close();
+            if (!future.isSuccess()) {
+                future.channel().close();
+                return;
+            }
+            var p = future.channel().pipeline();
+            if (p.get("wsdecoder") == null) {
+                CloudLog.LOGGER.error("[cccloud] WebSocket decoder missing after handshake; closing {}", ip);
+                future.channel().close();
+                return;
+            }
+            p.addBefore("wsdecoder", "ws-size-guard", guard);
         });
         pipeline.replace("idle", "idle", new IdleStateHandler(CloudWebServer.IDLE_TIMEOUT_S, 0, 0));
-        pipeline.replace(this, "ws", new WebSocketSession(instance, handshaker, ip));
+        pipeline.replace(this, "ws", new WebSocketSession(instance, handshaker, ip, guard));
         pipeline.addBefore("ws", "ws-aggregator", new WebSocketFrameAggregator(ClientMessages.MAX_LAYOUT_FRAME));
     }
 

@@ -45,10 +45,13 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private @Nullable ScheduledFuture<?> authDeadline;
     private @Nullable ScheduledFuture<?> pingTask;
 
-    WebSocketSession(WebInstance instance, WebSocketServerHandshaker handshaker, String ip) {
+    private final @Nullable FrameSizeGuard sizeGuard;
+
+    WebSocketSession(WebInstance instance, WebSocketServerHandshaker handshaker, String ip, @Nullable FrameSizeGuard sizeGuard) {
         this.instance = instance;
         this.handshaker = handshaker;
         this.ip = ip;
+        this.sizeGuard = sizeGuard;
     }
 
     @Override
@@ -141,6 +144,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     if (closed) return;
                     device = candidate;
                     state = State.READY;
+                    // Only authenticated sessions may send big frames (layout_set, up to 64 KB).
+                    if (sizeGuard != null) sizeGuard.raiseLimit(ClientMessages.MAX_LAYOUT_FRAME);
                     if (authDeadline != null) authDeadline.cancel(false);
                     WebHub.INSTANCE.addSession(this);
                 });
