@@ -30,7 +30,11 @@ public final class GuiViews {
         json.addProperty("name", mainframe.getDisplayName());
         var pos = mainframe.getBlockPos();
         json.addProperty("pos", pos.getX() + " " + pos.getY() + " " + pos.getZ());
-        json.addProperty("status", mainframe.isPowered() ? "killed" : mainframe.status().getSerializedName());
+        json.addProperty("status", mainframe.isPowered() ? "killed" : !mainframe.hasPower() ? "no_power" : mainframe.status().getSerializedName());
+        json.addProperty("energy", mainframe.energy().energy());
+        json.addProperty("energyCapacity", mainframe.energy().capacity());
+        json.addProperty("energyUsage", mainframe.energyUsage());
+        json.addProperty("requirePower", CloudConfig.get(CloudConfig.REQUIRE_POWER));
         json.addProperty("enabled", mainframe.isEnabled());
         json.addProperty("cloudAllowed", CloudConfig.get(CloudConfig.ALLOW_CLOUD));
         json.addProperty("canManage", manage);
@@ -42,6 +46,12 @@ public final class GuiViews {
         for (var url : CloudWebServer.dashboardUrls()) urls.add(url);
         json.add("urls", urls);
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
+        var icons = ai.ezfox.cccloud.icons.IconService.current();
+        if (icons != null) {
+            var status = icons.status();
+            json.addProperty("iconsDone", status.done());
+            json.addProperty("iconsTotal", status.total());
+        }
         if (notice != null) json.addProperty("notice", notice);
         if (!manage || server == null) return Json.GSON.toJson(json);
 

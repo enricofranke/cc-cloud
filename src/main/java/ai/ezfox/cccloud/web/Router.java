@@ -18,7 +18,7 @@ public final class Router {
         DEVICE
     }
 
-    public enum Id { PAIR, PAIR_STATUS, MAINFRAMES, WEBSOCKET, STATIC }
+    public enum Id { PAIR, PAIR_STATUS, MAINFRAMES, ICON, WEBSOCKET, STATIC }
 
     public record Route(Id id, HttpMethod method, Pattern path, Access access, String example) {
         boolean matches(HttpMethod m, String p) {
@@ -33,6 +33,8 @@ public final class Router {
         new Route(Id.PAIR, HttpMethod.POST, Pattern.compile("/api/pair"), Access.PUBLIC, "/api/pair"),
         new Route(Id.PAIR_STATUS, HttpMethod.GET, Pattern.compile("/api/pair/[A-Za-z0-9_-]{24}"), Access.PUBLIC, "/api/pair/AAAAAAAAAAAAAAAAAAAAAAAA"),
         new Route(Id.MAINFRAMES, HttpMethod.GET, Pattern.compile("/api/mainframes"), Access.DEVICE, "/api/mainframes"),
+        // Item icons are public (explicitly allow-listed): no secrets, rate limited per IP, still LAN-only by default.
+        new Route(Id.ICON, HttpMethod.GET, Pattern.compile("/api/icon/[a-z0-9_.-]{1,64}/[a-z0-9_./-]{1,512}\\.png"), Access.PUBLIC, "/api/icon/minecraft/iron_ingot.png"),
         // The upgrade itself is public; every WebSocket message except auth/pong is denied until the auth message succeeded.
         new Route(Id.WEBSOCKET, HttpMethod.GET, Pattern.compile("/ws/client"), Access.PUBLIC, "/ws/client"),
         // Static files: everything that is not under /api/ or /ws/.

@@ -50,6 +50,10 @@ public final class CloudCommand {
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("cccloud")
             .then(Commands.literal("status").executes(CloudCommand::status))
+            .then(Commands.literal("icons").requires(src -> src.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                .then(Commands.literal("status").executes(c -> icons(c, "status")))
+                .then(Commands.literal("rebuild").executes(c -> icons(c, "rebuild")))
+                .then(Commands.literal("clear").executes(c -> icons(c, "clear"))))
             .then(Commands.literal("devices").executes(CloudCommand::devices))
             .then(Commands.literal("revoke")
                 .then(Commands.argument("device", StringArgumentType.greedyString())
@@ -88,6 +92,32 @@ public final class CloudCommand {
         if (mainframe == null) throw NOT_LOOKING.create();
         if (!mainframe.canManage(player)) throw NOT_OWNER.create();
         return mainframe;
+    }
+
+    /** {@code /cccloud icons status|rebuild|clear} (operators). */
+    private static int icons(CommandContext<CommandSourceStack> c, String what) {
+        var service = ai.ezfox.cccloud.icons.IconService.current();
+        if (service == null) {
+            c.getSource().sendFailure(Component.translatable("cccloud.icons.unavailable"));
+            return 0;
+        }
+        try {
+            switch (what) {
+                case "rebuild" -> service.rebuild();
+                case "clear" -> service.clear();
+                default -> {
+                }
+            }
+        } catch (java.io.IOException e) {
+            c.getSource().sendFailure(Component.literal(e.toString()));
+            return 0;
+        }
+        if (!what.equals("status")) CCCloud.LOGGER.info("[cccloud] {} ran /cccloud icons {}", c.getSource().getTextName(), what);
+        var s = service.status();
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.status", String.format(java.util.Locale.ROOT, "%,d", s.done()),
+            String.format(java.util.Locale.ROOT, "%,d", s.total()), s.queued() + s.inFlight(), s.renderers(), s.store().failed(),
+            String.format(java.util.Locale.ROOT, "%.1f", s.store().bytes() / 1048576.0)));
+        return 1;
     }
 
     private static int status(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {

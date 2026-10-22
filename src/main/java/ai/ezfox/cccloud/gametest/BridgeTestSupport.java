@@ -45,6 +45,7 @@ public final class BridgeTestSupport {
         linking.owner = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         linking.mainframe = CloudGameTests.placeMainframe(helper, linking.owner, MAINFRAME_FLOOR);
         linking.mainframe.setEnabled(true);
+        CloudGameTests.keepPowered(helper, linking.mainframe);
         linking.link = new ai.ezfox.cccloud.item.MainframeLink(
             net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), linking.mainframe.getBlockPos()), linking.mainframe.getMainframeId());
         return linking;

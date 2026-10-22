@@ -24,6 +24,7 @@ public class CCCloud {
         CloudNetwork.init();
         CloudCommand.init();
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
+        ai.ezfox.cccloud.icons.IconService.init(modEventBus);
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
         if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);
@@ -35,6 +36,11 @@ public class CCCloud {
         event.registerBlock(PeripheralCapability.get(), (level, pos, state, be, side) -> {
             var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
             return mainframe == null ? null : mainframe.peripheral();
+        }, ModRegistry.CLOUD_MAINFRAME.get());
+        // FE input on both halves, all sides (receive-only).
+        event.registerBlock(net.neoforged.neoforge.capabilities.Capabilities.Energy.BLOCK, (level, pos, state, be, side) -> {
+            var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
+            return mainframe == null ? null : mainframe.energy();
         }, ModRegistry.CLOUD_MAINFRAME.get());
     }
 }

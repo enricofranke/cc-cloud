@@ -63,6 +63,12 @@ neoForge {
     runs {
         client {
             client()
+            // Dev only: ./gradlew runClient -PiconBenchmark=/some/dir renders every item icon once and quits.
+            if (project.hasProperty("iconBenchmark")) {
+                systemProperty 'cccloud.iconBenchmark', project.property("iconBenchmark").toString()
+                // Joins run/saves/cccloud-bench (copy any world there); the integrated server hands out the render batches.
+                programArguments.addAll '--quickPlaySingleplayer', 'cccloud-bench'
+            }
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
         }

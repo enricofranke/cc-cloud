@@ -39,6 +39,9 @@ public final class WebHub {
         final Map<String, Map<String, JsonObject>> widgetIndex = new ConcurrentHashMap<>();
         Map<String, JsonObject> outbox = new LinkedHashMap<>();
         int alertSeq;
+        /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
+        @Nullable JsonObject power;
+        @Nullable String reason;
         /** Shared dashboard layout (validated), null = never edited. */
         @Nullable JsonObject layout;
         /** 5 layout saves per 10 s per mainframe. */
@@ -57,6 +60,8 @@ public final class WebHub {
             json.addProperty("name", name);
             json.addProperty("online", online);
             json.addProperty("enabled", enabled);
+            if (power != null) json.add("power", power.deepCopy());
+            if (reason != null) json.addProperty("reason", reason);
             return json;
         }
     }
@@ -95,6 +100,46 @@ public final class WebHub {
                     put(view, "u:" + entry.getKey(), message);
                 }
             }
+        }
+    }
+
+    /** True if the power ok flag differs from what the hub last published (so the change goes out immediately). */
+    public boolean powerOkChanged(UUID mainframeId, boolean ok) {
+        var view = views.get(mainframeId);
+        if (view == null) return true;
+        synchronized (view) {
+            return view.power == null || view.power.get("ok").getAsBoolean() != ok;
+        }
+    }
+
+    /** Test hook: the published power object. */
+    public @Nullable JsonObject powerForTest(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            return view.power == null ? null : view.power.deepCopy();
+        }
+    }
+
+    /** Mainframe power for the dashboard header: {@code {"t":"state", ..., "power":{stored,capacity,usage,ok}, "reason"}}. */
+    public void publishPower(UUID mainframeId, long stored, long capacity, long usage, boolean ok, @Nullable String reason) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            var power = new JsonObject();
+            power.addProperty("stored", stored);
+            power.addProperty("capacity", capacity);
+            power.addProperty("usage", usage);
+            power.addProperty("ok", ok);
+            if (power.equals(view.power) && java.util.Objects.equals(reason, view.reason)) return;
+            view.power = power;
+            view.reason = reason;
+            var state = new JsonObject();
+            state.addProperty("t", "state");
+            state.addProperty("online", view.online);
+            state.addProperty("enabled", view.enabled);
+            state.add("power", power.deepCopy());
+            state.add("reason", reason == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(reason));
+            put(view, "state", state);
         }
     }
 

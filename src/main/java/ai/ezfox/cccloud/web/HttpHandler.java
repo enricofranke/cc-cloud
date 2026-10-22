@@ -132,6 +132,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES -> mainframes(ctx, req, devices);
+            case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
             case STATIC -> {
                 var file = StaticFiles.resolve(path);
@@ -152,6 +153,58 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             }
         }
         return List.copyOf(tokens);
+    }
+
+    // ---- /api/icon ---------------------------------------------------------------------------------------------------
+
+    /** Max icon requests per minute per IP. */
+    static final int ICON_RATE = 200;
+
+    private void icon(ChannelHandlerContext ctx, FullHttpRequest req, String ip, String path) {
+        String rest = path.substring("/api/icon/".length());
+        int slash = rest.indexOf('/');
+        String id = rest.substring(0, slash) + ":" + rest.substring(slash + 1, rest.length() - ".png".length());
+        if (!ai.ezfox.cccloud.icons.IconStore.isValidId(id)) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
+            return;
+        }
+        if (instance.iconLimits.size() > 10_000) instance.iconLimits.clear();
+        if (!instance.iconLimits.computeIfAbsent(ip, k -> new TokenBucket(ICON_RATE, ICON_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        var key = net.minecraft.resources.Identifier.tryParse(id);
+        if (key == null || !net.minecraft.core.registries.BuiltInRegistries.ITEM.containsKey(key)) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("unknown_item"));
+            return;
+        }
+        var service = ai.ezfox.cccloud.icons.IconService.current();
+        byte[] png = service == null ? null : service.store().get(id);
+        if (png != null) {
+            var crc = new java.util.zip.CRC32();
+            crc.update(png);
+            String etag = "\"" + Long.toHexString(crc.getValue()) + "\"";
+            if (etag.equals(req.headers().get(HttpHeaderNames.IF_NONE_MATCH))) {
+                var notModified = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_MODIFIED, Unpooled.EMPTY_BUFFER);
+                notModified.headers().set(HttpHeaderNames.ETAG, etag);
+                notModified.headers().set(HttpHeaderNames.CACHE_CONTROL, "public, max-age=86400");
+                write(ctx, req, notModified);
+                return;
+            }
+            var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(png));
+            response.headers().set(HttpHeaderNames.CONTENT_TYPE, "image/png");
+            response.headers().set(HttpHeaderNames.CACHE_CONTROL, "public, max-age=86400");
+            response.headers().set(HttpHeaderNames.ETAG, etag);
+            write(ctx, req, response);
+            return;
+        }
+        // Not rendered yet: the plain texture from the mod jar, re-requested later (no-cache) so the real icon replaces it.
+        byte[] fallback = ai.ezfox.cccloud.icons.IconService.fallback(rest.substring(0, slash), rest.substring(slash + 1, rest.length() - ".png".length()));
+        if (fallback != null) {
+            send(ctx, req, HttpResponseStatus.OK, "image/png", fallback, "no-cache");
+            return;
+        }
+        sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("no_icon"));
     }
 
     // ---- /api/pair ---------------------------------------------------------------------------------------------------

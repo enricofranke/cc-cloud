@@ -63,7 +63,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
 
     @Override
     protected int headerHeight() {
-        return 18;
+        return bool(view, "requirePower") ? 26 : 18;
     }
 
     @Override
@@ -73,7 +73,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         int led = switch (status) {
             case "online" -> 2;
             case "connecting" -> 1;
-            case "killed" -> 3;
+            case "killed", "no_power" -> 3;
             default -> 0;
         };
         var statusText = Component.translatable("cccloud.gui.status." + (status.isEmpty() ? "offline" : status));
@@ -97,6 +97,22 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         var label = Component.translatable("cccloud.gui.dashboard");
         int labelX = toggleX - 4 - font.width(label);
         if (labelX > x + badgeW + 4) g.text(font, label, labelX, y + 3, 0xFF303030, false);
+
+        if (bool(view, "requirePower")) {
+            // FE buffer bar under the badge: fill, "stored / capacity FE  (usage FE/t)".
+            long stored = num(view, "energy"), capacity = Math.max(1, num(view, "energyCapacity")), usage = num(view, "energyUsage");
+            int by = y + 17, bw = w;
+            g.fill(x, by, x + bw, by + 7, 0xFF1A1A1A);
+            int filled = (int) Math.min(bw - 2, (bw - 2) * stored / capacity);
+            int color = "no_power".equals(status) ? CloudGui.RED : stored * 5 < capacity ? CloudGui.YELLOW : CloudGui.GREEN;
+            g.fill(x + 1, by + 1, x + 1 + filled, by + 6, color);
+            String text = String.format("%,d / %,d FE  ·  %,d FE/t", stored, capacity, usage);
+            g.pose().pushMatrix();
+            g.pose().translate(x + 3, by + 1);
+            g.pose().scale(0.6f, 0.6f);
+            g.text(font, text, 0, 0, CloudGui.TEXT, true);
+            g.pose().popMatrix();
+        }
     }
 
     @Override
@@ -140,6 +156,11 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         if (!bool(view, "internet")) warningRow(Component.translatable("cccloud.gui.lan_only"));
         else if (!bool(view, "tls")) warningRow(Component.translatable("cccloud.gui.no_tls"));
 
+        if (view.has("iconsTotal")) {
+            long done = num(view, "iconsDone"), total = num(view, "iconsTotal");
+            textRow(Component.translatable("cccloud.gui.icons", String.format("%,d", done), String.format("%,d", total)),
+                done >= total ? CloudGui.TEXT_DIM : CloudGui.CYAN);
+        }
         if (!manage()) {
             textRow(Component.translatable("cccloud.gui.readonly_hint"), CloudGui.TEXT_DIM);
             return;

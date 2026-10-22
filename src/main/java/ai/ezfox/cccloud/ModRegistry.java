@@ -101,6 +101,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
+        TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
     }
 
     private ModRegistry() {

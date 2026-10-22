@@ -47,6 +47,24 @@ public final class MainframePeripheral implements IPeripheral {
         return mainframe.isOnline() && mainframe.isEnabled();
     }
 
+    /** Stored FE in the mainframe's buffer. */
+    @LuaFunction
+    public final long getEnergy() {
+        return mainframe.energy().energy();
+    }
+
+    /** Buffer size in FE. */
+    @LuaFunction
+    public final long getEnergyCapacity() {
+        return mainframe.energy().capacity();
+    }
+
+    /** Current consumption in FE per tick (base + linked uplinks/bridges + connected dashboards). */
+    @LuaFunction
+    public final long getEnergyUsage() {
+        return mainframe.energyUsage();
+    }
+
     @LuaFunction(mainThread = true)
     public final void setEnabled(boolean enabled) {
         mainframe.setEnabled(enabled);

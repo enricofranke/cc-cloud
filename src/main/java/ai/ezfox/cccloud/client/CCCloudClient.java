@@ -10,7 +10,8 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 /** Client entry point: block entity renderers and the standalone models of the moving parts. */
 @Mod(value = CCCloud.MODID, dist = Dist.CLIENT)
 public class CCCloudClient {
-    public CCCloudClient(IEventBus modEventBus) {
+    public CCCloudClient(IEventBus modEventBus, net.neoforged.fml.ModContainer container) {
+        ai.ezfox.cccloud.client.icons.ClientIcons.init(modEventBus, container);
         modEventBus.addListener(CloudModels::register);
         modEventBus.addListener(CCCloudClient::registerRenderers);
         modEventBus.addListener(CCCloudClient::registerParticles);

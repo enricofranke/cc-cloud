@@ -22,6 +22,13 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
+    public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
+    public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
+    public static final ModConfigSpec.IntValue MAINFRAME_BASE_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_UPLINK_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_CLIENT_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_BUFFER_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_MAX_INPUT_FE;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -71,6 +78,34 @@ public final class CloudConfig {
         AUTO_COMPUTER_CARD = b.comment("An uplink on a computer without Lua widgets shows an automatic Computer card (power + redstone).")
             .translation("cccloud.configuration.autoComputerCard")
             .define("autoComputerCard", true);
+        b.pop();
+
+        b.push("power");
+        REQUIRE_POWER = b.comment("The mainframe needs FE (Forge Energy / RF). false = it runs for free.")
+            .translation("cccloud.configuration.requirePower")
+            .define("requirePower", true);
+        MAINFRAME_BASE_FE = b.comment("FE per tick the mainframe always uses.")
+            .translation("cccloud.configuration.mainframeBaseFE")
+            .defineInRange("mainframeBaseFE", 40, 0, 1_000_000);
+        MAINFRAME_PER_UPLINK_FE = b.comment("Additional FE per tick per linked, loaded uplink or bridge.")
+            .translation("cccloud.configuration.mainframePerUplinkFE")
+            .defineInRange("mainframePerUplinkFE", 5, 0, 1_000_000);
+        MAINFRAME_PER_CLIENT_FE = b.comment("Additional FE per tick per connected dashboard client.")
+            .translation("cccloud.configuration.mainframePerClientFE")
+            .defineInRange("mainframePerClientFE", 2, 0, 1_000_000);
+        MAINFRAME_BUFFER_FE = b.comment("Size of the mainframe's internal energy buffer (FE).")
+            .translation("cccloud.configuration.mainframeBufferFE")
+            .defineInRange("mainframeBufferFE", 200_000, 1, Integer.MAX_VALUE);
+        MAINFRAME_MAX_INPUT_FE = b.comment("Maximum FE the mainframe accepts per tick.")
+            .translation("cccloud.configuration.mainframeMaxInputFE")
+            .defineInRange("mainframeMaxInputFE", 2_000, 1, Integer.MAX_VALUE);
+        b.pop();
+
+        b.push("icons");
+        VANILLA_ASSETS_JAR = b.comment("Optional path to a Minecraft client jar you own. Lets a dedicated server show vanilla item textures as icon fallback "
+                + "before a game client rendered the real icons. Nothing from Mojang is bundled with this mod.")
+            .translation("cccloud.configuration.vanillaAssetsJar")
+            .define("vanillaAssetsJar", "");
         b.pop();
 
         b.push("bridges");

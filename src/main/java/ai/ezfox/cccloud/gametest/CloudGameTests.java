@@ -27,6 +27,14 @@ public final class CloudGameTests {
         return placeMainframe(helper, player, FLOOR);
     }
 
+    /** Keeps the mainframe's FE buffer full for the whole test (tests that are not about power). */
+    public static void keepPowered(GameTestHelper helper, CloudMainframeBlockEntity mainframe) {
+        mainframe.energy().set(mainframe.energy().capacity());
+        helper.onEachTick(() -> {
+            if (!mainframe.isRemoved()) mainframe.energy().set(mainframe.energy().capacity());
+        });
+    }
+
     /** Places a mainframe on top of {@code floor} (lower half at floor + 1). */
     public static CloudMainframeBlockEntity placeMainframe(GameTestHelper helper, net.minecraft.world.entity.player.Player player, BlockPos floor) {
         var lower = floor.above();

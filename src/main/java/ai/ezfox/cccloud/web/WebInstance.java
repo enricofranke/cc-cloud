@@ -24,6 +24,8 @@ final class WebInstance {
     final List<IpUtil.Cidr> trustedProxies;
     final boolean allowInternet;
     final ConnectionLimiter limiter;
+    /** /api/icon: 200 requests per minute per IP. */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> iconLimits = new java.util.concurrent.ConcurrentHashMap<>();
     final FailureLimiter pairLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** PIN hashing is slow on purpose, so it runs on its own thread with a small bounded queue. */
     final ThreadPoolExecutor pinExecutor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32),

@@ -65,6 +65,14 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private volatile boolean online;
     private final MainframePeripheral peripheral = new MainframePeripheral(this);
 
+    /** FE buffer (Capabilities.Energy.BLOCK on both halves) and the power logic. */
+    private final ai.ezfox.cccloud.power.MainframeEnergy energy = new ai.ezfox.cccloud.power.MainframeEnergy(
+        CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE), CloudConfig.get(CloudConfig.MAINFRAME_MAX_INPUT_FE));
+    private final ai.ezfox.cccloud.power.PowerState power = new ai.ezfox.cccloud.power.PowerState();
+    private long energyUsage;
+    private boolean hasPower = true;
+    private int powerTicks;
+
     public CloudMainframeBlockEntity(BlockPos pos, BlockState state) {
         super(ModRegistry.MAINFRAME_BE.get(), pos, state);
     }
@@ -95,6 +103,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         input.read("trusted", NameAndId.CODEC.listOf()).ifPresent(list -> list.forEach(t -> trusted.put(t.id(), t.name())));
         linkedUplinks.clear();
         input.read("uplinks", LinkedUplink.CODEC.listOf()).ifPresent(list -> list.forEach(u -> linkedUplinks.put(u.id(), u.pos())));
+        energy.set(Math.min(energy.capacity(), Math.max(0, input.getIntOr("energy", 0))));
     }
 
     @Override
@@ -106,6 +115,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         output.putString("owner_name", ownerName);
         output.store("trusted", NameAndId.CODEC.listOf(), trusted.entrySet().stream().map(e -> new NameAndId(e.getKey(), e.getValue())).toList());
         output.store("uplinks", LinkedUplink.CODEC.listOf(), linkedUplinks.entrySet().stream().map(e -> new LinkedUplink(e.getKey(), e.getValue())).toList());
+        output.putInt("energy", energy.energy());
     }
 
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
@@ -168,8 +178,9 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
     private void tick(ServerLevel level) {
         if (!redstoneChecked) updateRedstone();
+        tickPower();
 
-        boolean nowOnline = !powered && CloudConfig.get(CloudConfig.ALLOW_CLOUD);
+        boolean nowOnline = !powered && hasPower && CloudConfig.get(CloudConfig.ALLOW_CLOUD);
         online = nowOnline;
         CloudStatus newStatus;
         if (!nowOnline || !enabled || !CloudConfig.get(CloudConfig.WEB_ENABLED)) {
@@ -193,6 +204,48 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
         // Cheap: the hub ignores unchanged state.
         WebHub.INSTANCE.publishMainframe(mainframeId, getDisplayName(), nowOnline, enabled);
+        // Power numbers change every tick: publish once per second, or right away when the power state flips.
+        if (powerTicks++ % 20 == 0 || WebHub.INSTANCE.powerOkChanged(mainframeId, hasPower)) {
+            WebHub.INSTANCE.publishPower(mainframeId, energy.energy(), energy.capacity(), energyUsage, hasPower, reason());
+        }
+    }
+
+    // ---- power -------------------------------------------------------------------------------------------------------
+
+    private void tickPower() {
+        int capacity = CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE);
+        if (capacity != energy.capacity()) energy.setCapacity(capacity);
+        int loaded = 0;
+        for (var id : linkedUplinks.keySet()) if (CloudNetwork.section(id) != null) loaded++;
+        energyUsage = ai.ezfox.cccloud.power.PowerState.usage(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), loaded, WebHub.INSTANCE.clientCount(mainframeId));
+        boolean before = hasPower;
+        hasPower = power.tick(energy.energy(), energyUsage, CloudConfig.get(CloudConfig.REQUIRE_POWER), energy::consume);
+        energy.startTick();
+        if (before != hasPower) {
+            CCCloud.LOGGER.info("[cccloud] {} {}", getDisplayName(), hasPower ? "has power again" : "ran out of power (no_power)");
+            setChanged();
+        }
+    }
+
+    /** null, "redstone" (kill switch), "no_power" or "cloud_disabled". */
+    public @Nullable String reason() {
+        if (!CloudConfig.get(CloudConfig.ALLOW_CLOUD)) return "cloud_disabled";
+        if (powered) return "redstone";
+        if (!hasPower) return "no_power";
+        return null;
+    }
+
+    public boolean hasPower() {
+        return hasPower;
+    }
+
+    public ai.ezfox.cccloud.power.MainframeEnergy energy() {
+        return energy;
+    }
+
+    public long energyUsage() {
+        return energyUsage;
     }
 
     public void updateRedstone() {

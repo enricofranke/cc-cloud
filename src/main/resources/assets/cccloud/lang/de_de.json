@@ -180,5 +180,18 @@
   "cccloud.gui.notice.unknown_request": "Anfrage abgelaufen",
   "cccloud.configuration.autoComputerCard": "Automatische Computer-Karte",
   "cccloud.bridge.bound": "Bridge mit Mainframe @ %s verbunden. Sie erscheint jetzt als Lager-Bereich im Dashboard.",
-  "cccloud.gui.network": "Speichernetzwerk:"
+  "cccloud.gui.network": "Speichernetzwerk:",
+  "cccloud.gui.icons": "Item-Icons: %s / %s",
+  "cccloud.icons.status": "Item-Icons: %s von %s fertig, %s ausstehend, %s Client(s) rendern, %s nicht renderbar, Speicher %s MB",
+  "cccloud.icons.unavailable": "Der Item-Icon-Speicher läuft nicht.",
+  "cccloud.configuration.vanillaAssetsJar": "Vanilla-Assets-Jar",
+  "cccloud.configuration.icons": "Item-Icons",
+  "cccloud.configuration.shareIconRenders": "Item-Icons für das Dashboard rendern",
+  "cccloud.configuration.power": "Strom",
+  "cccloud.configuration.requirePower": "Strom erforderlich",
+  "cccloud.configuration.mainframeBaseFE": "Grundverbrauch (FE/t)",
+  "cccloud.configuration.mainframePerUplinkFE": "Pro Uplink (FE/t)",
+  "cccloud.configuration.mainframePerClientFE": "Pro Dashboard-Client (FE/t)",
+  "cccloud.configuration.mainframeBufferFE": "Puffer (FE)",
+  "cccloud.configuration.mainframeMaxInputFE": "Max. Eingang (FE/t)"
 }

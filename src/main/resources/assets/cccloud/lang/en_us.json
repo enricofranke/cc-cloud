@@ -180,5 +180,18 @@
   "cccloud.gui.notice.unknown_request": "Request expired",
   "cccloud.configuration.autoComputerCard": "Automatic Computer card",
   "cccloud.bridge.bound": "Bridge linked to Mainframe @ %s. It now shows up on the dashboard as a Storage section.",
-  "cccloud.gui.network": "Storage network:"
+  "cccloud.gui.network": "Storage network:",
+  "cccloud.gui.icons": "Item icons: %s / %s",
+  "cccloud.icons.status": "Item icons: %s of %s done, %s waiting, %s client(s) rendering, %s could not be rendered, store %s MB",
+  "cccloud.icons.unavailable": "The item icon store is not running.",
+  "cccloud.configuration.vanillaAssetsJar": "Vanilla assets jar",
+  "cccloud.configuration.icons": "Item icons",
+  "cccloud.configuration.shareIconRenders": "Render item icons for the dashboard",
+  "cccloud.configuration.power": "Power",
+  "cccloud.configuration.requirePower": "Require power",
+  "cccloud.configuration.mainframeBaseFE": "Base usage (FE/t)",
+  "cccloud.configuration.mainframePerUplinkFE": "Per uplink (FE/t)",
+  "cccloud.configuration.mainframePerClientFE": "Per dashboard client (FE/t)",
+  "cccloud.configuration.mainframeBufferFE": "Buffer (FE)",
+  "cccloud.configuration.mainframeMaxInputFE": "Max input (FE/t)"
 }
