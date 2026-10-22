@@ -453,6 +453,12 @@ def contact_sheet():
     for p in files:
         im = Image.open(p).convert("RGBA")
         sc = 8
+        note = ""
+        if os.sep + "gui" + os.sep in p:
+            bbox = im.getchannel("A").getbbox()
+            im = im.crop((0, 0, bbox[2], bbox[3]))   # GUI sheets: used area only, at 4x
+            sc = 4
+            note = ", used area, 4x"
         big = im.resize((im.width * sc, im.height * sc), Image.NEAREST)
         # checkerboard behind transparency
         cw, ch = big.size
@@ -465,7 +471,7 @@ def contact_sheet():
         bg.alpha_composite(big)
         cell = Image.new("RGB", (max(cw, 200) + 16, ch + 30), (40, 42, 44))
         cell.paste(bg.convert("RGB"), (8, 24))
-        ImageDraw.Draw(cell).text((8, 6), os.path.relpath(p, tex_root) + f"  ({im.width}x{im.height})",
+        ImageDraw.Draw(cell).text((8, 6), os.path.relpath(p, tex_root) + f"  ({Image.open(p).width}x{Image.open(p).height}{note})",
                                   fill=(230, 230, 230))
         cells.append(cell)
     # shelf packing

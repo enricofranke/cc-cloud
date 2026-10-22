@@ -533,6 +533,257 @@ def gen_bridge_status(state):
     cv.save(os.path.join(TEX, "block", f"cloud_bridge_status_{state}.png"))
 
 
+# --------------------------------------------------------------------------- GUI (v0.3)
+# CC GUI language (measured from CC's computer border, drawn here from scratch):
+#   rounded 1 px outline, 2 px highlight top/left, flat body, 2 px shadow bottom/right;
+#   insets invert it: shadow above/left, outline, near-black fill, highlight below/right.
+GUI_TIERS = {
+    # name: (outline, highlight, body, shadow)
+    "gold": (hx("232323"), hx("e8e6a0"), hx("cfcf74"), hx("8e8f4b")),
+    "stone": (hx("232323"), hx("f4f4f4"), hx("c6c6c6"), hx("5f5f5f")),
+    "dark": (hx("161616"), hx("4a4f52"), hx("33373a"), hx("1f2224")),
+    "cyan": (hx("102a33"), CYAN_L, CYAN, CYAN_D),
+}
+TERM = hx("111111")      # CC terminal black
+TERM_LINE = hx("1b1f21")  # faint row separators inside terminal panels
+
+
+def gui_panel(cv, x, y, w, h, tier="gold", round_=True):
+    o, hi, b, sh = GUI_TIERS[tier]
+    cv.rect(x + 1, y + 1, w - 2, h - 2, b)
+    # highlight 2 px top/left, shadow 2 px bottom/right
+    cv.rect(x + 1, y + 1, w - 2, 2, hi)
+    cv.rect(x + 1, y + 1, 2, h - 2, hi)
+    cv.rect(x + 1, y + h - 3, w - 2, 2, sh)
+    cv.rect(x + w - 3, y + 1, 2, h - 2, sh)
+    cv.set(x + w - 3, y + 1, b); cv.set(x + w - 3, y + 2, b)          # soft corner where hi meets shadow
+    cv.set(x + 1, y + h - 3, b); cv.set(x + 2, y + h - 3, b)
+    # outline with rounded (2 px cut) corners
+    cv.rect(x + 2, y, w - 4, 1, o)
+    cv.rect(x + 2, y + h - 1, w - 4, 1, o)
+    cv.rect(x, y + 2, 1, h - 4, o)
+    cv.rect(x + w - 1, y + 2, 1, h - 4, o)
+    if round_:
+        for (cx, cy) in ((x + 1, y + 1), (x + w - 2, y + 1), (x + 1, y + h - 2), (x + w - 2, y + h - 2)):
+            cv.set(cx, cy, o)
+        for (cx, cy) in ((x, y), (x + 1, y), (x, y + 1), (x + w - 1, y), (x + w - 2, y), (x + w - 1, y + 1),
+                         (x, y + h - 1), (x + 1, y + h - 1), (x, y + h - 2),
+                         (x + w - 1, y + h - 1), (x + w - 2, y + h - 1), (x + w - 1, y + h - 2)):
+            cv.set(cx, cy, CLEAR)
+    else:
+        cv.outline(x, y, w, h, [o])
+
+
+def gui_inset(cv, x, y, w, h, tier="gold", fill=TERM):
+    """Terminal-style inset occupying (x, y, w, h) including its 1 px bevel ring."""
+    o, hi, b, sh = GUI_TIERS[tier]
+    cv.rect(x, y, w, 1, sh)
+    cv.rect(x, y, 1, h, sh)
+    cv.rect(x, y + h - 1, w, 1, hi)
+    cv.rect(x + w - 1, y, 1, h, hi)
+    cv.set(x, y + h - 1, b); cv.set(x + w - 1, y, b)
+    cv.outline(x + 1, y + 1, w - 2, h - 2, [o])
+    cv.rect(x + 2, y + 2, w - 4, h - 4, fill)
+
+
+def gui_button(cv, x, y, w, h, state, tier="stone"):
+    """Vanilla-sized button in CC colours. state: normal|hover|pressed|disabled."""
+    o, hi, b, sh = GUI_TIERS[tier]
+    if state == "hover":
+        hi, b, sh = CYAN_L, hx("9fd9ea"), CYAN_D
+    elif state == "disabled":
+        o, hi, b, sh = hx("2b2b2b"), hx("8a8a8a"), hx("6f6f6f"), hx("555555")
+    cv.rect(x, y, w, h, o)
+    if state == "pressed":
+        cv.rect(x + 1, y + 1, w - 2, h - 2, sh)
+        cv.rect(x + 2, y + 2, w - 3, h - 3, b)
+        cv.rect(x + 2, y + h - 2, w - 3, 1, hi)
+    else:
+        cv.rect(x + 1, y + 1, w - 2, h - 2, b)
+        cv.rect(x + 1, y + 1, w - 2, 1, hi)
+        cv.rect(x + 1, y + 1, 1, h - 2, hi)
+        cv.rect(x + 1, y + h - 2, w - 2, 1, sh)
+        cv.rect(x + w - 2, y + 1, 1, h - 2, sh)
+
+
+# GUI layout contract: docs/GUI_LAYOUT.md (written by the Java side). All edges are uniform along
+# their stretch direction and centres are flat, so 9-slice / 3-slice stretching never distorts.
+GUI_GREY = hx("c6c6c6")
+GUI_LIGHT = hx("e8e8e8")
+GUI_DARK = hx("5a5a5a")
+GUI_OUT = hx("232323")
+GUI_BLACK = hx("000000")
+DANGER = (hx("d9534f"), hx("ee8a86"), hx("9c2f2c"))
+ACCEPT = (hx("5cb85c"), hx("93d693"), hx("3a7d3a"))
+GUI_ACCENT = {
+    # tier: (frame body, frame highlight, frame shadow, accent line, strip body, strip light, strip dark)
+    "mainframe": (hx("cfcf74"), hx("e8e6a0"), hx("8e8f4b"), hx("232323"),
+                  hx("dcd773"), hx("ecec9c"), hx("a9a454")),
+    "uplink": (hx("c6c6c6"), hx("f4f4f4"), hx("7a7a7a"), CYAN_D,
+               CYAN, CYAN_L, CYAN_D),
+}
+
+
+def _rounded_rect(cv, x, y, w, h, outline, fill, hi=None, sh=None, r=1, bottom_open=False):
+    """Filled rect with 1 px outline, corners cut by r px, optional 1 px bevel (hi top/left, sh bottom/right)."""
+    cv.rect(x, y, w, h, outline)
+    cv.rect(x + 1, y + 1, w - 2, h - (1 if bottom_open else 2), fill)
+    if hi:
+        cv.rect(x + 1, y + 1, w - 2, 1, hi)
+        cv.rect(x + 1, y + 1, 1, h - (1 if bottom_open else 2), hi)
+    if sh:
+        if not bottom_open:
+            cv.rect(x + 1, y + h - 2, w - 2, 1, sh)
+        cv.rect(x + w - 2, y + 1, 1, h - (1 if bottom_open else 2), sh)
+        if hi:
+            cv.set(x + w - 2, y + 1, fill)
+            if not bottom_open:
+                cv.set(x + 1, y + h - 2, fill)
+    if bottom_open:
+        cv.rect(x + 1, y + h - 1, w - 2, 1, fill)
+    for k in range(r):
+        for (cx, cy) in ((x + k, y), (x, y + k), (x + w - 1 - k, y), (x + w - 1, y + k)):
+            cv.set(cx, cy, CLEAR)
+        if not bottom_open:
+            for (cx, cy) in ((x + k, y + h - 1), (x, y + h - 1 - k), (x + w - 1 - k, y + h - 1), (x + w - 1, y + h - 1 - k)):
+                cv.set(cx, cy, CLEAR)
+    if r:
+        cv.set(x + 1, y + 1, outline); cv.set(x + w - 2, y + 1, outline)
+        if not bottom_open:
+            cv.set(x + 1, y + h - 2, outline); cv.set(x + w - 2, y + h - 2, outline)
+
+
+def gen_gui_screen(kind):
+    """textures/gui/{mainframe,uplink}.png, layout per docs/GUI_LAYOUT.md (256x256)."""
+    fb, fh, fs, line, sb, sl, sd = GUI_ACCENT[kind]
+    cv = Canvas(256, 256, CLEAR)
+
+    # Panel frame 0,0 48x48, 9-slice border 8: tier-coloured CC bevel ring (px 0..5), a 1 px accent
+    # line (px 6), then the neutral inner panel with its own 1 px bevel (px 7) and flat #C6C6C6 body.
+    x, y, w, h = 0, 0, 48, 48
+    cv.rect(x + 1, y + 1, w - 2, h - 2, fb)
+    cv.rect(x + 1, y + 1, w - 2, 2, fh); cv.rect(x + 1, y + 1, 2, h - 2, fh)
+    cv.rect(x + 1, y + h - 3, w - 2, 2, fs); cv.rect(x + w - 3, y + 1, 2, h - 2, fs)
+    for (cx, cy) in ((w - 3, 1), (w - 3, 2), (w - 2, 2), (1, h - 3), (2, h - 3), (2, h - 2)):
+        cv.set(x + cx, y + cy, fb)
+    _round = [(0, 0), (1, 0), (0, 1), (w - 1, 0), (w - 2, 0), (w - 1, 1), (0, h - 1), (1, h - 1), (0, h - 2),
+              (w - 1, h - 1), (w - 2, h - 1), (w - 1, h - 2)]
+    cv.rect(x + 2, y, w - 4, 1, GUI_OUT); cv.rect(x + 2, y + h - 1, w - 4, 1, GUI_OUT)
+    cv.rect(x, y + 2, 1, h - 4, GUI_OUT); cv.rect(x + w - 1, y + 2, 1, h - 4, GUI_OUT)
+    for (cx, cy) in ((1, 1), (w - 2, 1), (1, h - 2), (w - 2, h - 2)):
+        cv.set(x + cx, y + cy, GUI_OUT)
+    for (cx, cy) in _round:
+        cv.set(x + cx, y + cy, CLEAR)
+    cv.outline(x + 6, y + 6, w - 12, h - 12, [line])
+    cv.rect(x + 7, y + 7, w - 14, h - 14, GUI_GREY)
+    cv.rect(x + 7, y + 7, w - 14, 1, GUI_LIGHT); cv.rect(x + 7, y + 7, 1, h - 14, GUI_LIGHT)
+    cv.rect(x + 7, y + h - 8, w - 14, 1, GUI_DARK); cv.rect(x + w - 8, y + 7, 1, h - 14, GUI_DARK)
+
+    # Title bar 48,0 48x16, 3-slice caps 6: accent strip, rounded caps, bevel top/bottom
+    _rounded_rect(cv, 48, 0, 48, 16, GUI_OUT, sb, sl, sd, r=2)
+
+    # Terminal inset 0,48 24x24, 9-slice border 4: panel bevel ring (dark TL / light BR), outline,
+    # 1 px inner shadow, #111 body
+    x, y = 0, 48
+    cv.rect(x, y, 24, 24, GUI_GREY)
+    cv.rect(x, y, 24, 1, GUI_DARK); cv.rect(x, y, 1, 24, GUI_DARK)
+    cv.rect(x, y + 23, 24, 1, GUI_LIGHT); cv.rect(x + 23, y, 1, 24, GUI_LIGHT)
+    cv.outline(x + 1, y + 1, 22, 22, [GUI_OUT])
+    cv.rect(x + 2, y + 2, 20, 20, TERM)
+    cv.rect(x + 2, y + 2, 20, 1, GUI_BLACK); cv.rect(x + 2, y + 2, 1, 20, GUI_BLACK)
+
+    # Tabs 32x14, caps 5. Inactive: darker grey, closed bottom. Active: inset-black body with a
+    # 2 px accent top edge, open bottom so it merges into the terminal inset (use light text).
+    _rounded_rect(cv, 48, 16, 32, 14, GUI_OUT, hx("adadad"), GUI_LIGHT, hx("7f7f7f"), r=2)
+    _rounded_rect(cv, 48, 30, 32, 14, GUI_OUT, TERM, None, None, r=2, bottom_open=True)
+    cv.rect(50, 31, 28, 2, sb); cv.rect(49, 32, 1, 1, sb); cv.rect(78, 32, 1, 1, sb)
+    cv.rect(50, 31, 28, 1, sl)
+
+    # Status LEDs 8x8 at 96/104/112/120,0: dark socket, 6x6 round lens, light from top-left
+    leds = [(RED, RED_L, RED_D), (YELLOW, YELLOW_L, YELLOW_D), (GREEN, GREEN_L, GREEN_D),
+            (hx("6e1f1f"), hx("8a3a3a"), hx("3d1010"))]
+    for i, (m_, l_, d_) in enumerate(leds):
+        ox = 96 + 8 * i
+        cv.ascii(ox, 0, ["  oooo  ", " ollmmo ", "olmmmmdo", "ommmmmdo", "ommmmmdo", "ommmmddo",
+                          " odddd o"[:7] + " ", "  oooo  "],
+                 {"o": GUI_OUT, "l": l_, "m": m_, "d": d_})
+        cv.set(ox + 6, 6, GUI_OUT)
+        if i == 3:  # killed: crossed out
+            for k in range(2, 6):
+                cv.set(ox + k, k, GUI_OUT); cv.set(ox + 7 - k, k, GUI_OUT)
+
+    # Big status badge 96,8 64x14, caps 5: neutral dark pill (terminal look, light text + LED on it)
+    _rounded_rect(cv, 96, 8, 64, 14, GUI_OUT, hx("1c1c1c"), hx("2e2e2e"), hx("0c0c0c"), r=2)
+
+    cv.save(os.path.join(TEX, "gui", f"{kind}.png"))
+
+
+def gen_gui_widgets():
+    """textures/gui/widgets.png, layout per docs/GUI_LAYOUT.md (256x256)."""
+    cv = Canvas(256, 256, CLEAR)
+    btn = (hx("d8d8d8"), hx("f6f6f6"), hx("8c8c8c"))
+
+    def button(x, y, body, hi, sh, outline=GUI_OUT, pressed=False, flat=False):
+        if pressed:
+            _rounded_rect(cv, x, y, 48, 14, outline, body, sh, hi, r=1)
+        elif flat:
+            _rounded_rect(cv, x, y, 48, 14, outline, body, None, None, r=1)
+        else:
+            _rounded_rect(cv, x, y, 48, 14, outline, body, hi, sh, r=1)
+
+    button(0, 0, *btn)
+    button(0, 14, hx("e6e6e6"), hx("ffffff"), hx("9a9a9a"), outline=hx("2a7f99"))
+    cv.rect(1, 15, 46, 1, CYAN); cv.rect(1, 26, 46, 1, CYAN)          # cyan outline inside the edge
+    cv.rect(1, 15, 1, 12, CYAN); cv.rect(46, 15, 1, 12, CYAN)
+    cv.set(1, 15, hx("2a7f99")); cv.set(46, 15, hx("2a7f99")); cv.set(1, 26, hx("2a7f99")); cv.set(46, 26, hx("2a7f99"))
+    button(0, 28, hx("bcbcbc"), hx("f6f6f6"), hx("7a7a7a"), pressed=True)
+    button(0, 42, hx("a3a3a3"), None, None, outline=GUI_DARK, flat=True)
+    # danger / accept
+    button(48, 0, *DANGER)
+    button(48, 14, hx("e5716d"), hx("f6aaa7"), hx("a8383a"))
+    button(48, 28, *ACCEPT)
+    button(48, 42, hx("74c874"), hx("aee3ae"), hx("468f46"))
+
+    # toggles 24x12: rounded dark track, 10x10 knob (CC grey bevel); on = cyan track, knob right
+    for (y, on) in ((0, False), (12, True)):
+        track = CYAN_D if on else hx("2b2b2b")
+        track_l = CYAN if on else hx("3a3a3a")
+        _rounded_rect(cv, 96, y, 24, 12, GUI_OUT, track, None, None, r=2)
+        cv.rect(98, y + 2, 20, 1, track_l)
+        kx = 96 + (13 if on else 1)
+        _rounded_rect(cv, kx, y + 1, 10, 10, GUI_OUT, hx("d8d8d8"), hx("f6f6f6"), hx("8c8c8c"), r=1)
+        if on:
+            cv.rect(99, y + 5, 1, 2, CYAN_L)  # tiny "I" mark in the track
+
+    # text field 48x14 caps 3 (dark inset), focused = cyan 1 px border
+    for (y, focus) in ((56, False), (70, True)):
+        cv.rect(0, y, 48, 14, GUI_GREY)
+        cv.rect(0, y, 48, 1, GUI_DARK); cv.rect(0, y, 1, 14, GUI_DARK)
+        cv.rect(0, y + 13, 48, 1, GUI_LIGHT); cv.rect(47, y, 1, 14, GUI_LIGHT)
+        cv.outline(1, y + 1, 46, 12, [CYAN if focus else GUI_BLACK])
+        cv.rect(2, y + 2, 44, 10, TERM)
+
+    # list rows 48x18 caps 3: subtle bands on the inset, 1 px separator; hover = lighter + cyan marker
+    for (y, body, mark) in ((56, hx("1a1a1a"), None), (74, hx("242424"), CYAN)):
+        cv.rect(48, y, 48, 18, body)
+        cv.rect(48, y + 17, 48, 1, hx("0d0d0d"))
+        if mark:
+            cv.rect(48, y, 2, 17, mark)
+
+    # scrollbar track 6x32 / thumb 6x16 (3-slice vertical, caps 3)
+    _rounded_rect(cv, 96, 24, 6, 32, GUI_BLACK, hx("0a0a0a"), None, None, r=1)
+    _rounded_rect(cv, 102, 24, 6, 16, CYAN_D, CYAN, CYAN_L, CYAN_D, r=1)
+
+    # copy icon 9x9 (two overlapping pages) and warning icon 9x9
+    cv.ascii(112, 24, ["oooooo   ", "o....o   ", "o.oooooo ", "o.o....o ", "ooo....o ",
+                       "  o....o ", "  o....o ", "  oooooo ", "         "],
+             {"o": GUI_OUT, ".": hx("f4f4f4")})
+    cv.ascii(121, 24, ["    o    ", "   oyo   ", "   oyo   ", "  oykyo  ", "  oykyo  ",
+                       " oyykyyo ", " oyyyyyo ", "oyyykyyyo", "ooooooooo"],
+             {"o": hx("5a4310"), "y": YELLOW, "k": GUI_OUT})
+    cv.save(os.path.join(TEX, "gui", "widgets.png"))
+
+
 # --------------------------------------------------------------------------- items / particle
 def gen_items():
     # Keycard: light grey card, dark outline, gold chip, small cyan cloud, magnetic stripe.
@@ -603,6 +854,9 @@ def main():
     gen_bridge("rs")
     for st in STATUS:
         gen_bridge_status(st)
+    gen_gui_screen("mainframe")
+    gen_gui_screen("uplink")
+    gen_gui_widgets()
     gen_items()
     print("textures written to", TEX)
 
