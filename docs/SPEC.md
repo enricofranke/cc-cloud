@@ -390,3 +390,81 @@ An ME/RS Cloud Bridge on its own is a dashboard member; no extra uplink is neede
   - Where icons come from: the game client renders them with the game's own inventory renderer (3D blocks, tints, mod models), so the singleplayer/LAN host and every player with the mod contribute; the integrated server uses the same packets as a dedicated server. A dedicated server has no Minecraft textures (the server jar ships none), so until a client has rendered them, vanilla items get 404 (the UI shows the letter tile) unless `vanillaAssetsJar` points to a client jar the admin owns; modded items fall back to the flat `textures/item|block/<path>.png` from the mod jar. Fallback responses are `no-cache`, rendered icons `max-age=86400` with an ETag.
   - Store: `<world>/cccloud/icons/<namespace>.zip` + `manifest.json`; icons are 32×32 RGBA PNGs (≈ 0.9 KB each). Measured with `runClient -PiconBenchmark` (vanilla + CC + AE2 + RS = 2 305 items): 2 301 rendered, 4 not renderable, 0.33 ms GPU-submission time per item, 2.1 MB on disk, 80 s wall time end to end in singleplayer with the 2 ms/frame budget (dominated by the one-batch-per-second hand-out and frame pacing). Extrapolated to ATM11 (~36 000 items): ≈ 12 s of render time spread over ≈ 2–4 min of play, ≈ 33 MB on disk.
   - Upload checks: only ids of the batch assigned to that client, at most one outstanding batch and one request per second per client, ≤ 64 icons and ≤ 24 KB per packet, strict PNG validation (signature, CRCs, IHDR 32×32 8-bit RGBA, IDAT/IEND only, exact inflated size, valid filters, ≤ 16 KB). Anything else is discarded.
+
+## v0.4 – Network: range, relays, power scaling, network map (requested 2026-10-23)
+The cloud network should feel like a real infrastructure (think UniFi): devices have range, relays extend it, the whole thing costs more power the bigger it gets, and there is a live map of everything that is connected.
+
+### Range and topology
+- Every device connects to the nearest reachable **node** (the mainframe or a relay) – not necessarily directly to the mainframe. The server computes the network as a graph and routes every device to the mainframe over the best path (fewest hops, then best signal). Max 8 hops.
+- Default ranges (config, in blocks, same dimension, spherical distance):
+  - Cloud Uplink: 48 · Advanced Cloud Uplink: 128
+  - Cloud Bridges: 48 (they are network devices like uplinks)
+  - Cloud Relay: 96 to other nodes, 48 for devices · Advanced Cloud Relay: 256 to other nodes, 128 for devices
+  - Ender Relay: links to other Ender Relays across any distance and across dimensions (pairs/groups via the Link Card)
+  - Mainframe: acts as a node with 96 range.
+- Signal quality per link = 1 − (distance / range), shown as 0–100 % with bars. Below 15 % the link is "weak" (still works, shown yellow).
+- When a relay is broken, unloaded or out of power, everything behind it re-routes over another path if one exists, else it goes offline (status `no_route`). Chunk loading: relays never force-load chunks; unloaded parts show as `unloaded`.
+- Linking stays with the Link Card (the device joins the mainframe's network); range is checked against the whole network, not only the mainframe. Error message names the nearest node and how far it is.
+- Migration: existing worlds keep working – if a v0.3 device is out of range under the new rules, it stays connected but is flagged `legacy_out_of_range` on the map until it is re-linked or a relay is placed (config `legacyRangeGrace`, default true).
+
+### Power scaling
+- The mainframe's usage grows with the network: base 40 FE/t + 4 per uplink + 8 per advanced uplink + 10 per bridge + 2 per dashboard client + 1 per hop beyond the first for each routed device (config).
+- Relays need their own FE: Cloud Relay 20 FE/t, Advanced 60 FE/t, Ender Relay 120 FE/t (config, 0 = free), buffer 50k–200k. Out of power → relay offline → re-routing as above.
+- The mainframe screen and the dashboard show a power breakdown (what costs how much).
+
+### New blocks (art in CC style; see art brief)
+- `cccloud:cloud_relay` / `cccloud:advanced_cloud_relay`: a slim relay mast on a CC casing base (antenna allowed here, slender, 1 block tall, max ~4 px wider than a CC modem plate at the top), status LEDs, slowly rotating emitter ring (BER).
+- `cccloud:ender_relay`: gold, with a floating ender-eye core like the advanced uplink but bigger.
+- Recipes (CC style): relay = stone + wired modem + cloud core + redstone; advanced = relay + gold + ender pearl; ender relay = advanced relay + ender eyes + gold block (exact grids in the recipe JSON, documented in /docs).
+
+### Network map
+- Browser protocol: snapshot gets `network: {nodes:[{id,type,name,pos:{x,y,z},dim,status,power?,range,deviceRange}], links:[{a,b,signal,dist,kind:"radio"|"ender"}], routes:{deviceId:[nodeIds...]}}`, plus `network` deltas (rate-limited to 2/s). Positions are only sent to devices with canControl (read-only devices get the topology without coordinates).
+- Web: a **Network** page (always present, own tab with icon) with two views:
+  1. **Topology** (UniFi-style): mainframe at the root, relays as branches, devices as leaves, link lines colored by signal, status dots, click → detail panel (type, position, dimension, status, signal, hops, power, uplink title/widgets count, last seen, actions: open its card, unlink if canControl).
+  2. **Map**: top-down x/z map per dimension (tabs), grid with coordinates, range circles (toggle), links, pan/zoom (touch-friendly), auto-fit, the player can tap a node for the same detail panel.
+- In-game: a **Network** tab in the mainframe screen: a simple tree list (indent per hop, status dot, signal bars, distance) and a small top-down mini map (pixel grid, nodes as colored dots, lines for links), plus a hint for out-of-range devices.
+- Lua (`cloud_mainframe`): `getNetwork()` returns nodes/links/routes like the snapshot (with positions; it is in-world access).
+
+### Decision 2026-10-23: no particle effects
+The `data_packet` particle (packets flying between uplink and mainframe) is removed, and v0.4 adds no particles between relays/devices – they cost performance under heavy traffic. Block animations (fan, hologram, rings, cores) stay, are distance-culled (~32 blocks) and can be turned off with the client config `animations`.
+
+## v0.5 – Integrations, rules, push, browser terminal (approved 2026-10-23)
+Everything here follows the existing security model (deny-by-default, canControl, validation, rate limits) and is optional per server config. Mod integrations are soft dependencies in `compat/<modid>` packages, loaded only when the mod is present (ATM11 mod ids to verify from the jars: powah, enderio, oritech, energizedpower, energymeter, generatorgalore, mysticalagriculture, productivebees, hostilenetworks, mffs, merequester, extendedae, spark, ftbteams, ftbchunks, journeymap, simplebackups).
+
+### A. Ready-made cards (zero code, like the bridges' Storage card)
+An uplink attached directly to a supported block (direct mode) publishes a template card:
+- **Energy** (any block with the FE capability, plus richer data for Powah energy cells/reactor, Ender IO capacitor banks, Oritech, Generator Galore generators, Energized Power): stored/capacity gauge, in/out FE/t where the mod exposes it, a history chart (last 60 min, 1 point per 10 s, server-side ring buffer), reactor status/temperature/fuel for the Powah reactor, on/off via the block's own redstone mode if exposed.
+- **Energy Meter** (energymeter): live flow FE/t + history chart, mode, transferred total.
+- **Farms**: Mystical Agriculture growth accelerators/crops are too simple – focus on machines with state: Hostile Neural Networks simulation chamber (model, data, progress, output), Productive Bees hives/centrifuges (honey level, bees, output inventory fullness). Alert when an output is full or a machine is blocked (once per transition).
+- **MFFS** force field projector: field on/off (canControl + PIN by default), power, status.
+- **ME Requester / ExtendedAE**: list the requests with their target amounts, edit amount/enable (canControl).
+Every template is a normal set of widgets, so the user can rearrange it in edit mode.
+
+### B. Server & team
+- **Server card** on the mainframe (canControl only): TPS/MSPT (from the server tick times; spark's API if present for per-dimension and lag sources), players online, uptime, memory; history chart.
+- **FTB Teams**: if present, members of the owner's team count as trusted automatically (config `ftbTeamsTrust`, default true); team changes apply live.
+- **FTB Chunks / JourneyMap**: claimed chunks of the owner's team as an overlay on the network map (FTB Chunks API); JourneyMap is client-only → skip unless trivial.
+- **Simple Backups**: card with the last backup time and a "Backup now" button (canControl + confirm), if the mod exposes an API/command; otherwise run its command server-side.
+
+### C. Rules (no-code automation, server-side)
+- Per mainframe, a list of rules: **When** (trigger) → **If** (optional conditions) → **Then** (actions).
+  - Triggers: a widget value crosses a threshold (any numeric widget incl. template cards), item count in a bridge below/above X, mainframe power below X %, a device goes offline, a time interval (every N minutes, min 1), an in-game time of day.
+  - Conditions: same comparisons, AND only in v0.5.
+  - Actions: set a redstone output on an auto-card computer side, press a button / set a toggle / set a slider on a widget (same validation as a human action, user = "rule:<name>"), request a craft on a bridge (with max amount), send an alert (level) incl. push, enable/disable the dashboard.
+  - Safety: each rule has a cooldown (min 5 s), max 32 rules per mainframe, max 10 actions per rule run, loop protection (a rule cannot trigger itself or more than 20 rule runs per second per mainframe), and an audit log entry per run. Rules run on the server thread in a cheap evaluation step (only re-evaluate on relevant changes or interval ticks).
+  - Rules are edited in the dashboard (canControl), stored in SavedData, validated server-side; Lua can list/enable/disable rules via `cloud_mainframe` (`getRules()`, `setRuleEnabled(id, bool)`).
+
+### D. Push notifications
+- Targets per mainframe (canControl to edit, secrets stored server-side, never sent back to the browser in full): **Discord webhook**, **ntfy** (topic URL, optional token), generic **webhook** (JSON POST).
+- What is sent: alerts (by min level), rule actions with `notify`, device approvals pending, mainframe offline/no power.
+- Outgoing HTTP from the server: async, timeouts 5 s, retries with backoff, max 30 messages/minute per mainframe, URL allowlist by scheme (https only, except ntfy on LAN), never follow redirects to private IPs (SSRF protection), config `pushEnabled` and `pushAllowedHosts`.
+- A "Send test notification" button.
+
+### E. Browser terminal + Lua editor (for scripters)
+- **Terminal**: live view of a CC computer's terminal (attached to an uplink) with keyboard input from the browser (canControl only), like standing in front of it. Server streams terminal changes (diffed, max 10 fps, colour palette), input events are rate-limited and go through CC's event queue (`char`, `key`, `key_up`, `paste`, `mouse_click` optional). Uses CC's server-side terminal state (check the CC API for reading a ServerComputer's terminal).
+- **Lua editor**: file tree of the computer's filesystem (only that computer's own drive, no disk drives, no rom writes), open/edit/save files with syntax highlighting (lightweight editor bundled, e.g. CodeMirror 6 core with the Lua mode, lazy-loaded chunk), "Save & run" (runs `shell.run(file)` via a queued event the cloud.ui/startup helper listens to, or via the terminal by typing the command). Limits: file size ≤ 256 KB, path validation, quota respected, audit log.
+- Both are behind a per-mainframe setting `allowRemoteTerminal` (default true for owner/trusted, PIN-protected if a PIN is set).
+
+### F. HTTPS via Tailscale + statistics
+- Docs page: "Install as an app with HTTPS via Tailscale" (`tailscale serve --https=443 http://localhost:8787`, or `tailscale cert`) – the mod only needs `publicUrl` set and trusted proxy 127.0.0.1. Detect `Tailscale-User-Login` headers? No – keep auth as is.
+- **Long-term stats**: any numeric widget can opt in (`opts.history="1h"|"24h"|"7d"`); the mod downsamples (1 min / 5 min / 30 min buckets) and stores compactly per mainframe (cap 2 MB). Charts in the dashboard with range switcher; CSV export (canControl).
