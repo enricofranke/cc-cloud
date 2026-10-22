@@ -67,6 +67,9 @@ interface Mainframe {
   clients: Set<Client>;
   layout: object | null;
   layoutSaves: number[];
+  /** v0.3 FE buffer; undefined = requirePower=false */
+  power?: { stored: number; capacity: number; input: number; usage: number; ok: boolean; brownout: number };
+  reason?: string;
   /** Simulates a Lua script that never answers (for rollback tests). */
   ignoreActions: boolean;
   onAction?: (uplinkId: string, id: string, value: Scalar, user: string) => void;
@@ -96,6 +99,8 @@ export interface MockOptions {
   ae2?: boolean;
   /** Add the Lua v2 "Control Room" uplink with pages/groups (default true). */
   controlRoom?: boolean;
+  /** v0.3: the base mainframe needs FE (default true). */
+  power?: boolean;
   /** Add an uplink in v0.3 auto mode: the automatic Computer card (default true). */
   computer?: boolean;
   /** "sides" = one redstone_sides widget (SPEC), "widgets" = per-side indicator/toggle/slider widgets in groups. */
@@ -179,7 +184,16 @@ export async function createMockServer(opts: MockOptions = {}) {
   // ------------------------------------------------------------ broadcasting
   const sendTo = (ws: WebSocket, msg: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(msg));
   const broadcast = (mf: Mainframe, msg: object) => mf.clients.forEach((c) => sendTo(c.ws, msg));
-  const info = (mf: Mainframe) => ({ id: mf.id, name: mf.name, online: mf.online, enabled: mf.enabled });
+  const powerOf = (mf: Mainframe) =>
+    mf.power ? { stored: Math.round(mf.power.stored), capacity: mf.power.capacity, usage: mf.power.usage, ok: mf.power.ok } : undefined;
+  const info = (mf: Mainframe) => ({
+    id: mf.id,
+    name: mf.name,
+    online: mf.online,
+    enabled: mf.enabled,
+    ...(mf.reason ? { reason: mf.reason } : {}),
+    ...(mf.power ? { power: powerOf(mf) } : {}),
+  });
   const snapshot = (mf: Mainframe, c?: Client) => ({
     t: "snapshot",
     mainframe: info(mf),
@@ -216,9 +230,10 @@ export async function createMockServer(opts: MockOptions = {}) {
     log(`alert ${level}: ${text}`);
     broadcast(mf, { t: "alert", ...a });
   }
-  function setState(mf: Mainframe, patch: { online?: boolean; enabled?: boolean }) {
+  function setState(mf: Mainframe, patch: { online?: boolean; enabled?: boolean; reason?: string }) {
     Object.assign(mf, patch);
-    broadcast(mf, { t: "state", online: mf.online, enabled: mf.enabled });
+    if (patch.online === true) mf.reason = undefined;
+    broadcast(mf, { t: "state", online: mf.online, enabled: mf.enabled, ...(mf.reason ? { reason: mf.reason } : {}), ...(mf.power ? { power: powerOf(mf) } : {}) });
   }
   function putUplink(mf: Mainframe, u: Uplink) {
     mf.uplinks.set(u.uplinkId, u);
@@ -246,6 +261,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
 
   const base = addMainframe("Mainframe @ 12 64 -30", true);
+  if (opts.power !== false) base.power = { stored: 152_000, capacity: 200_000, input: 120, usage: 0, ok: true, brownout: 0 };
   let meSim: FakeAe2 | undefined;
   {
     const WARN = 900;
@@ -553,7 +569,41 @@ export async function createMockServer(opts: MockOptions = {}) {
     outpost.onAction = (u, id, v) => setValue(outpost, u, id, v);
   }
 
-  const ticker = opts.tickMs === 0 ? undefined : setInterval(() => mainframes.forEach((m) => m.online && m.tick?.()), opts.tickMs ?? 1000);
+  // ---- v0.3 power: 1 sim tick = 1 s = 20 game ticks
+  let powerTicks = 0;
+  function tickPower(mf: Mainframe) {
+    const p = mf.power;
+    if (!p) return;
+    const uplinks = [...mf.uplinks.values()].filter((u) => u.online).length;
+    p.usage = 40 + 5 * uplinks + 2 * mf.clients.size;
+    const draw = p.ok ? p.usage : 0;
+    p.stored = Math.max(0, Math.min(p.capacity, p.stored + (p.input - draw) * 20));
+    if (p.ok && p.stored <= 0) {
+      // brownout: keep going 5 s on nothing before cutting, to avoid flicker
+      if (++p.brownout >= 5) {
+        p.ok = false;
+        p.brownout = 0;
+        log(`${mf.name}: out of power`);
+        return setState(mf, { online: false, reason: "no_power" });
+      }
+    } else p.brownout = 0;
+    if (!p.ok && p.stored >= p.usage * 20 * 10) {
+      p.ok = true;
+      log(`${mf.name}: power restored`);
+      return setState(mf, { online: true });
+    }
+    broadcast(mf, { t: "state", online: mf.online, enabled: mf.enabled, ...(mf.reason ? { reason: mf.reason } : {}), power: powerOf(mf) });
+  }
+  const tickAll = () => {
+    powerTicks++;
+    // a solar array: strong for 40 s, weak for 40 s -> the buffer drains and refills
+    if (base.power) base.power.input = powerTicks % 80 < 40 ? 120 : 30;
+    mainframes.forEach((m) => {
+      tickPower(m);
+      if (m.online) m.tick?.();
+    });
+  };
+  const ticker = opts.tickMs === 0 ? undefined : setInterval(tickAll, opts.tickMs ?? 1000);
 
   // ----------------------------------------------------------------- actions
   function coerce(w: Widget, value: Scalar | undefined): Scalar | undefined {
@@ -654,7 +704,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           const recentQ = [...m.clients].filter((x) => x.tokenHash === c.tokenHash).flatMap((x) => x.queryHits).filter((h) => now - h < 1000);
           if (recentQ.length >= 5) return qres([], false, "rate_limited");
           c.queryHits = [...c.queryHits.filter((h) => now - h < 1000), now];
-          if (!m.online) return qres([], false, "offline");
+          if (!m.online) return qres([], false, m.reason === "no_power" ? "no_power" : "offline");
           const qu = m.uplinks.get(msg.uplinkId);
           const qw = qu?.widgets.find((x) => x.id === msg.id);
           if (!qu || !qw || qw.type !== "item_search") return qres([], false, "unknown_widget");
@@ -669,7 +719,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (recent.length >= 10) return result(msg.reqId, false, "rate_limited");
         c.hits = [...c.hits.filter((h) => now - h < 1000), now];
         if (!c.canControl) return result(msg.reqId, false, "read_only");
-        if (!m.online) return result(msg.reqId, false, "offline");
+        if (!m.online) return result(msg.reqId, false, m.reason === "no_power" ? "no_power" : "offline");
         if (!m.enabled) return result(msg.reqId, false, "disabled");
         const u = m.uplinks.get(msg.uplinkId);
         if (!u) return result(msg.reqId, false, "unknown_uplink");
@@ -827,6 +877,11 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (b.alert) alert(mf, b.alert.uplinkId, String(b.alert.text), b.alert.level ?? "info");
       if (typeof b.approve === "string") decide(b.approve, true);
       if (typeof b.deny === "string") decide(b.deny, false);
+      if (b.power && typeof b.power === "object" && mf.power) {
+        if (typeof b.power.stored === "number") mf.power.stored = Math.max(0, Math.min(mf.power.capacity, b.power.stored));
+        if (typeof b.power.input === "number") mf.power.input = Math.max(0, b.power.input);
+        if (b.power.tick) for (let i = 0; i < Number(b.power.tick); i++) tickPower(mf);
+      }
       if (b.revokePlayer) {
         // the approving player lost access (untrusted / banned / de-opped): devices die immediately
         for (const [h, t] of tokens) if (t.mainframeId === mf.id) tokens.delete(h);
@@ -899,6 +954,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     base,
     code: (mf: Mainframe = base) => fmt(currentCode(mf)),
     pairings,
+    tickPower: (mf: Mainframe = base) => tickPower(mf),
     /** The fake AE2 network (undefined with ae2:false). */
     get ae2() {
       return meSim;

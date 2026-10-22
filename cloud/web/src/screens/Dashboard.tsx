@@ -5,6 +5,9 @@ import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
 import { Pages } from "./Pages.tsx";
+import { fmtFE } from "../lib/format.ts";
+import { PixelIcon } from "../components/PixelIcon.tsx";
+import type { PowerInfo } from "../lib/types.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
@@ -17,6 +20,30 @@ function useNow(active: boolean) {
     return () => clearInterval(t);
   }, [active]);
   return now;
+}
+
+/** Compact FE buffer bar + usage for the header. */
+function PowerMeter({ p }: { p: PowerInfo }) {
+  const pct = p.capacity > 0 ? Math.min(100, (p.stored / p.capacity) * 100) : 0;
+  const tone = !p.ok || pct < 5 ? "crit" : pct < 25 ? "warn" : "ok";
+  return (
+    <span
+      class={`pwr pwr-${tone}`}
+      title={`Power: ${Math.round(p.stored).toLocaleString("en-US")} / ${Math.round(p.capacity).toLocaleString("en-US")} FE, using ${Math.round(p.usage)} FE/t`}
+      role="meter"
+      aria-label={`Power ${Math.round(pct)}%, ${fmtFE(p.usage, true)}`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(pct)}
+    >
+      <PixelIcon name="bolt" size={10} class="pwr-bolt" />
+      <span class="pwr-bar" aria-hidden="true">
+        <span class="pwr-fill" style={{ width: `${pct}%` }} />
+      </span>
+      <span class="pwr-usage">{p.ok ? fmtFE(p.usage, true) : "NO POWER"}</span>
+      <span class="pwr-stored">{fmtFE(p.stored)}</span>
+    </span>
+  );
 }
 
 export function Dashboard({ id }: { id: string }) {
@@ -48,7 +75,10 @@ export function Dashboard({ id }: { id: string }) {
           <IconBack />
         </button>
         <div class="dash-title">
-          <span class="overline">Mainframe</span>
+          <span class="overline-row">
+            <span class="overline">Mainframe</span>
+            {info?.power && <PowerMeter p={info.power} />}
+          </span>
           <h1 class="dash-name">{info?.name ?? entry.name}</h1>
         </div>
         <span class={`pill pill-${st.kind}`}>
@@ -81,7 +111,7 @@ export function Dashboard({ id }: { id: string }) {
         {st.text && (
           <div class={`banner banner-${st.kind}`} role="status">
             <span class="banner-icon">
-              {st.kind === "disabled" ? <IconPower size={18} /> : st.kind === "offline" ? <IconAlert size={18} /> : <IconWifiOff size={18} />}
+              {st.kind === "disabled" || st.kind === "no_power" ? <IconPower size={18} /> : st.kind === "offline" ? <IconAlert size={18} /> : <IconWifiOff size={18} />}
             </span>
             <div class="banner-body">
               <div class="banner-text">{st.text}</div>

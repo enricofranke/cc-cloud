@@ -195,6 +195,13 @@ try {
   await control({ enabled: true, online: false });
   await shot(p, "phone-12-mainframe-offline");
   await control({ online: true });
+  // v0.3: out of FE -> "Mainframe has no power"
+  await control({ power: { stored: 0, input: 0, tick: 5 } });
+  await p.waitForSelector(".banner-no_power");
+  await shot(p, "phone-21-no-power");
+  await control({ power: { input: 2000, tick: 1 } });
+  await p.waitForSelector(".banner-no_power", { state: "detached" });
+  await control({ power: { input: 120, stored: 152000 } });
 
   // PIN lockout after 5 wrong PINs
   await p.click(".pxbtn-red");

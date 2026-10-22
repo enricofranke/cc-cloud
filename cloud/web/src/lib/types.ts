@@ -109,9 +109,23 @@ export interface Alert {
   ts: number;
 }
 
+export interface PowerInfo {
+  /** FE in the buffer */
+  stored: number;
+  capacity: number;
+  /** FE/t currently consumed */
+  usage: number;
+  /** false when the mainframe is out of power */
+  ok: boolean;
+}
+
 export interface MainframeInfo {
   id: string;
   name: string;
   online: boolean;
   enabled: boolean;
+  /** why it is offline, e.g. "no_power" (v0.3) */
+  reason?: string;
+  /** v0.3: FE buffer; absent when the server runs with requirePower=false */
+  power?: PowerInfo;
 }

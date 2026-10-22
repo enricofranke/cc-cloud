@@ -4,7 +4,7 @@
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
 import { signal, batch } from "@preact/signals";
-import { WIDGET_TYPES, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type PowerInfo, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -78,6 +78,7 @@ export const REJECT_TEXT: Record<string, string> = {
   unconfirmed: "The computer did not confirm the change.",
   disconnected: "Not connected to the server.",
   read_only: "This device is read-only.",
+  no_power: "The mainframe has no power.",
   pin_required: "This control needs the mainframe PIN.",
   pin_wrong: "Wrong PIN.",
   wrong_pin: "Wrong PIN.",
@@ -309,6 +310,9 @@ export class MainframeConn {
           online: typeof msg.online === "boolean" ? msg.online : i.online,
           enabled: typeof msg.enabled === "boolean" ? msg.enabled : i.enabled,
           name: typeof msg.name === "string" ? msg.name : i.name,
+          // a delta that carries online/enabled also carries the current reason (or none)
+          reason: "online" in msg || "reason" in msg ? (typeof msg.reason === "string" ? msg.reason.slice(0, 32) : undefined) : i.reason,
+          power: "power" in msg ? normalizePower(msg.power) : i.power,
         };
         if (!this.info.value.online || !this.info.value.enabled) this.dropAllPending();
         break;
@@ -418,7 +422,15 @@ export class MainframeConn {
     const reqId = newReqId();
     const msg = { t: "action", reqId, uplinkId, id: widget.id, value, ...(extra.pin ? { pin: extra.pin } : {}) };
     if (!this.actionable || !this.send(msg)) {
-      const why = !this.canControl.value ? "read_only" : this.status.value !== "open" ? "disconnected" : this.info.value?.online === false ? "offline" : "disabled";
+      const why = !this.canControl.value
+        ? "read_only"
+        : this.status.value !== "open"
+          ? "disconnected"
+          : this.info.value?.online === false
+            ? this.info.value.reason === "no_power" || this.info.value.power?.ok === false
+              ? "no_power"
+              : "offline"
+            : "disabled";
       this.notice("warn", widget.label || widget.id, REJECT_TEXT[why]);
       return undefined;
     }
@@ -595,7 +607,21 @@ function toScalar(v: unknown): Scalar {
 }
 
 function normalizeInfo(m: any): MainframeInfo {
-  return { id: String(m.id ?? ""), name: String(m.name ?? "Mainframe"), online: m.online !== false, enabled: m.enabled === true };
+  return {
+    id: String(m.id ?? ""),
+    name: String(m.name ?? "Mainframe"),
+    online: m.online !== false,
+    enabled: m.enabled === true,
+    reason: typeof m.reason === "string" ? m.reason.slice(0, 32) : undefined,
+    power: normalizePower(m.power),
+  };
+}
+
+export function normalizePower(p: any): PowerInfo | undefined {
+  if (!p || typeof p !== "object") return undefined;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  const capacity = n(p.capacity);
+  return { stored: Math.min(n(p.stored), capacity || Infinity), capacity, usage: n(p.usage), ok: p.ok !== false };
 }
 
 function normalizeUplink(u: any): Uplink | null {
