@@ -5,6 +5,7 @@ import { REJECT_TEXT } from "../lib/conn.ts";
 import type { ItemRow, JobRow, Uplink, WatchRow, Widget } from "../lib/types.ts";
 import { Sheet } from "./Overlays.tsx";
 import { fmtCount } from "../lib/format.ts";
+import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
 
 // ------------------------------------------------------------------ helpers
@@ -146,6 +147,7 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
           {res.rows.map((r) => (
             <li key={r.name}>
               <button type="button" class="item-row" onClick={() => setOpen(r)}>
+                <ItemIcon name={r.name} displayName={r.displayName} />
                 <span class="item-main">
                   <span class="item-name">{r.displayName}</span>
                   <span class="item-sub">
@@ -232,7 +234,8 @@ function ItemSheet(props: {
 
   return (
     <Sheet title={item.displayName} onClose={props.onClose}>
-      <div class="item-head">
+      <div class="item-head with-icon">
+        <ItemIcon name={item.name} displayName={item.displayName} size={48} />
         <div class="item-big-count">
           <span class="big">{full(item.count)}</span>
           <span class="muted small">in the network</span>
@@ -354,6 +357,7 @@ export function Watchlist({ w, uplink, conn, locked }: { w: Widget; uplink: Upli
             return (
               <li key={r.name}>
                 <button type="button" class={`watch-row tone-${tone}`} onClick={() => setEdit(r)}>
+                  <ItemIcon name={r.name} displayName={r.displayName} />
                   <span class="item-main">
                     <span class="item-name">{r.displayName}</span>
                     <span class="item-sub">
@@ -401,7 +405,8 @@ function WatchEdit(props: { row: WatchRow; w: Widget; uplink: Uplink; conn: Main
   };
   return (
     <Sheet title={row.displayName} onClose={props.onClose}>
-      <div class="item-head">
+      <div class="item-head with-icon">
+        <ItemIcon name={row.name} displayName={row.displayName} size={48} />
         <div class="item-big-count">
           <span class={`big ${row.count < row.min ? "t-red" : ""}`}>{full(row.count)}</span>
           <span class="muted small">in the network · minimum {full(row.min)}</span>
@@ -477,6 +482,7 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
     <Sheet title="Watch an item" onClose={props.onClose}>
       {picked ? (
         <div class="picked">
+          <ItemIcon name={picked.name} displayName={picked.displayName} />
           <span class="item-main">
             <span class="item-name">{picked.displayName}</span>
             <span class="item-sub">
@@ -508,6 +514,7 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
               {res.rows.slice(0, 8).map((r) => (
                 <li key={r.name}>
                   <button type="button" class="item-row" disabled={props.existing.has(r.name)} onClick={() => setPicked(r)}>
+                    <ItemIcon name={r.name} displayName={r.displayName} />
                     <span class="item-main">
                       <span class="item-name">{r.displayName}</span>
                       <span class="item-sub">
@@ -556,6 +563,7 @@ export function Jobs({ w }: { w: Widget }) {
           {rows.map((j) => (
             <li key={j.jobId || j.name} class={`job st-${j.status}`}>
               <div class="job-top">
+                <ItemIcon name={j.name} displayName={j.displayName ?? prettyName(j.name)} />
                 <span class="job-name">
                   {j.displayName ?? prettyName(j.name)} <span class="muted">× {full(j.count)}</span>
                 </span>
