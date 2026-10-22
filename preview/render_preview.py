@@ -376,6 +376,15 @@ def side_by_side(a):
         tiles.append(label(render(bridge_scene(a, night), S, yaw=195, pitch=22, night=night),
                            "CC Adv. Computer | ME bridge | AE2 Interface | RS bridge | RS Interface"
                            + (" (night)" if night else "")))
+    # 5) relays next to a CC computer and our mainframe for scale
+    for night in (False, True):
+        q = cc(a, "computercraft:block/computer_advanced_on", pos=(3, 0, 0))
+        q += mainframe_quads(a, "online", 0, (2, 0, 0), t=0.06)
+        q += relay_quads(a, "cloud_relay", pos=(1, 0, 0))
+        q += relay_quads(a, "advanced_cloud_relay", pos=(0, 0, 0))
+        q += relay_quads(a, "ender_relay", pos=(-1, 0, 0))
+        tiles.append(label(render(q, S, yaw=195, pitch=22, night=night),
+                           "CC Adv. Computer | Mainframe | Relay | Adv. Relay | Ender Relay" + (" (night)" if night else "")))
     out = grid(tiles, 2)
     out.save(os.path.join(HERE, "side_by_side.png"))
     return out
@@ -407,6 +416,29 @@ def bridge_renders(a):
             shots.append(label(render(bridge_quads(a, kind, st), 340, yaw=200, pitch=25, night=True),
                                f"{kind} bridge {st} night"))
     grid(shots, 7).save(os.path.join(HERE, "renders", "bridges.png"))
+
+
+RELAY_PART = {"cloud_relay": ("cloud_relay_ring", (8, 13, 8)), "advanced_cloud_relay": ("advanced_cloud_relay_ring", (8, 13, 8)),
+              "ender_relay": ("ender_relay_core", (8, 11.5, 8))}
+
+
+def relay_quads(a, block, status="online", pos=(0, 0, 0), t=0.07):
+    part, pivot = RELAY_PART[block]
+    q = model_quads(a, f"cccloud:block/{block}_{status}", blockstate_transform(offset=pos))
+    q += model_quads(a, f"cccloud:block/{part}", blockstate_transform(offset=pos, extra=spin("y", t * 360, pivot)))
+    return q
+
+
+def relay_renders(a):
+    os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
+    shots = []
+    for block in RELAY_PART:
+        for (yaw, pitch, nm) in ((200, 22, "3/4"), (180, 0, "side"), (225, 60, "top")):
+            shots.append(label(render(relay_quads(a, block), 320, yaw=yaw, pitch=pitch), f"{block} {nm}"))
+        for st in ("online", "connecting", "offline", "no_power"):
+            shots.append(label(render(relay_quads(a, block, st), 320, yaw=200, pitch=22, night=True),
+                               f"{block} {st} night"))
+    grid(shots, 7).save(os.path.join(HERE, "renders", "relays.png"))
 
 
 def detail_renders(a):
@@ -504,6 +536,8 @@ def main():
         detail_renders(a)
     if args.only in ("all", "detail", "bridges"):
         bridge_renders(a)
+    if args.only in ("all", "detail", "relays"):
+        relay_renders(a)
     if args.only in ("all", "contact"):
         contact_sheet()
 
@@ -553,6 +587,9 @@ def item_sheet(a):
         ["computercraft:block/wireless_modem_advanced_on"],
         ["cccloud:block/me_cloud_bridge_online"],
         ["cccloud:block/rs_cloud_bridge_online"],
+        ["cccloud:block/cloud_relay_online", "cccloud:block/cloud_relay_ring"],
+        ["cccloud:block/advanced_cloud_relay_online", "cccloud:block/advanced_cloud_relay_ring"],
+        ["cccloud:block/ender_relay_online", "cccloud:block/ender_relay_core"],
     ]
     ims = [item_render(a, r) for r in rows]
     for p in ("item/cloud_link_card", "item/cloud_core"):
@@ -560,7 +597,7 @@ def item_sheet(a):
         bg = Image.new("RGBA", (160, 160), (139, 139, 139, 255))
         bg.alpha_composite(im)
         ims.append(bg.convert("RGB"))
-    grid(ims, 9).save(os.path.join(HERE, "renders", "items_gui.png"))
+    grid(ims, 7).save(os.path.join(HERE, "renders", "items_gui.png"))
 
 
 if __name__ == "__main__" and os.environ.get("ITEMS"):

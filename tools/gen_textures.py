@@ -192,6 +192,12 @@ LAYOUTS = {
         },
         "regions": {},
     },
+    "relay": {
+        "size": 64,
+        "tiles": {"side": (0, 0), "top": (1, 0), "body": (2, 0), "body_l": (3, 0),
+                  "dark": (0, 1), "ring": (1, 1), "beacon": (2, 1), "core": (3, 1)},
+        "regions": {"eye": (0, 32, 4, 4)},
+    },
 }
 
 
@@ -533,6 +539,68 @@ def gen_bridge_status(state):
     cv.save(os.path.join(TEX, "block", f"cloud_bridge_status_{state}.png"))
 
 
+# --------------------------------------------------------------------------- relays (v0.4)
+RELAY_STATUS_REGIONS = {"strip": (0, 0, 6, 1), "tip": (0, 2, 1, 1)}
+
+
+def gen_relay(tier):
+    """Relay atlas. tier = normal (stone) | advanced (gold) | ender (gold, eye core).
+    Base = 12x6x12 CC casing at block x/z 2..14, y 0..6: the side tile has the CC outline at
+    cols 2/13 and rows 10/15, the lighter band and a dark LED slot (y 4..5 -> row 11, x 5..11)."""
+    L = LAYOUTS["relay"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("relay", n)
+    gold = tier != "normal"
+    body, body_l = (GOLD, GOLD_L) if gold else (GREY, GREY_L)
+
+    ox, oy = T("side")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, body_l if y >= 13 else body, 500 + y)
+    cv.outline(ox + 2, oy + 10, 12, 6, EDGE, 501)
+    for y in range(13, 15):
+        cv.set(ox + 2, oy + y, EDGE_L[y % len(EDGE_L)])
+    cv.hline(ox + 5, oy + 11, 6, SLOT, 502)
+    ox, oy = T("top")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, body, 510 + y)
+    cv.outline(ox + 2, oy + 2, 12, 12, EDGE, 511)
+    for (x, y) in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        cv.set(ox + x, oy + y, grey(0x2b))
+    for name, shades, seed in (("body", body, 520), ("body_l", body_l, 521), ("dark", CHASSIS, 522)):
+        ox, oy = T(name)
+        cv.noise(ox, oy, 16, 16, shades, seed)
+    ox, oy = T("ring")
+    cv.noise(ox, oy, 16, 16, GOLD_L if gold else GREY_L, 523)
+    ox, oy = T("beacon")
+    for y in range(16):
+        for x in range(16):
+            cv.set(ox + x, oy + y, CYAN_L if (x + y) % 3 == 0 else CYAN)
+    ox, oy = T("core")
+    for y in range(16):
+        for x in range(16):
+            cv.set(ox + x, oy + y, ENDER_L if (x + 2 * y) % 5 == 0 else ENDER)
+    # ender eye face 4x4: green iris, dark pupil slit, cyan glint (rotation reads)
+    x, y, _, _ = L["regions"]["eye"]
+    cv.ascii(x, y, ["dEEd", "EkCE", "EkEE", "dEEd"],
+             {"d": ENDER_D, "E": ENDER, "k": hx("102a22"), "C": CYAN_L})
+    name = {"normal": "relay", "advanced": "relay_advanced", "ender": "relay_ender"}[tier]
+    cv.save(os.path.join(TEX, "block", name + ".png"))
+
+
+def gen_relay_status(state):
+    """6 px LED strip + antenna tip. no_power = all LEDs dark (unlit)."""
+    cv = Canvas(16, 16, OFF)
+    if state == "no_power":
+        cv.ascii(0, 0, ["oOoOoO"], {"o": OFF, "O": OFF_L})
+        cv.set(0, 2, OFF_L)
+    else:
+        cd, cm, cl = STATUS[state]["crystal"]
+        pattern = {"online": "LMDLMD", "connecting": "MDOMDO", "offline": "MDOOOO"}[state]
+        cv.ascii(0, 0, [pattern], {"L": cl, "M": cm, "D": cd, "O": OFF})
+        cv.set(0, 2, cm)
+    cv.save(os.path.join(TEX, "block", f"relay_status_{state}.png"))
+
+
 # --------------------------------------------------------------------------- GUI (v0.3)
 # CC GUI language (measured from CC's computer border, drawn here from scratch):
 #   rounded 1 px outline, 2 px highlight top/left, flat body, 2 px shadow bottom/right;
@@ -784,7 +852,7 @@ def gen_gui_widgets():
     cv.save(os.path.join(TEX, "gui", "widgets.png"))
 
 
-# --------------------------------------------------------------------------- items / particle
+# --------------------------------------------------------------------------- items
 def gen_items():
     # Keycard: light grey card, dark outline, gold chip, small cyan cloud, magnetic stripe.
     card = [
@@ -835,10 +903,7 @@ def gen_items():
     cv.ascii(0, 0, core, pal, 310)
     cv.save(os.path.join(TEX, "item", "cloud_core.png"))
 
-    # Data packet particle: 4x4 cyan cube, light top-left.
-    cv = Canvas(4, 4)
-    cv.ascii(0, 0, ["CCCc", "Cccd", "Cccd", "cddd"], {"C": CYAN_L, "c": CYAN, "d": CYAN_D})
-    cv.save(os.path.join(TEX, "particle", "data_packet.png"))
+    # (the data_packet particle was removed in v0.4, see docs/SPEC.md)
 
 
 def main():
@@ -854,6 +919,10 @@ def main():
     gen_bridge("rs")
     for st in STATUS:
         gen_bridge_status(st)
+    for tier in ("normal", "advanced", "ender"):
+        gen_relay(tier)
+    for st in ("online", "connecting", "offline", "no_power"):
+        gen_relay_status(st)
     gen_gui_screen("mainframe")
     gen_gui_screen("uplink")
     gen_gui_widgets()

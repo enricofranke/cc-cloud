@@ -68,6 +68,7 @@ TEMPLATE = r"""<!doctype html>
     <button data-g="show" data-v="uplink">Uplink</button>
     <button data-g="show" data-v="advanced">Adv. Uplink</button>
     <button data-g="show" data-v="bridges">Bridges</button>
+    <button data-g="show" data-v="relays">Relays</button>
   </div>
   <div class="row"><span>Status</span>
     <button data-g="status" data-v="online" class="on">online</button>
@@ -262,6 +263,15 @@ function rebuild() {
     placed(`cccloud:block/me_cloud_bridge_${s}`, all ? -4 : -0.75, 0, all ? -1 : 0, "south");
     placed(`cccloud:block/rs_cloud_bridge_${s}`, all ? 4 : 0.75, 0, all ? -1 : 0, "south");
   }
+  if (show === "all" || show === "relays") {
+    const all = show === "all", z = all ? -3 : 0;
+    const spd = s === "online" ? 1.6 : s === "connecting" ? 4 : 0;
+    [["cloud_relay", "cloud_relay_ring", [8, 13, 8], -1.5], ["advanced_cloud_relay", "advanced_cloud_relay_ring", [8, 13, 8], 0],
+     ["ender_relay", "ender_relay_core", [8, 11.5, 8], 1.5]].forEach(([b, part, at, x]) => {
+      placed(`cccloud:block/${b}_${s}`, x, 0, z, "north");
+      placed(`cccloud:block/${part}`, x, 0, z, "north", null, { at, axis: "y", speed: b === "ender_relay" ? spd * 1.5 : spd, bob: b === "ender_relay" });
+    });
+  }
   applyLight();
 }
 
@@ -301,6 +311,7 @@ function frame() {
   if (state.anim === "1") for (const a of animated) {
     const ang = t * a.speed;
     a.spin.rotation.set(0, 0, 0); a.spin.rotation[a.axis] = ang;
+    if (a.bob) a.spin.position.y = Math.sin(t * 2.2) * 0.5;
     if (a.holo) {
       a.spin.position.y = Math.sin(t * 2) * 0.5;
       const off = state.status === "offline", con = state.status === "connecting";

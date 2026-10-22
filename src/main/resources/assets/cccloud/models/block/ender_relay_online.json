@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/ender_relay",
+  "textures": {
+    "status": "cccloud:block/relay_status_online"
+  }
+}

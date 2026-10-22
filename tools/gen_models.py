@@ -300,7 +300,7 @@ def mainframe_half(half):
         m.box([5, 16, 12], [11, 17.5, 13], ring, skip=("down",))
         m.box([3, 16, 5], [4, 17.5, 11], ring, skip=("down",))
         m.box([12, 16, 5], [13, 17.5, 11], ring, skip=("down",))
-        for (cx, cz, ang) in ((4.25, 4.25, -45), (11.75, 4.25, 45), (4.25, 11.75, 45), (11.75, 11.75, -45)):
+        for (cx, cz, ang) in ((4.25, 4.25, 45), (11.75, 4.25, -45), (4.25, 11.75, -45), (11.75, 11.75, 45)):
             m.box([cx - 1.5, 16, cz - 0.5], [cx + 1.5, 17.4, cz + 0.5], ring,
                   rot=("y", ang, [cx, 16, cz]), skip=("down",))
         m.box([6, 16, 6], [10, 17, 10], led("lens"), emit=15, skip=("down",))
@@ -559,6 +559,93 @@ def bridge(kind):
     return m
 
 
+# --------------------------------------------------------------------------- relays (v0.4)
+RELAY_TEX = {"cloud_relay": "relay", "advanced_cloud_relay": "relay_advanced", "ender_relay": "relay_ender"}
+RING_PIVOT = (8, 13, 8)        # emitter ring: rotates around Y
+ENDER_CORE_PIVOT = (8, 11.5, 8)  # ender eye core: rotates around Y (may bob +/-0.5 px)
+RELAY_STATES = ("online", "connecting", "offline", "no_power")
+
+
+def _relay_parts(block):
+    tex = f"{NS}:block/{RELAY_TEX[block]}"
+    T = lambda n: Tile("atlas", "relay", n)
+    return tex, T
+
+
+def relay_base(block):
+    """CC casing base 12x6x12, stepped plinth, status LED strip on all 4 sides (no facing),
+    then either a thin mast + antenna tip (relays) or a gold cradle (ender relay)."""
+    tex, T = _relay_parts(block)
+    m = Model(textures={"particle": tex, "atlas": tex, "status": f"{NS}:block/relay_status_online"})
+    rs = lambda n: Region("status", None, n, size=16, rect=gt.RELAY_STATUS_REGIONS[n])
+    m.box([2, 0, 2], [14, 6, 14], {"*": T("side"), "up": T("top"), "down": T("dark")})
+    m.box([4, 6, 4], [12, 7, 12], {"*": T("body_l"), "up": T("top")}, skip=("down",))
+    strip = rs("strip")
+    m.box([5, 4, 1.9], [11, 5, 2], strip, emit=15, skip=("south",))
+    m.box([5, 4, 14], [11, 5, 14.1], strip, emit=15, skip=("north",))
+    m.box([1.9, 4, 5], [2, 5, 11], strip, emit=15, skip=("east",))
+    m.box([14, 4, 5], [14.1, 5, 11], strip, emit=15, skip=("west",))
+    if block != "ender_relay":
+        m.box([7.5, 7, 7.5], [8.5, 12.6, 8.5], T("dark"), skip=("down",))
+        m.box([7, 9, 7], [9, 9.5, 9], T("body"))
+        m.box([7.75, 13.4, 7.75], [8.25, 15.2, 8.25], T("dark"), skip=("down",))
+        m.box([7.6, 15.2, 7.6], [8.4, 16, 8.4], rs("tip"), emit=15)
+    else:
+        # 4 gold prongs splayed 22.5 deg outward, emissive cyan tips; the core floats between them
+        for (frm, to, tf, tt, rot) in (
+            ([7.6, 7, 4.1], [8.4, 12, 4.9], [7.5, 12, 4], [8.5, 12.8, 5], ("x", -22.5, [8, 7, 4.5])),
+            ([7.6, 7, 11.1], [8.4, 12, 11.9], [7.5, 12, 11], [8.5, 12.8, 12], ("x", 22.5, [8, 7, 11.5])),
+            ([4.1, 7, 7.6], [4.9, 12, 8.4], [4, 12, 7.5], [5, 12.8, 8.5], ("z", 22.5, [4.5, 7, 8])),
+            ([11.1, 7, 7.6], [11.9, 12, 8.4], [11, 12, 7.5], [12, 12.8, 8.5], ("z", -22.5, [11.5, 7, 8])),
+        ):
+            m.box(frm, to, T("ring"), rot=rot, skip=("down",))
+            m.box(tf, tt, T("beacon"), rot=rot, emit=15)
+    return m
+
+
+def relay_ring(block):
+    """Slim octagonal emitter ring with glowing beacons, hub and two spokes. Rotates around Y
+    through RING_PIVOT. Normal: 10 px wide, 2 beacons; advanced: 12 px wide, 4 beacons."""
+    tex, T = _relay_parts(block)
+    m = Model(textures={"particle": tex, "atlas": tex})
+    h = 5 if block == "cloud_relay" else 6
+    y0, y1 = 12.5, 13.5
+    ring, beacon = {"*": T("ring"), "up": T("body_l")}, T("beacon")
+    c = 8
+    m.box([c - h + 2, y0, c - h], [c + h - 2, y1, c - h + 1], ring)
+    m.box([c - h + 2, y0, c + h - 1], [c + h - 2, y1, c + h], ring)
+    m.box([c - h, y0, c - h + 2], [c - h + 1, y1, c + h - 2], ring)
+    m.box([c + h - 1, y0, c - h + 2], [c + h, y1, c + h - 2], ring)
+    k = c - h + 1.25
+    for (cx, cz, ang) in ((k, k, 45), (16 - k, k, -45), (k, 16 - k, -45), (16 - k, 16 - k, 45)):
+        m.box([cx - 1.5, 12.6, cz - 0.5], [cx + 1.5, 13.4, cz + 0.5], ring, rot=("y", ang, [cx, 13, cz]))
+    beacons = [([7.5, 12.6, c - h - 0.3], [8.5, 13.4, c - h], "south"),
+               ([7.5, 12.6, c + h], [8.5, 13.4, c + h + 0.3], "north")]
+    if block != "cloud_relay":
+        beacons += [([c - h - 0.3, 12.6, 7.5], [c - h, 13.4, 8.5], "east"),
+                    ([c + h, 12.6, 7.5], [c + h + 0.3, 13.4, 8.5], "west")]
+    for (a, b, inner) in beacons:
+        m.box(a, b, beacon, emit=15, skip=(inner,))
+    m.box([7.4, 12.6, 7.4], [8.6, 13.4, 8.6], T("dark"))
+    m.box([c - h + 1, 12.8, 7.8], [c + h - 1, 13.2, 8.2], T("dark"), skip=("west", "east"))
+    m.box([7.85, 12.85, c - h + 1], [8.15, 13.15, c + h - 1], T("dark"), skip=("north", "south"))
+    return m
+
+
+def ender_core():
+    """Big floating ender eye: three 4 px cubes turned 45 deg on X/Y/Z + cyan heart, emissive.
+    Rotates around Y through ENDER_CORE_PIVOT."""
+    tex, T = _relay_parts("ender_relay")
+    m = Model(textures={"particle": tex, "atlas": tex})
+    cx, cy, cz = ENDER_CORE_PIVOT
+    eye = Region("atlas", "relay", "eye")
+    h = 2
+    for axis in ("x", "y", "z"):
+        m.box([cx - h, cy - h, cz - h], [cx + h, cy + h, cz + h], eye, emit=15, rot=(axis, 45, [cx, cy, cz]))
+    m.box([cx - 1.25, cy - 1.25, cz - 1.25], [cx + 1.25, cy + 1.25, cz + 1.25], T("beacon"), emit=15)
+    return m
+
+
 # --------------------------------------------------------------------------- writing
 written = []
 
@@ -594,6 +681,12 @@ def main():
         "block/uplink_direct_ring": uplink_direct_ring(),
         "block/me_cloud_bridge": bridge("me"),
         "block/rs_cloud_bridge": bridge("rs"),
+        "block/cloud_relay": relay_base("cloud_relay"),
+        "block/advanced_cloud_relay": relay_base("advanced_cloud_relay"),
+        "block/ender_relay": relay_base("ender_relay"),
+        "block/cloud_relay_ring": relay_ring("cloud_relay"),
+        "block/advanced_cloud_relay_ring": relay_ring("advanced_cloud_relay"),
+        "block/ender_relay_core": ender_core(),
     }
     counts = {}
     for name, m in models.items():
@@ -619,6 +712,17 @@ def main():
             for f, r in HORIZONTAL.items() for st_ in STATES}})
         write(f"items/{kind}_cloud_bridge.json",
               {"model": {"type": "minecraft:model", "model": f"{NS}:block/{kind}_cloud_bridge_online"}})
+
+    for block, part in (("cloud_relay", "cloud_relay_ring"), ("advanced_cloud_relay", "advanced_cloud_relay_ring"),
+                        ("ender_relay", "ender_relay_core")):
+        for st_ in RELAY_STATES:
+            write(f"models/block/{block}_{st_}.json",
+                  variant_child(f"{NS}:block/{block}", {"status": f"{NS}:block/relay_status_{st_}"}))
+        write(f"blockstates/{block}.json", {"variants": {
+            f"status={st_}": {"model": f"{NS}:block/{block}_{st_}"} for st_ in STATES}})
+        write(f"items/{block}.json", {"model": {"type": "minecraft:composite", "models": [
+            {"type": "minecraft:model", "model": f"{NS}:block/{block}_online"},
+            {"type": "minecraft:model", "model": f"{NS}:block/{part}"}]}})
 
     # flat items
     for it in ("cloud_core", "cloud_link_card"):
@@ -775,6 +879,9 @@ def validate():
     ms = data.get("blockstates/cloud_mainframe.json", {}).get("variants", {})
     if len(ms) != 4 * 2 * 3:
         problems.append(f"cloud_mainframe: {len(ms)} variants, expected 24")
+    for blk in ("cloud_relay", "advanced_cloud_relay", "ender_relay"):
+        if len(data.get(f"blockstates/{blk}.json", {}).get("variants", {})) != 3:
+            problems.append(f"{blk}: expected 3 status variants")
     for kind in ("me", "rs"):
         bv = data.get(f"blockstates/{kind}_cloud_bridge.json", {}).get("variants", {})
         if len(bv) != 4 * 3:
@@ -788,6 +895,9 @@ PIVOTS = """\
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
 | `block/uplink_ring` | normal uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place: ~0.5 rev/s online, fast ~2 rev/s connecting, stopped offline; no translation (it lives inside the 1 px port recess) |
+| `block/cloud_relay_ring` | cloud relay | (8, 13, 8) | Y | slow spin ~0.25 rev/s online, faster connecting, stopped offline / no power |
+| `block/advanced_cloud_relay_ring` | advanced relay | (8, 13, 8) | Y | as above |
+| `block/ender_relay_core` | ender relay | (8, 11.5, 8) | Y (+ bob +/-0.5 px on Y) | spin ~0.5 rev/s, stop when offline / no power |
 | `block/uplink_advanced_core` | advanced uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place ~0.25 rev/s (the diagonal cyan glints make it visible); no translation |
 """
 
@@ -839,6 +949,15 @@ A full-face overlay (CC's `computer_on` trick) z-fought here: CC's overlay cover
 ours sat over faces split into casing + bezel quads. `validate()` now rejects coplanar overlapping faces.
 Items: `items/{{me,rs}}_cloud_bridge.json` -> the `_online` block model (vanilla `block/block` display).
 
+## Relays (v0.4)
+
+`block/cloud_relay`, `block/advanced_cloud_relay`, `block/ender_relay`: no facing (symmetric), blockstate
+`status` only. Each has `_online/_connecting/_offline/_no_power` children (swap `relay_status_*`);
+`_no_power` = all LEDs dark. The blockstates map the three spec states; when the Java side adds a
+`no_power` status value, map it to the `_no_power` model. Moving parts (BER, not in blockstates):
+emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
+moving part (vanilla `block/block` display).
+
 ## Render types / translucency (MC 26.1)
 
 In 26.1 the chunk layer is chosen **per quad** from the texture: `FaceBakery` calls
@@ -879,11 +998,9 @@ override that texture, so geometry is defined once.
   + dish / core. All uplink models inherit the same `display` from `block/uplink_display`.
 - `cloud_core`, `cloud_link_card`: flat `item/generated`.
 
-## Particle
+## Particles
 
-`textures/particle/data_packet.png` (4x4). The particle description file
-`assets/cccloud/particles/data_packet.json` (`{{"textures": ["cccloud:data_packet"]}}`) belongs to the
-particle registration and is not generated here.
+None. The `data_packet` particle was removed in v0.4 (performance, see docs/SPEC.md).
 """
     os.makedirs(os.path.join(ROOT, "docs"), exist_ok=True)
     with open(os.path.join(ROOT, "docs", "MODELS.md"), "w") as f:

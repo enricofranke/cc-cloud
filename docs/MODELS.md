@@ -14,6 +14,9 @@ the blockstate uses (around the block centre 8,8,8), then rotate the part around
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
 | `block/uplink_ring` | normal uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place: ~0.5 rev/s online, fast ~2 rev/s connecting, stopped offline; no translation (it lives inside the 1 px port recess) |
+| `block/cloud_relay_ring` | cloud relay | (8, 13, 8) | Y | slow spin ~0.25 rev/s online, faster connecting, stopped offline / no power |
+| `block/advanced_cloud_relay_ring` | advanced relay | (8, 13, 8) | Y | as above |
+| `block/ender_relay_core` | ender relay | (8, 11.5, 8) | Y (+ bob +/-0.5 px on Y) | spin ~0.5 rev/s, stop when offline / no power |
 | `block/uplink_advanced_core` | advanced uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place ~0.25 rev/s (the diagonal cyan glints make it visible); no translation |
 
 Uplink depth: plate z 0..2 (port floor z 1), LED strip to z 2.25, moving parts z 1..1.75.
@@ -39,6 +42,12 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_direct_ring` | 4 |
 | `block/me_cloud_bridge` | 16 |
 | `block/rs_cloud_bridge` | 16 |
+| `block/cloud_relay` | 10 |
+| `block/advanced_cloud_relay` | 10 |
+| `block/ender_relay` | 14 |
+| `block/cloud_relay_ring` | 13 |
+| `block/advanced_cloud_relay_ring` | 15 |
+| `block/ender_relay_core` | 4 |
 
 
 ## Cloud bridges (v0.2)
@@ -50,6 +59,15 @@ pins on the 5 connection faces: small 2x2 elements standing 0.1 px proud of each
 A full-face overlay (CC's `computer_on` trick) z-fought here: CC's overlay covers one identical base quad,
 ours sat over faces split into casing + bezel quads. `validate()` now rejects coplanar overlapping faces.
 Items: `items/{me,rs}_cloud_bridge.json` -> the `_online` block model (vanilla `block/block` display).
+
+## Relays (v0.4)
+
+`block/cloud_relay`, `block/advanced_cloud_relay`, `block/ender_relay`: no facing (symmetric), blockstate
+`status` only. Each has `_online/_connecting/_offline/_no_power` children (swap `relay_status_*`);
+`_no_power` = all LEDs dark. The blockstates map the three spec states; when the Java side adds a
+`no_power` status value, map it to the `_no_power` model. Moving parts (BER, not in blockstates):
+emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
+moving part (vanilla `block/block` display).
 
 ## Render types / translucency (MC 26.1)
 
@@ -91,8 +109,6 @@ override that texture, so geometry is defined once.
   + dish / core. All uplink models inherit the same `display` from `block/uplink_display`.
 - `cloud_core`, `cloud_link_card`: flat `item/generated`.
 
-## Particle
+## Particles
 
-`textures/particle/data_packet.png` (4x4). The particle description file
-`assets/cccloud/particles/data_packet.json` (`{"textures": ["cccloud:data_packet"]}`) belongs to the
-particle registration and is not generated here.
+None. The `data_packet` particle was removed in v0.4 (performance, see docs/SPEC.md).

@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/cloud_relay",
+  "textures": {
+    "status": "cccloud:block/relay_status_offline"
+  }
+}

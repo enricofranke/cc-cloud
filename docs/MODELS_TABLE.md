@@ -13,6 +13,9 @@ the blockstate uses (around the block centre 8,8,8), then rotate the part around
 | `block/mainframe_fan` | **lower** half | (13.5, 8, 8) | X | spin, ~1 rev/s online, slow down to 0 when offline |
 | `block/mainframe_hologram` | **upper** half | (8, 23.5, 8) | Y | rotate ~20 deg/s, bob +/-0.5 px (sin), flicker alpha when connecting/offline, hide when offline |
 | `block/uplink_ring` | normal uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place: ~0.5 rev/s online, fast ~2 rev/s connecting, stopped offline; no translation (it lives inside the 1 px port recess) |
+| `block/cloud_relay_ring` | cloud relay | (8, 13, 8) | Y | slow spin ~0.25 rev/s online, faster connecting, stopped offline / no power |
+| `block/advanced_cloud_relay_ring` | advanced relay | (8, 13, 8) | Y | as above |
+| `block/ender_relay_core` | ender relay | (8, 11.5, 8) | Y (+ bob +/-0.5 px on Y) | spin ~0.5 rev/s, stop when offline / no power |
 | `block/uplink_advanced_core` | advanced uplink | (8, 8, 1.375) | Z (in the plate plane) | spin in place ~0.25 rev/s (the diagonal cyan glints make it visible); no translation |
 
 Uplink depth: plate z 0..2 (port floor z 1), LED strip to z 2.25, moving parts z 1..1.75.
@@ -38,3 +41,9 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_direct_ring` | 4 |
 | `block/me_cloud_bridge` | 16 |
 | `block/rs_cloud_bridge` | 16 |
+| `block/cloud_relay` | 10 |
+| `block/advanced_cloud_relay` | 10 |
+| `block/ender_relay` | 14 |
+| `block/cloud_relay_ring` | 13 |
+| `block/advanced_cloud_relay_ring` | 15 |
+| `block/ender_relay_core` | 4 |

@@ -1,0 +1,15 @@
+{
+  "model": {
+    "type": "minecraft:composite",
+    "models": [
+      {
+        "type": "minecraft:model",
+        "model": "cccloud:block/ender_relay_online"
+      },
+      {
+        "type": "minecraft:model",
+        "model": "cccloud:block/ender_relay_core"
+      }
+    ]
+  }
+}

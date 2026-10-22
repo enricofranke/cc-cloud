@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "status=online": {
+      "model": "cccloud:block/ender_relay_online"
+    },
+    "status=connecting": {
+      "model": "cccloud:block/ender_relay_connecting"
+    },
+    "status=offline": {
+      "model": "cccloud:block/ender_relay_offline"
+    }
+  }
+}
