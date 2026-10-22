@@ -352,6 +352,52 @@ try {
   await lctx.close();
   await lanMock.close();
 
+  // ================================================================ docs (/docs, lazy chunk)
+  {
+    const dd = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "de-DE" });
+    const dp = await dd.newPage();
+    watch(dp);
+    await dp.goto(`${origin}/docs/start#recipes`);
+    await dp.waitForSelector(".recipe");
+    await dp.waitForTimeout(400);
+    await shot(dp, "docs-d1-start-recipes-de");
+    await dp.click('.lang-toggle button:has-text("EN")');
+    await dp.click('.docs-nav-page:has-text("Lua reference")');
+    await dp.waitForSelector("#widgets");
+    await dp.click(".docs-article .copy-btn");
+    await dp.waitForSelector(".copy-btn.copied");
+    await shot(dp, "docs-d2-lua-reference-en");
+    await dp.fill(".docs-side .docs-search-input", "reverse proxy");
+    await dp.waitForSelector(".docs-side .docs-hit");
+    await shot(dp, "docs-d3-search");
+    await dd.close();
+
+    const pd = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "de-DE" });
+    const pp2 = await pd.newPage();
+    watch(pp2);
+    await pp2.goto(`${origin}/`);
+    await pp2.waitForSelector(".help-btn");
+    await pp2.click(".help-btn");
+    await pp2.waitForSelector(".docs-article");
+    await pp2.click(".docs-menu-btn");
+    await pp2.waitForSelector(".docs-sheet");
+    await pp2.fill(".docs-sheet .docs-search-input", "No such program");
+    await pp2.waitForSelector(".docs-sheet .docs-hit");
+    await shot(pp2, "docs-p1-menu-search-de");
+    await pp2.click(".docs-sheet .docs-hit");
+    await pp2.waitForSelector(".docs-sheet", { state: "detached" });
+    await pp2.waitForTimeout(400);
+    await shot(pp2, "docs-p2-faq-no-such-program-de");
+    await pp2.goto(`${origin}/docs/cc-basics`);
+    await pp2.waitForSelector(".callout-warn");
+    await shot(pp2, "docs-p3-cc-basics-de");
+    await pp2.goto(`${origin}/docs/start#recipes`);
+    await pp2.waitForSelector(".recipe");
+    await pp2.waitForTimeout(300);
+    await shot(pp2, "docs-p4-recipes-de");
+    await pd.close();
+  }
+
   // ================================================================ desktop
   const desk = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const d = await desk.newPage();

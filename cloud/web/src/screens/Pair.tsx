@@ -4,6 +4,7 @@ import { addSaved, saved } from "../lib/store.ts";
 import { syncConns } from "../lib/conns.ts";
 import { guessDeviceName, navigate, pushToast } from "../lib/ui.ts";
 import { IconBack } from "../components/Icons.tsx";
+import { DocsLink } from "../components/DocsLink.tsx";
 
 const ALPHABET = /[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g;
 const POLL_MS = 2000;
@@ -158,6 +159,10 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
               <span>{busy ? "Checking code…" : "Pair device"}</span>
             </button>
           </form>
+          <p class="muted small pair-help">
+            First time? <DocsLink to="/docs/start">Getting started</DocsLink> explains the mainframe, power and the Link Card ·{" "}
+            <DocsLink to="/docs/faq#not-reachable">Can't connect?</DocsLink>
+          </p>
         </>
       )}
     </main>

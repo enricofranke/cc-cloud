@@ -1,5 +1,6 @@
 // Empty state after pairing: no uplinks linked yet (v0.3 "Web empty state").
 import { CodeBlock } from "../components/CodeBlock.tsx";
+import { DocsLink } from "../components/DocsLink.tsx";
 
 const STARTER = `local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("My Base")
@@ -42,7 +43,9 @@ export function SetupGuide() {
           </div>
         </li>
       </ol>
-      <p class="muted small setup-note">This page updates by itself – keep it open while you build.</p>
+      <p class="muted small setup-note">
+        This page updates by itself – keep it open while you build. Stuck? <DocsLink to="/docs/start#linking">Step-by-step guide</DocsLink>
+      </p>
       <details class="setup-more">
         <summary>Build your own dashboard</summary>
         <p class="muted small">
@@ -50,7 +53,9 @@ export function SetupGuide() {
         </p>
         <CodeBlock code={STARTER} label="startup.lua" />
         <p class="muted small">
-          In-game help: <code>help cloud</code>. As soon as a program defines widgets, they replace the automatic Computer card.
+          In-game help: <code>help cloud</code>. As soon as a program defines widgets, they replace the automatic Computer card. New to ComputerCraft? Read{" "}
+          <DocsLink to="/docs/cc-basics">CC basics</DocsLink> (why typing Lua into the shell says "No such program") and the{" "}
+          <DocsLink to="/docs/lua">Lua reference</DocsLink>.
         </p>
       </details>
     </div>

@@ -5,6 +5,7 @@ import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
 import { Pages } from "./Pages.tsx";
+import { DocsLink } from "../components/DocsLink.tsx";
 import { fmtFE } from "../lib/format.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import type { PowerInfo } from "../lib/types.ts";
@@ -102,6 +103,9 @@ export function Dashboard({ id }: { id: string }) {
             <IconPencil />
           </button>
         )}
+        <DocsLink class="icon-btn help-btn hide-narrow" label="Help & docs">
+          ?
+        </DocsLink>
         <button type="button" class="icon-btn" aria-label="Settings" onClick={() => setSheet("settings")}>
           <IconGear />
         </button>
@@ -215,6 +219,9 @@ export function Dashboard({ id }: { id: string }) {
               ))}
             </div>
           </div>
+          <p class="small">
+            <DocsLink to="/docs">Help &amp; docs</DocsLink> · <DocsLink to="/docs/faq">Troubleshooting</DocsLink>
+          </p>
           <p class="muted small">
             The owner can list and revoke devices in-game with <code>/cccloud devices</code> and <code>/cccloud revoke</code>.
           </p>

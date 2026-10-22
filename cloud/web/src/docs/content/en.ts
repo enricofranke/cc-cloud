@@ -1,0 +1,531 @@
+import * as C from "./code.ts";
+
+const { code, recipe, RECIPES: R } = C;
+
+export const en: Record<string, string> = {
+  // ---------------------------------------------------------------- start
+  start: `# Getting started
+
+CC: Cloud puts your ComputerCraft computers and storage on a dashboard in your phone or desktop browser. The Minecraft server hosts the dashboard itself – there is no account and no external service.
+
+> **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your phone. The computer appears on the dashboard automatically – no code needed.
+
+## The blocks {#blocks}
+
+| Block / item | What it does |
+|---|---|
+| **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
+| **Cloud Uplink** | Sticks to a block face like a modem. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
+| **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
+| **Cloud Link Card** | Links uplinks and bridges to a mainframe. |
+| **ME / RS Cloud Bridge** | Joins an Applied Energistics 2 or Refined Storage network. With an uplink on it you get a ready-made storage card (search, craft, watchlist). Only exists when AE2 / RS is installed. |
+| **Cloud Core** | Crafting ingredient. |
+
+## Crafting recipes {#recipes}
+
+Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
+
+### Cloud Core
+${recipe(R.core)}
+
+### Cloud Mainframe
+${recipe(R.mainframe)}
+
+### Cloud Uplink
+${recipe(R.uplink)}
+
+### Advanced Cloud Uplink
+${recipe(R.advancedUplink)}
+
+### Cloud Link Card
+${recipe(R.linkCard)}
+
+### ME and RS Cloud Bridge
+${recipe(R.meBridge)}
+${recipe(R.rsBridge)}
+
+## Place the mainframe {#mainframe}
+
+1. Place the **Cloud Mainframe** (it takes two blocks of height). Whoever places it is its **owner**.
+2. Right-click it: the screen shows the status, the dashboard address (URL) and a pairing code.
+3. Turn the dashboard **on** in that screen (or sneak + right-click with an empty hand).
+
+A redstone signal on either half is a **kill switch**: the mainframe goes offline until the signal is gone.
+
+## Power (FE) {#power}
+
+The mainframe runs on **FE** (Forge Energy, also called RF) – the unit used by Powah, Ender IO, Mekanism's FE output, Thermal, AE2 and most tech mods. Connect any FE cable or generator to either half.
+
+| | Default |
+|---|---|
+| Base consumption | 40 FE/t |
+| Per linked uplink | +5 FE/t |
+| Per connected dashboard | +2 FE/t |
+| Buffer | 200,000 FE |
+| Max input | 2,000 FE/t |
+
+Without power the mainframe goes offline (after 5 seconds on an empty buffer) and the dashboard says **"Mainframe has no power"**. It reconnects by itself once the buffer refills. Uplinks and bridges need no FE. Server admins can turn the requirement off (\`requirePower = false\`).
+
+## Link uplinks and bridges {#linking}
+
+1. Place a **Cloud Uplink** on a side of a computer (or on an ME / RS Cloud Bridge).
+2. Right-click the **mainframe** with a **Cloud Link Card** – the card now says "Linked to Mainframe @ x y z".
+3. Right-click the **uplink** (or bridge) with the card. Done – its status light turns green.
+
+Sneak + right-click into the air clears the card. Only the owner and trusted players can link.
+
+## Pair your phone {#pairing}
+
+1. Right-click the mainframe and note the **pairing code** (8 characters, valid 10 minutes, single use).
+2. Open the dashboard URL from the mainframe screen in your browser (e.g. \`http://192.168.1.20:8787\`). On the same Wi-Fi this just works.
+3. Enter the code and a device name, tap **Pair device**.
+4. In Minecraft, click **[Allow]** in the chat (or in the mainframe screen). The browser continues by itself.
+
+> **Tip:** On a phone, use "Add to Home Screen" to install the dashboard like an app. A browser can hold several mainframes.
+
+What you see next: [the dashboard](/docs/dashboard). Want your own widgets? Start with [CC basics](/docs/cc-basics) and the [Lua reference](/docs/lua).
+`,
+
+  // ------------------------------------------------------------ cc basics
+  "cc-basics": `# CC basics for beginners
+
+New to ComputerCraft? This page explains the few things you need to run a dashboard program.
+
+## Shell vs. Lua {#shell-vs-lua}
+
+A computer starts in the **shell** – a command line like a terminal. The shell runs **programs** by name (\`edit\`, \`ls\`, \`cloud-demo\`). It does **not** understand Lua code.
+
+> **Warning:** If you type Lua directly into the shell, e.g. \`cloud.setTitle("x")\`, you get **"No such program"**. The shell looks for a program called \`cloud.setTitle("x")\`. Put Lua code into a file (below) or use the \`lua\` prompt.
+
+## Write a program with edit {#edit}
+
+${code("", C.SHELL_EDIT)}
+
+1. Type \`edit startup.lua\` and press Enter. An editor opens.
+2. Type or paste your code. (Pasting from the dashboard: copy with the **Copy** button, then Ctrl+V in Minecraft.)
+3. Press **Ctrl**, choose **Save** with the arrow keys and Enter, then **Ctrl** → **Exit**.
+
+A file named \`startup.lua\` runs automatically whenever the computer boots – perfect for dashboards.
+
+## Run a program {#run}
+
+Type its name without \`.lua\`:
+
+${code("", C.SHELL_RUN)}
+
+Stop a running program with **Ctrl+T** (hold it for a second). Reboot with **Ctrl+R**.
+
+## Drag files onto the computer {#drag-files}
+
+Write the code on your PC in any editor, save it as \`startup.lua\` and **drag the file onto the open computer screen** in Minecraft. CC: Tweaked uploads it into the current folder.
+
+## Quick tests with the lua prompt {#lua-prompt}
+
+\`lua\` opens an interactive Lua prompt – handy to try one line at a time:
+
+${code("", C.SHELL_LUA)}
+
+## Useful commands {#commands}
+
+| Command | Does |
+|---|---|
+| \`ls\` | list files |
+| \`edit <file>\` | edit or create a file |
+| \`rm <file>\` | delete a file |
+| \`help cloud\` | CC: Cloud quick reference |
+| \`cloud-demo\` | shows every dashboard widget |
+| \`cloud-storage\` | custom storage dashboard for an ME / RS bridge |
+| \`peripheral\` | in Lua: \`peripheral.getNames()\` lists attached blocks |
+
+Next: [the Lua reference](/docs/lua) or the [cloud.ui helper](/docs/ui-library).
+`,
+
+  // ------------------------------------------------------------- dashboard
+  dashboard: `# The dashboard
+
+Open the URL shown by the mainframe. One browser can hold several mainframes; tap one to open its dashboard.
+
+## Cards and widgets {#widgets}
+
+Every uplink becomes a **card**. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
+
+| Widget | Shows / does |
+|---|---|
+| gauge | value on an arc with warn/crit colours |
+| chart | line or sparkline of recent values |
+| progress | bar with value / max |
+| indicator | LED on/off |
+| label | text or key/value |
+| button | sends an action (optional confirm and PIN) |
+| toggle | on/off switch (updates instantly, rolls back if the computer does not confirm) |
+| slider | number, sent when you let go |
+| select, buttons | pick one option |
+| number, text | input fields (Enter or Set/Send) |
+| item search, watchlist, jobs | storage widgets of the [bridges](/docs/bridges) |
+
+## Pages and the layout editor {#edit-mode}
+
+Programs can put widgets on **pages** (tabs: bottom on the phone, top on desktop) and in **groups**. Players with control rights see a **pencil**:
+
+- reorder cards and widgets (drag on desktop, ▲▼ on the phone)
+- resize cards (drag the right edge, 1–4 columns) and widgets
+- rename, recolour, give an icon, hide
+- create, rename and delete pages, move cards between them
+
+**Save** stores the layout on the server – all devices see it. A script restart keeps the layout because widget ids stay the same.
+
+## Alerts {#alerts}
+
+Programs send alerts with \`cloud.alert(text, level)\`. They pop up as toasts and are kept in the **bell** log. Info toasts fade; warn and crit stay until dismissed. Tap **Enable notifications** in the alert log to get system notifications for crit alerts while the tab is in the background.
+
+## PIN-protected controls {#pin}
+
+Widgets with \`pin=true\` ask for the mainframe PIN on a keypad before they act. The owner sets it with \`/cccloud pin set <4-8 digits>\`. After 5 wrong PINs the device is locked for 5 minutes and the owner is notified in-game.
+
+## States you may see {#states}
+
+| Message | Meaning |
+|---|---|
+| Dashboard disabled | the dashboard is switched off in the mainframe screen |
+| Offline | the mainframe chunk is unloaded, the block was broken or the redstone kill switch is on |
+| Mainframe has no power | the FE buffer is empty – see [power](/docs/start#power) |
+| Uplink offline | that uplink is unloaded or out of range |
+| Read-only device | this device may watch but not control |
+| Server not reachable | see [troubleshooting](/docs/faq#not-reachable) |
+`,
+
+  // ------------------------------------------------------------------ lua
+  lua: `# Lua reference
+
+Everything a program can do with CC: Cloud. In-game, \`help cloud\` prints a short version.
+
+## Getting the peripheral {#peripheral}
+
+${code("lua", 'local cloud = peripheral.find("cloud_uplink")')}
+
+The uplink must touch the computer or sit on its wired modem network. Several uplinks? Use \`peripheral.wrap("cloud_uplink_0")\`.
+
+## A first program {#first-program}
+
+${code("lua", C.LUA_FIRST)}
+
+## Widgets {#widgets}
+
+Every widget takes an **id** (1–32 characters: a–z, 0–9, _), a label and an optional options table. Calling it again with the same id updates it.
+
+| Method | Options |
+|---|---|
+| \`cloud.setTitle(text)\` | card title (max 48 characters) |
+| \`cloud.button(id, label, opts)\` | color, confirm, pin |
+| \`cloud.toggle(id, label, opts)\` | value, confirm, pin |
+| \`cloud.slider(id, label, opts)\` | min, max, step, value, unit, pin |
+| \`cloud.gauge(id, label, opts)\` | min, max, unit, warn, crit, value |
+| \`cloud.label(id, text)\` | – |
+| \`cloud.chart(id, label, opts)\` | min, max, unit, points (60–300), interval, style = "line" \\| "sparkline" |
+| \`cloud.progress(id, label, opts)\` | min, max, unit, value |
+| \`cloud.indicator(id, label, opts)\` | value, onColor, offColor |
+| \`cloud.select(id, label, opts)\` | options = {"low","mid","high"}, value |
+| \`cloud.number(id, label, opts)\` | min, max, step, value, unit |
+| \`cloud.text(id, label, opts)\` | maxLength (≤ 256), value, placeholder |
+| \`cloud.buttons(id, label, opts)\` | options = {"A","B","C"} |
+| \`cloud.itemSearch(id, label, opts)\` | bridge = peripheral name, max |
+| \`cloud.watchlist(id, label, opts)\` | bridge |
+| \`cloud.jobs(id, label, opts)\` | bridge |
+
+Colours: cyan, green, yellow, red, gray. A gauge is "low is bad" when crit < warn (e.g. coolant).
+
+## Values {#values}
+
+| Method | Does |
+|---|---|
+| \`cloud.set(id, value)\` | update a gauge, label, toggle, chart (appends a point), … |
+| \`cloud.setMany({id=value, …})\` | several values in one go |
+| \`cloud.remove(id)\` | remove a widget |
+| \`cloud.clear()\` | remove everything (the automatic Computer card returns) |
+
+${code("lua", C.LUA_SETMANY)}
+
+## Events {#events}
+
+When someone uses a widget, every computer attached to the uplink gets a \`cloud_action\` event:
+
+${code("lua", C.LUA_EVENT)}
+
+| Widget | value |
+|---|---|
+| button | \`true\` |
+| toggle | \`true\` / \`false\` |
+| slider, number | number |
+| select, buttons | the chosen option (string) |
+| text | string (plain text) |
+| itemSearch craft | table {op="craft", name, count, jobId} |
+
+\`user\` is the device name, \`side\` the uplink's peripheral name. At most 64 actions wait in the queue per computer.
+
+## Layout: pages and groups {#layout}
+
+${code("lua", C.LUA_LAYOUT)}
+
+- \`cloud.page(id, title, {icon=})\` – a tab. With pages an uplink may hold 64 widgets instead of 32.
+- \`cloud.group(id, title, {page=, cols=1..4})\` – a card; widgets join it with \`group=\`.
+- Every widget also accepts \`page\`, \`group\`, \`span\` (1–4), \`order\` (0–10000), \`color\` and \`icon\`.
+- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick.
+
+## Alerts and status {#alerts}
+
+| Method | Does |
+|---|---|
+| \`cloud.alert(text, level)\` | toast + log; level "info", "warn" or "crit"; max 1 per second |
+| \`cloud.notify(text, level)\` | same as alert |
+| \`cloud.isOnline()\` | true if the mainframe is online and the dashboard on |
+| \`cloud.getClients()\` | number of connected dashboards |
+| \`cloud.getLastClientSeen()\` | seconds since a dashboard was connected, or nil |
+
+## cloud_mainframe {#mainframe}
+
+A computer next to the mainframe can read it:
+
+| Method | Returns |
+|---|---|
+| \`isEnabled()\` | dashboard switched on |
+| \`isOnline()\` | loaded, powered, not redstone-killed and enabled |
+| \`setEnabled(bool)\` | switch the dashboard on/off |
+| \`getUplinks()\` | list of {id, title, online, loaded, x, y, z, dimension} |
+| \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | FE stored, buffer size, FE/t |
+
+${code("lua", C.LUA_MAINFRAME)}
+
+The pairing code is never readable from Lua.
+
+## Bridges {#bridges}
+
+Peripheral types \`me_cloud_bridge\` and \`rs_cloud_bridge\`, same methods:
+
+| Method | Returns |
+|---|---|
+| \`isConnected()\` | connected to a powered network |
+| \`getEnergy()\`, \`getMaxEnergy()\`, \`getEnergyUsage()\` | network energy |
+| \`getStorage()\` | {itemsUsed, itemsTotal, typesUsed, fluidsUsed, fluidsTotal} |
+| \`listItems([filter], [limit=256])\` | {name, displayName, count, craftable}… |
+| \`findItems(query, [limit=50])\` | same, matching id or name |
+| \`getItem(name)\` | one item or nil |
+| \`isCraftable(name)\` | boolean |
+| \`craft(name, count)\` | {ok, jobId} or {ok=false, error} |
+| \`getCraftingJobs()\` | running jobs |
+| \`cancelCraft(jobId)\` | where supported |
+| \`listFluids([limit])\` | fluids |
+
+${code("lua", C.LUA_BRIDGE)}
+
+## Limits {#limits}
+
+- ids: 1–32 characters a–z, 0–9, _
+- 32 widgets per uplink, 64 with pages
+- titles and labels 48 characters, text values 256, alert text 200
+- alerts: 1 per second per uplink
+`,
+
+  // ---------------------------------------------------------- ui library
+  "ui-library": `# cloud.ui helper library
+
+\`cloud.ui\` ships in every computer's ROM. It wraps the uplink in a builder and runs the event loop for you: one function per widget, handlers instead of \`os.pullEvent\`, timers with \`every\`.
+
+## Quick start {#quick-start}
+
+${code("lua", C.UI_QUICK)}
+
+## API {#api}
+
+| Function | Does |
+|---|---|
+| \`ui.connect([uplink])\` | finds the uplink (or takes a name / wrapped peripheral), returns \`dash\` |
+| \`dash:title(text)\` | card title |
+| \`dash:page(id, title, opts)\`, \`dash:group(id, title, opts)\` | layout |
+| \`dash:gauge(id, label, opts)\` … | every widget type: button, toggle, slider, gauge, chart, progress, indicator, select, number, text, buttons, label, itemSearch, watchlist, jobs |
+| \`(…, opts, handler)\` | optional last argument: \`function(user, value)\` called on use |
+| \`widget:set(value)\` | update; \`widget:remove()\`, \`widget:on(handler)\` |
+| \`dash:set(id, value)\`, \`dash:setMany(t)\` | update by id |
+| \`dash:on(id, handler)\` | handler for a widget |
+| \`dash:every(seconds, fn)\` | timer (first call right away) |
+| \`dash:onEvent(event, fn)\` | any other CC event (redstone, timer, …) |
+| \`dash:notify(text, level)\` | alert |
+| \`dash:clients()\`, \`dash:isOnline()\` | status |
+| \`dash:clear()\`, \`dash:run()\`, \`dash:stop()\` | lifecycle |
+
+Errors inside handlers are printed and do not stop the loop. Ctrl+T ends it.
+
+## Example: tree farm {#example-farm}
+
+${code("lua", C.UI_FARM)}
+
+## Example: reactor panel {#example-reactor}
+
+Adjust the peripheral name and methods to your reactor mod.
+
+${code("lua", C.UI_REACTOR)}
+
+## Built-in programs {#programs}
+
+- \`cloud-demo\` – every widget on two pages
+- \`cloud-storage [bridge] [uplink]\` – a custom storage dashboard for an ME / RS bridge
+`,
+
+  // --------------------------------------------------------------- bridges
+  bridges: `# Bridges: AE2 and Refined Storage
+
+The **ME Cloud Bridge** (Applied Energistics 2) and **RS Cloud Bridge** (Refined Storage) connect a storage network to the dashboard. They only exist when the mod is installed.
+
+## Set up {#setup}
+
+1. Craft the bridge ([recipe](/docs/start#recipes)) and place it **on the network** like any other device (ME: uses one channel; RS: a network node).
+2. Put a **Cloud Uplink directly on the bridge** and link the uplink with the Link Card.
+3. The dashboard shows a ready-made **Storage** card – no computer, no code.
+
+The bridge uses the network's own power, no FE for the mainframe.
+
+## The storage card {#storage-card}
+
+- gauges: storage used, energy
+- labels: total items, item types, energy usage
+- **search**: type a name or id, see counts, a "craftable" badge and the mod of each item
+- **watchlist** and **crafting jobs** (below)
+
+## Crafting from the phone {#crafting}
+
+Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, missing ingredients, amount too large (limit \`maxCraftAmount\`, default 4096). Only devices with control rights can craft.
+
+## Watchlist {#watchlist}
+
+Add items with a minimum amount (from a search result or by id). Items below their minimum are listed first in red and trigger a **warn** alert once per crossing. Edit the minimum or remove items any time. The watchlist is stored in the bridge.
+
+## From Lua {#lua}
+
+${code("lua", C.LUA_BRIDGE)}
+
+Your own storage card with the same widgets:
+
+${code("lua", C.LUA_BRIDGE_WIDGETS)}
+
+Or just run \`cloud-storage\`. All methods: [Lua reference → Bridges](/docs/lua#bridges).
+`,
+
+  // -------------------------------------------------------------- security
+  security: `# Security and hosting
+
+The dashboard can control things in your world, so it is protected like a real web service.
+
+## Default: LAN only {#lan-only}
+
+Out of the box only devices in the server's local network (and the host itself) can open the dashboard. Everyone else gets "LAN only".
+
+${code("toml", C.TOML_LAN)}
+
+The config file is \`<world>/serverconfig/cccloud-server.toml\`; changes to \`[web]\` need a server restart.
+
+## Approvals and devices {#devices}
+
+- A pairing code is valid for 10 minutes and works once.
+- After the code, the player who opened it must click **[Allow]** in-game (within 2 minutes).
+- Every device belongs to that player. If the player loses access (untrusted, de-opped, banned), the device stops working immediately.
+- Devices unused for 30 days expire.
+- List and revoke devices in the mainframe screen or with commands.
+
+## Owner, trusted players, ops {#trust}
+
+The player who placed the mainframe owns it. Owner, trusted players and ops (level 2+) can see the pairing code, approve devices, link uplinks and change settings. Others see a read-only status.
+
+## Commands {#commands}
+
+Look at the mainframe and run:
+
+${code("", C.COMMANDS)}
+
+## PIN {#pin}
+
+Critical widgets (\`pin=true\`) need a 4–8 digit PIN. 5 wrong tries lock that device for 5 minutes and notify the owner.
+
+## Internet access {#internet}
+
+> **Warning:** Plain HTTP over the internet sends your access token and PIN unencrypted. Use HTTPS (Caddy, Cloudflare Tunnel or TLS in the mod).
+
+Set \`webAllowInternet = true\` and pick one of the setups below. The dashboard shows a warning when it runs over plain HTTP from a public address.
+
+### Caddy reverse proxy (recommended) {#caddy}
+
+${code("toml", C.TOML_CADDY)}
+
+${code("", C.CADDYFILE)}
+
+Caddy gets a certificate automatically and forwards WebSockets.
+
+### Cloudflare Tunnel (no open port) {#cloudflare}
+
+Same \`[web]\` settings as for Caddy, then:
+
+${code("bash", C.CLOUDFLARED)}
+
+${code("yaml", C.CLOUDFLARED_YML)}
+
+### TLS in the mod {#tls}
+
+${code("toml", C.TOML_TLS)}
+
+Convert the Let's Encrypt key first: \`${C.PKCS8}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
+
+### Port opened directly {#open-port}
+
+Only for quick tests: set \`webAllowInternet = true\`, \`publicUrl = "http://mc.example.com:8787"\` and open TCP 8787 in your host's panel.
+
+## What the server logs {#logs}
+
+Every pairing, approval, revoke and dashboard action appears as \`[cccloud] …\` in the server log.
+`,
+
+  // ------------------------------------------------------------------- faq
+  faq: `# Troubleshooting and FAQ
+
+## "No such program" {#no-such-program}
+
+You typed Lua code into the **shell**. The shell only runs programs. Put the code into a file with \`edit startup.lua\` and run \`startup\`, or type \`lua\` first. See [CC basics](/docs/cc-basics#shell-vs-lua).
+
+## "No widgets yet" / empty card {#no-widgets}
+
+- The uplink must be **on a computer** (or a bridge) and **linked** with the Link Card.
+- A computer without its own program shows the automatic Computer card. If your program cleared all widgets (\`cloud.clear()\`), the card comes back after the program ends.
+- Your program must actually run: put it in \`startup.lua\` so it starts after a reboot or chunk load.
+
+## The bridge does not show up {#bridge}
+
+- The uplink must sit **directly on the bridge**, not on a cable next to it.
+- The bridge must be part of a powered network (ME: it needs a channel – check your controller and cable channel count; RS: the controller must have energy).
+- Link the **uplink**, not the bridge, with the Link Card.
+
+## The dashboard is not reachable {#not-reachable}
+
+- Use the URL from the mainframe screen. \`localhost\` only works on the PC that runs Minecraft.
+- Phone and PC must be in the same network (Wi-Fi, not mobile data) – or see [internet access](/docs/security#internet).
+- Allow Java through the PC firewall for private networks.
+- Port 8787 must be free; if not, the server log says so and an admin can change \`webPort\`.
+- On a hosted server the port must be opened, or use a reverse proxy / tunnel.
+
+## "Mainframe has no power" {#no-power}
+
+The FE buffer is empty. Connect a generator or FE cable to the mainframe; it reconnects by itself once the buffer refills. See [power](/docs/start#power).
+
+## "Access revoked" {#revoked}
+
+The device was removed (in the mainframe screen or with \`/cccloud revoke\`), it expired after 30 days, or the player who approved it lost access. Pair again with a new code.
+
+## "LAN only" {#lan-only}
+
+The server only allows local addresses. An admin can enable \`webAllowInternet\` – preferably behind HTTPS. See [security](/docs/security#internet).
+
+## Controls are greyed out {#locked}
+
+The dashboard is disabled, the mainframe is offline or without power, the uplink is offline, or your device is read-only. The banner at the top says which.
+
+## Wrong PIN / locked {#pin-locked}
+
+After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with \`/cccloud pin set\`.
+`,
+};

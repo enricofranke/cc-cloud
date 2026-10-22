@@ -16,13 +16,29 @@ function parseRoute(): Route {
 }
 
 export const route = signal<Route>(parseRoute());
-addEventListener("hashchange", () => (route.value = parseRoute()));
+/** true while the /docs section is shown (path based; the app itself uses hash routes on "/"). */
+export const inDocs = signal(location.pathname.startsWith("/docs"));
+const sync = () => {
+  route.value = parseRoute();
+  inDocs.value = location.pathname.startsWith("/docs");
+};
+addEventListener("hashchange", sync);
+addEventListener("popstate", sync);
 
 export function navigate(to: string, replace = false) {
-  if (replace) history.replaceState(null, "", `#${to}`);
-  else history.pushState(null, "", `#${to}`);
-  route.value = parseRoute();
+  const url = `/#${to}`;
+  if (replace) history.replaceState(null, "", url);
+  else history.pushState(null, "", url);
+  sync();
   window.scrollTo(0, 0);
+}
+
+/** Opens the docs, e.g. openDocs("/docs/faq#no-such-program"). */
+export function openDocs(path = "/docs") {
+  history.pushState(null, "", path);
+  sync();
+  dispatchEvent(new PopStateEvent("popstate"));
+  if (!path.includes("#")) window.scrollTo(0, 0);
 }
 
 // ---- theme -----------------------------------------------------------------

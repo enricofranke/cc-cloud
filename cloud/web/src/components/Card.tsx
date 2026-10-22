@@ -9,6 +9,7 @@ import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { RedstoneSides } from "./Redstone.tsx";
+import { DocsLink } from "./DocsLink.tsx";
 
 /** Body columns: 2 for a 1-column card, 4 for wider cards (phones always use 2, see CSS). */
 const bodyCols = (span: number) => (span >= 2 ? 4 : 2);
@@ -86,7 +87,10 @@ export function Card({ card, conn, locked, children }: { card: ResolvedCard; con
         {!card.uplink.online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
       </header>
       {card.widgets.length === 0 ? (
-        <p class="card-empty">Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.</p>
+        <p class="card-empty">
+          Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.{" "}
+          <DocsLink to="/docs/faq#no-widgets">Why?</DocsLink>
+        </p>
       ) : (
         <div class={`card-body cb bc-${cols}`}>
           {blocks(card.widgets, cols).map((b) => {
