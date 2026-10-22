@@ -124,7 +124,8 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof CloudUplinkBlockEntity uplink) {
-            uplink.showStatus(player);
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) ai.ezfox.cccloud.gui.GuiNetwork.openUplink(serverPlayer, uplink);
+            else uplink.showStatus(player);
             return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;

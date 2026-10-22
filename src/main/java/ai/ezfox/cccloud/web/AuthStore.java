@@ -279,6 +279,28 @@ public final class AuthStore {
         return removed;
     }
 
+    /** Revokes one device by the id shown in the in-game screen (first {@link #DEVICE_ID_LENGTH} hex chars of its hash). */
+    public synchronized @Nullable Device revokeById(UUID mainframeId, String id) {
+        if (id.length() != DEVICE_ID_LENGTH) return null;
+        Device match = null;
+        for (var device : devices(mainframeId)) {
+            if (!device.tokenHash().startsWith(id)) continue;
+            if (match != null) return null; // ambiguous (practically impossible with 64 bits)
+            match = device;
+        }
+        if (match == null) return null;
+        devices.remove(match.tokenHash());
+        onChange.run();
+        return match;
+    }
+
+    public static final int DEVICE_ID_LENGTH = 16;
+
+    /** The public id of a device for the in-game screen. Not secret: it is a prefix of the token's SHA-256. */
+    public static String deviceId(Device device) {
+        return device.tokenHash().substring(0, DEVICE_ID_LENGTH);
+    }
+
     // ---- ACL ---------------------------------------------------------------------------------------------------------
 
     public synchronized void setAcl(UUID mainframeId, @Nullable UUID owner, Set<UUID> trusted) {

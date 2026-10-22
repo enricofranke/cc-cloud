@@ -14,11 +14,10 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import java.io.File;
-import java.net.Inet4Address;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.server.MinecraftServer;
 import org.jspecify.annotations.Nullable;
@@ -68,7 +67,8 @@ public final class CloudWebServer {
             return;
         }
         String bind = CloudConfig.get(CloudConfig.WEB_BIND).trim();
-        int port = CloudConfig.get(CloudConfig.WEB_PORT);
+        // Dev runs (build.gradle) use another port so they do not collide with a game running on the same machine.
+        int port = Integer.getInteger("cccloud.devWebPort", CloudConfig.get(CloudConfig.WEB_PORT));
         boolean allowInternet = CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET);
         var proxies = IpUtil.parseList(CloudConfig.get(CloudConfig.WEB_TRUSTED_PROXIES),
             bad -> CloudLog.LOGGER.error("[cccloud] Ignoring invalid webTrustedProxies entry '{}'", bad));
@@ -200,24 +200,29 @@ public final class CloudWebServer {
         } else if (server.getLocalIp() != null && !server.getLocalIp().isBlank()) {
             host = server.getLocalIp();
         } else {
-            host = lanAddress();
+            var hosts = LanAddresses.select(LanAddresses.scan());
+            host = hosts.isEmpty() ? "localhost" : hosts.getFirst();
         }
         if (host.contains(":") && !host.startsWith("[")) host = "[" + host + "]";
         return (tls ? "https://" : "http://") + host + ":" + port;
     }
 
-    private static String lanAddress() {
-        try {
-            for (var nic : Collections.list(NetworkInterface.getNetworkInterfaces())) {
-                if (!nic.isUp() || nic.isLoopback() || nic.isVirtual()) continue;
-                for (var address : Collections.list(nic.getInetAddresses())) {
-                    if (address instanceof Inet4Address && address.isSiteLocalAddress()) return address.getHostAddress();
-                }
-            }
-        } catch (Exception ignored) {
-            // Fall through.
-        }
-        return "localhost";
+    /** All dashboard URLs for the in-game screen: publicUrl first, then every LAN address of the host. */
+    public static List<String> dashboardUrls() {
+        var instance = current;
+        if (instance == null) return List.of();
+        return LanAddresses.urls(CloudConfig.get(CloudConfig.PUBLIC_URL), CloudConfig.get(CloudConfig.WEB_BIND), instance.port, instance.ssl != null,
+            LanAddresses.select(LanAddresses.scan()));
+    }
+
+    public static boolean allowsInternet() {
+        var instance = current;
+        return instance != null && instance.allowInternet;
+    }
+
+    public static boolean usesTls() {
+        var instance = current;
+        return instance != null && instance.ssl != null;
     }
 
     /** Test hook for the load test (all clients come from 127.0.0.1). */

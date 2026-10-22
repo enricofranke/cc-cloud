@@ -71,6 +71,7 @@ neoForge {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'cccloud.devWebPort', '18787'
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -79,6 +80,7 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            systemProperty 'cccloud.devWebPort', '18787'
         }
 
         data {
@@ -135,6 +137,9 @@ dependencies {
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-common-api:${cct_version}"
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cct_version}"
     runtimeOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
+    // CC internals for the automatic Computer card (power, label, redstone). Only used in compat/cc, which degrades
+    // gracefully if CC changes them.
+    compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
 
     // Soft dependencies for the Cloud Bridges (compat/ae2, compat/rs). Compile-only: the mod runs without them.
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}:api"

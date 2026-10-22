@@ -35,6 +35,7 @@ public final class ModRegistry {
     private static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, CCCloud.MODID);
     private static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CCCloud.MODID);
     private static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES = DeferredRegister.create(Registries.PARTICLE_TYPE, CCCloud.MODID);
+    private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, CCCloud.MODID);
     private static final DeferredRegister<Consumer<GameTestHelper>> TEST_FUNCTIONS = DeferredRegister.create(Registries.TEST_FUNCTION, CCCloud.MODID);
 
     // Blocks
@@ -72,6 +73,12 @@ public final class ModRegistry {
     public static final DeferredHolder<net.minecraft.core.particles.ParticleType<?>, net.minecraft.core.particles.SimpleParticleType> DATA_PACKET =
         PARTICLES.register("data_packet", () -> new net.minecraft.core.particles.SimpleParticleType(false));
 
+    // Menus (in-game screens)
+    public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<ai.ezfox.cccloud.gui.MainframeMenu>> MAINFRAME_MENU =
+        MENUS.register("mainframe", () -> net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(ai.ezfox.cccloud.gui.MainframeMenu::new));
+    public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<ai.ezfox.cccloud.gui.UplinkMenu>> UPLINK_MENU =
+        MENUS.register("uplink", () -> net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(ai.ezfox.cccloud.gui.UplinkMenu::new));
+
     // Creative tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("cccloud", () -> CreativeModeTab.builder()
         .title(Component.translatable("itemGroup.cccloud"))
@@ -93,6 +100,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("mainframe_ownership", () -> CloudGameTests::ownership);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
+        TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
     }
 
     private ModRegistry() {
@@ -105,6 +113,7 @@ public final class ModRegistry {
         COMPONENTS.register(bus);
         TABS.register(bus);
         PARTICLES.register(bus);
+        MENUS.register(bus);
         TEST_FUNCTIONS.register(bus);
     }
 }

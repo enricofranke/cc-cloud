@@ -133,8 +133,9 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
         if (mainframe == null) return InteractionResult.PASS;
         if (player.isSecondaryUseActive() && player.getMainHandItem().isEmpty()) {
             mainframe.toggleEnabled(player);
-        } else {
-            mainframe.showStatus(player);
+        } else if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            // In-game screen; managers see everything, others a read-only status view.
+            ai.ezfox.cccloud.gui.GuiNetwork.openMainframe(serverPlayer, mainframe);
         }
         return InteractionResult.SUCCESS;
     }

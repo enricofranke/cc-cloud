@@ -9,6 +9,8 @@ import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.peripheral.UplinkPeripheral;
 import ai.ezfox.cccloud.bridge.BridgeCore;
+import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.uplink.ComputerCard;
 import ai.ezfox.cccloud.bridge.BridgeHost;
 import ai.ezfox.cccloud.bridge.StorageTemplate;
 import ai.ezfox.cccloud.uplink.ActionValidator;
@@ -75,6 +77,10 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     /** Direct mode: attached to a Cloud Bridge, the section is the ready-made Storage template. */
     private boolean template;
     private String templateKind = "";
+    /** Auto mode: attached to a computer whose programs defined no widgets → the automatic Computer card. */
+    private boolean auto;
+    /** Set when the last computer detached (shutdown/reboot): Lua widgets are dropped so the card comes back. */
+    private volatile boolean computerDetached;
     /** Last forwarded watchlist alert per bridge (key = bridge position). */
     private final Map<String, Integer> bridgeAlertSeq = new java.util.HashMap<>();
 
@@ -131,6 +137,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
+            auto = input.getBooleanOr("auto", false);
             templateKind = input.getStringOr("template_kind", "");
             readDeclarations(input.getStringOr("pages", "[]"), pages);
             readDeclarations(input.getStringOr("groups", "[]"), groups);
@@ -156,6 +163,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         synchronized (this) {
             output.putString("title", title);
             output.putBoolean("template", template);
+            output.putBoolean("auto", auto);
             output.putString("template_kind", templateKind);
             output.putString("pages", Json.GSON.toJson(declarations(pages)));
             output.putString("groups", Json.GSON.toJson(declarations(groups)));
@@ -240,6 +248,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     private void tick(ServerLevel level) {
         if (tickCounter % STATUS_INTERVAL == 0) updateStatus(level);
         if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
+        if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
         tickCounter++;
         sampleCharts(level.getGameTime());
         if (link == null) {
@@ -374,6 +383,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
 
     private synchronized void enterTemplate(String kind) {
         template = true;
+        auto = false;
         templateKind = kind;
         title = StorageTemplate.title(kind);
         widgets.clear();
@@ -395,6 +405,128 @@ public class CloudUplinkBlockEntity extends BlockEntity {
 
     public synchronized boolean isTemplate() {
         return template;
+    }
+
+    public synchronized boolean isAuto() {
+        return auto;
+    }
+
+    /** "direct" (Storage template), "auto" (Computer card) or "lua". */
+    public synchronized String mode() {
+        return template ? "direct" : auto ? "auto" : "lua";
+    }
+
+    // ---- auto mode (Computer card) -------------------------------------------------------------------------------
+
+    private CcComputers.@Nullable Handle attachedComputer(ServerLevel level) {
+        if (!CloudConfig.get(CloudConfig.AUTO_COMPUTER_CARD)) return null;
+        return CcComputers.find(level, getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING)));
+    }
+
+    /** Enters/leaves auto mode and refreshes the card (every 10 ticks). */
+    private void updateComputer(ServerLevel level) {
+        if (isTemplate()) return;
+        var computer = attachedComputer(level);
+        boolean detached = computerDetached;
+        computerDetached = false;
+        synchronized (this) {
+            if (computer == null) {
+                if (auto) leaveAuto();
+                return;
+            }
+            // The program that defined the widgets is gone (shutdown/reboot): show the card again.
+            if (detached && !auto && computers.isEmpty()) {
+                widgets.clear();
+                pages.clear();
+                groups.clear();
+                structureDirty = true;
+            }
+            if (!auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty()) enterAuto();
+            if (!auto) return;
+        }
+        refreshAuto(computer);
+    }
+
+    private synchronized void enterAuto() {
+        auto = true;
+        widgets.clear();
+        pages.clear();
+        groups.clear();
+        for (var widget : ComputerCard.widgets()) widgets.put(widget.id(), widget);
+        for (var group : ComputerCard.groups()) groups.put(group.get("id").getAsString(), group);
+        structureDirty = true;
+        setChanged();
+    }
+
+    private synchronized void leaveAuto() {
+        auto = false;
+        widgets.clear();
+        groups.clear();
+        title = "";
+        structureDirty = true;
+        setChanged();
+    }
+
+    private void refreshAuto(CcComputers.Handle computer) {
+        String newTitle = computer.title();
+        boolean on = computer.isOn();
+        var values = new LinkedHashMap<String, JsonElement>();
+        values.put(ComputerCard.POWER, new com.google.gson.JsonPrimitive(on));
+        for (var side : ComputerCard.SIDES) {
+            int out = computer.output(side);
+            values.put(ComputerCard.inputId(side), new com.google.gson.JsonPrimitive(computer.input(side) > 0));
+            values.put(ComputerCard.outputId(side), new com.google.gson.JsonPrimitive(out > 0));
+            values.put(ComputerCard.levelId(side), Json.number(out));
+        }
+        synchronized (this) {
+            if (!auto) return;
+            if (!title.equals(newTitle)) {
+                title = newTitle.length() > Limits.TITLE ? newTitle.substring(0, Limits.TITLE) : newTitle;
+                structureDirty = true;
+            }
+            for (var entry : values.entrySet()) setValue(entry.getKey(), entry.getValue());
+        }
+    }
+
+    /**
+     * Called before a Lua program changes the section: the automatic card makes room for the program's widgets.
+     * Returns false if the uplink is in direct mode (Lua may not change it).
+     */
+    public synchronized boolean beginLua() {
+        if (template) return false;
+        if (auto) {
+            auto = false;
+            widgets.clear();
+            pages.clear();
+            groups.clear();
+            title = "";
+            structureDirty = true;
+        }
+        return true;
+    }
+
+    /** Runs an action on the Computer card (server thread). */
+    private @Nullable String runComputerAction(String widgetId, JsonElement value, String user) {
+        if (!(level instanceof ServerLevel serverLevel)) return "unavailable";
+        var computer = attachedComputer(serverLevel);
+        if (computer == null) return "unavailable";
+        var action = ComputerCard.action(widgetId, value);
+        if (action == null) return "not_interactive";
+        switch (action) {
+            case ComputerCard.Power power -> {
+                switch (power.what()) {
+                    case ComputerCard.TURN_ON -> computer.turnOn();
+                    case ComputerCard.REBOOT -> computer.reboot();
+                    default -> computer.shutdown();
+                }
+                CCCloud.LOGGER.info("[cccloud] {}: {} on computer #{}", user, power.what(), computer.id());
+            }
+            case ComputerCard.SetOutput set -> {
+                if (!computer.setOutput(set.side(), set.level())) return "unsupported";
+            }
+        }
+        refreshAuto(computer);
+        return null;
     }
 
     private void updateStatus(ServerLevel level) {
@@ -471,6 +603,24 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         player.sendSystemMessage(Component.translatable("cccloud.uplink.bound", newLink.describe()).withStyle(ChatFormatting.GREEN));
     }
 
+    public synchronized int widgetCount() {
+        return widgets.size();
+    }
+
+    /** Unlinks the uplink from its mainframe (in-game screen; rights are checked by the caller). */
+    public void unlink(String by) {
+        if (link == null || !(level instanceof ServerLevel serverLevel)) return;
+        var old = link;
+        unlinkFrom(old);
+        link = null;
+        synchronized (this) {
+            structureDirty = true;
+        }
+        setChanged();
+        updateStatus(serverLevel);
+        CCCloud.LOGGER.info("[cccloud] {} unlinked uplink {} from {}", by, uplinkId, old.describe());
+    }
+
     public void showStatus(Player player) {
         player.sendSystemMessage(Component.translatable(isAdvanced() ? "block.cccloud.advanced_cloud_uplink" : "block.cccloud.cloud_uplink")
             .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
@@ -498,6 +648,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         json.add("widgets", array);
         if (!pages.isEmpty()) json.add("pages", declarations(pages));
         if (!groups.isEmpty()) json.add("groups", declarations(groups));
+        json.addProperty("mode", template ? "direct" : auto ? "auto" : "lua");
         if (template) {
             json.addProperty("template", "storage");
             json.addProperty("bridge", templateKind);
@@ -608,6 +759,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
 
     public void detach(IComputerAccess computer) {
         computers.remove(computer);
+        if (computers.isEmpty()) computerDetached = true;
     }
 
     public int computerCount() {
@@ -634,6 +786,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
             }
         }
         spawnDataPackets();
+        if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), user));
         if (result.op() != null) return handleOp(widget, result.op(), user);
         queueAction(widgetId, Json.toLua(result.value()), user);
         return ActionResult.done(null);

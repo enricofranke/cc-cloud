@@ -21,6 +21,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
+    public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -67,6 +68,9 @@ public final class CloudConfig {
         MAX_WIDGETS_WITH_PAGES = b.comment("Maximum number of widgets per uplink once the script declares pages with cloud.page().")
             .translation("cccloud.configuration.maxWidgetsWithPages")
             .defineInRange("maxWidgetsWithPages", 64, 1, 64);
+        AUTO_COMPUTER_CARD = b.comment("An uplink on a computer without Lua widgets shows an automatic Computer card (power + redstone).")
+            .translation("cccloud.configuration.autoComputerCard")
+            .define("autoComputerCard", true);
         b.pop();
 
         b.push("bridges");

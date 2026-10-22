@@ -14,6 +14,18 @@ public class CCCloudClient {
         modEventBus.addListener(CloudModels::register);
         modEventBus.addListener(CCCloudClient::registerRenderers);
         modEventBus.addListener(CCCloudClient::registerParticles);
+        modEventBus.addListener(CCCloudClient::registerScreens);
+        ai.ezfox.cccloud.gui.GuiNetwork.clientViewHandler = payload -> {
+            var player = net.minecraft.client.Minecraft.getInstance().player;
+            if (player != null && player.containerMenu instanceof ai.ezfox.cccloud.gui.CloudMenu menu && menu.containerId == payload.containerId()) {
+                menu.setView(payload.view());
+            }
+        };
+    }
+
+    private static void registerScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        event.register(ModRegistry.MAINFRAME_MENU.get(), ai.ezfox.cccloud.client.gui.MainframeScreen::new);
+        event.register(ModRegistry.UPLINK_MENU.get(), ai.ezfox.cccloud.client.gui.UplinkScreen::new);
     }
 
     private static void registerParticles(net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent event) {

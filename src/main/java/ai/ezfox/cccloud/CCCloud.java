@@ -23,6 +23,7 @@ public class CCCloud {
         modEventBus.addListener(CCCloud::registerCapabilities);
         CloudNetwork.init();
         CloudCommand.init();
+        ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
         if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);

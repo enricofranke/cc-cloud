@@ -201,14 +201,15 @@ public final class UplinkPeripheral implements IPeripheral {
 
     @LuaFunction
     public final boolean remove(IArguments args) throws LuaException {
-        checkEditable();
+        if (uplink.isTemplate() || uplink.isAuto()) return false;
         return uplink.removeWidget(wrap(() -> WidgetFactory.checkId(args.get(0))));
     }
 
     /** Removes all widgets, pages and groups. */
     @LuaFunction
     public final void clear() throws LuaException {
-        checkEditable();
+        if (uplink.isTemplate()) throw new LuaException("this uplink is attached directly to a Cloud Bridge and shows the Storage template");
+        if (uplink.isAuto()) return; // nothing of the program's to clear; the Computer card stays
         uplink.clearWidgets();
     }
 
@@ -282,8 +283,9 @@ public final class UplinkPeripheral implements IPeripheral {
         return args.count() > index && args.get(index) != null ? args.getTable(index) : null;
     }
 
+    /** Lua changes the section: leaves the automatic Computer card; not allowed in direct mode. */
     private void checkEditable() throws LuaException {
-        if (uplink.isTemplate()) throw new LuaException("this uplink is attached directly to a Cloud Bridge and shows the Storage template");
+        if (!uplink.beginLua()) throw new LuaException("this uplink is attached directly to a Cloud Bridge and shows the Storage template");
     }
 
     private void put(ai.ezfox.cccloud.uplink.Widget widget) throws LuaException {

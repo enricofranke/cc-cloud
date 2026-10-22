@@ -74,6 +74,11 @@ final class MinecraftBridge implements GameBridge {
         }
         CloudLog.LOGGER.info("[cccloud] Device '{}' from {} asks to connect to {} – waiting for in-game approval", pending.deviceName(), pending.ip(), name);
         for (var player : targets) {
+            // Players with the mainframe screen open see the request there (live update), no chat needed.
+            if (ai.ezfox.cccloud.gui.GuiNetwork.hasScreenOpen(player, pending.mainframeId())) {
+                ai.ezfox.cccloud.gui.GuiNetwork.push(player, "approval_request");
+                continue;
+            }
             var allow = Component.translatable("cccloud.approval.allow").withStyle(style -> style.withColor(ChatFormatting.GREEN).withBold(true)
                 .withClickEvent(new ClickEvent.RunCommand("/cccloud approve " + pending.id()))
                 .withHoverEvent(new HoverEvent.ShowText(Component.translatable("cccloud.approval.allow_hover"))));
