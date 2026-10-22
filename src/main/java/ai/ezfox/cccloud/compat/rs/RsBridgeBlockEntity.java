@@ -20,12 +20,14 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
     private final RsAdapter adapter;
     private final BridgeCore core;
     private final BridgePeripheral peripheral;
+    private final ai.ezfox.cccloud.bridge.BridgeSection section;
     private int ticks;
 
     public RsBridgeBlockEntity(BlockPos pos, BlockState state) {
         super(RsCompat.BLOCK_ENTITY.get(), pos, state, new SimpleNetworkNode(ENERGY_USAGE));
         adapter = new RsAdapter(this);
         core = new BridgeCore(adapter, "rs", this::setChanged);
+        section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
         peripheral = new BridgePeripheral("rs_cloud_bridge", this);
     }
 
@@ -43,15 +45,34 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
     }
 
     @Override
+    public ai.ezfox.cccloud.bridge.BridgeSection bridgeSection() {
+        return section;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (level != null && !level.isClientSide()) section.broken();
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        if (level != null && !level.isClientSide()) section.removed();
+    }
+
+    @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         core.loadWatchlist(input.getStringOr("watchlist", "[]"));
+        section.load(input);
     }
 
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         output.putString("watchlist", core.saveWatchlist());
+        section.save(output);
     }
 
     @Override
@@ -62,6 +83,7 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
         if (mainNetworkNode.isActive() != powered) mainNetworkNode.setActive(powered);
         mainNetworkNode.doWork();
         core.tick();
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) section.tick(serverLevel);
         if (ticks++ % 10 == 0 && level != null) {
             var status = adapter.status();
             var state = getBlockState();

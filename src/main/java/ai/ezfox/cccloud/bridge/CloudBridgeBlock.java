@@ -79,7 +79,8 @@ public class CloudBridgeBlock extends Block implements EntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof BridgeHost host) {
-            BridgeStatus.show(player, host.bridgeCore(), state.getBlock().getName());
+            if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) ai.ezfox.cccloud.gui.GuiNetwork.openBridge(serverPlayer, host);
+            else BridgeStatus.show(player, host.bridgeCore(), state.getBlock().getName());
             return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;

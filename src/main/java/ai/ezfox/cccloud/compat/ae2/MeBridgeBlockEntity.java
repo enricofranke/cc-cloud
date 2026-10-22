@@ -33,6 +33,7 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
     private final Ae2Adapter adapter;
     private final BridgeCore core;
     private final BridgePeripheral peripheral;
+    private final ai.ezfox.cccloud.bridge.BridgeSection section;
     private int ticks;
 
     public MeBridgeBlockEntity(BlockPos pos, BlockState state) {
@@ -45,6 +46,7 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
             .setVisualRepresentation(Ae2Compat.ITEM.get());
         adapter = new Ae2Adapter(this);
         core = new BridgeCore(adapter, "me", this::setChanged);
+        section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
         peripheral = new BridgePeripheral("me_cloud_bridge", this);
     }
 
@@ -62,6 +64,17 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
     }
 
     @Override
+    public ai.ezfox.cccloud.bridge.BridgeSection bridgeSection() {
+        return section;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        super.preRemoveSideEffects(pos, state);
+        if (level != null && !level.isClientSide()) section.broken();
+    }
+
+    @Override
     public void onLoad() {
         super.onLoad();
         if (level != null && !level.isClientSide()) GridHelper.onFirstTick(this, be -> be.node.create(be.getLevel(), be.getBlockPos()));
@@ -71,6 +84,7 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
     public void setRemoved() {
         super.setRemoved();
         node.destroy();
+        if (level != null && !level.isClientSide()) section.removed();
     }
 
     @Override
@@ -84,6 +98,7 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
         super.loadAdditional(input);
         node.deserialize(input);
         core.loadWatchlist(input.getStringOr("watchlist", "[]"));
+        section.load(input);
     }
 
     @Override
@@ -91,11 +106,13 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
         super.saveAdditional(output);
         node.serialize(output);
         output.putString("watchlist", core.saveWatchlist());
+        section.save(output);
     }
 
     @Override
     public void bridgeTick() {
         core.tick();
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) section.tick(serverLevel);
         if (ticks++ % 10 == 0 && level != null) {
             var status = adapter.status();
             var state = getBlockState();

@@ -7,7 +7,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 
-/** The Cloud Uplink screen's menu. */
+/** The Cloud Uplink screen's menu (also used for the ME/RS Cloud Bridges). */
 public class UplinkMenu extends CloudMenu {
     public UplinkMenu(int id, BlockPos pos, String view) {
         super(ModRegistry.UPLINK_MENU.get(), id, pos, view);
@@ -19,6 +19,7 @@ public class UplinkMenu extends CloudMenu {
 
     @Override
     protected boolean blockStillThere(Player player) {
-        return player.level().getBlockEntity(pos()) instanceof CloudUplinkBlockEntity;
+        var be = player.level().getBlockEntity(pos());
+        return be instanceof CloudUplinkBlockEntity || be instanceof ai.ezfox.cccloud.bridge.BridgeHost;
     }
 }

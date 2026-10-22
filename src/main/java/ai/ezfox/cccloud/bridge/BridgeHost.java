@@ -7,6 +7,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 public interface BridgeHost {
     BridgeCore bridgeCore();
 
+    /** The bridge's own dashboard section (when linked with the Cloud Link Card). */
+    BridgeSection bridgeSection();
+
     /** Called every server tick by {@link CloudBridgeBlock}'s ticker. */
     void bridgeTick();
 

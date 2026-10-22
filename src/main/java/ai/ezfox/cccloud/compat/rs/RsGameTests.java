@@ -25,7 +25,8 @@ public final class RsGameTests {
 
         boolean[] filled = {false};
         boolean[] once = {false};
-        helper.succeedWhen(() -> {
+        var linking = new BridgeTestSupport.Linking[1];
+        helper.startSequence().thenWaitUntil(() -> {
             var be = (RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridge));
             helper.assertTrue(be != null, "bridge block entity missing");
             helper.assertTrue(be.bridgeCore().isConnected(), "waiting for the RS network to power up");
@@ -38,6 +39,17 @@ public final class RsGameTests {
             BridgeTestSupport.assertBridge(helper, bridge, be, be.peripheral(), once);
             var storage = be.bridgeCore().storage();
             helper.assertTrue(storage.has("itemsTotal") && storage.get("itemsTotal").getAsLong() >= 1000, "RS itemsTotal from the 1k storage block: " + storage);
-        });
+        })
+            .thenExecute(() -> linking[0] = BridgeTestSupport.placeMainframe(helper))
+            .thenIdle(3)
+            .thenExecute(() -> BridgeTestSupport.bind(helper, bridge, be(helper, bridge), linking[0]))
+            .thenWaitUntil(() -> BridgeTestSupport.assertLinked(helper, bridge, be(helper, bridge), linking[0]))
+            .thenExecute(() -> BridgeTestSupport.unlinkAndAssert(helper, bridge, be(helper, bridge), linking[0]))
+            .thenWaitUntil(() -> BridgeTestSupport.assertUnlinked(helper, bridge, be(helper, bridge), linking[0]))
+            .thenSucceed();
+    }
+
+    private static RsBridgeBlockEntity be(GameTestHelper helper, BlockPos pos) {
+        return (RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(pos));
     }
 }

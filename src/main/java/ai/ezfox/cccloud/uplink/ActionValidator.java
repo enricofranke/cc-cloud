@@ -68,7 +68,8 @@ public final class ActionValidator {
                 if (max != null && craft.count() > max.getAsLong()) yield Result.fail("too_many");
                 yield Result.ok(op);
             }
-            case WATCHLIST -> op instanceof Op.Craft ? Result.fail("invalid_value") : Result.ok(op);
+            case WATCHLIST -> op instanceof Op.WatchAdd || op instanceof Op.WatchRemove || op instanceof Op.WatchSetMin ? Result.ok(op) : Result.fail("invalid_value");
+            case REDSTONE_SIDES -> op instanceof Op.SetOutput ? Result.ok(op) : Result.fail("invalid_value");
             default -> Result.fail("invalid_value");
         };
     }

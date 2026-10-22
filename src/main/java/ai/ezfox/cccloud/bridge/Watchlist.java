@@ -53,6 +53,7 @@ public final class Watchlist {
                 yield null;
             }
             case Op.Craft craft -> "invalid_value";
+            case Op.SetOutput set -> "invalid_value";
         };
     }
 

@@ -178,5 +178,7 @@
   "cccloud.gui.notice.unknown_device": "Device not found",
   "cccloud.gui.notice.unknown_player": "Unknown player",
   "cccloud.gui.notice.unknown_request": "Request expired",
-  "cccloud.configuration.autoComputerCard": "Automatic Computer card"
+  "cccloud.configuration.autoComputerCard": "Automatic Computer card",
+  "cccloud.bridge.bound": "Bridge linked to Mainframe @ %s. It now shows up on the dashboard as a Storage section.",
+  "cccloud.gui.network": "Storage network:"
 }

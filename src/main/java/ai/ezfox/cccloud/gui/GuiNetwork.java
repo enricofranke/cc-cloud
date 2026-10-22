@@ -112,6 +112,14 @@ public final class GuiNetwork {
             buf -> writeOpen(buf, pos, view));
     }
 
+    public static void openBridge(ServerPlayer player, ai.ezfox.cccloud.bridge.BridgeHost bridge) {
+        String view = GuiViews.bridge(bridge, player, null);
+        var be = bridge.asBlockEntity();
+        var pos = be.getBlockPos();
+        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, pos, view), be.getBlockState().getBlock().getName()),
+            buf -> writeOpen(buf, pos, view));
+    }
+
     private static void writeOpen(RegistryFriendlyByteBuf buf, net.minecraft.core.BlockPos pos, String view) {
         buf.writeBlockPos(pos);
         buf.writeUtf(view, CloudMenu.MAX_VIEW);
@@ -157,18 +165,26 @@ public final class GuiNetwork {
 
     private static void onUplinkAction(UplinkActionPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
-        CloudUplinkBlockEntity uplink = null;
+        ai.ezfox.cccloud.network.DashboardSection section = null;
+        Runnable unlink = null;
         boolean open = false;
-        if (player.containerMenu instanceof UplinkMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)
-            && player.level().getBlockEntity(menu.pos()) instanceof CloudUplinkBlockEntity be) {
-            uplink = be;
-            open = true;
+        if (player.containerMenu instanceof UplinkMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)) {
+            var be = player.level().getBlockEntity(menu.pos());
+            if (be instanceof CloudUplinkBlockEntity uplink) {
+                section = uplink;
+                unlink = () -> uplink.unlink(player.getGameProfile().name());
+                open = true;
+            } else if (be instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) {
+                section = bridge.bridgeSection();
+                unlink = () -> bridge.bridgeSection().unlink(player.getGameProfile().name());
+                open = true;
+            }
         }
-        var link = uplink == null ? null : uplink.getLink();
+        var link = section == null ? null : section.getLink();
         boolean canUnlink = link != null && canManageMainframe(player, link.id());
-        var target = uplink;
+        var doUnlink = unlink;
         String error = GuiActions.uplink(payload.action(), "", open, canUnlink, () -> {
-            target.unlink(player.getGameProfile().name());
+            doUnlink.run();
             return null;
         });
         if (error != null) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
@@ -341,6 +357,7 @@ public final class GuiNetwork {
         var be = player.level().getBlockEntity(menu.pos());
         if (menu instanceof MainframeMenu && be instanceof CloudMainframeBlockEntity mainframe) return GuiViews.mainframe(mainframe, player, notice);
         if (menu instanceof UplinkMenu && be instanceof CloudUplinkBlockEntity uplink) return GuiViews.uplink(uplink, player, notice);
+        if (menu instanceof UplinkMenu && be instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) return GuiViews.bridge(bridge, player, notice);
         return null;
     }
 

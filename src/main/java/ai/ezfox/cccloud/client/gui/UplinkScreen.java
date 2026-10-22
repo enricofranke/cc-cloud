@@ -46,6 +46,11 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             c.text(text, x + 16, y + 5, led == 2 ? CloudGui.GREEN : led == 1 ? CloudGui.YELLOW : CloudGui.RED);
         }));
 
+        if (view.has("network")) {
+            String network = str(view, "network");
+            kv("cccloud.gui.network", Component.translatable("cccloud.gui.status." + network).getString());
+        }
+
         heading("cccloud.gui.link");
         if (!bool(view, "linked")) {
             textRow(Component.translatable("cccloud.gui.not_linked"), CloudGui.TEXT_DIM);

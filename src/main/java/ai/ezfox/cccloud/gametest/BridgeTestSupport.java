@@ -29,6 +29,75 @@ public final class BridgeTestSupport {
     private BridgeTestSupport() {
     }
 
+    /** Mainframe floor for the linking stage (lower half at 0,1,4; the network sits at x 1..3, z 2). */
+    static final BlockPos MAINFRAME_FLOOR = new BlockPos(0, 0, 4);
+
+    /** State shared by the linking stage of the bridge tests. */
+    public static final class Linking {
+        net.minecraft.world.entity.player.Player owner;
+        ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity mainframe;
+        ai.ezfox.cccloud.item.MainframeLink link;
+    }
+
+    /** Places an owned mainframe; NeoForge registers it on the next tick (onLoad). */
+    public static Linking placeMainframe(GameTestHelper helper) {
+        var linking = new Linking();
+        linking.owner = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        linking.mainframe = CloudGameTests.placeMainframe(helper, linking.owner, MAINFRAME_FLOOR);
+        linking.mainframe.setEnabled(true);
+        linking.link = new ai.ezfox.cccloud.item.MainframeLink(
+            net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), linking.mainframe.getBlockPos()), linking.mainframe.getMainframeId());
+        return linking;
+    }
+
+    /** Binds bridge and uplink: a stranger is refused, the owner succeeds. */
+    public static void bind(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, Linking linking) {
+        var stranger = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        host.bridgeSection().bind(linking.link, stranger);
+        helper.assertTrue(!host.bridgeSection().isLinked(), "a stranger must not link the bridge");
+        host.bridgeSection().bind(linking.link, linking.owner);
+        helper.assertTrue(host.bridgeSection().isLinked(), "the owner links the bridge");
+        var uplink = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridgePos.above()));
+        uplink.bind(linking.link, linking.owner);
+        helper.assertTrue(uplink.getLink() != null, "the uplink on the bridge is linked too");
+    }
+
+    /** A linked bridge is its own Storage section; the uplink on it is hidden (only one section). */
+    public static void assertLinked(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, Linking linking) {
+        var hub = ai.ezfox.cccloud.web.WebHub.INSTANCE;
+        var section = host.bridgeSection();
+        var mainframeId = linking.mainframe.getMainframeId();
+        String sectionId = section.sectionId().toString();
+        helper.assertTrue("item_search".equals(hub.widgetType(mainframeId, sectionId, StorageTemplate.SEARCH)), "bridge section on the dashboard");
+        helper.assertTrue(section.status() == CloudStatus.ONLINE, "section online with its mainframe, got " + section.status());
+        var items = section.values().get("items");
+        helper.assertTrue(items != null && items.isJsonPrimitive() && items.getAsString().equals(String.valueOf(AMOUNT)), "section values: " + items);
+        var uplink = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridgePos.above()));
+        helper.assertTrue(uplink.isSuppressed(), "the uplink on a linked bridge is hidden");
+        helper.assertTrue(hub.widgetType(mainframeId, uplink.getUplinkId().toString(), StorageTemplate.SEARCH) == null, "only one section (the bridge's own)");
+        helper.assertTrue(ai.ezfox.cccloud.network.CloudNetwork.section(section.sectionId()) == section, "actions are routed to the bridge section");
+        var query = section.handleQuery(StorageTemplate.SEARCH, "iron");
+        helper.assertTrue(query.error() == null && query.rows().size() == 1, "search through the bridge section: " + query.rows() + " " + query.error());
+        var bad = section.handleAction(StorageTemplate.SEARCH, com.google.gson.JsonParser.parseString("{\"op\":\"craft\",\"name\":\"minecraft:iron_ingot\",\"count\":1}"),
+            new Op.Craft(ITEM, 1), "gametest", false).getNow(null);
+        helper.assertTrue(bad != null && "not_craftable".equals(bad.error()), "craft via the section validates: " + (bad == null ? null : bad.error()));
+    }
+
+    /** After unlinking the bridge, the uplink's own section comes back. */
+    public static void unlinkAndAssert(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, Linking linking) {
+        host.bridgeSection().unlink("gametest");
+        helper.assertTrue(!host.bridgeSection().isLinked(), "unlinked");
+    }
+
+    public static void assertUnlinked(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, Linking linking) {
+        var hub = ai.ezfox.cccloud.web.WebHub.INSTANCE;
+        var mainframeId = linking.mainframe.getMainframeId();
+        helper.assertTrue(hub.widgetType(mainframeId, host.bridgeSection().sectionId().toString(), StorageTemplate.SEARCH) == null, "bridge section removed");
+        var uplink = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridgePos.above()));
+        helper.assertTrue(!uplink.isSuppressed(), "uplink shown again");
+        helper.assertTrue("item_search".equals(hub.widgetType(mainframeId, uplink.getUplinkId().toString(), StorageTemplate.SEARCH)), "uplink section is back");
+    }
+
     /** A block of another mod by id; fails the test if it does not exist. */
     public static Block block(GameTestHelper helper, String id) {
         var block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(id));

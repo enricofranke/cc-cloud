@@ -86,6 +86,37 @@ public final class GuiViews {
         return Json.GSON.toJson(json);
     }
 
+    /** A Cloud Bridge in the uplink-style screen: network status, link (unlimited range), its Storage section. */
+    public static String bridge(ai.ezfox.cccloud.bridge.BridgeHost bridge, ServerPlayer player, @Nullable String notice) {
+        var section = bridge.bridgeSection();
+        var core = bridge.bridgeCore();
+        var json = new JsonObject();
+        json.addProperty("kind", "bridge");
+        json.addProperty("advanced", true);
+        json.addProperty("status", section.isLinked() ? section.status().getSerializedName() : core.status().getSerializedName());
+        json.addProperty("network", core.status().getSerializedName());
+        json.addProperty("title", section.getTitle());
+        json.addProperty("mode", "direct");
+        json.addProperty("widgets", section.widgetCount());
+        var link = section.getLink();
+        json.addProperty("linked", link != null);
+        boolean canUnlink = false;
+        if (link != null) {
+            var p = link.pos().pos();
+            json.addProperty("mainframePos", p.getX() + " " + p.getY() + " " + p.getZ());
+            var mainframe = CloudNetwork.mainframe(link.id());
+            json.addProperty("mainframe", mainframe != null ? mainframe.getDisplayName() : "");
+            boolean sameDim = bridge.asBlockEntity().getLevel() != null && link.pos().dimension().equals(bridge.asBlockEntity().getLevel().dimension());
+            json.addProperty("distance", sameDim ? (int) Math.sqrt(bridge.asBlockEntity().getBlockPos().distSqr(p)) : -1);
+            json.addProperty("range", -1);
+            json.addProperty("inRange", mainframe != null);
+            canUnlink = GuiNetwork.canManageMainframe(player, link.id());
+        }
+        json.addProperty("canUnlink", canUnlink);
+        if (notice != null) json.addProperty("notice", notice);
+        return Json.GSON.toJson(json);
+    }
+
     public static String uplink(CloudUplinkBlockEntity uplink, ServerPlayer player, @Nullable String notice) {
         var json = new JsonObject();
         json.addProperty("advanced", uplink.isAdvanced());

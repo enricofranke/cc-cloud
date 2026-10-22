@@ -110,14 +110,47 @@ class GuiActionsTest {
 
     @Test
     void computerCardActions() {
-        assertEquals(22, ComputerCard.widgets().size());
-        assertEquals(new ComputerCard.Power("reboot"), ComputerCard.action(ComputerCard.REBOOT, new JsonPrimitive(true)));
-        assertEquals(new ComputerCard.SetOutput("left", 15), ComputerCard.action("left_out", new JsonPrimitive(true)));
-        assertEquals(new ComputerCard.SetOutput("left", 0), ComputerCard.action("left_out", new JsonPrimitive(false)));
-        assertEquals(new ComputerCard.SetOutput("back", 7), ComputerCard.action("back_level", new JsonPrimitive(7)));
-        assertNull(ComputerCard.action(ComputerCard.POWER, new JsonPrimitive(true)), "indicators are read-only");
-        assertNull(ComputerCard.action("top_in", new JsonPrimitive(true)));
-        var reboot = ComputerCard.widgets().stream().filter(w -> w.id().equals("reboot")).findFirst().orElseThrow();
+        var widgets = ComputerCard.widgets();
+        assertEquals(List.of("power", "turn_on", "reboot", "shutdown", "redstone"), widgets.stream().map(w -> w.id()).toList());
+        assertEquals(new ComputerCard.Power("reboot"), ComputerCard.action(ComputerCard.REBOOT, new JsonPrimitive(true), null));
+        assertEquals(new ComputerCard.SetOutput("front", 15),
+            ComputerCard.action(ComputerCard.REDSTONE, null, new ai.ezfox.cccloud.uplink.Op.SetOutput("front", 15)));
+        assertNull(ComputerCard.action(ComputerCard.REDSTONE, new JsonPrimitive(15), null), "redstone needs the set_output op");
+        assertNull(ComputerCard.action(ComputerCard.POWER, new JsonPrimitive(true), null), "indicators are read-only");
+        var reboot = widgets.stream().filter(w -> w.id().equals("reboot")).findFirst().orElseThrow();
         assertTrue(reboot.opts().get("confirm").getAsBoolean(), "reboot asks for confirmation");
+        var sides = ComputerCard.sides(new int[]{0, 0, 0, 0, 0, 15}, new int[]{0, 0, 15, 0, 0, 0});
+        assertEquals("[{\"side\":\"top\",\"out\":0,\"in\":0},{\"side\":\"bottom\",\"out\":0,\"in\":0},{\"side\":\"left\",\"out\":0,\"in\":15},"
+            + "{\"side\":\"right\",\"out\":0,\"in\":0},{\"side\":\"front\",\"out\":0,\"in\":0},{\"side\":\"back\",\"out\":15,\"in\":0}]", sides.toString());
+    }
+
+    @Test
+    void redstoneSidesActionsAreValidated() {
+        var redstone = ComputerCard.widgets().getLast();
+        java.util.function.Function<String, ai.ezfox.cccloud.uplink.ActionValidator.Result> act = json -> {
+            var value = com.google.gson.JsonParser.parseString(json);
+            var op = value.isJsonObject() ? ai.ezfox.cccloud.uplink.Op.parse(value.getAsJsonObject()) : null;
+            return ai.ezfox.cccloud.uplink.ActionValidator.validate(redstone, value, op, false);
+        };
+        assertTrue(act.apply("{\"op\":\"set_output\",\"side\":\"front\",\"value\":15}").ok());
+        assertTrue(act.apply("{\"op\":\"set_output\",\"side\":\"back\",\"value\":0}").ok());
+        for (var bad : new String[]{
+            "{\"op\":\"set_output\",\"side\":\"north\",\"value\":15}",
+            "{\"op\":\"set_output\",\"side\":\"front\",\"value\":16}",
+            "{\"op\":\"set_output\",\"side\":\"front\",\"value\":-1}",
+            "{\"op\":\"set_output\",\"side\":\"front\",\"value\":7.5}",
+            "{\"op\":\"set_output\",\"side\":\"front\"}",
+            "{\"op\":\"set_output\",\"side\":\"front\",\"value\":1,\"x\":1}",
+            "{\"op\":\"craft\",\"name\":\"minecraft:glass\",\"count\":1}",
+            "true", "15",
+        }) {
+            assertEquals("invalid_value", act.apply(bad).error(), bad);
+        }
+        // set_output is rejected on every other widget type
+        var watch = new ai.ezfox.cccloud.uplink.Widget("w", ai.ezfox.cccloud.uplink.WidgetType.WATCHLIST, "W", new com.google.gson.JsonObject(), null);
+        var value = com.google.gson.JsonParser.parseString("{\"op\":\"set_output\",\"side\":\"front\",\"value\":15}");
+        assertEquals("invalid_value", ai.ezfox.cccloud.uplink.ActionValidator.validate(watch, value, ai.ezfox.cccloud.uplink.Op.parse(value.getAsJsonObject()), false).error());
+        assertThrows(ai.ezfox.cccloud.uplink.WidgetFactory.WidgetException.class,
+            () -> ai.ezfox.cccloud.uplink.WidgetFactory.create(ai.ezfox.cccloud.uplink.WidgetType.REDSTONE_SIDES, "r", "R", null), "not available from Lua");
     }
 }

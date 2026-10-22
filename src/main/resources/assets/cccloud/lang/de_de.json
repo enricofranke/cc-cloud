@@ -178,5 +178,7 @@
   "cccloud.gui.notice.unknown_device": "Gerät nicht gefunden",
   "cccloud.gui.notice.unknown_player": "Unbekannter Spieler",
   "cccloud.gui.notice.unknown_request": "Anfrage abgelaufen",
-  "cccloud.configuration.autoComputerCard": "Automatische Computer-Karte"
+  "cccloud.configuration.autoComputerCard": "Automatische Computer-Karte",
+  "cccloud.bridge.bound": "Bridge mit Mainframe @ %s verbunden. Sie erscheint jetzt als Lager-Bereich im Dashboard.",
+  "cccloud.gui.network": "Speichernetzwerk:"
 }

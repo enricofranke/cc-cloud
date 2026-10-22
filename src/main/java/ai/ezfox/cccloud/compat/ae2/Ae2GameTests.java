@@ -39,7 +39,8 @@ public final class Ae2GameTests {
 
         boolean[] filled = {false};
         boolean[] once = {false};
-        helper.succeedWhen(() -> {
+        var linking = new BridgeTestSupport.Linking[1];
+        helper.startSequence().thenWaitUntil(() -> {
             var be = (MeBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridge));
             helper.assertTrue(be != null, "bridge block entity missing");
             helper.assertTrue(be.bridgeCore().isConnected(), "waiting for the grid to boot");
@@ -54,6 +55,17 @@ public final class Ae2GameTests {
             var storage = be.bridgeCore().storage();
             helper.assertTrue(storage.has("itemsTotal") && storage.get("itemsTotal").getAsLong() > 0, "AE2 itemsTotal from the 1k cell: " + storage);
             helper.assertTrue(be.bridgeCore().adapter().energy() > 0, "creative cell energy");
-        });
+        })
+            .thenExecute(() -> linking[0] = BridgeTestSupport.placeMainframe(helper))
+            .thenIdle(3)
+            .thenExecute(() -> BridgeTestSupport.bind(helper, bridge, be(helper, bridge), linking[0]))
+            .thenWaitUntil(() -> BridgeTestSupport.assertLinked(helper, bridge, be(helper, bridge), linking[0]))
+            .thenExecute(() -> BridgeTestSupport.unlinkAndAssert(helper, bridge, be(helper, bridge), linking[0]))
+            .thenWaitUntil(() -> BridgeTestSupport.assertUnlinked(helper, bridge, be(helper, bridge), linking[0]))
+            .thenSucceed();
+    }
+
+    private static MeBridgeBlockEntity be(GameTestHelper helper, BlockPos pos) {
+        return (MeBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(pos));
     }
 }

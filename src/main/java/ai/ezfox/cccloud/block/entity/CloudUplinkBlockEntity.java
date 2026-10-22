@@ -62,7 +62,7 @@ import org.jspecify.annotations.Nullable;
  * Threading: the Lua methods run on computer threads and only mutate the widget model under {@code synchronized(this)}
  * and mark it dirty. {@link #serverTick} (server thread) pushes dirty state into the {@link WebHub}.
  */
-public class CloudUplinkBlockEntity extends BlockEntity {
+public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccloud.network.DashboardSection {
     /** Max pending cloud_action events per computer (token bucket, refilled at 16/s). */
     public static final int MAX_PENDING_EVENTS = 64;
     private static final int STATUS_INTERVAL = 10;
@@ -77,6 +77,8 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     /** Direct mode: attached to a Cloud Bridge, the section is the ready-made Storage template. */
     private boolean template;
     private String templateKind = "";
+    /** In direct mode on a bridge that is linked itself: the bridge's own section is shown, this one is hidden. */
+    private volatile boolean suppressed;
     /** Auto mode: attached to a computer whose programs defined no widgets → the automatic Computer card. */
     private boolean auto;
     /** Set when the last computer detached (shutdown/reboot): Lua widgets are dropped so the card comes back. */
@@ -107,6 +109,12 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         return uplinkId;
     }
 
+    @Override
+    public UUID sectionId() {
+        return uplinkId;
+    }
+
+    @Override
     public @Nullable MainframeLink getLink() {
         return link;
     }
@@ -215,7 +223,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         CloudNetwork.unregisterUplink(this);
         status = CloudStatus.OFFLINE;
         // Chunk unload: keep the section on the dashboard but show it as offline.
-        if (!broken && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
+        if (!broken && !suppressed && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
     }
 
     @Override
@@ -251,7 +259,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
         tickCounter++;
         sampleCharts(level.getGameTime());
-        if (link == null) {
+        if (link == null || suppressed) {
             synchronized (this) {
                 dirtyValues.clear();
                 pendingAlerts.clear();
@@ -330,6 +338,14 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     /** Enters/leaves direct mode and refreshes all bridge-fed values (every second). */
     private void updateBridges(ServerLevel level) {
         var attached = attachedBridge(level);
+        boolean suppress = attached != null && attached.bridgeSection().isLinked();
+        if (suppress != suppressed) {
+            suppressed = suppress;
+            if (suppress && link != null) WebHub.INSTANCE.publishUplinkRemoved(link.id(), uplinkId.toString());
+            synchronized (this) {
+                structureDirty = true;
+            }
+        }
         if (attached != null && !template) enterTemplate(attached.bridgeCore().kind());
         else if (attached == null && template) leaveTemplate();
         else if (attached != null && !templateKind.equals(attached.bridgeCore().kind())) enterTemplate(attached.bridgeCore().kind());
@@ -407,6 +423,11 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         return template;
     }
 
+    /** True while a linked bridge below shows its own section instead of this uplink. */
+    public boolean isSuppressed() {
+        return suppressed;
+    }
+
     public synchronized boolean isAuto() {
         return auto;
     }
@@ -453,7 +474,6 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         pages.clear();
         groups.clear();
         for (var widget : ComputerCard.widgets()) widgets.put(widget.id(), widget);
-        for (var group : ComputerCard.groups()) groups.put(group.get("id").getAsString(), group);
         structureDirty = true;
         setChanged();
     }
@@ -470,13 +490,11 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     private void refreshAuto(CcComputers.Handle computer) {
         String newTitle = computer.title();
         boolean on = computer.isOn();
-        var values = new LinkedHashMap<String, JsonElement>();
-        values.put(ComputerCard.POWER, new com.google.gson.JsonPrimitive(on));
-        for (var side : ComputerCard.SIDES) {
-            int out = computer.output(side);
-            values.put(ComputerCard.inputId(side), new com.google.gson.JsonPrimitive(computer.input(side) > 0));
-            values.put(ComputerCard.outputId(side), new com.google.gson.JsonPrimitive(out > 0));
-            values.put(ComputerCard.levelId(side), Json.number(out));
+        int[] out = new int[ComputerCard.SIDES.length];
+        int[] in = new int[ComputerCard.SIDES.length];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = computer.output(ComputerCard.SIDES[i]);
+            in[i] = computer.input(ComputerCard.SIDES[i]);
         }
         synchronized (this) {
             if (!auto) return;
@@ -484,7 +502,8 @@ public class CloudUplinkBlockEntity extends BlockEntity {
                 title = newTitle.length() > Limits.TITLE ? newTitle.substring(0, Limits.TITLE) : newTitle;
                 structureDirty = true;
             }
-            for (var entry : values.entrySet()) setValue(entry.getKey(), entry.getValue());
+            setValue(ComputerCard.POWER, new com.google.gson.JsonPrimitive(on));
+            setValue(ComputerCard.REDSTONE, ComputerCard.sides(out, in));
         }
     }
 
@@ -506,11 +525,11 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     }
 
     /** Runs an action on the Computer card (server thread). */
-    private @Nullable String runComputerAction(String widgetId, JsonElement value, String user) {
+    private @Nullable String runComputerAction(String widgetId, @Nullable JsonElement value, @Nullable Op op, String user) {
         if (!(level instanceof ServerLevel serverLevel)) return "unavailable";
         var computer = attachedComputer(serverLevel);
         if (computer == null) return "unavailable";
-        var action = ComputerCard.action(widgetId, value);
+        var action = ComputerCard.action(widgetId, value, op);
         if (action == null) return "not_interactive";
         switch (action) {
             case ComputerCard.Power power -> {
@@ -662,6 +681,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
         structureDirty = true;
     }
 
+    @Override
     public synchronized String getTitle() {
         return title;
     }
@@ -771,6 +791,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
      * values and queues {@code cloud_action} on every attached computer. Bridge operations (craft, watchlist) are run by
      * the bridge; craft requests complete once the storage mod planned the job.
      */
+    @Override
     public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement rawValue, @Nullable Op op, String user, boolean pinVerified) {
         if (!isOnline()) return ActionResult.done("uplink_offline");
         ActionValidator.Result result;
@@ -786,7 +807,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
             }
         }
         spawnDataPackets();
-        if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), user));
+        if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), result.op(), user));
         if (result.op() != null) return handleOp(widget, result.op(), user);
         queueAction(widgetId, Json.toLua(result.value()), user);
         return ActionResult.done(null);
@@ -832,6 +853,7 @@ public class CloudUplinkBlockEntity extends BlockEntity {
     }
 
     /** Item search on an item_search widget (server thread). */
+    @Override
     public QueryResult handleQuery(String widgetId, String query) {
         if (!isOnline()) return QueryResult.fail("uplink_offline");
         Widget widget;

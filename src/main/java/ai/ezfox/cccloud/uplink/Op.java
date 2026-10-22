@@ -16,8 +16,6 @@ public sealed interface Op {
     Pattern ITEM_NAME = Pattern.compile("[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,128}");
     long MAX_INT = Integer.MAX_VALUE;
 
-    String name();
-
     record Craft(String name, long count) implements Op {
     }
 
@@ -30,6 +28,11 @@ public sealed interface Op {
     record WatchSetMin(String name, long min) implements Op {
     }
 
+    /** Auto Computer card: set a redstone output (0-15) on a computer-local side. */
+    record SetOutput(String side, int value) implements Op {
+        public static final Set<String> SIDES = Set.of("top", "bottom", "left", "right", "front", "back");
+    }
+
     static boolean isItemName(@Nullable String name) {
         return name != null && ITEM_NAME.matcher(name).matches();
     }
@@ -37,6 +40,12 @@ public sealed interface Op {
     /** Returns null if the object is not a valid operation. */
     static @Nullable Op parse(JsonObject obj) {
         String op = string(obj, "op");
+        if ("set_output".equals(op)) {
+            String side = string(obj, "side");
+            Long value = integer(obj.get("value"), 0, 15);
+            if (!onlyKeys(obj, Set.of("op", "side", "value")) || side == null || !SetOutput.SIDES.contains(side) || value == null) return null;
+            return new SetOutput(side, value.intValue());
+        }
         String name = string(obj, "name");
         if (op == null || !isItemName(name)) return null;
         return switch (op) {

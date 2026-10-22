@@ -24,15 +24,22 @@ public final class CloudGameTests {
     }
 
     static CloudMainframeBlockEntity placeMainframe(GameTestHelper helper, net.minecraft.world.entity.player.Player player) {
+        return placeMainframe(helper, player, FLOOR);
+    }
+
+    /** Places a mainframe on top of {@code floor} (lower half at floor + 1). */
+    public static CloudMainframeBlockEntity placeMainframe(GameTestHelper helper, net.minecraft.world.entity.player.Player player, BlockPos floor) {
+        var lower = floor.above();
+        var upper = lower.above();
         // UseOnContext takes the item from the player's hand, so it has to be held.
         var stack = new ItemStack(ModRegistry.CLOUD_MAINFRAME_ITEM.get());
         player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
-        helper.placeAt(player, stack, FLOOR, Direction.UP);
-        helper.assertBlockProperty(LOWER, CloudMainframeBlock.HALF, DoubleBlockHalf.LOWER);
-        helper.assertBlockProperty(UPPER, CloudMainframeBlock.HALF, DoubleBlockHalf.UPPER);
-        var be = helper.getLevel().getBlockEntity(helper.absolutePos(LOWER));
+        helper.placeAt(player, stack, floor, Direction.UP);
+        helper.assertBlockProperty(lower, CloudMainframeBlock.HALF, DoubleBlockHalf.LOWER);
+        helper.assertBlockProperty(upper, CloudMainframeBlock.HALF, DoubleBlockHalf.UPPER);
+        var be = helper.getLevel().getBlockEntity(helper.absolutePos(lower));
         if (!(be instanceof CloudMainframeBlockEntity mainframe)) throw helper.assertionException("Mainframe block entity missing");
-        helper.assertTrue(!(helper.getLevel().getBlockEntity(helper.absolutePos(UPPER)) instanceof CloudMainframeBlockEntity), "Upper half must not have a block entity");
+        helper.assertTrue(!(helper.getLevel().getBlockEntity(helper.absolutePos(upper)) instanceof CloudMainframeBlockEntity), "Upper half must not have a block entity");
         return mainframe;
     }
 

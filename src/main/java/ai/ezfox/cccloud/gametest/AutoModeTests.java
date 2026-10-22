@@ -33,7 +33,7 @@ public final class AutoModeTests {
             .thenWaitUntil(() -> {
                 var uplink = uplink(helper);
                 helper.assertTrue(uplink.isAuto(), "uplink on a computer must show the Computer card");
-                helper.assertTrue(uplink.getWidget(ComputerCard.POWER) != null && uplink.getWidget("left_out") != null, "card widgets");
+                helper.assertTrue(uplink.getWidget(ComputerCard.POWER) != null && uplink.getWidget(ComputerCard.REDSTONE) != null, "card widgets");
                 helper.assertTrue(uplink.getTitle().startsWith("Computer #"), "title from the computer: " + uplink.getTitle());
                 helper.assertTrue("auto".equals(uplink.snapshot().get("mode").getAsString()), "snapshot mode");
             })
@@ -69,8 +69,10 @@ public final class AutoModeTests {
                 helper.assertTrue(handle.output("top") == 15, "output stored");
                 int signal = level.getBestNeighborSignal(computerPos.above());
                 helper.assertTrue(signal == 15, "the world sees the output above the computer, got " + signal);
-                var widget = uplink(helper).getWidget("top_out");
-                helper.assertTrue(widget != null && widget.value().getAsBoolean(), "card toggle mirrors the output");
+                var widget = uplink(helper).getWidget(ComputerCard.REDSTONE);
+                var top = widget == null ? null : widget.value().getAsJsonArray().get(0).getAsJsonObject();
+                helper.assertTrue(top != null && "top".equals(top.get("side").getAsString()) && top.get("out").getAsInt() == 15,
+                    "redstone_sides value mirrors the output: " + (widget == null ? null : widget.value()));
             })
             .thenExecute(() -> {
                 var uplink = uplink(helper);

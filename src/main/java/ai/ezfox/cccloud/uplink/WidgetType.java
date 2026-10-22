@@ -22,7 +22,9 @@ public enum WidgetType {
     /** Bound to a storage bridge: value = rows, actions {op:"add"|"remove"|"set_min"}. */
     WATCHLIST(true),
     /** Bound to a storage bridge: value = crafting job rows, read-only. */
-    JOBS(false);
+    JOBS(false),
+    /** The automatic Computer card's six redstone sides (value [{side,out,in}], action {op:"set_output"}). Not available from Lua. */
+    REDSTONE_SIDES(true);
 
     private final boolean interactive;
 
@@ -41,7 +43,7 @@ public enum WidgetType {
 
     /** Interactive widgets whose actions are structured operations ({@code {"op":...}}) rather than scalars. */
     public boolean takesOps() {
-        return this == ITEM_SEARCH || this == WATCHLIST;
+        return this == ITEM_SEARCH || this == WATCHLIST || this == REDSTONE_SIDES;
     }
 
     public String id() {

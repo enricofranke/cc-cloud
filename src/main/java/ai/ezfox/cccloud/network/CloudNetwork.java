@@ -26,6 +26,8 @@ public final class CloudNetwork {
     private static volatile @Nullable MinecraftServer server;
     private static final Map<UUID, CloudMainframeBlockEntity> MAINFRAMES = new HashMap<>();
     private static final Map<UUID, CloudUplinkBlockEntity> UPLINKS = new HashMap<>();
+    /** Linked ME/RS Cloud Bridges (their own dashboard sections). */
+    private static final Map<UUID, DashboardSection> BRIDGE_SECTIONS = new HashMap<>();
 
     private CloudNetwork() {
     }
@@ -89,6 +91,26 @@ public final class CloudNetwork {
         return uplink == null || uplink.isRemoved() ? null : uplink;
     }
 
+    /** @return false if another loaded section already uses this id. */
+    public static boolean registerSection(DashboardSection section) {
+        var existing = BRIDGE_SECTIONS.get(section.sectionId());
+        if (existing != null && existing != section) return false;
+        if (UPLINKS.containsKey(section.sectionId())) return false;
+        BRIDGE_SECTIONS.put(section.sectionId(), section);
+        return true;
+    }
+
+    public static void unregisterSection(DashboardSection section) {
+        BRIDGE_SECTIONS.remove(section.sectionId(), section);
+    }
+
+    /** An uplink or a linked bridge by section id. */
+    public static @Nullable DashboardSection section(@Nullable UUID id) {
+        var uplink = uplink(id);
+        if (uplink != null) return uplink;
+        return id == null ? null : BRIDGE_SECTIONS.get(id);
+    }
+
     private static void onServerTick(ServerTickEvent.Post event) {
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
     }
@@ -114,6 +136,7 @@ public final class CloudNetwork {
     private static void onServerStopped(ServerStoppedEvent event) {
         MAINFRAMES.clear();
         UPLINKS.clear();
+        BRIDGE_SECTIONS.clear();
         WebHub.INSTANCE.clear();
         server = null;
         CCCloud.LOGGER.debug("CC: Cloud network state cleared");

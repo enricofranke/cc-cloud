@@ -96,7 +96,7 @@ final class MinecraftBridge implements GameBridge {
         String where = action.uplinkId() + "/" + action.id();
         CompletableFuture<ActionResult> result;
         try {
-            var uplink = CloudNetwork.uplink(action.uplinkId());
+            var uplink = CloudNetwork.section(action.uplinkId());
             if (uplink != null && !uplink.getTitle().isEmpty()) where = uplink.getTitle() + "/" + action.id();
             String error = checkRights(device);
             if (error == null) error = checkUplink(device, action.uplinkId());
@@ -122,7 +122,7 @@ final class MinecraftBridge implements GameBridge {
         var mainframe = CloudNetwork.mainframe(device.mainframeId());
         if (mainframe == null || !mainframe.isOnline()) return "offline";
         if (!mainframe.isEnabled()) return "disabled";
-        var uplink = CloudNetwork.uplink(uplinkId);
+        var uplink = CloudNetwork.section(uplinkId);
         if (uplink == null || uplink.getLink() == null || !uplink.getLink().id().equals(device.mainframeId())) return "unknown_uplink";
         return null;
     }
@@ -132,7 +132,7 @@ final class MinecraftBridge implements GameBridge {
         String error = checkRights(device);
         if (error == null) error = checkUplink(device, query.uplinkId());
         if (error != null) return QueryResult.fail(error.equals("disabled") || error.equals("unknown_uplink") ? (error.equals("disabled") ? "offline" : "unknown_widget") : error);
-        return CloudNetwork.uplink(query.uplinkId()).handleQuery(query.id(), query.q());
+        return CloudNetwork.section(query.uplinkId()).handleQuery(query.id(), query.q());
     }
 
     @Override
