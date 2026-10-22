@@ -71,7 +71,7 @@ class RouteAuthTest {
         return new WebInstance(new StubBridge(), auth, null, List.of(), allowInternet, "http://localhost:8787", 8787);
     }
 
-    private static FullHttpResponse request(WebInstance instance, HttpMethod method, String path, @Nullable String authorization) {
+    static FullHttpResponse request(WebInstance instance, HttpMethod method, String path, @Nullable String authorization) {
         var channel = new EmbeddedChannel(new HttpHandler(instance));
         var req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, path, Unpooled.EMPTY_BUFFER);
         req.headers().set(HttpHeaderNames.HOST, "localhost:8787");
