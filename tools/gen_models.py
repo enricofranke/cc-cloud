@@ -248,7 +248,7 @@ def mainframe_half(half):
         side_panel(m, half, False, ((4, 12), (4, 12)), fm, round_hole=True)
         # fan guard (cross bars in front of the rotating fan)
         m.box([14.25, 7.5, 4], [14.75, 8.5, 12], mt("chassis"))
-        m.box([14.25, 4, 7.5], [14.75, 12, 8.5], mt("chassis"))
+        m.box([14.3, 4, 7.5], [14.7, 12, 8.5], mt("chassis"))
         # back panel + cable gland on the floor
         m.box([2, 2, 14], [14, 16, 15], fm, only=("south",))
         m.box([3, 2, 15], [13, 3.5, 17.5], mt("chassis"), skip=("down",))
@@ -301,10 +301,10 @@ def mainframe_half(half):
         m.box([3, 16, 5], [4, 17.5, 11], ring, skip=("down",))
         m.box([12, 16, 5], [13, 17.5, 11], ring, skip=("down",))
         for (cx, cz, ang) in ((4.25, 4.25, -45), (11.75, 4.25, 45), (4.25, 11.75, 45), (11.75, 11.75, -45)):
-            m.box([cx - 1.5, 16, cz - 0.5], [cx + 1.5, 17.5, cz + 0.5], ring,
+            m.box([cx - 1.5, 16, cz - 0.5], [cx + 1.5, 17.4, cz + 0.5], ring,
                   rot=("y", ang, [cx, 16, cz]), skip=("down",))
         m.box([6, 16, 6], [10, 17, 10], led("lens"), emit=15, skip=("down",))
-        m.box([6, 16, 6], [10, 17, 10], led("lens"), emit=15, skip=("down",), rot=("y", 45, [8, 16, 8]))
+        m.box([6, 16, 6], [10, 16.9, 10], led("lens"), emit=15, skip=("down",), rot=("y", 45, [8, 16, 8]))
         m.box([7, 17, 7], [9, 17.25, 9], led("lens_core"), emit=15, skip=("down",))
         for (x, z, h) in ((1, 1, 2.0), (15, 1, 3.2), (1, 15, 2.6), (15, 15, 1.4)):
             m.box([x - 0.5, 16, z - 0.5], [x + 0.5, 16.5, z + 0.5], mt("chassis"), skip=("down",))
@@ -319,7 +319,7 @@ def mainframe_fan():
     m.box([13, 7, 7], [14, 9, 9], {"*": mt("chassis"), "east": mr("fan_hub")})
     # 4 blades = two crossing bars, each pitched 22.5 deg so the fan reads as a rotor
     m.box([13.25, 7.25, 4.25], [13.75, 8.75, 11.75], mt("grey_l"), rot=("x", 22.5, [13.5, 8, 8]))
-    m.box([13.25, 4.25, 7.25], [13.75, 11.75, 8.75], mt("grey_l"), rot=("x", 22.5, [13.5, 8, 8]))
+    m.box([13.3, 4.25, 7.25], [13.7, 11.75, 8.75], mt("grey_l"), rot=("x", 22.5, [13.5, 8, 8]))
     return m
 
 
@@ -525,8 +525,8 @@ def uplink_direct_ring():
 # --------------------------------------------------------------------------- cloud bridges (v0.2)
 def bridge(kind):
     """Full-block ME / RS cloud bridge (front = north). CC casing, 2 px deep 8x8 port with a
-    glowing cloud emblem, status strip under it, glowing cable-socket pins on the other 5 faces
-    (full-face overlay, the CC computer_on technique)."""
+    glowing cloud emblem, status strip under it, glowing cable-socket pins (small proud elements)
+    on the other 5 faces."""
     tex = f"{NS}:block/{kind}_cloud_bridge"
     m = Model(textures={"particle": tex, "atlas": tex, "status": f"{NS}:block/cloud_bridge_status_online"})
     T = lambda n: Tile("atlas", "bridge", n)
@@ -545,8 +545,17 @@ def bridge(kind):
     # glowing cloud emblem inside the port, status strip below it
     m.box([5, 6, 1.75], [11, 10, 2], bs("cloud"), emit=15, only=("north",))
     m.box([4, 2, -0.25], [12, 3, 0], bs("strip"), emit=15, skip=("south",))
-    # emissive socket pins on the 5 connection faces
-    m.box([0, 0, 0], [16, 16, 16], pins, emit=15, only=("south", "west", "east", "up", "down"))
+    # emissive socket pins: small real 2x2 elements standing 0.1 px proud of the 5 connection faces
+    # (a full-face overlay over the split casing/bezel faces z-fought in game)
+    px, py = gt.tile_origin("bridge", "pins")
+    pin = Region("atlas", "bridge", None, rect=(px + 7, py + 7, 2, 2))
+    e = 0.1
+    for (frm, to, d) in (([7, 7, 16], [9, 9, 16 + e], "south"), ([-e, 7, 7], [0, 9, 9], "west"),
+                         ([16, 7, 7], [16 + e, 9, 9], "east"), ([7, 16, 7], [9, 16 + e, 9], "up"),
+                         ([7, -e, 7], [9, 0, 9], "down")):
+        el = m.box(frm, to, pin, emit=15, skip=({"south": "north", "west": "east", "east": "west",
+                                                  "up": "down", "down": "up"}[d],))
+        el["faces"][d]["cullface"] = d   # hidden like the face below when a block sits against it
     return m
 
 
@@ -656,6 +665,33 @@ def main():
     print("validation ok: json, parents, textures, rotations, bounds, blockstate/item references")
 
 
+_AXIS = {"north": (2, 0), "south": (2, 1), "west": (0, 0), "east": (0, 1), "down": (1, 0), "up": (1, 1)}
+
+
+def coplanar_faces(elements):
+    """Flag z-fighting: two elements with the same rotation whose faces point the same way, lie in
+    the same plane and overlap with positive area (e.g. a full-face overlay over split faces)."""
+    out = []
+    for i in range(len(elements)):
+        for j in range(i + 1, len(elements)):
+            a, b = elements[i], elements[j]
+            if a.get("rotation") != b.get("rotation"):
+                continue
+            for d, (ax, hi) in _AXIS.items():
+                if d not in a["faces"] or d not in b["faces"]:
+                    continue
+                pa = (a["to"] if hi else a["from"])[ax]
+                pb = (b["to"] if hi else b["from"])[ax]
+                if abs(pa - pb) > 1e-6:
+                    continue
+                o1, o2 = [k for k in range(3) if k != ax]
+                ov1 = min(a["to"][o1], b["to"][o1]) - max(a["from"][o1], b["from"][o1])
+                ov2 = min(a["to"][o2], b["to"][o2]) - max(a["from"][o2], b["from"][o2])
+                if ov1 > 1e-6 and ov2 > 1e-6:
+                    out.append(f"coplanar {d} faces of elements {i} and {j} overlap (z-fighting)")
+    return out
+
+
 def validate():
     """Quality gate: parse everything back and check references and vanilla format limits."""
     problems = []
@@ -717,6 +753,7 @@ def validate():
                     seen += 1
                 if ref is None or not tex_exists(ref):
                     problems.append(f"{rel} element {i} {d}: unresolved texture {f['texture']}")
+        problems.extend(f"{rel}: {msg}" for msg in coplanar_faces(m.get("elements", [])))
         if len(m.get("elements", [])) > 130:
             problems.append(f"{rel}: {len(m['elements'])} elements (> ~120)")
 
@@ -797,8 +834,9 @@ Generated by `tools/gen_models.py` + `tools/gen_textures.py`. Source of truth fo
 `block/me_cloud_bridge`, `block/rs_cloud_bridge` (+ `_online/_connecting/_offline` children that swap
 `cloud_bridge_status_*`). Full blocks, front = north, blockstate `facing` (n/s/e/w, y-rotation like the
 mainframe) x `status`. No moving parts. Emissive: cloud emblem in the port, status strip, and the socket
-pins on the 5 connection faces (full-face overlay element with a mostly transparent texture, the same
-technique as CC's `computer_on.json`; those quads land in the CUTOUT layer automatically).
+pins on the 5 connection faces: small 2x2 elements standing 0.1 px proud of each face (with cullface).
+A full-face overlay (CC's `computer_on` trick) z-fought here: CC's overlay covers one identical base quad,
+ours sat over faces split into casing + bezel quads. `validate()` now rejects coplanar overlapping faces.
 Items: `items/{{me,rs}}_cloud_bridge.json` -> the `_online` block model (vanilla `block/block` display).
 
 ## Render types / translucency (MC 26.1)

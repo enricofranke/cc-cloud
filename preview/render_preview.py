@@ -277,7 +277,7 @@ def render(quads, size=520, yaw=225, pitch=30, zoom=None, center=None, night=Fal
             sub_d = depth[y0:y1 + 1, x0:x1 + 1]
             sub_c = col[y0:y1 + 1, x0:x1 + 1]
             if not blend:
-                m = m & (a > 0.1) & (z > sub_d - 1e-3)
+                m = m & (a > 0.1) & (z > sub_d)
                 sub_d[m] = z[m]
                 sub_c[m] = texel[..., :3][m] * shade * light
             else:
