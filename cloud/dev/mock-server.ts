@@ -17,7 +17,7 @@ interface Widget {
   id: string;
   type:
     | "button" | "toggle" | "slider" | "gauge" | "label" | "item_search" | "watchlist" | "jobs"
-    | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons";
+    | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons" | "redstone_sides";
   label?: string;
   opts?: Record<string, unknown>;
   value?: Scalar | Row[];
@@ -28,6 +28,7 @@ interface Uplink {
   title: string;
   online: boolean;
   widgets: Widget[];
+  mode?: "auto" | "lua" | "direct";
   pages?: { id: string; title: string; icon?: string }[];
   groups?: { id: string; title: string; page?: string; cols?: number }[];
 }
@@ -95,6 +96,10 @@ export interface MockOptions {
   ae2?: boolean;
   /** Add the Lua v2 "Control Room" uplink with pages/groups (default true). */
   controlRoom?: boolean;
+  /** Add an uplink in v0.3 auto mode: the automatic Computer card (default true). */
+  computer?: boolean;
+  /** "sides" = one redstone_sides widget (SPEC), "widgets" = per-side indicator/toggle/slider widgets in groups. */
+  computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
   /** How long a pending pairing waits for approval (spec: 2 minutes). */
@@ -115,6 +120,7 @@ export const STORAGE = "3b7d9e10-storage";
 export const TURBINE = "5c2e8f77-turbine";
 export const ME = "c4e2b7a1-me-bridge";
 export const CONTROL = "7d3a9c02-control";
+export const COMPUTER = "b81e44d0-computer";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
 
 export async function createMockServer(opts: MockOptions = {}) {
@@ -443,7 +449,96 @@ export async function createMockServer(opts: MockOptions = {}) {
     };
   }
 
+  // ---- v0.3 auto mode: an uplink on a computer without any Lua widgets ----
+  if (opts.computer !== false) {
+    const SIDES = ["top", "bottom", "left", "right", "front", "back"] as const;
+    const rs = Object.fromEntries(SIDES.map((s) => [s, { out: 0, in: 0 }])) as Record<(typeof SIDES)[number], { out: number; in: number }>;
+    rs.back.out = 15;
+    rs.left.in = 15;
+    let on = true;
+    let tickN = 0;
+    const rows = () => SIDES.map((side) => ({ side, out: rs[side].out, in: rs[side].in }));
+    const perSide = opts.computerFormat === "widgets";
+    const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+    base.uplinks.set(COMPUTER, {
+      uplinkId: COMPUTER,
+      title: "Computer #7",
+      online: true,
+      mode: "auto",
+      widgets: [
+        { id: "power", type: "indicator", label: "Computer on", opts: { onColor: "green", offColor: "gray", span: 2 }, value: on },
+        { id: "turn_on", type: "button", label: "Turn on", opts: { color: "green" } },
+        { id: "reboot", type: "button", label: "Reboot", opts: { color: "yellow", confirm: true } },
+        { id: "shutdown", type: "button", label: "Shut down", opts: { color: "red", confirm: true } },
+        ...(perSide
+          ? SIDES.flatMap((side): Widget[] => [
+              { id: `${side}_in`, type: "indicator", label: `${cap(side)} in`, opts: { group: "redstone", onColor: "red" }, value: rs[side].in > 0 },
+              { id: `${side}_out`, type: "toggle", label: `${cap(side)} out`, opts: { group: "redstone" }, value: rs[side].out > 0 },
+              { id: `${side}_level`, type: "slider", label: `${cap(side)} level`, opts: { group: "advanced", min: 0, max: 15, step: 1 }, value: rs[side].out },
+            ])
+          : [{ id: "redstone", type: "redstone_sides" as const, label: "Redstone", value: rows() }]),
+      ],
+      ...(perSide
+        ? {
+            groups: [
+              { id: "redstone", title: "Redstone", cols: 2 },
+              { id: "advanced", title: "Advanced", cols: 2 },
+            ],
+          }
+        : {}),
+    });
+    const publishRs = () => {
+      if (!perSide) return setValue(base, COMPUTER, "redstone", rows());
+      for (const side of SIDES) {
+        setValue(base, COMPUTER, `${side}_in`, rs[side].in > 0);
+        setValue(base, COMPUTER, `${side}_out`, rs[side].out > 0);
+        setValue(base, COMPUTER, `${side}_level`, rs[side].out);
+      }
+    };
+    const prevOp = base.onOp;
+    base.onOp = (uplinkId, id, op, user) => {
+      if (uplinkId !== COMPUTER) return prevOp?.(uplinkId, id, op, user) ?? { ok: false, error: "unknown_uplink" };
+      if (id !== "redstone" || op.op !== "set_output") return { ok: false, error: "invalid_value" };
+      rs[op.side].out = op.value;
+      // a wire loops "front" output back into "right" input
+      if (op.side === "front") rs.right.in = op.value;
+      later(actionDelayMs, publishRs);
+      return { ok: true };
+    };
+    const prevAction = base.onAction;
+    base.onAction = (uplinkId, id, value, user) => {
+      if (uplinkId !== COMPUTER) return prevAction?.(uplinkId, id, value, user);
+      const m = /^(top|bottom|left|right|front|back)_(out|level)$/.exec(id);
+      if (m) {
+        const side = m[1] as (typeof SIDES)[number];
+        rs[side].out = m[2] === "out" ? (value === true ? 15 : 0) : Number(value);
+        if (side === "front") rs.right.in = rs[side].out;
+        return publishRs();
+      }
+      if (id === "turn_on") on = true;
+      if (id === "shutdown") on = false;
+      if (id === "reboot") {
+        on = false;
+        later(1500, () => {
+          on = true;
+          setValue(base, COMPUTER, "power", true);
+        });
+      }
+      setValue(base, COMPUTER, "power", on);
+      alert(base, COMPUTER, `Computer #7: ${id.replace("_", " ")} by ${user}`, "info");
+    };
+    const prevTick = base.tick;
+    base.tick = () => {
+      prevTick?.();
+      // a daylight sensor on "top" pulses the input
+      tickN++;
+      rs.top.in = tickN % 6 < 3 ? Math.min(15, 4 + tickN % 12) : 0;
+      publishRs();
+    };
+  }
+
   if (opts.extras) {
+    addMainframe("New Base @ 220 70 -15", true); // freshly paired, nothing linked yet
     const outpost = addMainframe("Outpost @ -340 72 118", false);
     outpost.uplinks.set(GREENHOUSE, {
       uplinkId: GREENHOUSE,
@@ -598,9 +693,9 @@ export async function createMockServer(opts: MockOptions = {}) {
           }
           t.pinFails = 0;
         }
-        if (w.type === "item_search" || w.type === "watchlist") {
+        if (w.type === "item_search" || w.type === "watchlist" || w.type === "redstone_sides") {
           const op = opValue.safeParse(msg.value);
-          const allowed = w.type === "item_search" ? ["craft"] : ["add", "remove", "set_min"];
+          const allowed = w.type === "item_search" ? ["craft"] : w.type === "watchlist" ? ["add", "remove", "set_min"] : ["set_output"];
           if (!op.success || !allowed.includes(op.data.op)) return result(msg.reqId, false, "invalid_value");
           const r = m.onOp?.(msg.uplinkId, msg.id, op.data, c.user) ?? { ok: false, error: "unavailable" };
           log(`${c.user} ${op.data.op} ${u.title}/${w.id} ${JSON.stringify(op.data)} -> ${r.ok ? "ok" : r.error}`);

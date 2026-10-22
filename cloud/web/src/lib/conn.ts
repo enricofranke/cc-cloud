@@ -605,6 +605,7 @@ function normalizeUplink(u: any): Uplink | null {
     uplinkId: u.uplinkId,
     title: typeof u.title === "string" ? u.title : "",
     online: u.online !== false,
+    mode: u.mode === "auto" || u.mode === "lua" || u.mode === "direct" ? u.mode : undefined,
     widgets: widgets
       .filter((w: any) => w && typeof w.id === "string" && WIDGET_TYPES.includes(w.type))
       .map((w: any) => {

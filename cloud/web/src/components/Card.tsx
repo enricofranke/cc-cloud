@@ -8,6 +8,7 @@ import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
+import { RedstoneSides } from "./Redstone.tsx";
 
 /** Body columns: 2 for a 1-column card, 4 for wider cards (phones always use 2, see CSS). */
 const bodyCols = (span: number) => (span >= 2 ? 4 : 2);
@@ -64,6 +65,8 @@ function WidgetView({ rw, card, conn, locked }: { rw: ResolvedWidget; card: Reso
       return <TextInput {...p} />;
     case "buttons":
       return <ButtonGroup {...p} />;
+    case "redstone_sides":
+      return <RedstoneSides {...p} />;
   }
 }
 
@@ -75,10 +78,15 @@ export function Card({ card, conn, locked, children }: { card: ResolvedCard; con
       <header class="card-head">
         {card.icon ? <PixelIcon name={card.icon} size={16} class="card-icon" /> : <span class={`led ${card.uplink.online ? "led-on" : "led-off"}`} aria-hidden="true" />}
         <h3 class="card-title">{card.title || "Untitled"}</h3>
+        {card.uplink.mode === "auto" && (
+          <span class="tag tag-auto" title="Automatic card – disappears as soon as a Lua program on this computer defines widgets">
+            auto
+          </span>
+        )}
         {!card.uplink.online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
       </header>
       {card.widgets.length === 0 ? (
-        <p class="card-empty">No widgets yet. Use cloud.button(), cloud.gauge() … on the computer next to this uplink.</p>
+        <p class="card-empty">Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.</p>
       ) : (
         <div class={`card-body cb bc-${cols}`}>
           {blocks(card.widgets, cols).map((b) => {

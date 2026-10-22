@@ -45,6 +45,10 @@ async function pairVia(page: Page, code: string, device: string) {
   await enterCode(page, code, device);
   await page.waitForSelector(".card", { timeout: 15_000 });
 }
+async function pairViaEmpty(page: Page, code: string, device: string) {
+  await enterCode(page, code, device);
+  await page.waitForSelector(".setup", { timeout: 15_000 });
+}
 async function pinEnter(page: Page, digits: string) {
   for (const d of digits) await page.click(`.keypad .key:text-is("${d}")`);
   await page.click(".key-ok");
@@ -73,6 +77,24 @@ try {
   await p.waitForTimeout(700);
   await shot(p, "phone-04-dashboard");
   await shot(p, "phone-05-dashboard-full", true);
+
+  // ---- v0.3 auto Computer card (redstone sides)
+  await p.locator(".card:has(.rs)").scrollIntoViewIfNeeded();
+  await p.evaluate(() => {
+    const el = document.querySelector(".card:has(.rs)")!;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 70);
+  });
+  await p.waitForTimeout(300);
+  await shot(p, "phone-c1-computer-card");
+  await p.click('.rs-side:has-text("front")');
+  await p.click(".rs-adv-toggle");
+  await p.waitForTimeout(500);
+  await p.evaluate(() => {
+    const el = document.querySelector(".card:has(.rs) .rs")!;
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 70);
+  });
+  await shot(p, "phone-c2-redstone-advanced");
+  await p.evaluate(() => window.scrollTo(0, 0));
 
   // ---- pages (bottom tab bar) with the Lua v2 widgets
   await p.click('.tabbar .tab:has-text("Power")');
@@ -254,6 +276,56 @@ try {
   await pp.waitForSelector(".banner-insecure");
   await shot(pp, "phone-18-insecure-http-warning");
   await pub.close();
+
+  // v0.3 empty state: a freshly paired mainframe without uplinks, opened over plain HTTP
+  // from a non-localhost address, so "Copy" has to use the execCommand fallback
+  const newBase = [...mock.mainframes.values()].find((m) => m.name.startsWith("New Base"))!;
+  const ectx = await phoneCtx();
+  const ep = await ectx.newPage();
+  watch(ep);
+  await ep.goto(`http://mc.example.net:${mock.port}/`);
+  await ep.waitForSelector(".input-code");
+  await pairViaEmpty(ep, mock.code(newBase), "Enricos iPhone");
+  await ep.click(".banner-insecure .icon-btn").catch(() => {});
+  await ep.waitForTimeout(400);
+  await shot(ep, "phone-g1-setup-guide");
+  await ep.click(".setup-more summary");
+  await ep.click(".copy-btn");
+  await ep.waitForSelector(".copy-btn.copied");
+  await ep.evaluate(() => document.querySelector(".setup-more")!.scrollIntoView({ block: "start" }));
+  await ep.evaluate(() => window.scrollBy(0, -70));
+  await shot(ep, "phone-g2-build-your-own-copied");
+  const desk0 = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const dp0 = await desk0.newPage();
+  watch(dp0);
+  await dp0.goto(origin);
+  await enterCode(dp0, mock.code(newBase), "Desktop");
+  await dp0.waitForSelector(".setup", { timeout: 15_000 });
+  await shot(dp0, "desktop-g1-setup-guide");
+  await desk0.close();
+  await ectx.close();
+
+  // auto card sent as plain per-side widgets (current Java format) -> same compact grid
+  {
+    const m2 = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, ae2: false, controlRoom: false, computerFormat: "widgets", staticDir, log: () => {} });
+    const o2 = `http://localhost:${m2.port}`;
+    const tok2 = await (await fetch(`${o2}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Phone" }) })).json();
+    const c2 = await phoneCtx();
+    const p2 = await c2.newPage();
+    watch(p2);
+    await p2.addInitScript((t) => {
+      localStorage.setItem("cccloud.mainframes.v1", JSON.stringify([{ mainframeId: t.mainframeId, token: t.token, name: t.name, deviceName: "Phone", pairedAt: Date.now() }]));
+    }, tok2);
+    await p2.goto(`${o2}/#/m/${tok2.mainframeId}`);
+    await p2.waitForSelector(".card:has(.rs)");
+    await p2.evaluate(() => {
+      const el = document.querySelector(".card:has(.rs)")!;
+      window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 70);
+    });
+    await shot(p2, "phone-c3-computer-card-per-side-widgets");
+    await c2.close();
+    await m2.close();
+  }
 
   // LAN-only server (webAllowInternet=false): the page came from cache/LAN, the API answers 403
   const lanMock = await createMockServer({ port: 0, host: "127.0.0.1", lanOnly: true, tickMs: 0, staticDir, log: () => {} });

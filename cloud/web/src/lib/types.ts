@@ -2,11 +2,21 @@ export type Scalar = number | boolean | string | null;
 export type WidgetType =
   | "button" | "toggle" | "slider" | "gauge" | "label"
   | "item_search" | "watchlist" | "jobs"
-  | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons";
+  | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons"
+  | "redstone_sides";
 export const WIDGET_TYPES: readonly WidgetType[] = [
   "button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs",
-  "chart", "progress", "indicator", "select", "number", "text", "buttons",
+  "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides",
 ];
+
+export const SIDES = ["top", "bottom", "left", "right", "front", "back"] as const;
+export type Side = (typeof SIDES)[number];
+/** redstone_sides value rows: one per side, levels 0–15. */
+export interface RedstoneRow {
+  side: Side;
+  out: number;
+  in: number;
+}
 
 /** A row of structured widget values (watchlist / jobs). */
 export type Row = Record<string, string | number | boolean | null>;
@@ -84,6 +94,8 @@ export interface Uplink {
   title: string;
   online: boolean;
   widgets: Widget[];
+  /** v0.3: "auto" = automatic Computer card, "lua" = script widgets, "direct" = bridge template */
+  mode?: "auto" | "lua" | "direct";
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
   groups?: { id: string; title?: string; page?: string; cols?: number }[];

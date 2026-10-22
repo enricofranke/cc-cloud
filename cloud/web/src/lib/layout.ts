@@ -99,7 +99,7 @@ export function cardKeyOf(uplinkId: string, w: Widget) {
 /** Default widget order inside a card when nobody customised it: readouts first, buttons last. */
 const TYPE_RANK: Record<string, number> = {
   gauge: 0, indicator: 1, chart: 2, progress: 3, label: 4, item_search: 5, watchlist: 6, jobs: 7,
-  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10,
+  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10, redstone_sides: 11,
 };
 /** Default span inside the card body grid (2 columns on phones, 2×card span on wide screens, max 4). */
 export function defaultWidgetSpan(type: string) {

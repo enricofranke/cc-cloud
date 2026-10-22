@@ -15,6 +15,8 @@ export const opValue = z.discriminatedUnion("op", [
   z.object({ op: z.literal("add"), name: itemName, min: z.number().int().min(0).max(2 ** 31 - 1).optional() }),
   z.object({ op: z.literal("remove"), name: itemName }),
   z.object({ op: z.literal("set_min"), name: itemName, min: z.number().int().min(0).max(2 ** 31 - 1) }),
+  // v0.3 redstone_sides
+  z.object({ op: z.literal("set_output"), side: z.enum(["top", "bottom", "left", "right", "front", "back"]), value: z.number().int().min(0).max(15) }),
 ]);
 export type OpValue = z.infer<typeof opValue>;
 

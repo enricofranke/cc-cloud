@@ -5,6 +5,7 @@ import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
 import { Pages } from "./Pages.tsx";
+import { SetupGuide } from "./SetupGuide.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
@@ -121,15 +122,7 @@ export function Dashboard({ id }: { id: string }) {
             ))}
           </div>
         ) : uplinks.length === 0 ? (
-          <div class="empty">
-            <h2 class="px-title">No uplinks yet</h2>
-            <p>Place a Cloud Uplink next to a computer, bind it with a Link Card and build its section in Lua:</p>
-            <pre class="code">{`local cloud = peripheral.find("cloud_uplink")
-cloud.setTitle("Fission Reactor")
-cloud.gauge("temp", "Core temperature",
-  {min=0, max=1200, unit="K", warn=900, crit=1100})
-cloud.button("scram", "SCRAM", {color="red", confirm=true})`}</pre>
-          </div>
+          <SetupGuide />
         ) : (
           <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.canControl.value} onExitEdit={() => setEditing(false)} />
         )}

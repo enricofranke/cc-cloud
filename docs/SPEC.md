@@ -291,3 +291,61 @@ What the Java side actually does, where the sections above leave room. Packages:
 - `layout_set` → `layout_result`: checks in this order: `read_only`, `rate_limited` (5 per 10 s per mainframe), `too_large`, `invalid_layout`; rights are re-checked on the server thread. Layouts live in `data/cccloud/layouts.dat`, are loaded into the hub on server start and deleted with the mainframe.
 - `query` needs an authenticated device but not `canControl` (read-only search). Besides the listed errors, `query_result.error` can be a rights error (`no_rights`, `banned`).
 - `action_result` for craft actions carries `jobId`. Possible bridge errors: `unavailable` (bridge not loaded/not found), plus the crafting and watchlist errors above.
+
+## v0.3 – Less setup, in-game GUI (feedback from the first in-game test, 2026-10-23)
+
+### Auto mode: uplink on a computer works without any Lua
+Problem: after linking an uplink the dashboard said "No uplinks yet" plus Lua code to type. A player should see something useful immediately.
+- An uplink attached to a CC computer (normal/advanced/command computer, turtles excluded for now) whose attached computers have not defined any widget gets an automatic **Computer card**: title = computer label or "Computer #<id>", an indicator on/off, buttons Turn on / Reboot / Shut down (canControl; Shut down and Reboot ask for confirmation), and the six redstone sides (top/bottom/left/right/front/back) each with an output toggle and an input indicator, plus a 0–15 slider for analog output (collapsed under "Advanced" in the UI).
+- As soon as a Lua program defines a widget, the auto card is replaced by the Lua widgets. When the program stops and clears its widgets (or the computer reboots), the auto card comes back.
+- Config `autoComputerCard` (default true).
+- The redstone values are read and written through CC's API on the server thread (no Lua involved), so this works even when the computer is off.
+
+### In-game GUI
+- **Mainframe screen** (right-click, owner/trusted/op; others see a read-only status screen without the code):
+  - big status (online/connecting/offline/redstone-killed) and an on/off toggle for the dashboard
+  - dashboard URL(s): every non-loopback LAN address of the host plus `publicUrl` if set, each with a copy-to-clipboard button
+  - pairing code with a "new code" button and a countdown (10 min)
+  - pending approvals with Allow / Deny
+  - devices: name, player, last seen, revoke; "revoke all"
+  - trusted players: add (name field) / remove
+  - PIN: set/change/clear (masked input)
+  - LAN-only / internet status (read-only, explains the config switch)
+- **Uplink screen** (right-click): status, linked mainframe (position, distance, range OK), title, widget count, mode (auto / Lua / direct), and an "unlink" button (owner/trusted).
+- Style: CC: Tweaked look (dark terminal panel with the CC border, silkscreen-like pixel headings, gold for advanced, cyan accents). GUI textures are drawn by the art generator (`textures/gui/mainframe.png`, `textures/gui/uplink.png`, widgets in `textures/gui/widgets.png`); the Java side draws text and dynamic parts.
+- All actions go through custom payload packets with server-side permission checks (never trust the client). The screen gets a snapshot when opened and live updates while it is open (pending approvals appear without reopening).
+- Chat stays as a fallback: the clickable Allow/Deny chat message still appears for players who do not have the screen open.
+
+### Web empty state
+- Replace the "No uplinks yet" Lua wall with a 3-step setup guide using the in-game names (Place Cloud Uplink on a computer → link with the Link Card → it shows up here automatically as a Computer card). Below it, a collapsible "Build your own dashboard" with a **copy button** for the starter script and the hint "or run `cloud-demo` on the computer".
+- Clipboard: `navigator.clipboard` only works on HTTPS/localhost, so fall back to a hidden textarea + `document.execCommand("copy")` on plain HTTP; show "Copied".
+- Also add a copy button to every code block in the app.
+
+### Web protocol for the auto Computer card (new widget type `redstone_sides`)
+The existing widgets cannot show six sides with output + input compactly, so the auto card uses one new widget type. The Java side sends the auto card as a normal uplink snapshot:
+```json
+{"t":"uplink","uplinkId":"…","title":"Computer #7","online":true,"mode":"auto","widgets":[
+  {"id":"power",    "type":"indicator", "label":"Computer on", "opts":{"onColor":"green","offColor":"gray","span":2}, "value":true},
+  {"id":"turn_on",  "type":"button",    "label":"Turn on",   "opts":{"color":"green"}},
+  {"id":"reboot",   "type":"button",    "label":"Reboot",    "opts":{"color":"yellow","confirm":true}},
+  {"id":"shutdown", "type":"button",    "label":"Shut down", "opts":{"color":"red","confirm":true}},
+  {"id":"redstone", "type":"redstone_sides", "label":"Redstone", "value":[
+    {"side":"top","out":0,"in":0}, {"side":"bottom","out":0,"in":0}, {"side":"left","out":0,"in":15},
+    {"side":"right","out":0,"in":0}, {"side":"front","out":0,"in":0}, {"side":"back","out":15,"in":0}]}
+]}
+```
+- `uplink.mode` (new, optional): `"auto"` (automatic Computer card), `"lua"` (widgets from a program), `"direct"` (bridge template). The dashboard shows an "auto" tag on auto cards.
+- `redstone_sides` value: exactly the six sides `top|bottom|left|right|front|back` (relative to the computer, like CC's `redstone` API), each with `out` (the computer's output level, 0–15) and `in` (the input level, 0–15). Send the whole array as a `value` delta whenever any level changes (coalesced like other values).
+- Action: `{"t":"action","reqId","uplinkId","id":"redstone","value":{"op":"set_output","side":"front","value":15}}`. `value` is an int 0–15. The UI toggles between 0 and 15 when a side is tapped; the "Advanced" sliders send any level. Validation errors: unknown side, non-integer or out of range → `invalid_value`; read-only device → `read_only`. Applied on the server thread with `redstone.setAnalogOutput` semantics, and works while the computer is off.
+- Buttons `turn_on`/`reboot`/`shutdown` are ordinary button actions (`value: true`). Turn on is a no-op when the computer is already on.
+- Like all action values, the `op` object is validated server-side (`set_output` is the only op for this widget type).
+
+### Power (v0.3)
+The mainframe needs electricity, like other tech blocks in ATM11.
+- Unit: FE (Forge Energy). On NeoForge, FE = what most mods call RF; Powah, Ender IO, Oritech, Energized Power, AE2 (accepts FE), Refined Storage and AllTheModium machines all use it. ATM11 ships no mod with EU (IC2/GregTech) or Mekanism Joules, so FE covers every power mod in the pack. Mods with other units can convert to FE through their own converters; we do not add EU/J support.
+- Expose `Capabilities.Energy.BLOCK` on both mainframe halves (all sides) using NeoForge 26.1's transfer API (`net.neoforged.neoforge.transfer.energy.EnergyHandler`, e.g. a `SimpleEnergyHandler`-style buffer); check the 26.1 sources for how legacy `IEnergyStorage` providers interoperate and make sure both cable styles can insert. Receive-only.
+- Default consumption (server config, all 0 = free): `mainframeBaseFE` 40 FE/t, `mainframePerUplinkFE` 5 FE/t per linked loaded uplink, `mainframePerClientFE` 2 FE/t per connected dashboard client. Buffer `mainframeBufferFE` 200 000 FE, max input 2 000 FE/t. `requirePower` (default true).
+- Out of power → status `offline` with reason `no_power` (shown in the web app as "Mainframe has no power", in the in-game GUI as a red "NO POWER" badge with buffer bar), uplinks report offline. Power returns → reconnects automatically. A brownout keeps going for 5 s on the buffer before cutting, to avoid flicker.
+- Uplinks and bridges need no FE (bridges use the AE2/RS network power).
+- Lua (`cloud_mainframe`): `getEnergy()`, `getEnergyCapacity()`, `getEnergyUsage()`. The browser snapshot gets `power: {stored, capacity, usage, ok}` on the mainframe object so the dashboard can show a small power bar in the header.
+- Creative-mode convenience: a creative-only "Creative Power" toggle is NOT added; use a creative energy cell from another mod.

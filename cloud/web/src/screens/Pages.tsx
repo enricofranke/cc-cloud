@@ -24,6 +24,7 @@ import {
   type ResolvedWidget,
 } from "../lib/layout.ts";
 import { pushToast } from "../lib/ui.ts";
+import { adaptComputerCard } from "../lib/redstone.ts";
 import { Card, EditCard } from "../components/Card.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Sheet } from "../components/Overlays.tsx";
@@ -53,7 +54,8 @@ const SAVE_ERRORS: Record<string, string> = {
 export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolean; editing: boolean; onExitEdit: () => void }) {
   const { conn } = props;
   const isPhone = useIsPhone();
-  const view = resolveLayout(conn.uplinks.value, conn.layout.value);
+  const uplinks = conn.uplinks.value.map(adaptComputerCard);
+  const view = resolveLayout(uplinks, conn.layout.value);
   const [draft, setDraft] = useState<ResolvedPage[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   // entering edit mode snapshots the current view (including hidden items)
   useEffect(() => {
     if (props.editing) {
-      setDraft(resolveLayout(conn.uplinks.value, conn.layout.value, { includeHidden: true }));
+      setDraft(resolveLayout(conn.uplinks.value.map(adaptComputerCard), conn.layout.value, { includeHidden: true }));
       setSaveError(null);
     } else setDraft(null);
   }, [props.editing]);
