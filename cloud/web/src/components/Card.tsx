@@ -9,6 +9,7 @@ import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { RedstoneSides } from "./Redstone.tsx";
+import { powerButtonState } from "../lib/redstone.ts";
 import { DocsLink } from "./DocsLink.tsx";
 
 /** Body columns: 2 for a 1-column card, 4 for wider cards (phones always use 2, see CSS). */
@@ -34,7 +35,15 @@ function blocks(widgets: ResolvedWidget[], cols: number): Block[] {
 
 function WidgetView({ rw, card, conn, locked }: { rw: ResolvedWidget; card: ResolvedCard; conn: MainframeConn; locked: boolean }) {
   const w = rw.label !== rw.w.label ? { ...rw.w, label: rw.label } : rw.w;
-  const p = { w, uplink: card.uplink, conn, locked };
+  // auto Computer card: disable power buttons that make no sense right now (keeps the layout stable)
+  const pb = w.type === "button" && card.uplink.mode === "auto" ? powerButtonState(card.uplink, w.id) : undefined;
+  const p = { w, uplink: card.uplink, conn, locked: locked || !!pb?.disabled };
+  if (pb?.disabled)
+    return (
+      <span class="btn-muted" title={pb.reason}>
+        <ActionButton {...p} />
+      </span>
+    );
   switch (w.type) {
     case "gauge":
       return <Gauge {...p} />;

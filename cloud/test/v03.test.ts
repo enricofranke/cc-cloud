@@ -187,3 +187,40 @@ describe("copyText", () => {
     expect(await copyText("x")).toBe(false);
   });
 });
+
+import { powerButtonState } from "../web/src/lib/redstone.ts";
+import { iconItem } from "../web/src/docs/content/index.ts";
+
+describe("auto card power buttons", () => {
+  const card = (on: boolean) =>
+    ({
+      uplinkId: "c",
+      title: "Computer #1",
+      online: true,
+      mode: "auto",
+      widgets: [
+        { id: "power", type: "indicator", value: on },
+        { id: "turn_on", type: "button" },
+        { id: "reboot", type: "button" },
+        { id: "shutdown", type: "button" },
+      ],
+    }) as any;
+  it("disables Turn on while running and Reboot/Shut down while off", () => {
+    expect(powerButtonState(card(true), "turn_on")?.disabled).toBe(true);
+    expect(powerButtonState(card(true), "reboot")?.disabled).toBe(false);
+    expect(powerButtonState(card(true), "shutdown")?.disabled).toBe(false);
+    expect(powerButtonState(card(false), "turn_on")?.disabled).toBe(false);
+    expect(powerButtonState(card(false), "reboot")?.disabled).toBe(true);
+    expect(powerButtonState(card(false), "shutdown")?.disabled).toBe(true);
+    expect(powerButtonState(card(true), "scram")).toBeUndefined();
+    expect(powerButtonState({ ...card(true), widgets: [] }, "reboot")).toBeUndefined();
+  });
+});
+
+describe("docs recipe icons", () => {
+  it("maps tags to a typical item and keeps item ids", () => {
+    expect(iconItem("#c:ingots/gold")).toBe("minecraft:gold_ingot");
+    expect(iconItem("#c:dusts/redstone")).toBe("minecraft:redstone");
+    expect(iconItem("cccloud:cloud_core")).toBe("cccloud:cloud_core");
+  });
+});

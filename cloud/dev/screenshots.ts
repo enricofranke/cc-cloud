@@ -86,6 +86,15 @@ try {
   });
   await p.waitForTimeout(300);
   await shot(p, "phone-c1-computer-card");
+  // shut it down: "Turn on" becomes the only active power button
+  await p.click('.card:has(.rs) .pxbtn:has-text("Shut down")');
+  await p.waitForSelector(".dialog");
+  await p.click(".dialog .pxbtn-red");
+  await p.waitForSelector('.card:has(.rs) .indicator.off');
+  await p.waitForTimeout(300);
+  await shot(p, "phone-c1b-computer-off");
+  await p.click('.card:has(.rs) .pxbtn:has-text("Turn on")');
+  await p.waitForSelector('.card:has(.rs) .indicator.on');
   await p.click('.rs-side:has-text("front")');
   await p.click(".rs-adv-toggle");
   await p.waitForTimeout(500);

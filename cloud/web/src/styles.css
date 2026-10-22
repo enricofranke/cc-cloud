@@ -4083,3 +4083,33 @@ a.brand {
 .docs-hit-title {
   color: var(--cyan);
 }
+
+/* auto Computer card: a power button that does not apply right now */
+.btn-row > .btn-muted {
+  flex: 1 1 140px;
+  min-width: 0;
+  display: flex;
+}
+.btn-muted > .pxbtn {
+  flex: 1;
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.55;
+}
+.btn-muted .px-icon,
+.btn-muted svg {
+  display: none;
+}
+/* docs crafting grid: real item icons in the slots */
+.slot .item-icon {
+  width: 28px;
+  height: 28px;
+}
+.slot.result .item-icon {
+  width: 34px;
+  height: 34px;
+}
+.recipe-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

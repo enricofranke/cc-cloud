@@ -6,6 +6,8 @@ import type { Block, Inline, Recipe } from "./md.ts";
 import { CONTENT, PAGES, UI, detectLang, itemName, type Lang } from "./content/index.ts";
 import { pageBlocks, search } from "./search.ts";
 import { CodeBlock } from "../components/CodeBlock.tsx";
+import { ItemIcon } from "../components/ItemIcon.tsx";
+import { iconItem } from "./content/index.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Logo, IconBack, IconClose, IconMoon, IconSun, IconAuto } from "../components/Icons.tsx";
 import { copyText } from "../lib/clipboard.ts";
@@ -135,14 +137,13 @@ function RecipeView({ r }: { r: Recipe }) {
     }
   }
   const used = [...new Set(cells.filter(Boolean) as string[])];
-  const letter = (id: string) => String.fromCharCode(65 + used.indexOf(id));
   return (
     <figure class="recipe">
       <div class="recipe-main">
         <div class="craft-grid" role="img" aria-label={`${itemName(r.result, l)}: ${used.map((u) => itemName(u, l)).join(", ")}`}>
           {cells.map((c, i) => (
             <span key={i} class={`slot ${c ? "full" : ""}`} title={c ? itemName(c, l) : undefined}>
-              {c && <span class={`slot-tag t${used.indexOf(c) % 6}`}>{letter(c)}</span>}
+              {c && <ItemIcon name={iconItem(c)} displayName={itemName(c, l)} />}
             </span>
           ))}
         </div>
@@ -151,7 +152,7 @@ function RecipeView({ r }: { r: Recipe }) {
         </span>
         <div class="craft-result">
           <span class="slot full result" title={itemName(r.result, l)}>
-            <PixelIcon name="box" size={22} />
+            <ItemIcon name={r.result} displayName={itemName(r.result, l)} />
             {r.count && r.count > 1 && <span class="slot-count">{r.count}</span>}
           </span>
           <span class="craft-result-name">{itemName(r.result, l)}</span>
@@ -161,7 +162,7 @@ function RecipeView({ r }: { r: Recipe }) {
         <ul class="recipe-legend">
           {used.map((u) => (
             <li key={u}>
-              <span class={`slot-tag t${used.indexOf(u) % 6}`}>{letter(u)}</span> {itemName(u, l)}
+              <ItemIcon name={iconItem(u)} displayName={itemName(u, l)} /> {itemName(u, l)}
             </li>
           ))}
         </ul>

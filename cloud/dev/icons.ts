@@ -147,4 +147,11 @@ export const SAMPLE_ICONS: Record<string, Buffer> = {
   "minecraft:stone": draw(BLOCK, palette("#9e9e9e", "#7f7f7f", "#757575", "#5c5c5c")),
   "ae2:logic_processor": draw(CHIP, palette("#fff6a0", "#3f3f3f", "#f2d14a", "#e8c547")),
   "ae2:calculation_processor": draw(CHIP, palette("#c9f3ff", "#3f3f3f", "#7fd8f0", "#5ec8e5")),
+  "minecraft:gold_nugget": draw(DUST, palette("#fffde0", "#fcee4b", "#e4a91c", "#b26411")),
+  "minecraft:ender_pearl": draw(GEM, palette("#c8f5e8", "#2fa37a", "#1d6e54", "#0c3b2c")),
+  "minecraft:prismarine_crystals": draw(GEM, palette("#f2fff8", "#a6e3d2", "#6fb8a6", "#467a6d")),
+  "minecraft:paper": draw(BLOCK, palette("#ffffff", "#f0efe6", "#dddccf", "#b8b7a8")),
+  "cccloud:cloud_core": draw(GEM, palette("#e8fbff", "#5ec8e5", "#2a7f99", "#174c5c")),
+  "cccloud:cloud_uplink": draw(CHIP, palette("#e8fbff", "#3f3f3f", "#a8e6f5", "#5ec8e5")),
+  "cccloud:cloud_mainframe": draw(BLOCK, palette("#ecec9c", "#2d2d2d", "#5ec8e5", "#ddd771")),
 };

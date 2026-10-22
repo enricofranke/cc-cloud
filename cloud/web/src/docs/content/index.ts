@@ -84,6 +84,17 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "cccloud:rs_cloud_bridge": { en: "RS Cloud Bridge", de: "RS Cloud Bridge" },
 };
 
+/** Tags have no icon of their own: show a typical member. */
+const TAG_ICON: Record<string, string> = {
+  "#c:nuggets/gold": "minecraft:gold_nugget",
+  "#c:ingots/gold": "minecraft:gold_ingot",
+  "#c:ender_pearls": "minecraft:ender_pearl",
+  "#c:dusts/redstone": "minecraft:redstone",
+};
+export function iconItem(id: string) {
+  return TAG_ICON[id] ?? id.replace(/^#/, "");
+}
+
 export function itemName(id: string, lang: Lang) {
   const n = ITEMS[id]?.[lang];
   if (n) return id.startsWith("#") ? `${n} (${UI[lang].any})` : n;

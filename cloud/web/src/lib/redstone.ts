@@ -21,6 +21,20 @@ import { SIDES as ALL_SIDES } from "./types.ts";
 
 export const VIRTUAL_REDSTONE_ID = "__redstone";
 
+/**
+ * Auto Computer card: only the power buttons that make sense are active.
+ * On → "Turn on" is disabled; off → "Reboot" and "Shut down" are disabled.
+ * Returns undefined for any other widget / card.
+ */
+export function powerButtonState(u: Uplink, widgetId: string): { disabled: boolean; reason: string } | undefined {
+  if (widgetId !== "turn_on" && widgetId !== "reboot" && widgetId !== "shutdown") return undefined;
+  const power = u.widgets.find((w) => w.id === "power" && w.type === "indicator");
+  if (!power || typeof power.value !== "boolean") return undefined;
+  const on = power.value;
+  if (widgetId === "turn_on") return { disabled: on, reason: "The computer is already on" };
+  return { disabled: !on, reason: "The computer is off" };
+}
+
 const lvl = (v: unknown) => (v === true ? 15 : typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(15, Math.round(v))) : 0);
 
 export function adaptComputerCard(u: Uplink): Uplink {
