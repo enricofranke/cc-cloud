@@ -514,6 +514,37 @@ No new browser message types: every card is an ordinary section (`uplink` snapsh
   - Safety: each rule has a cooldown (min 5 s), max 32 rules per mainframe, max 10 actions per rule run, loop protection (a rule cannot trigger itself or more than 20 rule runs per second per mainframe), and an audit log entry per run. Rules run on the server thread in a cheap evaluation step (only re-evaluate on relevant changes or interval ticks).
   - Rules are edited in the dashboard (canControl), stored in SavedData, validated server-side; Lua can list/enable/disable rules via `cloud_mainframe` (`getRules()`, `setRuleEnabled(id, bool)`).
 
+### C. Rules – web protocol and implementation notes (mod side)
+Implemented in `rules/` (`Rule`, `RuleCodec` = the strict schema, `RuleEngine` = pure evaluation, `RuleService` = game side, `RuleData` = SavedData `data/cccloud/rules.dat`). Rules are evaluated every 10 ticks on the server thread, only while their mainframe is loaded and online; config `rulesEnabled` (default true) switches all rules off.
+
+**Rule document** (`rule_set` sends it; unknown keys are an error, ≤ 4 KB; `lastRun`/`lastResult`/`runs` are accepted and ignored so the client may send back what it got):
+```json
+{"id": "0a1b2c3d", "name": "Cool the reactor", "enabled": true, "cooldown": 30, "notify": false,
+ "when": {"type": "widget", "uplinkId": "<uuid>", "widgetId": "temp", "op": ">", "value": 90},
+ "if":   [{"type": "power", "op": ">=", "value": 20}, {"type": "online", "uplinkId": "<uuid>"}],
+ "then": [{"type": "redstone", "uplinkId": "<uuid>", "side": "top", "value": 15},
+          {"type": "alert", "text": "Reactor hot", "level": "warn"}]}
+```
+- `id`: 8 hex chars; omit it for a new rule (the server assigns one, answered in `rule_result.id`); an existing id replaces that rule. `name` 1–48 chars; `enabled` default true; `cooldown` seconds 5–86400, default 30; `notify` (push the run result, v0.5 D).
+- **when** (exactly one): `widget` {uplinkId, widgetId, op, value} (numeric widgets; booleans count as 0/1), `items` {uplinkId, item `ns:path`, op, value ≥ 0} (storage behind a bridge/uplink card), `power` {op, value 0–100} (mainframe FE buffer in %), `offline` {uplinkId}, `interval` {minutes 1–1440}, `time` {time 0–23999, in-game time of day}. `op` ∈ `< <= > >= == !=`.
+- **if** (≤ 8, all must hold): the `widget`/`items`/`power` checks plus `online` {uplinkId}.
+- **then** (1–10): `redstone` {uplinkId, side top|bottom|left|right|front|back, value 0–15} (auto-card computers), `widget` {uplinkId, widgetId, value number|string ≤ 256|bool} (button/toggle/slider/select/number/text – same validation as a human action, user `rule:<name>`; widgets with a PIN are refused: `pin_widget` on save, `pin_required` at run time), `craft` {uplinkId, item, amount 1–`maxCraftAmount`} (via the card's item search), `alert` {text ≤ 120, level info|warn|error}, `dashboard` {enabled}.
+- **Loop protection**: a rule whose actions write the widget its trigger watches (or the `redstone` widget of the same uplink with a redstone action) is refused (`invalid_rule`). At most 20 rule runs per second per mainframe; the first throttled run in a second is logged as `rate_limited`, further ones are dropped.
+- **Semantics**: check/offline triggers fire on the false → true edge only (the first evaluation after a load only records the state; an unknown value keeps it); `interval` fires every N minutes after the rule was loaded; `time` fires when the day time passes the given tick (also across midnight). After the trigger: cooldown since the last run, then the conditions. Actions run in order; the run's result is the first error (later actions still run).
+- **Limit**: rules per mainframe = the Memory upgrade's value (base 8, tiers 24/64/128) capped by `maxRulesPerMainframe` (default 128, hard cap 128); more → `too_many`.
+
+**Messages** (rate limit as actions; answered with `{"t":"rule_result","reqId","ok","error?","detail?","id?"}`):
+- `{"t":"rule_set","reqId","rule":{…}}` – needs `rules.edit`; errors `invalid_rule` (+ `detail`: the first schema problem), `too_many`, `pin_widget`.
+- `{"t":"rule_delete","reqId","id"}` – `rules.edit`; `unknown_rule`.
+- `{"t":"rule_enable","reqId","id","enabled"}` – `rules.toggle`; `unknown_rule`.
+- `{"t":"rule_run","reqId","id"}` – `rules.toggle` ("Run now": ignores trigger, conditions and cooldown, not the run limit); `unknown_rule`, `offline`, `rate_limited`, or the first action error.
+- Permission errors as everywhere (`forbidden`/`read_only`/`not_allowed`).
+
+**Rules document** (snapshot field `rules`, delta `{"t":"rules", …}` after every change and every run; never sent to share sessions):
+`{"rules":[<rule> + "lastRun": ms|null, "lastResult": "ok"|error|null, "runs": n], "log":[{"time","rule","name","result","manual"}] (last 50 runs), "limit": n}`. The run state (`lastRun`, `runs`) lives in memory and starts fresh after a restart; the log is stored.
+
+Lua (`cloud_mainframe`): `getRules()` and `setRuleEnabled(id, enabled)`.
+
 ### D. Push notifications
 - Targets per mainframe (canControl to edit, secrets stored server-side, never sent back to the browser in full): **Discord webhook**, **ntfy** (topic URL, optional token), generic **webhook** (JSON POST).
 - What is sent: alerts (by min level), rule actions with `notify`, device approvals pending, mainframe offline/no power.
