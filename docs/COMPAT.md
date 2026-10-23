@@ -67,6 +67,21 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | Mystical Automation (`mysticalautomation`) | 2.0.7 | no own card: its machines only expose energy, so the generic Energy card applies | – | – |
 | Railcraft Reborn (`railcraft`) | 1.4.5 | **Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode) | none | yes (lone firebox, "Not formed") |
 
+### 6. Logistics
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| Super Factory Manager (`sfm`) | 4.34.0 | **Factory Manager** card: state (running / no disk / no program / program has errors), program name, average tick time, errors, warnings, first error (SFM's translation key on dedicated servers), queued redstone pulses; warn alert when the program becomes invalid | none: SFM has no on/off – taking the disk out is its off switch | yes (manager without a disk) |
+| Modular Routers (`modularrouters`) | 26.1.2.2 | **Modular Router** card: status, modules, speed (tick rate, items, eco mode), buffer | redstone mode (Always / Redstone low / Redstone high / Never / Redstone pulse) – "Never" switches the router off; select with confirm, `act.redstone` | yes (empty router, switched to Never) |
+| LaserIO, Pipez | – | skipped: pipes/nodes without state worth a card (no buffers, no machine status) | – | – |
+| Logistics Networks (`logisticsnetworks`) | 1.13.0 | no card: it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it | – | – |
+
+### 7. Integrated Dynamics
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| Integrated Dynamics (`integrateddynamics`) | 1.36.1 | **Display Panels** card: an uplink next to a logic cable that carries Display/Light Panels shows each panel's current value with its type (one label per side; the card rebuilds when panels are added/removed). ID evaluates the variables on its own network; the card only reads the panel's display value. Variable Stores are not read (their variables are evaluated only by readers/panels). | none | untested: placing parts on a cable needs ID's part placement and a network; compiled against the exact jar and loaded in a dev server |
+
 ### 8. World & progression
 
 | Mod (id) | Version | What | Controls | Tested |

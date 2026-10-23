@@ -228,6 +228,10 @@ def integrationMods = [
                            "curse.maven:shogi-1475746:${shogi_curse_file}"],
     ftbquests           : ["dev.ftb.mods:ftb-quests-neoforge:${ftbquests_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
                            "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    sfm                 : ["curse.maven:superfactorymanager-306935:${sfm_curse_file}"],
+    modularrouters      : ["curse.maven:modularrouters-250294:${modularrouters_curse_file}"],
+    integrateddynamics  : ["curse.maven:integrateddynamics-236307:${integrateddynamics_curse_file}", "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}",
+                           "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 

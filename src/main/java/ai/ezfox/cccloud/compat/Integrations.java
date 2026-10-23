@@ -70,6 +70,11 @@ public final class Integrations {
         optional("mysticalagriculture", () -> ai.ezfox.cccloud.compat.mysticalagriculture.MysticalCards::init);
         optional("railcraft", () -> ai.ezfox.cccloud.compat.railcraft.RailcraftCards::init);
 
+        // 6. Logistics. 7. Integrated Dynamics.
+        optional("sfm", () -> ai.ezfox.cccloud.compat.sfm.SfmCards::init);
+        optional("modularrouters", () -> ai.ezfox.cccloud.compat.modularrouters.RouterCards::init);
+        optional("integrateddynamics", () -> ai.ezfox.cccloud.compat.integrateddynamics.IntegratedDynamicsCards::init);
+
         // 8. World & progression.
         optional("waystones", () -> ai.ezfox.cccloud.compat.waystones.WaystonesCard::init);
         optional("ftbquests", () -> ai.ezfox.cccloud.compat.ftbquests.QuestsCard::init);

@@ -72,6 +72,9 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `railcraft` | Railcraft Reborn 1.4.5 | – | `compat/railcraft` (boiler module API) |
 | `waystones` | Waystones 26.1.2.16 | Balm 26.1.2.15, Shogi 26.1.2.12 | `compat/waystones` (WaystonesAPI) |
 | `ftbquests` | FTB Quests 26.1.2.9 (`dev.ftb.mods:ftb-quests-neoforge`, maven.ftb.dev, SHA-1 identical) | FTB Teams, FTB Library | `compat/ftbquests` |
+| `sfm` | Super Factory Manager 4.34.0 | – | `compat/sfm` |
+| `modularrouters` | Modular Routers 26.1.2.2 | – | `compat/modularrouters` |
+| `integrateddynamics` | Integrated Dynamics 1.36.1 | Cyclops Core 1.31.3, Common Capabilities 2.11.8 | `compat/integrateddynamics` (part container + panel state) |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh
