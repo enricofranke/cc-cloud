@@ -118,7 +118,7 @@ public final class AnalyzerGeometry {
                 l.addProperty("a", link.a());
                 l.addProperty("b", link.b());
                 l.addProperty("signal", round2(link.signal()));
-                l.addProperty("kind", link.kind() == NetworkGraph.LinkKind.ENDER ? "ender" : "radio");
+                l.addProperty("kind", link.kind().name().toLowerCase(java.util.Locale.ROOT)); // radio, ender, wired, fiber
                 if (isRouteLink(result, link)) l.addProperty("used", true);
                 candidates.add(new Candidate(d + 0.5, "l", l));
             }

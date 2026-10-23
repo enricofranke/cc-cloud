@@ -131,9 +131,11 @@ public final class AnalyzerOverlay {
             if (a == null || b == null) continue;
             double signal = link.get("signal").getAsDouble();
             boolean used = link.has("used");
-            int color = signal <= 0 ? RED : signal < 0.15 ? YELLOW : GREEN;
+            String kind = link.get("kind").getAsString();
+            boolean cable = "wired".equals(kind) || "fiber".equals(kind);
+            int color = cable ? CYAN : signal <= 0 ? RED : signal < 0.15 ? YELLOW : GREEN;
             if (!used) color = (color & 0x00FFFFFF) | 0x60000000;
-            if ("ender".equals(link.get("kind").getAsString())) dashed(a, b, color);
+            if ("ender".equals(kind)) dashed(a, b, color);
             else Gizmos.line(a, b, color, used ? 2.5f : 1.5f).setAlwaysOnTop();
         }
         for (var e : statuses.entrySet()) {
