@@ -21,12 +21,23 @@ public interface HubSession {
     /** The role on {@link #mainframeId()} ({@link Role#SHARE} for share sessions). Re-checked live. */
     Role role();
 
-    /** Updates the role after a live re-check (the hub sends the {@code role} push). */
-    default void setRole(Role role) {
+    /** Effective permissions on {@link #mainframeId()} (empty for share sessions). */
+    default java.util.Set<ai.ezfox.cccloud.access.Perm> perms() {
+        return ai.ezfox.cccloud.access.Perm.preset(role());
     }
 
+    /** Updates role and permissions after a live re-check (the hub sends the {@code role} push). */
+    default void setAccess(Role role, java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+    }
+
+    /** Buttons etc. ({@code act.buttons}); shown as {@code canControl} in the protocol. */
     default boolean canControl() {
-        return role().canControl();
+        return perms().contains(ai.ezfox.cccloud.access.Perm.ACT_BUTTONS);
+    }
+
+    /** Coordinates on the network map ({@code view.positions}). */
+    default boolean seesPositions() {
+        return perms().contains(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
     }
 
     /** Queues messages for sending. Must not block. */

@@ -74,7 +74,7 @@ public final class CloudCommand {
                 .then(Commands.argument("device", StringArgumentType.greedyString())
                     .suggests((c, b) -> {
                         try {
-                            var mainframe = target(c.getSource());
+                            var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
                             var names = WebAuthData.get(c.getSource().getServer()).devices(mainframe.getMainframeId()).stream().map(AuthStore.Device::name).toList();
                             return SharedSuggestionProvider.suggest(java.util.stream.Stream.concat(names.stream(), java.util.stream.Stream.of("all")), b);
                         } catch (CommandSyntaxException e) {
@@ -114,21 +114,16 @@ public final class CloudCommand {
         return CloudMainframeBlock.getBlockEntity(player.level(), hit.getBlockPos(), state);
     }
 
-    /** Admin commands: the targeted mainframe, where the player needs the admin role. */
-    private static CloudMainframeBlockEntity target(CommandSourceStack source) throws CommandSyntaxException {
-        return target(source, ai.ezfox.cccloud.access.Role.ADMIN);
-    }
-
     /**
      * The mainframe a command acts on: the one the player looks at, else the one chosen with {@code /cccloud select},
      * else the only one within 32 blocks, else the only one the player has the needed role on. Otherwise the candidates
      * are listed (click to select) and the command fails.
      */
-    private static CloudMainframeBlockEntity target(CommandSourceStack source, ai.ezfox.cccloud.access.Role needed) throws CommandSyntaxException {
+    private static CloudMainframeBlockEntity target(CommandSourceStack source, ai.ezfox.cccloud.access.Perm needed) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
         var looked = lookedAt(player);
         if (looked != null) {
-            if (!ai.ezfox.cccloud.access.Access.role(player, looked.getMainframeId()).atLeast(needed)) throw NOT_OWNER.create();
+            if (!ai.ezfox.cccloud.access.Access.has(player, looked.getMainframeId(), needed)) throw NOT_OWNER.create();
             return looked;
         }
         var candidates = candidates(player, needed);
@@ -142,11 +137,11 @@ public final class CloudCommand {
         throw CHOOSE.create();
     }
 
-    private static java.util.List<TargetPicker.Candidate> candidates(ServerPlayer player, ai.ezfox.cccloud.access.Role needed) {
+    private static java.util.List<TargetPicker.Candidate> candidates(ServerPlayer player, ai.ezfox.cccloud.access.Perm needed) {
         var list = new java.util.ArrayList<TargetPicker.Candidate>();
         for (var mainframe : ai.ezfox.cccloud.network.CloudNetwork.mainframes()) {
             if (mainframe.isRemoved() || mainframe.getLevel() == null) continue;
-            if (!ai.ezfox.cccloud.access.Access.role(player, mainframe.getMainframeId()).atLeast(needed)) continue;
+            if (!ai.ezfox.cccloud.access.Access.has(player, mainframe.getMainframeId(), needed)) continue;
             double distance = mainframe.getLevel() == player.level() ? Math.sqrt(mainframe.getBlockPos().getCenter().distanceToSqr(player.position())) : -1;
             list.add(new TargetPicker.Candidate(mainframe.getMainframeId(), distance));
         }
@@ -175,7 +170,7 @@ public final class CloudCommand {
     private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestMainframes(
         CommandContext<CommandSourceStack> c, com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
         if (!(c.getSource().getEntity() instanceof ServerPlayer player)) return b.buildFuture();
-        return SharedSuggestionProvider.suggest(candidates(player, ai.ezfox.cccloud.access.Role.VIEWER).stream().map(x -> x.id().toString()), b);
+        return SharedSuggestionProvider.suggest(candidates(player, ai.ezfox.cccloud.access.Perm.VIEW).stream().map(x -> x.id().toString()), b);
     }
 
     /** {@code /cccloud select <mainframe>} (also {@code /cccloud status <mainframe>}): remember it and show its status. */
@@ -188,7 +183,7 @@ public final class CloudCommand {
             throw NO_MAINFRAME.create();
         }
         var mainframe = ai.ezfox.cccloud.network.CloudNetwork.mainframe(id);
-        if (mainframe == null || !ai.ezfox.cccloud.access.Access.role(player, id).atLeast(ai.ezfox.cccloud.access.Role.VIEWER)) throw NO_MAINFRAME.create();
+        if (mainframe == null || !ai.ezfox.cccloud.access.Access.has(player, id, ai.ezfox.cccloud.access.Perm.VIEW)) throw NO_MAINFRAME.create();
         SELECTED.put(player.getUUID(), id);
         c.getSource().sendSystemMessage(Component.translatable("cccloud.command.selected", mainframe.getDisplayName()).withStyle(ChatFormatting.GRAY));
         return showStatus(c.getSource(), mainframe);
@@ -221,7 +216,7 @@ public final class CloudCommand {
         var resolver = ai.ezfox.cccloud.access.Access.resolver(server);
         for (var p : WebAuthData.get(server).pendingRequests()) {
             boolean mine = p.isAccount() ? player.getUUID().equals(p.account())
-                : resolver.role(player.getUUID(), p.mainframeId()).atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
+                : resolver.resolve(player.getUUID(), p.mainframeId()).has(ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
             if (mine) list.add(p);
         }
         list.sort((a, b) -> Long.compare(b.expiresAt(), a.expiresAt()));
@@ -270,7 +265,7 @@ public final class CloudCommand {
 
     /** {@code /cccloud role <player> <viewer|operator|admin|none>} on the mainframe you look at. */
     private static int role(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE);
         var role = ai.ezfox.cccloud.access.Role.parse(StringArgumentType.getString(c, "role"));
         if (role == null || role == ai.ezfox.cccloud.access.Role.OWNER) throw BAD_ROLE.create();
         var caller = c.getSource().getPlayerOrException();
@@ -366,12 +361,12 @@ public final class CloudCommand {
     }
 
     private static int status(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        return showStatus(c.getSource(), target(c.getSource(), ai.ezfox.cccloud.access.Role.VIEWER));
+        return showStatus(c.getSource(), target(c.getSource(), ai.ezfox.cccloud.access.Perm.VIEW));
     }
 
     private static int showStatus(CommandSourceStack source, CloudMainframeBlockEntity mainframe) throws CommandSyntaxException {
         mainframe.showStatus(source.getPlayerOrException());
-        if (!mainframe.canManage(source.getPlayerOrException())) return 1;
+        if (!mainframe.has(source.getPlayerOrException(), ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) return 1;
         var auth = WebAuthData.get(source.getServer());
         var grants = mainframe.getGrants().values().stream().map(g -> g.name() + " (" + g.role().id + ")").toList();
         source.sendSystemMessage(Component.translatable("cccloud.command.owner",
@@ -383,7 +378,7 @@ public final class CloudCommand {
     }
 
     private static int devices(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
         var list = WebAuthData.get(c.getSource().getServer()).devices(mainframe.getMainframeId());
         var source = c.getSource();
         if (list.isEmpty()) {
@@ -401,14 +396,14 @@ public final class CloudCommand {
     }
 
     private static int revoke(CommandContext<CommandSourceStack> c, String name) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
         var removed = mainframe.revoke(c.getSource().getLevel(), name, c.getSource().getTextName());
         c.getSource().sendSystemMessage(Component.translatable("cccloud.command.revoked", removed.size()));
         return removed.size();
     }
 
     private static int trust(CommandContext<CommandSourceStack> c, boolean trust) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE);
         var profiles = GameProfileArgument.getGameProfiles(c, "player");
         int changed = 0;
         for (var profile : profiles) {
@@ -427,7 +422,7 @@ public final class CloudCommand {
     }
 
     private static int setPin(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.PIN_MANAGE);
         String pin = StringArgumentType.getString(c, "pin");
         if (!AuthStore.isValidPin(pin)) throw BAD_PIN.create();
         var server = c.getSource().getServer();
@@ -445,7 +440,7 @@ public final class CloudCommand {
     }
 
     private static int clearPin(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
+        var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.PIN_MANAGE);
         WebAuthData.get(c.getSource().getServer()).setPin(mainframe.getMainframeId(), null);
         CCCloud.LOGGER.info("[cccloud] {} cleared the dashboard PIN of {}", c.getSource().getTextName(), mainframe.getDisplayName());
         c.getSource().sendSystemMessage(Component.translatable("cccloud.pin.cleared"));
@@ -464,7 +459,7 @@ public final class CloudCommand {
         if (pending == null || pending.state() != AuthStore.PendingState.PENDING) throw UNKNOWN_REQUEST.create();
         // Account codes: only the player whose code it is. Mainframe codes: admins of that mainframe.
         if (pending.isAccount() ? !player.getUUID().equals(pending.account())
-            : !ai.ezfox.cccloud.access.Access.canManage(player, pending.mainframeId())) throw NOT_OWNER.create();
+            : !ai.ezfox.cccloud.access.Access.has(player, pending.mainframeId(), ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) throw NOT_OWNER.create();
         if (allow) {
             var approved = auth.approve(id, player.getUUID(), player.getGameProfile().name(), true);
             if (approved == null) throw UNKNOWN_REQUEST.create();

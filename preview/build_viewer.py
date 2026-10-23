@@ -69,6 +69,9 @@ TEMPLATE = r"""<!doctype html>
     <button data-g="show" data-v="advanced">Adv. Uplink</button>
     <button data-g="show" data-v="bridges">Bridges</button>
     <button data-g="show" data-v="relays">Relays</button>
+    <button data-g="show" data-v="cables">Cables</button>
+    <button data-g="show" data-v="display">Display</button>
+    <button data-g="show" data-v="items">Items</button>
   </div>
   <div class="row"><span>Status</span>
     <button data-g="status" data-v="online" class="on">online</button>
@@ -208,7 +211,7 @@ const FACING = { north: [0, 0], east: [0, 90], south: [0, 180], west: [0, 270], 
 function placed(modelId, bx, by, bz, facing, override, pivot) {
   // block -> facing rotation around block centre (vanilla: x then y, clockwise) -> optional animated pivot
   const outer = new THREE.Group(); outer.position.set(bx * 16 + 8, by * 16 + 8, bz * 16 + 8);
-  const [rx, ry] = FACING[facing];
+  const [rx, ry] = Array.isArray(facing) ? facing : FACING[facing];  // name or explicit [x, y]
   const rot = new THREE.Group(); rot.rotation.order = "YXZ";
   rot.rotation.y = THREE.MathUtils.degToRad(-ry); rot.rotation.x = THREE.MathUtils.degToRad(-rx);
   outer.add(rot);
@@ -231,6 +234,38 @@ function dummyBlock(bx, by, bz, color) {
   const e = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x2d2d2d }));
   m.add(e);
 }
+
+// CC-style multipart cable: core + one rotated arm per side that touches another cell / connector
+const ARM_ROT = { south: [0, 0], north: [0, 180], west: [0, 90], east: [0, 270], up: [90, 0], down: [270, 0] };
+const DIRV = { north: [0, 0, -1], south: [0, 0, 1], west: [-1, 0, 0], east: [1, 0, 0], up: [0, 1, 0], down: [0, -1, 0] };
+function cableRun(cells, connectors, core, arm) {
+  const key = c => c.join(",");
+  const all = new Set(cells.concat(connectors).map(key));
+  for (const c of cells) {
+    placed(core, c[0], c[1], c[2], "north");
+    for (const [d, v] of Object.entries(DIRV))
+      if (all.has(key([c[0] + v[0], c[1] + v[1], c[2] + v[2]]))) placed(arm, c[0], c[1], c[2], ARM_ROT[d]);
+  }
+}
+
+// Cloud Display wall facing south (towards the camera): the viewer's left is -x, up is +y
+function displayWall(w, h, ox, oy, oz) {
+  for (let x = 0; x < w; x++) for (let y = 0; y < h; y++) {
+    let st = (x > 0 ? "l" : "") + (x < w - 1 ? "r" : "") + (y < h - 1 ? "u" : "") + (y > 0 ? "d" : "");
+    placed(st ? `cccloud:block/cloud_display_${st}` : "cccloud:block/cloud_display", ox + x, oy + y, oz, "south");
+  }
+}
+
+// flat item: alpha-tested textured plane (like item/generated, without the side extrusion)
+function flatItem(texId, bx, by, bz) {
+  const mat = new THREE.MeshBasicMaterial({ map: loadTex(texId), alphaTest: 0.5, side: THREE.DoubleSide });
+  mat.userData.dimmable = true;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), mat);
+  m.position.set(bx * 16 + 8, by * 16 + 8, bz * 16 + 8);
+  m.scale.y = -1;  // shared textures use flipY = false (model UV convention); planes expect the opposite
+  world.add(m);
+}
+const ITEM_TEXTURES = Object.keys(TEXTURES).filter(k => k.startsWith("cccloud:item/")).sort();
 
 function rebuild() {
   while (world.children.length) world.remove(world.children[0]);
@@ -262,6 +297,21 @@ function rebuild() {
     const all = show === "all";
     placed(`cccloud:block/me_cloud_bridge_${s}`, all ? -4 : -0.75, 0, all ? -1 : 0, "south");
     placed(`cccloud:block/rs_cloud_bridge_${s}`, all ? 4 : 0.75, 0, all ? -1 : 0, "south");
+  }
+  if (show === "cables") {
+    // fiber run with a bend up, a junction at one end and an ender fiber link at the other
+    const fiber = [[0, 0, 0], [-1, 0, 0], [1, 0, 0], [1, 1, 0]], junction = [-2, 0, 0], link = [1, 2, 0];
+    cableRun(fiber, [junction, link], "cccloud:block/fiber_cable_core", "cccloud:block/fiber_cable_arm");
+    placed("cccloud:block/fiber_junction", ...junction, "north");
+    placed("cccloud:block/fiber_junction_stub", ...junction, ARM_ROT.east);
+    placed("cccloud:block/ender_fiber_link", ...link, "north");
+    // a loose T-piece to see the slit from all sides
+    cableRun([[0, 0, -2]], [[1, 0, -2], [-1, 0, -2], [0, 1, -2]], "cccloud:block/fiber_cable_core", "cccloud:block/fiber_cable_arm");
+  }
+  if (show === "display") displayWall(3, 2, -1, 0, 0);
+  if (show === "items") {
+    const cols = 6;
+    ITEM_TEXTURES.forEach((t, i) => flatItem(t, (i % cols) - 1, 2 - Math.floor(i / cols), 0));
   }
   if (show === "all" || show === "relays") {
     const all = show === "all", z = all ? -3 : 0;

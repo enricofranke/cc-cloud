@@ -23,13 +23,13 @@ public interface GameBridge {
      * The live role of a device on a mainframe ({@link Role#NONE} if the player has no role there, is banned, lacks
      * {@code cccloud.use}, or the device is limited to another mainframe).
      */
-    Role role(AuthStore.Device device, UUID mainframeId);
+    ai.ezfox.cccloud.access.AccessResolver.Resolution access(AuthStore.Device device, UUID mainframeId);
 
     /**
      * WebSocket login: resolves the role and records server-admin views in the owner's audit log. Also marks the device
      * as used (last seen, last IP).
      */
-    Role authorize(AuthStore.Device device, UUID mainframeId, String ip);
+    ai.ezfox.cccloud.access.AccessResolver.Resolution authorize(AuthStore.Device device, UUID mainframeId, String ip);
 
     /** Shows the in-game approval prompt for a pending device. */
     void requestApproval(AuthStore.Pending pending);

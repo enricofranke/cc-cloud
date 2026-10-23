@@ -46,6 +46,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private volatile AuthStore.@Nullable Device device;
     private volatile AccessStore.@Nullable Share share;
     private volatile Role role = Role.NONE;
+    private volatile java.util.Set<ai.ezfox.cccloud.access.Perm> perms = java.util.Set.of();
     private volatile UUID mainframeId = new UUID(0, 0);
     private volatile boolean closed;
     private int invalidMessages;
@@ -166,18 +167,18 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         state = State.AUTHENTICATING;
         try {
             instance.bridge.serverExecutor().execute(() -> {
-                Role resolved;
+                ai.ezfox.cccloud.access.AccessResolver.Resolution resolved;
                 try {
                     resolved = instance.bridge.authorize(candidate, target, ip);
                 } catch (RuntimeException e) {
                     CloudLog.LOGGER.error("[cccloud] Error while authorizing a dashboard login from {}", ip, e);
-                    resolved = Role.NONE;
+                    resolved = ai.ezfox.cccloud.access.AccessResolver.Resolution.NONE;
                 }
                 var ch = channel;
                 if (ch == null) return;
-                Role granted = resolved;
+                var granted = resolved;
                 ch.eventLoop().execute(() -> {
-                    if (granted == Role.NONE) {
+                    if (granted.role() == Role.NONE) {
                         CloudLog.LOGGER.info("[cccloud] Rejected WebSocket login of device '{}' ({}) to {}: no role", candidate.name(), ip, target);
                         deny("no_access", 4403);
                         return;
@@ -185,7 +186,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     if (closed) return;
                     device = candidate;
                     mainframeId = target;
-                    role = granted;
+                    role = granted.role();
+                    perms = granted.perms();
                     state = State.READY;
                     // Only authenticated sessions may send big frames (layout_set, up to 64 KB).
                     if (sizeGuard != null) sizeGuard.raiseLimit(ClientMessages.MAX_LAYOUT_FRAME);
@@ -243,7 +245,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     private void action(AuthStore.Device current, ClientMessages.Action action) {
-        String denied = AccessGate.check(role, AccessGate.Kind.ACTION);
+        String denied = AccessGate.check(role, perms, WebHub.INSTANCE.actionPerm(mainframeId, action.uplinkId().toString(), action.id()));
         if (denied != null) {
             sendResult(action.reqId(), denied);
             return;
@@ -307,7 +309,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     /** Item search. Read-only, so viewers may search too. */
     private void query(AuthStore.Device current, ClientMessages.Query query) {
-        String denied = AccessGate.check(role, AccessGate.Kind.QUERY);
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.QUERY);
         if (denied != null) {
             sendQueryResult(query.reqId(), QueryResult.fail(denied));
             return;
@@ -341,7 +343,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
      * mainframe. Answered with layout_result; on success every client of the mainframe gets {"t":"layout"}.
      */
     private void layout(AuthStore.Device current, ClientMessages.LayoutSet layout) {
-        String denied = AccessGate.check(role, AccessGate.Kind.LAYOUT);
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.LAYOUT);
         if (denied != null) {
             sendLayoutResult(layout.reqId(), denied);
             return;
@@ -372,7 +374,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     /** Unlink a device from the network map (admin): {@code net_result}, then a network delta on success. */
     private void netUnlink(AuthStore.Device current, ClientMessages.NetUnlink unlink) {
-        String denied = AccessGate.check(role, AccessGate.Kind.NET_UNLINK);
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.NET_UNLINK);
         if (denied != null) {
             sendNetResult(unlink.reqId(), denied);
             return;
@@ -399,7 +401,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     /** v0.5 rules: edit (admin) or operate (operator); answered with rule_result. */
     private void rule(AuthStore.Device current, ClientMessages.RuleCommand command) {
-        String denied = AccessGate.check(role, command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
+        String denied = AccessGate.check(role, perms, command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
         if (denied != null) {
             sendRuleResult(command.reqId(), new GameBridge.RuleResult(denied, null, null));
             return;
@@ -507,8 +509,15 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     @Override
-    public void setRole(Role role) {
-        if (share == null) this.role = role;
+    public java.util.Set<ai.ezfox.cccloud.access.Perm> perms() {
+        return perms;
+    }
+
+    @Override
+    public void setAccess(Role role, java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+        if (share != null) return;
+        this.role = role;
+        this.perms = perms;
     }
 
     @Override

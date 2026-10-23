@@ -1,46 +1,85 @@
 package ai.ezfox.cccloud.web;
 
+import ai.ezfox.cccloud.access.Perm;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The central role check of the web protocol (docs/SPEC.md v0.6 "Role checks in the protocol"). Every WebSocket
- * message and HTTP API call of an authenticated client is checked here before any handler runs. Pure Java, unit
- * tested, including a walk over every message type with a share session.
+ * The central permission check of the web protocol (docs/SPEC.md v0.6 "Role checks" and "Fine-grained permissions").
+ * Every WebSocket message, HTTP API call and script route maps to exactly one {@link Perm}; this class holds that
+ * mapping and turns a missing permission into the protocol's error code. Pure Java, unit tested (including a walk
+ * over every message type, route and share sessions).
  */
 public final class AccessGate {
     public enum Kind {
-        /** Buttons, toggles, sliders, crafting, watchlist edits: operator. */
-        ACTION,
-        /** Item search (read-only): viewer. */
-        QUERY,
-        /** Layout editing: admin. */
-        LAYOUT,
-        /** Unlinking from the network map: admin. */
-        NET_UNLINK,
-        /** Access, shares and devices of a mainframe (HTTP): admin. */
-        MANAGE,
-        /** v0.5 rules: create, edit, delete – admin. */
-        RULE_EDIT,
-        /** v0.5 rules: enable/disable, run now – operator. */
-        RULE_OPERATE
+        /** Item search (read-only). */
+        QUERY(Perm.STORAGE_SEARCH),
+        /** Layout editing. */
+        LAYOUT(Perm.LAYOUT_EDIT),
+        /** Unlinking from the network map. */
+        NET_UNLINK(Perm.NETWORK_LINK),
+        /** Rules: create, edit, delete. */
+        RULE_EDIT(Perm.RULES_EDIT),
+        /** Rules: enable/disable, run now. */
+        RULE_OPERATE(Perm.RULES_TOGGLE),
+        /** Access page (roles, teams, permissions). */
+        ACCESS(Perm.ACCESS_MANAGE),
+        /** Share links. */
+        SHARES(Perm.SHARES_CREATE);
+
+        public final Perm perm;
+
+        Kind(Perm perm) {
+            this.perm = perm;
+        }
     }
 
     private AccessGate() {
     }
 
-    /** Null if the role may do this, else the error code for the result message. */
-    public static @Nullable String check(Role role, Kind kind) {
-        if (role == Role.SHARE) return "forbidden";
-        return switch (kind) {
-            case QUERY -> role.atLeast(Role.VIEWER) ? null : "forbidden";
-            case ACTION -> role.canControl() ? null : "read_only";
-            case LAYOUT, NET_UNLINK, RULE_EDIT -> !role.canControl() ? "read_only" : role.atLeast(Role.ADMIN) ? null : "not_allowed";
-            case RULE_OPERATE -> role.canControl() ? null : "read_only";
-            case MANAGE -> role.atLeast(Role.ADMIN) ? null : "not_allowed";
+    /**
+     * Null if allowed, else the error: {@code forbidden} for share sessions and sessions without view,
+     * {@code read_only} for read-only sessions (no {@code act.buttons}), otherwise {@code not_allowed}.
+     */
+    public static @Nullable String check(Role role, Set<Perm> perms, Perm needed) {
+        if (role == Role.SHARE || !perms.contains(Perm.VIEW)) return "forbidden";
+        if (perms.contains(needed)) return null;
+        return perms.contains(Perm.ACT_BUTTONS) ? "not_allowed" : "read_only";
+    }
+
+    public static @Nullable String check(Role role, Set<Perm> perms, Kind kind) {
+        return check(role, perms, kind.perm);
+    }
+
+    /**
+     * Which permission a dashboard action needs: crafting {@code storage.craft}, watchlist edits
+     * {@code storage.autostock}, redstone sides and the auto Computer card's power buttons {@code act.redstone},
+     * everything else (buttons, toggles, sliders, inputs) {@code act.buttons}.
+     */
+    public static Perm actionPerm(@Nullable String widgetType, @Nullable String uplinkMode, String widgetId) {
+        if (widgetType == null) return Perm.ACT_BUTTONS;
+        return switch (widgetType) {
+            case "item_search" -> Perm.STORAGE_CRAFT;
+            case "watchlist" -> Perm.STORAGE_AUTOSTOCK;
+            case "redstone_sides" -> Perm.ACT_REDSTONE;
+            default -> "auto".equals(uplinkMode) && (widgetId.equals("power") || widgetId.equals("turn_on") || widgetId.equals("reboot")
+                || widgetId.equals("shutdown")) ? Perm.ACT_REDSTONE : Perm.ACT_BUTTONS;
+        };
+    }
+
+    /** The permission of an HTTP route that touches a mainframe (null: not mainframe-scoped). */
+    public static @Nullable Perm routePerm(Router.Id route) {
+        return switch (route) {
+            case ACCESS_GET, ACCESS_POST -> Perm.ACCESS_MANAGE;
+            case SHARES_GET, SHARES_POST, SHARE_DELETE -> Perm.SHARES_CREATE;
+            case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT -> Perm.SCRIPTS_UPLOAD;
+            case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
+            case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;
+            default -> null;
         };
     }
 

@@ -171,7 +171,31 @@ public final class AccessStore {
         if (current == null || current.team() == null || !current.team().mapping().containsKey(rank) || role == Role.OWNER || role == Role.SHARE) return false;
         var mapping = new LinkedHashMap<>(current.team().mapping());
         mapping.put(rank, role);
-        access.put(mainframeId, current.withTeam(new MainframeAccess.TeamBinding(current.team().provider(), current.team().teamId(), mapping)));
+        access.put(mainframeId, current.withTeam(new MainframeAccess.TeamBinding(current.team().provider(), current.team().teamId(), mapping,
+            current.team().overrides())));
+        onChange.run();
+        return true;
+    }
+
+    /** Custom permissions of a direct grant (the player must have a grant). Returns false if there is none. */
+    public synchronized boolean setOverrides(UUID mainframeId, UUID player, MainframeAccess.Overrides overrides) {
+        var current = access.get(mainframeId);
+        var grant = current == null ? null : current.grants().get(player);
+        if (grant == null) return false;
+        access.put(mainframeId, current.withGrant(player, grant.name(), grant.role(), overrides));
+        onChange.run();
+        return true;
+    }
+
+    /** Custom permissions of a team rank of the assigned team. */
+    public synchronized boolean setRankOverrides(UUID mainframeId, String rank, MainframeAccess.Overrides overrides) {
+        var current = access.get(mainframeId);
+        if (current == null || current.team() == null || !current.team().mapping().containsKey(rank)) return false;
+        var map = new LinkedHashMap<>(current.team().overrides());
+        if (overrides.isEmpty()) map.remove(rank);
+        else map.put(rank, overrides);
+        var t = current.team();
+        access.put(mainframeId, current.withTeam(new MainframeAccess.TeamBinding(t.provider(), t.teamId(), t.mapping(), map)));
         onChange.run();
         return true;
     }

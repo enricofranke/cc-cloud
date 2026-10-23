@@ -208,7 +208,7 @@ public final class BridgeSection implements DashboardSection {
             player.sendSystemMessage(Component.translatable("cccloud.uplink.mainframe_missing").withStyle(ChatFormatting.RED));
             return;
         }
-        if (!mainframe.canManage(player)) {
+        if (!mainframe.has(player, ai.ezfox.cccloud.access.Perm.NETWORK_LINK)) {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }

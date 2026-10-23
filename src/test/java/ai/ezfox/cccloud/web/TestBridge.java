@@ -23,15 +23,25 @@ class TestBridge implements GameBridge {
         return Runnable::run;
     }
 
-    @Override
-    public Role role(AuthStore.Device device, UUID mainframeId) {
+    /** Optional: exact permissions (else the preset of the role). */
+    BiFunction<AuthStore.Device, UUID, java.util.Set<ai.ezfox.cccloud.access.Perm>> perms = null;
+
+    Role role(AuthStore.Device device, UUID mainframeId) {
         if (device.mainframeId() != null && !device.mainframeId().equals(mainframeId)) return Role.NONE;
         return roles.apply(device, mainframeId);
     }
 
     @Override
-    public Role authorize(AuthStore.Device device, UUID mainframeId, String ip) {
-        return role(device, mainframeId);
+    public ai.ezfox.cccloud.access.AccessResolver.Resolution access(AuthStore.Device device, UUID mainframeId) {
+        var role = role(device, mainframeId);
+        var set = role == Role.NONE ? java.util.Set.<ai.ezfox.cccloud.access.Perm>of()
+            : perms != null ? perms.apply(device, mainframeId) : ai.ezfox.cccloud.access.Perm.preset(role);
+        return new ai.ezfox.cccloud.access.AccessResolver.Resolution(role, ai.ezfox.cccloud.access.AccessResolver.Source.DIRECT, null, set);
+    }
+
+    @Override
+    public ai.ezfox.cccloud.access.AccessResolver.Resolution authorize(AuthStore.Device device, UUID mainframeId, String ip) {
+        return access(device, mainframeId);
     }
 
     @Override

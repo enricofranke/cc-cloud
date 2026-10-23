@@ -563,9 +563,17 @@ UPGRADE_SYMBOLS = {
 }
 
 
-def gen_upgrade_card(kind, tier):
-    """Shared card base (circuit card with gold contacts) in the ATM metal colour + type symbol."""
-    o, d, m, l, h = ATM_TIERS[tier]
+CARD_NEUTRAL = [hx("232323"), hx("5f5f5f"), hx("8a8a8a"), hx("b5b5b5"), hx("e2e2e2")]  # CC grey ramp
+UPGRADE_SYMBOLS_EXTRA = {
+    # chunk anchor: an anchor (cyan on the neutral card)
+    "chunk_anchor": ["   ss   ", "  SSSS  ", "   SS   ", "S  SS  S", "SS SS SS", " SSSSSS "],
+}
+
+
+def gen_upgrade_card(kind, tier, out_name=None):
+    """Shared card base (circuit card with gold contacts) in the ATM metal colour + type symbol.
+    tier=None -> neutral CC-grey card with a cyan symbol (non-tiered cards like the chunk anchor)."""
+    o, d, m, l, h = ATM_TIERS[tier] if tier else CARD_NEUTRAL
     rows = [
         "                ",
         " oooooooooooooo ",
@@ -589,8 +597,9 @@ def gen_upgrade_card(kind, tier):
                           "G": GOLD_L[0]})
     # tiny status notch top-right (cloud cyan) and the symbol in the window
     cv.set(12, 2, CYAN_L)
-    cv.ascii(4, 4, UPGRADE_SYMBOLS[kind], {"S": h, "s": l})
-    cv.save(os.path.join(TEX, "item", f"upgrade_{kind}_{tier}.png"))
+    symbol = UPGRADE_SYMBOLS.get(kind) or UPGRADE_SYMBOLS_EXTRA[kind]
+    cv.ascii(4, 4, symbol, {"S": h, "s": l} if tier else {"S": CYAN_L, "s": CYAN})
+    cv.save(os.path.join(TEX, "item", (out_name or f"upgrade_{kind}_{tier}") + ".png"))
 
 
 def gen_quantum_core():
@@ -1274,6 +1283,7 @@ def main():
     for kind in UPGRADE_TYPES:
         for tier in ATM_TIERS:
             gen_upgrade_card(kind, tier)
+    gen_upgrade_card("chunk_anchor", None, "upgrade_chunk_anchor")
     gen_quantum_core()
     gen_tablet(False)
     gen_tablet(True)

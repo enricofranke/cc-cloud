@@ -170,19 +170,4 @@ class ShareSessionTest {
         assertTrue(bridge.dispatched.isEmpty(), "nothing reached the game: " + bridge.dispatched);
     }
 
-    @Test
-    void gateRoles() {
-        assertEquals("forbidden", AccessGate.check(Role.SHARE, AccessGate.Kind.QUERY));
-        assertEquals("forbidden", AccessGate.check(Role.NONE, AccessGate.Kind.QUERY));
-        assertNull(AccessGate.check(Role.VIEWER, AccessGate.Kind.QUERY));
-        assertEquals("read_only", AccessGate.check(Role.VIEWER, AccessGate.Kind.ACTION));
-        assertNull(AccessGate.check(Role.OPERATOR, AccessGate.Kind.ACTION));
-        assertEquals("read_only", AccessGate.check(Role.VIEWER, AccessGate.Kind.LAYOUT));
-        assertEquals("not_allowed", AccessGate.check(Role.OPERATOR, AccessGate.Kind.LAYOUT));
-        assertEquals("not_allowed", AccessGate.check(Role.OPERATOR, AccessGate.Kind.NET_UNLINK));
-        assertNull(AccessGate.check(Role.ADMIN, AccessGate.Kind.NET_UNLINK));
-        assertEquals("not_allowed", AccessGate.check(Role.OPERATOR, AccessGate.Kind.MANAGE));
-        assertNull(AccessGate.check(Role.OWNER, AccessGate.Kind.MANAGE));
-        for (var kind : AccessGate.Kind.values()) assertEquals("forbidden", AccessGate.check(Role.SHARE, kind), kind.name());
-    }
 }

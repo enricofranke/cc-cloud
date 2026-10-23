@@ -28,6 +28,23 @@ class GuiActionsTest {
         Map.entry(GuiActions.Mainframe.LINK_ACCOUNT, "")
     );
 
+    static final java.util.Set<ai.ezfox.cccloud.access.Perm> ALL = ai.ezfox.cccloud.access.Perm.all();
+    static final java.util.Set<ai.ezfox.cccloud.access.Perm> NONE = java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW);
+
+    @Test
+    void everyActionNeedsItsOwnPermission() {
+        for (var action : GuiActions.Mainframe.values()) {
+            if (action.perm == null) continue;
+            var withoutIt = java.util.EnumSet.copyOf(ALL);
+            withoutIt.remove(action.perm);
+            var ops = new Recorder();
+            assertEquals("not_owner", GuiActions.mainframe(action.id(), VALID_ARGS.get(action), true, withoutIt, ops), action + " without " + action.perm.id);
+            assertTrue(ops.calls.isEmpty());
+            assertNull(GuiActions.mainframe(action.id(), VALID_ARGS.get(action), true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW, action.perm), ops),
+                action + " with only " + action.perm.id);
+        }
+    }
+
     /** Records which operation ran. */
     private static final class Recorder implements GuiActions.MainframeOps, GuiActions.UplinkOps {
         final List<String> calls = new ArrayList<>();
@@ -58,18 +75,18 @@ class GuiActionsTest {
         for (var action : GuiActions.Mainframe.values()) {
             String arg = VALID_ARGS.get(action);
             var ops = new Recorder();
-            assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, true, ops), action + " without open screen");
+            assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, ALL, ops), action + " without open screen");
             if (action == GuiActions.Mainframe.LINK_ACCOUNT) {
                 // "Link this browser" is for every player (cccloud.use is checked by the op itself).
-                assertNull(GuiActions.mainframe(action.id(), arg, true, false, ops));
+                assertNull(GuiActions.mainframe(action.id(), arg, true, NONE, ops));
                 assertEquals(List.of("link_account"), ops.calls);
                 continue;
             }
-            assertEquals("not_owner", GuiActions.mainframe(action.id(), arg, true, false, ops), action + " without rights");
-            assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, false, ops), action + " without both");
+            assertEquals("not_owner", GuiActions.mainframe(action.id(), arg, true, NONE, ops), action + " without rights");
+            assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, NONE, ops), action + " without both");
             assertTrue(ops.calls.isEmpty(), action + " must not run when denied: " + ops.calls);
 
-            assertNull(GuiActions.mainframe(action.id(), arg, true, true, ops), action + " allowed for managers");
+            assertNull(GuiActions.mainframe(action.id(), arg, true, ALL, ops), action + " allowed for managers");
             assertEquals(1, ops.calls.size(), action + " ran once");
         }
     }
@@ -87,23 +104,23 @@ class GuiActionsTest {
         };
         for (var b : bad) {
             var ops = new Recorder();
-            assertEquals("invalid_argument", GuiActions.mainframe(b[0], b[1], true, true, ops), b[0] + " '" + b[1] + "'");
+            assertEquals("invalid_argument", GuiActions.mainframe(b[0], b[1], true, ALL, ops), b[0] + " '" + b[1] + "'");
             assertTrue(ops.calls.isEmpty());
         }
         for (var pin : new String[]{"", "123", "123456789", "12a4", "١٢٣٤"}) {
             var ops = new Recorder();
-            assertEquals("invalid_pin", GuiActions.mainframe("pin_set", pin, true, true, ops), pin);
+            assertEquals("invalid_pin", GuiActions.mainframe("pin_set", pin, true, ALL, ops), pin);
             assertTrue(ops.calls.isEmpty());
         }
         var ops = new Recorder();
-        assertEquals("invalid_argument", GuiActions.mainframe("trust", "x".repeat(GuiActions.MAX_ARG + 1), true, true, ops));
+        assertEquals("invalid_argument", GuiActions.mainframe("trust", "x".repeat(GuiActions.MAX_ARG + 1), true, ALL, ops));
     }
 
     @Test
     void unknownActionsAreRejectedFirst() {
         var ops = new Recorder();
         for (var action : new String[]{"", "TOGGLE_DASHBOARD", "op", "unlink", "set_owner"}) {
-            assertEquals("unknown_action", GuiActions.mainframe(action, "", true, true, ops), action);
+            assertEquals("unknown_action", GuiActions.mainframe(action, "", true, ALL, ops), action);
         }
         assertEquals("unknown_action", GuiActions.uplink("toggle_dashboard", "", true, true, ops));
         assertTrue(ops.calls.isEmpty());

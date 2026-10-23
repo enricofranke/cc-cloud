@@ -12,6 +12,7 @@ public final class FakePermissions implements ServerPermissions {
     public final Map<UUID, Set<Node>> granted = new HashMap<>();
     public final Set<UUID> banned = new HashSet<>();
     public final Set<UUID> noUse = new HashSet<>();
+    public final Set<UUID> noScripts = new HashSet<>();
 
     public FakePermissions grant(UUID player, Node... nodes) {
         granted.computeIfAbsent(player, k -> EnumSet.noneOf(Node.class)).addAll(Set.of(nodes));
@@ -26,6 +27,7 @@ public final class FakePermissions implements ServerPermissions {
     @Override
     public boolean has(UUID player, Node node) {
         if (node == Node.USE) return !noUse.contains(player);
+        if (node == Node.FEATURE_SCRIPTS) return !noScripts.contains(player);
         return granted.getOrDefault(player, Set.of()).contains(node);
     }
 

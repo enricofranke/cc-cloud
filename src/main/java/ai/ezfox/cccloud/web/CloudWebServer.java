@@ -207,13 +207,14 @@ public final class CloudWebServer {
                 session.close(4401, "revoked");
                 continue;
             }
-            var role = instance.bridge.role(device, session.mainframeId());
+            var access = instance.bridge.access(device, session.mainframeId());
+            var role = access.role();
             if (role == ai.ezfox.cccloud.access.Role.NONE) {
                 CloudLog.LOGGER.info("[cccloud] Disconnecting device '{}' of {}: no role on {} any more", device.name(), device.playerName(), session.mainframeId());
                 session.send(List.of("{\"t\":\"error\",\"error\":\"no_access\"}"));
                 session.close(4403, "no_access");
-            } else if (role != session.role()) {
-                WebHub.INSTANCE.pushRole(session, role);
+            } else if (role != session.role() || !access.perms().equals(session.perms())) {
+                WebHub.INSTANCE.pushRole(session, role, access.perms());
             }
         }
     }

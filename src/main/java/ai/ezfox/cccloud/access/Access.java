@@ -44,9 +44,14 @@ public final class Access {
         return resolve(player, mainframeId).role();
     }
 
-    /** Admin or owner: devices, roles, PIN, Link Cards, the dashboard switch. */
+    /** Manage the mainframe's access (roles) – what "admin" meant before fine-grained permissions. */
     public static boolean canManage(ServerPlayer player, UUID mainframeId) {
-        return role(player, mainframeId).atLeast(Role.ADMIN);
+        return has(player, mainframeId, Perm.ACCESS_MANAGE);
+    }
+
+    /** One permission of the player on the mainframe (fine-grained, see {@link Perm}). */
+    public static boolean has(ServerPlayer player, UUID mainframeId, Perm perm) {
+        return resolve(player, mainframeId).has(perm);
     }
 
     public static boolean has(ServerPlayer player, ServerPermissions.Node node) {

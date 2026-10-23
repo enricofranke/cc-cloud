@@ -26,10 +26,10 @@ public final class ScriptApi {
 
     public static AccessApi.Response handle(MinecraftServer server, GameBridge.ScriptRequest request) {
         var device = request.device();
-        var role = Access.resolver(server).deviceRole(device, request.mainframeId());
-        if (role == Role.NONE) return AccessApi.error(403, "no_access");
-        String denied = AccessGate.check(role, AccessGate.Kind.MANAGE);
-        if (denied != null) return AccessApi.error(403, denied);
+        var access = Access.resolver(server).resolveDevice(device, request.mainframeId());
+        if (access.role() == Role.NONE) return AccessApi.error(403, "no_access");
+        String denied = AccessGate.check(access.role(), access.perms(), AccessGate.routePerm(request.route()));
+        if (denied != null) return AccessApi.error(403, denied.equals("read_only") ? "not_allowed" : denied);
         var mainframe = CloudNetwork.mainframe(request.mainframeId());
         if (mainframe == null || !mainframe.isOnline()) return AccessApi.error(409, "offline");
         var section = CloudNetwork.section(request.uplinkId());

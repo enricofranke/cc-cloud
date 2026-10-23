@@ -136,9 +136,9 @@ public final class GuiNetwork {
 
     // ---- rights ----------------------------------------------------------------------------------------------------
 
-    /** Admin role on a mainframe, also when the mainframe itself is not loaded (AccessResolver, SavedData). */
+    /** Link/unlink devices of a mainframe ({@code network.link}), also when the mainframe is not loaded. */
     public static boolean canManageMainframe(ServerPlayer player, UUID mainframeId) {
-        return ai.ezfox.cccloud.access.Access.canManage(player, mainframeId);
+        return ai.ezfox.cccloud.access.Access.has(player, mainframeId, ai.ezfox.cccloud.access.Perm.NETWORK_LINK);
     }
 
     // ---- actions ---------------------------------------------------------------------------------------------------
@@ -152,9 +152,10 @@ public final class GuiNetwork {
             mainframe = be;
             open = true;
         }
-        boolean manage = mainframe != null && mainframe.canManage(player);
+        java.util.Set<ai.ezfox.cccloud.access.Perm> perms = mainframe == null ? java.util.Set.of()
+            : ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId()).perms();
         var ops = mainframe == null ? null : new Ops(player, mainframe);
-        String error = GuiActions.mainframe(payload.action(), payload.arg(), open, manage, ops == null ? DENY_ALL : ops);
+        String error = GuiActions.mainframe(payload.action(), payload.arg(), open, perms, ops == null ? DENY_ALL : ops);
         if (error != null) {
             CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
         }
@@ -294,7 +295,7 @@ public final class GuiNetwork {
             CompletableFuture.supplyAsync(() -> server.services().nameToIdCache().get(playerName)).thenAccept(result -> server.execute(() -> {
                 var current = player.containerMenu instanceof MainframeMenu menu
                     && player.level().getBlockEntity(menu.pos()) instanceof CloudMainframeBlockEntity m && m.getMainframeId().equals(id) ? m : null;
-                if (current == null || !current.canManage(player)) return;
+                if (current == null || !ai.ezfox.cccloud.access.Access.has(player, id, ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE)) return;
                 String error = result.isEmpty() ? "unknown_player" : new Ops(player, current).applyTrust(result.get());
                 push(player, error != null ? error : "trusted");
             }));
