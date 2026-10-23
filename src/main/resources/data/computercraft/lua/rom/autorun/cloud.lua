@@ -1,7 +1,8 @@
 -- CC: Cloud script import helper (runs at boot on every computer; does nothing without a Cloud Uplink).
 -- 1. A file uploaded with "restart and run" (.cloud/run_next) runs once after boot.
--- 2. Advanced computers with an uplink get a background "cloud" tab that runs uploaded files on request
---    (event cloud_run). Switch it off with: set cloud.runner false
+-- 2. A background "cloud" tab that runs uploaded files on request (event cloud_run) starts only on advanced computers
+--    that asked for it: the first "Run now" from the dashboard writes .cloud/runner and restarts the computer.
+--    Hard opt-out: set cloud.runner false
 if not peripheral.find("cloud_uplink") then return end
 
 if fs.exists(".cloud/run_next") then
@@ -19,7 +20,7 @@ if fs.exists(".cloud/run_next") then
     end
 end
 
-if multishell and settings.get("cloud.runner", true) ~= false then
+if multishell and fs.exists(".cloud/runner") and settings.get("cloud.runner", true) ~= false then
     local id = multishell.launch({ shell = shell, multishell = multishell }, "rom/programs/cloud-run.lua", "--listen")
     multishell.setTitle(id, "cloud")
 end

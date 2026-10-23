@@ -827,9 +827,9 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
   - `startup=true` also writes `startup.lua` containing `shell.run("<path>")`.
 - `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`.
 - `POST …/run` with `{"path":"control-room.lua","mode":"auto"|"event"|"reboot"}` → `{"ok":true,"started":"event"|"reboot"}`. Only an uploaded file name ever reaches the computer, never a command string. Modes:
-  - `event` queues the event `cloud_run` with the path. The ROM helper (`rom/autorun/cloud.lua`) starts a background "cloud" tab on advanced computers that have a Cloud Uplink. It runs the file in a new multishell tab (`cloud-run --listen`). Without multishell, a running `cloud.ui` dashboard runs it.
+  - `event` queues the event `cloud_run` with the path. A background "cloud" tab (`cloud-run --listen`) runs the file in a new multishell tab. That tab only exists on advanced computers that asked for it: the ROM helper `rom/autorun/cloud.lua` starts it when `.cloud/runner` exists. Without multishell, a running `cloud.ui` dashboard runs it.
   - `reboot` writes `.cloud/run_next` and restarts the computer. The autorun helper runs the file once after boot.
-  - `auto` = `event` on advanced computers, otherwise `409 needs_reboot` (the dashboard asks, then sends `reboot`).
+  - `auto`, on advanced computers: the first run writes `.cloud/runner` and uses `reboot`; later runs use `event`. On other computers `auto` gives `409 needs_reboot` (the dashboard asks, then sends `reboot`).
   - The ROM program `cloud-run <file>` runs a file by hand. Computers can switch the background tab off with `set cloud.runner false`.
 - **Audit:** every write, delete and run creates an audit log entry and a server log line. The owner, if online, gets a chat note: "<device> (<player>) uploaded control-room.lua to Computer #0".
 

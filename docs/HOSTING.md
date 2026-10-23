@@ -121,3 +121,6 @@ A singleplayer world pauses as soon as you open the ESC menu, and the dashboard 
 
 **How do I get the pairing code into the browser quickly?**
 Click the code in chat to copy it. Or click **[Pair in browser]**, which opens `<dashboard>/pair#code=XXXX-XXXX` with the form already filled in. The code sits in the URL fragment, so it never reaches the server or its logs.
+
+**Does CC: Cloud change my computers?**
+Only computers you upload scripts to from the dashboard. The first "Run now" on an advanced computer restarts it once. From then on, a small background tab named "cloud" waits for further "Run now" requests. To disable this for good on a computer, run `set cloud.runner false` on it.
