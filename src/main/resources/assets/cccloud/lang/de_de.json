@@ -318,5 +318,6 @@
   "cccloud.configuration.rules": "Regeln",
   "cccloud.configuration.rulesEnabled": "Regeln ausführen",
   "cccloud.configuration.maxRules": "Regeln pro Mainframe",
-  "cccloud.script.note": "[CC: Cloud] %s (%s): %s auf %s"
+  "cccloud.script.note": "[CC: Cloud] %s (%s): %s auf %s",
+  "cccloud.configuration.autoStockBatch": "Auto-Lager: Menge pro Auftrag"
 }

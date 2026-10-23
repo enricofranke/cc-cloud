@@ -56,6 +56,19 @@ public interface GameBridge {
     record RuleResult(@Nullable String error, @Nullable String detail, @Nullable String id) {
     }
 
+    /** Storage card v2 result: {@code data} on success, else {@code error}. */
+    record StorageResult(@Nullable String error, @Nullable JsonObject data) {
+        public static StorageResult fail(String error) {
+            return new StorageResult(error, null);
+        }
+    }
+
+    /** Storage card v2 operation (permission re-checked live). Server thread. */
+    StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request);
+
+    /** Craft preview; {@code done} gets the plan (as {@code data}) once the crafting calculation finished. Server thread. */
+    void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<StorageResult> done);
+
     /** Tells the owner that a device got locked because of wrong PINs. */
     void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip);
 

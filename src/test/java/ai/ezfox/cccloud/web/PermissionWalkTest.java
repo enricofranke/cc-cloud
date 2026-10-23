@@ -150,6 +150,13 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"rule_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rule_enable\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\",\"enabled\":true}", Perm.RULES_TOGGLE);
         cases.put("{\"t\":\"rule_run\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_TOGGLE);
+        for (var op : new String[]{"browse", "craftables", "fluids", "item", "cpus"}) {
+            cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"" + op + "\"}", Perm.STORAGE_SEARCH);
+        }
+        cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"cancel\",\"jobId\":\"abc\"}", Perm.STORAGE_CRAFT);
+        cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"favorite\",\"name\":\"minecraft:stick\",\"on\":true}", Perm.ACT_BUTTONS);
+        cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"autostock\",\"name\":\"minecraft:stick\",\"min\":5,\"target\":10,\"autoCraft\":true}", Perm.STORAGE_AUTOSTOCK);
+        cases.put("{\"t\":\"craft_preview\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:stick\",\"count\":4}", Perm.STORAGE_CRAFT);
         // Message types that need no mainframe permission beyond the login itself.
         var free = Set.of(ClientMessages.Auth.class, ClientMessages.AuthShare.class, ClientMessages.Pong.class, ClientMessages.Invalid.class);
         var covered = new java.util.HashSet<Class<?>>(free);

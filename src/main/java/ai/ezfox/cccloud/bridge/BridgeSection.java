@@ -321,7 +321,7 @@ public final class BridgeSection implements DashboardSection {
         if (!result.ok()) return ActionResult.done(result.error());
         var core = host.bridgeCore();
         if (result.op() instanceof Op.Craft craft) {
-            var ticket = core.craft(craft.name(), craft.count(), user);
+            var ticket = core.craft(craft.name(), craft.count(), user, craft.alertWhenDone(), user.startsWith("rule:") ? "rule" : "dashboard");
             if (ticket.error() == null) setValue(StorageTemplate.JOBS, core.jobRows(BridgeCore.JOB_ROWS));
             return ticket.result();
         }

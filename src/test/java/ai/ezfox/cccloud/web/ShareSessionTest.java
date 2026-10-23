@@ -142,6 +142,8 @@ class ShareSessionTest {
         samples.put(ClientMessages.LayoutSet.class, new String[]{"{\"t\":\"layout_set\",\"reqId\":\"l1\",\"layout\":{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{}}}", "layout_result"});
         samples.put(ClientMessages.NetUnlink.class, new String[]{"{\"t\":\"net_unlink\",\"reqId\":\"n1\",\"nodeId\":\"" + uplink + "\"}", "net_result"});
         samples.put(ClientMessages.RuleCommand.class, new String[]{"{\"t\":\"rule_set\",\"reqId\":\"r1\",\"rule\":{}}", "rule_result"});
+        samples.put(ClientMessages.Storage.class, new String[]{"{\"t\":\"storage\",\"reqId\":\"s1\",\"uplinkId\":\"" + uplink + "\",\"op\":\"browse\"}", "storage_result"});
+        samples.put(ClientMessages.CraftPreview.class, new String[]{"{\"t\":\"craft_preview\",\"reqId\":\"c1\",\"uplinkId\":\"" + uplink + "\",\"name\":\"minecraft:stick\",\"count\":1}", "craft_plan"});
         samples.put(ClientMessages.Invalid.class, new String[]{"{\"t\":\"something_else\",\"reqId\":\"x1\"}", "error"});
         samples.put(ClientMessages.Pong.class, new String[]{"{\"t\":\"pong\"}", null});
         for (var type : ClientMessages.Message.class.getPermittedSubclasses()) {

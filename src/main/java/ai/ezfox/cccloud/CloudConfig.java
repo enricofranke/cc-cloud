@@ -41,6 +41,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
+    public static final ModConfigSpec.IntValue AUTO_STOCK_BATCH;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.IntValue MAX_RULES;
@@ -165,6 +166,9 @@ public final class CloudConfig {
         MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
             .translation("cccloud.configuration.maxCraftAmount")
             .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
+        AUTO_STOCK_BATCH = b.comment("Auto-stock (level maintainer): the largest amount one automatic craft request may ask for.")
+            .translation("cccloud.configuration.autoStockBatch")
+            .defineInRange("autoStockBatch", 64, 1, 4096);
         b.pop();
 
         b.push("rules");

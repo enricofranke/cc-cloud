@@ -75,6 +75,17 @@ class RouteAuthTest {
         }
 
         @Override
+        public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+            fail("storage must not be reached without authentication");
+            return GameBridge.StorageResult.fail("x");
+        }
+
+        @Override
+        public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+            fail("craftPreview must not be reached without authentication");
+        }
+
+        @Override
         public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         }
 

@@ -22,7 +22,22 @@ public final class ClientMessages {
 
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
-    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, Pong, Invalid {
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, Storage, CraftPreview, Pong, Invalid {
+    }
+
+    /** Storage operations that only read (browse, craftables, fluids, item, cpus). */
+    public static final java.util.Set<String> STORAGE_READ_OPS = java.util.Set.of("browse", "craftables", "fluids", "item", "cpus");
+    public static final java.util.Set<String> STORAGE_OPS = java.util.Set.of("browse", "craftables", "fluids", "item", "cpus", "cancel", "favorite", "autostock");
+
+    /**
+     * Storage card v2: {@code {"t":"storage","reqId","uplinkId","id?","op",…}} → {@code storage_result}. The op's
+     * own fields stay in {@code args} (validated per op by the bridge side).
+     */
+    public record Storage(String reqId, UUID uplinkId, @Nullable String widgetId, String op, JsonObject args) implements Message {
+    }
+
+    /** {@code {"t":"craft_preview","reqId","uplinkId","id?","name","count"}} → {@code craft_plan}. */
+    public record CraftPreview(String reqId, UUID uplinkId, @Nullable String widgetId, String name, long count) implements Message {
     }
 
     /**
@@ -130,6 +145,8 @@ public final class ClientMessages {
                     ? new Invalid("invalid_message", null) : new AuthShare(id, secret);
             }
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> parseRule(t, obj);
+            case "storage" -> parseStorage(obj);
+            case "craft_preview" -> parseCraftPreview(obj);
             case "net_unlink" -> {
                 String reqId = string(obj, "reqId");
                 if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
@@ -169,6 +186,31 @@ public final class ClientMessages {
     }
 
     private static final Pattern RULE_ID = Pattern.compile("[0-9a-f]{8}");
+
+    private static Message parseStorage(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+        String id = string(obj, "id");
+        String op = string(obj, "op");
+        if (uplinkId == null || (id != null && !Json.isValidId(id)) || op == null || !STORAGE_OPS.contains(op)) return new Invalid("invalid_message", reqId);
+        var args = obj.deepCopy();
+        for (String key : java.util.List.of("t", "reqId", "uplinkId", "id", "op")) args.remove(key);
+        return new Storage(reqId, uplinkId, id, op, args);
+    }
+
+    private static Message parseCraftPreview(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+        String id = string(obj, "id");
+        String name = string(obj, "name");
+        var count = obj.get("count");
+        if (uplinkId == null || (id != null && !Json.isValidId(id)) || !Op.isItemName(name) || count == null || !count.isJsonPrimitive()
+            || !count.getAsJsonPrimitive().isNumber() || count.getAsDouble() != Math.rint(count.getAsDouble()) || count.getAsDouble() < 1
+            || count.getAsDouble() > Integer.MAX_VALUE) return new Invalid("invalid_message", reqId);
+        return new CraftPreview(reqId, uplinkId, id, name, count.getAsLong());
+    }
 
     private static Message parseRule(String t, JsonObject obj) {
         String reqId = string(obj, "reqId");

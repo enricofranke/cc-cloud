@@ -37,6 +37,7 @@ public final class RsCompat {
 
     static {
         TEST_FUNCTIONS.register("rs_bridge_storage", () -> RsGameTests::storage);
+        TEST_FUNCTIONS.register("rs_bridge_crafting", () -> RsCraftingGameTests::crafting);
     }
 
     private RsCompat() {

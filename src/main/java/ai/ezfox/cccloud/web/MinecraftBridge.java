@@ -214,6 +214,30 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+        String error = check(device, mainframeId, AccessGate.storagePerm(request.op()));
+        if (error == null) error = SectionChecks.check(mainframeId, request.uplinkId());
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        var result = ai.ezfox.cccloud.bridge.StorageService.handle(mainframeId, request.uplinkId(), request.widgetId(), request.op(), request.args());
+        if (result.error() == null && !ClientMessages.STORAGE_READ_OPS.contains(request.op())) {
+            CloudLog.LOGGER.info("[cccloud] {} ({}) storage {} on {}: {}", device.name(), device.playerName(), request.op(), mainframeName(mainframeId), request.args());
+        }
+        return new GameBridge.StorageResult(result.error(), result.data());
+    }
+
+    @Override
+    public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+        String error = check(device, mainframeId, ai.ezfox.cccloud.access.Perm.STORAGE_CRAFT);
+        if (error == null) error = SectionChecks.check(mainframeId, request.uplinkId());
+        if (error != null) {
+            done.accept(GameBridge.StorageResult.fail(error));
+            return;
+        }
+        ai.ezfox.cccloud.bridge.StorageService.preview(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(),
+            r -> done.accept(new GameBridge.StorageResult(r.error(), r.data())));
+    }
+
+    @Override
     public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         String name = mainframeName(mainframeId);
         CloudLog.LOGGER.warn("[cccloud] Device '{}' ({}) locked for 5 minutes after {} wrong PINs on {}", device.name(), ip, AuthStore.PIN_MAX_FAILURES, name);

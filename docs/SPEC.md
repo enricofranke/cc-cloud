@@ -826,7 +826,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
   - The item is added to the watchlist if needed.
   - `min:0` together with `autoCraft:false` turns it off.
 
-**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"planning"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
 
 **Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
 - The plan has these fields:
