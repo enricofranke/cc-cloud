@@ -72,6 +72,11 @@ repositories {
         forRepository { maven { url = "https://maven.shedaniel.me" } }
         filter { includeGroup("me.shedaniel.cloth") }
     }
+    // Curios (v0.7: Cloud Tablet in a Curios slot)
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.theillusivec4.top" } }
+        filter { includeGroup("top.theillusivec4.curios") }
+    }
 }
 
 base {
@@ -98,6 +103,12 @@ neoForge {
                 systemProperty 'cccloud.iconBenchmark', project.property("iconBenchmark").toString()
                 // Joins run/saves/cccloud-bench (copy any world there); the integrated server hands out the render batches.
                 programArguments.addAll '--quickPlaySingleplayer', 'cccloud-bench'
+            }
+            // Dev only: ./gradlew runClient -PdemoShots=/some/dir builds the v0.7 demo scene, takes screenshots and quits
+            // (needs a world in run/saves/cccloud-demo).
+            if (project.hasProperty("demoShots")) {
+                systemProperty 'cccloud.demo', project.property("demoShots").toString()
+                programArguments.addAll '--quickPlaySingleplayer', 'cccloud-demo'
             }
             // Dev only: ./gradlew runClient -PguiScreenshot=/some/dir pairs a browser while the mainframe screen is open and saves screenshots.
             if (project.hasProperty("guiScreenshot")) {
@@ -199,6 +210,7 @@ def integrationMods = [
     ftbchunks      : ["dev.ftb.mods:ftb-chunks-neoforge:${ftbchunks_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
                       "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     simplebackups  : ["de.melanx:SimpleBackups:${simplebackups_version}"],
+    curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
 ]
 
 def extractProductiveLib = tasks.register('extractProductiveLib', Copy) {

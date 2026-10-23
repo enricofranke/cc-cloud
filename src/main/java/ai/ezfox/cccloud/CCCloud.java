@@ -41,6 +41,8 @@ public class CCCloud {
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);
         // v0.5 integrations (device cards, server card, FTB Teams/Chunks, Simple Backups): compat/<modid> packages.
         ai.ezfox.cccloud.compat.Integrations.init(modEventBus, modContainer);
+        // v0.7 in-game clients: Cloud Tablet and Cloud Display (ingame/, tablet/, display/).
+        ai.ezfox.cccloud.ingame.InGameRegistry.init(modEventBus);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
