@@ -293,31 +293,32 @@ try {
   await p.evaluate(() => window.scrollTo(0, 0));
   await shot(p, "phone-14-pin-lock-banner");
 
-  // ---- layout editor on the phone: ▲▼, card settings, pages
+  // ---- layout editor on the phone (WYSIWYG; frame sequences in dev/editor-shots.ts)
   await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('[aria-label="Edit layout"]');
-  await p.waitForSelector(".edit-bar");
+  await p.waitForSelector(".editor .pgrid");
+  await clearToasts(p);
   await shot(p, "phone-e1-edit-mode");
-  await p.click('[aria-label="Move card down"]'); // ME Network below the reactor
-  await p.click('[aria-label^="Card settings for Fission Reactor"]');
-  await p.waitForSelector(".swatches");
-  await p.fill('.sheet .input', "Reactor Core");
-  await p.click(".swatch.sw-red");
-  await p.click('.icon-cell[aria-label="flame"]');
+  await p.click('[aria-label^="Settings for Fission Reactor"]');
+  await p.waitForSelector(".sheet .swatches");
+  await p.fill(".sheet .input", "Reactor Core");
+  await p.click(".sheet .swatch.sw-red");
+  await p.click('.sheet .icon-cell[aria-label="flame"]');
   await shot(p, "phone-e2-card-settings");
-  await p.click('.sheet .pxbtn-gold');
-  await p.click('.tabbar .tab-add');
-  await p.waitForSelector(".icon-grid");
-  await p.fill('.sheet .input', "Base");
-  await p.click('.icon-cell[aria-label="home"]');
+  await p.keyboard.press("Escape");
+  await p.click(".tabbar .tab-add");
+  await p.waitForSelector(".sheet .icon-grid");
+  await p.fill(".sheet .input", "Base");
+  await p.click('.sheet .icon-cell[aria-label="home"]');
   await shot(p, "phone-e3-new-page");
-  await p.click('.sheet .pxbtn-gold');
+  await p.click(".sheet .pxbtn-gold");
   await p.click('.tabbar .tab:has-text("Overview")');
   await p.waitForTimeout(300);
-  await shot(p, "phone-e4-edit-reordered");
-  await p.click('.edit-bar .pxbtn-gold');
-  await p.waitForSelector(".edit-bar", { state: "detached" });
+  await shot(p, "phone-e4-edit-overview");
+  await p.click(".ed-actions .pxbtn-gold");
+  await p.waitForSelector(".editor", { state: "detached" });
   await p.waitForTimeout(400);
+  await clearToasts(p);
   await shot(p, "phone-e5-saved-layout");
 
   // second mainframe -> list
@@ -564,6 +565,35 @@ try {
   await clearToasts(ng);
   await shot(ng, "desktop-n8-3d-no-webgl");
   await noGl.close();
+  // ---- map tiles on the Deep Base: surface, then a slice through the underground room (y −59)
+  {
+    const deep = [...mock.mainframes.values()].find((m) => m.name.startsWith("Deep"))!;
+    for (const [ctx, pre] of [[await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop"], [await phoneCtx(), "phone"]] as const) {
+      const mp = await ctx.newPage();
+      watch(mp);
+      await mp.goto(origin);
+      await pairVia(mp, mock.code(deep), "Map");
+      await mp.click(pre === "desktop" ? ".toptabs .tab-network" : ".tabbar .tab-network");
+      await mp.click('.seg-ctl button:has-text("Map")');
+      await mp.waitForSelector(".map-tiles");
+      await mp.waitForTimeout(2500);
+      await clearToasts(mp);
+      await shot(mp, `${pre}-m1-map-surface`);
+      await mp.click('.map-layer button:has-text("Slice")');
+      await mp.locator(".slice-y input").fill("-59");
+      await mp.waitForTimeout(600);
+      const mf = (await mp.locator('.mnode[aria-label^="Mainframe"]').boundingBox())!;
+      await mp.mouse.move(mf.x + mf.width / 2, mf.y + mf.height / 2);
+      for (let i = 0; i < (pre === "desktop" ? 5 : 4); i++) {
+        await mp.mouse.wheel(0, -200);
+        await mp.waitForTimeout(80);
+      }
+      await mp.waitForTimeout(2500);
+      await clearToasts(mp);
+      await shot(mp, `${pre}-m2-map-slice`);
+      await ctx.close();
+    }
+  }
   await d.click("button.pwr");
   await d.waitForSelector(".power-pop");
   await shot(d, "desktop-n3-power-breakdown");
@@ -578,39 +608,48 @@ try {
   await d.waitForSelector('.card:has-text("Kontrollraum")');
   await d.waitForTimeout(400);
   const cut = await d.evaluate(() =>
-    [...document.querySelectorAll(".btn-row .pxbtn span")].filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent),
+    [...document.querySelectorAll(".wcell.t-button .pxbtn span")].filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent),
   );
   if (cut.length) problems.push(`truncated button labels: ${cut.join(", ")}`);
   const perRow = await d.evaluate(() => {
-    const b = [...document.querySelectorAll('.card .btn-row')].find((x) => x.textContent?.includes("Notaus"))!;
-    return getComputedStyle(b).gridTemplateColumns.split(" ").length;
+    const card = [...document.querySelectorAll(".card")].find((x) => x.textContent?.includes("Notaus"))!;
+    const tops = [...card.querySelectorAll(".wcell.t-button")].map((el) => Math.round(el.getBoundingClientRect().top));
+    return tops.filter((t) => t === tops[0]).length;
   });
   if (perRow < 3) problems.push(`only ${perRow} buttons per row at 1440 px`);
   await clearToasts(d);
   await shot(d, "desktop-01c-kontrollraum");
   await d.click('.toptabs .tab:has-text("Overview")');
-  // edit mode: drag a card, resize one, then save
+  // edit mode (WYSIWYG): drag a card, resize one, widget settings, save
   await d.click('[aria-label="Edit layout"]');
-  await d.waitForSelector(".grid-edit");
+  await d.waitForSelector(".editor .pgrid");
   await d.waitForTimeout(300);
+  await clearToasts(d);
   await shot(d, "desktop-e1-edit-mode");
-  const handles = d.locator(".card-edit .card-head .drag-handle");
-  await handles.nth(2).dragTo(d.locator(".card-edit").nth(0));
-  const rh = d.locator(".card-edit").nth(1).locator(".resize-handle");
-  const box = (await rh.boundingBox())!;
-  await d.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await d.mouse.down();
-  await d.mouse.move(box.x + 330, box.y + box.height / 2, { steps: 8 });
-  await d.mouse.up();
-  await d.waitForTimeout(300);
+  {
+    const head = (await d.locator(".pgrid > .card").nth(2).locator(".card-title").boundingBox())!;
+    const first = (await d.locator(".pgrid > .card").nth(0).boundingBox())!;
+    await d.mouse.move(head.x + 10, head.y + 8);
+    await d.mouse.down();
+    await d.mouse.move(first.x + 40, first.y + 30, { steps: 20 });
+    await d.waitForTimeout(150);
+    await d.mouse.up();
+    await d.waitForTimeout(700);
+    const corner = (await d.locator(".pgrid > .card").nth(1).locator(":scope > .rz-rb").boundingBox())!;
+    await d.mouse.move(corner.x + 9, corner.y + 9);
+    await d.mouse.down();
+    await d.mouse.move(corner.x + 200, corner.y + 9, { steps: 10 });
+    await d.mouse.up();
+    await d.waitForTimeout(500);
+  }
   await shot(d, "desktop-e2-dragged-resized");
-  await d.click('.edit-w-main:has-text("Status")');
-  await d.waitForSelector(".seg-wide");
+  await d.click('.wcell:has-text("Status")');
+  await d.waitForSelector(".ed-side .ed-preview");
   await shot(d, "desktop-e3-widget-settings");
-  await d.keyboard.press("Escape");
-  await d.click('.edit-bar .pxbtn-gold');
-  await d.waitForSelector(".edit-bar", { state: "detached" });
+  await d.click(".ed-actions .pxbtn-gold");
+  await d.waitForSelector(".editor", { state: "detached" });
   await d.waitForTimeout(500);
+  await clearToasts(d);
   await shot(d, "desktop-e4-saved-layout");
   await d.click(".pxbtn-yellow"); // Vent steam (no PIN)
   await d.click('[aria-label^="Back"]');

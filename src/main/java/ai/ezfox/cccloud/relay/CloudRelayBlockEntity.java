@@ -173,6 +173,19 @@ public class CloudRelayBlockEntity extends BlockEntity {
     }
 
     /** Test hook. */
+    /** GameTests only: this relay serves the network of one mainframe (tests run side by side in one world). */
+    private @Nullable UUID onlyForTest;
+
+    public void restrictForTest(UUID mainframeId) {
+        onlyForTest = mainframeId;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
+    }
+
+    /** False if a GameTest restricted this relay to another mainframe's network. */
+    public boolean servesForTest(UUID mainframeId) {
+        return onlyForTest == null || onlyForTest.equals(mainframeId);
+    }
+
     public void fillForTest() {
         energy.set(energy.capacity());
     }

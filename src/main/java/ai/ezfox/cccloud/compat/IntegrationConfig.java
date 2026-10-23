@@ -11,10 +11,14 @@ public final class IntegrationConfig {
 
     public static final ModConfigSpec.BooleanValue DEVICE_CARDS;
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
+    public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
     public static final ModConfigSpec.BooleanValue FTB_CHUNKS_CLAIMS;
     public static final ModConfigSpec.BooleanValue BACKUP_CARD;
+    public static final ModConfigSpec.BooleanValue GATEWAYS_CARD;
+    public static final ModConfigSpec.BooleanValue WAYSTONES_CARD;
+    public static final ModConfigSpec.BooleanValue QUESTS_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -25,6 +29,9 @@ public final class IntegrationConfig {
         MFFS_REQUIRE_PIN = b.comment("Switching an MFFS force field projector from the dashboard needs the mainframe PIN (in addition to canControl).")
             .translation("cccloud.configuration.mffsRequirePin")
             .define("mffsRequirePin", true);
+        STORAGE_CARDS = b.comment("Storage controllers (Functional Storage, Sophisticated Storage, Occultism, DimStorage) show a Storage card with item search. Read-only.")
+            .translation("cccloud.configuration.storageCards")
+            .define("storageCards", true);
         b.pop();
 
         b.push("server");
@@ -40,6 +47,18 @@ public final class IntegrationConfig {
         BACKUP_CARD = b.comment("Simple Backups: a Backups card with the last backup time and a 'Backup now' button (canControl + confirm).")
             .translation("cccloud.configuration.backupCard")
             .define("backupCard", true);
+        b.pop();
+
+        b.push("world");
+        GATEWAYS_CARD = b.comment("Gateways to Eternity: a Gateways card with the gates open near the mainframe (needs view.positions).")
+            .translation("cccloud.configuration.gatewaysCard")
+            .define("gatewaysCard", true);
+        WAYSTONES_CARD = b.comment("Waystones: a Waystones card and network-map overlay with the waystones of the owner's team and global ones (needs view.positions).")
+            .translation("cccloud.configuration.waystonesCard")
+            .define("waystonesCard", true);
+        QUESTS_CARD = b.comment("FTB Quests: a Quests card with the quest progress of the owner's team (needs view.positions).")
+            .translation("cccloud.configuration.questsCard")
+            .define("questsCard", true);
         b.pop();
         SPEC = b.build();
     }

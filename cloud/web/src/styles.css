@@ -4340,11 +4340,14 @@ button.pwr:hover {
   cursor: grabbing;
 }
 .panzoom svg {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
 }
 .pz-controls {
+  z-index: 2;
   position: absolute;
   right: 10px;
   bottom: 10px;
@@ -4367,6 +4370,7 @@ button.pwr:hover {
   font-size: 18px;
 }
 .net-legend {
+  z-index: 3;
   position: absolute;
   left: 10px;
   bottom: 10px;
@@ -5611,4 +5615,934 @@ fieldset.field {
 .file-actions {
   display: flex;
   gap: 6px;
+}
+
+/* =================================================================== layout v2
+   Page grid: 12 columns (≥1100 px, exact x/y), 6 columns on tablets and
+   2 on phones (reading order). Rows are 20 px + 12 px gap = one unit and grow
+   with their content. Cards: 12-column widget grid, rows 24 px + 8 px gap. */
+.pgrid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(20px, auto);
+  gap: 12px 16px;
+  align-items: stretch;
+}
+.pgrid > .card,
+.pgrid > .p-dropzone {
+  grid-column: var(--x) / span var(--w);
+  grid-row: var(--y) / span var(--h);
+  min-width: 0;
+}
+.pgrid.narrow {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: auto;
+}
+.pgrid.narrow > .card {
+  grid-column: span var(--tw);
+  grid-row: auto;
+}
+.pgrid.narrow > .p-dropzone {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  min-height: 96px;
+}
+@media (max-width: 719px) {
+  .pgrid.narrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .pgrid.narrow > .card {
+    grid-column: span var(--pw);
+  }
+}
+.pgrid.grid-dim .card {
+  filter: saturate(0.55);
+}
+.pgrid > .card {
+  display: flex;
+  flex-direction: column;
+}
+.wgrid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(24px, auto);
+  gap: 8px;
+  padding: 14px;
+  align-content: start;
+  flex: 1;
+}
+.wcell {
+  position: relative;
+  container-type: inline-size;
+  grid-column: var(--x) / span var(--w);
+  grid-row: var(--y) / span var(--h);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wcontent {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.wcontent > * {
+  min-width: 0;
+}
+/* view polish: every gauge/number is its own "screen" tile, labels are rows */
+.wcell.t-gauge > .wcontent,
+.wcell.d-number > .wcontent,
+.wcell.d-big > .wcontent,
+.wcell.d-lamp > .wcontent {
+  background: var(--screen);
+  border: 1px solid #000;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 0 0 24px rgba(0, 0, 0, 0.6);
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+  padding: 8px 6px 6px;
+  color: #e7ecf1;
+}
+.wcell.t-gauge.d-bar > .wcontent {
+  padding: 10px 12px;
+}
+.wcell.t-label.d-row > .wcontent,
+.wcell.t-label.d-auto > .wcontent {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  justify-content: center;
+}
+.wcell.t-label .kv,
+.wcell.t-label .kv-text {
+  background: none !important;
+}
+.wcell.t-button .pxbtn {
+  padding: 6px;
+  gap: 4px;
+}
+.wcell.t-button .wcontent > .pxbtn,
+.wcell.t-button .wcontent > .btn-muted,
+.wcell.t-button .wcontent > .btn-muted > .pxbtn {
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+}
+.wcell.t-button .pxbtn span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: normal;
+  text-align: center;
+  line-height: 1.3;
+  font-size: 12px;
+}
+.wcell[class*="waccent-"] > .wcontent {
+  border-color: color-mix(in srgb, var(--wa) 55%, #000);
+}
+.waccent-gold { --wa: var(--gold); }
+.waccent-cyan { --wa: var(--cyan); }
+.waccent-green { --wa: var(--green); }
+.waccent-yellow { --wa: var(--yellow); }
+.waccent-red { --wa: var(--red); }
+.waccent-purple { --wa: var(--purple); }
+.waccent-orange { --wa: var(--orange); }
+.waccent-gray { --wa: var(--gray); }
+.wcell[class*="waccent-"] .w2-label,
+.wcell[class*="waccent-"] .kv-key,
+.wcell[class*="waccent-"] .gauge-label,
+.wcell[class*="waccent-"] .bignum-label {
+  color: var(--wa);
+}
+.wcell[class*="waccent-"] .pbar-fill {
+  background: var(--wa);
+}
+/* big numbers, gauge bars, lamps */
+.bignum {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  --zone: var(--cyan);
+}
+.bignum.zone-warn {
+  --zone: var(--yellow);
+}
+.bignum.zone-crit {
+  --zone: var(--red);
+}
+.bignum-label {
+  color: #8d99a6;
+  font-size: 12px;
+  font-weight: 600;
+}
+.bignum-value {
+  color: var(--zone);
+  font: 700 clamp(22px, 3.2vw, 34px) / 1.1 ui-monospace, "SF Mono", Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--zone) 40%, transparent);
+}
+.bignum-unit {
+  margin-left: 4px;
+  font-size: 0.45em;
+  color: #8d99a6;
+}
+.bignum-sub {
+  color: #5c6773;
+  font: 11px ui-monospace, Menlo, monospace;
+}
+.gauge-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  --zone: var(--cyan);
+}
+.gauge-bar.zone-warn {
+  --zone: var(--yellow);
+}
+.gauge-bar.zone-crit {
+  --zone: var(--red);
+}
+.gauge-bar .pbar-fill {
+  background: var(--zone);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--zone) 50%, transparent);
+}
+.gauge-bar .w2-value {
+  color: var(--zone);
+}
+.gauge-bar .gauge-flag {
+  margin-left: 6px;
+}
+.w2.lamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+}
+.lamp-bulb {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--led);
+  box-shadow:
+    0 0 0 3px #000,
+    0 0 18px var(--led);
+}
+.w2.lamp.off .lamp-bulb {
+  box-shadow: 0 0 0 3px #000;
+  opacity: 0.5;
+}
+/* card styles */
+.card.style-compact .card-head {
+  padding: 8px 10px 7px;
+}
+.card.style-compact .wgrid {
+  padding: 8px;
+  gap: 6px;
+}
+.card-head .card-icon {
+  color: var(--accent, var(--gold));
+}
+
+/* =================================================================== editor */
+.editor {
+  --ed-side: 320px;
+}
+/* gauges scale with their cell (narrow cards, side panel open) */
+.wcell .gauge-value {
+  font-size: clamp(13px, 17cqi, 26px);
+}
+.wcell .gauge-unit {
+  font-size: clamp(9px, 8cqi, 12px);
+}
+.wcell .gauge-label {
+  margin-top: clamp(-20px, -11cqi, -6px);
+  font-size: clamp(10px, 9cqi, 12px);
+}
+.wcell .gauge-range {
+  font-size: clamp(8px, 7cqi, 10px);
+}
+/* edit mode: lean card headers – tools appear on hover/focus/selection */
+.card-editing .card-head .led {
+  display: none;
+}
+.card-editing .card-tools {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.card-editing:hover .card-tools,
+.card-editing:focus-within .card-tools,
+.card-editing.is-selected .card-tools {
+  opacity: 1;
+}
+.ed-bar {
+  position: sticky;
+  top: calc(var(--head-h) + env(safe-area-inset-top));
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 40%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cyan) 6%, var(--panel));
+  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.7);
+}
+.ed-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Silkscreen", monospace;
+  font-size: 13px;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.ed-dirty {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--yellow) 20%, transparent);
+  color: var(--yellow);
+  font: 600 11px system-ui, sans-serif;
+  text-transform: none;
+}
+.ed-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+.ed-actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.ed-main {
+  display: block;
+}
+.editor.with-side .ed-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ed-side);
+  gap: 16px;
+  align-items: start;
+}
+.ed-side {
+  position: sticky;
+  top: calc(var(--head-h) + env(safe-area-inset-top) + 70px);
+  max-height: calc(100dvh - var(--head-h) - 90px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.ed-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.ed-side-body {
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+}
+.ed-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ed-form .field {
+  margin: 0;
+}
+.ed-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.ed-stepper .stepper-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ed-stepper .mono {
+  min-width: 2ch;
+  text-align: center;
+}
+.ed-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ed-empty {
+  padding: 8px 2px;
+}
+.ed-multi {
+  margin: 0 0 10px;
+  padding: 7px 12px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--cyan) 12%, var(--panel));
+  color: var(--cyan-hi);
+  font-size: 13px;
+}
+.ed-kbd {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 60;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: rgba(13, 16, 20, 0.95);
+  border: 1px solid var(--cyan);
+  color: #e7ecf1;
+  font-size: 13px;
+}
+.ed-preview {
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px dashed var(--line-2);
+}
+.ed-preview-card .wgrid {
+  padding: 10px;
+}
+.swatch.sw-none {
+  background: repeating-linear-gradient(135deg, var(--panel-3) 0 6px, var(--panel) 6px 12px);
+}
+/* grid guides while editing */
+.pgrid.editing:not(.narrow) {
+  position: relative;
+  min-height: 240px;
+  background-image: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cyan) 3%, transparent) 0 calc((100% - 11 * 16px) / 12),
+    transparent calc((100% - 11 * 16px) / 12) calc((100% - 11 * 16px) / 12 + 16px)
+  );
+  border-radius: 6px;
+}
+.card-editing {
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.card-editing .card-head {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+.card-editing .grip {
+  color: var(--faint);
+  font-size: 14px;
+  line-height: 1;
+}
+.card-editing:focus-visible,
+.card-editing.is-selected {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--cyan) 45%, transparent),
+    var(--shadow);
+}
+.card-tools {
+  display: inline-flex;
+  gap: 2px;
+}
+.card-editing .wcontent {
+  opacity: 0.88;
+  filter: saturate(0.85);
+}
+.card-editing .wcell {
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  border-radius: 5px;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.12s;
+}
+.card-editing .wcell:hover,
+.card-editing .wcell:focus-visible {
+  outline-color: color-mix(in srgb, var(--cyan) 60%, transparent);
+}
+.card-editing .wcell:focus-visible {
+  outline-style: solid;
+  outline-width: 2px;
+}
+.card-editing .wcell.is-selected {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+.w-tools {
+  position: absolute;
+  top: -10px;
+  right: -6px;
+  z-index: 3;
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.wcell:hover > .w-tools,
+.wcell:focus-within > .w-tools,
+.wcell.is-selected > .w-tools {
+  opacity: 1;
+  transform: none;
+}
+.icon-btn.xs {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  background: var(--panel-3);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+}
+@media (hover: none) {
+  /* touch: tools for the selected widget only (tap selects) */
+  .wcell:hover > .w-tools,
+  .wcell:focus-within > .w-tools {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .wcell.is-selected > .w-tools {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  .card-editing .card-tools {
+    opacity: 1;
+  }
+}
+/* resize handles */
+.rz {
+  position: absolute;
+  z-index: 4;
+  touch-action: none;
+}
+.rz-r {
+  top: 8px;
+  bottom: 8px;
+  right: -6px;
+  width: 12px;
+  cursor: ew-resize;
+}
+.rz-b {
+  left: 8px;
+  right: 8px;
+  bottom: -6px;
+  height: 12px;
+  cursor: ns-resize;
+}
+.rz-rb {
+  right: -6px;
+  bottom: -6px;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+.rz-rb::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--cyan);
+  border-bottom: 2px solid var(--cyan);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.wcell:hover > .rz-rb::after,
+.wcell.is-selected > .rz-rb::after,
+.card-editing:hover > .rz-rb::after,
+.card-editing.is-selected > .rz-rb::after {
+  opacity: 1;
+}
+.wcell > .rz-r:hover,
+.wcell > .rz-b:hover,
+.card-editing > .rz-r:hover,
+.card-editing > .rz-b:hover {
+  background: color-mix(in srgb, var(--cyan) 30%, transparent);
+  border-radius: 4px;
+}
+.pgrid.narrow > .card-editing > .rz {
+  display: none;
+}
+.size-badge {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 6;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--cyan);
+  color: #0a0c0f;
+  font: 700 12px ui-monospace, Menlo, monospace;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+/* the dragged item's own slot shows where it will land */
+.wcell.is-dragging,
+.card.is-dragging {
+  outline: 2px dashed color-mix(in srgb, var(--cyan) 70%, transparent) !important;
+  outline-offset: 0 !important;
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  border-radius: 6px;
+  box-shadow: none;
+}
+.card.is-dragging {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--cyan) 6%, transparent);
+}
+.wcell.is-dragging > *,
+.card.is-dragging > * {
+  visibility: hidden;
+}
+.card.is-dragging::before {
+  display: none;
+}
+.drag-ghost {
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  z-index: 1000;
+  margin: 0 !important;
+  pointer-events: none;
+  will-change: transform;
+  transform-origin: 50% 40%;
+  background: var(--panel);
+  border-radius: 6px;
+  box-shadow:
+    0 24px 48px -12px rgba(0, 0, 0, 0.75),
+    0 0 0 2px color-mix(in srgb, var(--cyan) 70%, transparent);
+  opacity: 0.97;
+}
+.drag-ghost.wcell {
+  padding: 4px;
+}
+.drag-ghost .w-tools,
+.drag-ghost .rz,
+.drag-ghost .size-badge {
+  display: none;
+}
+body.dnd-active,
+body.dnd-active * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+body.rz-ew,
+body.rz-ew * {
+  cursor: ew-resize !important;
+}
+body.rz-ns,
+body.rz-ns * {
+  cursor: ns-resize !important;
+}
+body.rz-nwse,
+body.rz-nwse * {
+  cursor: nwse-resize !important;
+}
+.p-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 80px;
+  padding: 16px;
+  border: 2px dashed color-mix(in srgb, var(--cyan) 45%, var(--line-2));
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  animation: dz-in 0.18s ease-out;
+}
+@keyframes dz-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.w-empty {
+  grid-column: 1 / -1;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--line-2);
+  border-radius: 6px;
+  color: var(--faint);
+  font-size: 13px;
+}
+.tab.drop-hover {
+  outline: 2px dashed var(--cyan);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+}
+/* gallery */
+.ed-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ed-h {
+  margin: 6px 0 0;
+  font: 400 12px "Silkscreen", monospace;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ed-items {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ed-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  cursor: grab;
+  touch-action: pan-y;
+}
+.ed-item:hover {
+  border-color: var(--line-2);
+}
+.ed-item-card {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.ed-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.ed-item-prev {
+  padding: 0;
+  pointer-events: none;
+}
+.ed-item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.ed-lua {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 11px ui-monospace, Menlo, monospace;
+  color: #d7f5d7;
+}
+.ed-keys dt {
+  white-space: normal;
+}
+.ed-keys kbd {
+  font: 600 12px ui-monospace, Menlo, monospace;
+  color: var(--cyan-hi);
+}
+@media (max-width: 719px) {
+  .ed-bar {
+    gap: 6px;
+  }
+  .ed-tools {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+.wcell.t-button .pxbtn.long span {
+  font-size: 10.5px;
+  letter-spacing: 0;
+}
+
+/* cached sections of unloaded chunks */
+.card-cached .wgrid {
+  opacity: 0.55;
+  filter: grayscale(0.7);
+}
+.card-cached::before {
+  background: var(--gray);
+  opacity: 0.6;
+}
+.card-cached-note {
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--gray) 10%, var(--panel));
+  color: var(--muted);
+  font-size: 13px;
+}
+.card-cached-note a {
+  color: var(--cyan);
+}
+
+/* readable minimums: titles shrink spacing, then wrap to two lines */
+.pgrid > .card {
+  container: card / inline-size;
+}
+.card-title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+@container card (max-width: 300px) {
+  .card-title {
+    letter-spacing: 0;
+    font-size: 12px;
+  }
+  .card-head {
+    gap: 7px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .wgrid {
+    padding: 10px;
+  }
+}
+/* narrow cells: gauges become big numbers, readouts stack, buttons drop the lock icon */
+@container (max-width: 118px) {
+  .gauge .gauge-svg,
+  .gauge .gauge-range {
+    display: none;
+  }
+  .gauge .gauge-readout {
+    position: static;
+    padding-top: 4px;
+  }
+  .gauge .gauge-value {
+    font-size: clamp(18px, 22cqi, 26px);
+  }
+  .gauge .gauge-label {
+    margin-top: 2px;
+  }
+}
+@container (max-width: 170px) {
+  .kv {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .kv-key {
+    white-space: normal;
+  }
+  .kv-val {
+    text-align: left;
+  }
+}
+@container (max-width: 90px) {
+  .pxbtn svg {
+    display: none;
+  }
+}
+.size-badge.warn {
+  background: var(--red);
+  color: #fff;
+}
+.bounce {
+  animation: min-bounce 0.36s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@keyframes min-bounce {
+  30% {
+    transform: scaleX(0.97);
+  }
+  60% {
+    transform: scaleX(1.015);
+  }
+}
+/* very narrow cards (e.g. while the editor's side panel is open): widgets at least
+   half the card wide, placed in reading order */
+@container card (max-width: 240px) {
+  .wgrid > .wcell {
+    grid-column: auto / span max(var(--w), 6);
+    grid-row: auto / span var(--h);
+  }
+  .wgrid {
+    grid-auto-flow: row dense;
+  }
+}
+@container card (max-width: 240px) {
+  .wgrid > .wcell:is(.t-toggle, .t-slider, .t-select, .t-number, .t-text, .t-label, .t-progress, .t-chart, .t-buttons) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---------------------------------------------------------------- map tiles */
+.map-tiles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.88;
+}
+.netmap.has-tiles svg .grid {
+  stroke: rgba(0, 0, 0, 0.18);
+}
+.mlabel.a-start {
+  text-anchor: start;
+}
+.mlabel.a-end {
+  text-anchor: end;
+}
+.map-layer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.seg-s button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.slice-y {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.slice-y span {
+  min-width: 52px;
+  font: 600 12px ui-monospace, Menlo, monospace;
+  color: var(--cyan);
+}
+.slice-y input {
+  width: 160px;
+}
+
+@media (max-width: 719px) {
+  /* phones: the "?" on the map explains the circles */
+  .net-legend .lg-range-row {
+    display: none;
+  }
 }

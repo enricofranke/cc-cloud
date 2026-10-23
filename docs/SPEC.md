@@ -251,6 +251,35 @@ A card is one of:
 - Card span: `group.cols`, else 2 when the card contains an `item_search` or a `chart`, else 1. Card colour `gold` (or the widget's `opts.color`), icon from `opts.icon`.
 - Widget order: `opts.order`, else by type (gauge, indicator, chart, progress, label, item_search, watchlist, jobs, inputs, buttons group, buttons), then declaration order. Widget span: `opts.span`, else 1 for gauge/indicator/button, 2 for label/watchlist/jobs, otherwise full width. The card body has 2 columns (1-column cards, phones) or 4 columns (wider cards).
 
+### Layout schema v2 (WYSIWYG editor, 2026-10-23)
+The dashboard now writes `"v": 2` documents (it still reads v1 and migrates it on the first save). Cards sit on a **12-column page grid**, widgets on a **12-column grid inside their card**; both are placed with `x`/`y`/`w`/`h` in grid units (a row is 32 px including the gap; rows grow when content is taller). Widgets can be moved into other cards, including **custom cards** the user creates (`"c:<id>"`). Reference: `cloud/dev/protocol.ts` (`layoutDoc`, zod, accepts v1 and v2) and `cloud/web/src/lib/layout.ts` + `grid.ts`.
+```json
+{
+  "v": 2,
+  "pages": [{"id": "main", "title": "Overview", "icon": "home"}],
+  "cards": {
+    "<cardKey>":   {"page": "main", "x": 0, "y": 0, "w": 3, "h": 10, "title": "Reactor", "hidden": false, "color": "red", "icon": "flame", "style": "compact"},
+    "c:card1":     {"page": "main", "x": 3, "y": 0, "w": 6, "h": 4, "title": "My overview"}
+  },
+  "widgets": {
+    "<uplinkId>/<widgetId>": {"card": "c:card1", "x": 0, "y": 0, "w": 6, "h": 5, "label": "Core temp", "hidden": false, "color": "red", "icon": "flame", "display": "bar"}
+  }
+}
+```
+Validation (reject the whole document with `invalid_layout`; unknown keys are an error; sizes as in v1: ≤ 64 KB, ≤ 12 pages, ≤ 256 cards, ≤ 2048 widgets):
+- `v` = `1` (old rules above) or `2`.
+- `pages`: as in v1.
+- `cards` keys: a card key (1–160 chars) or a custom card `c:` + `[A-Za-z0-9_-]{1,24}`. Values (all optional): `page` ≤ 32, `x` int 0–11, `y` int 0–999, `w` int 1–12, `h` int 1–60, `x + w ≤ 12` when both are set, `title` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `style` ∈ `comfortable|compact`. v1's `order`/`span` are not allowed in v2.
+- `widgets` keys as in v1. Values (all optional): `card` (a card key or custom card key, 1–160 chars), `x` 0–11, `y` 0–999, `w` 1–12, `h` 1–40, `x + w ≤ 12`, `label` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `display` ∈ `dial|bar|number|row|big|line|sparkline|chip|lamp` (gauge: dial/bar/number, progress: bar/number, label: row/big, chart: line/sparkline, indicator: chip/lamp; others ignore it).
+- Overlaps are not an error (the dashboard resolves them by pushing items down); unknown card/widget keys are kept and skipped when rendering, as in v1. A `card` pointing at a card that does not exist (any more) puts the widget back into its own card.
+- Custom cards hold widgets of any uplink; actions still go to the widget's own uplink (`uplinkId` is part of the widget key). Share links may list custom card keys in `cards`.
+
+**Migration v1 → v2 (dashboard):** cards keep their page and reading order and get `w = span × 3`, packed left to right into rows; widgets get `w = span × 6` in 1-column cards and `span × 3` in wider ones, packed in their order; heights come from the widget types (gauge 5, chart 5, label 1, buttons 2, …) and the card height is header (2) + its widgets. The first save writes v2.
+
+**Responsive rendering:** ≥ 1100 px the page grid uses the exact positions; 720–1099 px six columns in reading order (y, then x) with `w ≤ 4 → half width, else full`; < 720 px two columns (`w ≤ 2 → half, else full`). Widget grids inside cards always use their exact positions.
+
+**Server side (mod):** `LayoutValidator` accepts v1 and v2 with exactly the rules above. Minimum sizes: a v2 card needs `w ≥ 3`; on `layout_set` a visible widget of a published section also needs `w ≥` its type's minimum (`item_search`/`watchlist`/`jobs`/`redstone_sides` 6, `chart` 4, `gauge` 2, everything else 3, as `minWidgetW` in layout.ts), else `invalid_layout`. Hidden widgets and widgets of sections that are not published are not checked. At server start a stored v1 document is migrated to v2 with the dashboard's algorithm (`LayoutMigration`, a port of `migrateLayout`; the shared fixture `src/test/resources/layout/migration_fixture.json` is generated from layout.ts and checked by the Java tests) once the mainframe's sections are known (cached sections count); without known sections the v1 document stays and the dashboard migrates it on its first save. Unlike the dashboard, the server keeps entries of sections it does not know, without `order`/`span`. Share links: a widget counts for the card it sits in (`card`, if that card exists), custom cards are shared by key or by their page.
+
 ### Uplink snapshot additions for Lua API v2
 - `uplink.pages`: `[{"id","title","icon"}]` from `cloud.page()`, `uplink.groups`: `[{"id","title","page","cols"}]` from `cloud.group()`.
 - `chart` widgets: the snapshot carries `"history":[numbers…]` (oldest first, ≤ `opts.points`, max 300). A `value` delta with a number appends one point; a `value` delta with an array replaces the history.
@@ -484,6 +513,37 @@ No new browser message types: every card is an ordinary section (`uplink` snapsh
   - Actions: set a redstone output on an auto-card computer side, press a button / set a toggle / set a slider on a widget (same validation as a human action, user = "rule:<name>"), request a craft on a bridge (with max amount), send an alert (level) incl. push, enable/disable the dashboard.
   - Safety: each rule has a cooldown (min 5 s), max 32 rules per mainframe, max 10 actions per rule run, loop protection (a rule cannot trigger itself or more than 20 rule runs per second per mainframe), and an audit log entry per run. Rules run on the server thread in a cheap evaluation step (only re-evaluate on relevant changes or interval ticks).
   - Rules are edited in the dashboard (canControl), stored in SavedData, validated server-side; Lua can list/enable/disable rules via `cloud_mainframe` (`getRules()`, `setRuleEnabled(id, bool)`).
+
+### C. Rules – web protocol and implementation notes (mod side)
+Implemented in `rules/` (`Rule`, `RuleCodec` = the strict schema, `RuleEngine` = pure evaluation, `RuleService` = game side, `RuleData` = SavedData `data/cccloud/rules.dat`). Rules are evaluated every 10 ticks on the server thread, only while their mainframe is loaded and online; config `rulesEnabled` (default true) switches all rules off.
+
+**Rule document** (`rule_set` sends it; unknown keys are an error, ≤ 4 KB; `lastRun`/`lastResult`/`runs` are accepted and ignored so the client may send back what it got):
+```json
+{"id": "0a1b2c3d", "name": "Cool the reactor", "enabled": true, "cooldown": 30, "notify": false,
+ "when": {"type": "widget", "uplinkId": "<uuid>", "widgetId": "temp", "op": ">", "value": 90},
+ "if":   [{"type": "power", "op": ">=", "value": 20}, {"type": "online", "uplinkId": "<uuid>"}],
+ "then": [{"type": "redstone", "uplinkId": "<uuid>", "side": "top", "value": 15},
+          {"type": "alert", "text": "Reactor hot", "level": "warn"}]}
+```
+- `id`: 8 hex chars; omit it for a new rule (the server assigns one, answered in `rule_result.id`); an existing id replaces that rule. `name` 1–48 chars; `enabled` default true; `cooldown` seconds 5–86400, default 30; `notify` (push the run result, v0.5 D).
+- **when** (exactly one): `widget` {uplinkId, widgetId, op, value} (numeric widgets; booleans count as 0/1), `items` {uplinkId, item `ns:path`, op, value ≥ 0} (storage behind a bridge/uplink card), `power` {op, value 0–100} (mainframe FE buffer in %), `offline` {uplinkId}, `interval` {minutes 1–1440}, `time` {time 0–23999, in-game time of day}. `op` ∈ `< <= > >= == !=`.
+- **if** (≤ 8, all must hold): the `widget`/`items`/`power` checks plus `online` {uplinkId}.
+- **then** (1–10): `redstone` {uplinkId, side top|bottom|left|right|front|back, value 0–15} (auto-card computers), `widget` {uplinkId, widgetId, value number|string ≤ 256|bool} (button/toggle/slider/select/number/text – same validation as a human action, user `rule:<name>`; widgets with a PIN are refused: `pin_widget` on save, `pin_required` at run time), `craft` {uplinkId, item, amount 1–`maxCraftAmount`} (via the card's item search), `alert` {text ≤ 120, level info|warn|error}, `dashboard` {enabled}.
+- **Loop protection**: a rule whose actions write the widget its trigger watches (or the `redstone` widget of the same uplink with a redstone action) is refused (`invalid_rule`). At most 20 rule runs per second per mainframe; the first throttled run in a second is logged as `rate_limited`, further ones are dropped.
+- **Semantics**: check/offline triggers fire on the false → true edge only (the first evaluation after a load only records the state; an unknown value keeps it); `interval` fires every N minutes after the rule was loaded; `time` fires when the day time passes the given tick (also across midnight). After the trigger: cooldown since the last run, then the conditions. Actions run in order; the run's result is the first error (later actions still run).
+- **Limit**: rules per mainframe = the Memory upgrade's value (base 8, tiers 24/64/128) capped by `maxRulesPerMainframe` (default 128, hard cap 128); more → `too_many`.
+
+**Messages** (rate limit as actions; answered with `{"t":"rule_result","reqId","ok","error?","detail?","id?"}`):
+- `{"t":"rule_set","reqId","rule":{…}}` – needs `rules.edit`; errors `invalid_rule` (+ `detail`: the first schema problem), `too_many`, `pin_widget`.
+- `{"t":"rule_delete","reqId","id"}` – `rules.edit`; `unknown_rule`.
+- `{"t":"rule_enable","reqId","id","enabled"}` – `rules.toggle`; `unknown_rule`.
+- `{"t":"rule_run","reqId","id"}` – `rules.toggle` ("Run now": ignores trigger, conditions and cooldown, not the run limit); `unknown_rule`, `offline`, `rate_limited`, or the first action error.
+- Permission errors as everywhere (`forbidden`/`read_only`/`not_allowed`).
+
+**Rules document** (snapshot field `rules`, delta `{"t":"rules", …}` after every change and every run; never sent to share sessions):
+`{"rules":[<rule> + "lastRun": ms|null, "lastResult": "ok"|error|null, "runs": n], "log":[{"time","rule","name","result","manual"}] (last 50 runs), "limit": n}`. The run state (`lastRun`, `runs`) lives in memory and starts fresh after a restart; the log is stored.
+
+Lua (`cloud_mainframe`): `getRules()` and `setRuleEnabled(id, enabled)`.
 
 ### D. Push notifications
 - Targets per mainframe (canControl to edit, secrets stored server-side, never sent back to the browser in full): **Discord webhook**, **ntfy** (topic URL, optional token), generic **webhook** (JSON POST).
@@ -1039,7 +1099,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 #### Fine-grained permissions – protocol (mod side, implemented)
 **Mapping of check sites to permissions.** `AccessGate` holds it, and `PermissionWalkTest` checks every route and message.
 - WebSocket:
-  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown;
+  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown, and device cards' own redstone modes (widget id `redstone` or `*_redstone`, direct mode);
   - crafting through `item_search`: `storage.craft`;
   - watchlist edits: `storage.autostock`;
   - `query`: `storage.search`;
@@ -1101,3 +1161,10 @@ Soft dependencies in `compat/<modid>`, same rules as v0.5 A/B (zero-code cards v
 9. **Guides**: an in-game handbook for CC: Cloud using **GuideMe** (AE2's guide system, ships with ATM11) or Patchouli/Modonomicon – content from `docs-content/`.
 10. **KubeJS** bindings for pack makers: events (`CCCloudEvents.action`, `.deviceLinked`, `.alert`) and a server-side API to publish a section with widgets from KubeJS scripts (no Lua needed), guarded by the same permissions.
 Each integration: a manifest entry in `docs/COMPAT.md` (mod, version tested, what the card shows, controls, tested yes/no).
+
+### v0.8 – Implementation notes (mod side)
+- Everything is a v0.5 device card (direct mode) or mainframe card (restricted section); no new message types. The manifest with every integration, its version, card, controls and test status is docs/COMPAT.md.
+- **Storage cards (item 1):** `compat/card/ItemStorageCard` reads `Capabilities.Item.BLOCK` (scan every 5 s, max 32 768 slots) and answers `query` on its `item_search` widget: `DeviceCard.query` is a new hook, `CloudUplinkBlockEntity.handleQuery` asks the device card before the bridges. Rows are never craftable; a craft op answers `not_craftable`. `compat/storage` only names the block ids per mod. Config `cards.storageCards`.
+- **act.redstone on device cards:** a device card's widget with id `redstone` or `*_redstone` (the machine's own redstone mode) needs `act.redstone` (`AccessGate.isRedstoneControl`); every other control `act.buttons`.
+- **Mainframe cards of wave 2:** `gateways`, `waystones`, `quests` (config `world.*`), all restricted (`view.positions`). Waystones add the map overlay `"waystones":{"items":[{"name","dim","x","y","z","kind","global"?}],"truncated"}` to their snapshot, like the claims overlay.
+- Skipped with reasons (docs/COMPAT.md): ExtendedAE, AE2 Infinity Booster / Network Analyzer, Integrated Terminals/Tunnels storage, Silent Gear Metalworks, Mystical Automation (generic Energy card), JourneyMap waypoints (client never gets the network graph). Items 9 (handbook) and 10 (KubeJS) are done on another branch.

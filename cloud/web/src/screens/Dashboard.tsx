@@ -184,7 +184,7 @@ export function Dashboard({ id }: { id: string }) {
           {unread > 0 && <span class="badge badge-dot">{unread > 9 ? "9+" : unread}</span>}
         </button>
         {conn.isAdmin && conn.status.value === "open" && uplinks.length > 0 && (
-          <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => setEditing(!editing)}>
+          <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => (editing ? window.dispatchEvent(new Event("cccloud:edit-exit")) : setEditing(true))}>
             <IconPencil />
           </button>
         )}

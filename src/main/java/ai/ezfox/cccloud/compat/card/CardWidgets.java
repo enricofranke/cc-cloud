@@ -80,6 +80,11 @@ public final class CardWidgets {
         return add(WidgetType.NUMBER, id, label, merge(opts, "min", min, "max", max, "step", step));
     }
 
+    /** Item search over a storage card's contents (no crafting: {@code max} 1, rows are never craftable). */
+    public CardWidgets itemSearch(String id, String label, Object... opts) {
+        return add(WidgetType.ITEM_SEARCH, id, label, merge(opts, "max", 1));
+    }
+
     private CardWidgets add(WidgetType type, String id, String label, Map<String, Object> opts) {
         try {
             widgets.add(WidgetFactory.create(type, id, label, opts));

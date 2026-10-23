@@ -33,7 +33,7 @@ class LayoutValidatorTest {
     void rejectsSchemaViolations() {
         String[] bad = {
             "null", "[]", "{}",
-            "{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{}}",
+            "{\"v\":3,\"pages\":[],\"cards\":{},\"widgets\":{}}",
             "{\"v\":1,\"cards\":{},\"widgets\":{}}",
             "{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{},\"extra\":1}",
             "{\"v\":1,\"pages\":[{\"id\":\"a b\",\"title\":\"x\"}],\"cards\":{},\"widgets\":{}}",
@@ -77,5 +77,74 @@ class LayoutValidatorTest {
         var widgets = new StringBuilder();
         for (int i = 0; i < 2000; i++) widgets.append(i == 0 ? "" : ",").append("\"").append("w".repeat(30)).append(i).append("\":{\"label\":\"").append("x".repeat(40)).append("\"}");
         assertEquals("too_large", validate("{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{" + widgets + "}}").error());
+    }
+
+    private static final String V2 = """
+        {"v":2,
+         "pages":[{"id":"main","title":"Overview","icon":"home"}],
+         "cards":{"%1$s":{"page":"main","x":0,"y":0,"w":3,"h":10,"title":"Reactor","hidden":false,"color":"red","icon":"flame","style":"compact"},
+                  "c:card1":{"page":"main","x":3,"y":0,"w":6,"h":4,"title":"My overview"}},
+         "widgets":{"%1$s/temp":{"card":"c:card1","x":0,"y":0,"w":6,"h":5,"label":"Core temp","hidden":false,"color":"red","icon":"flame","display":"bar"}}}
+        """.formatted(UPLINK);
+
+    @Test
+    void acceptsV2() {
+        var result = validate(V2);
+        assertTrue(result.ok(), String.valueOf(result.detail()));
+        assertTrue(validate("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{}}").ok());
+        assertTrue(validate("{\"v\":2,\"pages\":[],\"cards\":{\"c:x\":{\"x\":9,\"w\":3}},\"widgets\":{\"a/b\":{\"card\":\"c:gone\"}}}").ok(),
+            "x + w = 12, a widget pointing at a missing card");
+    }
+
+    @Test
+    void rejectsV2Violations() {
+        String[][] bad = {
+            {"cards", "{\"%s\":{\"order\":1}}"},
+            {"cards", "{\"%s\":{\"span\":2}}"},
+            {"cards", "{\"%s\":{\"x\":10,\"w\":3}}"},
+            {"cards", "{\"%s\":{\"w\":2}}"},
+            {"cards", "{\"%s\":{\"x\":12}}"},
+            {"cards", "{\"%s\":{\"y\":1000}}"},
+            {"cards", "{\"%s\":{\"h\":61}}"},
+            {"cards", "{\"%s\":{\"h\":0}}"},
+            {"cards", "{\"%s\":{\"x\":1.5}}"},
+            {"cards", "{\"%s\":{\"style\":\"huge\"}}"},
+            {"cards", "{\"c:bad key\":{}}"},
+            {"cards", "{\"c:\":{}}"},
+            {"cards", "{\"c:0123456789012345678901234\":{}}"},
+            {"widgets", "{\"%s/a\":{\"order\":1}}"},
+            {"widgets", "{\"%s/a\":{\"x\":6,\"w\":7}}"},
+            {"widgets", "{\"%s/a\":{\"h\":41}}"},
+            {"widgets", "{\"%s/a\":{\"w\":13}}"},
+            {"widgets", "{\"%s/a\":{\"display\":\"pie\"}}"},
+            {"widgets", "{\"%s/a\":{\"display\":\"auto\"}}"},
+            {"widgets", "{\"%s/a\":{\"color\":\"pink\"}}"},
+            {"widgets", "{\"%s/a\":{\"icon\":\"nope\"}}"},
+            {"widgets", "{\"%s/a\":{\"card\":\"\"}}"},
+            {"widgets", "{\"%s/a\":{\"style\":\"compact\"}}"},
+        };
+        for (var b : bad) {
+            String part = b[1].replace("%s", UPLINK);
+            String json = b[0].equals("cards")
+                ? "{\"v\":2,\"pages\":[],\"cards\":" + part + ",\"widgets\":{}}"
+                : "{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":" + part + "}";
+            var result = validate(json);
+            assertEquals("invalid_layout", result.error(), json);
+        }
+        // v1 does not know the v2 fields
+        assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{\"a\":{\"x\":0}},\"widgets\":{}}").ok());
+        assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{\"a/b\":{\"card\":\"c:x\"}}}").ok());
+    }
+
+    @Test
+    void widgetMinimumsByType() {
+        var layout = JsonParser.parseString("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{\"u/chart\":{\"w\":3},\"u/g\":{\"w\":2},"
+            + "\"u/hidden\":{\"w\":1,\"hidden\":true},\"gone/x\":{\"w\":1}}}").getAsJsonObject();
+        java.util.Map<String, String> types = java.util.Map.of("u/chart", "chart", "u/g", "gauge", "u/hidden", "item_search");
+        assertEquals("widgets[u/chart].w", LayoutValidator.widgetMinimums(layout, types::get));
+        layout.getAsJsonObject("widgets").getAsJsonObject("u/chart").addProperty("w", 4);
+        assertNull(LayoutValidator.widgetMinimums(layout, types::get), "hidden and unknown widgets are not checked");
+        assertEquals(6, LayoutValidator.minWidgetW("item_search"));
+        assertEquals(3, LayoutValidator.minWidgetW("toggle"));
     }
 }

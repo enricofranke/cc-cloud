@@ -24,12 +24,13 @@ export type OpValue = z.infer<typeof opValue>;
 export const ACCENTS = ["gold", "cyan", "green", "yellow", "red", "purple", "orange", "gray"] as const;
 export const ICONS = ["home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick"] as const;
 const layoutKey = z.string().min(1).max(160);
-export const layoutDoc = z.strictObject({
+const pagesSchema = z
+  .array(z.strictObject({ id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/), title: z.string().min(1).max(48), icon: z.enum(ICONS).optional() }))
+  .max(12)
+  .refine((p) => new Set(p.map((x) => x.id)).size === p.length, "duplicate page id");
+const layoutV1 = z.strictObject({
   v: z.literal(1),
-  pages: z
-    .array(z.strictObject({ id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/), title: z.string().min(1).max(48), icon: z.enum(ICONS).optional() }))
-    .max(12)
-    .refine((p) => new Set(p.map((x) => x.id)).size === p.length, "duplicate page id"),
+  pages: pagesSchema,
   cards: z.record(
     layoutKey,
     z.strictObject({
@@ -52,6 +53,47 @@ export const layoutDoc = z.strictObject({
     }),
   ).refine((w) => Object.keys(w).length <= 2048, "too many widgets"),
 });
+/** Layout schema v2 (docs/SPEC.md "Layout schema v2"): x/y/w/h on 12-column grids, custom cards "c:<id>", styles. */
+export const DISPLAYS = ["dial", "bar", "number", "row", "big", "line", "sparkline", "chip", "lamp"] as const;
+const box = (maxH: number) => ({
+  x: z.number().int().min(0).max(11).optional(),
+  y: z.number().int().min(0).max(999).optional(),
+  w: z.number().int().min(1).max(12).optional(),
+  h: z.number().int().min(1).max(maxH).optional(),
+});
+const layoutV2 = z.strictObject({
+  v: z.literal(2),
+  pages: pagesSchema,
+  cards: z.record(
+    layoutKey.refine((k) => !k.startsWith("c:") || /^c:[A-Za-z0-9_-]{1,24}$/.test(k), "bad custom card id"),
+    z
+      .strictObject({
+        page: z.string().max(32).optional(),
+        ...box(60),
+        title: z.string().max(48).optional(),
+        hidden: z.boolean().optional(),
+        color: z.enum(ACCENTS).optional(),
+        icon: z.enum(ICONS).optional(),
+        style: z.enum(["comfortable", "compact"]).optional(),
+      })
+      .refine((c) => c.x === undefined || c.w === undefined || c.x + c.w <= 12, "card wider than the grid"),
+  ).refine((c) => Object.keys(c).length <= 256, "too many cards"),
+  widgets: z.record(
+    layoutKey,
+    z
+      .strictObject({
+        card: layoutKey.optional(),
+        ...box(40),
+        label: z.string().max(48).optional(),
+        hidden: z.boolean().optional(),
+        color: z.enum(ACCENTS).optional(),
+        icon: z.enum(ICONS).optional(),
+        display: z.enum(DISPLAYS).optional(),
+      })
+      .refine((w) => w.x === undefined || w.w === undefined || w.x + w.w <= 12, "widget wider than the grid"),
+  ).refine((w) => Object.keys(w).length <= 2048, "too many widgets"),
+});
+export const layoutDoc = z.discriminatedUnion("v", [layoutV1, layoutV2]);
 export type LayoutDocument = z.infer<typeof layoutDoc>;
 export const MAX_LAYOUT_BYTES = 64 * 1024;
 

@@ -1,10 +1,10 @@
 // One dashboard card (an uplink, a Lua group, or an uplink's widgets on a page),
 // in view mode or in layout edit mode.
 import type { ComponentChildren, ComponentType } from "preact";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
-import type { ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
-import { captionOf } from "../lib/layout.ts";
+import type { Box, ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
+import { DISPLAYS_FOR, captionOf } from "../lib/layout.ts";
 import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
@@ -12,27 +12,7 @@ import { PixelIcon } from "./PixelIcon.tsx";
 import { RedstoneSides } from "./Redstone.tsx";
 import { powerButtonState } from "../lib/redstone.ts";
 import { DocsLink } from "./DocsLink.tsx";
-
-/** Body columns: 2 for a 1-column card, 4 for wider cards (phones always use 2, see CSS). */
-const bodyCols = (span: number) => (span >= 2 ? 4 : 2);
-
-type Block = { kind: "gauges" | "labels" | "buttons"; items: ResolvedWidget[]; span: number } | { kind: "one"; item: ResolvedWidget; span: number };
-
-/** Consecutive gauges share one "screen", consecutive labels one readout list,
- *  consecutive buttons one wrapping row (they stack instead of getting too narrow). */
-function blocks(widgets: ResolvedWidget[], cols: number): Block[] {
-  const out: Block[] = [];
-  for (const rw of widgets) {
-    const last = out[out.length - 1];
-    const kind = rw.w.type === "gauge" ? "gauges" : rw.w.type === "label" ? "labels" : rw.w.type === "button" ? "buttons" : null;
-    if (kind && last && last.kind === kind) {
-      last.items.push(rw);
-      last.span = kind === "gauges" ? Math.min(cols, last.items.reduce((s, x) => s + x.span, 0)) : kind === "buttons" ? cols : Math.max(last.span, rw.span);
-    } else if (kind) out.push({ kind, items: [rw], span: kind === "buttons" ? cols : Math.min(cols, rw.span) });
-    else out.push({ kind: "one", item: rw, span: Math.min(cols, rw.span) });
-  }
-  return out;
-}
+import { timeAgo } from "../lib/ui.ts";
 
 /** Widgets that only exist to act: left out entirely in read-only (share) views. */
 const ACTION_ONLY = new Set(["button", "item_search"]);
@@ -50,10 +30,15 @@ function StaticValue({ w }: { w: ResolvedWidget["w"] }) {
   );
 }
 
-function WidgetView({ rw, card, conn, locked, viewOnly }: { rw: ResolvedWidget; card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
+export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
   // a label set in the editor wins; without any caption (resolver fell back to the id) keep none
   const caption = captionOf(rw);
-  const w = caption !== rw.w.label ? { ...rw.w, label: caption } : rw.w;
+  const display = rw.display !== "auto" && rw.display !== (DISPLAYS_FOR[rw.w.type]?.[0] ?? "auto") ? rw.display : undefined;
+  const w =
+    caption !== rw.w.label || display || rw.icon
+      ? { ...rw.w, label: caption, opts: { ...(rw.w.opts ?? {}), ...(display ? { display, ...(display === "sparkline" ? { style: "sparkline" as const } : display === "line" ? { style: "line" as const } : {}) } : {}), ...(rw.icon ? { wicon: rw.icon } : {}) } }
+      : rw.w;
+  const card = { uplink: rw.uplink };
   if (viewOnly) {
     if (["toggle", "slider", "select", "number", "text", "buttons"].includes(w.type)) return <StaticValue w={w} />;
     if (w.type === "watchlist") return <Watchlist w={w} uplink={card.uplink} conn={conn} locked viewOnly />;
@@ -115,186 +100,158 @@ function ScriptsLoader(props: ScriptSheetProps) {
   return C ? <C {...props} /> : null;
 }
 
-export function Card({ card: full, conn, locked, viewOnly, children }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren }) {
-  const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
-  const cardLocked = locked || !card.uplink.online || !!viewOnly;
-  const cols = bodyCols(card.span);
-  const [scripts, setScripts] = useState(false);
+export interface CardEdit {
+  selected: Set<string>;
+  cardSelected: boolean;
+  /** keys hidden while their ghost is dragged */
+  dragging: Set<string>;
+  /** where a dragged widget would land in this card */
+  placeholder: Box | null;
+  badge: { key: string; text: string; warn?: boolean } | null;
+  onCardPointerDown: (e: PointerEvent, card: ResolvedCard) => void;
+  onCardResize: (e: PointerEvent, card: ResolvedCard, edge: Edge) => void;
+  onWidgetPointerDown: (e: PointerEvent, rw: ResolvedWidget) => void;
+  onWidgetResize: (e: PointerEvent, rw: ResolvedWidget, edge: Edge) => void;
+  onWidgetClick: (e: MouseEvent, rw: ResolvedWidget) => void;
+  onCardClick: (card: ResolvedCard) => void;
+  onCardSettings: (card: ResolvedCard) => void;
+  onWidgetSettings: (rw: ResolvedWidget) => void;
+  onHideCard: (card: ResolvedCard) => void;
+  onHideWidget: (rw: ResolvedWidget) => void;
+  onKeyDown: (e: KeyboardEvent, kind: "card" | "widget", key: string) => void;
+}
+export type Edge = "r" | "b" | "rb";
+
+/** Grid placement as CSS custom properties (CSSOM, CSP-safe). Narrow screens use --pw/--tw spans in reading order. */
+export function placeVars(b: Box): Record<string, string> {
+  return {
+    "--x": String(b.x + 1),
+    "--y": String(b.y + 1),
+    "--w": String(b.w),
+    "--h": String(b.h),
+    "--tw": String(b.w <= 4 ? 3 : 6),
+    "--pw": String(b.w <= 2 ? 1 : 2),
+  };
+}
+
+function Resizers({ onDown, label }: { onDown: (e: PointerEvent, edge: Edge) => void; label: string }) {
   return (
-    <article class={`card cs${card.span} accent-${card.color} ${card.uplink.online ? "" : "card-offline"}`} aria-label={card.title} data-card={card.key}>
-      <header class="card-head">
-        {card.icon ? <PixelIcon name={card.icon} size={16} class="card-icon" /> : <span class={`led ${card.uplink.online ? "led-on" : "led-off"}`} aria-hidden="true" />}
+    <>
+      <span class="rz rz-r" onPointerDown={(e) => onDown(e, "r")} aria-hidden="true" />
+      <span class="rz rz-b" onPointerDown={(e) => onDown(e, "b")} aria-hidden="true" />
+      <span class="rz rz-rb" onPointerDown={(e) => onDown(e, "rb")} title={`Resize ${label}`} aria-hidden="true" />
+    </>
+  );
+}
+
+export function Card({ card: full, conn, locked, viewOnly, children, edit }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren; edit?: CardEdit }) {
+  const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
+  const online = card.custom ? card.widgets.every((w) => w.uplink.online) : card.uplink.online;
+  // the chunk is unloaded: the mod sends the cached last snapshot
+  const cached = !card.custom && card.uplink.loaded === false;
+  const [scripts, setScripts] = useState(false);
+  const shown = card.widgets.filter((w) => !w.hidden);
+  return (
+    <article
+      class={`card accent-${card.color} style-${card.style} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
+      aria-label={card.title}
+      data-card={card.key}
+      style={placeVars(card.box)}
+      tabIndex={edit ? 0 : undefined}
+      onKeyDown={edit ? (e) => e.target === e.currentTarget && edit.onKeyDown(e, "card", card.key) : undefined}
+      onClick={edit ? (e) => e.target === e.currentTarget && edit.onCardClick(card) : undefined}
+    >
+      <header class="card-head" onPointerDown={edit ? (e) => edit.onCardPointerDown(e, card) : undefined}>
+        {edit && (
+          <span class="grip" aria-hidden="true">
+            ⠿
+          </span>
+        )}
+        {card.icon ? <PixelIcon name={card.icon} size={16} class="card-icon" /> : <span class={`led ${online ? "led-on" : "led-off"}`} aria-hidden="true" />}
         <h3 class="card-title">{card.title || "Untitled"}</h3>
-        {card.uplink.mode === "auto" && (
+        {card.uplink.mode === "auto" && !card.custom && (
           <span class="tag tag-auto" title="Automatic card – disappears as soon as a Lua program on this computer defines widgets">
             auto
           </span>
         )}
-        {!card.uplink.online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
-        {!viewOnly && conn.isAdmin && card.uplink.online && card.uplink.mode !== "direct" && (
+        {cached ? <span class="tag tag-gray">Not loaded</span> : !online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
+        {!edit && !viewOnly && !card.custom && conn.isAdmin && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-scripts" title="Scripts on this computer" aria-label={`Upload script to ${card.title || "this computer"}`} onClick={() => setScripts(true)}>
             <span aria-hidden="true">{"</>"}</span>
           </button>
         )}
+        {edit && (
+          <span class="card-tools" onPointerDown={(e) => e.stopPropagation()}>
+            <button type="button" class="icon-btn sm" aria-label={`Settings for ${card.title}`} title="Settings" onClick={() => edit.onCardSettings(card)}>
+              ⚙
+            </button>
+            <button type="button" class="icon-btn sm" aria-label={`Hide ${card.title}`} title="Hide card" onClick={() => edit.onHideCard(card)}>
+              ×
+            </button>
+          </span>
+        )}
       </header>
+      {cached && (
+        <p class="card-cached-note">
+          {card.uplink.lastSeen ? `Last seen ${timeAgo(card.uplink.lastSeen)}` : "Not seen yet"} – chunk not loaded. Showing the last values.{" "}
+          <DocsLink to="/docs/faq#unloaded">Why?</DocsLink>
+        </p>
+      )}
       {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
-      {card.widgets.length === 0 ? (
+      {shown.length === 0 && !edit ? (
         <p class="card-empty">
           Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.{" "}
           <DocsLink to="/docs/faq#no-widgets">Why?</DocsLink>
         </p>
       ) : (
-        <div class={`card-body cb bc-${cols}`}>
-          {blocks(card.widgets, cols).map((b) => {
-            if (b.kind === "one")
-              return (
-                <div key={b.item.key} class={`wcell s${b.span} t-${b.item.w.type}`}>
-                  <WidgetView rw={b.item} card={card} conn={conn} locked={cardLocked} viewOnly={viewOnly} />
-                </div>
-              );
-            const inner = b.items.map((rw) => <WidgetView key={rw.key} rw={rw} card={card} conn={conn} locked={cardLocked} viewOnly={viewOnly} />);
-            if (b.kind === "buttons")
-              return (
-                <div key={b.items[0].key} class={`btn-row s${b.span}`}>
-                  {inner}
-                </div>
-              );
-            return b.kind === "gauges" ? (
-              <div key={b.items[0].key} class={`screen gauges s${b.span}`}>
-                {inner}
+        <div class="card-body wgrid" data-wgrid={card.key}>
+          {shown.map((rw) => (
+            <div
+              key={rw.key}
+              class={`wcell t-${rw.w.type} d-${rw.display} ${rw.color ? `waccent-${rw.color}` : ""} ${edit?.selected.has(rw.key) ? "is-selected" : ""} ${edit?.dragging.has(rw.key) ? "is-dragging" : ""}`}
+              data-w={rw.key}
+              style={placeVars(rw.box)}
+              tabIndex={edit ? 0 : undefined}
+              aria-label={edit ? `${captionOf(rw) ?? rw.w.type} widget, ${rw.box.w} by ${rw.box.h}. Space to pick up, Enter for settings.` : undefined}
+              onKeyDown={edit ? (e) => e.target === e.currentTarget && edit.onKeyDown(e, "widget", rw.key) : undefined}
+              onPointerDown={edit ? (e) => edit.onWidgetPointerDown(e, rw) : undefined}
+              onClick={edit ? (e) => edit.onWidgetClick(e, rw) : undefined}
+            >
+              <div
+                class="wcontent"
+                inert={edit ? true : undefined}
+                title={rw.uplink.loaded === false && !edit ? "Its chunk is not loaded, so it cannot be controlled right now. Keep the chunk loaded (e.g. FTB Chunks force-load) or go near it." : undefined}
+              >
+                <WidgetView rw={rw} conn={conn} locked={locked || !rw.uplink.online || rw.uplink.loaded === false || !!viewOnly} viewOnly={viewOnly} />
               </div>
-            ) : (
-              <div key={b.items[0].key} class={`readouts s${b.span}`}>
-                {inner}
-              </div>
-            );
-          })}
+              {edit && (
+                <>
+                  <span class="w-tools" onPointerDown={(e) => e.stopPropagation()}>
+                    <button type="button" class="icon-btn xs" tabIndex={-1} aria-label={`Settings for ${rw.label}`} title="Settings" onClick={(e) => (e.stopPropagation(), edit.onWidgetSettings(rw))}>
+                      ⚙
+                    </button>
+                    <button type="button" class="icon-btn xs" tabIndex={-1} aria-label={`Hide ${rw.label}`} title="Hide" onClick={(e) => (e.stopPropagation(), edit.onHideWidget(rw))}>
+                      ×
+                    </button>
+                  </span>
+                  <Resizers onDown={(e, edge) => edit.onWidgetResize(e, rw, edge)} label={rw.label} />
+                  {edit.badge?.key === rw.key && <span class={`size-badge ${edit.badge.warn ? "warn" : ""}`}>{edit.badge.text}</span>}
+                </>
+              )}
+            </div>
+          ))}
+          {edit?.placeholder && <div class="w-placeholder" style={placeVars(edit.placeholder)} aria-hidden="true" />}
+          {edit && shown.length === 0 && <div class="w-empty">Drop widgets here</div>}
         </div>
       )}
       {children}
+      {edit && (
+        <>
+          <Resizers onDown={(e, edge) => edit.onCardResize(e, card, edge)} label={card.title} />
+          {edit.badge?.key === card.key && <span class={`size-badge ${edit.badge.warn ? "warn" : ""}`}>{edit.badge.text}</span>}
+        </>
+      )}
     </article>
   );
 }
 
-// ------------------------------------------------------------------ edit mode
-export interface EditHandlers {
-  isPhone: boolean;
-  index: number;
-  count: number;
-  onMove: (dir: -1 | 1) => void;
-  onSettings: () => void;
-  onWidgetMove: (widgetKey: string, dir: -1 | 1) => void;
-  onWidgetSettings: (rw: ResolvedWidget) => void;
-  onWidgetToggle: (rw: ResolvedWidget) => void;
-  onResize: (span: number) => void;
-  /** desktop drag & drop */
-  dnd: {
-    onCardDragStart: (e: DragEvent) => void;
-    onCardDragOver: (e: DragEvent) => void;
-    onCardDrop: (e: DragEvent) => void;
-    onWidgetDragStart: (e: DragEvent, rw: ResolvedWidget) => void;
-    onWidgetDrop: (e: DragEvent, rw: ResolvedWidget) => void;
-    dropTarget: boolean;
-  };
-}
-
-const TYPE_LABEL: Record<string, string> = {
-  item_search: "search", watchlist: "watch", buttons: "segments", indicator: "LED",
-};
-
-export function EditCard({ card, h }: { card: ResolvedCard; h: EditHandlers }) {
-  const ref = useRef<HTMLElement>(null);
-  const startResize = (e: PointerEvent) => {
-    const el = ref.current;
-    const grid = el?.parentElement;
-    if (!el || !grid) return;
-    e.preventDefault();
-    const cols = getComputedStyle(grid).gridTemplateColumns.split(" ").filter(Boolean).length || 1;
-    const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
-    const colW = (grid.clientWidth + gap) / cols;
-    const left = el.getBoundingClientRect().left;
-    const target = e.currentTarget as HTMLElement;
-    target.setPointerCapture(e.pointerId);
-    let last = card.span;
-    const move = (ev: PointerEvent) => {
-      const span = Math.max(1, Math.min(Math.min(4, cols), Math.round((ev.clientX - left + gap) / colW)));
-      if (span !== last) {
-        last = span;
-        h.onResize(span);
-      }
-    };
-    const up = () => {
-      target.removeEventListener("pointermove", move);
-      target.removeEventListener("pointerup", up);
-      target.removeEventListener("pointercancel", up);
-    };
-    target.addEventListener("pointermove", move);
-    target.addEventListener("pointerup", up);
-    target.addEventListener("pointercancel", up);
-  };
-
-  return (
-    <article
-      ref={ref}
-      class={`card card-edit cs${card.span} accent-${card.color} ${card.hidden ? "is-hidden" : ""} ${h.dnd.dropTarget ? "drop-target" : ""}`}
-      aria-label={`Edit ${card.title}`}
-      onDragOver={h.isPhone ? undefined : h.dnd.onCardDragOver}
-      onDrop={h.isPhone ? undefined : h.dnd.onCardDrop}
-    >
-      <header class="card-head">
-        {!h.isPhone && (
-          <span class="drag-handle" draggable onDragStart={h.dnd.onCardDragStart} title="Drag to reorder" aria-label="Drag to reorder">
-            ⠿
-          </span>
-        )}
-        <PixelIcon name={card.icon ?? "box"} size={16} class="card-icon" />
-        <h3 class="card-title">{card.title || "Untitled"}</h3>
-        {card.hidden && <span class="tag tag-gray">hidden</span>}
-        {h.isPhone && (
-          <>
-            <button type="button" class="icon-btn sm" aria-label="Move card up" disabled={h.index === 0} onClick={() => h.onMove(-1)}>
-              ▲
-            </button>
-            <button type="button" class="icon-btn sm" aria-label="Move card down" disabled={h.index === h.count - 1} onClick={() => h.onMove(1)}>
-              ▼
-            </button>
-          </>
-        )}
-        <button type="button" class="btn btn-small" onClick={h.onSettings} aria-label={`Card settings for ${card.title}`}>
-          Edit
-        </button>
-      </header>
-      <ul class="edit-widgets">
-        {card.widgets.map((rw, i) => (
-          <li
-            key={rw.key}
-            class={`edit-w ${rw.hidden ? "is-hidden" : ""}`}
-            onDragOver={h.isPhone ? undefined : (e) => e.preventDefault()}
-            onDrop={h.isPhone ? undefined : (e) => h.dnd.onWidgetDrop(e, rw)}
-          >
-            {!h.isPhone && (
-              <span class="drag-handle sm" draggable onDragStart={(e) => h.dnd.onWidgetDragStart(e, rw)} aria-label="Drag to reorder">
-                ⠿
-              </span>
-            )}
-            <button type="button" class="edit-w-main" onClick={() => h.onWidgetSettings(rw)}>
-              <span class="type-tag">{TYPE_LABEL[rw.w.type] ?? rw.w.type}</span>
-              <span class="edit-w-label">{rw.label}</span>
-              {!h.isPhone && <span class="span-tag">×{rw.span}</span>}
-            </button>
-            <button type="button" class={`icon-btn sm eye ${rw.hidden ? "off" : ""}`} aria-label={rw.hidden ? `Show ${rw.label}` : `Hide ${rw.label}`} onClick={() => h.onWidgetToggle(rw)}>
-              {rw.hidden ? "◌" : "◉"}
-            </button>
-            <button type="button" class="icon-btn sm" aria-label={`Move ${rw.label} up`} disabled={i === 0} onClick={() => h.onWidgetMove(rw.key, -1)}>
-              ▲
-            </button>
-            <button type="button" class="icon-btn sm" aria-label={`Move ${rw.label} down`} disabled={i === card.widgets.length - 1} onClick={() => h.onWidgetMove(rw.key, 1)}>
-              ▼
-            </button>
-          </li>
-        ))}
-      </ul>
-      {!h.isPhone && <span class="resize-handle" onPointerDown={startResize} title="Drag to resize" aria-label="Resize card" role="separator" />}
-    </article>
-  );
-}

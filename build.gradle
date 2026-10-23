@@ -146,6 +146,8 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+            // ./gradlew runGameTestServer -PskipLoadTest skips the timing-sensitive load test (its own batch otherwise).
+            if (project.hasProperty("skipLoadTest")) systemProperty 'cccloud.skipLoadTest', 'true'
             systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '18787'
         }
 
@@ -226,6 +228,40 @@ def integrationMods = [
     ftbchunks      : ["dev.ftb.mods:ftb-chunks-neoforge:${ftbchunks_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
                       "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     simplebackups  : ["de.melanx:SimpleBackups:${simplebackups_version}"],
+    // v0.8 wave 2 (CurseForge files of ATM11 0.12.0-beta via cursemaven, SHA-1 checked, see docs/BUILD.md).
+    dimstorage          : ["curse.maven:dimstorage-353882:${dimstorage_curse_file}", "curse.maven:edivadlib-638508:${edivadlib_curse_file}"],
+    sophisticatedstorage: ["curse.maven:sophisticatedstorage-619320:${sophisticatedstorage_curse_file}",
+                           "curse.maven:sophisticatedcore-618298:${sophisticatedcore_curse_file}"],
+    // Advanced AE jar-in-jars ae2addonlib + ae2wtlib_api; it needs ae2wtlib and GeckoLib at runtime.
+    advancedae          : ["curse.maven:advancedae-1084104:${advancedae_curse_file}", "org.appliedenergistics:appliedenergistics2:${ae2_version}",
+                           "org.appliedenergistics:guideme:${guideme_version}", "curse.maven:ae2wtlib-459929:${ae2wtlib_curse_file}",
+                           "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
+    // QuarryPlus is written in Scala and needs the kotori_scala language loader (Scalable Cat's Force) at runtime.
+    quarryplus          : ["curse.maven:additionalenchantedminer-282837:${quarryplus_curse_file}",
+                           "curse.maven:scalablecatsforce-320926:${scalablecatsforce_curse_file}"],
+    apothicspawners     : ["curse.maven:apothicspawners-986583:${apothicspawners_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}"],
+    gateways            : ["curse.maven:gatewaystoeternity-417802:${gateways_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}",
+                           "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
+    easyvillagers       : ["curse.maven:easyvillagers-400514:${easyvillagers_curse_file}"],
+    ironfurnaces        : ["curse.maven:ironfurnaces-237664:${ironfurnaces_curse_file}"],
+    cobblegengalore     : ["curse.maven:cobblegengalore-1108467:${cobblegengalore_curse_file}"],
+    // Productive Metalworks / Farming need Productive Bees (and its productivelib) at runtime.
+    productivemetalworks: ["curse.maven:productivemetalworks-1184570:${productivemetalworks_curse_file}",
+                           "curse.maven:productivebees-377897:${productivebees_curse_file}"],
+    productivefarming   : ["curse.maven:productivefarming-944463:${productivefarming_curse_file}",
+                           "curse.maven:productivebees-377897:${productivebees_curse_file}"],
+    agritechevolved     : ["curse.maven:agritechevolved-1287394:${agritechevolved_curse_file}"],
+    mysticalagriculture : ["curse.maven:mysticalagriculture-246640:${mysticalagriculture_curse_file}", "curse.maven:cucumber-272335:${cucumber_curse_file}"],
+    railcraft           : ["curse.maven:railcraftreborn-901491:${railcraft_curse_file}"],
+    waystones           : ["curse.maven:waystones-245755:${waystones_curse_file}", "curse.maven:balm-531761:${balm_curse_file}",
+                           "curse.maven:shogi-1475746:${shogi_curse_file}"],
+    ftbquests           : ["dev.ftb.mods:ftb-quests-neoforge:${ftbquests_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
+                           "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    sfm                 : ["curse.maven:superfactorymanager-306935:${sfm_curse_file}"],
+    modularrouters      : ["curse.maven:modularrouters-250294:${modularrouters_curse_file}"],
+    integrateddynamics  : ["curse.maven:integrateddynamics-236307:${integrateddynamics_curse_file}", "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}",
+                           "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
+    functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
 ]
 

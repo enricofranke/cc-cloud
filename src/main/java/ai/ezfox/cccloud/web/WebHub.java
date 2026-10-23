@@ -280,6 +280,17 @@ public final class WebHub {
         }
     }
 
+    /** Copies of all published section snapshots of a mainframe, in publish order (layout migration and checks). */
+    public java.util.List<JsonObject> sectionSnapshots(UUID mainframeId) {
+        var list = new ArrayList<JsonObject>();
+        var view = views.get(mainframeId);
+        if (view == null) return list;
+        synchronized (view) {
+            for (var snapshot : view.uplinks.values()) list.add(snapshot.deepCopy());
+        }
+        return list;
+    }
+
     /** v0.7 in-game display: a copy of a section's published snapshot, or null. */
     public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
@@ -570,7 +581,7 @@ public final class WebHub {
         mainframe.addProperty("enabled", view.enabled);
         json.add("mainframe", mainframe);
         json.addProperty("canControl", false);
-        var keys = ShareFilter.cardKeys(view.uplinks.values(), view.layout, share);
+        var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
         var uplinks = new JsonArray();
         for (var uplink : view.uplinks.values()) {
             var filtered = ShareFilter.uplink(uplink, keys, share.hideNumbers());
@@ -768,7 +779,7 @@ public final class WebHub {
                 if (filtered == null) {
                     filtered = new ArrayList<>();
                     synchronized (view) {
-                        var keys = ShareFilter.cardKeys(view.uplinks.values(), view.layout, share);
+                        var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
                         for (var message : pending.values()) {
                             var m = ShareFilter.message(message, view.uplinks, keys, share.hideNumbers());
                             if (m != null) filtered.add(Json.GSON.toJson(m));

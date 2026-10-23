@@ -15,7 +15,8 @@
     "test": "vitest run --maxWorkers=3",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
     "screenshots": "node dev/screenshots.ts",
-    "models": "node dev/build-models.ts"
+    "models": "node dev/build-models.ts",
+    "screenshots:editor": "node dev/editor-shots.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

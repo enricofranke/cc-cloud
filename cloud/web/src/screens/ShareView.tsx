@@ -33,6 +33,13 @@ export function ShareView() {
   });
   const conn = useMemo(() => (id && secret ? new MainframeConn({ baseUrl: location.origin, token: "", share: { id, secret } }) : null), [id, secret]);
   const [page, setPage] = useState<string | null>(null);
+  const [narrow, setNarrow] = useState(() => matchMedia("(max-width: 1099px)").matches);
+  useEffect(() => {
+    const mq = matchMedia("(max-width: 1099px)");
+    const h = (e: MediaQueryListEvent) => setNarrow(e.matches);
+    mq.addEventListener("change", h);
+    return () => mq.removeEventListener("change", h);
+  }, []);
   const share = conn?.shareInfo.value ?? null;
 
   useEffect(() => {
@@ -106,7 +113,7 @@ export function ShareView() {
               </nav>
             )}
             {current ? (
-              <div class="grid">
+              <div class={`pgrid ${narrow ? "narrow" : ""}`}>
                 {current.cards.map((c) => (
                   <Card key={c.key} card={c} conn={conn} locked viewOnly />
                 ))}

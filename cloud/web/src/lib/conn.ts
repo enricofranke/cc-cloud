@@ -93,6 +93,7 @@ export const REJECT_TEXT: Record<string, string> = {
   invalid_message: "The server did not understand the request.",
   timeout: "No answer from the server.",
   unconfirmed: "No answer from the computer yet – is the program running?",
+  unloaded: "Its chunk is not loaded – nobody is nearby. Keep it loaded (e.g. FTB Chunks force-load) to control it from here.",
   disconnected: "Not connected to the server.",
   read_only: "This device is read-only.",
   no_power: "The mainframe has no power.",
@@ -811,6 +812,8 @@ function normalizeUplink(u: any): Uplink | null {
     title: typeof u.title === "string" ? u.title : "",
     online: u.online !== false,
     mode: u.mode === "auto" || u.mode === "lua" || u.mode === "direct" ? u.mode : undefined,
+    ...(u.loaded === false ? { loaded: false, online: false } : {}),
+    ...(u.loaded === false && typeof u.lastSeen === "number" && Number.isFinite(u.lastSeen) ? { lastSeen: u.lastSeen } : {}),
     widgets: widgets
       .filter((w: any) => w && typeof w.id === "string" && WIDGET_TYPES.includes(w.type))
       .map((w: any) => {

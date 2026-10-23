@@ -241,3 +241,49 @@ export function statusCounts(net: NetworkInfo) {
   for (const n of net.nodes) c[n.status] = (c[n.status] ?? 0) + 1;
   return c;
 }
+
+// ------------------------------------------------------------ map labels
+export interface LabelIn {
+  id: string;
+  /** dot centre in screen px */
+  x: number;
+  y: number;
+  text: string;
+  /** higher wins (selected > mainframe > relays > problems > devices) */
+  priority: number;
+  /** dot radius in px */
+  r: number;
+}
+export interface LabelOut {
+  x: number;
+  y: number;
+  anchor: "middle" | "start" | "end";
+}
+type Rect = { x0: number; y0: number; x1: number; y1: number };
+const hit = (a: Rect, b: Rect) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+/**
+ * Greedy label placement without overlaps: tries below, above, right and left
+ * of each dot (most important labels first); labels that fit nowhere are left
+ * out (they appear when zoomed in). Positions are relative to the dot, in px.
+ */
+export function placeLabels(items: LabelIn[], charW = 6.6, h = 13, pad = 3): Map<string, LabelOut | null> {
+  const out = new Map<string, LabelOut | null>();
+  const taken: Rect[] = items.map((i) => ({ x0: i.x - i.r, y0: i.y - i.r, x1: i.x + i.r, y1: i.y + i.r }));
+  for (const it of [...items].sort((a, b) => b.priority - a.priority)) {
+    const w = it.text.length * charW + 4;
+    const cands: [LabelOut, Rect][] = [
+      [{ x: 0, y: it.r + h, anchor: "middle" }, { x0: it.x - w / 2, y0: it.y + it.r + 1, x1: it.x + w / 2, y1: it.y + it.r + h + 2 }],
+      [{ x: 0, y: -it.r - 4, anchor: "middle" }, { x0: it.x - w / 2, y0: it.y - it.r - h - 3, x1: it.x + w / 2, y1: it.y - it.r - 2 }],
+      [{ x: it.r + pad, y: 4, anchor: "start" }, { x0: it.x + it.r + pad - 1, y0: it.y - h / 2, x1: it.x + it.r + pad + w, y1: it.y + h / 2 }],
+      [{ x: -it.r - pad, y: 4, anchor: "end" }, { x0: it.x - it.r - pad - w, y0: it.y - h / 2, x1: it.x - it.r - pad + 1, y1: it.y + h / 2 }],
+    ];
+    const own = (r: Rect) => taken.filter((t) => !(t.x0 === it.x - it.r && t.y0 === it.y - it.r));
+    const pick = cands.find(([, r]) => !own(r).some((t) => hit(r, t)));
+    if (pick) {
+      out.set(it.id, pick[0]);
+      taken.push(pick[1]);
+    } else out.set(it.id, null);
+  }
+  return out;
+}

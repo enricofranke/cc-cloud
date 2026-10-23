@@ -49,11 +49,41 @@ The integrations in `compat/<modid>` compile against the exact jars of All the M
 - **ExtendedAE** has no request/level-maintainer block, so there is no ExtendedAE integration (and no dependency).
 - Each repository is declared with `exclusiveContent`, so it only serves its own group.
 
+### Wave 2 (v0.8, docs/COMPAT.md)
+All wave-2 artifacts come from cursemaven (`curse.maven:<slug>-<projectId>:<fileId>`), i.e. the exact CurseForge files of
+ATM11 0.12.0-beta (file ids from the instance's `minecraftinstance.json`); the SHA-1 of every downloaded jar was compared
+with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_curse_file`).
+
+| Key (`-PintegrationMods=`) | Mod (version) | Extra runtime jars | Compile use |
+| --- | --- | --- | --- |
+| `dimstorage` | DimStorage 10.0.1 | EdivadLib 4.0.1 | none (capabilities + block ids) |
+| `sophisticatedstorage` | Sophisticated Storage 1.5.121 | Sophisticated Core 1.5.13 | none |
+| `functionalstorage` | Functional Storage 1.6.4 | Titanium 4.0.12 | none |
+| `quarryplus` | QuarryPlus ("Additional Enchanted Miner") 26.12.160 | Scalable Cat's Force 3.9.0 (the `kotori_scala` language loader) | `compat/quarryplus` (public getters + client-sync tag) |
+| `apothicspawners` | Apothic Spawners 2.0.1 | Placebo 10.0.2 | `compat/apothicspawners` (spawner stats API) |
+| `gateways` | Gateways to Eternity 6.0.2 | Placebo, Apothic Attributes 3.1.0 | `compat/gateways` (GatewayEntity getters) |
+| `easyvillagers` | Easy Villagers 1.1.47 | – | `compat/easyvillagers` (block entity getters) |
+| `ironfurnaces` | Iron Furnaces 4.4.2 | – | `compat/ironfurnaces` |
+| `cobblegengalore` | Cobblegen Galore 0.2.9 | – | `compat/cobblegengalore` |
+| `productivemetalworks` | Productive Metalworks 1.17.1 | Productive Bees (+ its productivelib) | `compat/productivemetalworks` |
+| `productivefarming` | Productive Farming 0.13.0 | Productive Bees | `compat/productivefarming` |
+| `agritechevolved` | Agritech: Evolved 2.2.0.5 | – | `compat/agritechevolved` |
+| `mysticalagriculture` | Mystical Agriculture 9.0.10 | Cucumber 9.0.6 | `compat/mysticalagriculture` (compile only; a dev run crashes in MA's creative tab) |
+| `railcraft` | Railcraft Reborn 1.4.5 | – | `compat/railcraft` (boiler module API) |
+| `waystones` | Waystones 26.1.2.16 | Balm 26.1.2.15, Shogi 26.1.2.12 | `compat/waystones` (WaystonesAPI) |
+| `ftbquests` | FTB Quests 26.1.2.9 (`dev.ftb.mods:ftb-quests-neoforge`, maven.ftb.dev, SHA-1 identical) | FTB Teams, FTB Library | `compat/ftbquests` |
+| `sfm` | Super Factory Manager 4.34.0 | – | `compat/sfm` |
+| `modularrouters` | Modular Routers 26.1.2.2 | – | `compat/modularrouters` |
+| `integrateddynamics` | Integrated Dynamics 1.36.1 | Cyclops Core 1.31.3, Common Capabilities 2.11.8 | `compat/integrateddynamics` (part container + panel state) |
+| `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
+
 ```sh
 ./gradlew runGameTestServer -PintegrationMods -PdevWebPort=18797 --max-workers=3          # all integration mods
 ./gradlew runGameTestServer -PintegrationMods=powah,mffs -PdevWebPort=18797 --max-workers=3   # a subset (keys: see build.gradle)
 ./gradlew runServer -PintegrationMods -PdevWebPort=18797 --max-workers=3
 ```
+Some integration mods ship GameTests of their own (Cobblegen Galore, Productive Farming); they run in the same
+`runGameTestServer` and can fail for reasons outside CC: Cloud (e.g. Productive Farming's Agritech Two recipe check).
 `-PdevWebPort` overrides the dev dashboard port (default 18787) so two checkouts can run tests at the same time. The integration GameTests use their own test environment `cccloud:integrations` (a separate batch), so they do not run at the same time as the load test. Without `-PintegrationMods` none of these mods is loaded, which is the soft-dependency check.
 
 ## Tests
@@ -65,3 +95,7 @@ The integrations in `compat/<modid>` compile against the exact jars of All the M
 - Set `pause-when-empty-seconds=-1` in `server.properties`: otherwise the server pauses without players and approvals, dashboard actions and rules wait.
 - Approving from the server console or RCON works without a player: `cccloud approve <id>` / `cccloud deny <id>` (`cccloud approve` without an id suggests the waiting requests). The browser gets the role of the mainframe's owner (account codes: of that player); the audit log records "Console approved …".
 - E2E only: with `-Dcccloud.devCommands=true`, the console command `cccloud test-token <mainframeId>` prints a device token of the mainframe's owner (never available to players or without the property).
+
+### Deterministic GameTests and the load test
+- GameTests run side by side in one world. Relays placed by a test serve only that test's mainframe (`restrictForTest`), so networks of neighbouring tests never connect.
+- The load test runs in its own batch (test environment `cccloud:loadtest`), so no other test runs at the same time. It is still timing-sensitive on a busy machine: `./gradlew runGameTestServer -PskipLoadTest --max-workers=3` runs all functional tests; run the full suite (with the load test) at quiet moments.

@@ -14,6 +14,8 @@ import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, createShare, deviceTy
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
+import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
+import { encodePng } from "./icons.ts";
 import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
@@ -35,6 +37,9 @@ interface Uplink {
   online: boolean;
   widgets: Widget[];
   mode?: "auto" | "lua" | "direct";
+  /** false = cached snapshot of an unloaded chunk */
+  loaded?: boolean;
+  lastSeen?: number;
   pages?: { id: string; title: string; icon?: string }[];
   groups?: { id: string; title: string; page?: string; cols?: number }[];
 }
@@ -142,6 +147,12 @@ export interface MockOptions {
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
+  /** add the underground "Deep Base" mainframe (also with extras) */
+  deepBase?: boolean;
+  /** map tiles per minute per device (default 60) */
+  tileRate?: number;
+  /** voxel sections per second per device (default 40) */
+  voxelRate?: number;
   /** v0.7: min ms between terrain requests per token (default 5000) */
   terrainRateMs?: number;
   /** How long a pending pairing waits for approval (spec: 2 minutes). */
@@ -163,6 +174,8 @@ export const TURBINE = "5c2e8f77-turbine";
 export const ME = "c4e2b7a1-me-bridge";
 export const CONTROL = "7d3a9c02-control";
 export const COMPUTER = "b81e44d0-computer";
+export const DEEP_COMPUTER = "0d0c0e00-deep-computer";
+export const DEEP_RS = "0d0c0e01-deep-rs";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
 
 export async function createMockServer(opts: MockOptions = {}) {
@@ -507,6 +520,9 @@ export async function createMockServer(opts: MockOptions = {}) {
         uplinkId: TURBINE,
         title: "Turbine Hall",
         online: false,
+        // its chunk is unloaded: the cached last snapshot (docs/SPEC.md "Cached sections of unloaded uplinks/bridges")
+        loaded: false,
+        lastSeen: Date.now() - 12 * 60_000,
         widgets: [
           { id: "rpm", type: "gauge", label: "Rotor speed", opts: { min: 0, max: 2000, unit: "RPM", warn: 1800, crit: 1950 }, value: 1240 },
           { id: "coils", type: "toggle", label: "Induction coils", value: true },
@@ -799,6 +815,48 @@ export async function createMockServer(opts: MockOptions = {}) {
     outpost.onAction = (u, id, v) => setValue(outpost, u, id, v);
   }
 
+  // ---- the "Deep Base": an underground room at y −60 (map tiles, slice view, voxels; dev/world-sim.ts)
+  if (opts.extras || opts.deepBase) {
+    const deep = addMainframe("Deep Base @ 0 -61 0", true);
+    deep.power = { stored: 180_000, capacity: 200_000, input: 200, usage: 0, ok: true, brownout: 0 };
+    deep.uplinks.set(DEEP_COMPUTER, {
+      uplinkId: DEEP_COMPUTER,
+      title: "Computer #0",
+      online: true,
+      widgets: [
+        { id: "power", type: "gauge", label: "Base power", opts: { min: 0, max: 100, unit: "%", warn: 25, crit: 10 }, value: 87 },
+        { id: "lights", type: "toggle", label: "Lights", value: true },
+        { id: "door", type: "button", label: "Open hatch", opts: { color: "cyan" } },
+        { id: "status", type: "label", label: "Status", value: "All systems nominal" },
+      ],
+    });
+    deep.uplinks.set(DEEP_RS, {
+      uplinkId: DEEP_RS,
+      title: "RS Network",
+      online: true,
+      mode: "direct",
+      widgets: [
+        { id: "items", type: "label", label: "Items", value: "412,880" },
+        { id: "types", type: "label", label: "Item types", value: "6" },
+        { id: "energy", type: "gauge", label: "Energy", opts: { min: 0, max: 100, unit: "%" }, value: 71 },
+      ],
+    });
+    const O = "minecraft:overworld";
+    const sy = (x: number, z: number) => surfaceY(x, z) + 1;
+    deep.net = {
+      nodes: [
+        { id: "deep-mf", type: "mainframe", name: "Mainframe", pos: { ...DEEP_BASE.mainframe }, dim: O },
+        { id: DEEP_COMPUTER, type: "uplink", name: "Computer #0", pos: { ...DEEP_BASE.uplink }, dim: O, uplinkId: DEEP_COMPUTER, wired: "deep-mf" },
+        { id: DEEP_RS, type: "bridge", name: "RS Network", pos: { ...DEEP_BASE.rs }, dim: O, uplinkId: DEEP_RS, wired: "deep-mf" },
+        { id: "deep-relay", type: "advanced_relay", name: "Shaft Relay", pos: { x: 8, y: sy(8, 7), z: 7 }, dim: O, powered: true },
+        { id: "deep-farm", type: "advanced_uplink", name: "Hill Farm", pos: { x: 34, y: sy(34, 28), z: 28 }, dim: O },
+        { id: "deep-lake", type: "uplink", name: "Lake Pump", pos: { x: 52, y: 63, z: 4 }, dim: O },
+      ],
+      lastSeen: {},
+    };
+    deep.onAction = (u, id, v) => setValue(deep, u, id, v);
+  }
+
   // ---- v0.3 power: 1 sim tick = 1 s = 20 game ticks
   let powerTicks = 0;
   function tickPower(mf: Mainframe) {
@@ -1001,6 +1059,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (!m.enabled) return result(msg.reqId, false, "disabled");
         const u = m.uplinks.get(msg.uplinkId);
         if (!u) return result(msg.reqId, false, "unknown_uplink");
+        if (u.loaded === false) return result(msg.reqId, false, "unloaded");
         if (!u.online) return result(msg.reqId, false, "uplink_offline");
         const w = u.widgets.find((x) => x.id === msg.id);
         if (!w) return result(msg.reqId, false, "unknown_widget");
@@ -1067,6 +1126,10 @@ export async function createMockServer(opts: MockOptions = {}) {
     return JSON.parse(Buffer.concat(chunks).toString("utf8") || "null");
   }
   const terrainCalls = new WeakMap<object, number>();
+  const tileCalls = new WeakMap<object, number[]>();
+  const voxelCalls = new WeakMap<object, number[]>();
+  const tileCache = new Map<string, Buffer>();
+  const voxelCache = new Map<string, string>();
   const fsWrites = new WeakMap<object, number[]>();
   /** script import: which uplinks sit on a computer (bridges have none) */
   const computerFor = (m: Mainframe, uplinkId: string) => {
@@ -1263,6 +1326,80 @@ export async function createMockServer(opts: MockOptions = {}) {
         alert(m, fm[2], fm[3] === "run" ? `${t.name} started a script on ${fs.info.label}` : `${t.name} ${req.method === "PUT" ? "uploaded" : "deleted"} ${file} on ${fs.info.label}`, "info");
       }
       return json(res, r.status, r.body);
+    }
+    // ---- map tiles (surface / slice) and voxel sections (docs/SPEC.md "Map tiles – HTTP API", "Voxel view – HTTP API")
+    const mt = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(map|voxels)\/([a-z0-9_.-]+:[a-z0-9_./-]+?)\/(.+)$/.exec(p);
+    if (mt && req.method === "GET") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const m = mainframes.get(mt[1]);
+      const role = m ? roleFor(t, m) : undefined;
+      if (!m || !role) return json(res, 403, { error: "no_access" });
+      if (rank(role) < 2) return json(res, 403, { error: "not_allowed" });
+      const dim = decodeURIComponent(mt[3]);
+      if (!["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"].includes(dim)) return json(res, 404, { error: "unknown_dimension" });
+      const nodes = (m.net?.nodes ?? []).filter((n) => n.dim === dim);
+      const now = Date.now();
+      if (mt[2] === "map") {
+        const r = /^(surface|slice\/(-?\d{1,3}))\/(-?\d{1,6})\/(-?\d{1,6})\.png$/.exec(mt[4]);
+        if (!r) return json(res, 404, { error: "not_found" });
+        const tx = Number(r[3]);
+        const tz = Number(r[4]);
+        // only tiles within 512 blocks of a node (box to point)
+        const near = nodes.some((n) => {
+          const dx = Math.max(tx * 128 - n.pos.x, 0, n.pos.x - (tx * 128 + 127));
+          const dz = Math.max(tz * 128 - n.pos.z, 0, n.pos.z - (tz * 128 + 127));
+          return Math.hypot(dx, dz) <= 512;
+        });
+        if (!near) return json(res, 403, { error: "out_of_range" });
+        const calls = (tileCalls.get(t) ?? []).filter((x) => now - x < 60_000);
+        if (calls.length >= (opts.tileRate ?? 60)) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((60_000 - (now - calls[0])) / 1000) });
+        calls.push(now);
+        tileCalls.set(t, calls);
+        const layer = r[1] === "surface" ? "surface" : "slice";
+        const key = `${dim}|${layer}|${r[2] ?? ""}|${tx}|${tz}`;
+        let png = tileCache.get(key);
+        if (!png) {
+          const rgba = mapTile(dim, layer, tx, tz, Number(r[2] ?? 0));
+          let any = false;
+          const px: [number, number, number, number][] = [];
+          for (let i = 0; i < 128 * 128; i++) {
+            px.push([rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2], rgba[i * 4 + 3]]);
+            if (rgba[i * 4 + 3]) any = true;
+          }
+          png = any ? encodePng(128, 128, px) : Buffer.alloc(0);
+          tileCache.set(key, png);
+        }
+        if (!png.length) {
+          res.writeHead(204, { ...SECURITY_HEADERS, "cache-control": "private, max-age=60" });
+          return void res.end();
+        }
+        const etag = `"${createHash("sha1").update(png).digest("hex").slice(0, 16)}"`;
+        if (req.headers["if-none-match"] === etag) {
+          res.writeHead(304, { ...SECURITY_HEADERS, etag, "cache-control": "private, max-age=60" });
+          return void res.end();
+        }
+        res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "image/png", etag, "cache-control": "private, max-age=60" });
+        return void res.end(png);
+      }
+      const v = /^(-?\d{1,7})\/(-?\d{1,3})\/(-?\d{1,7})$/.exec(mt[4]);
+      if (!v) return json(res, 404, { error: "not_found" });
+      const [cx, cy, cz] = [Number(v[1]), Number(v[2]), Number(v[3])];
+      // within voxelRadius (64) of a node, measured box to point
+      const near = nodes.some((n) => {
+        const d = (c: number, p: number) => Math.max(c * 16 - p, 0, p - (c * 16 + 15));
+        return Math.hypot(d(cx, n.pos.x), d(cy, n.pos.y), d(cz, n.pos.z)) <= 64;
+      });
+      if (!near) return json(res, 403, { error: "out_of_range" });
+      const vc = (voxelCalls.get(t) ?? []).filter((x) => now - x < 1000);
+      if (vc.length >= (opts.voxelRate ?? 40)) return json(res, 429, { error: "rate_limited", retryAfter: 1 });
+      vc.push(now);
+      voxelCalls.set(t, vc);
+      const key = `${dim}|${cx}|${cy}|${cz}`;
+      let sec = voxelCache.get(key);
+      if (!sec) voxelCache.set(key, (sec = JSON.stringify(voxelSection(dim, cx, cy, cz))));
+      res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "application/json", "cache-control": "private, max-age=5" });
+      return void res.end(sec);
     }
     // ---- v0.7 coarse terrain for the 3D view (operator+, rate-limited per token)
     const tm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/terrain$/.exec(p);

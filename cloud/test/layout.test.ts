@@ -13,6 +13,8 @@ import {
   normalizeLayout,
   resolveLayout,
   snapshotLayout,
+  resizeCard,
+  resizeWidget,
   updateCard,
   updatePage,
   updateWidget,
@@ -86,7 +88,8 @@ describe("resolveLayout (defaults)", () => {
     expect(pages[0].cards.map((c) => c.key)).toEqual(["r", "c"]);
     expect(pages[1].cards.map((c) => c.key)).toEqual(["c/grid", "c~power"]);
     const grid = pages[1].cards[0];
-    expect(grid).toMatchObject({ title: "Grid", span: 2, color: "gold" });
+    expect(grid).toMatchObject({ title: "Grid", color: "gold" });
+    expect(grid.box.w).toBe(6); // cols = 2 → half the 12-column page
     // default widget order: readouts first, buttons last
     expect(pages[0].cards[0].widgets.map((w) => w.w.id)).toEqual(["temp", "power", "scram"]);
   });
@@ -104,7 +107,8 @@ describe("resolveLayout (defaults)", () => {
     const pages = resolveLayout(UPLINKS, doc);
     expect(pages.map((p) => p.title)).toEqual(["Energy", "Home"]);
     const core = pages[0].cards.find((c) => c.key === "r")!;
-    expect(core).toMatchObject({ title: "Core", span: 3, color: "red", icon: "flame" });
+    expect(core).toMatchObject({ title: "Core", color: "red", icon: "flame" });
+    expect(core.box.w).toBe(9); // v1 span 3 of 4 → 9 of 12
     expect(core.widgets.map((w) => w.label)).toEqual(["Emergency stop", "Temp"]); // power hidden
     expect(resolveLayout(UPLINKS, doc, { includeHidden: true })[0].cards.find((c) => c.key === "r")!.widgets).toHaveLength(3);
   });
@@ -126,9 +130,11 @@ describe("layout editor helpers", () => {
   it("moves, edits and round-trips through the saved document", () => {
     let pages = resolveLayout(UPLINKS, null, { includeHidden: true });
     pages = moveCard(pages, "c", "power", 0);
-    pages = updateCard(pages, "c/grid", { title: "Grid ⚡", span: 4, color: "cyan", icon: "chart", hidden: false });
+    pages = updateCard(pages, "c/grid", { title: "Grid ⚡", color: "cyan", icon: "chart", hidden: false });
+    pages = resizeCard(pages, "c/grid", 12, 6);
     pages = moveWidget(pages, "r", "r/scram", 0);
-    pages = updateWidget(pages, "r/temp", { label: "Core temp", span: 2, hidden: true });
+    pages = resizeWidget(pages, "r/temp", 6, 5);
+    pages = updateWidget(pages, "r/temp", { label: "Core temp", hidden: true });
     const added = addPage(pages, "Farm stuff", "leaf");
     pages = added.pages;
     expect(added.id).toBe("farm_stuff");
@@ -145,12 +151,13 @@ describe("layout editor helpers", () => {
     const again = resolveLayout(UPLINKS, normalizeLayout(JSON.parse(JSON.stringify(doc))), { includeHidden: true });
     expect(again.map((p) => [p.id, p.title, p.cards.map((c) => c.key)])).toEqual(pages.map((p) => [p.id, p.title, p.cards.map((c) => c.key)]));
     const grid = again[2].cards.find((c) => c.key === "c/grid")!;
-    expect(grid).toMatchObject({ title: "Grid ⚡", span: 4, color: "cyan", icon: "chart" });
+    expect(grid).toMatchObject({ title: "Grid ⚡", color: "cyan", icon: "chart" });
+    expect(grid.box.w).toBe(12);
     const r = again[0].cards.find((c) => c.key === "r")!;
     expect(r.widgets.map((w) => [w.w.id, w.label, w.hidden])).toEqual([
       ["scram", "SCRAM", false],
-      ["temp", "Core temp", true],
       ["power", "Power", false],
+      ["temp", "Core temp", true],
     ]);
   });
 
@@ -158,7 +165,7 @@ describe("layout editor helpers", () => {
     let pages = resolveLayout(UPLINKS, null);
     pages = deletePage(pages, "power");
     expect(pages.map((p) => p.id)).toEqual(["main"]);
-    expect(pages[0].cards.map((c) => c.key)).toEqual(["r", "c", "c/grid", "c~power"]);
+    expect(pages[0].cards.map((c) => c.key).sort()).toEqual(["c", "c/grid", "c~power", "r"]);
     expect(deletePage(pages, "main")).toBe(pages);
   });
 });

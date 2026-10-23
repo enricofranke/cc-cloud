@@ -123,6 +123,20 @@ describe("MainframeConn", () => {
     expect(notices).toEqual([]);
   });
 
+  it("keeps cached sections of unloaded chunks and explains rejected actions", async () => {
+    await start({ extras: true });
+    const { conn, notices } = connect(await token());
+    await waitFor(() => conn.status.value === "open");
+    const turbine = conn.uplinks.value.find((u) => u.title === "Turbine Hall")!;
+    expect(turbine).toMatchObject({ loaded: false, online: false });
+    expect(Date.now() - turbine.lastSeen!).toBeGreaterThan(10 * 60_000);
+    expect(turbine.widgets.find((w) => w.id === "rpm")!.value).toBe(1240); // last values kept
+    // a stale client that still sends gets the server's "unloaded" answer
+    conn.action(turbine.uplinkId, turbine.widgets.find((w) => w.id === "coils")!, false);
+    await waitFor(() => notices.length > 0);
+    expect(notices.at(-1)!.text).toMatch(/chunk is not loaded/);
+  });
+
   it("waits 8 s by default before giving up on the computer", () => {
     const conn = new MainframeConn({ baseUrl: "http://x", token: "t" });
     expect((conn as unknown as { o: { confirmTimeoutMs: number } }).o.confirmTimeoutMs).toBe(8000);
@@ -276,13 +290,13 @@ describe("MainframeConn", () => {
 
 describe("pairing API client", () => {
   it("runs the two-step flow: pending, then approved with a token", async () => {
-    await start({ approveDelayMs: 30 });
+    await start({ approveDelayMs: 300 });
     const { pair, pollPairing } = await import("../web/src/lib/api.ts");
     const started = await pair(mock!.code(), "Vitest phone", base());
     expect(started.status).toBe("pending");
     if (started.status !== "pending") return;
     expect((await pollPairing(started.pairingId, base())).status).toBe("pending");
-    await sleep(60);
+    await sleep(450);
     const done = await pollPairing(started.pairingId, base());
     expect(done).toMatchObject({ status: "approved", mainframeId: mock!.base.id });
   });
