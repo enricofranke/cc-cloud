@@ -27,6 +27,8 @@ public final class GatewaysGameTests {
                 var section = MainframeCards.section(mainframe.getMainframeId(), GatewaysCard.KIND);
                 helper.assertTrue(section != null && "0".equals(section.values().get(GatewaysCard.COUNT).getAsString()), "no gate open");
                 helper.assertTrue(section.snapshot().get("restricted").getAsBoolean(), "restricted section");
+                helper.assertTrue("No active gates".equals(section.values().get(GatewaysCard.EMPTY).getAsString()), "friendly empty line");
+                helper.assertTrue(section.values().get(GatewaysCard.GATE + 1) == null, "no placeholder rows");
             })
             .thenExecute(() -> {
                 var gateway = GatewayRegistry.INSTANCE.getValue(Identifier.parse("gateways:emerald_grove"));
@@ -41,13 +43,18 @@ public final class GatewaysGameTests {
             .thenWaitUntil(() -> {
                 var values = MainframeCards.section(mainframe.getMainframeId(), GatewaysCard.KIND).values();
                 helper.assertTrue("1".equals(values.get(GatewaysCard.COUNT).getAsString()), "one gate: " + values.get(GatewaysCard.COUNT));
+                helper.assertTrue(values.get(GatewaysCard.GATE + 1) != null && values.get(GatewaysCard.GATE + 2) == null, "exactly one gate row");
+                helper.assertTrue(values.get(GatewaysCard.EMPTY) == null, "empty line gone");
                 String row = values.get(GatewaysCard.GATE + 1).getAsString();
                 helper.assertTrue(row.contains("wave") && row.endsWith(" m"), "gate row: " + row);
                 helper.assertTrue(values.get(GatewaysCard.ACTIVE).getAsBoolean(), "indicator on");
             })
             .thenExecute(() -> ((net.minecraft.world.entity.Entity) gate[0]).discard())
-            .thenWaitUntil(() -> helper.assertTrue("0".equals(MainframeCards.section(mainframe.getMainframeId(), GatewaysCard.KIND)
-                .values().get(GatewaysCard.COUNT).getAsString()), "gate gone"))
+            .thenWaitUntil(() -> {
+                var values = MainframeCards.section(mainframe.getMainframeId(), GatewaysCard.KIND).values();
+                helper.assertTrue("0".equals(values.get(GatewaysCard.COUNT).getAsString()), "gate gone");
+                helper.assertTrue(values.get(GatewaysCard.EMPTY) != null && values.get(GatewaysCard.GATE + 1) == null, "back to the empty line");
+            })
             .thenSucceed();
     }
 }

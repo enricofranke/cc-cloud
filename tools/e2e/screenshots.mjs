@@ -32,10 +32,21 @@ const shot = async (page, name, fullPage = false) => {
   console.log("saved", join(out, `${name}.png`));
 };
 const openMainframe = async (page, tag) => {
-  // The app starts on the mainframe list; open the paired mainframe.
-  await page.waitForSelector("text=Mainframe @", { timeout: 20_000 });
+  // Depending on the viewport and the number of paired mainframes the app shows the mainframe list first or opens the
+  // dashboard directly. Wait for whichever comes first and click the list entry only when the list is shown.
+  const entry = page.locator("text=Mainframe @").first();
+  const card = page.locator(".card").first();
+  await Promise.race([
+    entry.waitFor({ state: "visible", timeout: 30_000 }),
+    card.waitFor({ state: "visible", timeout: 30_000 }),
+  ]).catch(async (e) => {
+    await shot(page, `${tag}-00-ERROR-no-list-no-card`);
+    writeFileSync(join(out, `${tag}-error.txt`), await page.evaluate(() => document.body.innerText));
+    throw e;
+  });
+  if (await card.isVisible()) return;
   await shot(page, `${tag}-00-mainframe-list`);
-  await page.click("text=Mainframe @");
+  await entry.click();
 };
 const seed = (ctx) => ctx.addInitScript((m) => {
   localStorage.setItem("cccloud.mainframes.v1", JSON.stringify([m]));

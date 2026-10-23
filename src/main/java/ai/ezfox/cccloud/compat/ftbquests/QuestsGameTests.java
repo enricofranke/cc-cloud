@@ -27,6 +27,8 @@ public final class QuestsGameTests {
                 String team = section.values().get(QuestsCard.TEAM).getAsString();
                 helper.assertTrue(!team.equals("–"), "refreshed: " + team);
                 helper.assertTrue(section.values().get(QuestsCard.QUESTS).getAsString().equals("–") || team.length() > 0, "quests");
+                helper.assertTrue("No quests completed yet".equals(section.values().get(QuestsCard.EMPTY).getAsString()), "friendly empty line");
+                helper.assertTrue(section.values().get(QuestsCard.RECENT + 1) == null, "no placeholder rows");
             })
             .thenSucceed();
     }

@@ -29,6 +29,8 @@ public final class QuestsCard extends MainframeCard {
     public static final String CHAPTERS = "chapters";
     public static final String QUESTS = "quests";
     public static final String RECENT = "recent";
+    /** Shown instead of the completion rows while nothing is completed. */
+    public static final String EMPTY = "empty";
     static final int RECENT_ROWS = 5;
 
     private record Done(String title, String chapter, long time) {
@@ -37,6 +39,8 @@ public final class QuestsCard extends MainframeCard {
     private final CloudMainframeBlockEntity mainframe;
     private int refreshes;
     private long lastCompletion = -1;
+    /** Completion rows currently in the widget set (0 = the "No quests completed yet" line). */
+    private int rows;
 
     QuestsCard(CloudMainframeBlockEntity mainframe) {
         this.mainframe = mainframe;
@@ -64,8 +68,15 @@ public final class QuestsCard extends MainframeCard {
             .progress(PROGRESS, "Progress", 0, 100, "%")
             .label(CHAPTERS, "Chapters done")
             .label(QUESTS, "Quests done");
-        for (int i = 1; i <= RECENT_ROWS; i++) w.label(RECENT + i, i == 1 ? "Last completed" : "Completed before", "span", 2);
+        if (rows == 0) w.label(EMPTY, "Completed", "span", 2);
+        for (int i = 1; i <= rows; i++) w.label(RECENT + i, i == 1 ? "Last completed" : "Completed before", "span", 2);
         return w.build();
+    }
+
+    /** The widget set follows the number of completions shown (only rows with data). */
+    @Override
+    public int revision() {
+        return rows;
     }
 
     static String title(QuestObjectBase object) {
@@ -91,7 +102,8 @@ public final class QuestsCard extends MainframeCard {
             out.number(PROGRESS, 0);
             out.text(CHAPTERS, "–");
             out.text(QUESTS, "–");
-            for (int i = 1; i <= RECENT_ROWS; i++) out.text(RECENT + i, "–");
+            rows = 0;
+            out.text(EMPTY, "No quests completed yet");
             return;
         }
         int[] chapters = {0, 0};
@@ -113,11 +125,9 @@ public final class QuestsCard extends MainframeCard {
         out.number(PROGRESS, Math.round(Fmt.percent(quests[0], quests[1])));
         out.text(CHAPTERS, chapters[0] + " / " + chapters[1]);
         out.text(QUESTS, quests[0] + " / " + quests[1]);
-        for (int i = 1; i <= RECENT_ROWS; i++) {
-            if (i > done.size()) {
-                out.text(RECENT + i, "–");
-                continue;
-            }
+        rows = Math.min(RECENT_ROWS, done.size());
+        if (rows == 0) out.text(EMPTY, "No quests completed yet");
+        for (int i = 1; i <= rows; i++) {
             var d = done.get(i - 1);
             long ago = d.time() > 0 ? Math.max(0, (System.currentTimeMillis() - d.time()) / 1000) : -1;
             out.text(RECENT + i, d.title() + " (" + d.chapter() + ")" + (ago >= 0 ? " – " + Fmt.duration(ago) + " ago" : ""));
