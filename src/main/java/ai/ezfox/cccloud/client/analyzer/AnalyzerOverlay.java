@@ -11,18 +11,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.util.Mth;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
-import net.minecraft.gizmos.TextGizmo;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector4f;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -107,6 +109,7 @@ public final class AnalyzerOverlay {
     public static void tick() {
         var mc = Minecraft.getInstance();
         hud = "";
+        previewLabel = null;
         if (mc.player == null || mc.level == null) return;
         if (!highlight.isEmpty()) {
             if (System.currentTimeMillis() > highlightUntil) highlight = List.of();
@@ -215,7 +218,69 @@ public final class AnalyzerOverlay {
         } else {
             label = I18n.get("cccloud.analyzer.no_network");
         }
-        Gizmos.billboardText(label, center.add(0, 0.9, 0), TextGizmo.Style.forColorAndCentered(color).withScale(0.05f)).setAlwaysOnTop();
+        previewLabel = new Label(label, center.add(0, 0.6, 0), color);
+    }
+
+    // ---- placement label billboard -----------------------------------------------------------------------------------
+
+    private record Label(String text, Vec3 pos, int color) {
+    }
+
+    private static volatile @Nullable Label previewLabel;
+    /** Where the label's anchor is on screen this frame: x, y in 0..1 (top-left origin) and the camera distance; null if behind. */
+    private static volatile float @Nullable [] labelScreen;
+    /** GUI scale of the label: {@code LABEL_SCALE_AT / distance}, clamped so it stays readable near and far. */
+    static final float LABEL_SCALE_AT = 2.5f, MIN_LABEL_SCALE = 0.55f, MAX_LABEL_SCALE = 1f;
+
+    static float labelScale(double distance) {
+        return Mth.clamp((float) (LABEL_SCALE_AT / Math.max(0.1, distance)), MIN_LABEL_SCALE, MAX_LABEL_SCALE);
+    }
+
+    /**
+     * Projects the placement label's world anchor to the screen (after the level is drawn, with this frame's matrices),
+     * so the HUD can draw it as a billboard panel above everything.
+     */
+    public static void projectLabel(RenderLevelStageEvent.AfterWeather event) {
+        var label = previewLabel;
+        var camera = event.getLevelRenderState().cameraRenderState;
+        if (label == null || !camera.initialized) {
+            labelScreen = null;
+            return;
+        }
+        Vec3 rel = label.pos().subtract(camera.pos);
+        var clip = new Vector4f((float) rel.x, (float) rel.y, (float) rel.z, 1f);
+        clip.mul(event.getModelViewMatrix());
+        clip.mul(camera.projectionMatrix);
+        if (clip.w <= 0.05f) {
+            labelScreen = null;
+            return;
+        }
+        float nx = clip.x / clip.w, ny = clip.y / clip.w;
+        labelScreen = new float[]{(nx + 1) / 2, (1 - ny) / 2, (float) rel.length()};
+    }
+
+    /** The placement label as a billboard: a panel with a border above the ghost block, scaled by distance (clamped). */
+    private static void renderLabel(GuiGraphicsExtractor g, Minecraft mc) {
+        var label = previewLabel;
+        var at = labelScreen;
+        if (label == null || at == null) return;
+        float scale = labelScale(at[2]);
+        int w = mc.font.width(label.text());
+        // Keep the panel on screen and below the HUD signal line.
+        float half = (w / 2f + 6) * scale;
+        float cx = Mth.clamp(at[0] * g.guiWidth(), half, Math.max(half, g.guiWidth() - half));
+        float cy = Math.max(20 + 18 * scale, at[1] * g.guiHeight());
+        g.pose().pushMatrix();
+        g.pose().translate(cx, cy);
+        g.pose().scale(scale, scale);
+        int x0 = -w / 2 - 5, y0 = -16, x1 = w / 2 + 5, y1 = -2;
+        int border = (label.color() & 0x00FFFFFF) | 0xFF000000;
+        g.fill(x0 - 1, y0 - 1, x1 + 1, y1 + 1, border);
+        g.fill(x0, y0, x1, y1, 0xF0101418);
+        // A small pointer down to the block.
+        g.fill(-2, y1 + 1, 2, y1 + 3, border);
+        g.text(mc.font, label.text(), -w / 2, y0 + 3, 0xFFFFFFFF, false);
+        g.pose().popMatrix();
     }
 
     private static void hudLine(Minecraft mc, JsonObject data) {
@@ -262,6 +327,7 @@ public final class AnalyzerOverlay {
         if (hud.isEmpty() || mode == null) return;
         var mc = Minecraft.getInstance();
         if (mc.options.hideGui) return;
+        renderLabel(g, mc);
         int w = mc.font.width(hud);
         int x = (g.guiWidth() - w) / 2;
         g.fill(x - 4, 3, x + w + 4, 16, 0x90000000);

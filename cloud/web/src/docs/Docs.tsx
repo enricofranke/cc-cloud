@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { signal } from "@preact/signals";
 import type { Block, Inline, Recipe } from "./md.ts";
-import { CONTENT, PAGES, UI, detectLang, itemName, type Lang } from "./content/index.ts";
+import { CONTENT, MODS, PAGES, UI, detectLang, itemName, type Lang } from "./content/index.ts";
 import { pageBlocks, search } from "./search.ts";
 import { CodeBlock } from "../components/CodeBlock.tsx";
 import { ItemIcon } from "../components/ItemIcon.tsx";
@@ -167,6 +167,11 @@ function RecipeView({ r }: { r: Recipe }) {
           ))}
         </ul>
         {r.shapeless && <p class="muted small">{UI[l].shapeless}</p>}
+        {r.requires?.map((c) => (
+          <p key={c} class={`recipe-req ${c.startsWith("!") ? "without" : ""}`}>
+            {c.startsWith("!") ? UI[l].without : UI[l].requires} {MODS[c.replace(/^!?mod:/, "")] ?? c.replace(/^!?mod:/, "")}
+          </p>
+        ))}
       </figcaption>
     </figure>
   );

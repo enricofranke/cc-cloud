@@ -4340,11 +4340,14 @@ button.pwr:hover {
   cursor: grabbing;
 }
 .panzoom svg {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
 }
 .pz-controls {
+  z-index: 2;
   position: absolute;
   right: 10px;
   bottom: 10px;
@@ -4367,6 +4370,7 @@ button.pwr:hover {
   font-size: 18px;
 }
 .net-legend {
+  z-index: 3;
   position: absolute;
   left: 10px;
   bottom: 10px;
@@ -6490,4 +6494,63 @@ body.rz-nwse * {
   .wgrid > .wcell:is(.t-toggle, .t-slider, .t-select, .t-number, .t-text, .t-label, .t-progress, .t-chart, .t-buttons) {
     grid-column: 1 / -1;
   }
+}
+
+/* ---------------------------------------------------------------- map tiles */
+.map-tiles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.88;
+}
+.netmap.has-tiles svg .grid {
+  stroke: rgba(0, 0, 0, 0.18);
+}
+.mlabel.a-start {
+  text-anchor: start;
+}
+.mlabel.a-end {
+  text-anchor: end;
+}
+.map-layer {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.seg-s button {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+.slice-y {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.slice-y span {
+  min-width: 52px;
+  font: 600 12px ui-monospace, Menlo, monospace;
+  color: var(--cyan);
+}
+.slice-y input {
+  width: 160px;
+}
+
+@media (max-width: 719px) {
+  /* phones: the "?" on the map explains the circles */
+  .net-legend .lg-range-row {
+    display: none;
+  }
+}
+.recipe-req {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--cyan);
+}
+.recipe-req.without {
+  color: var(--yellow);
 }

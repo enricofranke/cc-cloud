@@ -56,6 +56,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue VOXEL_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
+    public static final ModConfigSpec.BooleanValue PUSH_ENABLED;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
@@ -205,6 +207,16 @@ public final class CloudConfig {
         MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
             .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("push");
+        PUSH_ENABLED = b.comment("Send push notifications (Discord webhooks, ntfy, JSON webhooks) configured per mainframe in the dashboard.")
+            .translation("cccloud.configuration.pushEnabled")
+            .define("pushEnabled", true);
+        PUSH_ALLOWED_HOSTS = b.comment("Hosts push targets may use (\"example.org\" or \"*.example.org\"). Empty = any public host.",
+                "Private/LAN addresses are always refused unless the host is listed here; plain http only for listed ntfy hosts.")
+            .translation("cccloud.configuration.pushAllowedHosts")
+            .defineListAllowEmpty("pushAllowedHosts", java.util.List.of(), () -> "ntfy.example.org", o -> o instanceof String s && !s.isBlank() && s.length() <= 253);
         b.pop();
 
         b.push("upgrades");

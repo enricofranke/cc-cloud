@@ -416,6 +416,13 @@ public final class WebHub {
         }
     }
 
+    /** v0.5 D: every published alert (push notifications). {@code source} = the section's title, or null. */
+    public interface AlertListener {
+        void alert(UUID mainframeId, @Nullable String source, String text, String level);
+    }
+
+    public static volatile @Nullable AlertListener onAlert;
+
     /** True if the section is published and online. */
     public boolean uplinkOnline(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
@@ -427,6 +434,22 @@ public final class WebHub {
     }
 
     public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level) {
+        var listener = onAlert;
+        if (listener != null) {
+            String source = null;
+            var v = views.get(mainframeId);
+            if (v != null && uplinkId != null) {
+                synchronized (v) {
+                    var snapshot = v.uplinks.get(uplinkId);
+                    if (snapshot != null && snapshot.get("title") instanceof com.google.gson.JsonPrimitive p && p.isString()) source = p.getAsString();
+                }
+            }
+            try {
+                listener.alert(mainframeId, source, text, level);
+            } catch (RuntimeException e) {
+                ai.ezfox.cccloud.CloudLog.LOGGER.warn("[cccloud] Alert listener failed", e);
+            }
+        }
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {

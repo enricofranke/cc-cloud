@@ -49,6 +49,8 @@ export function PanZoom(props: {
   children: (view: View, unitsPerPx: number) => ComponentChildren;
   /** suppresses clicks after a drag */
   onBackgroundClick?: () => void;
+  /** drawn behind the SVG (e.g. map tiles on a canvas), same view */
+  background?: (view: View, unitsPerPx: number, size: { w: number; h: number }) => ComponentChildren;
 }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 600, h: 400 });
@@ -156,6 +158,7 @@ export function PanZoom(props: {
         }
       }}
     >
+      {props.background?.(view, upp, size)}
       <svg
         viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
         preserveAspectRatio="none"

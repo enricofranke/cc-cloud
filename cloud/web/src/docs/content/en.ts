@@ -453,7 +453,7 @@ The network costs FE. The mainframe uses 40 FE/t + 4 per uplink + 8 per advanced
 The **Network** tab shows everything that is connected, in three views:
 
 - **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
-- **Map** – a top-down x/z map per dimension with a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
+- **Map** – a top-down x/z map per dimension on a real map of the world: **Surface** (like a Minecraft map) or **Slice** – a cut at a height you choose with the Y slider, so an underground base at y −60 shows its rooms and caves (darker = deeper). Only places near your network are shown, and only chunks that were loaded. With a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
 - **3D** – see below.
 
 Click or tap any node for details, with sub-menus: **Info** (type, position, dimension, status, signal or cable, range), **Route** (every hop to the mainframe and what a relay carries), **Power** (usage and buffer) and **Card** (the device's live card, controls as your role allows). **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (admins). Positions are only shown to browsers that may control the mainframe.
@@ -465,6 +465,7 @@ The **3D** view shows your base with the real block models at their real coordin
 - **Mouse:** drag to rotate, right-drag or Shift-drag to pan, wheel to zoom. **Touch:** one finger rotates, two fingers pinch and pan. **Keyboard:** focus the view, arrow keys pan, + and − zoom, Esc clears the selection. ⤢ fits everything again.
 - Click a block for its details. Clicking a **relay** (or the mainframe) highlights everything routed through it and dims the rest.
 - **Fly to…** finds a block by name and flies the camera there; the dimension tabs switch between Overworld, Nether and others.
+- **Blocks:** the world around your network as voxels – the real terrain, caves and your base, coloured like a Minecraft map, with soft shadows in corners, glowing lights and see-through water. Only blocks that touch air are sent (no x-ray for ores), only within about 40 blocks of your devices and only from loaded chunks. **Cut** removes everything above a height (slider) so you can look into an underground base; **Night** dims the world and lets the lights glow.
 - Far away, blocks are drawn larger so the base stays readable; the coloured dot above each block is its status.
 - 3D needs WebGL. Without it (switched off, very old graphics) the dashboard shows the 2D map instead. The 3D view is loaded only when you open it, so it does not slow down the rest of the dashboard.
 
@@ -520,6 +521,30 @@ A display block that shows one dashboard card or page **in the world**, like a C
 ## Wireless redstone {#redstone}
 
 Uplinks get a **redstone mode** in their screen: **transmitter** or **receiver** on a channel name. Receivers output the strongest signal of all transmitters on that channel (0–15). It works over relays, cables and – with Ender Relays – across dimensions, with the next tick as latency. Up to 64 channels per network; very fast clocks (faster than 2 ticks) are smoothed.
+`,
+  recipes: `# All recipes
+
+Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). JEI or EMI show the same in-game.
+
+## Basics {#basics}
+
+${C.recipeSection("basics", "en")}
+
+## Relays and cables {#network}
+
+${C.recipeSection("network", "en")}
+
+## Bridges {#bridges}
+
+${C.recipeSection("bridges", "en")}
+
+## Tablet, display, analyzer {#devices}
+
+${C.recipeSection("devices", "en")}
+
+## Mainframe upgrades {#upgrades}
+
+${C.recipeSection("upgrades", "en")}
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage

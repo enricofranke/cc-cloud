@@ -22,7 +22,7 @@ public final class Router {
     }
 
     public enum Id {
-        PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
+        PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
         SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
@@ -41,7 +41,7 @@ public final class Router {
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
-                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || isScript() || isMap();
+                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || isScript() || isMap();
         }
     }
 
@@ -74,6 +74,10 @@ public final class Router {
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares"),
         new Route(Id.SHARES_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/shares"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares"),
+        new Route(Id.PUSH_GET, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/push"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
+        new Route(Id.PUSH_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/push"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
         new Route(Id.SCRIPT_LIST, HttpMethod.GET, Pattern.compile(COMPUTER + "/files"), Access.DEVICE, EXAMPLE_COMPUTER + "/files"),
         new Route(Id.SCRIPT_GET, HttpMethod.GET, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_PUT, HttpMethod.PUT, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),

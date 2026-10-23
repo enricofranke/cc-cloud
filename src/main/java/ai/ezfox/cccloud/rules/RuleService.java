@@ -202,8 +202,7 @@ public final class RuleService {
         String user = "rule:" + rule.name();
         switch (action) {
             case Rule.AlertAction alert -> {
-                WebHub.INSTANCE.publishAlert(id, null, alert.text(), alert.level());
-                notifier.accept(new Notification(id, mainframe.getDisplayName(), alert.text(), alert.level()));
+                WebHub.INSTANCE.publishAlert(id, null, alert.text(), alert.level()); // also pushed (WebHub.onAlert)
                 return null;
             }
             case Rule.DashboardAction dashboard -> {

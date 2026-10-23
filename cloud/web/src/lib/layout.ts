@@ -434,9 +434,25 @@ export function snapshotLayout(pages: ResolvedPage[]): LayoutDoc {
   return doc;
 }
 
-/** v1 → v2 for a known set of uplinks (what the dashboard saves after the first edit). */
+/**
+ * v1 → v2 for a known set of uplinks (what the dashboard saves after the first
+ * edit). Entries of sections that are not there right now are kept (minus the
+ * v1-only order/span), like the server does, so they survive a restart.
+ */
 export function migrateLayout(uplinks: Uplink[], v1: LayoutDoc): LayoutDoc {
-  return snapshotLayout(resolveLayout(uplinks, normalizeLayout(v1), { includeHidden: true }));
+  const src = normalizeLayout(v1);
+  const doc = snapshotLayout(resolveLayout(uplinks, src, { includeHidden: true }));
+  for (const [k, c] of Object.entries(src.cards)) {
+    if (doc.cards[k]) continue;
+    const { order: _o, span: _s, ...rest } = c;
+    doc.cards[k] = rest;
+  }
+  for (const [k, w] of Object.entries(src.widgets)) {
+    if (doc.widgets[k]) continue;
+    const { order: _o, span: _s, ...rest } = w;
+    doc.widgets[k] = rest;
+  }
+  return doc;
 }
 
 const clone = (pages: ResolvedPage[]): ResolvedPage[] =>

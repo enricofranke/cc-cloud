@@ -514,11 +514,60 @@ No new browser message types: every card is an ordinary section (`uplink` snapsh
   - Safety: each rule has a cooldown (min 5 s), max 32 rules per mainframe, max 10 actions per rule run, loop protection (a rule cannot trigger itself or more than 20 rule runs per second per mainframe), and an audit log entry per run. Rules run on the server thread in a cheap evaluation step (only re-evaluate on relevant changes or interval ticks).
   - Rules are edited in the dashboard (canControl), stored in SavedData, validated server-side; Lua can list/enable/disable rules via `cloud_mainframe` (`getRules()`, `setRuleEnabled(id, bool)`).
 
+### C. Rules – web protocol and implementation notes (mod side)
+Implemented in `rules/` (`Rule`, `RuleCodec` = the strict schema, `RuleEngine` = pure evaluation, `RuleService` = game side, `RuleData` = SavedData `data/cccloud/rules.dat`). Rules are evaluated every 10 ticks on the server thread, only while their mainframe is loaded and online; config `rulesEnabled` (default true) switches all rules off.
+
+**Rule document** (`rule_set` sends it; unknown keys are an error, ≤ 4 KB; `lastRun`/`lastResult`/`runs` are accepted and ignored so the client may send back what it got):
+```json
+{"id": "0a1b2c3d", "name": "Cool the reactor", "enabled": true, "cooldown": 30, "notify": false,
+ "when": {"type": "widget", "uplinkId": "<uuid>", "widgetId": "temp", "op": ">", "value": 90},
+ "if":   [{"type": "power", "op": ">=", "value": 20}, {"type": "online", "uplinkId": "<uuid>"}],
+ "then": [{"type": "redstone", "uplinkId": "<uuid>", "side": "top", "value": 15},
+          {"type": "alert", "text": "Reactor hot", "level": "warn"}]}
+```
+- `id`: 8 hex chars; omit it for a new rule (the server assigns one, answered in `rule_result.id`); an existing id replaces that rule. `name` 1–48 chars; `enabled` default true; `cooldown` seconds 5–86400, default 30; `notify` (push the run result, v0.5 D).
+- **when** (exactly one): `widget` {uplinkId, widgetId, op, value} (numeric widgets; booleans count as 0/1), `items` {uplinkId, item `ns:path`, op, value ≥ 0} (storage behind a bridge/uplink card), `power` {op, value 0–100} (mainframe FE buffer in %), `offline` {uplinkId}, `interval` {minutes 1–1440}, `time` {time 0–23999, in-game time of day}. `op` ∈ `< <= > >= == !=`.
+- **if** (≤ 8, all must hold): the `widget`/`items`/`power` checks plus `online` {uplinkId}.
+- **then** (1–10): `redstone` {uplinkId, side top|bottom|left|right|front|back, value 0–15} (auto-card computers), `widget` {uplinkId, widgetId, value number|string ≤ 256|bool} (button/toggle/slider/select/number/text – same validation as a human action, user `rule:<name>`; widgets with a PIN are refused: `pin_widget` on save, `pin_required` at run time), `craft` {uplinkId, item, amount 1–`maxCraftAmount`} (via the card's item search), `alert` {text ≤ 120, level info|warn|error}, `dashboard` {enabled}.
+- **Loop protection**: a rule whose actions write the widget its trigger watches (or the `redstone` widget of the same uplink with a redstone action) is refused (`invalid_rule`). At most 20 rule runs per second per mainframe; the first throttled run in a second is logged as `rate_limited`, further ones are dropped.
+- **Semantics**: check/offline triggers fire on the false → true edge only (the first evaluation after a load only records the state; an unknown value keeps it); `interval` fires every N minutes after the rule was loaded; `time` fires when the day time passes the given tick (also across midnight). After the trigger: cooldown since the last run, then the conditions. Actions run in order; the run's result is the first error (later actions still run).
+- **Limit**: rules per mainframe = the Memory upgrade's value (base 8, tiers 24/64/128) capped by `maxRulesPerMainframe` (default 128, hard cap 128); more → `too_many`.
+
+**Messages** (rate limit as actions; answered with `{"t":"rule_result","reqId","ok","error?","detail?","id?"}`):
+- `{"t":"rule_set","reqId","rule":{…}}` – needs `rules.edit`; errors `invalid_rule` (+ `detail`: the first schema problem), `too_many`, `pin_widget`.
+- `{"t":"rule_delete","reqId","id"}` – `rules.edit`; `unknown_rule`.
+- `{"t":"rule_enable","reqId","id","enabled"}` – `rules.toggle`; `unknown_rule`.
+- `{"t":"rule_run","reqId","id"}` – `rules.toggle` ("Run now": ignores trigger, conditions and cooldown, not the run limit); `unknown_rule`, `offline`, `rate_limited`, or the first action error.
+- Permission errors as everywhere (`forbidden`/`read_only`/`not_allowed`).
+
+**Rules document** (snapshot field `rules`, delta `{"t":"rules", …}` after every change and every run; never sent to share sessions):
+`{"rules":[<rule> + "lastRun": ms|null, "lastResult": "ok"|error|null, "runs": n], "log":[{"time","rule","name","result","manual"}] (last 50 runs), "limit": n}`. The run state (`lastRun`, `runs`) lives in memory and starts fresh after a restart; the log is stored.
+
+Lua (`cloud_mainframe`): `getRules()` and `setRuleEnabled(id, enabled)`.
+
 ### D. Push notifications
 - Targets per mainframe (canControl to edit, secrets stored server-side, never sent back to the browser in full): **Discord webhook**, **ntfy** (topic URL, optional token), generic **webhook** (JSON POST).
 - What is sent: alerts (by min level), rule actions with `notify`, device approvals pending, mainframe offline/no power.
 - Outgoing HTTP from the server: async, timeouts 5 s, retries with backoff, max 30 messages/minute per mainframe, URL allowlist by scheme (https only, except ntfy on LAN), never follow redirects to private IPs (SSRF protection), config `pushEnabled` and `pushAllowedHosts`.
 - A "Send test notification" button.
+
+### D. Push – web protocol and implementation notes (mod side)
+Implemented in `push/` (`PushTarget`, `UrlPolicy` = SSRF rules, `PushFormat`, `PushHttp` = the HTTP client, `PushService`, `PushStore`/`PushData` = SavedData `data/cccloud/push.dat`, `PushApi`). New permission **`push.manage`** (group `manage`, admin and owner presets).
+
+**API** (`/api/mainframes/<id>/push`, needs `push.manage`; 403 `forbidden`/`not_allowed` like the other mainframe APIs):
+- `GET` → the push document: `{"enabled": bool (config), "targets":[{"id","type":"discord|ntfy|webhook","name","url":"https://discord.com/…a1b2","hasToken","minLevel":"info|warn|error","events":["alerts","rules","approvals","power"],"enabled","lastSent": ms|null,"lastResult":"ok"|"http_404"|"timeout"|…|null}], "limit": 5, "perMinute": 30, "allowedHosts":[…]}`. The URL is masked (scheme + host + last 4 characters) and the ntfy token is never returned (`hasToken`).
+- `POST {"op":"add","target":{"type","name?","url","token?","minLevel?","events?","enabled?"}}` – defaults: name = type, `minLevel` `warn`, events alerts + rules + power, enabled. Max 5 targets per mainframe (`too_many`).
+- `POST {"op":"update","id","target":{…}}` – only the given fields change; without `url`/`token` the stored secret stays (`"token":""` removes it). Changing the type needs a new `url`.
+- `POST {"op":"delete","id"}`, `POST {"op":"test","id"}` (queues "Test notification"; the result shows up as `lastResult`; 409 `disabled`, 429 `rate_limited`).
+- Every answer is the new push document; errors 400 `invalid`, `invalid_url`, `https_only`, `host_not_allowed`, `too_many`, 404 `unknown_target`. Changes are written to the mainframe's audit log.
+
+**What is sent:** `alerts` – every alert of a script, card, craft job or rule alert action from `minLevel` up (Lua `crit` counts as `error`), titled with the section's title; `rules` – runs of rules with `notify` (result `ok` or the error); `approvals` – a browser waits for in-game approval on the mainframe (device name only); `power` – "No power" (`error`) / "Power restored" (`info`), at most once a minute per mainframe.
+
+**Formats:** Discord `{"content","username":"CC: Cloud","allowed_mentions":{"parse":[]}}` (markdown and mentions escaped, ≤ 1900 chars); ntfy plain-text body with `Title` (control characters removed, non-ASCII as RFC 2047), `Priority` 3/4/5, `Tags`, optional `Authorization: Bearer <token>`; webhook `{"source":"cccloud","event","mainframeId","mainframe","title","text","level","time"}`.
+
+**Safety:** https only (plain http only for an ntfy target whose host is in `pushAllowedHosts`); no user info or fragment; Discord only `https://discord.com|discordapp.com|canary.discord.com|ptb.discord.com/api/webhooks/…` on the default port; `localhost`, `*.local`, `*.internal`, IP literals that are not public and numeric host tricks are refused unless allow-listed. At send time the host is resolved once and **every** address must be public (loopback, RFC 1918, link-local incl. 169.254.169.254, CGNAT 100.64/10, multicast, reserved, unique-local fc00::/7, IPv4-mapped/NAT64/6to4 forms of those, documentation ranges); the connection then goes to that checked address (no second lookup, no DNS rebinding), TLS checks certificate and host name, redirects are never followed (a 3xx counts as failed). Timeouts 5 s (connect, answer), responses ≤ 64 KB. Async on 2 worker threads, 30 deliveries per minute per mainframe (token bucket), queue ≤ 200, 3 attempts with 2 s / 6 s backoff for network errors, 429 and 5xx. Targets that no longer pass the rules (e.g. after the allowlist changed) are dropped on load.
+
+**Config** (`[push]`): `pushEnabled` (default true), `pushAllowedHosts` (default empty = any public host; `host` or `*.domain`).
 
 ### E. Browser terminal + Lua editor (for scripters)
 - **Terminal**: live view of a CC computer's terminal (attached to an uplink) with keyboard input from the browser (canControl only), like standing in front of it. Server streams terminal changes (diffed, max 10 fps, colour palette), input events are rate-limited and go through CC's event queue (`char`, `key`, `key_up`, `paste`, `mouse_click` optional). Uses CC's server-side terminal state (check the CC API for reading a ServerComputer's terminal).
@@ -767,7 +816,7 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 ### Tablet + Display – Implementation notes (mod side)
 Code: `ingame/` (shared: access helper, coverage, hub session, payloads, registry, dashboard model), `tablet/`, `display/`, client in `client/gui/{TabletScreen,DisplayScreen}` and `client/display/`. `CCCloud` calls `InGameRegistry.init` once. No new browser message types: in-game clients use the browser protocol inside custom payloads.
 
-**Rights** (all through `ingame.InGameAccess` → the AccessResolver's fine-grained permissions): the tablet needs `view`; every action is checked live by the bridge with the same per-widget-kind permission as a browser action (`act.buttons`, `act.redstone`, `storage.*` via `AccessGate.actionPerm`); restricted sections reach the tablet only with the permissions the hub requires (filtered by the session's permissions, changes are pushed); binding a display needs `network.link`, choosing what it shows `layout.edit`, in-world clicks `act.buttons` of the clicking player. Share-link viewers never get anything: in-game clients are always a real player. Cached sections of unloaded chunks (`loaded:false`, `lastSeen`) are shown greyed with the time they were last seen (tablet and display); their controls are disabled.
+**Rights** (all through `ingame.InGameAccess` → the AccessResolver's fine-grained permissions): the tablet needs `view`; every action is checked live by the bridge with the same per-widget-kind permission as a browser action (`act.buttons`, `act.redstone`, `storage.*` via `AccessGate.actionPerm`); restricted sections reach the tablet only with the permissions the hub requires (filtered by the session's permissions, changes are pushed); binding a display needs `network.link`, choosing what it shows `layout.edit`, in-world clicks `act.buttons` of the clicking player. Share-link viewers never get anything: in-game clients are always a real player. Label widgets follow the web rule: long (> 32 characters) or multi-entry values (" · ", ";", newlines, e.g. tick time per dimension) get the caption on its own row and one line per entry below (with the TPS a tick time allows); otherwise the caption, not the value, is cut with an ellipsis. Cached sections of unloaded chunks (`loaded:false`, `lastSeen`) are shown greyed with the time they were last seen (tablet and display); their controls are disabled.
 
 **Cloud Tablet** (`cccloud:cloud_tablet`, `cccloud:advanced_cloud_tablet`, stack size 1):
 - Link: right-click a mainframe (viewer and up). Open: right-click, or the key "Open Cloud Tablet" (unbound by default) – the first linked tablet in the hands, inventory or Curios slots. Curios: the tablets are in the `curios:belt` item tag and `data/cccloud/curios/entities/cloud_tablet.json` gives players a belt slot (data only; the Curios API is only used to find a tablet, `compile/runtime` via `top.theillusivec4.curios:curios-neoforge:15.0.0+26.1.2`, soft).
@@ -897,7 +946,7 @@ Code: `analyzer/` (geometry + preview, service, item, device info), `client/anal
 - **Item** `cccloud:cloud_analyzer` (stack size 1, recipe: pocket computer + cloud core + redstone + glass pane, shapeless). The overlay also shows while holding a Link Card or a mainframe/uplink/relay/bridge item (main or off hand); client config `analyzerOverlay` (default true).
 - **Payload** `cccloud:analyzer_data` (S2C, JSON ≤ 256 KB): `{"dim","nodes":[{id,net,name,type,x,y,z,nr,dr,ok,hops,ps,status}],"devices":[{id,net,name,type,x,y,z,r,signal,hops,status}],"links":[{a,b,signal,kind (radio|ender|wired|fiber),used?}],"ranges":{"uplink":[r],"advanced_uplink":[r],"bridge":[r],"relay":[nodeRange,deviceRange],…}}`; `{}` clears it. Only networks where the player has `view.positions`; only the player's dimension; devices and links within 128 blocks, nodes whose device bubble reaches within 128 blocks; at most 256 elements, nearest first. Checked every 10 ticks while such an item is held, sent when it changed and at least every 2 s; one `{}` when the player stops holding it.
 - **Overlay** (client tick, vanilla gizmos, always on top): range bubbles (rings: device range + node range; spheres: latitude rings with LOD by distance; off), cycled with the key "Cloud Analyzer: ranges" (unbound) or sneak + scroll with the analyzer; links coloured by signal (green, yellow below 15 %, red broken; cyan for CC cable and fiber links; faint if unused; dashed ender links); device markers by status; at most 256 shapes.
-- **Placement preview** (holding a relay/uplink/bridge, looking at a block): ghost box and range circle at the placement position, a line to the node it would attach to and the label "Would connect to X · 68 % · 2 hops" / "Out of range – nearest node: X, 143 blocks (range 96)". Same rules as the server's network graph (link if the distance is at most the larger range; fewest hops, then best signal; max 8 hops); a GameTest checks it against `NetworkService.checkLink`. Radio links only: a device that will sit on a CC cable or fiber is not predicted.
+- **Placement preview** (holding a relay/uplink/bridge, looking at a block): ghost box and range circle at the placement position, a line to the node it would attach to and a billboard label (panel with a coloured border, drawn above everything, scaled with the distance and clamped to a readable size, kept on screen) "Would connect to X · 68 % · hops: 2" / "Out of range – nearest node: X, 143 blocks (range 96)". Same rules as the server's network graph (link if the distance is at most the larger range; fewest hops, then best signal; max 8 hops); a GameTest checks it against `NetworkService.checkLink`. Radio links only: a device that will sit on a CC cable or fiber is not predicted.
 - **HUD line** (top centre): "Signal here: 72 % via X" or "No coverage ↗ X, 143 blocks" (arrow relative to the view direction).
 - **Right-click** a cloud block with the analyzer: chat summary (status, signal, hops, route as block types, power) for networks with `view`; sneak + right-click highlights the route to the mainframe for 10 s (needs `view.positions`).
 - **Jade** on uplinks, relays and bridges: signal and hops, route ("Mainframe → Cloud Relay → Cloud Uplink") and the reason when not online (`no_route`, `no_power`, `legacy_out_of_range`, `unloaded`), only for networks where the looking player has `view`; no coordinates.
@@ -1058,7 +1107,7 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 
 ### Fine-grained permissions per mainframe (requested 2026-10-23)
 Roles stay as presets, but every grant can be customized with individual permissions.
-- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
+- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `push.manage` (push targets, v0.5 D), `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
 - Presets: viewer = {view, storage.search}; operator = viewer + {act.*, storage.craft, rules.toggle}; admin = everything except ownership transfer; owner = all. A grant = preset + `allow`/`deny` lists (deny wins). Team-rank grants work the same way.
 - `AccessResolver` returns an effective permission set; every check uses `has(perm)` instead of role comparisons (keep the role for display). PIN-protected widgets additionally require the PIN as today.
 - Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.
@@ -1079,6 +1128,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 - HTTP:
   - access: `access.manage`;
   - shares: `shares.create`;
+  - push targets: `push.manage`;
   - script list, read and write: `scripts.upload`; run: `scripts.run`; delete: `scripts.delete`.
 - In-game screen and commands:
   - dashboard switch: `power.toggle`;

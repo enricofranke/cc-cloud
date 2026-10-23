@@ -38,6 +38,11 @@ public final class InGameClient {
     }
 
     @SubscribeEvent
+    static void onRenderLevel(net.neoforged.neoforge.client.event.RenderLevelStageEvent.AfterWeather event) {
+        ai.ezfox.cccloud.client.analyzer.AnalyzerOverlay.projectLabel(event);
+    }
+
+    @SubscribeEvent
     static void setup(FMLClientSetupEvent event) {
         ai.ezfox.cccloud.client.dev.DemoCapture.init();
         InGamePayloads.clientAnalyzerHandler = payload -> ai.ezfox.cccloud.client.analyzer.AnalyzerOverlay.accept(payload.json());

@@ -25,6 +25,7 @@ public enum Perm {
     LAYOUT_EDIT("layout.edit", "manage"),
     RULES_EDIT("rules.edit", "rules"),
     RULES_TOGGLE("rules.toggle", "rules"),
+    PUSH_MANAGE("push.manage", "manage"),
     DEVICES_MANAGE("devices.manage", "manage"),
     ACCESS_MANAGE("access.manage", "manage"),
     SHARES_CREATE("shares.create", "manage"),

@@ -4,7 +4,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse, parseInline, safeHref, type Block, type Inline } from "../web/src/docs/md.ts";
 import { CONTENT, ITEMS, PAGES, detectLang, itemName, type Lang } from "../web/src/docs/content/index.ts";
-import { RECIPES } from "../web/src/docs/content/code.ts";
+import { ALL_RECIPES } from "../web/src/docs/content/code.ts";
+import { generate as generateRecipes } from "../dev/build-recipes.ts";
 import { search, pageBlocks } from "../web/src/docs/search.ts";
 
 const LANGS: Lang[] = ["en", "de"];
@@ -127,35 +128,30 @@ describe("content", () => {
 });
 
 describe("recipes", () => {
-  it("match the recipe JSON files of the mod", () => {
+  it("are generated from the mod's recipe JSONs and up to date", () => {
+    const fresh = JSON.parse(JSON.stringify(generateRecipes()));
+    const file = fileURLToPath(new URL("../web/src/docs/content/recipes.gen.json", import.meta.url));
+    expect(JSON.parse(readFileSync(file, "utf8")), "run node dev/build-recipes.ts").toEqual(fresh);
     const dir = fileURLToPath(new URL("../../src/main/resources/data/cccloud/recipe/", import.meta.url));
-    const all = readdirSync(dir).filter((f) => f.endsWith(".json"));
-    const byResult = Object.fromEntries(Object.values(RECIPES).map((r) => [r.result, r]));
-    // v0.7 items (upgrades with their fallbacks, tablet, display, analyzer, fiber) are described in prose for now
-    const v07 = /^(upgrade_|quantum_core|cloud_tablet|advanced_cloud_tablet|cloud_display|cloud_analyzer|fiber_|ender_fiber)|_fallback\.json$/;
-    const files = all.filter((f) => !v07.test(f));
-    for (const f of files) expect(Object.values(byResult).some((r: any) => r.result === JSON.parse(readFileSync(dir + f, "utf8")).result.id), f).toBe(true);
-    for (const f of all) {
-      const j = JSON.parse(readFileSync(dir + f, "utf8"));
-      const r: any = byResult[j.result.id];
-      if (!r) continue;
-      if (j.type !== "minecraft:crafting_shaped" && j.type !== "minecraft:crafting_shapeless") continue;
-      expect(r.count ?? 1, f).toBe(j.result.count ?? 1);
-      if (j.type === "minecraft:crafting_shapeless") expect(r.items, f).toEqual(j.ingredients);
-      else {
-        expect(r.grid, f).toEqual(j.pattern);
-        expect(r.key, f).toEqual(j.key);
-      }
+    expect(ALL_RECIPES.map((r) => `${r.file}.json`).sort()).toEqual(readdirSync(dir).filter((f) => f.endsWith(".json")).sort());
+  });
+
+  it("are all on the All recipes page in both languages, with conditions", () => {
+    for (const l of LANGS) {
+      const md = CONTENT[l].recipes;
+      for (const r of ALL_RECIPES) expect(md, `${l}: ${r.file}`).toContain(JSON.stringify(r));
     }
+    expect(ALL_RECIPES.find((r) => r.file === "upgrade_range_vibranium_fallback")!.requires).toEqual(["!mod:allthemodium"]);
   });
 
   it("names every ingredient in both languages", () => {
-    for (const r of Object.values(RECIPES) as any[])
-      for (const id of [r.result, ...Object.values(r.key ?? {}), ...(r.items ?? [])] as string[]) {
+    for (const r of ALL_RECIPES)
+      for (const id of [r.result, ...Object.values(r.key ?? {}), ...(r.items ?? [])]) {
         expect(ITEMS[id], id).toBeTruthy();
         expect(itemName(id, "de")).not.toBe("");
       }
     expect(itemName("#c:ingots/gold", "de")).toBe("Goldbarren (beliebig)");
+    expect(itemName("cccloud:cloud_tablet", "en")).toBe("Cloud Tablet");
   });
 });
 
