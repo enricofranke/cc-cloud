@@ -50,11 +50,6 @@ const ts = () => new Date().toISOString();
 
 // ---- options --------------------------------------------------------------------------------------------------------
 const argv = process.argv.slice(2);
-if (argv[0] === "summary") {
-  const s = summarize(argv[1]);
-  console.log(readFileSync(join(argv[1], "summary.md"), "utf8"));
-  process.exit(s.verdict === "ok" ? 0 : 1);
-}
 const opt = (name, def) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : def; };
 const flag = (name) => argv.includes(`--${name}`);
 const HOURS = Number(opt("hours", 6));
@@ -62,7 +57,7 @@ const CLIENTS = Number(opt("clients", 20));
 const BASELINE_MIN = Number(opt("baseline-min", 10));
 const SAMPLE_MS = Number(opt("sample-sec", 60)) * 1000;
 const OUT = opt("out", join(SCRATCH, `soak-${new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)}`));
-mkdirSync(OUT, { recursive: true });
+if (argv[0] !== "summary") mkdirSync(OUT, { recursive: true });
 const RUN_LOG = join(OUT, "soak.log");
 function log(...a) {
   const line = `[${ts()}] ${a.join(" ")}`;
@@ -484,6 +479,7 @@ function regress(points) { // [[xHours, y]] -> slope per hour, r2
 }
 const avg = (a) => { const v = a.filter((x) => x != null && Number.isFinite(x)); return v.length ? +(v.reduce((x, y) => x + y, 0) / v.length).toFixed(2) : null; };
 const max = (a) => { const v = a.filter((x) => x != null && Number.isFinite(x)); return v.length ? Math.max(...v) : null; };
+const median = (a) => { const v = a.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y); return v.length ? v[Math.floor(v.length / 2)] : null; };
 const min = (a) => { const v = a.filter((x) => x != null && Number.isFinite(x)); return v.length ? Math.min(...v) : null; };
 
 function summarize(dir) {
@@ -528,7 +524,7 @@ function summarize(dir) {
   if (gaps.length) findings.push(`${gaps.length} sampling gap(s) (${gaps.join(", ")} s): the machine or the harness stalled`);
   const dead = rows.some((r) => r.phase === "dead");
   if (dead) findings.push("the server process died during the run");
-  const totals = Object.fromEntries(KINDS.map((k) => [k, { n: load.reduce((a, r) => a + (r[`${k}_n`] ?? 0), 0), err: load.reduce((a, r) => a + (r[`${k}_err`] ?? 0), 0), limited: load.reduce((a, r) => a + (r[`${k}_429`] ?? 0), 0), p95_median: avg(load.map((r) => r[`${k}_p95`])) }]));
+  const totals = Object.fromEntries(KINDS.map((k) => [k, { n: load.reduce((a, r) => a + (r[`${k}_n`] ?? 0), 0), err: load.reduce((a, r) => a + (r[`${k}_err`] ?? 0), 0), limited: load.reduce((a, r) => a + (r[`${k}_429`] ?? 0), 0), p95_avg: avg(load.map((r) => r[`${k}_p95`])), p95_median: median(load.map((r) => r[`${k}_p95`])) }]));
   for (const k of KINDS) if (totals[k].n && totals[k].err / totals[k].n > 0.01) findings.push(`${k} errors ${totals[k].err}/${totals[k].n}`);
   const ruleRuns = max(load.map((r) => r.rule_runs)) ?? 0;
   const expectedRuns = load.length ? load.at(-1).minute - load[0].minute - 1 : 0;
@@ -580,7 +576,7 @@ function summarize(dir) {
     `| rule runs / last result | ${ruleRuns} / ${f(s.rules.last)} |`,
     `| clients connected (min) / reconnects | ${f(s.clients.min)} / ${f(s.clients.reconnects)} |`,
     `| value messages per minute (all clients) | ${f(s.clients.valuesPerMin)} |`,
-    ...KINDS.map((k) => `| ${k}: requests / errors / 429 / p95 | ${totals[k].n} / ${totals[k].err} / ${totals[k].limited} / ${f(totals[k].p95_median)} ms |`),
+    ...KINDS.map((k) => `| ${k}: requests / errors / 429 / p95 (median minute, mean) | ${totals[k].n} / ${totals[k].err} / ${totals[k].limited} / ${f(totals[k].p95_median)}, ${f(totals[k].p95_avg)} ms |`),
     `| cccloud log WARN / ERROR lines | ${s.log.warn} / ${s.log.error} |`,
     `| machine load avg (1 min) / harness event-loop p99 | ${f(avg(load.map((r) => r.loadavg_1m)))} / ${f(avg(load.map((r) => r.harness_loop_p99_ms)))} ms |`,
     "",
@@ -653,6 +649,7 @@ async function main() {
         const jcmdUp = await run(join(JAVA_HOME_BIN, "jcmd"), [String(serverPid()), "VM.uptime"]);
         meta.loadStartUptimeSec = Number(jcmdUp?.match(/([\d.]+) s/)?.[1] ?? 0);
         meta.loadStarted = ts();
+        ctx.lastSampleAt = null; // the switch skips one sample on purpose: not a gap
         writeFileSync(join(OUT, "meta.json"), JSON.stringify(meta, null, 2));
         continue;
       }
@@ -679,6 +676,11 @@ async function main() {
   return s;
 }
 
+if (argv[0] === "summary") {
+  const s = summarize(argv[1]);
+  console.log(readFileSync(join(argv[1], "summary.md"), "utf8"));
+  process.exit(s.verdict === "ok" ? 0 : 1);
+}
 main().then((s) => process.exit(s.verdict === "ok" ? 0 : 1), (e) => {
   log(`FAILED: ${e.stack ?? e}`);
   try { if (serverPid()) stopServer(); } catch {}
