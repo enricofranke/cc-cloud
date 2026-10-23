@@ -8,6 +8,9 @@
     },
     "status=offline": {
       "model": "cccloud:block/advanced_cloud_relay_offline"
+    },
+    "status=no_power": {
+      "model": "cccloud:block/advanced_cloud_relay_no_power"
     }
   }
 }

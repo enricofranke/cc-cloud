@@ -42,6 +42,13 @@ public final class WebHub {
         /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
         @Nullable JsonObject power;
         @Nullable String reason;
+        /** v0.4 network map: full (with positions, canControl) and without positions; sent at most 2x per second. */
+        @Nullable String networkFull;
+        @Nullable String networkStripped;
+        @Nullable JsonObject networkFullJson;
+        @Nullable JsonObject networkStrippedJson;
+        boolean networkDirty;
+        long networkSentAt;
         /** Shared dashboard layout (validated), null = never edited. */
         @Nullable JsonObject layout;
         /** 5 layout saves per 10 s per mainframe. */
@@ -109,6 +116,33 @@ public final class WebHub {
         if (view == null) return true;
         synchronized (view) {
             return view.power == null || view.power.get("ok").getAsBoolean() != ok;
+        }
+    }
+
+    /** Network map of a mainframe; snapshots include it and changes go out as {"t":"network",...} (max 2/s). */
+    public void publishNetwork(UUID mainframeId, JsonObject full, JsonObject stripped) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            if (full.equals(view.networkFullJson)) return;
+            view.networkFullJson = full;
+            view.networkStrippedJson = stripped;
+            var a = new JsonObject();
+            a.addProperty("t", "network");
+            a.add("network", full);
+            var b = new JsonObject();
+            b.addProperty("t", "network");
+            b.add("network", stripped);
+            view.networkFull = Json.GSON.toJson(a);
+            view.networkStripped = Json.GSON.toJson(b);
+            view.networkDirty = true;
+        }
+    }
+
+    public @Nullable JsonObject networkForTest(UUID mainframeId, boolean positions) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            return positions ? view.networkFullJson : view.networkStrippedJson;
         }
     }
 
@@ -330,6 +364,9 @@ public final class WebHub {
             for (var uplink : view.uplinks.values()) uplinks.add(uplink);
             json.add("uplinks", uplinks);
             json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
+            // Positions only for devices with canControl.
+            var network = canControl ? view.networkFullJson : view.networkStrippedJson;
+            if (network != null) json.add("network", network);
             snapshot = Json.GSON.toJson(json);
         }
         session.send(List.of(snapshot));
@@ -380,13 +417,29 @@ public final class WebHub {
 
     /** Sends all pending changes. Called periodically from a Netty thread. */
     public void flush() {
+        long now = System.currentTimeMillis();
         for (var view : views.values()) {
             Map<String, JsonObject> pending;
+            String networkFull = null, networkStripped = null;
             synchronized (view) {
-                if (view.outbox.isEmpty()) continue;
+                if (view.networkDirty && now - view.networkSentAt >= 500) {
+                    view.networkDirty = false;
+                    view.networkSentAt = now;
+                    networkFull = view.networkFull;
+                    networkStripped = view.networkStripped;
+                }
+                if (view.outbox.isEmpty() && networkFull == null) continue;
                 pending = view.outbox;
                 view.outbox = new LinkedHashMap<>();
             }
+            if (networkFull != null && !view.sessions.isEmpty()) {
+                for (var session : view.sessions) {
+                    var device = session.device();
+                    boolean control = device == null || device.canControl();
+                    session.send(List.of(control ? networkFull : networkStripped));
+                }
+            }
+            if (pending.isEmpty()) continue;
             if (view.sessions.isEmpty()) continue;
             var messages = new ArrayList<String>(pending.size());
             for (var message : pending.values()) messages.add(Json.GSON.toJson(message));

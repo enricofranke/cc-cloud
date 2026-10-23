@@ -117,22 +117,182 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
 
     @Override
     protected List<Component> tabs() {
-        if (!manage()) return List.of();
+        if (!manage()) return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.network"));
         return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.devices"),
-            Component.translatable("cccloud.gui.tab.trusted"), Component.translatable("cccloud.gui.tab.security"));
+            Component.translatable("cccloud.gui.tab.trusted"), Component.translatable("cccloud.gui.tab.security"),
+            Component.translatable("cccloud.gui.tab.network"));
     }
 
     // ---- rows --------------------------------------------------------------------------------------------------------
 
     @Override
     protected void buildRows() {
-        if (!manage()) tab = 0;
+        if (!manage()) {
+            if (tab > 1) tab = 0;
+            if (tab == 1) network();
+            else overview();
+            return;
+        }
         switch (tab) {
             case 1 -> devices();
             case 2 -> trusted();
             case 3 -> security();
+            case 4 -> network();
             default -> overview();
         }
+    }
+
+    // ---- network tab (v0.4) ------------------------------------------------------------------------------------------
+
+    private static int statusColor(String status) {
+        return switch (status) {
+            case "online" -> CloudGui.GREEN;
+            case "connecting" -> CloudGui.YELLOW;
+            case "unloaded" -> CloudGui.TEXT_DIM;
+            default -> CloudGui.RED;
+        };
+    }
+
+    private void network() {
+        // Power breakdown
+        if (view.has("powerBreakdown")) {
+            heading("cccloud.gui.power_breakdown");
+            var power = view.getAsJsonObject("powerBreakdown");
+            for (var key : List.of("base", "uplinks", "advanced_uplinks", "bridges", "clients", "hops", "total")) {
+                long value = num(power, key);
+                if (value == 0 && !key.equals("total") && !key.equals("base")) continue;
+                rows.add(new Row(11, (c, x, y, w) -> {
+                    var label = Component.translatable("cccloud.gui.power." + key);
+                    c.text(label, x + 4, y + 1, key.equals("total") ? CloudGui.TEXT : CloudGui.TEXT_DIM);
+                    String v = String.format("%,d FE/t", value);
+                    c.g().text(font, v, x + w - 4 - font.width(v), y + 1, key.equals("total") ? CloudGui.GOLD : CloudGui.TEXT, false);
+                }));
+            }
+        }
+        heading("cccloud.gui.network");
+        if (!view.has("network")) {
+            textRow(Component.translatable("cccloud.gui.network_empty"), CloudGui.TEXT_DIM);
+            return;
+        }
+        var network = view.getAsJsonObject("network");
+        var nodes = network.getAsJsonArray("nodes");
+        if (nodes.size() <= 1) textRow(Component.translatable("cccloud.gui.network_empty"), CloudGui.TEXT_DIM);
+        int noRoute = 0;
+        for (var e : nodes) if ("no_route".equals(str(e.getAsJsonObject(), "status"))) noRoute++;
+        if (noRoute > 0) warningRow(Component.translatable("cccloud.gui.no_route_hint", noRoute));
+
+        // Mini map (top-down x/z of the mainframe's dimension)
+        rows.add(new Row(104, (c, x, y, w) -> miniMap(c, x, y, w, 100, network)));
+
+        // Tree list: children by parent, depth-first from the mainframe.
+        var byParent = new java.util.LinkedHashMap<String, List<com.google.gson.JsonObject>>();
+        com.google.gson.JsonObject root = null;
+        var signals = new java.util.HashMap<String, Double>();
+        for (var e : network.getAsJsonArray("links")) {
+            var l = e.getAsJsonObject();
+            signals.put(str(l, "a") + ">" + str(l, "b"), l.get("signal").getAsDouble());
+            signals.put(str(l, "b") + ">" + str(l, "a"), l.get("signal").getAsDouble());
+        }
+        var orphans = new java.util.ArrayList<com.google.gson.JsonObject>();
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            if ("mainframe".equals(str(n, "type"))) root = n;
+            else if (n.has("parent")) byParent.computeIfAbsent(str(n, "parent"), k -> new java.util.ArrayList<>()).add(n);
+            else orphans.add(n);
+        }
+        if (root != null) treeRows(root, 0, byParent, signals);
+        for (var n : orphans) treeRow(n, 1, signals);
+    }
+
+    private void treeRows(com.google.gson.JsonObject node, int depth, java.util.Map<String, List<com.google.gson.JsonObject>> byParent,
+                          java.util.Map<String, Double> signals) {
+        if (depth > 9) return;
+        treeRow(node, depth, signals);
+        for (var child : byParent.getOrDefault(str(node, "id"), List.of())) treeRows(child, depth + 1, byParent, signals);
+    }
+
+    private void treeRow(com.google.gson.JsonObject node, int depth, java.util.Map<String, Double> signals) {
+        String status = str(node, "status");
+        boolean legacy = node.has("flags") && node.get("flags").toString().contains("legacy_out_of_range");
+        Double signal = node.has("parent") ? signals.get(str(node, "parent") + ">" + str(node, "id")) : null;
+        String type = str(node, "type");
+        String name = str(node, "name").isEmpty() ? Component.translatableWithFallback("cccloud.network.node." + type, type).getString() : str(node, "name");
+        String distance = "";
+        rows.add(new Row(14, (c, x, y, w) -> {
+            int ix = x + 2 + depth * 8;
+            var g = c.g();
+            g.fill(ix, y + 4, ix + 5, y + 9, legacy ? CloudGui.YELLOW : statusColor(status));
+            int right = x + w - 2;
+            if (signal != null) {
+                // Signal bars (4)
+                int bars = signal >= 0.75 ? 4 : signal >= 0.5 ? 3 : signal >= 0.15 ? 2 : 1;
+                int color = signal < 0.15 ? CloudGui.YELLOW : CloudGui.CYAN;
+                for (int i = 0; i < 4; i++) {
+                    int bh = 2 + i * 2;
+                    g.fill(right - 15 + i * 4, y + 11 - bh, right - 12 + i * 4, y + 11, i < bars ? color : 0xFF333333);
+                }
+                right -= 19;
+            }
+            String label = name + (legacy ? " ⚠" : "");
+            c.text(label, ix + 8, y + 3, CloudGui.TEXT, right - ix - 10);
+        }));
+        if (legacy) textRow(Component.translatable("cccloud.gui.legacy"), CloudGui.YELLOW);
+    }
+
+    private void miniMap(Ctx c, int x, int y, int w, int h, com.google.gson.JsonObject network) {
+        var g = c.g();
+        g.fill(x, y, x + w, y + h, 0xFF0A0F12);
+        // Grid
+        for (int gx = x; gx < x + w; gx += 10) g.fill(gx, y, gx + 1, y + h, 0xFF151D22);
+        for (int gy = y; gy < y + h; gy += 10) g.fill(x, gy, x + w, gy + 1, 0xFF151D22);
+        String dim = null;
+        var points = new java.util.HashMap<String, int[]>();
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
+        var nodes = network.getAsJsonArray("nodes");
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            if ("mainframe".equals(str(n, "type"))) dim = str(n, "dim");
+        }
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            if (!n.has("pos") || !str(n, "dim").equals(dim)) continue;
+            var p = n.getAsJsonObject("pos");
+            minX = Math.min(minX, p.get("x").getAsDouble());
+            maxX = Math.max(maxX, p.get("x").getAsDouble());
+            minZ = Math.min(minZ, p.get("z").getAsDouble());
+            maxZ = Math.max(maxZ, p.get("z").getAsDouble());
+        }
+        if (minX == Double.MAX_VALUE) return;
+        double span = Math.max(16, Math.max(maxX - minX, maxZ - minZ));
+        double scale = Math.min(w - 12, h - 12) / span;
+        double cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            if (!n.has("pos") || !str(n, "dim").equals(dim)) continue;
+            var p = n.getAsJsonObject("pos");
+            int px = x + w / 2 + (int) Math.round((p.get("x").getAsDouble() - cx) * scale);
+            int pz = y + h / 2 + (int) Math.round((p.get("z").getAsDouble() - cz) * scale);
+            points.put(str(n, "id"), new int[]{px, pz, statusColor(str(n, "status")), "mainframe".equals(str(n, "type")) ? 1 : 0});
+        }
+        for (var e : network.getAsJsonArray("links")) {
+            var l = e.getAsJsonObject();
+            var a = points.get(str(l, "a"));
+            var b = points.get(str(l, "b"));
+            if (a == null || b == null) continue;
+            int color = "ender".equals(str(l, "kind")) ? 0xFF9C5BD6 : l.get("signal").getAsDouble() < 0.15 ? 0xFF8A7A20 : 0xFF2C6E7A;
+            int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
+            for (int i = 0; i <= steps; i += 2) {
+                int px = a[0] + (b[0] - a[0]) * i / Math.max(1, steps);
+                int pz = a[1] + (b[1] - a[1]) * i / Math.max(1, steps);
+                g.fill(px, pz, px + 1, pz + 1, color);
+            }
+        }
+        for (var p : points.values()) {
+            int r = p[3] == 1 ? 2 : 1;
+            g.fill(p[0] - r, p[1] - r, p[0] + r + 1, p[1] + r + 1, p[3] == 1 ? CloudGui.GOLD : p[2]);
+        }
+        String scaleText = Math.round(span) + " m";
+        g.text(font, scaleText, x + w - 3 - font.width(scaleText), y + h - 10, CloudGui.TEXT_DIM, false);
     }
 
     private void overview() {

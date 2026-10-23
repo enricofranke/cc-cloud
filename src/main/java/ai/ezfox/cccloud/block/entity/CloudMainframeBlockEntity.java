@@ -133,6 +133,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         }
         registered = true;
         syncAcl();
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
     /** Mirrors owner + trust list into the auth store so device rights can be checked while this chunk is unloaded. */
@@ -149,6 +150,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             registered = false;
             CloudNetwork.unregisterMainframe(this);
             online = false;
+            ai.ezfox.cccloud.network.NetworkService.markDirty();
             WebHub.INSTANCE.publishMainframe(mainframeId, getDisplayName(), false, enabled);
         }
     }
@@ -181,6 +183,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         tickPower();
 
         boolean nowOnline = !powered && hasPower && CloudConfig.get(CloudConfig.ALLOW_CLOUD);
+        if (nowOnline != online) ai.ezfox.cccloud.network.NetworkService.markDirty(); // the root node changed
         online = nowOnline;
         CloudStatus newStatus;
         if (!nowOnline || !enabled || !CloudConfig.get(CloudConfig.WEB_ENABLED)) {
@@ -215,10 +218,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private void tickPower() {
         int capacity = CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE);
         if (capacity != energy.capacity()) energy.setCapacity(capacity);
-        int loaded = 0;
-        for (var id : linkedUplinks.keySet()) if (CloudNetwork.section(id) != null) loaded++;
-        energyUsage = ai.ezfox.cccloud.power.PowerState.usage(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
-            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), loaded, WebHub.INSTANCE.clientCount(mainframeId));
+        // v0.4: base + per connected device type + per client + per extra hop (counts come from the network service).
+        energyUsage = ai.ezfox.cccloud.network.NetworkService.power(mainframeId, WebHub.INSTANCE.clientCount(mainframeId)).get("total");
         boolean before = hasPower;
         hasPower = power.tick(energy.energy(), energyUsage, CloudConfig.get(CloudConfig.REQUIRE_POWER), energy::consume);
         energy.startTick();
@@ -246,6 +247,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
     public long energyUsage() {
         return energyUsage;
+    }
+
+    /** What costs how much (FE/t), for the screen, the dashboard and Lua. */
+    public java.util.Map<String, Long> powerBreakdown() {
+        return ai.ezfox.cccloud.network.NetworkService.power(mainframeId, WebHub.INSTANCE.clientCount(mainframeId));
     }
 
     public void updateRedstone() {

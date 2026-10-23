@@ -28,6 +28,8 @@ public final class CloudNetwork {
     private static final Map<UUID, CloudUplinkBlockEntity> UPLINKS = new HashMap<>();
     /** Linked ME/RS Cloud Bridges (their own dashboard sections). */
     private static final Map<UUID, DashboardSection> BRIDGE_SECTIONS = new HashMap<>();
+    /** Loaded relays (v0.4 network nodes). */
+    private static final Map<UUID, ai.ezfox.cccloud.relay.CloudRelayBlockEntity> RELAYS = new HashMap<>();
 
     private CloudNetwork() {
     }
@@ -91,6 +93,30 @@ public final class CloudNetwork {
         return uplink == null || uplink.isRemoved() ? null : uplink;
     }
 
+    public static boolean registerRelay(ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) {
+        var existing = RELAYS.get(relay.relayId());
+        if (existing != null && existing != relay && !existing.isRemoved()) return false;
+        RELAYS.put(relay.relayId(), relay);
+        return true;
+    }
+
+    public static void unregisterRelay(ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) {
+        RELAYS.remove(relay.relayId(), relay);
+    }
+
+    public static Collection<ai.ezfox.cccloud.relay.CloudRelayBlockEntity> relays() {
+        return RELAYS.values();
+    }
+
+    public static Collection<CloudUplinkBlockEntity> uplinks() {
+        return UPLINKS.values();
+    }
+
+    /** Linked bridge sections (loaded). */
+    public static Collection<DashboardSection> bridgeSections() {
+        return BRIDGE_SECTIONS.values();
+    }
+
     /** @return false if another loaded section already uses this id. */
     public static boolean registerSection(DashboardSection section) {
         var existing = BRIDGE_SECTIONS.get(section.sectionId());
@@ -112,6 +138,7 @@ public final class CloudNetwork {
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
+        NetworkService.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
     }
 
@@ -137,6 +164,8 @@ public final class CloudNetwork {
         MAINFRAMES.clear();
         UPLINKS.clear();
         BRIDGE_SECTIONS.clear();
+        RELAYS.clear();
+        NetworkService.clear();
         WebHub.INSTANCE.clear();
         server = null;
         CCCloud.LOGGER.debug("CC: Cloud network state cleared");

@@ -83,6 +83,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private boolean auto;
     /** Set when the last computer detached (shutdown/reboot): Lua widgets are dropped so the card comes back. */
     private volatile boolean computerDetached;
+    /** Linked before v0.4 (no "net_v" marker): keeps working out of range while legacyRangeGrace is on. */
+    private boolean legacyLink;
+    /** "no_route", "legacy_out_of_range" or null (for the screen). */
+    private volatile @Nullable String routeState;
     /** Last forwarded watchlist alert per bridge (key = bridge position). */
     private final Map<String, Integer> bridgeAlertSeq = new java.util.HashMap<>();
 
@@ -142,6 +146,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         super.loadAdditional(input);
         input.read("uplink_id", UUIDUtil.STRING_CODEC).ifPresent(id -> uplinkId = id);
         link = input.read("link", MainframeLink.CODEC).orElse(null);
+        legacyLink = link != null && (input.getIntOr("net_v", 0) < 1 || input.getBooleanOr("legacy_link", false));
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
@@ -168,6 +173,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         super.saveAdditional(output);
         output.store("uplink_id", UUIDUtil.STRING_CODEC, uplinkId);
         output.storeNullable("link", MainframeLink.CODEC, link);
+        output.putInt("net_v", 1);
+        output.putBoolean("legacy_link", legacyLink);
         synchronized (this) {
             output.putString("title", title);
             output.putBoolean("template", template);
@@ -213,6 +220,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         registered = true;
         tickCounter = 0;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
     @Override
@@ -221,6 +229,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterUplink(this);
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
         // Chunk unload: keep the section on the dashboard but show it as offline.
         if (!broken && !suppressed && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
@@ -552,13 +561,22 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         CloudStatus newStatus = CloudStatus.OFFLINE;
         if (link != null) {
             var mainframe = CloudNetwork.mainframe(link.id());
-            if (mainframe != null && isInRange(level, mainframe)) {
-                newStatus = switch (mainframe.status()) {
-                    case ONLINE -> CloudStatus.ONLINE;
-                    case CONNECTING -> CloudStatus.CONNECTING;
-                    case OFFLINE -> CloudStatus.OFFLINE;
-                };
+            if (mainframe != null) {
                 mainframe.linkUplink(uplinkId, GlobalPos.of(level.dimension(), getBlockPos()));
+                var route = ai.ezfox.cccloud.network.NetworkService.route(uplinkId);
+                if (route == null) {
+                    newStatus = CloudStatus.CONNECTING; // network not computed yet
+                    routeState = null;
+                } else if (!route.connected()) {
+                    routeState = "no_route";
+                } else {
+                    routeState = route.legacyOutOfRange() ? "legacy_out_of_range" : null;
+                    newStatus = switch (mainframe.status()) {
+                        case ONLINE -> CloudStatus.ONLINE;
+                        case CONNECTING -> CloudStatus.CONNECTING;
+                        case OFFLINE -> CloudStatus.OFFLINE;
+                    };
+                }
             }
         }
         if (newStatus != status) {
@@ -573,17 +591,35 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
     }
 
-    public boolean isInRange(ServerLevel level, CloudMainframeBlockEntity mainframe) {
-        if (mainframe.getLevel() == null) return false;
-        return isInRange(isAdvanced(), GlobalPos.of(level.dimension(), getBlockPos()),
-            GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos()));
+    /** Connected to its mainframe over the network (or by the legacy grace). */
+    public boolean hasRoute() {
+        var route = ai.ezfox.cccloud.network.NetworkService.route(uplinkId);
+        return route != null && route.connected();
     }
 
-    public static boolean isInRange(boolean advanced, GlobalPos uplink, GlobalPos mainframe) {
-        if (advanced) return true;
-        if (!uplink.dimension().equals(mainframe.dimension())) return false;
-        double range = CloudConfig.get(CloudConfig.UPLINK_RANGE);
-        return uplink.pos().distSqr(mainframe.pos()) <= range * range;
+    public @Nullable String routeState() {
+        return routeState;
+    }
+
+    public boolean isLegacyLink() {
+        return legacyLink;
+    }
+
+    /** Test hook: link without the range check (like a world from v0.3). */
+    public void forceLinkForTest(MainframeLink newLink) {
+        link = newLink;
+        var mainframe = CloudNetwork.mainframe(newLink.id());
+        if (mainframe != null && level != null) mainframe.linkUplink(uplinkId, GlobalPos.of(level.dimension(), getBlockPos()));
+        synchronized (this) {
+            structureDirty = true;
+        }
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
+    }
+
+    /** Test hook: behave like a device linked before v0.4. */
+    public void markLegacyForTest() {
+        legacyLink = true;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
     // ---- binding (link card) -----------------------------------------------------------------------------------------
@@ -600,18 +636,17 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             return;
         }
         var here = GlobalPos.of(serverLevel.dimension(), getBlockPos());
-        var there = GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos());
-        if (!isInRange(isAdvanced(), here, there)) {
-            if (!here.dimension().equals(there.dimension())) {
-                player.sendSystemMessage(Component.translatable("cccloud.uplink.other_dimension").withStyle(ChatFormatting.RED));
-            } else {
-                int distance = (int) Math.sqrt(here.pos().distSqr(there.pos()));
-                player.sendSystemMessage(Component.translatable("cccloud.uplink.out_of_range", distance, CloudConfig.get(CloudConfig.UPLINK_RANGE)).withStyle(ChatFormatting.RED));
-            }
+        // Range is checked against the whole network (mainframe and relays), not only the mainframe.
+        var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, serverLevel, getBlockPos(),
+            ai.ezfox.cccloud.network.NetworkService.deviceType(this));
+        if (error != null) {
+            player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
             return;
         }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        legacyLink = false;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         mainframe.linkUplink(uplinkId, here);
         synchronized (this) {
             structureDirty = true;
@@ -632,6 +667,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var old = link;
         unlinkFrom(old);
         link = null;
+        legacyLink = false;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         synchronized (this) {
             structureDirty = true;
         }

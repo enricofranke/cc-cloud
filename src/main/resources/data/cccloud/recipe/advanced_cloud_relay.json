@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "#c:ingots/gold",
+    "E": "#c:ender_pearls",
+    "X": "cccloud:cloud_relay"
+  },
+  "pattern": [
+    "GEG",
+    "GXG",
+    "GGG"
+  ],
+  "result": {
+    "id": "cccloud:advanced_cloud_relay"
+  }
+}

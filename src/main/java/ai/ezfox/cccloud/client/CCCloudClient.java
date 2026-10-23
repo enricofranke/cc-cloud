@@ -32,5 +32,6 @@ public class CCCloudClient {
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModRegistry.MAINFRAME_BE.get(), MainframeRenderer::new);
         event.registerBlockEntityRenderer(ModRegistry.UPLINK_BE.get(), UplinkRenderer::new);
+        event.registerBlockEntityRenderer(ModRegistry.RELAY_BE.get(), RelayRenderer::new);
     }
 }

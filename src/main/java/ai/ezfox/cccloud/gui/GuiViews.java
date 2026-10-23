@@ -46,6 +46,11 @@ public final class GuiViews {
         for (var url : CloudWebServer.dashboardUrls()) urls.add(url);
         json.add("urls", urls);
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
+        var network = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
+        if (network != null) json.add("network", ai.ezfox.cccloud.network.NetworkService.toJson(mainframe, network, true));
+        var power = new JsonObject();
+        for (var e : mainframe.powerBreakdown().entrySet()) power.addProperty(e.getKey(), e.getValue());
+        json.add("powerBreakdown", power);
         var icons = ai.ezfox.cccloud.icons.IconService.current();
         if (icons != null) {
             var status = icons.status();
@@ -118,8 +123,8 @@ public final class GuiViews {
             json.addProperty("mainframe", mainframe != null ? mainframe.getDisplayName() : "");
             boolean sameDim = bridge.asBlockEntity().getLevel() != null && link.pos().dimension().equals(bridge.asBlockEntity().getLevel().dimension());
             json.addProperty("distance", sameDim ? (int) Math.sqrt(bridge.asBlockEntity().getBlockPos().distSqr(p)) : -1);
-            json.addProperty("range", -1);
-            json.addProperty("inRange", mainframe != null);
+            json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE));
+            json.addProperty("inRange", section.hasRoute());
             canUnlink = GuiNetwork.canManageMainframe(player, link.id());
         }
         json.addProperty("canUnlink", canUnlink);
@@ -147,9 +152,11 @@ public final class GuiViews {
             json.addProperty("mainframeLoaded", mainframe != null);
             boolean sameDim = uplink.getLevel() != null && link.pos().dimension().equals(uplink.getLevel().dimension());
             json.addProperty("distance", sameDim ? (int) Math.sqrt(uplink.getBlockPos().distSqr(p)) : -1);
-            json.addProperty("range", uplink.isAdvanced() ? -1 : CloudConfig.get(CloudConfig.UPLINK_RANGE));
-            json.addProperty("inRange", uplink.getLevel() instanceof ServerLevel level && mainframe != null && uplink.isInRange(level, mainframe)
-                || uplink.isAdvanced() && mainframe != null);
+            json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)));
+            json.addProperty("inRange", uplink.hasRoute());
+            if (uplink.routeState() != null) json.addProperty("routeState", uplink.routeState());
+            var route = ai.ezfox.cccloud.network.NetworkService.route(uplink.getUplinkId());
+            if (route != null && route.connected()) json.addProperty("hops", route.hops());
             canUnlink = GuiNetwork.canManageMainframe(player, link.id());
         }
         json.addProperty("canUnlink", canUnlink);

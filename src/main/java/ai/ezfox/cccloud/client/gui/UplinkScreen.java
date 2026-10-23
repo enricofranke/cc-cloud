@@ -65,6 +65,8 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             kv("cccloud.gui.distance", rangeText);
             textRow(Component.translatable(bool(view, "inRange") ? "cccloud.gui.in_range" : "cccloud.gui.out_of_range"),
                 bool(view, "inRange") ? CloudGui.GREEN : CloudGui.RED);
+            if (view.has("routeState")) textRow(Component.translatable("cccloud.gui.route_state." + str(view, "routeState")), CloudGui.YELLOW);
+            if (view.has("hops")) kv("cccloud.gui.hops", String.valueOf(num(view, "hops")));
             if (bool(view, "canUnlink")) {
                 rows.add(new Row(20, (c, x, y, w) -> {
                     var unlink = Component.translatable("cccloud.gui.unlink");

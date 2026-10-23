@@ -217,19 +217,28 @@ public final class LoadTest {
                     ws.request(1);
                 }
 
+                private final StringBuilder partial = new StringBuilder();
+
                 @Override
                 public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
-                    String text = data.toString();
+                    // Large messages (the snapshot with the network map) arrive in several fragments.
+                    partial.append(data);
+                    if (!last) {
+                        ws.request(1);
+                        return null;
+                    }
+                    String text = partial.toString();
+                    partial.setLength(0);
                     if (text.startsWith("{\"t\":\"snapshot\"")) {
                         // Protocol check over a real socket: the snapshot's mainframe object carries canControl and power.
                         var snapshot = com.google.gson.JsonParser.parseString(text).getAsJsonObject();
                         var mf = snapshot.getAsJsonObject("mainframe");
                         if (mf.has("canControl") && mf.get("canControl").getAsBoolean() && snapshot.has("layout")) {
                             if (snapshots.incrementAndGet() == 1) ai.ezfox.cccloud.CCCloud.LOGGER.info("[cccloud] LOAD TEST: first snapshot mainframe = {}", mf);
+                        } else {
+                            ai.ezfox.cccloud.CCCloud.LOGGER.error("[cccloud] LOAD TEST: snapshot without mainframe.canControl/layout: {}", text);
                         }
-                        else ai.ezfox.cccloud.CCCloud.LOGGER.error("[cccloud] LOAD TEST: snapshot without mainframe.canControl/layout: {}", text);
-                    }
-                    else if (text.startsWith("{\"t\":\"ping\"")) ws.sendText("{\"t\":\"pong\"}", true);
+                    } else if (text.startsWith("{\"t\":\"ping\"")) ws.sendText("{\"t\":\"pong\"}", true);
                     messages.incrementAndGet();
                     ws.request(1);
                     return null;

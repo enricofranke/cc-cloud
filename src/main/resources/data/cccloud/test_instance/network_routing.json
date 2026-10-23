@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:network_routing",
+  "max_ticks": 1200,
+  "structure": "cccloud:test_floor"
+}

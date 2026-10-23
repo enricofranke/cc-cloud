@@ -19,7 +19,10 @@ public enum CloudModels {
     MAINFRAME_FAN("block/mainframe_fan"),
     MAINFRAME_HOLOGRAM("block/mainframe_hologram"),
     UPLINK_RING("block/uplink_ring"),
-    UPLINK_ADVANCED_CORE("block/uplink_advanced_core");
+    UPLINK_ADVANCED_CORE("block/uplink_advanced_core"),
+    RELAY_RING("block/cloud_relay_ring"),
+    ADVANCED_RELAY_RING("block/advanced_cloud_relay_ring"),
+    ENDER_RELAY_CORE("block/ender_relay_core");
 
     private final Identifier id;
     private final StandaloneModelKey<Optional<StandaloneModel>> key;

@@ -58,6 +58,7 @@ public final class BridgeSection implements DashboardSection {
     private boolean registered;
     private boolean broken;
     private int ticks;
+    private boolean legacyLink;
 
     public BridgeSection(BridgeHost host) {
         this.host = host;
@@ -85,6 +86,21 @@ public final class BridgeSection implements DashboardSection {
         return link;
     }
 
+    public BridgeHost host() {
+        return host;
+    }
+
+    /** Linked before v0.4 (no "net_v" marker). */
+    public boolean isLegacyLink() {
+        return legacyLink;
+    }
+
+    /** Connected to its mainframe over the network (or by the legacy grace). */
+    public boolean hasRoute() {
+        var route = ai.ezfox.cccloud.network.NetworkService.route(sectionId);
+        return route != null && route.connected();
+    }
+
     public boolean isLinked() {
         return link != null;
     }
@@ -107,12 +123,15 @@ public final class BridgeSection implements DashboardSection {
     public void load(ValueInput input) {
         input.read("section_id", UUIDUtil.STRING_CODEC).ifPresent(id -> sectionId = id);
         link = input.read("link", MainframeLink.CODEC).orElse(null);
+        legacyLink = link != null && (input.getIntOr("net_v", 0) < 1 || input.getBooleanOr("legacy_link", false));
         structureDirty = true;
     }
 
     public void save(ValueOutput output) {
         output.store("section_id", UUIDUtil.STRING_CODEC, sectionId);
         output.storeNullable("link", MainframeLink.CODEC, link);
+        output.putInt("net_v", 1);
+        output.putBoolean("legacy_link", legacyLink);
     }
 
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
@@ -127,6 +146,7 @@ public final class BridgeSection implements DashboardSection {
                 CloudNetwork.registerSection(this);
             }
             registered = true;
+            ai.ezfox.cccloud.network.NetworkService.markDirty();
         }
         if (ticks % STATUS_INTERVAL == 0) updateStatus(level);
         if (ticks % VALUE_INTERVAL == 0 && link != null) refreshValues();
@@ -139,6 +159,7 @@ public final class BridgeSection implements DashboardSection {
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterSection(this);
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
         if (!broken && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
     }
@@ -160,8 +181,9 @@ public final class BridgeSection implements DashboardSection {
         if (link != null) {
             var mainframe = CloudNetwork.mainframe(link.id());
             if (mainframe != null) {
-                newStatus = mainframe.status();
                 mainframe.linkUplink(sectionId, GlobalPos.of(level.dimension(), host.asBlockEntity().getBlockPos()));
+                var route = ai.ezfox.cccloud.network.NetworkService.route(sectionId);
+                newStatus = route == null ? CloudStatus.CONNECTING : route.connected() ? mainframe.status() : CloudStatus.OFFLINE;
             }
         }
         if (newStatus != status) {
@@ -185,8 +207,16 @@ public final class BridgeSection implements DashboardSection {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }
+        var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, level, be.getBlockPos(),
+            ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE);
+        if (error != null) {
+            player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
+            return;
+        }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        legacyLink = false;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         mainframe.linkUplink(sectionId, GlobalPos.of(level.dimension(), be.getBlockPos()));
         structureDirty = true;
         be.setChanged();
@@ -202,6 +232,8 @@ public final class BridgeSection implements DashboardSection {
         var old = link;
         unlinkFrom(old);
         link = null;
+        legacyLink = false;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
         host.asBlockEntity().setChanged();
         CCCloud.LOGGER.info("[cccloud] {} unlinked the {} bridge at {} from {}", by, host.bridgeCore().kind(), host.asBlockEntity().getBlockPos(), old.describe());

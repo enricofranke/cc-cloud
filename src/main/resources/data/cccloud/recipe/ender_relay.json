@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "Y": "minecraft:ender_eye",
+    "B": "#c:storage_blocks/gold",
+    "X": "cccloud:advanced_cloud_relay"
+  },
+  "pattern": [
+    " Y ",
+    "YXY",
+    " B "
+  ],
+  "result": {
+    "id": "cccloud:ender_relay"
+  }
+}

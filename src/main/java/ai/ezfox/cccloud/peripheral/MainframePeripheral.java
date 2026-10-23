@@ -65,6 +65,23 @@ public final class MainframePeripheral implements IPeripheral {
         return mainframe.energyUsage();
     }
 
+    /**
+     * The network: {nodes={{id,type,name,pos={x,y,z},dim,status,power,range,deviceRange,parent,hops},...},
+     * links={{a,b,signal,dist,kind},...}, routes={[deviceId]={nodeIds...}}}. Positions included (in-world access).
+     */
+    @LuaFunction(mainThread = true)
+    public final Object getNetwork() {
+        var result = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
+        if (result == null) return java.util.Map.of();
+        return ai.ezfox.cccloud.uplink.Json.toLua(ai.ezfox.cccloud.network.NetworkService.toJson(mainframe, result, true));
+    }
+
+    /** What the network costs in FE/t: {base, uplinks, advanced_uplinks, bridges, clients, hops, total}. */
+    @LuaFunction(mainThread = true)
+    public final java.util.Map<String, Long> getPowerBreakdown() {
+        return mainframe.powerBreakdown();
+    }
+
     @LuaFunction(mainThread = true)
     public final void setEnabled(boolean enabled) {
         mainframe.setEnabled(enabled);

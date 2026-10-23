@@ -45,6 +45,19 @@ public final class ModRegistry {
     public static final DeferredBlock<CloudUplinkBlock> ADVANCED_CLOUD_UPLINK = BLOCKS.registerBlock("advanced_cloud_uplink", p -> new CloudUplinkBlock(true, p),
         p -> uplinkProperties(p).mapColor(MapColor.GOLD));
 
+    // v0.4 relays
+    public static final DeferredBlock<ai.ezfox.cccloud.relay.CloudRelayBlock> CLOUD_RELAY = BLOCKS.registerBlock("cloud_relay",
+        p -> new ai.ezfox.cccloud.relay.CloudRelayBlock(ai.ezfox.cccloud.relay.RelayType.RELAY, p), ModRegistry::relayProperties);
+    public static final DeferredBlock<ai.ezfox.cccloud.relay.CloudRelayBlock> ADVANCED_CLOUD_RELAY = BLOCKS.registerBlock("advanced_cloud_relay",
+        p -> new ai.ezfox.cccloud.relay.CloudRelayBlock(ai.ezfox.cccloud.relay.RelayType.ADVANCED, p), p -> relayProperties(p).mapColor(MapColor.GOLD));
+    public static final DeferredBlock<ai.ezfox.cccloud.relay.CloudRelayBlock> ENDER_RELAY = BLOCKS.registerBlock("ender_relay",
+        p -> new ai.ezfox.cccloud.relay.CloudRelayBlock(ai.ezfox.cccloud.relay.RelayType.ENDER, p), p -> relayProperties(p).mapColor(MapColor.GOLD));
+
+    private static BlockBehaviour.Properties relayProperties(BlockBehaviour.Properties p) {
+        return p.mapColor(MapColor.STONE).strength(2.0f).sound(SoundType.METAL).noOcclusion().pushReaction(PushReaction.BLOCK)
+            .lightLevel(s -> s.getValue(ai.ezfox.cccloud.relay.RelayStatus.PROPERTY) == ai.ezfox.cccloud.relay.RelayStatus.ONLINE ? 5 : 0);
+    }
+
     private static BlockBehaviour.Properties uplinkProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.STONE).strength(1.5f).sound(SoundType.METAL).noOcclusion().pushReaction(PushReaction.DESTROY)
             .lightLevel(s -> s.getValue(CloudUplinkBlock.STATUS) == ai.ezfox.cccloud.block.CloudStatus.ONLINE ? 4 : 0);
@@ -55,12 +68,17 @@ public final class ModRegistry {
         p -> new DoubleHighBlockItem(CLOUD_MAINFRAME.get(), p), p -> p.useBlockDescriptionPrefix().rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_UPLINK);
     public static final DeferredItem<?> ADVANCED_CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_UPLINK, p -> p.rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<?> CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_RELAY);
+    public static final DeferredItem<?> ADVANCED_CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_RELAY, p -> p.rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<?> ENDER_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ENDER_RELAY, p -> p.rarity(Rarity.RARE));
     public static final DeferredItem<Item> CLOUD_CORE = ITEMS.registerSimpleItem("cloud_core");
     public static final DeferredItem<CloudLinkCardItem> CLOUD_LINK_CARD = ITEMS.registerItem("cloud_link_card", CloudLinkCardItem::new, p -> p.stacksTo(1));
 
     // Block entities
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudMainframeBlockEntity>> MAINFRAME_BE = BLOCK_ENTITIES.register("cloud_mainframe",
         () -> new BlockEntityType<>(CloudMainframeBlockEntity::new, CLOUD_MAINFRAME.get()));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.relay.CloudRelayBlockEntity>> RELAY_BE = BLOCK_ENTITIES.register("cloud_relay",
+        () -> new BlockEntityType<>(ai.ezfox.cccloud.relay.CloudRelayBlockEntity::new, CLOUD_RELAY.get(), ADVANCED_CLOUD_RELAY.get(), ENDER_RELAY.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudUplinkBlockEntity>> UPLINK_BE = BLOCK_ENTITIES.register("cloud_uplink",
         () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get()));
 
@@ -83,6 +101,9 @@ public final class ModRegistry {
             out.accept(CLOUD_MAINFRAME_ITEM.get());
             out.accept(CLOUD_UPLINK_ITEM.get());
             out.accept(ADVANCED_CLOUD_UPLINK_ITEM.get());
+            out.accept(CLOUD_RELAY_ITEM.get());
+            out.accept(ADVANCED_CLOUD_RELAY_ITEM.get());
+            out.accept(ENDER_RELAY_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
             for (var bridge : ai.ezfox.cccloud.bridge.BridgeRegistry.ITEMS) out.accept(bridge.get());
@@ -99,6 +120,8 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
         TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
+        TEST_FUNCTIONS.register("network_routing", () -> ai.ezfox.cccloud.gametest.NetworkTests::routing);
+        TEST_FUNCTIONS.register("network_ender", () -> ai.ezfox.cccloud.gametest.NetworkTests::enderAcrossDimensions);
     }
 
     private ModRegistry() {

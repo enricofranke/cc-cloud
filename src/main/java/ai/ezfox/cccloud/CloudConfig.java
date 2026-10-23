@@ -17,7 +17,27 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_TRUSTED_PROXIES;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
-    public static final ModConfigSpec.IntValue UPLINK_RANGE;
+    // v0.4 network ranges (blocks, same dimension, spherical)
+    public static final ModConfigSpec.IntValue RANGE_UPLINK;
+    public static final ModConfigSpec.IntValue RANGE_ADVANCED_UPLINK;
+    public static final ModConfigSpec.IntValue RANGE_BRIDGE;
+    public static final ModConfigSpec.IntValue RANGE_MAINFRAME;
+    public static final ModConfigSpec.IntValue RANGE_RELAY_NODES;
+    public static final ModConfigSpec.IntValue RANGE_RELAY_DEVICES;
+    public static final ModConfigSpec.IntValue RANGE_ADVANCED_RELAY_NODES;
+    public static final ModConfigSpec.IntValue RANGE_ADVANCED_RELAY_DEVICES;
+    public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_NODES;
+    public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_DEVICES;
+    public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_BRIDGE_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_HOP_FE;
+    public static final ModConfigSpec.IntValue RELAY_FE;
+    public static final ModConfigSpec.IntValue ADVANCED_RELAY_FE;
+    public static final ModConfigSpec.IntValue ENDER_RELAY_FE;
+    public static final ModConfigSpec.IntValue RELAY_BUFFER_FE;
+    public static final ModConfigSpec.IntValue ADVANCED_RELAY_BUFFER_FE;
+    public static final ModConfigSpec.IntValue ENDER_RELAY_BUFFER_FE;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
@@ -66,9 +86,6 @@ public final class CloudConfig {
         b.pop();
 
         b.push("uplinks");
-        UPLINK_RANGE = b.comment("Maximum distance (blocks) between a normal Cloud Uplink and its mainframe. Advanced uplinks are unlimited and work across dimensions.")
-            .translation("cccloud.configuration.uplinkRange")
-            .defineInRange("uplinkRange", 128, 1, 100_000);
         MAX_WIDGETS_PER_UPLINK = b.comment("Maximum number of widgets one uplink may register (the dashboard supports at most 32).")
             .translation("cccloud.configuration.maxWidgetsPerUplink")
             .defineInRange("maxWidgetsPerUplink", 32, 1, 32);
@@ -80,6 +97,24 @@ public final class CloudConfig {
             .define("autoComputerCard", true);
         b.pop();
 
+        b.push("network");
+        RANGE_UPLINK = range(b, "uplinkRange", 48, "Cloud Uplink: reach to the nearest node (mainframe or relay).");
+        RANGE_ADVANCED_UPLINK = range(b, "advancedUplinkRange", 128, "Advanced Cloud Uplink: reach to the nearest node.");
+        RANGE_BRIDGE = range(b, "bridgeRange", 48, "ME/RS Cloud Bridge: reach to the nearest node.");
+        RANGE_MAINFRAME = range(b, "mainframeRange", 96, "Mainframe: reach to relays and devices.");
+        RANGE_RELAY_NODES = range(b, "relayNodeRange", 96, "Cloud Relay: reach to other nodes.");
+        RANGE_RELAY_DEVICES = range(b, "relayDeviceRange", 48, "Cloud Relay: reach to devices.");
+        RANGE_ADVANCED_RELAY_NODES = range(b, "advancedRelayNodeRange", 256, "Advanced Cloud Relay: reach to other nodes.");
+        RANGE_ADVANCED_RELAY_DEVICES = range(b, "advancedRelayDeviceRange", 128, "Advanced Cloud Relay: reach to devices.");
+        RANGE_ENDER_RELAY_NODES = range(b, "enderRelayNodeRange", 96,
+            "Ender Relay: radio reach to other nodes (linked Ender Relays connect across any distance and dimension).");
+        RANGE_ENDER_RELAY_DEVICES = range(b, "enderRelayDeviceRange", 128, "Ender Relay: reach to devices.");
+        LEGACY_RANGE_GRACE = b.comment("Devices linked before v0.4 that are out of range under the new rules stay connected (flagged legacy_out_of_range) "
+                + "until they are re-linked or a relay is placed.")
+            .translation("cccloud.configuration.legacyRangeGrace")
+            .define("legacyRangeGrace", true);
+        b.pop();
+
         b.push("power");
         REQUIRE_POWER = b.comment("The mainframe needs FE (Forge Energy / RF). false = it runs for free.")
             .translation("cccloud.configuration.requirePower")
@@ -87,9 +122,18 @@ public final class CloudConfig {
         MAINFRAME_BASE_FE = b.comment("FE per tick the mainframe always uses.")
             .translation("cccloud.configuration.mainframeBaseFE")
             .defineInRange("mainframeBaseFE", 40, 0, 1_000_000);
-        MAINFRAME_PER_UPLINK_FE = b.comment("Additional FE per tick per linked, loaded uplink or bridge.")
+        MAINFRAME_PER_UPLINK_FE = b.comment("Additional FE per tick per connected Cloud Uplink.")
             .translation("cccloud.configuration.mainframePerUplinkFE")
-            .defineInRange("mainframePerUplinkFE", 5, 0, 1_000_000);
+            .defineInRange("mainframePerUplinkFE", 4, 0, 1_000_000);
+        MAINFRAME_PER_ADVANCED_UPLINK_FE = b.comment("Additional FE per tick per connected Advanced Cloud Uplink.")
+            .translation("cccloud.configuration.mainframePerAdvancedUplinkFE")
+            .defineInRange("mainframePerAdvancedUplinkFE", 8, 0, 1_000_000);
+        MAINFRAME_PER_BRIDGE_FE = b.comment("Additional FE per tick per connected ME/RS Cloud Bridge.")
+            .translation("cccloud.configuration.mainframePerBridgeFE")
+            .defineInRange("mainframePerBridgeFE", 10, 0, 1_000_000);
+        MAINFRAME_PER_HOP_FE = b.comment("Additional FE per tick for every hop beyond the first of each routed device.")
+            .translation("cccloud.configuration.mainframePerHopFE")
+            .defineInRange("mainframePerHopFE", 1, 0, 1_000_000);
         MAINFRAME_PER_CLIENT_FE = b.comment("Additional FE per tick per connected dashboard client.")
             .translation("cccloud.configuration.mainframePerClientFE")
             .defineInRange("mainframePerClientFE", 2, 0, 1_000_000);
@@ -99,6 +143,12 @@ public final class CloudConfig {
         MAINFRAME_MAX_INPUT_FE = b.comment("Maximum FE the mainframe accepts per tick.")
             .translation("cccloud.configuration.mainframeMaxInputFE")
             .defineInRange("mainframeMaxInputFE", 2_000, 1, Integer.MAX_VALUE);
+        RELAY_FE = fe(b, "relayFE", 20, "FE per tick of a Cloud Relay (0 = free).");
+        ADVANCED_RELAY_FE = fe(b, "advancedRelayFE", 60, "FE per tick of an Advanced Cloud Relay (0 = free).");
+        ENDER_RELAY_FE = fe(b, "enderRelayFE", 120, "FE per tick of an Ender Relay (0 = free).");
+        RELAY_BUFFER_FE = fe(b, "relayBufferFE", 50_000, "Energy buffer of a Cloud Relay (FE).");
+        ADVANCED_RELAY_BUFFER_FE = fe(b, "advancedRelayBufferFE", 100_000, "Energy buffer of an Advanced Cloud Relay (FE).");
+        ENDER_RELAY_BUFFER_FE = fe(b, "enderRelayBufferFE", 200_000, "Energy buffer of an Ender Relay (FE).");
         b.pop();
 
         b.push("icons");
@@ -118,6 +168,14 @@ public final class CloudConfig {
     }
 
     private CloudConfig() {
+    }
+
+    private static ModConfigSpec.IntValue range(ModConfigSpec.Builder b, String key, int def, String comment) {
+        return b.comment(comment).translation("cccloud.configuration." + key).defineInRange(key, def, 1, 100_000);
+    }
+
+    private static ModConfigSpec.IntValue fe(ModConfigSpec.Builder b, String key, int def, String comment) {
+        return b.comment(comment).translation("cccloud.configuration." + key).defineInRange(key, def, 0, Integer.MAX_VALUE);
     }
 
     /** Reads a config value, falling back to the default while the server config is not loaded (e.g. on a client). */

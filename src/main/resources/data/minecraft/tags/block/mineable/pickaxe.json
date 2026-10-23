@@ -10,6 +10,9 @@
     {
       "id": "cccloud:rs_cloud_bridge",
       "required": false
-    }
+    },
+    "cccloud:cloud_relay",
+    "cccloud:advanced_cloud_relay",
+    "cccloud:ender_relay"
   ]
 }
