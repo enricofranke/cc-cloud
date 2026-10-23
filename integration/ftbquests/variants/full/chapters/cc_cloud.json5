@@ -1,0 +1,807 @@
+{
+  id: "1CDB52DC3EE2DA1E",
+  group: "2B51AC12041E3F89",
+  order_index: 13,
+  icon: {
+    id: "cccloud:cloud_mainframe",
+    count: 1,
+  },
+  filename: "cc_cloud",
+  default_quest_shape: "",
+  default_hide_dependency_lines: false,
+  quests: [
+    {
+      x: 0.0,
+      y: 0.0,
+      shape: "hexagon",
+      dependencies: [
+        "34CFA95D19DC2ACE",
+      ],
+      size: 1.5,
+      id: "78170295DDB6E973",
+      tasks: [
+        {
+          id: "2612A42EB1F670CD",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_core",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "0E26A235C983AA5F",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "3FDDAE64866530AE",
+          type: "item",
+          item: {
+            id: "minecraft:prismarine_crystals",
+            count: 1,
+          },
+          count: 4,
+        },
+      ],
+    },
+    {
+      x: 1.75,
+      y: 0.0,
+      shape: "hexagon",
+      dependencies: [
+        "78170295DDB6E973",
+      ],
+      size: 1.5,
+      id: "6F39BB05398EBC47",
+      tasks: [
+        {
+          id: "6BDE12FD85830264",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_mainframe",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "532EBA53CFE7C0BF",
+          type: "xp",
+          xp: 150,
+        },
+        {
+          id: "590BF1B0F94F5657",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 487623848494439020,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:redstone_block",
+        count: 1,
+      },
+      x: 3.25,
+      y: -1.0,
+      dependencies: [
+        "6F39BB05398EBC47",
+      ],
+      size: 1.0,
+      id: "263EA2F48E95F6FD",
+      tasks: [
+        {
+          id: "60E54912E75B29BE",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "377F5F03D2722B8D",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 3.25,
+      y: 1.0,
+      dependencies: [
+        "6F39BB05398EBC47",
+      ],
+      size: 1.0,
+      id: "3DFA790AADD8221B",
+      tasks: [
+        {
+          id: "58575D0CE28CCE2B",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_uplink",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "54554ABB55D1DA29",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 4.75,
+      y: 1.0,
+      dependencies: [
+        "3DFA790AADD8221B",
+      ],
+      size: 1.0,
+      id: "40F7D0A3190FD2E6",
+      tasks: [
+        {
+          id: "75669927030F9524",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_link_card",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "14300D4AE938AD99",
+          type: "xp",
+          xp: 25,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "cccloud:cloud_link_card",
+        count: 1,
+      },
+      x: 4.75,
+      y: -1.0,
+      shape: "hexagon",
+      dependencies: [
+        "263EA2F48E95F6FD",
+      ],
+      size: 1.25,
+      id: "17AFE0783268061C",
+      tasks: [
+        {
+          id: "039FB890E4408611",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "6F64878234C5C97E",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:lever",
+        count: 1,
+      },
+      x: 4.75,
+      y: -2.5,
+      dependencies: [
+        "17AFE0783268061C",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "7287EAD51345B10E",
+      tasks: [
+        {
+          id: "64FF01BDBEE3DA34",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "1AF4A617CF5E6570",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "computercraft:computer_advanced",
+        count: 1,
+      },
+      x: 6.25,
+      y: 0.0,
+      dependencies: [
+        "17AFE0783268061C",
+        "40F7D0A3190FD2E6",
+      ],
+      size: 1.0,
+      id: "2A4FA0C8F3FB747C",
+      tasks: [
+        {
+          id: "31D88F14864934D9",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "13B5CDC586D0B80E",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "computercraft:disk",
+        count: 1,
+      },
+      x: 7.75,
+      y: 0.0,
+      shape: "hexagon",
+      dependencies: [
+        "2A4FA0C8F3FB747C",
+      ],
+      size: 1.25,
+      id: "069ADEAD2CC26D05",
+      tasks: [
+        {
+          id: "4342E063631EFBBD",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "06117DC383309D6E",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "43DB78C4FD965007",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 487623848494439020,
+        },
+      ],
+    },
+    {
+      x: 6.25,
+      y: 2.0,
+      dependencies: [
+        "40F7D0A3190FD2E6",
+      ],
+      size: 1.0,
+      id: "5EB94D9F9310C3CD",
+      tasks: [
+        {
+          id: "19667A7B33B3558E",
+          type: "item",
+          item: {
+            id: "cccloud:advanced_cloud_uplink",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "45DB92AE02088A1C",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "2DFD23B8335AF6FC",
+          type: "item",
+          item: {
+            id: "minecraft:ender_pearl",
+            count: 1,
+          },
+          count: 2,
+        },
+      ],
+    },
+    {
+      x: 7.75,
+      y: -1.5,
+      dependencies: [
+        "2A4FA0C8F3FB747C",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "76E6FE5638261F68",
+      tasks: [
+        {
+          id: "7202B6E80BE358D9",
+          type: "item",
+          item: {
+            id: "cccloud:me_cloud_bridge",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "57EC19F5E6F33CB2",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      x: 7.75,
+      y: 1.5,
+      dependencies: [
+        "2A4FA0C8F3FB747C",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "5C7E07FC4D45B912",
+      tasks: [
+        {
+          id: "010ACAFA9E2215A1",
+          type: "item",
+          item: {
+            id: "cccloud:rs_cloud_bridge",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "5C73270AD442956F",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:crafting_table",
+        count: 1,
+      },
+      x: 9.25,
+      y: 0.0,
+      shape: "hexagon",
+      dependencies: [
+        "76E6FE5638261F68",
+        "5C7E07FC4D45B912",
+      ],
+      dependency_requirement: "one_completed",
+      size: 1.25,
+      id: "43DD9F77F0E4D349",
+      tasks: [
+        {
+          id: "02F0C5B1D8555FB5",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "15B73A1C37DAA9E9",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "20EECA4B7FEBBD0C",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 4196188979167302596,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "cccloud:cloud_core",
+        count: 1,
+      },
+      x: -1.5,
+      y: 4.5,
+      shape: "gear",
+      size: 1.0,
+      optional: true,
+      id: "6579EF834A0FE3D9",
+      tasks: [
+        {
+          id: "7C23A8292BC29100",
+          type: "checkmark",
+        },
+      ],
+    },
+    {
+      x: 0.0,
+      y: 4.5,
+      hide_dependency_lines: true,
+      dependencies: [
+        "40F7D0A3190FD2E6",
+      ],
+      size: 1.0,
+      id: "65CE5AE00D6C8DF6",
+      tasks: [
+        {
+          id: "1D06A15376C6AD55",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_relay",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "3F24B1D98F2297E3",
+          type: "xp",
+          xp: 75,
+        },
+      ],
+    },
+    {
+      x: 1.5,
+      y: 4.5,
+      dependencies: [
+        "65CE5AE00D6C8DF6",
+      ],
+      size: 1.0,
+      id: "1BBB87570EF72863",
+      tasks: [
+        {
+          id: "187A417A25DB09C8",
+          type: "item",
+          item: {
+            id: "cccloud:advanced_cloud_relay",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "4CB8D73C8AD66C13",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      x: 3.0,
+      y: 4.5,
+      dependencies: [
+        "1BBB87570EF72863",
+      ],
+      size: 1.0,
+      id: "163B19BA91F81D61",
+      tasks: [
+        {
+          id: "6E6CA6A00046E6A7",
+          type: "item",
+          item: {
+            id: "cccloud:ender_relay",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "531564D607ED0B41",
+          type: "xp",
+          xp: 150,
+        },
+        {
+          id: "143DA2B45304AE29",
+          type: "item",
+          item: {
+            id: "minecraft:ender_eye",
+            count: 1,
+          },
+          count: 2,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "cccloud:upgrade_capacity_allthemodium",
+        count: 1,
+      },
+      x: 0.0,
+      y: 6.0,
+      hide_dependency_lines: true,
+      dependencies: [
+        "6F39BB05398EBC47",
+      ],
+      size: 1.0,
+      id: "35A3C8757545519B",
+      tasks: [
+        {
+          id: "703BD5D18F0BA3B9",
+          type: "item",
+          icon: {
+            id: "cccloud:upgrade_capacity_allthemodium",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(cccloud:upgrade_capacity_allthemodium)item(cccloud:upgrade_bandwidth_allthemodium)item(cccloud:upgrade_range_allthemodium)item(cccloud:upgrade_efficiency_allthemodium)item(cccloud:upgrade_memory_allthemodium))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "435C1F4B01ED7BA9",
+          type: "xp",
+          xp: 150,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "cccloud:upgrade_capacity_vibranium",
+        count: 1,
+      },
+      x: 1.5,
+      y: 6.0,
+      dependencies: [
+        "35A3C8757545519B",
+      ],
+      size: 1.0,
+      id: "1BC62D7CC8F52759",
+      tasks: [
+        {
+          id: "5B837AD4CDC49848",
+          type: "item",
+          icon: {
+            id: "cccloud:upgrade_capacity_vibranium",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(cccloud:upgrade_capacity_vibranium)item(cccloud:upgrade_bandwidth_vibranium)item(cccloud:upgrade_range_vibranium)item(cccloud:upgrade_efficiency_vibranium)item(cccloud:upgrade_memory_vibranium))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "494648CE1320F111",
+          type: "xp",
+          xp: 250,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "cccloud:upgrade_capacity_unobtainium",
+        count: 1,
+      },
+      x: 3.0,
+      y: 6.0,
+      dependencies: [
+        "1BC62D7CC8F52759",
+      ],
+      size: 1.0,
+      id: "5C8701DE5418A7A4",
+      tasks: [
+        {
+          id: "243AB347D01C7FF7",
+          type: "item",
+          icon: {
+            id: "cccloud:upgrade_capacity_unobtainium",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(cccloud:upgrade_capacity_unobtainium)item(cccloud:upgrade_bandwidth_unobtainium)item(cccloud:upgrade_range_unobtainium)item(cccloud:upgrade_efficiency_unobtainium)item(cccloud:upgrade_memory_unobtainium))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "50C8BE43BFDFAA18",
+          type: "xp",
+          xp: 400,
+        },
+        {
+          id: "512AC7236989CFB3",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 4196188979167302596,
+        },
+      ],
+    },
+    {
+      x: 4.5,
+      y: 6.0,
+      shape: "hexagon",
+      dependencies: [
+        "5C8701DE5418A7A4",
+      ],
+      size: 1.5,
+      id: "0C7CE026986FA689",
+      tasks: [
+        {
+          id: "1211B759D175F956",
+          type: "item",
+          item: {
+            id: "cccloud:quantum_core",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "3C7433AEC4BDC32E",
+          type: "xp",
+          xp: 1000,
+        },
+        {
+          id: "3773A20BD66C7299",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 5564196992594175882,
+        },
+      ],
+    },
+    {
+      x: 6.25,
+      y: 4.5,
+      hide_dependency_lines: true,
+      dependencies: [
+        "069ADEAD2CC26D05",
+        "1B112B10FC7F7BEC",
+      ],
+      size: 1.0,
+      id: "65DFD777F53D09FF",
+      tasks: [
+        {
+          id: "617F80F7710880A8",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_tablet",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "7A0ACC5887DBED36",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      x: 7.75,
+      y: 4.5,
+      dependencies: [
+        "65DFD777F53D09FF",
+      ],
+      size: 1.0,
+      id: "07AD9A8556E7D076",
+      tasks: [
+        {
+          id: "13FB0C5279205CB6",
+          type: "item",
+          item: {
+            id: "cccloud:advanced_cloud_tablet",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "3897DBE812ACA5B4",
+          type: "xp",
+          xp: 150,
+        },
+      ],
+    },
+    {
+      x: 6.25,
+      y: 6.0,
+      hide_dependency_lines: true,
+      dependencies: [
+        "069ADEAD2CC26D05",
+      ],
+      size: 1.0,
+      id: "6F2062FE67DC6DB7",
+      tasks: [
+        {
+          id: "61D8258E15503A37",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_display",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "185B79A3D5285248",
+          type: "xp",
+          xp: 100,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:redstone_torch",
+        count: 1,
+      },
+      x: 7.75,
+      y: 6.0,
+      hide_dependency_lines: true,
+      dependencies: [
+        "2A4FA0C8F3FB747C",
+      ],
+      size: 1.0,
+      id: "08DE8D108B731E19",
+      tasks: [
+        {
+          id: "2305CA8C3472719C",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "680545C8EE2CBF80",
+          type: "xp",
+          xp: 75,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:comparator",
+        count: 1,
+      },
+      x: 9.25,
+      y: 6.0,
+      hide_dependency_lines: true,
+      dependencies: [
+        "43DD9F77F0E4D349",
+      ],
+      size: 1.0,
+      id: "7173001B4D29A591",
+      tasks: [
+        {
+          id: "1B1BF8CB8DBA73AC",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "452D137ABF50A6DB",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "764E3232EE0E078C",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 4196188979167302596,
+        },
+      ],
+    },
+  ],
+  quest_links: [
+    {
+      linked_quest: "34CFA95D19DC2ACE",
+      x: -1.75,
+      y: 0.0,
+      id: "420E551183658EF7",
+    },
+  ],
+  images: [
+  ],
+}

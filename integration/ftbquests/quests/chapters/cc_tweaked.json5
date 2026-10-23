@@ -1,0 +1,824 @@
+{
+  id: "4A19A9D21CB02379",
+  group: "2B51AC12041E3F89",
+  order_index: 12,
+  icon: {
+    id: "computercraft:computer_advanced",
+    count: 1,
+  },
+  filename: "cc_tweaked",
+  default_quest_shape: "",
+  default_hide_dependency_lines: false,
+  quests: [
+    {
+      x: 0.0,
+      y: 0.0,
+      shape: "hexagon",
+      size: 1.5,
+      id: "64DBAD57D8173C33",
+      tasks: [
+        {
+          id: "7BE84155D598D8CF",
+          type: "item",
+          item: {
+            id: "computercraft:computer_normal",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "5FBEFB8CCBA29DDB",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "7965DF3BCBEB8C2F",
+          type: "item",
+          item: {
+            id: "minecraft:redstone",
+            count: 1,
+          },
+          count: 8,
+        },
+      ],
+    },
+    {
+      x: 1.5,
+      y: -1.0,
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.0,
+      id: "273028AD77887D9F",
+      tasks: [
+        {
+          id: "5511420B62174F96",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "1AD2BE816479F123",
+          type: "xp",
+          xp: 25,
+        },
+      ],
+    },
+    {
+      x: 1.5,
+      y: 1.0,
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.0,
+      id: "36905CE21650AC69",
+      tasks: [
+        {
+          id: "1320ABBAE4FF463F",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "7160042C1017293F",
+          type: "xp",
+          xp: 25,
+        },
+      ],
+    },
+    {
+      x: 3.0,
+      y: 0.0,
+      shape: "hexagon",
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.25,
+      id: "34CFA95D19DC2ACE",
+      tasks: [
+        {
+          id: "5D5B303DAC1E947C",
+          type: "item",
+          item: {
+            id: "computercraft:computer_advanced",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "6A2F6E30301B98E1",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "60A83374F10F395F",
+          type: "item",
+          item: {
+            id: "minecraft:gold_ingot",
+            count: 1,
+          },
+          count: 4,
+        },
+        {
+          id: "4414F81FEB95564C",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 487623848494439020,
+        },
+      ],
+    },
+    {
+      x: 1.5,
+      y: 2.5,
+      dependencies: [
+        "36905CE21650AC69",
+      ],
+      size: 1.0,
+      id: "50227162ED3162A8",
+      tasks: [
+        {
+          id: "1EFD89F055545489",
+          type: "item",
+          item: {
+            id: "computercraft:disk_drive",
+            count: 1,
+          },
+        },
+        {
+          id: "67920E8225ED90D6",
+          type: "item",
+          item: {
+            id: "computercraft:disk",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "20E871F68B32384D",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "5C3D39A6635C14C1",
+          type: "item",
+          item: {
+            id: "minecraft:paper",
+            count: 1,
+          },
+          count: 8,
+        },
+      ],
+    },
+    {
+      x: 1.5,
+      y: 4.0,
+      dependencies: [
+        "50227162ED3162A8",
+      ],
+      size: 1.0,
+      id: "703DA246AD7CFB45",
+      tasks: [
+        {
+          id: "3126E1F20F839500",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "70F36E73E6CA520B",
+          type: "xp",
+          xp: 25,
+        },
+      ],
+    },
+    {
+      x: -1.5,
+      y: 2.5,
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.0,
+      id: "1B112B10FC7F7BEC",
+      tasks: [
+        {
+          id: "35B5024385048053",
+          type: "item",
+          icon: {
+            id: "computercraft:pocket_computer_normal",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(computercraft:pocket_computer_normal)item(computercraft:pocket_computer_advanced))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "1AA425BEE6ACB8FE",
+          type: "xp",
+          xp: 75,
+        },
+      ],
+    },
+    {
+      x: 0.0,
+      y: -2.5,
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.0,
+      id: "3F71B112F10E98BA",
+      tasks: [
+        {
+          id: "42E0C4915D7A61D3",
+          type: "item",
+          item: {
+            id: "computercraft:speaker",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "434169CFA9F0D802",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "2DAD3371F9C6D9F6",
+          type: "item",
+          item: {
+            id: "minecraft:note_block",
+            count: 1,
+          },
+        },
+      ],
+    },
+    {
+      x: -1.5,
+      y: -2.5,
+      dependencies: [
+        "64DBAD57D8173C33",
+      ],
+      size: 1.0,
+      id: "4F56CEB333DEA8BE",
+      tasks: [
+        {
+          id: "6A8CBAC09557DD61",
+          type: "item",
+          item: {
+            id: "computercraft:printer",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "1A0850E817EE74C4",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "1B2BD2349E0A9E33",
+          type: "item",
+          item: {
+            id: "minecraft:paper",
+            count: 1,
+          },
+          count: 16,
+        },
+        {
+          id: "1AC4F2520C5FD6D6",
+          type: "item",
+          item: {
+            id: "minecraft:ink_sac",
+            count: 1,
+          },
+          count: 4,
+        },
+      ],
+    },
+    {
+      x: 3.0,
+      y: -2.5,
+      dependencies: [
+        "34CFA95D19DC2ACE",
+      ],
+      size: 1.0,
+      id: "31AC2050C08F4A64",
+      tasks: [
+        {
+          id: "3DEDE1394453E416",
+          type: "item",
+          item: {
+            id: "computercraft:redstone_relay",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "5836ECDF02B7E9AB",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "1928E58D46AE6F20",
+          type: "item",
+          item: {
+            id: "minecraft:redstone",
+            count: 1,
+          },
+          count: 16,
+        },
+      ],
+    },
+    {
+      x: 4.5,
+      y: -2.5,
+      dependencies: [
+        "34CFA95D19DC2ACE",
+      ],
+      size: 1.0,
+      id: "378E2855176BF1AC",
+      tasks: [
+        {
+          id: "139CF244482A250A",
+          type: "item",
+          item: {
+            id: "computercraft:monitor_normal",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "44D8A3A43AF46590",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "534F13C15E7ACDF5",
+          type: "item",
+          item: {
+            id: "minecraft:glass_pane",
+            count: 1,
+          },
+          count: 8,
+        },
+      ],
+    },
+    {
+      x: 6.0,
+      y: -2.5,
+      dependencies: [
+        "378E2855176BF1AC",
+      ],
+      size: 1.0,
+      id: "76D1B60834D7B559",
+      tasks: [
+        {
+          id: "281D1FA481B4AA56",
+          type: "item",
+          item: {
+            id: "computercraft:monitor_advanced",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "630FF6CB5B441E7F",
+          type: "xp",
+          xp: 75,
+        },
+        {
+          id: "55B23F967F39E6B1",
+          type: "item",
+          item: {
+            id: "minecraft:gold_ingot",
+            count: 1,
+          },
+          count: 2,
+        },
+      ],
+    },
+    {
+      x: 4.5,
+      y: 0.0,
+      dependencies: [
+        "34CFA95D19DC2ACE",
+      ],
+      size: 1.0,
+      id: "73142613A637B880",
+      tasks: [
+        {
+          id: "49480D22ED6165D9",
+          type: "item",
+          item: {
+            id: "computercraft:wired_modem",
+            count: 1,
+          },
+        },
+        {
+          id: "01800F24000EF03B",
+          type: "item",
+          item: {
+            id: "computercraft:cable",
+            count: 1,
+          },
+          count: 8,
+        },
+      ],
+      rewards: [
+        {
+          id: "637C2F5965EE9FD9",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "0C3A499E5D1FC101",
+          type: "item",
+          item: {
+            id: "computercraft:cable",
+            count: 1,
+          },
+          count: 16,
+        },
+      ],
+    },
+    {
+      x: 6.0,
+      y: 0.0,
+      dependencies: [
+        "73142613A637B880",
+      ],
+      size: 1.0,
+      id: "5E16E8452527ED6E",
+      tasks: [
+        {
+          id: "5CC445547AD1BD3E",
+          type: "item",
+          item: {
+            id: "computercraft:wireless_modem_normal",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "4252F070B20BA9AB",
+          type: "xp",
+          xp: 50,
+        },
+        {
+          id: "368E501B3B7C56E3",
+          type: "item",
+          item: {
+            id: "minecraft:ender_pearl",
+            count: 1,
+          },
+        },
+      ],
+    },
+    {
+      x: 7.5,
+      y: 0.0,
+      dependencies: [
+        "5E16E8452527ED6E",
+      ],
+      size: 1.0,
+      id: "4E55C9495F5DA0C9",
+      tasks: [
+        {
+          id: "56AE5C8ED9C65CC3",
+          type: "item",
+          item: {
+            id: "computercraft:wireless_modem_advanced",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "134C2D69A87B6216",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "01FF8531AEFF9B8A",
+          type: "item",
+          item: {
+            id: "minecraft:ender_eye",
+            count: 1,
+          },
+          count: 2,
+        },
+      ],
+    },
+    {
+      x: 7.5,
+      y: -1.25,
+      dependencies: [
+        "5E16E8452527ED6E",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "5E2CFD8C2787413D",
+      tasks: [
+        {
+          id: "2BEFDF539BB31182",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "4ED1C86528CF4997",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 3.0,
+      y: 4.0,
+      dependencies: [
+        "34CFA95D19DC2ACE",
+      ],
+      size: 1.0,
+      id: "12E0E9B680FB17AF",
+      tasks: [
+        {
+          id: "5BEE081A90C19D76",
+          type: "item",
+          icon: {
+            id: "computercraft:turtle_normal",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(computercraft:turtle_normal)item(computercraft:turtle_advanced))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "44551DBC945BD86F",
+          type: "xp",
+          xp: 75,
+        },
+        {
+          id: "35F10222EE9CF149",
+          type: "item",
+          item: {
+            id: "minecraft:coal",
+            count: 1,
+          },
+          count: 16,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "computercraft:turtle_normal",
+        count: 1,
+        components: {
+          "computercraft:right_turtle_upgrade": "minecraft:diamond_pickaxe",
+        },
+      },
+      x: 4.5,
+      y: 3.5,
+      dependencies: [
+        "12E0E9B680FB17AF",
+      ],
+      size: 1.0,
+      id: "7652A2CBDD3BFB00",
+      tasks: [
+        {
+          id: "6CA37B64D1993028",
+          type: "item",
+          icon: {
+            id: "computercraft:turtle_normal",
+            count: 1,
+            components: {
+              "computercraft:right_turtle_upgrade": "minecraft:diamond_pickaxe",
+            },
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "and(or(item(computercraft:turtle_normal)item(computercraft:turtle_advanced))or(component(fuzzy:{\"computercraft:left_turtle_upgrade\":\"minecraft:diamond_pickaxe\"})component(fuzzy:{\"computercraft:right_turtle_upgrade\":\"minecraft:diamond_pickaxe\"})))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "2686978275B79E0A",
+          type: "xp",
+          xp: 75,
+        },
+        {
+          id: "5D6F362A749B33E5",
+          type: "item",
+          item: {
+            id: "minecraft:coal_block",
+            count: 1,
+          },
+          count: 2,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "computercraft:turtle_normal",
+        count: 1,
+        components: {
+          "computercraft:right_turtle_upgrade": "minecraft:crafting_table",
+        },
+      },
+      x: 4.5,
+      y: 4.75,
+      dependencies: [
+        "12E0E9B680FB17AF",
+      ],
+      size: 1.0,
+      id: "63BCAAB7D441BF33",
+      tasks: [
+        {
+          id: "1214DBE11D046D22",
+          type: "item",
+          icon: {
+            id: "computercraft:turtle_normal",
+            count: 1,
+            components: {
+              "computercraft:right_turtle_upgrade": "minecraft:crafting_table",
+            },
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "and(or(item(computercraft:turtle_normal)item(computercraft:turtle_advanced))or(component(fuzzy:{\"computercraft:left_turtle_upgrade\":\"minecraft:crafting_table\"})component(fuzzy:{\"computercraft:right_turtle_upgrade\":\"minecraft:crafting_table\"})))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "332599C4A587022C",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:chest",
+        count: 1,
+      },
+      x: 4.5,
+      y: 1.5,
+      dependencies: [
+        "73142613A637B880",
+      ],
+      size: 1.0,
+      id: "2547DCDAAE48A349",
+      tasks: [
+        {
+          id: "0D2A446048ECE7F9",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "0236A10A32FCC227",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      icon: {
+        id: "minecraft:bucket",
+        count: 1,
+      },
+      x: 6.0,
+      y: 1.5,
+      dependencies: [
+        "2547DCDAAE48A349",
+      ],
+      size: 1.0,
+      id: "040E1DBF7D9AD449",
+      tasks: [
+        {
+          id: "4F7E5EC318C16EDD",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "796FB11512D91F10",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 7.5,
+      y: 1.5,
+      dependencies: [
+        "040E1DBF7D9AD449",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "39DCF3CA686E7C20",
+      tasks: [
+        {
+          id: "2C80388996870560",
+          type: "item",
+          item: {
+            id: "energymeter:meter",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "684304E4C4F157E2",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 7.5,
+      y: 2.75,
+      dependencies: [
+        "040E1DBF7D9AD449",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "10C85B95334CB620",
+      tasks: [
+        {
+          id: "4881B8C6B812E5DA",
+          type: "item",
+          item: {
+            id: "energizedpower:battery_box",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "2BA2907E6064BE92",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+    {
+      x: 6.0,
+      y: 2.75,
+      dependencies: [
+        "2547DCDAAE48A349",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "4630980D6FB78DE7",
+      tasks: [
+        {
+          id: "3A54240207C534AB",
+          type: "item",
+          item: {
+            id: "logisticsnetworks:computer",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "3A9824BDF26AF538",
+          type: "xp",
+          xp: 50,
+        },
+      ],
+    },
+  ],
+  quest_links: [
+  ],
+  images: [
+  ],
+}
