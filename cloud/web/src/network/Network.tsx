@@ -794,7 +794,21 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   }, [sliceDraft]);
   const mfId = conn.info.value?.id ?? "";
   const tiles: MapTiles | null = layer !== "off" && conn.canControl.value && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
-  const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn);
+  // voxel blocks (WebGL2, operator+); day/night and a cut height
+  const webgl2 = useMemo(() => {
+    try {
+      return !!document.createElement("canvas").getContext("webgl2");
+    } catch {
+      return false;
+    }
+  }, []);
+  const [blocks, setBlocks] = useState(true);
+  const [night, setNight] = useState(false);
+  const [clipOn, setClipOn] = useState(false);
+  const [clipY, setClipY] = useState<number | null>(null);
+  const [voxStatus, setVoxStatus] = useState<{ loaded: number; total: number; triangles: number; unavailable: boolean } | null>(null);
+  const voxelsOn = use3d && blocks && webgl2 && conn.canControl.value && !voxStatus?.unavailable;
+  const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn && !voxelsOn);
   if (!net)
     return (
       <div class="empty">
@@ -803,6 +817,22 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
       </div>
     );
   const node = selected ? net.nodes.find((n) => n.id === selected) : undefined;
+  const dimNodes = net.nodes.filter((n) => n.dim === activeDim && n.pos);
+  const mfNode = dimNodes.find((n) => n.type === "mainframe") ?? dimNodes[0];
+  const voxelSrc =
+    voxelsOn && mfNode
+      ? {
+          base: conn.baseUrl,
+          token: conn.token,
+          mf: mfId,
+          dim: activeDim,
+          nodes: dimNodes.map((n) => ({ x: n.pos!.x, y: n.pos!.y, z: n.pos!.z })),
+          focus: { ...mfNode.pos! },
+          radius: 40,
+          budget: isPhone ? 150_000 : 450_000,
+        }
+      : null;
+  const defaultClip = (mfNode?.pos?.y ?? 64) + 5;
   const counts = statusCounts(net);
   const used = new Set(net.nodes.map((n) => [parentOf(net, n.id), n.id].sort().join("|")));
   const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && (l.weak || l.signal < 0.15) && used.has([l.a, l.b].sort().join("|")));
@@ -886,11 +916,40 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
               {use3d ? "Ranges" : "Range circles"}
             </label>
-            {use3d && conn.canControl.value && (
+            {use3d && conn.canControl.value && webgl2 && !voxStatus?.unavailable && (
+              <label class="check-row small">
+                <input type="checkbox" checked={blocks} onChange={(e) => setBlocks((e.target as HTMLInputElement).checked)} />
+                Blocks
+              </label>
+            )}
+            {use3d && conn.canControl.value && !voxelsOn && (
               <label class="check-row small">
                 <input type="checkbox" checked={terrainOn} onChange={(e) => setTerrainOn((e.target as HTMLInputElement).checked)} />
                 Terrain
               </label>
+            )}
+            {voxelsOn && (
+              <>
+                <label class="check-row small">
+                  <input type="checkbox" checked={night} onChange={(e) => setNight((e.target as HTMLInputElement).checked)} />
+                  Night
+                </label>
+                <label class="check-row small">
+                  <input type="checkbox" checked={clipOn} onChange={(e) => setClipOn((e.target as HTMLInputElement).checked)} />
+                  Cut
+                </label>
+                {clipOn && (
+                  <label class="slice-y small">
+                    <span>Y {clipY ?? defaultClip}</span>
+                    <input type="range" min={-64} max={320} value={clipY ?? defaultClip} aria-label="Cut everything above this height" onInput={(e) => setClipY(Number((e.target as HTMLInputElement).value))} />
+                  </label>
+                )}
+                {voxStatus && voxStatus.loaded < voxStatus.total && (
+                  <span class="muted small vox-progress" role="status">
+                    Loading blocks {Math.round((voxStatus.loaded / Math.max(1, voxStatus.total)) * 100)} %
+                  </span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -915,7 +974,20 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           {mode === "topology" ? (
             <Topology net={net} selected={selected} onSelect={setSelected} lr={isPhone} />
           ) : use3d && hasPos ? (
-            <View3DLoader net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} terrain={terrain} flyKey={flyKey} onFail={setFailed3d} />
+            <View3DLoader
+              net={net}
+              dim={activeDim}
+              selected={selected}
+              onSelect={setSelected}
+              ranges={ranges}
+              terrain={terrain}
+              flyKey={flyKey}
+              onFail={setFailed3d}
+              voxels={voxelSrc}
+              clipY={clipOn ? (clipY ?? defaultClip) : null}
+              night={night}
+              onVoxelStatus={setVoxStatus}
+            />
           ) : (
             <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} tiles={tiles} />
           )}

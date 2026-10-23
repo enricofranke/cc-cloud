@@ -235,6 +235,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             store.forgetMainframe(mainframeId);
             WebAuthData.access(serverLevel.getServer()).forget(mainframeId);
             ai.ezfox.cccloud.rules.RuleService.forget(serverLevel.getServer(), mainframeId);
+            ai.ezfox.cccloud.push.PushService.forget(serverLevel.getServer(), mainframeId);
             ai.ezfox.cccloud.network.SectionCache.get(serverLevel.getServer()).forgetMainframe(mainframeId);
             net.minecraft.world.Containers.dropContents(serverLevel, pos, upgrades);
             ai.ezfox.cccloud.upgrade.ChunkAnchor.release(serverLevel.getServer(), mainframeId);
@@ -255,9 +256,14 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         }
     }
 
+    private @org.jspecify.annotations.Nullable Boolean pushedPower;
+
     private void tick(ServerLevel level) {
         if (!redstoneChecked) updateRedstone();
         tickPower();
+        // v0.5 D: push "no power" / "power restored" on a change (not on the first tick after a load)
+        if (pushedPower != null && pushedPower != hasPower) ai.ezfox.cccloud.push.PushService.power(mainframeId, getDisplayName(), hasPower);
+        pushedPower = hasPower;
 
         boolean nowOnline = !powered && hasPower && CloudConfig.get(CloudConfig.ALLOW_CLOUD);
         if (nowOnline != online) ai.ezfox.cccloud.network.NetworkService.markDirty(); // the root node changed

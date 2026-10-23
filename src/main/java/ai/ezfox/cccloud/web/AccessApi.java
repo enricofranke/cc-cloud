@@ -75,6 +75,13 @@ public final class AccessApi {
     private final Hooks hooks;
     private final Function<String, @Nullable TeamProvider> teams;
     private final java.util.function.Supplier<List<TeamProvider>> enabledTeams;
+    private ai.ezfox.cccloud.push.@Nullable PushApi push;
+
+    /** v0.5 D: answers {@code /api/mainframes/<id>/push} (404 without). */
+    public AccessApi withPush(ai.ezfox.cccloud.push.@Nullable PushApi push) {
+        this.push = push;
+        return this;
+    }
 
     public AccessApi(AuthStore auth, AccessResolver resolver, Players players, Hooks hooks) {
         this(auth, resolver, players, hooks, TeamProviders::get, TeamProviders::enabled);
@@ -101,7 +108,7 @@ public final class AccessApi {
             case MAINFRAMES -> mainframes(devices);
             case DEVICES -> devices(device);
             case DEVICE_DELETE -> deleteDevice(device, path.substring(path.lastIndexOf('/') + 1));
-            case ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE -> mainframeApi(route, device, path, body);
+            case ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST -> mainframeApi(route, device, path, body);
             default -> error(404, "not_found");
         };
     }
@@ -243,6 +250,8 @@ public final class AccessApi {
             case SHARES_GET -> new Response(200, shares(mainframeId));
             case SHARES_POST -> createShare(mainframeId, device, body);
             case SHARE_DELETE -> deleteShare(mainframeId, device, parts[parts.length - 1]);
+            case PUSH_GET -> push == null ? error(404, "not_found") : push.get(mainframeId);
+            case PUSH_POST -> push == null ? error(404, "not_found") : push.post(mainframeId, device.playerName() + " (" + device.name() + ")", body);
             default -> error(404, "not_found");
         };
     }
@@ -616,7 +625,7 @@ public final class AccessApi {
         return new Response(200, json);
     }
 
-    static Response error(int status, String code) {
+    public static Response error(int status, String code) {
         var json = new JsonObject();
         json.addProperty("error", code);
         return new Response(status, json);
