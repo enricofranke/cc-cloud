@@ -26,9 +26,14 @@ public final class GuiViews {
     public static String mainframe(CloudMainframeBlockEntity mainframe, ServerPlayer player, @Nullable String notice) {
         var server = player.level().getServer();
         var resolution = ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId());
-        boolean manage = resolution.role().atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
+        // Management tabs for players who manage devices, access or the PIN (fine-grained permissions).
+        boolean manage = resolution.has(ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE) || resolution.has(ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE)
+            || resolution.has(ai.ezfox.cccloud.access.Perm.PIN_MANAGE);
         var json = new JsonObject();
         json.addProperty("role", resolution.role().id);
+        var permsJson = new JsonArray();
+        for (var p : resolution.perms()) permsJson.add(p.id);
+        json.add("perms", permsJson);
         json.addProperty("name", mainframe.getDisplayName());
         var pos = mainframe.getBlockPos();
         json.addProperty("pos", pos.getX() + " " + pos.getY() + " " + pos.getZ());

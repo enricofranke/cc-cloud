@@ -99,6 +99,50 @@ class AccessResolverTest {
     }
 
     @Test
+    void customPermissionsDenyWinsAndFeatureSwitch() {
+        store.setRole(mf, direct, "Direct", Role.OPERATOR);
+        store.setOverrides(mf, direct, new MainframeAccess.Overrides(java.util.Set.of(Perm.SCRIPTS_UPLOAD, Perm.RULES_EDIT),
+            java.util.Set.of(Perm.ACT_REDSTONE, Perm.RULES_EDIT)));
+        var r = resolver.resolve(direct, mf);
+        assertEquals(Role.OPERATOR, r.role(), "the role stays for display");
+        assertTrue(r.has(Perm.SCRIPTS_UPLOAD), "allow adds");
+        assertFalse(r.has(Perm.ACT_REDSTONE), "deny removes a preset permission");
+        assertFalse(r.has(Perm.RULES_EDIT), "deny wins over allow");
+        assertTrue(r.has(Perm.ACT_BUTTONS));
+        store.setRole(mf, direct, "Direct", Role.VIEWER);
+        assertTrue(resolver.resolve(direct, mf).has(Perm.SCRIPTS_UPLOAD), "custom permissions survive a preset change");
+        perms.noScripts.add(direct);
+        assertFalse(resolver.resolve(direct, mf).has(Perm.SCRIPTS_UPLOAD), "cccloud.feature.scripts=false removes script permissions");
+        perms.noScripts.add(owner);
+        assertFalse(resolver.resolve(owner, mf).has(Perm.SCRIPTS_RUN), "also for the owner");
+        assertTrue(resolver.resolve(owner, mf).has(Perm.ACCESS_MANAGE));
+        store.setOverrides(mf, direct, new MainframeAccess.Overrides(java.util.Set.of(), java.util.Set.of(Perm.VIEW)));
+        assertEquals(Role.NONE, resolver.role(direct, mf), "without view there is no access at all");
+    }
+
+    @Test
+    void teamRankOverrides() {
+        teams.put("t1", teamMember, "member");
+        store.setTeam(mf, new MainframeAccess.TeamBinding("fake", "t1", Map.of("member", Role.OPERATOR)));
+        assertTrue(store.setRankOverrides(mf, "member", new MainframeAccess.Overrides(java.util.Set.of(Perm.LAYOUT_EDIT), java.util.Set.of(Perm.ACT_BUTTONS))));
+        var r = resolver.resolve(teamMember, mf);
+        assertTrue(r.has(Perm.LAYOUT_EDIT) && !r.has(Perm.ACT_BUTTONS));
+        assertTrue(store.setMapping(mf, "member", Role.VIEWER));
+        assertTrue(resolver.resolve(teamMember, mf).has(Perm.LAYOUT_EDIT), "rank overrides survive a mapping change");
+    }
+
+    @Test
+    void presets() {
+        assertEquals(java.util.Set.of(Perm.VIEW, Perm.STORAGE_SEARCH), Perm.preset(Role.VIEWER));
+        assertTrue(Perm.preset(Role.OPERATOR).containsAll(java.util.Set.of(Perm.ACT_BUTTONS, Perm.ACT_REDSTONE, Perm.STORAGE_CRAFT, Perm.RULES_TOGGLE,
+            Perm.VIEW_POSITIONS)));
+        assertFalse(Perm.preset(Role.OPERATOR).contains(Perm.LAYOUT_EDIT));
+        assertEquals(Perm.all(), Perm.preset(Role.ADMIN));
+        var readOnly = new AuthStore.Device("h9", mf, "TV", false, 0, 0, owner, "Owner");
+        assertEquals(Perm.preset(Role.VIEWER), resolver.resolveDevice(readOnly, mf).perms(), "read-only devices: at most the viewer preset");
+    }
+
+    @Test
     void roleOrdering() {
         assertTrue(Role.OWNER.atLeast(Role.ADMIN));
         assertFalse(Role.SHARE.atLeast(Role.VIEWER), "share never satisfies a check");

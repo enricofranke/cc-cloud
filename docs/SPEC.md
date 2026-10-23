@@ -864,6 +864,58 @@ Roles stay as presets, but every grant can be customized with individual permiss
 - Server-level NeoForge permission nodes stay as an outer gate (e.g. a server can forbid `cccloud.scripts` entirely: new node `cccloud.feature.scripts`, default true).
 - Migration: existing roles → presets without overrides. Tests for every permission check site (a test walks all actions/routes and asserts which permission each one needs).
 
+#### Fine-grained permissions – protocol (mod side, implemented)
+**Mapping of check sites to permissions.** `AccessGate` holds it, and `PermissionWalkTest` checks every route and message.
+- WebSocket:
+  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown;
+  - crafting through `item_search`: `storage.craft`;
+  - watchlist edits: `storage.autostock`;
+  - `query`: `storage.search`;
+  - `layout_set`: `layout.edit`;
+  - `net_unlink`: `network.link`;
+  - `rule_set` and `rule_delete`: `rules.edit`;
+  - `rule_enable` and `rule_run`: `rules.toggle`.
+- HTTP:
+  - access: `access.manage`;
+  - shares: `shares.create`;
+  - script list, read and write: `scripts.upload`; run: `scripts.run`; delete: `scripts.delete`.
+- In-game screen and commands:
+  - dashboard switch: `power.toggle`;
+  - pairing code, approvals, devices: `devices.manage`;
+  - players, roles, trust: `access.manage`;
+  - PIN: `pin.manage`;
+  - Link Card and unlink: `network.link`.
+- Network-map coordinates and restricted (server/claims/backups) cards: `view.positions`.
+- Without `view` there is no access at all (WebSocket close 4403 `no_access`).
+- Errors:
+  - a missing permission gives `not_allowed`;
+  - sessions without `act.buttons` get `read_only` instead;
+  - share sessions always get `forbidden`.
+
+**Presets:**
+- viewer = {view, storage.search};
+- operator = viewer + {view.positions, act.buttons, act.redstone, storage.craft, rules.toggle};
+- admin = owner = all.
+
+**Effective set:** the union over all sources (direct grant, team rank, server-admin node) of `preset(role) ∪ allow − deny`. Deny wins within a source. `cccloud.feature.scripts=false` (PermissionAPI node, default true) removes `scripts.*` and `terminal` for that player everywhere, the owner included. Read-only devices are capped at the viewer preset.
+
+**Snapshot and pushes:** the `snapshot` and the `{"t":"role"}` push gain `"perms":["view",…]`. `canControl` = `act.buttons`.
+
+**Access document additions:**
+- `you.perms`.
+- `catalog: [{"id":"act.buttons","group":"act","presets":["operator","admin","owner"]}, …]`.
+- Each `players[]` row gains `preset` (same as `role`), `allow`, `deny` and `perms` (the effective set of that row's source).
+- `team.overrides: {"<rank>":{"allow":[…],"deny":[…]}}`.
+
+**Access POST ops:**
+- `set_role` takes optional `allow`/`deny` arrays (they replace the custom permissions; absent means keep them).
+- New `{"op":"set_perms","player","allow":[…],"deny":[…]}` for an existing direct grant.
+- `set_mapping` takes optional `allow`/`deny` for that rank.
+- Unknown permission ids → `400 invalid`.
+- Escalation rule: nobody can allow a permission they do not have themselves, except the owner and moderators with `cccloud.admin.manage` (→ `403 not_allowed`).
+
+**Migration:** saved v0.6 grants are `{name, role}` and load as presets without overrides. The new `allow`/`deny` fields are optional.
+
 ## v0.8 – ATM11 compatibility wave 2 (planned 2026-10-23)
 Soft dependencies in `compat/<modid>`, same rules as v0.5 A/B (zero-code cards via direct mode, existing widget types, fail soft, GameTests where headless-feasible, `-PintegrationMods` keys). Ordered by value for ATM11 players:
 1. **Storage controllers as storage cards** (direct mode on the controller, same Storage card + search as the bridges where an item-handler aggregate exists): Functional Storage (storage controller / drawers), Sophisticated Storage (controller), Occultism (storage controller / dimensional storage actuator), DimStorage (chest/tank), Integrated Terminals/Tunnels networks if exposed.

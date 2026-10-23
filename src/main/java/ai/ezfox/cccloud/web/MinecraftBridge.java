@@ -45,19 +45,24 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
-    public Role role(AuthStore.Device device, UUID mainframeId) {
-        return resolver().deviceRole(device, mainframeId);
+    public AccessResolver.Resolution access(AuthStore.Device device, UUID mainframeId) {
+        return resolver().resolveDevice(device, mainframeId);
+    }
+
+    private @Nullable String check(AuthStore.Device device, UUID mainframeId, ai.ezfox.cccloud.access.Perm perm) {
+        var r = access(device, mainframeId);
+        return AccessGate.check(r.role(), r.perms(), perm);
     }
 
     @Override
-    public Role authorize(AuthStore.Device device, UUID mainframeId, String ip) {
+    public AccessResolver.Resolution authorize(AuthStore.Device device, UUID mainframeId, String ip) {
         var resolution = resolver().resolveDevice(device, mainframeId);
-        if (resolution.role() == Role.NONE) return Role.NONE;
+        if (resolution.role() == Role.NONE) return resolution;
         auth.touch(device.tokenHash(), ip);
         if (resolution.source() == AccessResolver.Source.SERVER_ADMIN) {
             Access.auditAdmin(server, mainframeId, device.playerName(), "Dashboard viewed by admin");
         }
-        return resolution.role();
+        return resolution;
     }
 
     @Override
@@ -73,7 +78,7 @@ final class MinecraftBridge implements GameBridge {
             UUID mainframeId = pending.mainframeId();
             if (pending.issuer() != null) {
                 var issuer = server.getPlayerList().getPlayer(pending.issuer());
-                if (issuer != null && Access.canManage(issuer, mainframeId)) targets.add(issuer);
+                if (issuer != null && Access.has(issuer, mainframeId, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) targets.add(issuer);
             }
             if (targets.isEmpty()) {
                 var access = WebAuthData.access(server).access(mainframeId);
@@ -107,7 +112,7 @@ final class MinecraftBridge implements GameBridge {
             var uplink = CloudNetwork.section(action.uplinkId());
             if (uplink != null && !uplink.getTitle().isEmpty()) where = uplink.getTitle() + "/" + action.id();
             // Live role check on the server thread (the session's cached role may be up to 5 s old).
-            String error = AccessGate.check(role(device, mainframeId), AccessGate.Kind.ACTION);
+            String error = check(device, mainframeId, WebHub.INSTANCE.actionPerm(mainframeId, action.uplinkId().toString(), action.id()));
             if (error == null) error = checkUplink(mainframeId, action.uplinkId());
             result = error != null ? ActionResult.done(error)
                 : uplink.handleAction(action.id(), action.value(), action.op(), device.name(), pinVerified);
@@ -133,7 +138,7 @@ final class MinecraftBridge implements GameBridge {
 
     @Override
     public QueryResult dispatchQuery(AuthStore.Device device, UUID mainframeId, ClientMessages.Query query) {
-        String error = AccessGate.check(role(device, mainframeId), AccessGate.Kind.QUERY);
+        String error = check(device, mainframeId, AccessGate.Kind.QUERY.perm);
         if (error == null) error = checkUplink(mainframeId, query.uplinkId());
         if (error != null) {
             return QueryResult.fail(switch (error) {
@@ -147,7 +152,7 @@ final class MinecraftBridge implements GameBridge {
 
     @Override
     public @Nullable String setLayout(AuthStore.Device device, UUID mainframeId, @Nullable JsonObject layout) {
-        String error = AccessGate.check(role(device, mainframeId), AccessGate.Kind.LAYOUT);
+        String error = check(device, mainframeId, AccessGate.Kind.LAYOUT.perm);
         if (error != null) return error;
         LayoutData.get(server).set(mainframeId, layout);
         CloudLog.LOGGER.info("[cccloud] {} ({}) saved the dashboard layout of {}", device.name(), device.playerName(), mainframeName(mainframeId));
@@ -156,7 +161,7 @@ final class MinecraftBridge implements GameBridge {
 
     @Override
     public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
-        String error = AccessGate.check(role(device, mainframeId), AccessGate.Kind.NET_UNLINK);
+        String error = check(device, mainframeId, AccessGate.Kind.NET_UNLINK.perm);
         if (error != null) return error;
         UUID id = ClientMessages.parseUuid(nodeId);
         if (id == null) return "unknown_node";
@@ -177,7 +182,7 @@ final class MinecraftBridge implements GameBridge {
 
     @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
-        String error = AccessGate.check(role(device, mainframeId), command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
+        String error = check(device, mainframeId, (command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE).perm);
         if (error != null) return new GameBridge.RuleResult(error, null, null);
         String who = device.playerName() + " (" + device.name() + ")";
         switch (command.op()) {

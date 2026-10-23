@@ -1,6 +1,8 @@
 package ai.ezfox.cccloud.access;
 
 import ai.ezfox.cccloud.web.AuthStore;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
@@ -24,8 +26,21 @@ public final class AccessResolver {
         }
     }
 
-    public record Resolution(Role role, Source source, @Nullable String teamRank) {
-        public static final Resolution NONE = new Resolution(Role.NONE, Source.NONE, null);
+    /**
+     * @param role  the highest role from all sources (for display)
+     * @param perms the effective permissions: union over the sources of {@code preset(role) ∪ allow − deny}, minus
+     *              features the server switched off
+     */
+    public record Resolution(Role role, Source source, @Nullable String teamRank, Set<Perm> perms) {
+        public static final Resolution NONE = new Resolution(Role.NONE, Source.NONE, null, Set.of());
+
+        public Resolution(Role role, Source source, @Nullable String teamRank) {
+            this(role, source, teamRank, Perm.preset(role));
+        }
+
+        public boolean has(Perm perm) {
+            return perms.contains(perm);
+        }
     }
 
     private final AccessStore store;
@@ -68,15 +83,19 @@ public final class AccessResolver {
         return resolve(player, mainframeId).role();
     }
 
-    /** Full resolution (role and the source it came from, for the Access page and the audit log). */
+    /** Full resolution: role, the source it came from, and the effective permissions. */
     public Resolution resolve(UUID player, UUID mainframeId) {
         if (permissions.banned(player) || !permissions.has(player, ServerPermissions.Node.USE)) return Resolution.NONE;
-        var best = Resolution.NONE;
         var access = store.access(mainframeId);
+        if (access != null && player.equals(access.owner())) return withFeatures(player, new Resolution(Role.OWNER, Source.OWNER, null, Perm.all()));
+        var best = Resolution.NONE;
+        var perms = EnumSet.noneOf(Perm.class);
         if (access != null) {
-            if (player.equals(access.owner())) return new Resolution(Role.OWNER, Source.OWNER, null);
             var grant = access.grants().get(player);
-            if (grant != null) best = higher(best, new Resolution(grant.role(), Source.DIRECT, null));
+            if (grant != null) {
+                best = higher(best, new Resolution(grant.role(), Source.DIRECT, null));
+                perms.addAll(Perm.effective(grant.role(), grant.overrides().allow(), grant.overrides().deny()));
+            }
             var team = effectiveTeam(access);
             if (team != null) {
                 var provider = teams.apply(team.provider());
@@ -85,18 +104,28 @@ public final class AccessResolver {
                     Role mapped = team.mapping().get(rank);
                     if (mapped == null) mapped = provider.defaultMapping().getOrDefault(rank, Role.NONE);
                     best = higher(best, new Resolution(mapped, Source.TEAM, rank));
+                    var o = team.overridesFor(rank);
+                    perms.addAll(Perm.effective(mapped, o.allow(), o.deny()));
                 }
             }
         }
         // Server admins (moderation), visible in the owner's audit log.
-        if (best.role().rank < Role.ADMIN.rank && permissions.has(player, ServerPermissions.Node.ADMIN_MANAGE)) {
-            best = higher(best, new Resolution(Role.ADMIN, Source.SERVER_ADMIN, null));
-        } else if (best.role().rank < Role.OPERATOR.rank && permissions.has(player, ServerPermissions.Node.ADMIN_OPERATE)) {
-            best = higher(best, new Resolution(Role.OPERATOR, Source.SERVER_ADMIN, null));
-        } else if (best.role().rank < Role.VIEWER.rank && permissions.has(player, ServerPermissions.Node.ADMIN_VIEW)) {
-            best = higher(best, new Resolution(Role.VIEWER, Source.SERVER_ADMIN, null));
-        }
-        return best;
+        Role admin = permissions.has(player, ServerPermissions.Node.ADMIN_MANAGE) ? Role.ADMIN
+            : permissions.has(player, ServerPermissions.Node.ADMIN_OPERATE) ? Role.OPERATOR
+            : permissions.has(player, ServerPermissions.Node.ADMIN_VIEW) ? Role.VIEWER : Role.NONE;
+        if (admin.rank > best.role().rank) best = new Resolution(admin, Source.SERVER_ADMIN, null);
+        perms.addAll(Perm.preset(admin));
+        if (best.role() == Role.NONE || !perms.contains(Perm.VIEW)) return Resolution.NONE;
+        return withFeatures(player, new Resolution(best.role(), best.source(), best.teamRank(), perms));
+    }
+
+    /** Server-level feature switches (PermissionAPI) remove permissions, e.g. {@code cccloud.feature.scripts}. */
+    private Resolution withFeatures(UUID player, Resolution r) {
+        if (permissions.has(player, ServerPermissions.Node.FEATURE_SCRIPTS)) return r;
+        var perms = EnumSet.noneOf(Perm.class);
+        perms.addAll(r.perms());
+        perms.removeAll(EnumSet.of(Perm.SCRIPTS_UPLOAD, Perm.SCRIPTS_RUN, Perm.SCRIPTS_DELETE, Perm.TERMINAL));
+        return new Resolution(r.role(), r.source(), r.teamRank(), perms);
     }
 
     /**
@@ -106,7 +135,13 @@ public final class AccessResolver {
     public Resolution resolveDevice(AuthStore.Device device, UUID mainframeId) {
         if (device.mainframeId() != null && !device.mainframeId().equals(mainframeId)) return Resolution.NONE;
         var r = resolve(device.player(), mainframeId);
-        if (!device.canControl() && r.role().rank > Role.VIEWER.rank) return new Resolution(Role.VIEWER, r.source(), r.teamRank());
+        if (!device.canControl() && r.role().rank > Role.VIEWER.rank) {
+            // Read-only devices: at most the viewer preset.
+            var perms = EnumSet.noneOf(Perm.class);
+            perms.addAll(r.perms());
+            perms.retainAll(Perm.preset(Role.VIEWER));
+            return new Resolution(Role.VIEWER, r.source(), r.teamRank(), perms);
+        }
         return r;
     }
 

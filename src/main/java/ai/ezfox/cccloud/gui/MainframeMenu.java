@@ -22,7 +22,7 @@ public class MainframeMenu extends CloudMenu {
     public void removed(Player player) {
         super.removed(player);
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) || serverPlayer.level().getServer() == null) return;
-        if (!(player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity mainframe) || !mainframe.canManage(player)) return;
+        if (!(player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity mainframe) || !mainframe.has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) return;
         var auth = ai.ezfox.cccloud.web.WebAuthData.get(serverPlayer.level().getServer());
         for (var pending : auth.pendingFor(mainframe.getMainframeId())) {
             ai.ezfox.cccloud.web.ApprovalPrompt.send(serverPlayer, pending, mainframe.getDisplayName());

@@ -328,12 +328,17 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         return access == null ? Map.of() : access.grants();
     }
 
-    /** Admins and the owner manage the mainframe (role from the AccessResolver: owner, roles, teams, admin nodes). */
+    /** Manages the mainframe's access ({@code access.manage}; owner and admins by default). */
     public boolean canManage(Player player) {
-        if (player instanceof ServerPlayer sp) return ai.ezfox.cccloud.access.Access.canManage(sp, mainframeId);
+        return has(player, ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE);
+    }
+
+    /** One permission of the player here (AccessResolver: owner, roles + custom permissions, teams, admin nodes). */
+    public boolean has(Player player, ai.ezfox.cccloud.access.Perm perm) {
+        if (player instanceof ServerPlayer sp) return ai.ezfox.cccloud.access.Access.has(sp, mainframeId, perm);
         // Server-side non-ServerPlayer players (fake/mock players): resolve by UUID.
         return level instanceof ServerLevel serverLevel && !level.isClientSide()
-            && ai.ezfox.cccloud.access.Access.resolver(serverLevel.getServer()).role(player.getUUID(), mainframeId).atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
+            && ai.ezfox.cccloud.access.Access.resolver(serverLevel.getServer()).resolve(player.getUUID(), mainframeId).has(perm);
     }
 
     /** Gives a player a direct role (NONE removes it). Returns false if nothing changed or the player is the owner. */
@@ -376,7 +381,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     // ---- interaction -------------------------------------------------------------------------------------------------
 
     public void toggleEnabled(Player player) {
-        if (!canManage(player)) {
+        if (!has(player, ai.ezfox.cccloud.access.Perm.POWER_TOGGLE)) {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }
@@ -394,7 +399,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         } else if (powered) {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.killed").withStyle(ChatFormatting.RED));
         }
-        if (!canManage(player)) {
+        if (!has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }
@@ -419,7 +424,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     }
 
     public void revokeTokens(Player player) {
-        if (!canManage(player)) {
+        if (!has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }

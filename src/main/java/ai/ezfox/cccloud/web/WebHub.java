@@ -456,6 +456,7 @@ public final class WebHub {
         json.add("mainframe", mainframe);
         json.addProperty("canControl", canControl);
         json.addProperty("role", session.role().id);
+        json.add("perms", permsJson(session.perms()));
         var device = session.device();
         if (device != null) {
             var account = new JsonObject();
@@ -465,14 +466,14 @@ public final class WebHub {
             json.add("account", com.google.gson.JsonNull.INSTANCE);
         }
         var uplinks = new JsonArray();
-        boolean restricted = seesRestricted(session.role());
+        boolean restricted = seesRestricted(session.perms());
         for (var entry : view.uplinks.entrySet()) {
             if (restricted || !view.restricted.contains(entry.getKey())) uplinks.add(entry.getValue());
         }
         json.add("uplinks", uplinks);
         json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
-        // Positions only for devices with canControl.
-        var network = canControl ? view.networkFullJson : view.networkStrippedJson;
+        // Positions only with view.positions.
+        var network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
         if (network != null) json.add("network", network);
         if (view.rules != null) json.add("rules", view.rules);
         return json;
@@ -513,24 +514,45 @@ public final class WebHub {
      * v0.5 {@code "restricted"} sections (mainframe cards: server, claims, backups) are shown from the operator role up;
      * viewers and share links never get them.
      */
-    public static boolean seesRestricted(Role role) {
-        return role.atLeast(Role.OPERATOR);
+    public static boolean seesRestricted(java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+        return perms.contains(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
     }
 
-    /** Sends a role change ({@code {"t":"role","role","canControl"}}) and the network view matching the new role. */
-    public void pushRole(HubSession session, Role role) {
+    static JsonArray permsJson(java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+        var array = new JsonArray();
+        for (var p : ai.ezfox.cccloud.access.Perm.values()) if (perms.contains(p)) array.add(p.id);
+        return array;
+    }
+
+    /** The permission an action on this widget needs (see {@link AccessGate#actionPerm}). */
+    public ai.ezfox.cccloud.access.Perm actionPerm(UUID mainframeId, String uplinkId, String widgetId) {
+        var view = views.get(mainframeId);
+        if (view == null) return ai.ezfox.cccloud.access.Perm.ACT_BUTTONS;
+        synchronized (view) {
+            var uplink = view.uplinks.get(uplinkId);
+            var index = view.widgetIndex.get(uplinkId);
+            var widget = index == null ? null : index.get(widgetId);
+            String type = widget == null || !widget.has("type") ? null : widget.get("type").getAsString();
+            String mode = uplink == null || !uplink.has("mode") ? null : uplink.get("mode").getAsString();
+            return AccessGate.actionPerm(type, mode, widgetId);
+        }
+    }
+
+    /** Sends a role/permission change ({@code {"t":"role","role","canControl","perms"}}) and the matching network view. */
+    public void pushRole(HubSession session, Role role, java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
         var view = views.get(session.mainframeId());
-        boolean restrictedChanged = seesRestricted(session.role()) != seesRestricted(role);
-        session.setRole(role);
+        boolean restrictedChanged = seesRestricted(session.perms()) != seesRestricted(perms);
+        session.setAccess(role, perms);
         var json = new JsonObject();
         json.addProperty("t", "role");
         json.addProperty("role", role.id);
-        json.addProperty("canControl", role.canControl());
+        json.addProperty("canControl", session.canControl());
+        json.add("perms", permsJson(perms));
         var messages = new ArrayList<String>();
         messages.add(Json.GSON.toJson(json));
         if (view != null) {
             synchronized (view) {
-                String network = role.canControl() ? view.networkFull : view.networkStripped;
+                String network = session.seesPositions() ? view.networkFull : view.networkStripped;
                 if (network != null) messages.add(network);
                 // Restricted sections appear or disappear: resend the snapshot for the new role.
                 if (restrictedChanged) messages.add(Json.GSON.toJson(snapshot(view, session)));
@@ -647,7 +669,7 @@ public final class WebHub {
             if (networkFull != null && !view.sessions.isEmpty()) {
                 for (var session : view.sessions) {
                     if (session.share() != null) continue; // share viewers never get the network map
-                    session.send(List.of(session.canControl() ? networkFull : networkStripped));
+                    session.send(List.of(session.seesPositions() ? networkFull : networkStripped));
                 }
             }
             if (pending.isEmpty()) continue;
@@ -667,7 +689,7 @@ public final class WebHub {
                             if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
                         }
                     }
-                    session.send(seesRestricted(session.role()) ? messages : readOnly);
+                    session.send(seesRestricted(session.perms()) ? messages : readOnly);
                     continue;
                 }
                 if (shareMessages == null) shareMessages = new java.util.HashMap<>();

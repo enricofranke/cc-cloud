@@ -20,7 +20,9 @@ public interface ServerPermissions {
         COMMAND_ICONS("command.icons"),
         COMMAND_RELOAD("command.reload"),
         /** Ignore per-player limits (default op level 4). */
-        BYPASS_LIMITS("bypass.limits");
+        BYPASS_LIMITS("bypass.limits"),
+        /** Feature switch: script import (and later the terminal) on this server (default true). */
+        FEATURE_SCRIPTS("feature.scripts");
 
         public final String path;
 

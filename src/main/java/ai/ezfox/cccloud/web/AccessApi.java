@@ -3,6 +3,7 @@ package ai.ezfox.cccloud.web;
 import ai.ezfox.cccloud.access.AccessResolver;
 import ai.ezfox.cccloud.access.AccessStore;
 import ai.ezfox.cccloud.access.MainframeAccess;
+import ai.ezfox.cccloud.access.Perm;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.access.ServerPermissions;
 import ai.ezfox.cccloud.access.TeamProvider;
@@ -109,14 +110,16 @@ public final class AccessApi {
 
     private Response mainframes(List<AuthStore.Device> devices) {
         var roles = new LinkedHashMap<UUID, Role>();
+        var control = new java.util.HashSet<UUID>();
         AuthStore.Device account = null;
         for (var device : devices) {
             Set<UUID> candidates = device.mainframeId() != null ? Set.of(device.mainframeId()) : allMainframes();
             if (device.isAccount() && account == null) account = device;
             for (var id : candidates) {
-                var role = resolver.deviceRole(device, id);
-                if (role == Role.NONE) continue;
-                roles.merge(id, role, Role::max);
+                var r = resolver.resolveDevice(device, id);
+                if (r.role() == Role.NONE) continue;
+                roles.merge(id, r.role(), Role::max);
+                if (r.has(Perm.ACT_BUTTONS)) control.add(id);
             }
         }
         var list = new JsonArray();
@@ -128,7 +131,7 @@ public final class AccessApi {
             json.addProperty("online", info != null && info.online());
             json.addProperty("enabled", info != null && info.enabled());
             json.addProperty("role", e.getValue().id);
-            json.addProperty("canControl", e.getValue().canControl());
+            json.addProperty("canControl", control.contains(e.getKey()));
             if (devices.size() == 1 && !devices.getFirst().isAccount()) json.addProperty("device", devices.getFirst().name());
             list.add(json);
         }
@@ -229,8 +232,8 @@ public final class AccessApi {
         if (mainframeId == null) return error(404, "not_found");
         var resolution = resolver.resolveDevice(device, mainframeId);
         if (resolution.role() == Role.NONE) return error(403, "no_access");
-        String denied = AccessGate.check(resolution.role(), AccessGate.Kind.MANAGE);
-        if (denied != null) return error(403, denied);
+        String denied = AccessGate.check(resolution.role(), resolution.perms(), AccessGate.routePerm(route));
+        if (denied != null) return error(403, denied.equals("read_only") ? "not_allowed" : denied);
         if (resolution.source() == AccessResolver.Source.SERVER_ADMIN) {
             store.audit(mainframeId, "Access settings opened by admin " + device.playerName());
         }
@@ -249,18 +252,20 @@ public final class AccessApi {
         var you = new JsonObject();
         you.addProperty("player", device.playerName());
         you.addProperty("role", yourRole.id);
+        you.add("perms", WebHub.permsJson(resolver.resolveDevice(device, mainframeId).perms()));
         doc.add("you", you);
+        doc.add("catalog", catalog());
         var access = store.access(mainframeId);
         var rows = new LinkedHashMap<UUID, JsonObject>();
         if (access != null && access.owner() != null) {
             String name = access.ownerName().isEmpty() ? players.name(access.owner()) : access.ownerName();
-            rows.put(access.owner(), playerRow(access.owner(), name, Role.OWNER, "owner", null));
+            rows.put(access.owner(), playerRow(access.owner(), name, Role.OWNER, "owner", null, ai.ezfox.cccloud.access.MainframeAccess.Overrides.NONE));
         }
         if (access != null) {
             for (var e : access.grants().entrySet()) {
                 if (rows.containsKey(e.getKey())) continue;
                 String name = e.getValue().name().isEmpty() ? players.name(e.getKey()) : e.getValue().name();
-                rows.put(e.getKey(), playerRow(e.getKey(), name, e.getValue().role(), "direct", null));
+                rows.put(e.getKey(), playerRow(e.getKey(), name, e.getValue().role(), "direct", null, e.getValue().overrides()));
             }
         }
         JsonElement teamJson = JsonNull.INSTANCE;
@@ -276,6 +281,14 @@ public final class AccessApi {
             var mapping = new JsonObject();
             for (var m : binding.mapping().entrySet()) mapping.addProperty(m.getKey(), m.getValue().id);
             t.add("mapping", mapping);
+            var teamOverrides = new JsonObject();
+            for (var o : binding.overrides().entrySet()) {
+                var item = new JsonObject();
+                item.add("allow", WebHub.permsJson(o.getValue().allow()));
+                item.add("deny", WebHub.permsJson(o.getValue().deny()));
+                teamOverrides.add(o.getKey(), item);
+            }
+            t.add("overrides", teamOverrides);
             // Not assigned explicitly: the owner's team (v0.5 ftbTeamsTrust); assigning a team replaces it.
             if (access.team() == null) t.addProperty("implicit", true);
             teamJson = t;
@@ -285,7 +298,7 @@ public final class AccessApi {
                     if (role == Role.NONE) continue;
                     var existing = rows.get(member.uuid());
                     if (existing != null && Role.parse(existing.get("role").getAsString()).rank >= role.rank) continue;
-                    rows.put(member.uuid(), playerRow(member.uuid(), member.name(), role, "team", member.rank()));
+                    rows.put(member.uuid(), playerRow(member.uuid(), member.name(), role, "team", member.rank(), binding.overridesFor(member.rank())));
                 }
             }
         }
@@ -318,14 +331,55 @@ public final class AccessApi {
         return doc;
     }
 
-    private static JsonObject playerRow(UUID uuid, String name, Role role, String source, @Nullable String rank) {
+    private static JsonObject playerRow(UUID uuid, String name, Role role, String source, @Nullable String rank,
+                                        ai.ezfox.cccloud.access.MainframeAccess.Overrides overrides) {
         var row = new JsonObject();
         row.addProperty("uuid", uuid.toString());
         row.addProperty("player", name);
         row.addProperty("role", role.id);
+        row.addProperty("preset", role.id);
         row.addProperty("source", source);
         if (rank != null) row.addProperty("teamRank", rank);
+        row.add("allow", WebHub.permsJson(overrides.allow()));
+        row.add("deny", WebHub.permsJson(overrides.deny()));
+        var perms = role == Role.OWNER ? Perm.all() : Perm.effective(role, overrides.allow(), overrides.deny());
+        row.add("perms", WebHub.permsJson(perms));
         return row;
+    }
+
+    /** The permission catalog for the Access page: id, group and which presets contain it. */
+    static JsonArray catalog() {
+        var array = new JsonArray();
+        for (var p : Perm.values()) {
+            var item = new JsonObject();
+            item.addProperty("id", p.id);
+            item.addProperty("group", p.group);
+            var presets = new JsonArray();
+            for (var r : new Role[]{Role.VIEWER, Role.OPERATOR, Role.ADMIN, Role.OWNER}) if (Perm.preset(r).contains(p)) presets.add(r.id);
+            item.add("presets", presets);
+            array.add(item);
+        }
+        return array;
+    }
+
+    /** Parses {@code "allow"}/{@code "deny"} arrays of permission ids (absent = empty); null if invalid. */
+    private static ai.ezfox.cccloud.access.MainframeAccess.@Nullable Overrides overrides(JsonObject obj) {
+        var allow = perms(obj.get("allow"));
+        var deny = perms(obj.get("deny"));
+        return allow == null || deny == null ? null : new ai.ezfox.cccloud.access.MainframeAccess.Overrides(allow, deny);
+    }
+
+    private static java.util.@Nullable Set<Perm> perms(@Nullable JsonElement e) {
+        if (e == null || e.isJsonNull()) return Set.of();
+        if (!e.isJsonArray() || e.getAsJsonArray().size() > Perm.values().length) return null;
+        var set = java.util.EnumSet.noneOf(Perm.class);
+        for (var item : e.getAsJsonArray()) {
+            if (!item.isJsonPrimitive() || !item.getAsJsonPrimitive().isString()) return null;
+            var p = Perm.byId(item.getAsString());
+            if (p == null) return null;
+            set.add(p);
+        }
+        return set;
     }
 
     private static JsonObject teamRow(TeamProvider provider, TeamProvider.Team team) {
@@ -346,13 +400,32 @@ public final class AccessApi {
         if (op == null) return error(400, "invalid");
         // Owners and moderators (cccloud.admin.manage) may change everyone; admins only players below them.
         boolean moderator = yourRole == Role.OWNER || resolver.permissions().has(device.player(), ServerPermissions.Node.ADMIN_MANAGE);
+        var callerPerms = resolver.resolveDevice(device, mainframeId).perms();
         String who = device.playerName();
         switch (op) {
-            case "set_role", "remove" -> {
-                if (!onlyKeys(obj, op.equals("set_role") ? Set.of("op", "player", "role") : Set.of("op", "player"))) return error(400, "invalid");
+            case "set_role", "remove", "set_perms" -> {
+                if (!onlyKeys(obj, op.equals("remove") ? Set.of("op", "player") : op.equals("set_perms") ? Set.of("op", "player", "allow", "deny")
+                    : Set.of("op", "player", "role", "allow", "deny"))) return error(400, "invalid");
+                var custom = overrides(obj);
+                if (custom == null) return error(400, "invalid");
+                // Nobody grants permissions they do not have themselves (moderators excepted).
+                if (!moderator && !callerPerms.containsAll(custom.allow())) return error(403, "not_allowed");
                 String playerArg = string(obj, "player");
                 if (playerArg == null || playerArg.isEmpty() || playerArg.length() > 36) return error(400, "invalid");
                 Role role = Role.NONE;
+                if (op.equals("set_perms")) {
+                    String pa = string(obj, "player");
+                    var target = pa == null ? null : resolvePlayer(pa);
+                    if (target == null) return error(400, "unknown_player");
+                    var access = store.access(mainframeId);
+                    var grant = access == null ? null : access.grants().get(target.uuid());
+                    if (grant == null) return error(400, "invalid");
+                    if (!moderator && grant.role().rank >= yourRole.rank) return error(403, "not_allowed");
+                    store.setOverrides(mainframeId, target.uuid(), custom);
+                    store.audit(mainframeId, who + " changed the permissions of " + target.name());
+                    hooks.accessChanged(mainframeId);
+                    return new Response(200, accessDoc(mainframeId, device, resolver.deviceRole(device, mainframeId)));
+                }
                 if (op.equals("set_role")) {
                     String roleArg = string(obj, "role");
                     if (roleArg == null || !ROLE_IDS.contains(roleArg)) return error(400, "invalid");
@@ -369,6 +442,7 @@ public final class AccessApi {
                 if (op.equals("remove") && currentGrant == null) return new Response(200, accessDoc(mainframeId, device, yourRole));
                 String err = store.setRole(mainframeId, target.uuid(), target.name(), role);
                 if (err != null) return error(400, err.equals("too_many") ? "too_many" : "invalid");
+                if (role != Role.NONE && (obj.has("allow") || obj.has("deny"))) store.setOverrides(mainframeId, target.uuid(), custom);
                 store.audit(mainframeId, who + (role == Role.NONE ? " removed " + target.name() : " set " + target.name() + " to " + role.id));
             }
             case "set_team" -> {
@@ -393,13 +467,17 @@ public final class AccessApi {
                 }
             }
             case "set_mapping" -> {
-                if (!onlyKeys(obj, Set.of("op", "rank", "role"))) return error(400, "invalid");
+                if (!onlyKeys(obj, Set.of("op", "rank", "role", "allow", "deny"))) return error(400, "invalid");
+                var custom = overrides(obj);
+                if (custom == null) return error(400, "invalid");
+                if (!moderator && !callerPerms.containsAll(custom.allow())) return error(403, "not_allowed");
                 String rank = string(obj, "rank");
                 String roleArg = string(obj, "role");
                 Role role = roleArg == null ? null : Role.parse(roleArg);
                 if (rank == null || role == null || role == Role.OWNER) return error(400, "invalid");
                 if (!moderator && role.rank > yourRole.rank) return error(403, "not_allowed");
                 if (!store.setMapping(mainframeId, rank, role)) return error(400, "invalid");
+                if (obj.has("allow") || obj.has("deny")) store.setRankOverrides(mainframeId, rank, custom);
                 store.audit(mainframeId, who + " mapped the team rank " + rank + " to " + role.id);
             }
             default -> {

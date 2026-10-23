@@ -64,15 +64,36 @@ public final class WebAuthData extends SavedData {
         return role == null || role == Role.OWNER ? DataResult.error(() -> "Unknown role " + s) : DataResult.success(role);
     }, r -> r.id);
 
+    /** Permission ids; unknown ids (from a newer version) are dropped. */
+    private static final Codec<java.util.Set<ai.ezfox.cccloud.access.Perm>> PERMS_CODEC = Codec.STRING.listOf().xmap(
+        list -> {
+            var set = java.util.EnumSet.noneOf(ai.ezfox.cccloud.access.Perm.class);
+            for (String id : list) {
+                var p = ai.ezfox.cccloud.access.Perm.byId(id);
+                if (p != null) set.add(p);
+            }
+            return (java.util.Set<ai.ezfox.cccloud.access.Perm>) set;
+        },
+        set -> set.stream().map(p -> p.id).sorted().toList());
+
+    private static final Codec<MainframeAccess.Overrides> OVERRIDES_CODEC = RecordCodecBuilder.create(i -> i.group(
+        PERMS_CODEC.optionalFieldOf("allow", java.util.Set.of()).forGetter(MainframeAccess.Overrides::allow),
+        PERMS_CODEC.optionalFieldOf("deny", java.util.Set.of()).forGetter(MainframeAccess.Overrides::deny)
+    ).apply(i, MainframeAccess.Overrides::new));
+
+    /** v0.6 grants were {name, role}; fine-grained permissions add optional allow/deny (migration: none). */
     private static final Codec<MainframeAccess.Grant> GRANT_CODEC = RecordCodecBuilder.create(i -> i.group(
         Codec.STRING.optionalFieldOf("name", "").forGetter(MainframeAccess.Grant::name),
-        ROLE_CODEC.fieldOf("role").forGetter(MainframeAccess.Grant::role)
-    ).apply(i, MainframeAccess.Grant::new));
+        ROLE_CODEC.fieldOf("role").forGetter(MainframeAccess.Grant::role),
+        PERMS_CODEC.optionalFieldOf("allow", java.util.Set.of()).forGetter(g -> g.overrides().allow()),
+        PERMS_CODEC.optionalFieldOf("deny", java.util.Set.of()).forGetter(g -> g.overrides().deny())
+    ).apply(i, (name, role, allow, deny) -> new MainframeAccess.Grant(name, role, new MainframeAccess.Overrides(allow, deny))));
 
     private static final Codec<MainframeAccess.TeamBinding> TEAM_CODEC = RecordCodecBuilder.create(i -> i.group(
         Codec.STRING.fieldOf("provider").forGetter(MainframeAccess.TeamBinding::provider),
         Codec.STRING.fieldOf("team").forGetter(MainframeAccess.TeamBinding::teamId),
-        Codec.unboundedMap(Codec.STRING, ROLE_CODEC).optionalFieldOf("mapping", Map.of()).forGetter(MainframeAccess.TeamBinding::mapping)
+        Codec.unboundedMap(Codec.STRING, ROLE_CODEC).optionalFieldOf("mapping", Map.of()).forGetter(MainframeAccess.TeamBinding::mapping),
+        Codec.unboundedMap(Codec.STRING, OVERRIDES_CODEC).optionalFieldOf("overrides", Map.of()).forGetter(MainframeAccess.TeamBinding::overrides)
     ).apply(i, MainframeAccess.TeamBinding::new));
 
     private static final Codec<MainframeAccess> ACCESS_CODEC = RecordCodecBuilder.create(i -> i.group(

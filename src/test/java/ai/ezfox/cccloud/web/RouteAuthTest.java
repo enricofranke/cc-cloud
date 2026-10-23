@@ -29,15 +29,15 @@ class RouteAuthTest {
         }
 
         @Override
-        public ai.ezfox.cccloud.access.Role role(AuthStore.Device device, UUID mainframeId) {
-            fail("role must not be reached without authentication");
-            return ai.ezfox.cccloud.access.Role.NONE;
+        public ai.ezfox.cccloud.access.AccessResolver.Resolution access(AuthStore.Device device, UUID mainframeId) {
+            fail("access must not be reached without authentication");
+            return ai.ezfox.cccloud.access.AccessResolver.Resolution.NONE;
         }
 
         @Override
-        public ai.ezfox.cccloud.access.Role authorize(AuthStore.Device device, UUID mainframeId, String ip) {
+        public ai.ezfox.cccloud.access.AccessResolver.Resolution authorize(AuthStore.Device device, UUID mainframeId, String ip) {
             fail("authorize must not be reached without authentication");
-            return ai.ezfox.cccloud.access.Role.NONE;
+            return ai.ezfox.cccloud.access.AccessResolver.Resolution.NONE;
         }
 
         @Override
