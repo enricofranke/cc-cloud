@@ -669,7 +669,7 @@ def display_model(state):
 
 
 V07_ITEMS = [f"upgrade_{k}_{t}" for k in gt.UPGRADE_TYPES for t in gt.ATM_TIERS] + \
-    ["quantum_core", "cloud_tablet", "advanced_cloud_tablet"]
+    ["quantum_core", "cloud_tablet", "advanced_cloud_tablet", "cloud_analyzer"]
 
 
 # --------------------------------------------------------------------------- writing
@@ -1019,7 +1019,8 @@ top of the front face (screen inset 3 px on closed edges, 0 px on connected edge
 ## Upgrade cards, Quantum Core, tablets (v0.7)
 
 Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memory>_<allthemodium|vibranium|unobtainium>`,
-`quantum_core`, `cloud_tablet`, `advanced_cloud_tablet`. One shared card base in the ATM metal colour
+`quantum_core`, `cloud_tablet`, `advanced_cloud_tablet`, `cloud_analyzer` (handheld scanner: stone-grey
+pocket-computer body, cyan signal bars, antenna nub). One shared card base in the ATM metal colour
 ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
 chip = memory).
 

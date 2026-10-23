@@ -61,3 +61,14 @@ Shared widgets for both screens.
 
 ## What the Java side draws itself
 Fonts and every text, the pairing code (large, monospace style via the vanilla font), countdowns, URL text, device rows, the scroll position, and the masked PIN dots. Colours of text are chosen to contrast the regions above (dark text on the title bar and buttons, light text on the inset).
+
+## `textures/gui/hud.png` (in-game overlay, v0.7)
+128 × 16, one row of 16 × 16 icons, drawn 1:1 (no slicing). Each icon has a 1 px dark outline so it reads over any background.
+
+| Region | x, y, w × h | Notes |
+| --- | --- | --- |
+| Signal bars 0 | `0, 0, 16 × 16` | all four bars dark (no signal) |
+| Signal bars 1 | `16, 0, 16 × 16` | one bar, yellow (weak link, < 15 %) |
+| Signal bars 2 / 3 / 4 | `32, 0` / `48, 0` / `64, 0`, 16 × 16 | two / three / four cyan bars |
+| Direction arrow | `80, 0, 16 × 16` | points up (north of the icon); rotate around its centre (8, 8) towards the target |
+| No coverage | `96, 0, 16 × 16` | dark bars with a red slash |

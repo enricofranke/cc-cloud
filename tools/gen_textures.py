@@ -657,6 +657,83 @@ def gen_tablet(advanced):
     cv.save(os.path.join(TEX, "item", "advanced_cloud_tablet.png" if advanced else "cloud_tablet.png"))
 
 
+def gen_analyzer():
+    """Cloud Analyzer: CC pocket computer turned scanner. Stone-grey body, small screen with cyan
+    signal bars, antenna nub with a cyan tip, two buttons and a green LED on the lighter band."""
+    rows = [
+        "          ooo   ",
+        "          oCo   ",
+        "          oso   ",
+        "  oooooooooooo  ",
+        "  obbbbbbbbbbo  ",
+        "  obkkkkkkkkbo  ",
+        "  obkkkkkkkkbo  ",
+        "  obkkkkkkkkbo  ",
+        "  obkkkkkkkkbo  ",
+        "  obkkkkkkkkbo  ",
+        "  oLLLLLLLLLLo  ",
+        "  oLSLSLLLLLLo  ",
+        "  oLLLLLLLGLLo  ",
+        "  oLLLLLLLLLLo  ",
+        "  oooooooooooo  ",
+        "                ",
+    ]
+    cv = Canvas(16, 16)
+    cv.ascii(0, 0, rows, {"o": grey(0x24), "b": GREY, "L": GREY_L, "k": TERM, "S": grey(0x2b),
+                          "s": grey(0x3b), "C": CYAN_L, "G": GREEN})
+    for i, x in enumerate((5, 7, 9, 11)):          # signal bars, rising to the right
+        for y in range(9 - i, 10):
+            cv.set(x, y, CYAN_L if y == 9 - i else CYAN)
+    cv.save(os.path.join(TEX, "item", "cloud_analyzer.png"))
+
+
+HUD_REGIONS = {f"bars_{n}": (16 * n, 0, 16, 16) for n in range(5)}
+HUD_REGIONS.update({"arrow": (80, 0, 16, 16), "no_coverage": (96, 0, 16, 16)})
+
+
+def gen_hud():
+    """textures/gui/hud.png (128x16): bars_0..bars_4, arrow (points up; rotate in code), no_coverage.
+    Every icon has a 1 px dark outline so it reads over any world background."""
+    cv = Canvas(128, 16, CLEAR)
+    out, off, off_l = hx("101214"), hx("3a3f42"), hx("4c5357")
+
+    def bar(ox, i, lit, weak):
+        x0, h = ox + 1 + 4 * i, 3 + 3 * i
+        y0 = 15 - h
+        body, top = (YELLOW, YELLOW_L) if weak else (CYAN, CYAN_L)
+        if not lit:
+            body, top = off, off_l
+        cv.rect(x0, y0 - 1, 4, h + 1, out)
+        cv.rect(x0 + 1, y0, 2, h - 1, body)
+        cv.rect(x0 + 1, y0, 2, 1, top)
+
+    for n in range(5):
+        ox = 16 * n
+        for i in range(4):
+            bar(ox, i, i < n, n == 1)
+    # arrow (points up), symmetric: head rows 0..5, shoulder row 6, 2 px stem with outline down to row 14
+    ax = 80
+    for r in range(6):
+        x0, x1 = 7 - r, 8 + r
+        cv.set(ax + x0, r, out); cv.set(ax + x1, r, out)
+        for x in range(x0 + 1, x1):
+            cv.set(ax + x, r, CYAN_L if x < 7 else (CYAN_D if x == x1 - 1 and r > 1 else CYAN))
+    for x in range(2, 14):
+        cv.set(ax + x, 6, out)
+    for y in range(6, 14):
+        cv.set(ax + 6, y, out); cv.set(ax + 9, y, out)
+        cv.set(ax + 7, y, CYAN); cv.set(ax + 8, y, CYAN_D)
+    for x in range(6, 10):
+        cv.set(ax + x, 14, out)
+    # no coverage: dimmed bars with a red slash
+    for i in range(4):
+        bar(96, i, False, False)
+    for k in range(13):
+        x, y = 97 + k, 1 + k
+        cv.set(x, y, out); cv.set(x + 1, y, RED); cv.set(x + 2, y, RED_D if k % 2 else RED); cv.set(x + 3, y, out)
+    cv.save(os.path.join(TEX, "gui", "hud.png"))
+
+
 # --------------------------------------------------------------------------- v0.7: cloud display (CC-monitor-like multiblock)
 DISPLAY_STATES = ("none", "l", "r", "lr", "u", "d", "ud", "lu", "ld", "ru", "rd", "lud", "rud", "lru", "lrd", "lrud")
 DISPLAY_SIDE = ("none", "u", "ud", "d")   # east/west faces: only vertical continuity matters
@@ -1147,6 +1224,8 @@ def main():
     gen_tablet(False)
     gen_tablet(True)
     gen_display()
+    gen_analyzer()
+    gen_hud()
     gen_gui_screen("mainframe")
     gen_gui_screen("uplink")
     gen_gui_widgets()

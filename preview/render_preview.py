@@ -672,3 +672,32 @@ if __name__ == "__main__" and os.environ.get("V07"):
     _a = Assets(DEFAULT_CC)
     display_renders(_a)
     items_v07(_a)
+
+
+def analyzer_preview():
+    """Cloud Analyzer next to the Cloud Tablet, plus the HUD icon strip (textures/gui/hud.png)."""
+    D = os.path.join(OURS, "textures")
+    cells = []
+    for n in ("item/cloud_tablet", "item/cloud_analyzer", "item/advanced_cloud_tablet"):
+        bg = Image.new("RGBA", (128, 128), (139, 139, 139, 255))
+        bg.alpha_composite(Image.open(os.path.join(D, n + ".png")).convert("RGBA").resize((128, 128), Image.NEAREST))
+        cells.append(_captioned(bg, n.split("/")[1]))
+    hud = Image.open(os.path.join(D, "gui", "hud.png")).convert("RGBA")
+    names = ["bars_0", "bars_1", "bars_2", "bars_3", "bars_4", "arrow", "no_coverage"]
+    for bgcol, nm in (((110, 140, 90, 255), "grass"), ((40, 44, 52, 255), "night")):
+        strip = Image.new("RGBA", (7 * 72, 72), bgcol)
+        for i in range(7):
+            icon = hud.crop((16 * i, 0, 16 * i + 16, 16)).resize((64, 64), Image.NEAREST)
+            strip.alpha_composite(icon, (i * 72 + 4, 4))
+        cells.append(_captioned(strip, "hud.png over " + nm + ": " + ", ".join(names)))
+    W = max(c.width for c in cells[3:])
+    out = Image.new("RGB", (max(3 * 134, W) + 12, 150 + 2 * 94), (30, 32, 34))
+    for i, c in enumerate(cells[:3]):
+        out.paste(c, (6 + i * 134, 6))
+    out.paste(cells[3], (6, 156))
+    out.paste(cells[4], (6, 156 + 94))
+    out.save(os.path.join(HERE, "renders", "analyzer.png"))
+
+
+if __name__ == "__main__" and os.environ.get("ANALYZER"):
+    analyzer_preview()
