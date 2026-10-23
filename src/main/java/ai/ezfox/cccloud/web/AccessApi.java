@@ -381,8 +381,9 @@ public final class AccessApi {
                     var provider = teams.apply(providerId);
                     var team = provider == null ? null : provider.team(teamId);
                     if (team == null) return error(400, "invalid");
-                    // Only teams the caller belongs to (moderators: any team).
-                    if (!moderator && provider.rankOf(teamId, device.player()) == null) return error(403, "not_allowed");
+                    // Only teams the caller belongs to, also for owners (server moderators: any team).
+                    boolean serverModerator = resolver.permissions().has(device.player(), ServerPermissions.Node.ADMIN_MANAGE);
+                    if (!serverModerator && provider.rankOf(teamId, device.player()) == null) return error(403, "not_allowed");
                     store.setTeam(mainframeId, new MainframeAccess.TeamBinding(providerId, teamId, defaultMapping(provider)));
                     store.audit(mainframeId, who + " assigned the team " + team.name() + " (" + providerId + ")");
                 }

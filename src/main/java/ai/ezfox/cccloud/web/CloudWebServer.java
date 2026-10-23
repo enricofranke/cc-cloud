@@ -181,6 +181,11 @@ public final class CloudWebServer {
         if (instance != null) recheck(instance, mainframeId);
     }
 
+    /** Test hook: the live re-check against a test instance. */
+    static void recheckForTest(WebInstance instance, java.util.UUID mainframeId) {
+        recheck(instance, mainframeId);
+    }
+
     private static void recheck(WebInstance instance, java.util.@Nullable UUID only) {
         for (var session : WebHub.INSTANCE.sessions()) {
             if (only != null && !only.equals(session.mainframeId())) continue;

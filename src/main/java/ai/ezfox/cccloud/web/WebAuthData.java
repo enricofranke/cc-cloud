@@ -141,6 +141,15 @@ public final class WebAuthData extends SavedData {
         return migrated;
     }
 
+    /** The stores of this instance (tests that decode saved data directly). */
+    public AuthStore authStore() {
+        return store;
+    }
+
+    public AccessStore accessStore() {
+        return access;
+    }
+
     public static AuthStore get(MinecraftServer server) {
         return server.getDataStorage().computeIfAbsent(TYPE).store;
     }
