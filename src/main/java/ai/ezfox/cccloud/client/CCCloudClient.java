@@ -14,7 +14,6 @@ public class CCCloudClient {
         ai.ezfox.cccloud.client.icons.ClientIcons.init(modEventBus, container);
         modEventBus.addListener(CloudModels::register);
         modEventBus.addListener(CCCloudClient::registerRenderers);
-        modEventBus.addListener(CCCloudClient::registerParticles);
         modEventBus.addListener(CCCloudClient::registerScreens);
         ai.ezfox.cccloud.gui.GuiNetwork.clientViewHandler = payload -> {
             var player = net.minecraft.client.Minecraft.getInstance().player;
@@ -29,9 +28,6 @@ public class CCCloudClient {
         event.register(ModRegistry.UPLINK_MENU.get(), ai.ezfox.cccloud.client.gui.UplinkScreen::new);
     }
 
-    private static void registerParticles(net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent event) {
-        event.registerSpriteSet(ModRegistry.DATA_PACKET.get(), DataPacketParticle.Provider::new);
-    }
 
     private static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(ModRegistry.MAINFRAME_BE.get(), MainframeRenderer::new);

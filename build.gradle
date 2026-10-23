@@ -36,6 +36,11 @@ repositories {
         url = "https://maven.neoforged.net/releases"
         content { includeGroup("org.appliedenergistics") }
     }
+    // JEI API (soft integration: the in-game screens report their area so JEI's item list does not cover them).
+    maven {
+        url = "https://maven.blamejared.com"
+        content { includeGroup("mezz.jei") }
+    }
     // Refined Storage 2 is only on GitHub Packages (needs a token) and Modrinth. Modrinth's maven is addressed by the
     // Modrinth version id because the Fabric and NeoForge builds share the version number (see gradle.properties).
     exclusiveContent {
@@ -150,6 +155,9 @@ dependencies {
     // Soft dependencies for the Cloud Bridges (compat/ae2, compat/rs). Compile-only: the mod runs without them.
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}:api"
     compileOnly "maven.modrinth:refined-storage:${rs_modrinth_version}"
+    compileOnly "maven.modrinth:jade:${jade_modrinth_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     // Run the dev server / game test server WITH both mods: ./gradlew runGameTestServer -PstorageMods
     // (without the property the runs have neither mod, which is the "soft dependency" smoke test).
     if (project.hasProperty("storageMods")) {

@@ -1,0 +1,32 @@
+package ai.ezfox.cccloud.client;
+
+import net.neoforged.neoforge.common.ModConfigSpec;
+
+/** Client config ({@code config/cccloud-client.toml}). */
+public final class CloudClientConfig {
+    public static final ModConfigSpec SPEC;
+    public static final ModConfigSpec.BooleanValue ANIMATIONS;
+    public static final ModConfigSpec.BooleanValue SHARE_ICON_RENDERS;
+
+    static {
+        var b = new ModConfigSpec.Builder();
+        ANIMATIONS = b.comment("Animate the mainframe fan/hologram and the uplink rings (only within 32 blocks). false = static parts.")
+            .translation("cccloud.configuration.animations")
+            .define("animations", true);
+        SHARE_ICON_RENDERS = b.comment("Render item icons for the CC: Cloud dashboard in the background and send them to the server (≤ 2 ms per frame).")
+            .translation("cccloud.configuration.shareIconRenders")
+            .define("shareIconRenders", true);
+        SPEC = b.build();
+    }
+
+    private CloudClientConfig() {
+    }
+
+    public static boolean animations() {
+        return SPEC.isLoaded() ? ANIMATIONS.get() : ANIMATIONS.getDefault();
+    }
+
+    public static boolean shareIconRenders() {
+        return SPEC.isLoaded() ? SHARE_ICON_RENDERS.get() : SHARE_ICON_RENDERS.getDefault();
+    }
+}

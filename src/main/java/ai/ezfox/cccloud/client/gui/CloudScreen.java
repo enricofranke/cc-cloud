@@ -134,7 +134,35 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
     protected long viewTime;
 
     protected CloudScreen(M menu, Inventory inventory, Component title) {
-        super(menu, inventory, title);
+        // imageWidth/imageHeight are final: give vanilla (and JEI/EMI, which read them) the real panel size.
+        super(menu, inventory, title, panelWidth(guiWidth()), panelHeight(guiHeight()));
+    }
+
+    private static int guiWidth() {
+        return net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScaledWidth();
+    }
+
+    private static int guiHeight() {
+        return net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScaledHeight();
+    }
+
+    /**
+     * Panel width for a screen width: at most {@link #MAX_W} and at most 60 % of the screen (centred, so ≥ 20 % stays
+     * free on the right for JEI/EMI's item list), but at least 220 px so the content stays readable.
+     */
+    static int panelWidth(int screenWidth) {
+        int w = Math.min(MAX_W, (int) (screenWidth * 0.6));
+        w = Math.max(w, Math.min(220, screenWidth - 12));
+        return Math.max(40, Math.min(w, screenWidth - 12));
+    }
+
+    static int panelHeight(int screenHeight) {
+        return Math.max(40, Math.min(MAX_H, screenHeight - 12));
+    }
+
+    /** The area the screen draws on (for JEI's exclusion areas). */
+    public net.minecraft.client.renderer.Rect2i panelArea() {
+        return new net.minecraft.client.renderer.Rect2i(panelX, panelY, panelW, panelH);
     }
 
     protected abstract Identifier texture();
@@ -161,14 +189,14 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
     @Override
     protected void init() {
         CloudGui.refresh();
-        panelW = Math.min(MAX_W, width - 12);
-        panelH = Math.min(MAX_H, height - 12);
+        // After a window resize the screen is not re-created: recompute (JEI gets the real area from panelArea()).
+        panelW = panelWidth(width);
+        panelH = panelHeight(height);
         panelX = (width - panelW) / 2;
         panelY = (height - panelH) / 2;
-        // AbstractContainerScreen positions slots/labels with leftPos/topPos; we have none, but keep them consistent.
+        super.init();
         leftPos = panelX;
         topPos = panelY;
-        super.init();
         for (var box : editBoxes) addRenderableWidget(box);
         refreshView(true);
     }
@@ -230,7 +258,7 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
         var tex = texture();
         CloudGui.panel(g, tex, panelX, panelY, panelW, panelH, accent());
         CloudGui.titleBar(g, tex, panelX + 4, panelY + 4, panelW - 8, accent());
-        var right = rightTitle();
+        String right = fit(rightTitle().getString(), (panelW - 18) / 2);
         int rightW = font.width(right);
         g.text(font, fit(title.getString(), panelW - 24 - rightW), panelX + 9, panelY + 8, CloudGui.TEXT_DARK, false);
         g.text(font, right, panelX + panelW - 9 - rightW, panelY + 8, CloudGui.TEXT_DARK, false);

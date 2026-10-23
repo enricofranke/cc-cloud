@@ -70,7 +70,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE), CloudConfig.get(CloudConfig.MAINFRAME_MAX_INPUT_FE));
     private final ai.ezfox.cccloud.power.PowerState power = new ai.ezfox.cccloud.power.PowerState();
     private long energyUsage;
-    private boolean hasPower = true;
+    private boolean hasPower;
     private int powerTicks;
 
     public CloudMainframeBlockEntity(BlockPos pos, BlockState state) {
@@ -408,6 +408,18 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         return Component.literal(url).withStyle(style -> style.withColor(ChatFormatting.AQUA).withUnderlined(true)
             .withClickEvent(new ClickEvent.OpenUrl(java.net.URI.create(url)))
             .withHoverEvent(new HoverEvent.ShowText(Component.literal(url))));
+    }
+
+    private net.minecraft.world.phys.@Nullable AABB renderBox;
+
+    /** Render bounds for the block entity renderer (both halves plus the hologram), cached. */
+    public net.minecraft.world.phys.AABB renderBox() {
+        var box = renderBox;
+        if (box == null) {
+            var pos = getBlockPos();
+            renderBox = box = new net.minecraft.world.phys.AABB(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 2.5, pos.getZ() + 1);
+        }
+        return box;
     }
 
     /** Client-side animation state for the block entity renderer. */

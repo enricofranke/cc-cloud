@@ -22,8 +22,21 @@ class PowerStateTest {
     }
 
     @Test
+    void freshMainframeWithoutPowerGetsNoGrace() {
+        var state = new PowerState();
+        stored = 0;
+        for (int i = 0; i < PowerState.GRACE_TICKS * 2; i++) assertFalse(tick(state, 50, true), "never powered: no_power right away (tick " + i + ")");
+        stored = 39;
+        assertFalse(tick(state, 50, true));
+        stored = 50;
+        assertTrue(tick(state, 50, true), "the first covered tick powers it up");
+    }
+
+    @Test
     void graceThenNoPowerThenRecovery() {
         var state = new PowerState();
+        stored = 40;
+        assertTrue(tick(state, 40, true), "running");
         stored = 10;
         for (int i = 1; i <= PowerState.GRACE_TICKS; i++) assertTrue(tick(state, 40, true), "grace tick " + i);
         assertEquals(0, stored, "what was left is used up");
@@ -39,6 +52,8 @@ class PowerStateTest {
     @Test
     void shortBrownoutsDoNotFlicker() {
         var state = new PowerState();
+        stored = 40;
+        assertTrue(tick(state, 40, true));
         stored = 0;
         for (int i = 0; i < 50; i++) assertTrue(tick(state, 40, true));
         stored = 40;

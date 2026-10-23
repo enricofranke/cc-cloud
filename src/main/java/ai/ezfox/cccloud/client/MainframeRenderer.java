@@ -29,6 +29,17 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
         float fanAngle;
         float seconds;
         int seed;
+        boolean animate;
+        /** Reused every frame (no per-frame allocations). */
+        final org.joml.Quaternionf rotation = new org.joml.Quaternionf();
+    }
+
+    /** Animations are only drawn within this many blocks. */
+    public static final int VIEW_DISTANCE = 32;
+
+    @Override
+    public int getViewDistance() {
+        return VIEW_DISTANCE;
     }
 
     public MainframeRenderer(BlockEntityRendererProvider.Context context) {
@@ -45,8 +56,14 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
         var blockState = be.getBlockState();
         state.facing = blockState.getValue(CloudMainframeBlock.FACING);
         state.status = blockState.getValue(CloudMainframeBlock.STATUS);
-        state.seconds = (Util.getMillis() % 3_600_000L) / 1000f;
-        state.fanAngle = be.clientAnimation().advanceFan(state.status);
+        state.animate = CloudClientConfig.animations();
+        if (state.animate) {
+            state.seconds = (Util.getMillis() % 3_600_000L) / 1000f;
+            state.fanAngle = be.clientAnimation().advanceFan(state.status);
+        } else {
+            state.seconds = 0;
+            state.fanAngle = 0;
+        }
         state.seed = (int) be.getBlockPos().asLong();
     }
 
@@ -56,7 +73,7 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
         if (fan != null) {
             pose.pushPose();
             Orientation.applyMainframe(pose, state.facing);
-            pose.rotateAround(Axis.XP.rotationDegrees(state.fanAngle), 13.5f / 16, 8f / 16, 8f / 16);
+            pose.rotateAround(state.rotation.rotationX(state.fanAngle * Mth.DEG_TO_RAD), 13.5f / 16, 8f / 16, 8f / 16);
             fan.submit(pose, collector, state.lightCoords, OverlayTexture.NO_OVERLAY);
             pose.popPose();
         }
@@ -66,9 +83,11 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
             pose.pushPose();
             Orientation.applyMainframe(pose, state.facing);
             // Model coordinates of the hologram are relative to the lower half (y 16..32 is the upper half).
-            float bob = Mth.sin(state.seconds * 2f) * 0.5f / 16f;
-            pose.translate(0, bob, 0);
-            pose.rotateAround(Axis.YP.rotationDegrees(state.seconds * 20f % 360f), 8f / 16, 23.5f / 16, 8f / 16);
+            if (state.animate) {
+                float bob = Mth.sin(state.seconds * 2f) * 0.5f / 16f;
+                pose.translate(0, bob, 0);
+                pose.rotateAround(state.rotation.rotationY(state.seconds * 20f % 360f * Mth.DEG_TO_RAD), 8f / 16, 23.5f / 16, 8f / 16);
+            }
             hologram.submit(pose, collector, FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
             pose.popPose();
         }
@@ -80,6 +99,7 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
             case ONLINE -> true;
             case OFFLINE -> false;
             case CONNECTING -> {
+                if (!state.animate) yield true;
                 int slot = (int) (state.seconds * 12f) + state.seed;
                 yield (slot * 1103515245 + 12345 >>> 16) % 5 != 0;
             }
@@ -88,7 +108,6 @@ public class MainframeRenderer implements BlockEntityRenderer<CloudMainframeBloc
 
     @Override
     public AABB getRenderBoundingBox(CloudMainframeBlockEntity be) {
-        var pos = be.getBlockPos();
-        return new AABB(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 2.5, pos.getZ() + 1);
+        return be.renderBox();
     }
 }

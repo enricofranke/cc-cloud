@@ -2,8 +2,9 @@ package ai.ezfox.cccloud.power;
 
 /**
  * Mainframe power logic (docs/SPEC.md "Power (v0.3)"), pure Java and unit tested: each tick the usage is drawn from the
- * buffer; when the buffer cannot cover it, the mainframe keeps running for {@link #GRACE_TICKS} (5 s, no flicker on
- * short brownouts) and then reports {@code no_power}. As soon as the buffer covers the usage again it is powered.
+ * buffer. A mainframe that is running and runs short keeps going for {@link #GRACE_TICKS} (5 s, no flicker on short
+ * brownouts) and then reports {@code no_power}. One that never had power (fresh, empty buffer) gets no grace: it is
+ * {@code no_power} right away. As soon as the buffer covers the usage again it is powered.
  */
 public final class PowerState {
     public static final int GRACE_TICKS = 100;
@@ -15,7 +16,8 @@ public final class PowerState {
     }
 
     private int outageTicks;
-    private boolean powered = true;
+    /** A fresh mainframe has no power until its buffer covers the usage once. */
+    private boolean powered;
 
     /**
      * @param stored  energy in the buffer
@@ -34,6 +36,7 @@ public final class PowerState {
             return powered = true;
         }
         if (stored > 0) drain.drain(stored);
+        if (!powered) return false; // the grace period only applies to a mainframe that was running
         outageTicks++;
         return powered = outageTicks <= GRACE_TICKS;
     }

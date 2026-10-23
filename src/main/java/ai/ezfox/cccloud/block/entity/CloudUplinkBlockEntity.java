@@ -757,20 +757,6 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return true;
     }
 
-    /** A few glowing "data packets" fly from the uplink to its mainframe when a dashboard command arrives. */
-    private void spawnDataPackets() {
-        if (!(level instanceof ServerLevel serverLevel) || link == null || !link.pos().dimension().equals(serverLevel.dimension())) return;
-        var from = getBlockPos().getCenter();
-        var to = link.pos().pos().getCenter().add(0, 0.5, 0);
-        var delta = to.subtract(from);
-        if (delta.lengthSqr() > 64 * 64) return;
-        var velocity = delta.scale(1.0 / 20); // reaches the mainframe within the particle lifetime (20 ticks)
-        for (int i = 0; i < 3; i++) {
-            serverLevel.sendParticles(ai.ezfox.cccloud.ModRegistry.DATA_PACKET.get(), from.x, from.y + i * 0.08, from.z, 0,
-                velocity.x, velocity.y, velocity.z, 1.0);
-        }
-    }
-
     // ---- computers & actions -----------------------------------------------------------------------------------------
 
     public void attach(IComputerAccess computer) {
@@ -806,7 +792,6 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 dirtyValues.add(widgetId);
             }
         }
-        spawnDataPackets();
         if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), result.op(), user));
         if (result.op() != null) return handleOp(widget, result.op(), user);
         queueAction(widgetId, Json.toLua(result.value()), user);

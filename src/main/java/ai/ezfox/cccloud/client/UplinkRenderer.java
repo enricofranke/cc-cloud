@@ -27,6 +27,12 @@ public class UplinkRenderer implements BlockEntityRenderer<CloudUplinkBlockEntit
         CloudStatus status = CloudStatus.OFFLINE;
         float angle;
         float seconds;
+        final org.joml.Quaternionf rotation = new org.joml.Quaternionf();
+    }
+
+    @Override
+    public int getViewDistance() {
+        return MainframeRenderer.VIEW_DISTANCE;
     }
 
     public UplinkRenderer(BlockEntityRendererProvider.Context context) {
@@ -44,8 +50,12 @@ public class UplinkRenderer implements BlockEntityRenderer<CloudUplinkBlockEntit
         state.facing = blockState.getValue(CloudUplinkBlock.FACING);
         state.status = blockState.getValue(CloudUplinkBlock.STATUS);
         state.advanced = blockState.getBlock() instanceof CloudUplinkBlock b && b.isAdvanced();
-        state.seconds = (Util.getMillis() % 3_600_000L) / 1000f;
-        state.angle = be.clientAnimation().advance(state.status, state.advanced ? 45f : 90f, 3f);
+        if (CloudClientConfig.animations()) {
+            state.seconds = (Util.getMillis() % 3_600_000L) / 1000f;
+            state.angle = be.clientAnimation().advance(state.status, state.advanced ? 45f : 90f, 3f);
+        } else {
+            state.angle = 0;
+        }
     }
 
     @Override
@@ -55,7 +65,7 @@ public class UplinkRenderer implements BlockEntityRenderer<CloudUplinkBlockEntit
         pose.pushPose();
         Orientation.applyUplink(pose, state.facing);
         // Both parts spin in place around (8, 8, 1.375) on the Z axis (model space, before the facing rotation).
-        pose.rotateAround(Axis.ZP.rotationDegrees(state.angle), 8f / 16, 8f / 16, 1.375f / 16);
+        pose.rotateAround(state.rotation.rotationZ(state.angle * net.minecraft.util.Mth.DEG_TO_RAD), 8f / 16, 8f / 16, 1.375f / 16);
         model.submit(pose, collector, state.advanced ? FULL_BRIGHT : state.lightCoords, OverlayTexture.NO_OVERLAY);
         pose.popPose();
     }

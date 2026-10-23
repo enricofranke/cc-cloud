@@ -34,7 +34,6 @@ public final class ModRegistry {
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, CCCloud.MODID);
     private static final DeferredRegister.DataComponents COMPONENTS = DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, CCCloud.MODID);
     private static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, CCCloud.MODID);
-    private static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES = DeferredRegister.create(Registries.PARTICLE_TYPE, CCCloud.MODID);
     private static final DeferredRegister<net.minecraft.world.inventory.MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, CCCloud.MODID);
     private static final DeferredRegister<Consumer<GameTestHelper>> TEST_FUNCTIONS = DeferredRegister.create(Registries.TEST_FUNCTION, CCCloud.MODID);
 
@@ -69,9 +68,6 @@ public final class ModRegistry {
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
         b -> b.persistent(MainframeLink.CODEC).networkSynchronized(MainframeLink.STREAM_CODEC));
 
-    // Particles
-    public static final DeferredHolder<net.minecraft.core.particles.ParticleType<?>, net.minecraft.core.particles.SimpleParticleType> DATA_PACKET =
-        PARTICLES.register("data_packet", () -> new net.minecraft.core.particles.SimpleParticleType(false));
 
     // Menus (in-game screens)
     public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<ai.ezfox.cccloud.gui.MainframeMenu>> MAINFRAME_MENU =
@@ -102,6 +98,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
         TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
+        TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
     }
 
     private ModRegistry() {
@@ -113,7 +110,6 @@ public final class ModRegistry {
         BLOCK_ENTITIES.register(bus);
         COMPONENTS.register(bus);
         TABS.register(bus);
-        PARTICLES.register(bus);
         MENUS.register(bus);
         TEST_FUNCTIONS.register(bus);
     }

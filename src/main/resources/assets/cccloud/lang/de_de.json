@@ -193,5 +193,11 @@
   "cccloud.configuration.mainframePerUplinkFE": "Pro Uplink (FE/t)",
   "cccloud.configuration.mainframePerClientFE": "Pro Dashboard-Client (FE/t)",
   "cccloud.configuration.mainframeBufferFE": "Puffer (FE)",
-  "cccloud.configuration.mainframeMaxInputFE": "Max. Eingang (FE/t)"
+  "cccloud.configuration.mainframeMaxInputFE": "Max. Eingang (FE/t)",
+  "cccloud.configuration.animations": "Block-Animationen",
+  "cccloud.jade.energy": "%s / %s FE · %s FE/t",
+  "cccloud.jade.links": "%s Uplink(s) · %s Gerät(e) · %s online",
+  "cccloud.jade.dashboard_on": "Dashboard an",
+  "cccloud.jade.dashboard_off": "Dashboard aus",
+  "config.jade.plugin_cccloud.mainframe": "CC: Cloud Mainframe"
 }

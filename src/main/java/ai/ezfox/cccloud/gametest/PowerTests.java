@@ -18,6 +18,28 @@ public final class PowerTests {
     private PowerTests() {
     }
 
+    /** A fresh mainframe that never receives FE is no_power (and never online), no 5 s grace. */
+    public static void neverPowered(GameTestHelper helper) {
+        var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+        var mainframe = CloudGameTests.placeMainframe(helper, owner);
+        mainframe.setEnabled(true);
+        helper.startSequence()
+            .thenExecuteFor(PowerState.GRACE_TICKS + 20, () -> {
+                helper.assertTrue(!mainframe.isOnline(), "an unpowered mainframe is never online");
+                helper.assertTrue(mainframe.status() != CloudStatus.ONLINE, "status never online");
+            })
+            .thenExecute(() -> {
+                helper.assertTrue(!mainframe.hasPower(), "no power");
+                helper.assertTrue("no_power".equals(mainframe.reason()), "reason no_power, got " + mainframe.reason());
+                helper.assertTrue(mainframe.energy().energy() == 0, "empty buffer");
+                if (owner instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+                    var view = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.mainframe(mainframe, serverPlayer, null)).getAsJsonObject();
+                    helper.assertTrue("no_power".equals(view.get("status").getAsString()), "the in-game screen shows NO POWER: " + view.get("status"));
+                }
+            })
+            .thenSucceed();
+    }
+
     @SuppressWarnings({"deprecation", "removal"})
     public static void power(GameTestHelper helper) {
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
@@ -41,6 +63,22 @@ public final class PowerTests {
                 try (var tx = Transaction.openRoot()) {
                     helper.assertTrue(upper.extract(100, tx) == 0, "receive-only");
                 }
+            })
+            .thenIdle(1)
+            .thenExecute(() -> {
+                // Cables/pipes on the upper half, from every side (and null = internal access): same buffer as below.
+                int before = mainframe.energy().energy();
+                int total = 0;
+                for (var side : new Direction[]{Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST, null}) {
+                    var upper = level.getCapability(Capabilities.Energy.BLOCK, helper.absolutePos(CloudGameTests.UPPER), side);
+                    helper.assertTrue(upper != null, "upper half exposes energy on side " + side);
+                    try (var tx = Transaction.openRoot()) {
+                        total += upper.insert(100, tx);
+                        tx.commit();
+                    }
+                }
+                helper.assertTrue(total == 600 && mainframe.energy().energy() == before + 600,
+                    "inserts through the upper half reach the mainframe's buffer: " + total + ", " + mainframe.energy().energy());
             })
             .thenIdle(1)
             .thenExecute(() -> {

@@ -16,7 +16,6 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
-import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.NeoForge;
 import org.jspecify.annotations.Nullable;
 
@@ -30,16 +29,6 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ClientIcons {
     private static final long FRAME_BUDGET_NANOS = 2_000_000L;
-    public static final ModConfigSpec SPEC;
-    public static final ModConfigSpec.BooleanValue SHARE;
-
-    static {
-        var b = new ModConfigSpec.Builder();
-        SHARE = b.comment("Render item icons for the CC: Cloud dashboard in the background and send them to the server (≤ 2 ms per frame).")
-            .translation("cccloud.configuration.shareIconRenders")
-            .define("shareIconRenders", true);
-        SPEC = b.build();
-    }
 
     private static @Nullable IconRenderer renderer;
     private static @Nullable Benchmark benchmark;
@@ -48,7 +37,7 @@ public final class ClientIcons {
     }
 
     public static void init(IEventBus modBus, ModContainer container) {
-        container.registerConfig(ModConfig.Type.CLIENT, SPEC);
+        container.registerConfig(ModConfig.Type.CLIENT, ai.ezfox.cccloud.client.CloudClientConfig.SPEC);
         IconService.clientRequestHandler = payload -> renderer().enqueue(payload.ids());
         NeoForge.EVENT_BUS.addListener(ClientIcons::onLogin);
         NeoForge.EVENT_BUS.addListener(ClientIcons::onLogout);
@@ -63,7 +52,7 @@ public final class ClientIcons {
     }
 
     private static boolean sharing() {
-        return SPEC.isLoaded() ? SHARE.get() : SHARE.getDefault();
+        return ai.ezfox.cccloud.client.CloudClientConfig.shareIconRenders();
     }
 
     private static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {

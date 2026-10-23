@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:mainframe_never_powered",
+  "max_ticks": 300,
+  "structure": "cccloud:test_floor"
+}
