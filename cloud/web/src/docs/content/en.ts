@@ -400,7 +400,16 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 - **Advanced Cloud Relay** – longer range for nodes and devices.
 - **Ender Relay** – links to other Ender Relays at any distance and **across dimensions** (e.g. to the Nether). Link Ender Relays into a group with the Link Card.
 
-Place a relay, then link it like any device: Link Card on the mainframe, then on the relay. Recipes: stone, a wired modem, a cloud core and redstone (relay); relay + gold + ender pearl (advanced); advanced relay + ender eyes + gold block (ender) – JEI/EMI show the exact grids.
+Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
+
+### Cloud Relay
+${recipe(R.relay)}
+
+### Advanced Cloud Relay
+${recipe(R.advancedRelay)}
+
+### Ender Relay
+${recipe(R.enderRelay)}
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 

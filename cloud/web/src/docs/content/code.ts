@@ -185,6 +185,9 @@ export const RECIPES = {
   advancedUplink: { result: "cccloud:advanced_cloud_uplink", grid: ["GGG", "GUG", "GEG"], key: { G: "#c:ingots/gold", U: "cccloud:cloud_uplink", E: "#c:ender_pearls" } },
   linkCard: { result: "cccloud:cloud_link_card", shapeless: true, items: ["minecraft:paper", "#c:nuggets/gold", "#c:dusts/redstone", "minecraft:prismarine_crystals"] },
   meBridge: { result: "cccloud:me_cloud_bridge", grid: ["GKG", "MIM", "GGG"], key: { G: "#c:ingots/gold", K: "cccloud:cloud_core", M: "computercraft:wired_modem", I: "ae2:interface" } },
+  relay: { result: "cccloud:cloud_relay", grid: ["SMS", "RKR", "SSS"], key: { S: "minecraft:stone", M: "computercraft:wired_modem", K: "cccloud:cloud_core", R: "#c:dusts/redstone" } },
+  advancedRelay: { result: "cccloud:advanced_cloud_relay", grid: ["GEG", "GXG", "GGG"], key: { G: "#c:ingots/gold", E: "#c:ender_pearls", X: "cccloud:cloud_relay" } },
+  enderRelay: { result: "cccloud:ender_relay", grid: [" Y ", "YXY", " B "], key: { Y: "minecraft:ender_eye", B: "#c:storage_blocks/gold", X: "cccloud:advanced_cloud_relay" } },
   rsBridge: { result: "cccloud:rs_cloud_bridge", grid: ["GKG", "MIM", "GGG"], key: { G: "#c:ingots/gold", K: "cccloud:cloud_core", M: "computercraft:wired_modem", I: "refinedstorage:interface" } },
 };
 

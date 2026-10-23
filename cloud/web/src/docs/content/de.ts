@@ -400,7 +400,16 @@ Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unte
 - **Advanced Cloud Relay** – größere Reichweite für Knoten und Geräte.
 - **Ender Relay** – verbindet sich mit anderen Ender Relays über jede Entfernung und **dimensionsübergreifend** (z. B. in den Nether). Ender Relays mit der Link Card zu einer Gruppe verbinden.
 
-Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay. Rezepte: Stein, ein Wired Modem, ein Cloud Core und Redstone (Relay); Relay + Gold + Enderperle (Advanced); Advanced Relay + Enderaugen + Goldblock (Ender) – JEI/EMI zeigen die genauen Raster.
+Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay.
+
+### Cloud Relay
+${recipe(R.relay)}
+
+### Advanced Cloud Relay
+${recipe(R.advancedRelay)}
+
+### Ender Relay
+${recipe(R.enderRelay)}
 
 > **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
 

@@ -83,6 +83,11 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "cccloud:cloud_link_card": { en: "Cloud Link Card", de: "Cloud Link Card" },
   "cccloud:me_cloud_bridge": { en: "ME Cloud Bridge", de: "ME Cloud Bridge" },
   "cccloud:rs_cloud_bridge": { en: "RS Cloud Bridge", de: "RS Cloud Bridge" },
+  "cccloud:cloud_relay": { en: "Cloud Relay", de: "Cloud Relay" },
+  "cccloud:advanced_cloud_relay": { en: "Advanced Cloud Relay", de: "Advanced Cloud Relay" },
+  "cccloud:ender_relay": { en: "Ender Relay", de: "Ender Relay" },
+  "minecraft:ender_eye": { en: "Eye of Ender", de: "Enderauge" },
+  "#c:storage_blocks/gold": { en: "Block of Gold", de: "Goldblock" },
 };
 
 /** Tags have no icon of their own: show a typical member. */
@@ -91,6 +96,7 @@ const TAG_ICON: Record<string, string> = {
   "#c:ingots/gold": "minecraft:gold_ingot",
   "#c:ender_pearls": "minecraft:ender_pearl",
   "#c:dusts/redstone": "minecraft:redstone",
+  "#c:storage_blocks/gold": "minecraft:gold_block",
 };
 export function iconItem(id: string) {
   return TAG_ICON[id] ?? id.replace(/^#/, "");
