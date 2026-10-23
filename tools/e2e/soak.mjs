@@ -271,6 +271,12 @@ class Client {
   }
   learn(u) {
     if (!u?.uplinkId) return;
+    // sections of uplinks replaced by earlier runs stay listed as offline: never pick one over an online section
+    const online = u.online !== false;
+    (this.online ??= new Set());
+    if (online) this.online.add(u.uplinkId); else this.online.delete(u.uplinkId);
+    const kind = u.bridge === "rs" ? "rs" : u.bridge === "me" ? "me" : u.mode === "auto" ? "auto" : u.mode === "lua" && /Soak Lua/.test(u.title ?? "") ? "soak" : null;
+    if (kind && !online && this.sections[kind] && this.online.has(this.sections[kind])) return;
     if (u.bridge === "rs") this.sections.rs = u.uplinkId;
     else if (u.bridge === "me") this.sections.me = u.uplinkId;
     else if (u.mode === "auto") this.sections.auto = u.uplinkId;
@@ -521,6 +527,8 @@ function summarize(dir) {
   for (const k of KINDS) if (totals[k].n && totals[k].err / totals[k].n > 0.01) findings.push(`${k} errors ${totals[k].err}/${totals[k].n}`);
   const ruleRuns = max(load.map((r) => r.rule_runs)) ?? 0;
   const expectedRuns = load.length ? load.at(-1).minute - load[0].minute - 1 : 0;
+  const ruleLast = load.at(-1)?.rule_last;
+  if (ruleLast && ruleLast !== "ok") findings.push(`the rule's last run failed: ${ruleLast}`);
   if (load.length > 5 && ruleRuns < expectedRuns * 0.9) findings.push(`rule ran ${ruleRuns} times, expected about ${expectedRuns}`);
 
   const s = {
