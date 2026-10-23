@@ -164,6 +164,24 @@ class AuthStoreTest {
     }
 
     @Test
+    void manyDevicesDoNotMultiplyPinGuesses() {
+        store.setPin(mainframe, store.hashPin("4711"));
+        for (int i = 0; i < AuthStore.PIN_MAINFRAME_FAILURES - 1; i++) {
+            assertEquals(AuthStore.PinResult.WRONG, store.checkPin(mainframe, "device-" + i, "0000").result());
+        }
+        var locked = store.checkPin(mainframe, "device-last", "0000");
+        assertEquals(AuthStore.PinResult.LOCKED, locked.result(), "20 wrong PINs from any devices lock the mainframe's PIN");
+        assertEquals(AuthStore.PIN_LOCK_MS / 1000, locked.retryAfterSeconds());
+        assertEquals(AuthStore.PinResult.LOCKED, store.verifyPin(mainframe, "fresh-device", "4711"), "for every device");
+        now.addAndGet(AuthStore.PIN_LOCK_MS + 1);
+        for (int i = 0; i < AuthStore.PIN_MAINFRAME_FAILURES; i++) store.checkPin(mainframe, "round2-" + i, "0000");
+        assertEquals(2 * AuthStore.PIN_LOCK_MS / 1000, store.mainframePinLockedFor(mainframe), "the next lock is twice as long");
+        now.addAndGet(2 * AuthStore.PIN_LOCK_MS + 1);
+        assertEquals(AuthStore.PinResult.OK, store.verifyPin(mainframe, "fresh-device", "4711"));
+        assertEquals(0, store.mainframePinLockedFor(mainframe));
+    }
+
+    @Test
     void pinIsSaltedAndValidated() {
         var a = store.hashPin("1234");
         var b = store.hashPin("1234");

@@ -35,6 +35,10 @@ public final class AuthStore {
     public static final int MAX_PENDING = 64;
     public static final int PIN_MAX_FAILURES = 5;
     public static final long PIN_LOCK_MS = 5 * 60 * 1000L;
+    /** Wrong PINs per mainframe (all devices together) before the mainframe's PIN locks; locks double up to a day. */
+    public static final int PIN_MAINFRAME_FAILURES = 20;
+    public static final long PIN_MAINFRAME_WINDOW_MS = 60 * 60 * 1000L;
+    public static final long PIN_MAINFRAME_MAX_LOCK_MS = 24 * 60 * 60 * 1000L;
     public static final int PIN_ITERATIONS = 120_000;
     /** No 0/O, 1/I/L. */
     static final String ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -117,6 +121,11 @@ public final class AuthStore {
     private final Map<UUID, PairingCode> accountCodes = new ConcurrentHashMap<>();
     private final Map<UUID, PinHash> pins = new ConcurrentHashMap<>();
     private final Map<String, PinFailures> pinFailures = new ConcurrentHashMap<>();
+    /** Security review L4: failures of all devices of a mainframe (many devices must not multiply the guesses). */
+    private final Map<UUID, MainframePinFailures> mainframePinFailures = new ConcurrentHashMap<>();
+
+    private record MainframePinFailures(int count, long lastFailure, long lockedUntil, int lockouts) {
+    }
 
     public AuthStore(LongSupplier clock, Runnable onChange) {
         this.clock = clock;
@@ -456,13 +465,27 @@ public final class AuthStore {
         long now = clock.getAsLong();
         var failures = pinFailures.get(deviceHash);
         if (failures != null && failures.lockedUntil() > now) return locked(failures.lockedUntil(), now);
+        var mf = mainframePinFailures.get(mainframeId);
+        if (mf != null && mf.lockedUntil() > now) return locked(mf.lockedUntil(), now);
         boolean ok = pin != null && isValidPin(pin) && MessageDigest.isEqual(
             HexFormat.of().parseHex(stored.hash()),
             pbkdf2(pin, HexFormat.of().parseHex(stored.salt()), stored.iterations()));
         if (ok) {
             pinFailures.remove(deviceHash);
+            mainframePinFailures.remove(mainframeId);
             return new PinCheck(PinResult.OK, PIN_MAX_FAILURES, 0);
         }
+        var mfUpdated = mainframePinFailures.compute(mainframeId, (k, f) -> {
+            boolean fresh = f == null || now - f.lastFailure() > PIN_MAINFRAME_WINDOW_MS;
+            int count = (fresh ? 0 : f.count()) + 1;
+            int lockouts = f == null ? 0 : f.lockouts();
+            if (count >= PIN_MAINFRAME_FAILURES) {
+                long lock = Math.min(PIN_MAINFRAME_MAX_LOCK_MS, PIN_LOCK_MS << Math.min(lockouts, 16));
+                return new MainframePinFailures(0, now, now + lock, lockouts + 1);
+            }
+            return new MainframePinFailures(count, now, f == null ? 0 : f.lockedUntil(), lockouts);
+        });
+        if (mfUpdated.lockedUntil() > now) return locked(mfUpdated.lockedUntil(), now);
         var updated = pinFailures.compute(deviceHash, (k, f) -> {
             int count = (f == null || f.lockedUntil() != 0 && f.lockedUntil() <= now ? 0 : f.count()) + 1;
             return new PinFailures(count, count >= PIN_MAX_FAILURES ? now + PIN_LOCK_MS : 0);
@@ -473,6 +496,13 @@ public final class AuthStore {
 
     private static PinCheck locked(long until, long now) {
         return new PinCheck(PinResult.LOCKED, 0, Math.max(1, (until - now + 999) / 1000));
+    }
+
+    /** Seconds until a mainframe's PIN lockout (all devices) ends, or 0. */
+    public long mainframePinLockedFor(UUID mainframeId) {
+        var f = mainframePinFailures.get(mainframeId);
+        long now = clock.getAsLong();
+        return f != null && f.lockedUntil() > now ? (f.lockedUntil() - now + 999) / 1000 : 0;
     }
 
     /** Seconds until a device's PIN lockout ends, or 0 if it is not locked. */
