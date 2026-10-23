@@ -13,6 +13,7 @@ server in singleplayer/LAN). There is no external service. All settings live in 
 | `web.webPort` | `8787` | TCP port. |
 | `web.webAllowInternet` | `false` | `false`: only loopback and private addresses (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7, fe80::/10) may connect, everyone else gets `403 {"error":"lan_only"}`. |
 | `web.webTrustedProxies` | `[]` | IPs/CIDRs of reverse proxies. `X-Forwarded-For` is only honoured when the direct peer is listed (the right-most address that is not a listed proxy counts, so a client cannot spoof it). |
+| `web.webAllowedHosts` | `[]` | Extra host names the dashboard may be opened with. IP addresses, `localhost`, `*.local`/`*.lan` names and the host of `publicUrl` always work; any other `Host` header gets `421` (protection against DNS rebinding). |
 | `web.webTrustCloudflareHeader` | `false` | Use `CF-Connecting-IP` from a listed proxy. Only for Cloudflare Tunnel (cloudflared sets the header); Caddy, nginx and others pass a client-supplied `CF-Connecting-IP` through unchanged, which would let anyone fake their IP (rate limits, bans, LAN-only check). |
 | `web.publicUrl` | `""` | URL shown in chat. Empty = `http://<server-ip>:<port>`. |
 | `web.tlsCertPath`, `web.tlsKeyPath` | `""` | Optional HTTPS directly in the mod (PEM certificate chain + PKCS#8 PEM key). |

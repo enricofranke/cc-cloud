@@ -16,6 +16,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue WEB_ALLOW_INTERNET;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_TRUSTED_PROXIES;
     public static final ModConfigSpec.BooleanValue WEB_TRUST_CLOUDFLARE_HEADER;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_ALLOWED_HOSTS;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
     // v0.4 network ranges (blocks, same dimension, spherical)
@@ -104,6 +105,10 @@ public final class CloudConfig {
                 "cloudflared (Cloudflare Tunnel), which sets the header itself; other proxies pass a client-supplied header through.")
             .translation("cccloud.configuration.webTrustCloudflareHeader")
             .define("webTrustCloudflareHeader", false);
+        WEB_ALLOWED_HOSTS = b.comment("Extra host names the dashboard may be opened with (the Host header). IP addresses, localhost, *.local/*.lan names",
+                "and the host of publicUrl always work; other names are refused (protection against DNS rebinding).")
+            .translation("cccloud.configuration.webAllowedHosts")
+            .defineListAllowEmpty("webAllowedHosts", java.util.List.of(), () -> "mc.example.org", o -> o instanceof String s && s.length() <= 253);
         TLS_CERT_PATH = b.comment("Optional TLS: path to the certificate chain (PEM). Internet-facing servers should use TLS or a reverse proxy/tunnel.")
             .translation("cccloud.configuration.tlsCertPath")
             .define("tlsCertPath", "");

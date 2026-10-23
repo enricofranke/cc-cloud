@@ -182,6 +182,7 @@ class RouteAuthTest {
         var channel = new EmbeddedChannel(new HttpHandler(instance));
         var body = "{\"code\":\"ABCD-EFGH\",\"name\":\"Phone\"}".getBytes(StandardCharsets.UTF_8);
         var req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/api/pair", Unpooled.wrappedBuffer(body));
+        req.headers().set(HttpHeaderNames.HOST, "localhost:8787");
         channel.writeInbound(req);
         channel.runPendingTasks();
         FullHttpResponse response = channel.readOutbound();
@@ -223,5 +224,35 @@ class RouteAuthTest {
         assertFalse(HttpHandler.originMatchesHost("http://evil.example", "localhost:8787"));
         assertFalse(HttpHandler.originMatchesHost("http://localhost:9999", "localhost:8787"));
         assertFalse(HttpHandler.originMatchesHost("null", "localhost:8787"));
+    }
+
+    @Test
+    void foreignHostNamesAreRefused() {
+        var instance = instance(true);
+        var channel = new EmbeddedChannel(new HttpHandler(instance));
+        var req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/config");
+        req.headers().set(HttpHeaderNames.HOST, "rebind.attacker.example:8787");
+        channel.writeInbound(req);
+        channel.runPendingTasks();
+        FullHttpResponse response = channel.readOutbound();
+        assertEquals(421, response.status().code(), "DNS rebinding: a foreign Host is refused");
+        assertTrue(HostCheck.allowed("192.168.1.20:8787", java.util.Set.of()));
+        assertTrue(HostCheck.allowed("[::1]:8787", java.util.Set.of()));
+        assertTrue(HostCheck.allowed("minecraft.local", java.util.Set.of()));
+        assertTrue(HostCheck.allowed("dash.example.org", java.util.Set.of("dash.example.org")));
+        assertFalse(HostCheck.allowed(null, java.util.Set.of()));
+        assertEquals("dash.example.org", HostCheck.hostOfUrl("https://Dash.Example.org/"));
+    }
+
+    @Test
+    void connectionsPerForwardedClientAreLimited() {
+        var instance = instance(true);
+        int admitted = 0;
+        for (int i = 0; i < CloudWebServer.maxConnectionsPerIp + 2; i++) if (HttpHandler.admitProxied(instance, "203.0.113.5")) admitted++;
+        assertEquals(CloudWebServer.maxConnectionsPerIp, admitted, "the same forwarded client cannot open more connections than the per-IP limit");
+        assertTrue(HttpHandler.admitProxied(instance, "203.0.113.6"), "other clients are not affected");
+        for (int i = 0; i < CloudWebServer.maxConnectionsPerIp + 2; i++) HttpHandler.releaseProxied(instance, "203.0.113.5");
+        HttpHandler.releaseProxied(instance, "203.0.113.6");
+        assertTrue(instance.proxiedClients.isEmpty(), "closing releases the slots");
     }
 }

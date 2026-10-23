@@ -46,6 +46,18 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         + "(use HTTPS, see docs/HOSTING.md).";
 
     private final WebInstance instance;
+    /** Counts a connection of a forwarded client; false if it has more than the per-IP limit (L7). */
+    static boolean admitProxied(WebInstance instance, String ip) {
+        int mine = instance.proxiedClients.computeIfAbsent(ip, k -> new java.util.concurrent.atomic.AtomicInteger()).incrementAndGet();
+        return mine <= CloudWebServer.maxConnectionsPerIp;
+    }
+
+    static void releaseProxied(WebInstance instance, String ip) {
+        instance.proxiedClients.computeIfPresent(ip, (k, v) -> v.decrementAndGet() <= 0 ? null : v);
+    }
+
+    /** The forwarded client IP this connection counts against (behind a trusted proxy), or null. */
+    private @Nullable String countedClient;
 
     HttpHandler(WebInstance instance) {
         this.instance = instance;
@@ -72,6 +84,18 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             return;
         }
         String ip = clientIp(ctx, req);
+        // Behind a trusted proxy the connection limit per IP applies to the forwarded client address (L7).
+        if (countedClient == null && !ip.equals(ConnectionLimiter.peerIp(ctx.channel()))) {
+            countedClient = ip;
+            boolean admitted = admitProxied(instance, ip);
+            // released when the connection closes (also after a WebSocket upgrade replaced this handler)
+            ctx.channel().closeFuture().addListener(f -> releaseProxied(instance, ip));
+            if (!admitted) {
+                sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("too_many_connections"));
+                ctx.close();
+                return;
+            }
+        }
         if (instance.bannedIps.contains(ip)) {
             sendText(ctx, req, HttpResponseStatus.FORBIDDEN, "Forbidden");
             return;
@@ -80,6 +104,12 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             var body = error("lan_only");
             body.addProperty("message", LAN_ONLY_MESSAGE);
             sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, body);
+            return;
+        }
+
+        // DNS rebinding: only IP addresses, localhost, LAN names and configured names as Host (security review L5)
+        if (!HostCheck.allowed(req.headers().get(HttpHeaderNames.HOST), instance.allowedHosts)) {
+            sendJson(ctx, req, HttpResponseStatus.MISDIRECTED_REQUEST, error("bad_host"));
             return;
         }
 

@@ -98,6 +98,11 @@ public final class CloudWebServer {
             computeUrl(server, bind, port, ssl != null), port);
         instance.bannedIps = bannedIps(server);
         instance.trustCloudflare = CloudConfig.get(CloudConfig.WEB_TRUST_CLOUDFLARE_HEADER);
+        var hosts = new java.util.HashSet<String>();
+        for (var h : CloudConfig.get(CloudConfig.WEB_ALLOWED_HOSTS)) hosts.add(h.trim().toLowerCase(java.util.Locale.ROOT));
+        String publicHost = HostCheck.hostOfUrl(CloudConfig.get(CloudConfig.PUBLIC_URL));
+        if (publicHost != null) hosts.add(publicHost);
+        instance.allowedHosts = java.util.Set.copyOf(hosts);
         var group = new MultiThreadIoEventLoopGroup(2, new DefaultThreadFactory("cccloud-web", true), NioIoHandler.newFactory());
         instance.group = group;
         try {

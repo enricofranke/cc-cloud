@@ -74,6 +74,7 @@
   "cccloud.configuration.publicUrl": "Public URL",
   "cccloud.configuration.webAllowInternet": "Allow internet access",
   "cccloud.configuration.webTrustCloudflareHeader": "Trust CF-Connecting-IP (Cloudflare Tunnel only)",
+  "cccloud.configuration.webAllowedHosts": "Allowed host names",
   "cccloud.configuration.webTrustedProxies": "Trusted proxies",
   "cccloud.configuration.tlsCertPath": "TLS certificate (PEM)",
   "cccloud.configuration.tlsKeyPath": "TLS private key (PEM)",

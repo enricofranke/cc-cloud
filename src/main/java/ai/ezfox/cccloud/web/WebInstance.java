@@ -24,6 +24,10 @@ final class WebInstance {
     final ai.ezfox.cccloud.access.AccessStore access;
     final @Nullable SslContext ssl;
     final List<IpUtil.Cidr> trustedProxies;
+    /** Host names allowed besides IP literals, localhost and LAN names (publicUrl host + webAllowedHosts). */
+    volatile java.util.Set<String> allowedHosts = java.util.Set.of();
+    /** Connections per resolved client IP behind a trusted proxy (security review L7). */
+    final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> proxiedClients = new java.util.concurrent.ConcurrentHashMap<>();
     /** Config {@code webTrustCloudflareHeader}. */
     volatile boolean trustCloudflare;
     final boolean allowInternet;
@@ -80,6 +84,7 @@ final class WebInstance {
         if (ssl != null) p.addLast("ssl", ssl.newHandler(ch.alloc()));
         p.addLast("idle", new IdleStateHandler(CloudWebServer.HANDSHAKE_TIMEOUT_S, 0, 0));
         p.addLast("http", new HttpServerCodec(4096, 8192, 8192));
+        p.addLast("body-limit", new BodyLimit()); // per connection: 4 KB unless an authenticated script upload
         // Script uploads may be 256 KB; every other route rejects bodies over 4 KB in HttpHandler.
         p.addLast("aggregator", new HttpObjectAggregator(ai.ezfox.cccloud.script.ScriptFiles.MAX_FILE + 1024));
         p.addLast("handler", new HttpHandler(this));
