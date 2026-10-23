@@ -13,6 +13,7 @@ import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { SAMPLE_ICONS } from "./icons.ts";
+import { COMPAT_CARDS } from "./compat-cards.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
@@ -46,6 +47,13 @@ interface Uplink {
   lastSeen?: number;
   pages?: { id: string; title: string; icon?: string }[];
   groups?: { id: string; title: string; page?: string; cols?: number }[];
+  /** v0.5 B mainframe cards / compat cards */
+  template?: string;
+  /** coordinates inside: only for sessions with view.positions */
+  restricted?: boolean;
+  /** map overlays of mainframe cards (claims, waystones) */
+  claims?: unknown;
+  waystones?: unknown;
 }
 interface Client {
   ws: WebSocket;
@@ -108,8 +116,12 @@ interface Mainframe {
   access: Access;
   /** v0.4 network map */
   net?: { nodes: SimNode[]; lastSeen: Record<string, number> };
+  /** v0.7 upgrade effects: device limit (null = Quantum Core) and the FE factor of an Efficiency card */
+  upgrades?: { devices: number | null; feFactor: number };
+  /** v0.7 wireless redstone channels */
+  redstone?: Map<string, { signal: number; transmitters: number; receivers: number; override?: { level: number; until: number | null } }>;
   /** v0.3 FE buffer; undefined = requirePower=false */
-  power?: { stored: number; capacity: number; input: number; usage: number; ok: boolean; brownout: number; breakdown?: { key: string; count?: number; fe: number }[] };
+  power?: { stored: number; capacity: number; input: number; usage: number; ok: boolean; brownout: number; breakdown?: { key: string; count?: number; fe: number; fiber?: number }[] };
   reason?: string;
   /** Simulates a Lua script that never answers (for rollback tests). */
   ignoreActions: boolean;
@@ -380,9 +392,10 @@ export async function createMockServer(opts: MockOptions = {}) {
           perms: c?.perms ?? presetPerms("admin"),
           store: (c?.perms ?? presetPerms("admin")).includes("scripts.upload") && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/` } : null,
           account: c?.uuid ? { player: playerByUuid(c.uuid)?.player ?? "?" } : null,
-          uplinks: [...mf.uplinks.values()],
+          uplinks: [...mf.uplinks.values()].filter((u) => !u.restricted || (c?.perms ?? presetPerms("admin")).includes("view.positions")),
           layout: mf.layout,
           ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
+          ...(mf.redstone ? { redstone: redstonePayload(mf) } : {}),
         };
 
   // ---- v0.4 network map
@@ -391,6 +404,33 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (!mf.net) return null;
     const { links, routes, status } = computeNetwork(mf.net.nodes);
     const isNodeT = (t: string) => t === "mainframe" || RELAY_FE[t as keyof typeof RELAY_FE] !== undefined;
+    // v0.7: how each device is attached (last hop), capacity in use and who is over it
+    const viaOf = (id: string) => {
+      const path = routes[id];
+      if (!path || path.length < 2) return undefined;
+      const prev = path[path.length - 2];
+      const l = links.find((x) => x.kind === "wired" && ((x.a === prev && x.b === id) || (x.b === prev && x.a === id)));
+      return l ? (l.medium === "fiber" ? "fiber" : "cable") : undefined;
+    };
+    const routed = mf.net.nodes.filter((n) => !isNodeT(n.type) && routes[n.id] && status[n.id] !== "unloaded");
+    const relaysOnRoutes = new Set(routed.flatMap((n) => routes[n.id].slice(1, -1)));
+    const fiberDevices = routed.filter((n) => viaOf(n.id) === "fiber").length;
+    const used = routed.length + relaysOnRoutes.size - fiberDevices * 0.5;
+    const limit = mf.upgrades ? mf.upgrades.devices : 16;
+    const overIds = new Set<string>();
+    if (limit !== null && used > limit)
+      [...routed]
+        .sort((a, b) => routes[b.id].length - routes[a.id].length)
+        .slice(0, Math.ceil(used - limit))
+        .forEach((n) => overIds.add(n.id));
+    const capacity = {
+      devices: routed.length + relaysOnRoutes.size,
+      used,
+      limit,
+      over: overIds.size,
+      wired: routed.filter((n) => viaOf(n.id)).length,
+      fiber: fiberDevices,
+    };
     const nodes = mf.net.nodes.map((n) => {
       const path = routes[n.id];
       const fe = RELAY_FE[n.type];
@@ -398,7 +438,8 @@ export async function createMockServer(opts: MockOptions = {}) {
       // unloaded devices: the mod only knows the link entry
       if (!isNodeT(n.type) && status[n.id] === "unloaded")
         return { id: n.id, type: "device", name: "", status: "unloaded", ...pos, dim: n.dim };
-      const st = n.type === "mainframe" ? (mf.online ? "online" : (mf.reason ?? "offline")) : status[n.id] === "legacy_out_of_range" ? "online" : status[n.id];
+      const st = n.type === "mainframe" ? (mf.online ? "online" : (mf.reason ?? "offline")) : overIds.has(n.id) ? "over_capacity" : status[n.id] === "legacy_out_of_range" ? "online" : status[n.id];
+      const via = isNodeT(n.type) ? undefined : viaOf(n.id);
       return {
         id: n.id,
         type: n.type,
@@ -412,13 +453,23 @@ export async function createMockServer(opts: MockOptions = {}) {
         ...(isNodeT(n.type) ? { deviceRange: RANGES[n.type].deviceRange } : {}),
         ...(fe ? { power: { stored: n.powered === false ? 0 : 41_000, capacity: n.type === "relay" ? 50_000 : n.type === "advanced_relay" ? 100_000 : 200_000, usage: fe } } : {}),
         ...(n.type === "mainframe" && mf.power ? { power: { stored: Math.round(mf.power.stored), capacity: mf.power.capacity, usage: mf.power.usage } } : {}),
+        ...(n.type === "mainframe" ? { capacity } : {}),
+        ...(via ? { via } : {}),
       };
     });
     return {
       nodes,
       links: links
         .filter((l) => !l.legacy)
-        .map((l) => ({ a: l.a, b: l.b, signal: l.signal, ...(withPositions && l.dist ? { dist: l.dist } : {}), kind: l.kind, ...(l.kind === "radio" && l.signal < 0.15 ? { weak: true } : {}) })),
+        .map((l) => ({
+          a: l.a,
+          b: l.b,
+          signal: l.signal,
+          ...(withPositions && l.dist ? { dist: l.dist } : {}),
+          kind: l.kind,
+          ...(l.medium ? { medium: l.medium } : {}),
+          ...(l.kind === "radio" && l.signal < 0.15 ? { weak: true } : {}),
+        })),
       // like the mod: relays' paths include themselves, devices' paths are the nodes before them
       routes: Object.fromEntries(
         Object.entries(routes)
@@ -426,6 +477,25 @@ export async function createMockServer(opts: MockOptions = {}) {
           .map(([id, path]) => [id, isNodeT(mf.net!.nodes.find((x) => x.id === id)!.type) ? path : path.slice(0, -1)]),
       ),
     };
+  }
+  /** v0.7 wireless redstone: {channels, limit}; level = override or the transmitters' max */
+  function redstonePayload(mf: Mainframe) {
+    if (!mf.redstone) return null;
+    const now = Date.now();
+    for (const [name, c] of mf.redstone) {
+      if (c.override?.until && c.override.until <= now) delete c.override;
+      if (!c.override && !c.transmitters && !c.receivers) mf.redstone.delete(name);
+    }
+    return {
+      channels: [...mf.redstone.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, c]) => ({ name, level: c.override ? c.override.level : c.signal, signal: c.signal, transmitters: c.transmitters, receivers: c.receivers, ...(c.override ? { override: c.override } : {}) })),
+      limit: 64,
+    };
+  }
+  function broadcastRedstone(mf: Mainframe) {
+    const r = redstonePayload(mf);
+    if (r) for (const c of mf.clients) if (!c.share) sendTo(c.ws, { t: "redstone", ...r });
   }
   function broadcastNetwork(mf: Mainframe) {
     if (!mf.net) return;
@@ -445,11 +515,26 @@ export async function createMockServer(opts: MockOptions = {}) {
       const adv = count(["advanced_uplink"]);
       const br = count(["bridge"]);
       const hops = routed.filter((n) => !RELAY_FE[n.type]).reduce((s, n) => s + Math.max(0, routes[n.id].length - 2), 0);
-      items.push({ key: "uplinks", count: up, fe: 4 * up }, { key: "advanced_uplinks", count: adv, fe: 8 * adv }, { key: "bridges", count: br, fe: 10 * br });
+      // fiber-attached devices pay half (rounded up per category)
+      const fib = (types: string[]) => routed.filter((n) => types.includes(n.type) && n.wired && n.fiber).length;
+      const cost = (per: number, total: number, fiber: number) => per * (total - fiber) + Math.ceil((per * fiber) / 2);
+      const fu = fib(["uplink"]);
+      const fa = fib(["advanced_uplink"]);
+      const fb = fib(["bridge"]);
+      items.push(
+        { key: "uplinks", count: up, fe: cost(4, up, fu), ...(fu ? { fiber: fu } : {}) },
+        { key: "advanced_uplinks", count: adv, fe: cost(8, adv, fa), ...(fa ? { fiber: fa } : {}) },
+        { key: "bridges", count: br, fe: cost(10, br, fb), ...(fb ? { fiber: fb } : {}) },
+      );
       items.push({ key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size }, { key: "hops", count: hops, fe: hops });
     } else {
       const uplinks = [...mf.uplinks.values()].filter((u) => u.online).length;
       items.push({ key: "uplinks", count: uplinks, fe: 5 * uplinks }, { key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size });
+    }
+    // Efficiency card: the saved FE as a negative item, so the items still sum to the usage
+    if (mf.upgrades && mf.upgrades.feFactor < 1) {
+      const sum = items.reduce((s, b) => s + b.fe, 0);
+      items.push({ key: "efficiency", fe: -Math.round(sum * (1 - mf.upgrades.feFactor)) });
     }
     return items;
   }
@@ -860,7 +945,29 @@ export async function createMockServer(opts: MockOptions = {}) {
       lastSeen: {},
     };
 
+  // v0.7: an Allthemodium Capacity card (48 devices) and Efficiency card (×0.8); wireless redstone channels
+  base.upgrades = { devices: 48, feFactor: 0.8 };
+  base.redstone = new Map([
+    ["alarm", { signal: 0, transmitters: 1, receivers: 3, override: { level: 15, until: null } }],
+    ["base_door", { signal: 15, transmitters: 2, receivers: 1 }],
+    ["farm.lights", { signal: 9, transmitters: 1, receivers: 4 }],
+    ["reactor_scram", { signal: 0, transmitters: 1, receivers: 1 }],
+  ]);
+  // FTB Chunks claims and Waystones mainframe cards (restricted: they carry coordinates)
+  if (opts.extras)
+    for (const card of COMPAT_CARDS.filter((k) => k.key === "claims" || k.key === "waystones")) {
+      const id = `mf-card-${card.key}`;
+      base.uplinks.set(id, { uplinkId: id, title: card.title, online: true, mode: "direct", template: card.template, restricted: true, widgets: card.widgets as Widget[], ...(card.extra ?? {}) });
+    }
+
   if (opts.extras) {
+    // every compat card the mod can build, with sample values (dev/compat-cards.ts mirrors the Java builders)
+    const show = addMainframe("Mod Showcase @ 500 64 500", true);
+    for (const card of COMPAT_CARDS) {
+      const id = `compat-${card.key}`;
+      show.uplinks.set(id, { uplinkId: id, title: card.title, online: true, mode: "direct", template: card.template, ...(card.restricted ? { restricted: true } : {}), widgets: card.widgets as Widget[], ...(card.extra ?? {}) });
+    }
+    show.onAction = (u, id, v) => setValue(show, u, id, v);
     addMainframe("New Base @ 220 70 -15", true); // freshly paired, nothing linked yet
     const outpost = addMainframe("Outpost @ -340 72 118", false);
     outpost.uplinks.set(GREENHOUSE, {
@@ -907,7 +1014,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     deep.net = {
       nodes: [
         { id: "deep-mf", type: "mainframe", name: "Mainframe", pos: { ...DEEP_BASE.mainframe }, dim: O },
-        { id: DEEP_COMPUTER, type: "uplink", name: "Computer #0", pos: { ...DEEP_BASE.uplink }, dim: O, uplinkId: DEEP_COMPUTER, wired: "deep-mf" },
+        { id: DEEP_COMPUTER, type: "uplink", name: "Computer #0", pos: { ...DEEP_BASE.uplink }, dim: O, uplinkId: DEEP_COMPUTER, wired: "deep-mf", fiber: true },
         { id: DEEP_RS, type: "bridge", name: "RS Network", pos: { ...DEEP_BASE.rs }, dim: O, uplinkId: DEEP_RS, wired: "deep-mf" },
         { id: "deep-relay", type: "advanced_relay", name: "Shaft Relay", pos: { x: 8, y: sy(8, 7), z: 7 }, dim: O, powered: true },
         { id: "deep-farm", type: "advanced_uplink", name: "Hill Farm", pos: { x: 34, y: sy(34, 28), z: 28 }, dim: O },
@@ -945,6 +1052,10 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
   const tickAll = () => {
     powerTicks++;
+    // expired redstone overrides
+    mainframes.forEach((m) => {
+      if (m.redstone && [...m.redstone.values()].some((c) => c.override?.until && c.override.until <= Date.now())) broadcastRedstone(m);
+    });
     // a solar array: strong for 40 s, weak for 40 s -> the buffer drains and refills
     if (base.power) base.power.input = powerTicks % 80 < 40 ? 120 : 30;
     mainframes.forEach((m) => {
@@ -1076,6 +1187,31 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} unlinked ${node.name} from the network`);
           nres(true);
           broadcastNetwork(m);
+          return;
+        }
+        if (msg.t === "rs_override") {
+          const rres = (ok: boolean, error?: string) => sendTo(ws, { t: "rs_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          const rd = denied(c, "act.redstone");
+          if (rd) return rres(false, rd);
+          if (!m.online) return rres(false, "offline");
+          if (!m.redstone) m.redstone = new Map();
+          if (!/^[A-Za-z0-9_.-]{1,32}$/.test(msg.channel)) return rres(false, "invalid_channel");
+          const lv = msg.level;
+          const secs = msg.seconds ?? null;
+          if (lv !== null && (!Number.isInteger(lv) || lv < 0 || lv > 15)) return rres(false, "invalid_argument");
+          if (secs !== null && (!Number.isInteger(secs) || secs < 1 || secs > 86400)) return rres(false, "invalid_argument");
+          let ch = m.redstone.get(msg.channel);
+          if (!ch) {
+            if (lv === null) return rres(true);
+            if (m.redstone.size >= 64) return rres(false, "too_many_channels");
+            ch = { signal: 0, transmitters: 0, receivers: 0 };
+            m.redstone.set(msg.channel, ch);
+          }
+          if (lv === null) delete ch.override;
+          else ch.override = { level: lv, until: secs ? Date.now() + secs * 1000 : null };
+          log(`${c.user} ${lv === null ? "cleared the override of" : `set ${lv} on`} redstone channel ${msg.channel}`);
+          rres(true);
+          broadcastRedstone(m);
           return;
         }
         if (msg.t === "layout_set") {

@@ -35,6 +35,7 @@ Upgrade-Karten gibt es in drei Stufen. Pro Typ zählt nur eine Karte – die hö
 - **Quantum Core** (ATM-Star-Stufe, einer pro Mainframe): unbegrenzt Geräte und Browser, der Mainframe arbeitet als Ender-Knoten (dimensionsübergreifend) und braucht nur ein Viertel des FE.
 - Die Rezepte nutzen die Metalle des Packs (`#c:ingots/allthemodium` usw.). Ohne AllTheModium gibt es Ersatzrezepte mit Diamant, Netherit und Netherstern. Nachschauen in JEI/EMI.
 - **Über der Grenze:** Neue Verbindungen werden mit einer klaren Meldung abgelehnt. Nimmst du eine Karte heraus, zeigen die überzähligen Geräte **Over capacity** und pausieren (die mit den meisten Sprüngen bzw. zuletzt verbundenen zuerst), bis wieder Platz ist.
+- Das Dashboard zeigt die genutzte Kapazität (z. B. „12.5 / 48 devices“) im Network-Tab und im Strom-Popup; Geräte an Glasfaser zählen halb.
 
 ## Cloud Tablet
 
@@ -56,4 +57,6 @@ Ein Display-Block, der eine Dashboard-Karte oder -Seite **in der Welt** zeigt, w
 ## Drahtloses Redstone
 
 Uplinks bekommen in ihrem Fenster einen **Redstone-Modus**: **Sender** oder **Empfänger** auf einem Kanalnamen. Empfänger geben das stärkste Signal aller Sender auf diesem Kanal aus (0–15). Das funktioniert über Relays, Kabel und – mit Ender Relays – dimensionsübergreifend, mit dem nächsten Tick als Verzögerung. Bis zu 64 Kanäle pro Netzwerk; sehr schnelle Takte (schneller als 2 Ticks) werden geglättet.
+
+Im Dashboard listet der Chip **Redstone** im Network-Tab jeden Kanal mit Pegel, Sendern und Empfängern. Spieler mit dem Recht „Switch redstone“ (ab operator) können einen Kanal **übersteuern** – ein Pegel von 0 bis 15 für 30 s, 5 min, 1 h oder bis zum Zurücksetzen –, etwa um vom Handy aus eine Tür zu öffnen. Die Übersteuerung gewinnt gegen die Sender, bis sie abläuft oder du sie aufhebst; jede wird protokolliert.
 

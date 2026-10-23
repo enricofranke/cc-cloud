@@ -100,6 +100,8 @@ export const MAX_LAYOUT_BYTES = 64 * 1024;
 export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("layout_set"), reqId: z.string().min(1).max(64), layout: z.unknown() }),
   z.object({ t: z.literal("net_unlink"), reqId: z.string().min(1).max(64), nodeId: z.string().min(1).max(64) }),
+  // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
+  z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
   z.object({
     t: z.literal("query"),
     reqId: z.string().min(1).max(64),

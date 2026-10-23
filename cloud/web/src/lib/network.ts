@@ -1,5 +1,5 @@
 // v0.4 network map: pure helpers (tree layout, signal classes, labels), unit-tested.
-import type { NetLink, NetNode, NetworkInfo, NodeStatus, NodeType } from "./types.ts";
+import type { ClaimsOverlay, NetLink, NetNode, NetworkInfo, NodeStatus, NodeType, Uplink, Waystone } from "./types.ts";
 
 export const WEAK_SIGNAL = 0.15;
 
@@ -30,6 +30,7 @@ export const STATUS_LABEL: Record<NodeStatus, string> = {
   no_route: "No route",
   unloaded: "Unloaded",
   legacy_out_of_range: "Out of range (legacy)",
+  over_capacity: "Over capacity",
 };
 
 export const STATUS_HINT: Partial<Record<NodeStatus, string>> = {
@@ -41,13 +42,14 @@ export const STATUS_HINT: Partial<Record<NodeStatus, string>> = {
   offline: "The block is offline (broken, redstone kill switch or disabled).",
   redstone: "A redstone signal on the mainframe switched it off (kill switch).",
   cloud_disabled: "The server admin disabled the cloud function (allowCloud=false).",
+  over_capacity: "The mainframe has more devices than its upgrade cards allow. This one stopped until there is room again – add a Capacity card or remove a device.",
 };
 
 /** green ≥ 50 %, cyan ≥ 15 %, yellow below (weak); ender links are purple. */
-export function signalClass(l: Pick<NetLink, "signal" | "kind" | "legacy" | "weak">) {
+export function signalClass(l: Pick<NetLink, "signal" | "kind" | "legacy" | "weak" | "medium">) {
   if (l.legacy) return "sig-legacy";
   if (l.kind === "ender") return "sig-ender";
-  if (l.kind === "wired") return "sig-wired";
+  if (l.kind === "wired") return l.medium === "fiber" ? "sig-fiber" : "sig-wired";
   if (l.weak || l.signal < WEAK_SIGNAL) return "sig-weak";
   if (l.signal < 0.5) return "sig-ok";
   return "sig-good";
@@ -286,4 +288,24 @@ export function placeLabels(items: LabelIn[], charW = 6.6, h = 13, pad = 3): Map
     } else out.set(it.id, null);
   }
   return out;
+}
+
+/** Short label of a link: "fiber", "cable", "ender", "legacy" or the radio signal. */
+export function linkLabel(l: Pick<NetLink, "signal" | "kind" | "legacy" | "medium">) {
+  if (l.kind === "wired") return l.medium === "fiber" ? "fiber" : "cable";
+  if (l.kind === "ender") return "ender";
+  if (l.legacy) return "legacy";
+  return `${Math.round(l.signal * 100)}%`;
+}
+
+export interface MapOverlays {
+  claims: ClaimsOverlay[];
+  waystones: Waystone[];
+}
+/** Claims and waystones from the mainframe cards (only sent to sessions with view.positions). */
+export function overlaysOf(uplinks: Uplink[]): MapOverlays {
+  return {
+    claims: uplinks.flatMap((u) => (u.claims ? [u.claims] : [])),
+    waystones: uplinks.flatMap((u) => u.waystones?.items ?? []),
+  };
 }

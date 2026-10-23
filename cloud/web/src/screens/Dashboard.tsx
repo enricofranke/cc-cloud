@@ -14,6 +14,7 @@ import { PixelIcon } from "../components/PixelIcon.tsx";
 import type { PowerInfo } from "../lib/types.ts";
 import { PERMISSIONS, presetHas, type MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
+import { CapacityLine } from "../components/Capacity.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
@@ -34,6 +35,8 @@ const BREAKDOWN_LABEL: Record<string, (n?: number) => string> = {
   bridges: (n) => `${n ?? 0} bridge${n === 1 ? "" : "s"}`,
   clients: (n) => `${n ?? 0} dashboard${n === 1 ? "" : "s"} connected`,
   hops: (n) => `${n ?? 0} extra hop${n === 1 ? "" : "s"}`,
+  anchor: (n) => `Chunk Anchor${n ? ` (${n} chunk${n === 1 ? "" : "s"})` : ""}`,
+  efficiency: () => "Efficiency upgrade (saved)",
 };
 
 /** Header popover: what the mainframe's FE/t is spent on, plus relay power. */
@@ -44,6 +47,7 @@ function PowerPopover({ p, conn, onClose }: { p: PowerInfo; conn: MainframeConn;
     return () => removeEventListener("keydown", h);
   }, [onClose]);
   const relays = (conn.network.value?.nodes ?? []).filter((n) => n.power && n.type !== "mainframe");
+  const cap = conn.network.value?.nodes.find((n) => n.type === "mainframe")?.capacity;
   const pct = p.capacity > 0 ? Math.round((p.stored / p.capacity) * 100) : 0;
   return (
     <>
@@ -65,11 +69,14 @@ function PowerPopover({ p, conn, onClose }: { p: PowerInfo; conn: MainframeConn;
           <table class="pp-table">
             <tbody>
               {p.breakdown
-                .filter((b) => b.fe > 0 || b.key === "base")
+                .filter((b) => b.fe !== 0 || b.key === "base")
                 .map((b) => (
-                  <tr key={b.key}>
-                    <td>{(BREAKDOWN_LABEL[b.key] ?? (() => b.key))(b.count)}</td>
-                    <td class="mono">{fmtFE(b.fe, true)}</td>
+                  <tr key={b.key} class={b.fe < 0 ? "pp-saved" : ""}>
+                    <td>
+                      {(BREAKDOWN_LABEL[b.key] ?? (() => b.key))(b.count)}
+                      {b.fiber ? <span class="pp-fiber"> · {b.fiber} by fiber</span> : null}
+                    </td>
+                    <td class="mono">{b.fe < 0 ? `−${fmtFE(-b.fe, true)}` : fmtFE(b.fe, true)}</td>
                   </tr>
                 ))}
               <tr class="pp-total">
@@ -80,6 +87,15 @@ function PowerPopover({ p, conn, onClose }: { p: PowerInfo; conn: MainframeConn;
           </table>
         ) : (
           <p class="muted small">Using {fmtFE(p.usage, true)}.</p>
+        )}
+        {cap && (
+          <>
+            <div class="pp-sub">Device capacity</div>
+            <div class="pp-cap">
+              <CapacityLine c={cap} />
+              {cap.limit != null && cap.used >= cap.limit * 0.9 && <span class="muted small">A Capacity upgrade card in the mainframe raises the limit.</span>}
+            </div>
+          </>
         )}
         {relays.length > 0 && (
           <>

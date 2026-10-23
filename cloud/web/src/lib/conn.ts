@@ -5,7 +5,7 @@
 // values with rollback, and the offline/disabled/unauthorized states.
 import { presetHas } from "./permissions.ts";
 import { signal, batch } from "@preact/signals";
-import { WIDGET_TYPES, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -199,6 +199,8 @@ export class MainframeConn {
   readonly account = signal<{ player: string } | null>(null);
   /** v0.4 network graph (null = server without network map) */
   readonly network = signal<NetworkInfo | null>(null);
+  /** v0.7 wireless redstone channels (null = none / older mod) */
+  readonly redstone = signal<RedstoneInfo | null>(null);
 
   private ws?: WebSocket;
   private stopped = true;
@@ -406,6 +408,7 @@ export class MainframeConn {
           if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
+          this.redstone.value = normalizeRedstone(msg.redstone);
           this.role.value = ROLES.includes(msg.role) ? msg.role : null;
           this.perms.value = parsePerms(msg.perms);
           this.store.value = parseStore(msg.store);
@@ -511,6 +514,10 @@ export class MainframeConn {
       case "network":
         this.network.value = normalizeNetwork(msg.network);
         break;
+      case "redstone":
+        this.redstone.value = normalizeRedstone(msg);
+        break;
+      case "rs_result":
       case "net_result": {
         const r = this.netReqs.get(String(msg.reqId ?? ""));
         if (!r) return;
@@ -642,6 +649,24 @@ export class MainframeConn {
       const no = this.deniedCode("network.link");
       if (no) return reject(new Error(no));
       if (!this.send({ t: "net_unlink", reqId, nodeId })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
+  /**
+   * v0.7: overrides a wireless redstone channel ({"t":"rs_override"} → rs_result), `level` null clears it,
+   * `seconds` null = until reset. Needs act.redstone.
+   */
+  rsOverride(channel: string, level: number | null, seconds: number | null, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("act.redstone");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "rs_override", reqId, channel, level, seconds })) return reject(new Error("disconnected"));
       const timer = setTimeout(() => {
         this.netReqs.delete(reqId);
         reject(new Error("timeout"));
@@ -828,13 +853,19 @@ export function normalizePower(p: any): PowerInfo | undefined {
     out.breakdown = p.breakdown
       .filter((b: any) => b && typeof b.key === "string")
       .slice(0, 16)
-      .map((b: any) => ({ key: b.key.slice(0, 32), fe: n(b.fe), ...(typeof b.count === "number" ? { count: n(b.count) } : {}) }));
+      // efficiency is the saved FE (negative), so the items still sum to the usage
+      .map((b: any) => ({
+        key: b.key.slice(0, 32),
+        fe: b.key === "efficiency" && typeof b.fe === "number" && Number.isFinite(b.fe) ? Math.min(0, b.fe) : n(b.fe),
+        ...(typeof b.count === "number" ? { count: n(b.count) } : {}),
+        ...(typeof b.fiber === "number" && b.fiber > 0 ? { fiber: n(b.fiber) } : {}),
+      }));
   return out;
 }
 
 const ROLES = ["viewer", "operator", "admin", "owner", "share"];
 const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
-const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range"];
+const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range", "over_capacity"];
 const DEVICE_TYPES = ["uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
 
 /** Validates the untrusted network graph (v0.4 map). */
@@ -877,6 +908,19 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       ...(typeof n.parent === "string" ? { parent: n.parent.slice(0, 64) } : {}),
       ...(typeof n.hops === "number" && n.hops >= 0 ? { hops: Math.min(16, Math.round(n.hops)) } : {}),
       ...(flags?.length ? { flags } : {}),
+      ...(n.via === "cable" || n.via === "fiber" ? { via: n.via } : {}),
+      ...(n.capacity && typeof n.capacity === "object"
+        ? {
+            capacity: {
+              devices: Math.max(0, num(n.capacity.devices)),
+              used: Math.max(0, num(n.capacity.used)),
+              limit: typeof n.capacity.limit === "number" && n.capacity.limit >= 0 ? n.capacity.limit : null,
+              over: Math.max(0, num(n.capacity.over)),
+              wired: Math.max(0, num(n.capacity.wired)),
+              fiber: Math.max(0, num(n.capacity.fiber)),
+            },
+          }
+        : {}),
     });
   }
   // a parent that is not in the graph is dropped
@@ -890,6 +934,7 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       signal: Math.max(0, Math.min(1, num(l.signal))),
       dist: Math.max(0, num(l.dist)),
       kind: l.kind === "ender" || l.kind === "wired" ? l.kind : "radio",
+      ...(l.kind === "wired" ? { medium: l.medium === "fiber" ? "fiber" : "cc" } : {}),
       ...(l.legacy === true ? { legacy: true } : {}),
       ...(l.weak === true ? { weak: true } : {}),
     }));
@@ -901,6 +946,59 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       if (path.length) routes[k] = path;
     }
   return { nodes, links, routes };
+}
+
+const fin = (v: unknown) => typeof v === "number" && Number.isFinite(v);
+const lvl = (v: unknown) => (fin(v) ? Math.max(0, Math.min(15, Math.round(v as number))) : 0);
+const CHANNEL = /^[A-Za-z0-9_.-]{1,32}$/;
+
+export function normalizeRedstone(raw: any): RedstoneInfo | null {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.channels)) return null;
+  const channels: RedstoneChannel[] = raw.channels
+    .filter((c: any) => c && typeof c.name === "string" && CHANNEL.test(c.name))
+    .slice(0, 64)
+    .map((c: any) => ({
+      name: c.name,
+      level: lvl(c.level),
+      signal: lvl(c.signal),
+      transmitters: fin(c.transmitters) ? Math.max(0, c.transmitters) : 0,
+      receivers: fin(c.receivers) ? Math.max(0, c.receivers) : 0,
+      ...(c.override && typeof c.override === "object" ? { override: { level: lvl(c.override.level), until: fin(c.override.until) ? c.override.until : null } } : {}),
+    }))
+    .sort((a: RedstoneChannel, b: RedstoneChannel) => a.name.localeCompare(b.name));
+  return { channels, limit: fin(raw.limit) ? raw.limit : 64 };
+}
+
+function normalizeClaims(raw: any): ClaimsOverlay | undefined {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.chunks)) return undefined;
+  return {
+    team: typeof raw.team === "string" ? raw.team.slice(0, 48) : "",
+    // the mod sends "#rrggbb"
+    color: typeof raw.color === "string" && /^#[0-9a-f]{6}$/i.test(raw.color) ? parseInt(raw.color.slice(1), 16) : fin(raw.color) ? raw.color & 0xffffff : 0x5ec8e5,
+    chunks: raw.chunks
+      .filter((c: any) => c && typeof c.dim === "string" && Number.isInteger(c.x) && Number.isInteger(c.z))
+      .slice(0, 4096)
+      .map((c: any) => ({ dim: c.dim.slice(0, 64), x: c.x, z: c.z, forced: c.forced === true })),
+    truncated: raw.truncated === true,
+  };
+}
+function normalizeWaystones(raw: any): WaystonesOverlay | undefined {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.items)) return undefined;
+  return {
+    items: raw.items
+      .filter((w: any) => w && typeof w.dim === "string" && fin(w.x) && fin(w.z))
+      .slice(0, 512)
+      .map((w: any) => ({
+        name: typeof w.name === "string" && w.name.trim() ? w.name.slice(0, 48) : "Waystone",
+        dim: w.dim.slice(0, 64),
+        x: w.x,
+        y: fin(w.y) ? w.y : 64,
+        z: w.z,
+        kind: typeof w.kind === "string" ? w.kind.slice(0, 32) : "waystone",
+        ...(w.global === true ? { global: true } : {}),
+      })),
+    truncated: raw.truncated === true,
+  };
 }
 
 function normalizeUplink(u: any): Uplink | null {
@@ -934,6 +1032,8 @@ function normalizeUplink(u: any): Uplink | null {
     pages: Array.isArray(u.pages)
       ? u.pages.filter((p: any) => p && typeof p.id === "string").slice(0, 12).map((p: any) => ({ id: p.id, title: str(p.title), icon: str(p.icon) }))
       : undefined,
+    ...(normalizeClaims(u.claims) ? { claims: normalizeClaims(u.claims) } : {}),
+    ...(normalizeWaystones(u.waystones) ? { waystones: normalizeWaystones(u.waystones) } : {}),
     groups: Array.isArray(u.groups)
       ? u.groups
           .filter((g: any) => g && typeof g.id === "string")

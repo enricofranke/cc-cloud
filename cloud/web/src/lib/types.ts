@@ -114,6 +114,46 @@ export interface Uplink {
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
   groups?: { id: string; title?: string; page?: string; cols?: number }[];
+  /** map overlays of mainframe cards (FTB Chunks claims, Waystones) */
+  claims?: ClaimsOverlay;
+  waystones?: WaystonesOverlay;
+}
+
+export interface ClaimsOverlay {
+  team: string;
+  /** 0xRRGGBB (the mod sends "#rrggbb") */
+  color: number;
+  chunks: { dim: string; x: number; z: number; forced: boolean }[];
+  truncated: boolean;
+}
+export interface Waystone {
+  name: string;
+  dim: string;
+  x: number;
+  y: number;
+  z: number;
+  kind: string;
+  global?: boolean;
+}
+export interface WaystonesOverlay {
+  items: Waystone[];
+  truncated: boolean;
+}
+
+/** v0.7 wireless redstone channel of a mainframe network. */
+export interface RedstoneChannel {
+  name: string;
+  /** what receivers output (an override wins) */
+  level: number;
+  /** the transmitters' max */
+  signal: number;
+  transmitters: number;
+  receivers: number;
+  override?: { level: number; until: number | null };
+}
+export interface RedstoneInfo {
+  channels: RedstoneChannel[];
+  limit: number;
 }
 
 export interface Alert {
@@ -137,17 +177,30 @@ export interface PowerInfo {
 }
 
 export interface PowerItem {
-  /** base | uplinks | advanced_uplinks | bridges | clients | hops | other */
+  /** base | uplinks | advanced_uplinks | bridges | clients | hops | anchor | efficiency (negative) | other */
   key: string;
   count?: number;
   fe: number;
+  /** v0.7: how many of `count` are attached by fiber (they pay less) */
+  fiber?: number;
 }
 
 // ---- v0.4 network map -------------------------------------------------------
 /** "device" = a linked device whose chunk is not loaded (type unknown). me_bridge/rs_bridge: older drafts. */
 export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "bridge" | "device" | "me_bridge" | "rs_bridge";
 /** legacy_out_of_range is derived from flags (the device itself is connected). */
-export type NodeStatus = "online" | "offline" | "connecting" | "no_power" | "no_route" | "unloaded" | "redstone" | "cloud_disabled" | "legacy_out_of_range";
+export type NodeStatus = "online" | "offline" | "connecting" | "no_power" | "no_route" | "unloaded" | "redstone" | "cloud_disabled" | "legacy_out_of_range" | "over_capacity";
+
+/** v0.7: the mainframe node's device capacity (upgrade cards); limit null = unlimited (Quantum Core). */
+export interface NetCapacity {
+  devices: number;
+  /** weighted (fiber members count less) */
+  used: number;
+  limit?: number | null;
+  over: number;
+  wired: number;
+  fiber: number;
+}
 
 export interface NetNode {
   id: string;
@@ -170,6 +223,10 @@ export interface NetNode {
   parent?: string;
   hops?: number;
   flags?: string[];
+  /** v0.7: device routed by a cable ("cable" = CC networking cable) */
+  via?: "cable" | "fiber";
+  /** v0.7: mainframe node only */
+  capacity?: NetCapacity;
 }
 
 export interface NetLink {
@@ -180,6 +237,8 @@ export interface NetLink {
   dist: number;
   /** v0.7: "wired" = CC networking cable (100 %, no range limit) */
   kind: "radio" | "ender" | "wired";
+  /** v0.7: wired links: "cc" = CC networking cable, "fiber" = CC: Cloud fiber cable */
+  medium?: "cc" | "fiber";
   /** v0.3 device kept connected although out of range */
   legacy?: boolean;
   /** signal below 15 % (sent by the mod) */

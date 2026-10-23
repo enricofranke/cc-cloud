@@ -22,6 +22,8 @@ export interface SimNode {
   enderGroup?: string;
   /** v0.7: cabled (CC wired network) to this mainframe/relay – no range limit, preferred over radio */
   wired?: string;
+  /** v0.7: that cable is CC: Cloud fiber (counts half for capacity, half the FE) */
+  fiber?: boolean;
 }
 
 export interface Link {
@@ -30,6 +32,8 @@ export interface Link {
   signal: number;
   dist: number;
   kind: "radio" | "ender" | "wired";
+  /** wired links: CC networking cable or fiber */
+  medium?: "cc" | "fiber";
   legacy?: boolean;
 }
 
@@ -66,7 +70,7 @@ export function computeNetwork(nodes: SimNode[]) {
   const wiredPair = new Set<string>();
   for (const n of nodes)
     if (n.wired && nodes.some((m) => m.id === n.wired)) {
-      add({ a: n.wired, b: n.id, signal: 1, dist: 0, kind: "wired" });
+      add({ a: n.wired, b: n.id, signal: 1, dist: 0, kind: "wired", medium: n.fiber ? "fiber" : "cc" });
       wiredPair.add([n.wired, n.id].sort().join("|"));
     }
   for (let i = 0; i < nodes.length; i++)
@@ -155,7 +159,7 @@ export function exampleNodes(ids: { reactor: string; me: string; storage: string
     // devices (device ids = uplink ids, like the mod)
     { id: ids.reactor, type: "uplink", name: "Fission Reactor", pos: { x: 20, y: 62, z: -10 }, dim: O, uplinkId: ids.reactor },
     // v0.7: cabled to the mainframe over a CC wired network
-    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 60, z: -50 }, dim: O, uplinkId: ids.me, wired: "mf" },
+    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 60, z: -50 }, dim: O, uplinkId: ids.me, wired: "mf", fiber: true },
     { id: ids.computer, type: "uplink", name: "Computer #7", pos: { x: 30, y: 64, z: -40 }, dim: O, uplinkId: ids.computer, wired: "mf" },
     { id: ids.storage, type: "uplink", name: "Storage", pos: { x: 40, y: 64, z: -270 }, dim: O, uplinkId: ids.storage },
     { id: ids.control, type: "advanced_uplink", name: "Control Room", pos: { x: -160, y: 82, z: 120 }, dim: O, uplinkId: ids.control },

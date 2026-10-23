@@ -847,7 +847,9 @@ pre {
 }
 .kv-key {
   color: var(--muted);
-  min-width: 0;
+  /* the caption is cut, but never below ~10 characters: long values wrap instead */
+  min-width: min(10ch, 45%);
+  flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4226,6 +4228,19 @@ button.pwr:hover {
 .pp-table tr.bad td {
   color: var(--red);
 }
+.pp-saved td {
+  color: var(--green);
+}
+.pp-fiber {
+  color: #45e6f5;
+  font-size: 12px;
+}
+.pp-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
 .pp-sub {
   margin: 14px 0 4px;
   font-family: "Silkscreen", monospace;
@@ -4431,7 +4446,59 @@ button.pwr:hover {
   --lc: #e8913a;
 }
 .sig-wired {
-  --lc: #cfd8e3;
+  --lc: #9aa4ae;
+}
+/* v0.7 fiber cable: cyan core with a soft glow */
+.sig-fiber {
+  --lc: #45e6f5;
+}
+.edge.sig-fiber path,
+.mlink.sig-fiber {
+  filter: drop-shadow(0 0 3px rgba(69, 230, 245, 0.75));
+}
+.lg.sig-fiber {
+  box-shadow: 0 0 5px rgba(69, 230, 245, 0.8);
+}
+.chip-s.chip-fiber {
+  --sc: #45e6f5;
+}
+.chip-s.chip-cap {
+  --sc: var(--muted);
+}
+.chip-s.chip-cap.near {
+  --sc: var(--yellow);
+}
+.chip-s.chip-cap.over,
+.st-over_capacity {
+  --sc: #e8913a;
+}
+.cap-line {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cap-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-3);
+  overflow: hidden;
+  max-width: 220px;
+}
+.cap-fill {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+.cap-line.warn .cap-fill {
+  background: var(--yellow);
+}
+.cap-line.crit .cap-fill {
+  background: var(--orange);
+}
+.cap-over {
+  color: var(--orange);
+  font-size: 13px;
 }
 /* status colours (nodes) */
 .st-online {
@@ -4468,6 +4535,12 @@ button.pwr:hover {
 }
 .edge.k-wired path {
   stroke-width: 3.5;
+}
+.edge path.trunk {
+  stroke: var(--line-2);
+  stroke-dasharray: none;
+  stroke-width: 2;
+  filter: none;
 }
 .edge.dim path {
   opacity: 0.45;
@@ -5272,7 +5345,7 @@ fieldset.field {
 
 /* ---------------------------------------------------------------- v0.7 3D view */
 .chip-s.chip-cable {
-  --sc: #cfd8e3;
+  --sc: #9aa4ae;
 }
 .net-opts {
   display: flex;
@@ -7111,4 +7184,212 @@ body.rz-nwse * {
 }
 .settings-links .link-btn {
   color: var(--cyan);
+}
+
+/* ---------------------------------------------------------------- v0.7 wireless redstone */
+.chip-s.chip-wr {
+  --sc: #e05a4f;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  background: transparent;
+}
+.chip-s.chip-wr:hover {
+  background: var(--panel-2);
+}
+.wr-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 1px;
+  background: #e05a4f;
+  box-shadow: 0 0 6px rgba(224, 90, 79, 0.8);
+}
+.wr-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.wr-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+}
+.wr-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wr-row {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+.wr-row.has-override {
+  border-color: rgba(232, 145, 58, 0.6);
+}
+.wr-main {
+  display: grid;
+  grid-template-columns: minmax(80px, 160px) auto 1fr auto;
+  align-items: center;
+  gap: 6px 12px;
+}
+.wr-main .tag-override {
+  grid-column: 3;
+  justify-self: start;
+}
+.wr-main .btn {
+  grid-column: 4;
+  grid-row: 1;
+}
+.wr-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wr-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.wr-level > span {
+  width: 6px;
+  height: 14px;
+  border-radius: 1px;
+  background: #3a1f1d;
+}
+.wr-level > span.on {
+  background: #e05a4f;
+  box-shadow: 0 0 4px rgba(224, 90, 79, 0.6);
+}
+.wr-level b {
+  margin-left: 6px;
+  min-width: 2ch;
+  text-align: right;
+}
+.tag-override {
+  color: #e8913a;
+  border: 1px solid rgba(232, 145, 58, 0.6);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 12px;
+}
+.wr-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.wr-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+  flex: 1;
+}
+.wr-slider input {
+  accent-color: #e05a4f;
+}
+.wr-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.wr-new {
+  display: flex;
+  gap: 8px;
+}
+.wr-new .input {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .wr-main {
+    grid-template-columns: 1fr auto;
+  }
+  .wr-main .wr-level {
+    grid-column: 1 / -1;
+  }
+  .wr-main .wr-meta,
+  .wr-main .tag-override {
+    grid-column: 1 / -1;
+  }
+  .wr-main .btn {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .wr-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .wr-actions .pxbtn {
+    flex: 1;
+  }
+}
+
+/* ---------------------------------------------------------------- map overlays: claims, waystones */
+.ov-claims .claim {
+  fill: var(--cc, #5ec8e5);
+  fill-opacity: 0.16;
+  stroke: var(--cc, #5ec8e5);
+  stroke-opacity: 0.45;
+  stroke-width: 0.6;
+}
+.ov-claims .claim.forced {
+  fill-opacity: 0.32;
+  stroke-opacity: 0.9;
+  stroke-dasharray: 2 2;
+}
+.ov-waystones .ws-mark {
+  fill: #c28cff;
+  stroke: #1b1030;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.ov-waystones .waystone.global .ws-mark {
+  fill: #f0d36a;
+}
+.ws-label {
+  fill: #e3ccff;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(10, 12, 15, 0.85);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.n3d-label.ws {
+  color: #e3ccff;
+  border: 1px solid rgba(194, 140, 255, 0.6);
+}
+.lg-claim,
+.lg-ws {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+}
+.lg-claim {
+  background: rgba(94, 200, 229, 0.2);
+  border: 1px solid rgba(94, 200, 229, 0.6);
+}
+.lg-ws {
+  background: #c28cff;
+  transform: rotate(45deg) scale(0.8);
+}
+.wr-edit .seg-ctl button {
+  text-transform: none;
 }

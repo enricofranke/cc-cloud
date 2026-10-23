@@ -35,6 +35,7 @@ Upgrade cards come in three tiers. Only one card per type counts – the highest
 - **Quantum Core** (ATM Star tier, one per mainframe): unlimited devices and browsers, the mainframe works as an Ender node (across dimensions) and uses only a quarter of the FE.
 - Recipes use the pack's metals (`#c:ingots/allthemodium` and so on). Without AllTheModium installed there are fallback recipes with diamond, netherite and nether stars. Look them up in JEI/EMI.
 - **Over the limit:** new links are refused with a clear message. If you remove a card, the extra devices show **Over capacity** and pause (the ones with the most hops or linked last first) until there is room again.
+- The dashboard shows the capacity in use (e.g. “12.5 / 48 devices”) on the Network tab and in the power popover; devices on fiber count half.
 
 ## Cloud Tablet
 
@@ -56,4 +57,6 @@ A display block that shows one dashboard card or page **in the world**, like a C
 ## Wireless redstone
 
 Uplinks get a **redstone mode** in their screen: **transmitter** or **receiver** on a channel name. Receivers output the strongest signal of all transmitters on that channel (0–15). It works over relays, cables and – with Ender Relays – across dimensions, with the next tick as latency. Up to 64 channels per network; very fast clocks (faster than 2 ticks) are smoothed.
+
+In the dashboard, the **Redstone** chip on the Network tab lists every channel with its level, transmitters and receivers. Players with the “Switch redstone” permission (operators and up) can **override** a channel – a level from 0 to 15 for 30 s, 5 min, 1 h or until reset – for example to open a door from your phone. The override wins over the transmitters until it ends or you clear it; every override is logged.
 

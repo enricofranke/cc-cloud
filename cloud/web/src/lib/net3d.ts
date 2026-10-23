@@ -208,7 +208,8 @@ export const LINK_RGB: Record<string, number> = {
   "sig-weak": 0xe8c547,
   "sig-ender": 0xb67cf2,
   "sig-legacy": 0xe8913a,
-  "sig-wired": 0xcfd8e3,
+  "sig-wired": 0x9aa4ae,
+  "sig-fiber": 0x45e6f5,
 };
 export const STATUS_RGB: Partial<Record<NodeStatus, number>> = {
   online: 0x5fd35f,
@@ -220,4 +221,5 @@ export const STATUS_RGB: Partial<Record<NodeStatus, number>> = {
   legacy_out_of_range: 0xe8913a,
   redstone: 0xd34f4f,
   cloud_disabled: 0x7d8790,
+  over_capacity: 0xe8913a,
 };

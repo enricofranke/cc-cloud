@@ -442,7 +442,9 @@ Geräte können sich auch **per Kabel** verbinden, wie bei AE2: Uplink oder Brid
 
 - Kabel haben **keine Reichweitengrenze**, immer **100 %** Signal und kosten **kein zusätzliches FE pro Sprung**.
 - Ein Gerät kann Kabel und Funk gleichzeitig haben; das Kabel wird bevorzugt, Funk ist die Reserve.
-- Im Dashboard sind Kabel **durchgezogene Linien**, Funkverbindungen **gestrichelt** (nach Signal gefärbt), Ender-Verbindungen **gepunktet**.
+- Im Dashboard sind Kabel **durchgezogene Linien** (grau = CC-Kabel, leuchtend cyan = Glasfaser), Funkverbindungen **gestrichelt** (nach Signal gefärbt), Ender-Verbindungen **gepunktet**.
+
+**Fiber Cable** (Glasfaser, Teil von CC: Cloud) funktioniert genauso, verbindet aber nur unsere Geräte – ein sauberes eigenes Netz. Geräte an Glasfaser zählen nur **halb** für die Gerätekapazität des Mainframes und zahlen **halbes** FE. Mit der **Fiber Junction** verzweigst du und gehst durch Wände, ein **Ender Fiber Link**-Paar verbindet zwei Glasfasernetze über jede Entfernung und Dimension.
 
 ## Wenn ein Relay ausfällt {#reroute}
 
@@ -454,6 +456,8 @@ Geräte, die vor v0.4 verbunden wurden und nach den neuen Regeln außer Reichwei
 
 Das Netzwerk kostet FE. Der Mainframe braucht 40 FE/t + 4 pro Uplink + 8 pro Advanced Uplink + 10 pro Bridge + 2 pro verbundenem Dashboard + 1 pro zusätzlichem Sprung jedes Geräts. Relays brauchen eigenes FE: Cloud Relay 20 FE/t, Advanced 60 FE/t, Ender Relay 120 FE/t. Ein Klick auf die Stromanzeige oben im Dashboard zeigt die Aufschlüsselung.
 
+Die Aufschlüsselung zeigt auch Geräte an Glasfaser (sie zahlen die Hälfte), den **Chunk Anchor**, falls eingebaut, und ein **Efficiency**-Upgrade als grüne Zeile mit dem eingesparten FE. Darunter zeigt **Device capacity**, wie viele Geräte der Mainframe trägt und wie viele seine Upgrade-Karten erlauben; dieselbe Zahl steht als Chip im Network-Tab.
+
 ## Die Netzwerkkarte {#map}
 
 Der Tab **Network** zeigt alles, was verbunden ist, in drei Ansichten:
@@ -461,6 +465,8 @@ Der Tab **Network** zeigt alles, was verbunden ist, in drei Ansichten:
 - **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Kabel sind durchgezogen, Funkverbindungen gestrichelt und nach Signal gefärbt (grün stark, cyan ok, gelb schwach), Ender-Verbindungen lila gepunktet, Legacy orange; der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
 - **Map** – eine Draufsicht (x/z) pro Dimension auf einer echten Karte der Welt: **Surface** (wie eine Minecraft-Karte) oder **Slice** – ein Schnitt in einer Höhe, die du mit dem Y-Regler wählst, damit eine Untergrundbasis auf y −60 ihre Räume und Höhlen zeigt (dunkler = tiefer). Gezeigt werden nur Orte in der Nähe deines Netzwerks und nur Chunks, die geladen waren. Mit Koordinatengitter, Reichweitenkreisen (umschaltbar; durchgezogen = Knoten-Reichweite, gestrichelt = Geräte-Reichweite), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
 - **3D** – siehe unten.
+
+Mit FTB Chunks und Waystones zeigt die Karte auch die **geclaimten Chunks** deines Teams (Teamfarbe, zwangsgeladene gestrichelt) und deine **Wegsteine** (lila Rauten, globale gold) – ein- und ausschaltbar mit **Claims** und **Waystones**. Wegsteine sind auch in der 3D-Ansicht markiert. Wie alle Koordinaten werden sie nur an Spieler geschickt, die Positionen sehen dürfen.
 
 Ein Klick auf einen Knoten zeigt Details mit Untermenüs: **Info** (Typ, Position, Dimension, Status, Signal oder Kabel, Reichweite), **Route** (jeder Sprung bis zum Mainframe und was ein Relay weiterleitet), **Power** (Verbrauch und Puffer) und **Card** (die Live-Karte des Geräts, Bedienung je nach Rolle). **Open card** springt zur Karte im Dashboard; **Unlink** entfernt ihn aus dem Netzwerk (Admins). Positionen sehen nur Browser, die den Mainframe steuern dürfen.
 
@@ -506,6 +512,7 @@ Upgrade-Karten gibt es in drei Stufen. Pro Typ zählt nur eine Karte – die hö
 - **Quantum Core** (ATM-Star-Stufe, einer pro Mainframe): unbegrenzt Geräte und Browser, der Mainframe arbeitet als Ender-Knoten (dimensionsübergreifend) und braucht nur ein Viertel des FE.
 - Die Rezepte nutzen die Metalle des Packs (\`#c:ingots/allthemodium\` usw.). Ohne AllTheModium gibt es Ersatzrezepte mit Diamant, Netherit und Netherstern. Nachschauen in JEI/EMI.
 - **Über der Grenze:** Neue Verbindungen werden mit einer klaren Meldung abgelehnt. Nimmst du eine Karte heraus, zeigen die überzähligen Geräte **Over capacity** und pausieren (die mit den meisten Sprüngen bzw. zuletzt verbundenen zuerst), bis wieder Platz ist.
+- Das Dashboard zeigt die genutzte Kapazität (z. B. „12.5 / 48 devices“) im Network-Tab und im Strom-Popup; Geräte an Glasfaser zählen halb.
 
 ## Cloud Tablet {#tablet}
 
@@ -527,6 +534,8 @@ Ein Display-Block, der eine Dashboard-Karte oder -Seite **in der Welt** zeigt, w
 ## Drahtloses Redstone {#redstone}
 
 Uplinks bekommen in ihrem Fenster einen **Redstone-Modus**: **Sender** oder **Empfänger** auf einem Kanalnamen. Empfänger geben das stärkste Signal aller Sender auf diesem Kanal aus (0–15). Das funktioniert über Relays, Kabel und – mit Ender Relays – dimensionsübergreifend, mit dem nächsten Tick als Verzögerung. Bis zu 64 Kanäle pro Netzwerk; sehr schnelle Takte (schneller als 2 Ticks) werden geglättet.
+
+Im Dashboard listet der Chip **Redstone** im Network-Tab jeden Kanal mit Pegel, Sendern und Empfängern. Spieler mit dem Recht „Switch redstone“ (ab operator) können einen Kanal **übersteuern** – ein Pegel von 0 bis 15 für 30 s, 5 min, 1 h oder bis zum Zurücksetzen –, etwa um vom Handy aus eine Tür zu öffnen. Die Übersteuerung gewinnt gegen die Sender, bis sie abläuft oder du sie aufhebst; jede wird protokolliert.
 `,
   recipes: `# Alle Rezepte
 

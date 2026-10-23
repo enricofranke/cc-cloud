@@ -108,6 +108,14 @@ try {
   await clearToasts(p);
   await shot(p, "phone-n4-no-route-detail");
   await p.keyboard.press("Escape");
+  // v0.7 wireless redstone channels with an override editor
+  await p.click(".chip-wr");
+  await p.waitForSelector(".wr-row");
+  await p.locator('.wr-row:has-text("base_door") button:has-text("Override")').click();
+  await p.waitForTimeout(300);
+  await clearToasts(p);
+  await shot(p, "phone-n9-redstone");
+  await p.keyboard.press("Escape");
   await p.click('.dim-tab:has-text("Nether")');
   await p.waitForTimeout(400);
   await clearToasts(p);
@@ -619,6 +627,25 @@ try {
   await clearToasts(d);
   await shot(d, "desktop-n2b-map-ranges");
   await d.click(".map-help-btn");
+  // FTB Chunks claims + Waystones overlays (range circles off, nothing selected)
+  await d.locator('.net-opts label:has-text("Range circles") input').uncheck();
+  await d.click(".net-panel-close").catch(() => {});
+  await d.locator('.mnode[aria-label^="Mainframe"]').dispatchEvent("click");
+  await d.waitForTimeout(500);
+  await clearToasts(d);
+  await shot(d, "desktop-n9-map-overlays");
+  await d.locator('.net-opts label:has-text("Range circles") input').check();
+  // wireless redstone sheet: apply a 30 s override to base_door
+  await d.click(".chip-wr");
+  await d.waitForSelector(".wr-row");
+  await d.locator('.wr-row:has-text("base_door") button:has-text("Override")').click();
+  await d.locator('.wr-row:has-text("base_door") .seg-ctl button:has-text("30 s")').click();
+  await d.locator('.wr-row:has-text("base_door") .pxbtn').click();
+  await d.waitForSelector('.wr-row:has-text("base_door") .tag-override');
+  await d.waitForTimeout(300);
+  await clearToasts(d);
+  await shot(d, "desktop-n10-redstone");
+  await closeSheets(d);
   // ---- v0.7 3D: overview, then a relay highlights what it carries
   await d.click('.seg-ctl button:has-text("3D")');
   await d.waitForSelector(".n3d canvas");
@@ -917,6 +944,22 @@ try {
     await lp.waitForSelector(".pair-from-link");
     if (new URL(lp.url()).hash.includes("code")) problems.push("pair link: code still in the URL");
     await shot(lp, name);
+    await ctx.close();
+  }
+  // ---- every compat card of the mod (dev/compat-cards.ts) on the "Mod Showcase" mainframe: rendering check
+  const show = [...mock.mainframes.values()].find((m) => m.name.startsWith("Mod Showcase"))!;
+  for (const [ctx, name] of [[await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop-c9-mod-showcase"], [await phoneCtx(), "phone-c9-mod-showcase"]] as const) {
+    const sp = await ctx.newPage();
+    watch(sp);
+    const st = await (await fetch(`${origin}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Showcase", mainframeId: show.id }) })).json();
+    await sp.addInitScript((t) => {
+      localStorage.setItem("cccloud.mainframes.v1", JSON.stringify([{ mainframeId: t.mainframeId, token: t.token, name: t.name, deviceName: "Showcase", pairedAt: Date.now() }]));
+    }, st);
+    await sp.goto(`${origin}/#/m/${show.id}`);
+    await sp.waitForSelector(".card", { timeout: 40_000 });
+    await sp.waitForTimeout(800);
+    await clearToasts(sp);
+    await shot(sp, name, name.startsWith("desktop"));
     await ctx.close();
   }
   await mock.close();

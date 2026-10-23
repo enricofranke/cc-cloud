@@ -442,7 +442,9 @@ Devices can also join **by cable**, like AE2 cables: connect the uplink or bridg
 
 - Cables have **no range limit**, always **100 %** signal and cost **no extra FE per hop**.
 - A device can have both cable and radio; the cable is preferred, radio is the backup.
-- In the dashboard cables are **solid lines**, radio links **dashed** (coloured by signal), ender links **dotted**.
+- In the dashboard cables are **solid lines** (grey = CC cable, glowing cyan = fiber), radio links **dashed** (coloured by signal), ender links **dotted**.
+
+**Fiber Cable** (ships with CC: Cloud) works the same, but only connects our devices – a clean network of its own. Devices on fiber count **half** towards the mainframe's device capacity and pay **half** their FE. Use the **Fiber Junction** for splits and walls, and an **Ender Fiber Link** pair to join two fiber networks across any distance or dimension.
 
 ## When a relay fails {#reroute}
 
@@ -454,6 +456,8 @@ Devices linked before v0.4 that are out of range under the new rules keep workin
 
 The network costs FE. The mainframe uses 40 FE/t + 4 per uplink + 8 per advanced uplink + 10 per bridge + 2 per connected dashboard + 1 per extra hop of each routed device. Relays need their own FE: Cloud Relay 20 FE/t, Advanced 60 FE/t, Ender Relay 120 FE/t. Click the power bar in the dashboard header to see the breakdown.
 
+The breakdown also shows devices on fiber (they pay half), the **Chunk Anchor** if one is installed, and an **Efficiency** upgrade as a green line with the FE it saves. Below it, **Device capacity** shows how many devices the mainframe carries out of what its upgrade cards allow; the same number is a chip on the Network tab.
+
 ## The network map {#map}
 
 The **Network** tab shows everything that is connected, in three views:
@@ -461,6 +465,8 @@ The **Network** tab shows everything that is connected, in three views:
 - **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
 - **Map** – a top-down x/z map per dimension on a real map of the world: **Surface** (like a Minecraft map) or **Slice** – a cut at a height you choose with the Y slider, so an underground base at y −60 shows its rooms and caves (darker = deeper). Only places near your network are shown, and only chunks that were loaded. With a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
 - **3D** – see below.
+
+With FTB Chunks and Waystones installed, the map also shows your team's **claimed chunks** (team colour, force-loaded ones dashed) and your **waystones** (violet diamonds, global ones gold) – toggle them with **Claims** and **Waystones**. Waystones are also marked in the 3D view. Like all coordinates, they are only sent to players allowed to see positions.
 
 Click or tap any node for details, with sub-menus: **Info** (type, position, dimension, status, signal or cable, range), **Route** (every hop to the mainframe and what a relay carries), **Power** (usage and buffer) and **Card** (the device's live card, controls as your role allows). **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (admins). Positions are only shown to browsers that may control the mainframe.
 
@@ -506,6 +512,7 @@ Upgrade cards come in three tiers. Only one card per type counts – the highest
 - **Quantum Core** (ATM Star tier, one per mainframe): unlimited devices and browsers, the mainframe works as an Ender node (across dimensions) and uses only a quarter of the FE.
 - Recipes use the pack's metals (\`#c:ingots/allthemodium\` and so on). Without AllTheModium installed there are fallback recipes with diamond, netherite and nether stars. Look them up in JEI/EMI.
 - **Over the limit:** new links are refused with a clear message. If you remove a card, the extra devices show **Over capacity** and pause (the ones with the most hops or linked last first) until there is room again.
+- The dashboard shows the capacity in use (e.g. “12.5 / 48 devices”) on the Network tab and in the power popover; devices on fiber count half.
 
 ## Cloud Tablet {#tablet}
 
@@ -527,6 +534,8 @@ A display block that shows one dashboard card or page **in the world**, like a C
 ## Wireless redstone {#redstone}
 
 Uplinks get a **redstone mode** in their screen: **transmitter** or **receiver** on a channel name. Receivers output the strongest signal of all transmitters on that channel (0–15). It works over relays, cables and – with Ender Relays – across dimensions, with the next tick as latency. Up to 64 channels per network; very fast clocks (faster than 2 ticks) are smoothed.
+
+In the dashboard, the **Redstone** chip on the Network tab lists every channel with its level, transmitters and receivers. Players with the “Switch redstone” permission (operators and up) can **override** a channel – a level from 0 to 15 for 30 s, 5 min, 1 h or until reset – for example to open a door from your phone. The override wins over the transmitters until it ends or you clear it; every override is logged.
 `,
   recipes: `# All recipes
 

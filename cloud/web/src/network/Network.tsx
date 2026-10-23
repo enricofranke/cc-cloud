@@ -16,6 +16,8 @@ function cached(ref: { current?: Cache }, deps: unknown[], make: () => Component
 }
 import type { MainframeConn } from "../lib/conn.ts";
 import type { NetNode, NetworkInfo, NodeType } from "../lib/types.ts";
+import { CapacityLine, fmtCap } from "../components/Capacity.tsx";
+import { RedstonePanel } from "./Redstone.tsx";
 import {
   STATUS_HINT,
   STATUS_LABEL,
@@ -30,7 +32,10 @@ import {
   isNodeType,
   isRelay,
   layoutTree,
+  linkLabel,
   mapBounds,
+  overlaysOf,
+  type MapOverlays,
   parentOf,
   pathOf,
   placeLabels,
@@ -225,14 +230,16 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
             const midY = (a.y + b.y) / 2;
             // portrait: file-tree style trunk below/above the parent tile, so labels stay readable
             // portrait: a trunk just right of the parent tile; parent labels sit above-right, clear of every line
-            const d = lr ? `M${a.x + 26},${a.y} H${a.x + 40} V${b.y} H${b.x - 26}`
-              : `M${a.x},${a.y + 26} V${midY} H${b.x} V${b.y - 26}`;
+            // the trunk is shared by all children of a parent: drawn neutral, the drop to the child shows the link type
+            const trunk = lr ? `M${a.x + 26},${a.y} H${a.x + 40} V${b.y}` : `M${a.x},${a.y + 26} V${midY} H${b.x}`;
+            const drop = lr ? `M${a.x + 40},${b.y} H${b.x - 26}` : `M${b.x},${midY} V${b.y - 26}`;
             return (
               <g key={`${e.from}-${e.to}`} class={`edge ${cls} k-${e.link?.kind ?? "radio"} ${offline ? "dim" : ""}`}>
-                <path d={d} vector-effect="non-scaling-stroke" />
+                <path d={trunk} class="trunk" vector-effect="non-scaling-stroke" />
+                <path d={drop} vector-effect="non-scaling-stroke" />
                 {e.link && upp < 1.4 && (
                   <text x={lr ? Math.max(a.x + 6, midX - 10) : b.x + 6} y={lr ? b.y - 6 : midY + (b.y - midY) / 2 + 4} class="edge-label">
-                    {e.link.kind === "ender" ? "ender" : e.link.kind === "wired" ? "cable" : e.link.legacy ? "legacy" : `${Math.round(e.link.signal * 100)}%`}
+                    {linkLabel(e.link)}
                   </text>
                 )}
               </g>
@@ -335,7 +342,9 @@ function TileCanvas({ tiles, dim, view, upp, size, nodes }: { tiles: MapTiles; d
   return <canvas ref={ref} class="map-tiles" aria-hidden="true" />;
 }
 
-function MapView({ net, dim, selected, onSelect, ranges, tiles }: { net: NetworkInfo; dim: string; selected?: string; onSelect: (id?: string) => void; ranges: boolean; tiles?: MapTiles | null }) {
+const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+
+function MapView({ net, dim, selected, onSelect, ranges, tiles, overlays }: { net: NetworkInfo; dim: string; selected?: string; onSelect: (id?: string) => void; ranges: boolean; tiles?: MapTiles | null; overlays?: MapOverlays }) {
   const nodes = net.nodes.filter((n) => n.dim === dim);
   // fit to the nodes; range circles may extend past the screen
   const bounds = useMemo(() => mapBounds(nodes, false), [net, dim]);
@@ -389,9 +398,30 @@ function MapView({ net, dim, selected, onSelect, ranges, tiles }: { net: Network
             </text>,
           );
         const r = 9 * upp;
+        const claims = (overlays?.claims ?? []).flatMap((c) => c.chunks.filter((k) => k.dim === dim).map((k) => ({ ...k, color: c.color, team: c.team })));
+        const stones = (overlays?.waystones ?? []).filter((w) => w.dim === dim);
         return (
           <>
             <g>{lines}</g>
+            {claims.length > 0 && (
+              <g class="ov-claims">
+                {claims.map((k) => (
+                  <rect key={`${k.x},${k.z}`} x={k.x * 16} y={k.z * 16} width={16} height={16} class={`claim ${k.forced ? "forced" : ""}`} style={{ "--cc": hex(k.color) }}>
+                    <title>{`${k.team || "Team"} claim · chunk ${k.x}, ${k.z}${k.forced ? " · force-loaded" : ""}`}</title>
+                  </rect>
+                ))}
+              </g>
+            )}
+            {stones.length > 0 && (
+              <g class="ov-waystones">
+                {stones.map((w) => (
+                  <g key={`${w.name}@${w.x},${w.z}`} class={`waystone ${w.global ? "global" : ""}`} transform={`translate(${w.x},${w.z})`}>
+                    <path d={`M0,${-7 * upp} L${5 * upp},0 L0,${7 * upp} L${-5 * upp},0 Z`} class="ws-mark" />
+                    <title>{`${w.name} (${w.kind}${w.global ? ", global" : ""}) · ${Math.round(w.x)} ${Math.round(w.y)} ${Math.round(w.z)}`}</title>
+                  </g>
+                ))}
+              </g>
+            )}
             {ranges && (
               <g class={`ranges ${selected && nodes.some((n) => n.id === selected && isNodeType(n.type)) ? "has-sel" : ""}`}>
                 {nodes
@@ -432,10 +462,10 @@ function MapView({ net, dim, selected, onSelect, ranges, tiles }: { net: Network
                   })}
               </g>
             )}
-            {cached(cache, [net, dim, selected, upp], () => {
-              // labels: important ones first, never overlapping (the rest show when zoomed in)
-              const labels = placeLabels(
-                nodes
+            {cached(cache, [net, dim, selected, upp, stones], () => {
+              // labels: important ones first, never overlapping (the rest show when zoomed in); waystones last
+              const labels = placeLabels([
+                ...nodes
                   .filter((n) => n.pos)
                   .map((n) => ({
                     id: n.id,
@@ -445,9 +475,18 @@ function MapView({ net, dim, selected, onSelect, ranges, tiles }: { net: Network
                     r: 9,
                     priority: n.id === selected ? 100 : n.type === "mainframe" ? 50 : isNodeType(n.type) ? 40 : n.status !== "online" ? 30 : 10,
                   })),
-              );
+                ...stones.map((w, i) => ({ id: `ws:${i}`, x: w.x / upp, y: w.z / upp, text: w.name, r: 7, priority: 5 })),
+              ]);
               return (
               <>
+            {stones.map((w, i) => {
+              const l = labels.get(`ws:${i}`);
+              return l ? (
+                <text key={`wsl${i}`} x={w.x + l.x * upp} y={w.z + l.y * upp} class={`ws-label mlabel a-${l.anchor}`} font-size={fs}>
+                  {w.name}
+                </text>
+              ) : null;
+            })}
             {net.links
               .filter((l) => byId.get(l.a)?.dim === dim && byId.get(l.b)?.dim === dim && l.kind !== "ender")
               .map((l) => {
@@ -603,11 +642,27 @@ function Detail(props: DetailProps) {
                 {link.kind === "ender"
                   ? "Ender link"
                   : link.kind === "wired"
-                    ? "Cable (wired) · 100 %"
+                    ? link.medium === "fiber"
+                      ? "Fiber cable · 100 % · half capacity and FE"
+                      : "CC networking cable · 100 %"
                     : link.legacy
                       ? "out of range (legacy)"
                       : `Radio · ${Math.round(link.signal * 100)} %${link.dist ? ` · ${Math.round(link.dist)} blocks` : ""}`}
                 {link.kind === "radio" && !link.legacy && (link.weak || link.signal < 0.15) && <span class="tag tag-weak">weak</span>}
+              </dd>
+            </>
+          )}
+          {node.via && !link && (
+            <>
+              <dt>Connection</dt>
+              <dd>{node.via === "fiber" ? "Fiber cable" : "CC networking cable"}</dd>
+            </>
+          )}
+          {node.capacity && (
+            <>
+              <dt>Devices</dt>
+              <dd>
+                <CapacityLine c={node.capacity} />
               </dd>
             </>
           )}
@@ -655,7 +710,7 @@ function Detail(props: DetailProps) {
                     const l = i > 0 ? findLink(net, route[i - 1], id) : undefined;
                     return (
                       <li key={id}>
-                        {i > 0 && <span class={`nd-hop ${l ? signalClass(l) : ""} k-${l?.kind ?? "radio"}`}>{l?.kind === "wired" ? "cable" : l?.kind === "ender" ? "ender" : l ? `${Math.round(l.signal * 100)} %` : ""}</span>}
+                        {i > 0 && <span class={`nd-hop ${l ? signalClass(l) : ""} k-${l?.kind ?? "radio"}`}>{l ? linkLabel(l).replace(/%$/, " %") : ""}</span>}
                         <span>{byId.get(id)?.name ?? id}</span>
                       </li>
                     );
@@ -771,6 +826,11 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
     setSelectedState(id);
   };
   const [ranges, setRanges] = useState(true);
+  const [rsOpen, setRsOpen] = useState(false);
+  const [showClaims, setShowClaims] = useState(true);
+  const [showStones, setShowStones] = useState(true);
+  const allOverlays = useMemo(() => overlaysOf(conn.uplinks.value), [conn.uplinks.value]);
+  const overlays: MapOverlays = { claims: showClaims ? allOverlays.claims : [], waystones: showStones ? allOverlays.waystones : [] };
   const [terrainOn, setTerrainOn] = useState(true);
   const [flyKey, setFlyKey] = useState(0);
   const webgl = useMemo(() => hasWebGL(), []);
@@ -836,7 +896,9 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const counts = statusCounts(net);
   const used = new Set(net.nodes.map((n) => [parentOf(net, n.id), n.id].sort().join("|")));
   const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && (l.weak || l.signal < 0.15) && used.has([l.a, l.b].sort().join("|")));
-  const cables = net.links.filter((l) => l.kind === "wired").length;
+  const cables = net.links.filter((l) => l.kind === "wired" && l.medium !== "fiber").length;
+  const fibers = net.links.filter((l) => l.kind === "wired" && l.medium === "fiber").length;
+  const mfCap = net.nodes.find((n) => n.type === "mainframe")?.capacity;
   const hasPos = net.nodes.some((n) => n.pos);
   const flyTo = (id: string) => {
     const n = net.nodes.find((x) => x.id === id);
@@ -868,12 +930,25 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
         </div>
         <div class="net-chips">
           <span class="chip-s st-online">{counts.online ?? 0} online</span>
-          {cables > 0 && <span class="chip-s chip-cable">{cables} cabled</span>}
+          {cables > 0 && <span class="chip-s chip-cable">{cables} cable{cables > 1 ? "s" : ""}</span>}
+          {fibers > 0 && <span class="chip-s chip-fiber">{fibers} fiber</span>}
+          {(counts.over_capacity ?? 0) > 0 && <span class="chip-s st-over_capacity">{counts.over_capacity} over capacity</span>}
+          {mfCap && mfCap.limit != null && (
+            <span class={`chip-s chip-cap ${mfCap.used > mfCap.limit ? "over" : mfCap.used >= mfCap.limit * 0.9 ? "near" : ""}`} title="Device capacity (upgrade cards)">
+              {fmtCap(mfCap.used)} / {mfCap.limit} devices
+            </span>
+          )}
           {(counts.no_route ?? 0) > 0 && <span class="chip-s st-no_route">{counts.no_route} no route</span>}
           {(counts.no_power ?? 0) > 0 && <span class="chip-s st-no_power">{counts.no_power} no power</span>}
           {(counts.unloaded ?? 0) > 0 && <span class="chip-s st-unloaded">{counts.unloaded} unloaded</span>}
           {(counts.legacy_out_of_range ?? 0) > 0 && <span class="chip-s st-legacy_out_of_range">{counts.legacy_out_of_range} legacy</span>}
           {weak.length > 0 && <span class="chip-s sig-weak-chip">{weak.length} weak link{weak.length > 1 ? "s" : ""}</span>}
+          {conn.redstone.value && (
+            <button type="button" class="chip-s chip-wr" onClick={() => setRsOpen(true)} aria-haspopup="dialog">
+              <span class="wr-dot" aria-hidden="true" /> Redstone
+              {conn.redstone.value.channels.length > 0 ? ` · ${conn.redstone.value.channels.length}` : ""}
+            </button>
+          )}
         </div>
       </div>
       {mode !== "topology" && (
@@ -916,6 +991,18 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
               {use3d ? "Ranges" : "Range circles"}
             </label>
+            {allOverlays.claims.length > 0 && !use3d && (
+              <label class="check-row small">
+                <input type="checkbox" checked={showClaims} onChange={(e) => setShowClaims((e.target as HTMLInputElement).checked)} />
+                Claims
+              </label>
+            )}
+            {allOverlays.waystones.length > 0 && (
+              <label class="check-row small">
+                <input type="checkbox" checked={showStones} onChange={(e) => setShowStones((e.target as HTMLInputElement).checked)} />
+                Waystones
+              </label>
+            )}
             {use3d && conn.can("view.positions") && webgl2 && !voxStatus?.unavailable && (
               <label class="check-row small">
                 <input type="checkbox" checked={blocks} onChange={(e) => setBlocks((e.target as HTMLInputElement).checked)} />
@@ -987,11 +1074,12 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               clipY={clipOn ? (clipY ?? defaultClip) : null}
               night={night}
               onVoxelStatus={setVoxStatus}
+              waystones={overlays.waystones}
             />
           ) : (
-            <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} tiles={tiles} />
+            <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} tiles={tiles} overlays={overlays} />
           )}
-          <Legend ranges={mode === "map" && !use3d && ranges} />
+          <Legend ranges={mode === "map" && !use3d && ranges} claims={mode !== "topology" && !use3d && overlays.claims.length > 0} waystones={mode !== "topology" && overlays.waystones.length > 0} />
           {mode === "map" && !use3d && <MapHelp />}
         </div>
         {node && !isPhone && (
@@ -1006,6 +1094,11 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
       {node && isPhone && (
         <Sheet title={node.name} onClose={() => setSelected(undefined)}>
           {detail}
+        </Sheet>
+      )}
+      {rsOpen && (
+        <Sheet title="Wireless redstone" onClose={() => setRsOpen(false)} wide>
+          <RedstonePanel conn={conn} />
         </Sheet>
       )}
     </section>
@@ -1036,7 +1129,7 @@ function MapHelp() {
   );
 }
 
-export function Legend({ ranges }: { ranges?: boolean }) {
+export function Legend({ ranges, claims, waystones }: { ranges?: boolean; claims?: boolean; waystones?: boolean }) {
   return (
     <div class="net-legend" aria-hidden="true">
       {ranges && (
@@ -1050,7 +1143,10 @@ export function Legend({ ranges }: { ranges?: boolean }) {
         </>
       )}
       <span>
-        <i class="lg sig-wired k-wired" /> cable
+        <i class="lg sig-wired k-wired" /> CC cable
+      </span>
+      <span>
+        <i class="lg sig-fiber k-wired" /> fiber
       </span>
       <span>
         <span class="lg-group">
@@ -1066,8 +1162,19 @@ export function Legend({ ranges }: { ranges?: boolean }) {
       <span>
         <i class="lg sig-legacy" /> legacy
       </span>
+      {claims && (
+        <span>
+          <i class="lg-claim" /> team claim
+        </span>
+      )}
+      {waystones && (
+        <span>
+          <i class="lg-ws" /> waystone
+        </span>
+      )}
     </div>
   );
 }
 
 export { findLink };
+

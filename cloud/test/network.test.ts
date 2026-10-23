@@ -111,7 +111,10 @@ describe("network protocol", () => {
     const st = await c.next((m) => m.t === "state" && m.power?.breakdown);
     const b = Object.fromEntries(st.power.breakdown.map((x: any) => [x.key, x]));
     expect(b.base.fe).toBe(40);
-    expect(b.bridges).toMatchObject({ count: 1, fe: 10 });
+    // the ME bridge is on fiber: half its FE
+    expect(b.bridges).toMatchObject({ count: 1, fe: 5, fiber: 1 });
+    // an Efficiency card shows the saved FE as a negative item
+    expect(b.efficiency.fe).toBeLessThan(0);
     expect(b.clients).toMatchObject({ count: 1, fe: 2 });
     expect(b.hops.count).toBeGreaterThan(0);
     expect(st.power.usage).toBe(st.power.breakdown.reduce((s: number, x: any) => s + x.fe, 0));

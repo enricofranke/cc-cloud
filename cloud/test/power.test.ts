@@ -42,9 +42,9 @@ describe("power protocol", () => {
     expect(snap.mainframe.power).toEqual({ stored: 152_000, capacity: 200_000, usage: 0, ok: true });
     mock!.tickPower();
     const st = await c.next("state");
-    // 40 base + 5 per online uplink (2) + 2 per client (1)
-    expect(st.power).toMatchObject({ usage: 52, ok: true, capacity: 200_000 });
-    expect(st.power.stored).toBe(152_000 + (120 - 52) * 20);
+    // 40 base + 5 per online uplink (2) + 2 per client (1) = 52, Efficiency card ×0.8 saves 10
+    expect(st.power).toMatchObject({ usage: 42, ok: true, capacity: 200_000 });
+    expect(st.power.stored).toBe(152_000 + (120 - 42) * 20);
   });
 
   it("goes offline with reason no_power after a 5 s brownout and comes back when refilled", async () => {

@@ -43,7 +43,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import MODELS_RAW from "./models.gen.json";
-import type { NetNode, NetworkInfo } from "../lib/types.ts";
+import type { NetNode, NetworkInfo, Waystone } from "../lib/types.ts";
 import type { Terrain } from "../lib/api.ts";
 import { isNodeType } from "../lib/network.ts";
 import { VoxelLayer, type VoxelSource } from "./voxelLayer.ts";
@@ -77,6 +77,8 @@ export interface View3DProps {
   clipY: number | null;
   night: boolean;
   onVoxelStatus?: (s: { loaded: number; total: number; triangles: number; unavailable: boolean }) => void;
+  /** Waystones overlay (this dimension is picked here) */
+  waystones?: Waystone[];
 }
 
 // ------------------------------------------------------------- shared assets
@@ -177,6 +179,7 @@ class View3D {
   /** instance i of node n: [mesh, instance index] lists per node index */
   nodeIdx = new Map<number, [InstancedMesh, number][]>();
   nodes: NetNode[] = [];
+  stones: Waystone[] = [];
   markers: Points | null = null;
   selBox: LineSegments;
   labels: HTMLDivElement;
@@ -289,7 +292,7 @@ class View3D {
   update(props: View3DProps, prev?: View3DProps) {
     this.props = props;
     this.updateVoxels(props, prev);
-    const rebuild = !prev || prev.net !== props.net || prev.dim !== props.dim || prev.ranges !== props.ranges;
+    const rebuild = !prev || prev.net !== props.net || prev.dim !== props.dim || prev.ranges !== props.ranges || prev.waystones !== props.waystones;
     if (!prev || prev.terrain !== props.terrain || prev.dim !== props.dim) this.buildTerrain();
     if (rebuild) this.build();
     else if (prev.selected !== props.selected) this.highlight();
@@ -372,6 +375,20 @@ class View3D {
     this.markers.frustumCulled = false;
     this.content.add(this.markers);
     this.owned.push(mg, mm);
+    // waystones: violet markers with a name label
+    this.stones = (this.props.waystones ?? []).filter((w) => w.dim === dim).slice(0, 128);
+    if (this.stones.length) {
+      const sp = new Float32Array(this.stones.length * 3);
+      this.stones.forEach((w, i) => sp.set([w.x + 0.5, w.y + 1.6, w.z + 0.5], i * 3));
+      const sg = new BufferGeometry();
+      sg.setAttribute("position", new BufferAttribute(sp, 3));
+      const sm = new PointsMaterial({ size: 13, sizeAttenuation: false, color: 0xc28cff, map: this.dot, alphaTest: 0.4, depthTest: false, transparent: true });
+      const pts = new Points(sg, sm);
+      pts.renderOrder = 5;
+      pts.frustumCulled = false;
+      this.content.add(pts);
+      this.owned.push(sg, sm);
+    }
     this.placeInstances();
     this.buildLinks();
     if (ranges) this.buildRanges();
@@ -605,16 +622,36 @@ class View3D {
       el.classList.toggle("sel", n.id === this.props.selected);
       el.classList.toggle("off", n.status !== "online");
     }
+    this.stones.forEach((w, i) => {
+      const id = `ws:${i}`;
+      keep.add(id);
+      let el = this.labelEls.get(id);
+      if (!el) {
+        el = document.createElement("div");
+        el.className = "n3d-label ws";
+        this.labels.appendChild(el);
+        this.labelEls.set(id, el);
+      }
+      el.textContent = w.name;
+    });
+    for (const [id, el] of this.labelEls)
+      if (!keep.has(id)) {
+        el.remove();
+        this.labelEls.delete(id);
+      }
   }
   updateLabels() {
     const w = this.host.clientWidth;
     const h = this.host.clientHeight;
     const v = new Vector3();
     for (const [id, el] of this.labelEls) {
-      const n = this.nodes.find((x) => x.id === id);
-      if (!n) continue;
-      const tall = MODELS.models[MODEL_OF[n.type]]?.tall ?? 1;
-      v.set(n.pos!.x + 0.5, n.pos!.y + (tall + 0.7) * this.scale, n.pos!.z + 0.5).project(this.camera);
+      const ws = id.startsWith("ws:") ? this.stones[Number(id.slice(3))] : undefined;
+      const n = ws ? undefined : this.nodes.find((x) => x.id === id);
+      if (ws) v.set(ws.x + 0.5, ws.y + 1.6, ws.z + 0.5).project(this.camera);
+      else if (n) {
+        const tall = MODELS.models[MODEL_OF[n.type]]?.tall ?? 1;
+        v.set(n.pos!.x + 0.5, n.pos!.y + (tall + 0.7) * this.scale, n.pos!.z + 0.5).project(this.camera);
+      } else continue;
       const vis = v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
       el.hidden = !vis;
       if (vis) el.style.transform = `translate(${Math.round(((v.x + 1) / 2) * w)}px, ${Math.round(((1 - v.y) / 2) * h) - 10}px) translate(-50%, -100%)`;
