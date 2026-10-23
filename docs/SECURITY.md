@@ -32,7 +32,7 @@ It is reviewed before every release.
   - team ranks through a `TeamProvider`;
   - the PermissionAPI nodes `cccloud.admin.*`.
 
-  The highest role wins.
+  The highest role wins. Permissions are the union over the sources, but a **deny on any source** (the player's own grant or their team rank) removes the permission from the result, so a team role cannot bring back what the owner denied directly. Read-only devices are always capped at the viewer preset.
 - Banned players get `none`. So do players without `cccloud.use`.
 - The resolver runs:
   - on every WebSocket login;
@@ -47,12 +47,15 @@ It is reviewed before every release.
   - admin: layout, unlink, access, shares, devices.
 
   The WebSocket layer checks it first, with the cached role. The game bridge checks it again on the server thread, with the live role.
-- Escalation rules for the Access API and `/cccloud role`:
-  - Admins can only change players whose role is below their own.
-  - Admins cannot grant a role above their own.
-  - The owner cannot be changed.
-  - `owner` and `share` can never be granted.
-  - A team can only be assigned by one of its members, or by a server moderator with `cccloud.admin.manage`.
+- Escalation rules: **one function, `AccessRules`, used by every path that changes access** – the Access API, the mainframe screen (add player, remove, role) and the commands (`/cccloud role`, `trust`, `untrust`). A GameTest walks the screen and command paths.
+  - Moderators (the owner, or the server node `cccloud.admin.manage`) may change everyone.
+  - Everybody else needs `access.manage`, can only change players whose role is below their own, never themselves (except leaving) and never the owner.
+  - Nobody grants a role above their own, and nobody grants a permission they do not hold: the check covers the role's whole preset plus extra allows, not only the allow list.
+  - Team rank mappings follow the same rule; assigning a team counts its default mapping as granted, and replacing or removing a team needs every mapped role below the caller.
+  - `trust` (screen: operator, command: admin) never grants more than the caller's own role.
+  - `owner` and `share` can never be granted. A team can only be assigned by one of its members, or by a server moderator.
+- Link Cards: a device that is linked to another mainframe can only be re-linked by someone with `network.link` on that old mainframe too (or when the old mainframe no longer exists). This covers uplinks, bridges, Ender Relays, Ender Fiber Links and Cloud Displays.
+- In-game screens show the network map only with `view.positions` and each management part only with its own permission (`devices.manage`, `access.manage`, `pin.manage`); uplink and bridge screens hide where their mainframe is without `view.positions` on it.
 - Server admins are visible: their dashboard views and screen opens through the `cccloud.admin.*` nodes are written to the mainframe's audit log. That log is shown in the Security tab of the in-game screen.
 - In-game screens never trust the client:
   - every screen action re-checks the role on the server;
@@ -140,13 +143,33 @@ It is reviewed before every release.
   - `..`, absolute paths, symlinks, `rom/` and disk mounts are rejected;
   - size and quota limits apply.
 
+### Map, voxels and X-ray
+- The surface map shows what is visible from above. Cave **slices** are configurable (`mapSlices`: auto = on in singleplayer and for LAN-only dashboards, off when `webAllowInternet` is set) and limited to ±32 blocks (Y) around the mainframe's own nodes.
+- Slices and **voxels** never include chunks claimed by another team (FTB Chunks; members and allies count as the same team).
+- Ores (`#c:ores`) show as stone in slices and voxels unless they touch air within 16 blocks of the requesting mainframe's own nodes. Voxels only contain blocks with a face to air or a see-through block.
+- Residual: within `voxelRadius` of the network, caves and structures are visible to everyone with `view.positions`. Turn `voxelView` off on servers where that is too much.
+
+### Rate limits and resources (in-game)
+- Map waypoint subscriptions rebuild only on a change and at most once a second per player; opening the tablet at most once a second per player.
+- Player-name lookups from the mainframe screen: one per player and second, four at a time.
+- Item icons and block textures rendered by clients: a quota per player and hour; something already stored for the current version is only replaced by a player who owns or has a role on a mainframe (first writer wins otherwise).
+
 ### Dependencies
 - The mod uses only Minecraft, NeoForge, Netty and Gson.
 - Integrations are soft dependencies (`compileOnly`), loaded only when the mod is present. They are reached through neutral interfaces (`TeamProvider`, `TeamSource`, `StorageAdapter`).
 - The web bundle keeps a short, audited dependency list (`pnpm audit` in CI).
+
+## Security review 2026-10-23 (main@aa4557f)
+An independent review found 1 high, 6 medium and about 18 low issues. Fixed with tests: H1 (privilege escalation through the screen and command paths), M1 (team mappings and denies), M2 (`CF-Connecting-IP` from any trusted proxy; now only with `webTrustCloudflareHeader`, otherwise the right-most untrusted `X-Forwarded-For` entry), M3 (Link Card takeover), M4 (slices/voxels as X-ray), M5 (node coordinates in the screen), M6 (packet rate limits); lows: read-only device cap, share layout filtering, shares end with their creator's `shares.create`, PIN lockout per mainframe across devices with escalating locks (5 min, doubling, up to a day), Host header allow-list against DNS rebinding (`webAllowedHosts`), body limits before aggregation (4 KB, 256 KB only for authenticated script uploads), connection limit per forwarded client IP, ntfy token dropped when the host changes, render upload quotas, per-section screen rights, mainframe position hidden without `view.positions`, bounded profile lookups, the dev `test-token` command from the server console only, team-change rank checks, and an NPE when approving an account request from the screen. GitHub Actions are pinned to commit SHAs and the Gradle wrapper is validated in CI.
+
+Known items, not yet done:
+- **Store index signing (L9):** the dashboard verifies every script file against the SHA-256 in the store index, but the index itself is only protected by HTTPS. A compromised store host could serve a matching index and files. Signing the index (and pinning the key in the mod) is planned.
+- **Supply chain (L16):** Actions are pinned; dependency updates are still manual reviews (no automated provenance checks).
 
 ## Residual risks and operator advice
 - Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md).
 - Server admins with `cccloud.admin.*` can see every mainframe by design (moderation). This is logged, but not prevented.
 - Anyone a share link is forwarded to can view it until it expires or is revoked. Prefer short expiries and low `maxViewers`.
 - A player who gets someone else's in-game account can approve new browsers for it. That is outside the scope of this mod.
+- The mainframe-wide PIN lockout can be triggered by anyone with a device and the right to use a PIN-protected widget: 20 wrong PINs lock the PIN for everyone for a while (owners can still set a new PIN in game). This is the trade-off against guessing with many devices.
+- KubeJS: `ctx.user` in a section's action handler is the **device name** (chosen by the browser's user at pairing; `rule:<name>` for rules), not a verified identity – do not use it for decisions. The action already passed the permission check before it reaches the script; the `CCCloudEvents.action` event additionally carries the device account's player UUID and name. Reading files through the script import API and the editor is not PIN-gated (only writes, deletes, moves and runs are).
