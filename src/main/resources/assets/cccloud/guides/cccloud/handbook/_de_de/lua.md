@@ -199,3 +199,9 @@ Admins können Lua-Programme auf einen Computer bringen, ohne sie im Spiel abzut
 
 Das sehen nur Admins des Mainframes, und Änderungen brauchen die Mainframe-PIN, falls eine gesetzt ist. Der Code läuft auf diesem CC-Computer in CCs Sandbox – nie auf dem Minecraft-Server selbst. Jeder Upload wird protokolliert, und der Besitzer bekommt eine Chat-Nachricht. Grenzen: 256 KB pro Datei, 10 Änderungen pro Minute.
 
+## Script Store
+
+Fertige Programme aus der Community: **Script Store** im Menü des Mainframes (Admins). Jedes Skript zeigt, was es tut, was es **nutzt** (Redstone, Peripherie, Internet …) und den vollständigen Quelltext – vor der Anzeige gegen den SHA-256 des Stores geprüft. Computer wählen und installieren; sofort starten oder automatisch beim Start. Installierte Store-Skripte zeigen **Update available**, wenn es eine neuere Version gibt, und du wirst gewarnt, bevor eine auf dem Computer geänderte Datei überschrieben wird.
+
+Auf der Projekt-Website öffnet **Install** dein Dashboard unter `/store#install=<skript>` – dieselbe Ansicht, ohne deinen Klick wird nichts installiert. Server-Admins können den Store abschalten (`scriptStore=false`). Community-Skripte laufen auf deinem CC-Computer und können steuern, was er steuert – den Minecraft-Server selbst können sie nicht anfassen.
+

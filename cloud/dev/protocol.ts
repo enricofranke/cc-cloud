@@ -11,7 +11,7 @@ export type Scalar = z.infer<typeof scalar>;
 const itemName = z.string().regex(/^[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,128}$/);
 /** Operation values for item_search / watchlist widgets (v0.2). */
 export const opValue = z.discriminatedUnion("op", [
-  z.object({ op: z.literal("craft"), name: itemName, count: z.number().int() }),
+  z.object({ op: z.literal("craft"), name: itemName, count: z.number().int(), notify: z.boolean().optional() }),
   z.object({ op: z.literal("add"), name: itemName, min: z.number().int().min(0).max(2 ** 31 - 1).optional() }),
   z.object({ op: z.literal("remove"), name: itemName }),
   z.object({ op: z.literal("set_min"), name: itemName, min: z.number().int().min(0).max(2 ** 31 - 1) }),
@@ -116,6 +116,15 @@ export const clientMessage = z.discriminatedUnion("t", [
     pin: z.string().regex(/^\d{4,8}$/).optional(),
   }),
   z.object({ t: z.literal("pong") }),
+  // Storage card v2 (docs/SPEC.md "Storage card v2 – protocol")
+  z.object({
+    t: z.literal("storage"),
+    reqId: z.string().min(1).max(64),
+    uplinkId: entityId,
+    id: widgetId.optional(),
+    op: z.enum(["browse", "craftables", "fluids", "item", "cpus", "cancel", "favorite", "autostock"]),
+  }).passthrough(),
+  z.object({ t: z.literal("craft_preview"), reqId: z.string().min(1).max(64), uplinkId: entityId, id: widgetId.optional(), name: itemName, count: z.number().int() }),
   z.object({ t: z.literal("auth"), token: z.string().min(1).max(128), mainframeId: z.string().max(64).optional() }),
   z.object({ t: z.literal("auth_share"), id: z.string().min(1).max(64), secret: z.string().min(1).max(128) }),
 ]);

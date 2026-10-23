@@ -3,6 +3,7 @@ import { signal, computed } from "@preact/signals";
 import { getPref, setPref } from "./store.ts";
 import type { AlertLevel } from "./types.ts";
 import { deviceNameFor, takePairLink, type PairLink } from "./pairlink.ts";
+import { takeInstallLink } from "./scriptstore.ts";
 
 // ---- routing (hash based, works from any static host) ----------------------
 export type Route =
@@ -13,6 +14,13 @@ export type Route =
   | { name: "access"; id: string }
   | { name: "shares"; id: string };
 
+/** Script Store link (/store#install=<id>@<version>): opened on the next mainframe dashboard. */
+export const pendingInstall = signal<{ id: string; version?: string } | null>(null);
+{
+  const r = takeInstallLink(location);
+  if (r.scrub) history.replaceState(null, "", "/#/");
+  pendingInstall.value = r.want;
+}
 // "Pair in browser" links (/pair#code=…): take the code and clear the fragment before anything else runs
 let pairLink: PairLink | null = null;
 {

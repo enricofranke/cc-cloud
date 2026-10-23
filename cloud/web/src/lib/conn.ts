@@ -9,6 +9,46 @@ import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
 /** Outcome of an action as reported by action_result (plus extras like attemptsLeft/retryAfter). */
+/** Storage card v2 (docs/SPEC.md "Storage card v2 – protocol"). */
+export interface StorageRow {
+  name: string;
+  displayName: string;
+  count: number;
+  craftable: boolean;
+  favorite?: boolean;
+}
+export interface JobInfo {
+  jobId: string;
+  name: string;
+  displayName: string;
+  count: number;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  progress: number;
+  error?: string;
+  notify?: boolean;
+  source?: "dashboard" | "lua" | "autostock" | "rule";
+}
+export type StockState = "idle" | "crafting" | "waiting_cpu" | "missing" | "paused";
+export interface ItemDoc extends StorageRow {
+  mod: string;
+  watch: { min: number; target: number; autoCraft: boolean; state: StockState; failures: number } | null;
+  jobs: JobInfo[];
+  history: number[];
+}
+export interface CpuInfo {
+  cpus: { id: string; name: string; coProcessors: number; storage: number; busy: boolean; job: { name: string; displayName: string; count: number; progress: number; elapsedMs: number } | null }[];
+  tasks: { id: string; name: string; displayName: string; count: number; progress: number; own: boolean }[];
+}
+export interface CraftPlan {
+  name: string;
+  count: number;
+  missing: boolean;
+  bytes: number | null;
+  entries: { name: string; displayName: string; stored: number; toCraft: number; missing: number }[];
+  cpu: { available: number; enough: boolean } | null;
+  timeMs: number | null;
+}
+
 export interface ActionOutcome {
   ok: boolean;
   error?: string;
@@ -146,6 +186,10 @@ export class MainframeConn {
   readonly layout = signal<LayoutDoc | null>(null);
   /** v0.6 role on this mainframe (null = server without roles: canControl decides) */
   readonly role = signal<"viewer" | "operator" | "admin" | "owner" | "share" | null>(null);
+  /** fine-grained permissions (docs/SPEC.md "Fine-grained permissions"); null = older mod (role presets apply) */
+  readonly perms = signal<Set<string> | null>(null);
+  /** Script Store (null = disabled or not allowed) */
+  readonly store = signal<{ url: string } | null>(null);
   /** v0.6: share-link sessions – what is shared and by whom */
   readonly shareInfo = signal<{ label: string; sharedBy: string; expires: number | null; hideNumbers: boolean } | null>(null);
   /** last error code sent by the server before closing (e.g. share_expired, no_access) */
@@ -165,6 +209,8 @@ export class MainframeConn {
   private netReqs = new Map<string, { resolve: () => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private layoutReqs = new Map<string, { resolve: (server?: LayoutDoc) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private queries = new Map<string, { resolve: (r: QueryResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  /** storage card v2: storage_result / craft_plan */
+  private storageReqs = new Map<string, { resolve: (d: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private pendingMeta = new Map<string, Pending>();
   private requests = new Map<string, { key: string; label: string; timer: ReturnType<typeof setTimeout>; onResult?: ActionExtra["onResult"] }>();
   private readonly o: Required<Omit<ConnOptions, "onAlert" | "onNotice" | "WebSocketImpl" | "mainframeId" | "share">> & ConnOptions;
@@ -192,6 +238,14 @@ export class MainframeConn {
   /** Share-link sessions never send anything but pong. */
   get isShare() {
     return !!this.o.share || this.role.value === "share";
+  }
+
+  /** Does this session have a permission? Uses the server's set, else the role presets. */
+  can(perm: string): boolean {
+    if (this.isShare) return false;
+    const p = this.perms.value;
+    if (p) return p.has(perm);
+    return presetHas(this.role.value, perm);
   }
 
   get isAdmin() {
@@ -348,6 +402,8 @@ export class MainframeConn {
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
           this.role.value = ROLES.includes(msg.role) ? msg.role : null;
+          this.perms.value = parsePerms(msg.perms);
+          this.store.value = parseStore(msg.store);
           if (msg.share && typeof msg.share === "object")
             this.shareInfo.value = {
               label: typeof msg.share.label === "string" ? msg.share.label.slice(0, 48) : "Shared view",
@@ -445,6 +501,7 @@ export class MainframeConn {
           this.role.value = msg.role;
           this.canControl.value = typeof msg.canControl === "boolean" ? msg.canControl : ["operator", "admin", "owner"].includes(msg.role);
         }
+        if (Array.isArray(msg.perms)) this.perms.value = parsePerms(msg.perms);
         break;
       case "network":
         this.network.value = normalizeNetwork(msg.network);
@@ -461,6 +518,16 @@ export class MainframeConn {
       case "layout":
         this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
         break;
+      case "storage_result":
+      case "craft_plan": {
+        const r = this.storageReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.storageReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve(msg.t === "craft_plan" ? msg.plan : (msg.data ?? {}));
+        else r.reject(new Error(typeof msg.error === "string" ? msg.error : "failed"));
+        return;
+      }
       case "layout_result": {
         const l = this.layoutReqs.get(String(msg.reqId ?? ""));
         if (!l) return;
@@ -598,6 +665,26 @@ export class MainframeConn {
     });
   }
 
+  /** Storage card v2: {"t":"storage","op",…} → storage_result.data (rejects with the error code). */
+  storage<T = any>(uplinkId: string, op: string, params: Record<string, unknown> = {}, id?: string, timeoutMs = 6000): Promise<T> {
+    return this.storageCall({ t: "storage", uplinkId, ...(id ? { id } : {}), op, ...params }, timeoutMs);
+  }
+  /** Craft preview: {"t":"craft_preview"} → craft_plan.plan. */
+  craftPreview(uplinkId: string, name: string, count: number, id?: string): Promise<CraftPlan> {
+    return this.storageCall({ t: "craft_preview", uplinkId, ...(id ? { id } : {}), name, count }, 8000);
+  }
+  private storageCall<T>(msg: Record<string, unknown>, timeoutMs: number): Promise<T> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      if (this.status.value !== "open" || !this.send({ ...msg, reqId })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.storageReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.storageReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
   /** item_search: {"t":"query"} → query_result. Rejects with the server error code (or "timeout"/"disconnected"). */
   query(uplinkId: string, id: string, q: string, timeoutMs = 5000): Promise<QueryResult> {
     const reqId = newReqId();
@@ -645,6 +732,11 @@ export class MainframeConn {
 
   private dropAllPending() {
     for (const [id] of this.queries) this.queryFailed(id, "disconnected");
+    for (const [id, r] of this.storageReqs) {
+      clearTimeout(r.timer);
+      r.reject(new Error("disconnected"));
+      this.storageReqs.delete(id);
+    }
     for (const [id, r] of this.netReqs) {
       clearTimeout(r.timer);
       r.reject(new Error("disconnected"));
@@ -859,4 +951,31 @@ function normalizeAlert(a: any): Alert | null {
     level: a.level === "crit" || a.level === "warn" ? a.level : "info",
     ts: typeof a.ts === "number" ? a.ts : Date.now(),
   };
+}
+
+// ------------------------------------------------------------- permissions
+export const PERMISSIONS = [
+  "view", "view.positions", "act.buttons", "act.redstone", "storage.search", "storage.craft", "storage.autostock",
+  "scripts.upload", "scripts.run", "scripts.delete", "terminal", "layout.edit", "rules.edit", "rules.toggle",
+  "push.manage", "devices.manage", "access.manage", "shares.create", "pin.manage", "power.toggle", "network.link",
+] as const;
+const VIEWER = new Set(["view", "storage.search"]);
+const OPERATOR = new Set([...VIEWER, "view.positions", "act.buttons", "act.redstone", "storage.craft", "rules.toggle"]);
+/** The presets of docs/SPEC.md (viewer ⊂ operator ⊂ admin = owner = all). */
+export function presetHas(role: string | null, perm: string) {
+  if (role === "admin" || role === "owner") return true;
+  if (role === "operator") return OPERATOR.has(perm);
+  if (role === "viewer") return VIEWER.has(perm);
+  return false;
+}
+function parsePerms(raw: unknown): Set<string> | null {
+  if (!Array.isArray(raw)) return null;
+  return new Set(raw.filter((p): p is string => typeof p === "string" && p.length <= 40).slice(0, 64));
+}
+function parseStore(raw: unknown): { url: string } | null {
+  const url = (raw as { url?: unknown } | null)?.url;
+  if (typeof url !== "string" || !/^https?:\/\/[^\s"'<>]+\/$/.test(url) || url.length > 200) return null;
+  // https only, except a local dev store on the same origin
+  if (!url.startsWith("https://") && !(typeof location !== "undefined" && url.startsWith(location.origin))) return null;
+  return { url };
 }

@@ -3,6 +3,9 @@
 // dashboard can be developed and tested without Minecraft. Not shipped.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { CODE_ALPHABET, SECURITY_HEADERS, clientMessage, normalizeCode, pairRequest, parseJson, type Scalar } from "./protocol.ts";
@@ -16,6 +19,7 @@ import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./
 import { terrain } from "./terrain-sim.ts";
 import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
 import { encodePng } from "./icons.ts";
+const STORE_DIST = fileURLToPath(new URL("../../store/dist/", import.meta.url));
 import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
@@ -56,6 +60,7 @@ interface Client {
   alive: boolean;
   hits: number[];
   queryHits: number[];
+  storageHits?: number[];
 }
 interface Token {
   /** device tokens: their one mainframe; account tokens: undefined */
@@ -112,6 +117,9 @@ interface Mainframe {
   /** Structured operations (craft / watchlist). Synchronous so the result can carry a jobId. */
   onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string };
   onQuery?: (uplinkId: string, id: string, q: string) => { rows: object[]; truncated: boolean } | undefined;
+  /** Storage card v2: storage ops and craft previews */
+  onStorage?: (uplinkId: string, op: string, p: Record<string, unknown>, user: string) => { ok: boolean; error?: string; data?: object } | undefined;
+  onPreview?: (uplinkId: string, name: string, count: number) => { ok: boolean; error?: string; plan?: object } | undefined;
   tick?: () => void;
   /** script import: one file system per uplink that sits on a computer */
   computers?: Map<string, ComputerFs>;
@@ -147,6 +155,8 @@ export interface MockOptions {
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
+  /** serve ../store/dist at /store/ and announce it in the snapshot (default true) */
+  scriptStore?: boolean;
   /** add the underground "Deep Base" mainframe (also with extras) */
   deepBase?: boolean;
   /** map tiles per minute per device (default 60) */
@@ -325,6 +335,14 @@ export async function createMockServer(opts: MockOptions = {}) {
     ...(mf.reason ? { reason: mf.reason } : {}),
     ...(mf.power ? { power: powerOf(mf) } : {}),
   });
+  /** docs/SPEC.md "Fine-grained permissions" presets */
+  const presetPerms = (role: string) => {
+    const viewer = ["view", "storage.search"];
+    const operator = [...viewer, "view.positions", "act.buttons", "act.redstone", "storage.craft", "rules.toggle"];
+    if (role === "viewer") return viewer;
+    if (role === "operator") return operator;
+    return [...operator, "storage.autostock", "scripts.upload", "scripts.run", "scripts.delete", "terminal", "layout.edit", "rules.edit", "push.manage", "devices.manage", "access.manage", "shares.create", "pin.manage", "power.toggle", "network.link"];
+  };
   const snapshot = (mf: Mainframe, c?: Client) =>
     c?.share
       ? {
@@ -347,6 +365,8 @@ export async function createMockServer(opts: MockOptions = {}) {
           mainframe: info(mf),
           canControl: c?.canControl ?? true,
           role: c?.role ?? "admin",
+          perms: presetPerms(c?.role ?? "admin"),
+          store: rank(c?.role ?? "admin") >= 3 && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/` } : null,
           account: c?.uuid ? { player: playerByUuid(c.uuid)?.player ?? "?" } : null,
           uplinks: [...mf.uplinks.values()],
           layout: mf.layout,
@@ -609,8 +629,8 @@ export async function createMockServer(opts: MockOptions = {}) {
     base.onQuery = (uplinkId, _id, q) => (uplinkId === ME ? search(ae2.items, q) : undefined);
     base.onOp = (uplinkId, id, op, user) => {
       if (uplinkId !== ME) return { ok: false, error: "unknown_uplink" };
-      if (id === "search" && op.op === "craft") {
-        const r = ae2.craft(op.name, op.count);
+      if ((id === "search" || id === "jobs" || id === "watch") && op.op === "craft") {
+        const r = ae2.craft(op.name, op.count, (op as { notify?: boolean }).notify === true);
         if (r.ok) {
           later(actionDelayMs, publish);
           later(actionDelayMs, () => alert(base, ME, `${user} started crafting ${op.count.toLocaleString("en-US")}× ${ae2.items.get(op.name)?.displayName}`, "info"));
@@ -624,6 +644,35 @@ export async function createMockServer(opts: MockOptions = {}) {
       }
       return { ok: false, error: "invalid_value" };
     };
+    base.onStorage = (uplinkId, op, p) => {
+      if (uplinkId !== ME) return undefined;
+      const done = (r: { ok: boolean; error?: string }) => {
+        if (r.ok) later(actionDelayMs, publish);
+        return r.ok ? { ok: true, data: {} } : r;
+      };
+      switch (op) {
+        case "browse":
+          return { ok: true, data: ae2.browse(p) };
+        case "craftables":
+          return { ok: true, data: ae2.craftables(p) };
+        case "fluids":
+          return { ok: true, data: ae2.fluidRows(p) };
+        case "item": {
+          const d = ae2.itemDoc(String(p.name ?? ""));
+          return d ? { ok: true, data: d } : { ok: false, error: "unknown_item" };
+        }
+        case "cpus":
+          return { ok: true, data: ae2.cpus() };
+        case "cancel":
+          return done(ae2.cancel(String(p.jobId ?? "")));
+        case "favorite":
+          return done(ae2.favorite(String(p.name ?? ""), p.on === true));
+        case "autostock":
+          return done(ae2.autostock(p as never));
+      }
+      return { ok: false, error: "invalid" };
+    };
+    base.onPreview = (uplinkId, name, count) => (uplinkId === ME ? ae2.preview(name, count) : undefined);
     const reactorTick = base.tick;
     base.tick = () => {
       reactorTick?.();
@@ -994,7 +1043,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           const t = (json as { t?: unknown } | undefined)?.t;
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
-          const type = t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : null;
+          const type = t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -1032,6 +1081,27 @@ export async function createMockServer(opts: MockOptions = {}) {
           lres(true);
           broadcast(m, { t: "layout", layout: m.layout });
           return;
+        }
+        if (msg.t === "storage" || msg.t === "craft_preview") {
+          const now = Date.now();
+          const t = msg.t;
+          const reply = (body: object) => sendTo(ws, { t: t === "storage" ? "storage_result" : "craft_plan", reqId: msg.reqId, ...body });
+          c.storageHits = [...(c.storageHits ?? []).filter((h: number) => now - h < 1000), now];
+          if (c.storageHits.length > 10) return reply({ ok: false, error: "rate_limited" });
+          if (!m.online) return reply({ ok: false, error: "offline" });
+          const su = m.uplinks.get(msg.uplinkId);
+          if (!su) return reply({ ok: false, error: "unavailable" });
+          if (su.loaded === false || !su.online) return reply({ ok: false, error: "unavailable" });
+          const writeOps = ["cancel", "autostock", "favorite"];
+          const needsControl = t === "craft_preview" || writeOps.includes((msg as { op?: string }).op ?? "");
+          if (needsControl && !c.canControl) return reply({ ok: false, error: "read_only" });
+          if (t === "craft_preview") {
+            const r = m.onPreview?.(msg.uplinkId, msg.name, msg.count);
+            return reply(r ?? { ok: false, error: "unavailable" });
+          }
+          const { t: _t, reqId: _r, uplinkId: _u, id: _i, op, ...params } = msg as Record<string, unknown>;
+          const r = m.onStorage?.(msg.uplinkId, String(op), params, c.user);
+          return reply(r ? { ok: r.ok, ...(r.error ? { error: r.error } : {}), ...(r.ok ? { data: r.data ?? {} } : {}) } : { ok: false, error: "unavailable" });
         }
         if (msg.t === "query") {
           const now = Date.now();
@@ -1178,6 +1248,18 @@ export async function createMockServer(opts: MockOptions = {}) {
       // like the mod: plain-text 403
       res.writeHead(403, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
       return void res.end(LAN_ONLY.message);
+    }
+    // dev: the Script Store's static build (../store/dist) on the same origin
+    if (p.startsWith("/store/") && req.method === "GET" && opts.scriptStore !== false) {
+      const rel = decodeURIComponent(p.slice("/store/".length));
+      if (!rel || rel.split("/").some((x) => x === ".." || x === "")) return json(res, 404, { error: "not_found" });
+      try {
+        const body = readFileSync(join(STORE_DIST, rel));
+        res.writeHead(200, { "content-type": rel.endsWith(".json") ? "application/json" : "text/plain; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-cache" });
+        return void res.end(body);
+      } catch {
+        return json(res, 404, { error: "not_found" });
+      }
     }
     if (p === "/api/pair" && req.method === "POST") {
       const ip = req.socket.remoteAddress ?? "?";

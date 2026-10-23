@@ -139,3 +139,8 @@ Every crafting recipe of CC: Cloud, generated from the mod's own recipe files â€
 <RecipeFor id="cccloud:upgrade_range_vibranium" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 <RecipeFor id="cccloud:upgrade_range_vibranium" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
+## Other
+
+### CC: Cloud Handbook
+<RecipeFor id="guideme:guide" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+

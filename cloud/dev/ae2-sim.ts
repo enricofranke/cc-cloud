@@ -13,15 +13,24 @@ export interface Job {
   name: string;
   displayName: string;
   count: number;
-  status: "queued" | "running" | "done" | "failed";
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: number;
   /** progress per tick */
   speed: number;
+  notify?: boolean;
+  source?: "dashboard" | "lua" | "autostock" | "rule";
+  error?: string;
+  started?: number;
 }
 export interface Watch {
   name: string;
   min: number;
   below: boolean;
+  target?: number;
+  autoCraft?: boolean;
+  state?: "idle" | "crafting" | "waiting_cpu" | "missing" | "paused";
+  failures?: number;
+  cooldownUntil?: number;
 }
 
 export const MAX_CRAFT = 4096;
@@ -140,6 +149,13 @@ export class FakeAe2 {
   readonly items = buildItems();
   readonly jobs: Job[] = [];
   readonly watch: Watch[] = [];
+  readonly favorites = new Set<string>(["minecraft:diamond", "ae2:fluix_crystal"]);
+  readonly fluids = [
+    { name: "minecraft:water", displayName: "Water", amount: 1_200_000 },
+    { name: "minecraft:lava", displayName: "Lava", amount: 384_000 },
+    { name: "mekanism:hydrogen", displayName: "Hydrogen", amount: 96_500 },
+    { name: "industrialforegoing:latex", displayName: "Latex", amount: 12_000 },
+  ];
   energy = 0.82; // fraction
   private seq = 1000;
   private rand = rng(7);
@@ -171,15 +187,168 @@ export class FakeAe2 {
   watchRows() {
     return this.watch.map((w) => {
       const it = this.items.get(w.name);
-      return { name: w.name, displayName: it?.displayName ?? w.name, count: it?.count ?? 0, min: w.min };
+      return {
+        name: w.name,
+        displayName: it?.displayName ?? w.name,
+        count: it?.count ?? 0,
+        min: w.min,
+        ...(w.target !== undefined ? { target: w.target, autoCraft: !!w.autoCraft, state: w.state ?? "idle" } : {}),
+      };
     });
   }
 
+  private jobRow(j: Job) {
+    return {
+      jobId: j.jobId,
+      name: j.name,
+      displayName: j.displayName,
+      count: j.count,
+      status: j.status,
+      progress: Math.round(j.progress * 100) / 100,
+      notify: !!j.notify,
+      source: j.source ?? "dashboard",
+      ...(j.error ? { error: j.error } : {}),
+    };
+  }
   jobRows() {
-    return this.jobs.slice(0, 8).map(({ jobId, name, displayName, count, status, progress }) => ({ jobId, name, displayName, count, status, progress: Math.round(progress * 100) / 100 }));
+    return this.jobs.slice(0, 8).map((j) => this.jobRow(j));
   }
 
-  craft(name: string, count: number): CraftResult {
+  // ------------------------------------------------- Storage card v2 (docs/SPEC.md)
+  private row(it: Item) {
+    return { name: it.name, displayName: it.displayName, count: it.count, craftable: it.craftable, favorite: this.favorites.has(it.name) };
+  }
+  browse(p: { sort?: string; desc?: boolean; filter?: string; q?: string; offset?: number; limit?: number }) {
+    const q = String(p.q ?? "").toLowerCase().trim();
+    let list = [...this.items.values()].filter((i) => i.count > 0 || i.craftable);
+    if (p.filter === "craftable") list = list.filter((i) => i.craftable);
+    if (p.filter === "favorites") list = list.filter((i) => this.favorites.has(i.name));
+    if (p.filter !== "craftable") list = list.filter((i) => i.count > 0 || this.favorites.has(i.name));
+    if (q) list = list.filter((i) => `${i.name} ${i.displayName}`.toLowerCase().includes(q));
+    const mod = (n: string) => n.split(":")[0];
+    const dir = p.desc === false ? 1 : -1;
+    const sorts: Record<string, (a: Item, b: Item) => number> = {
+      count: (a, b) => dir * (a.count - b.count) || a.displayName.localeCompare(b.displayName),
+      name: (a, b) => -dir * a.displayName.localeCompare(b.displayName),
+      mod: (a, b) => -dir * mod(a.name).localeCompare(mod(b.name)) || a.displayName.localeCompare(b.displayName),
+    };
+    list.sort((a, b) => Number(this.favorites.has(b.name)) - Number(this.favorites.has(a.name)) || (sorts[p.sort ?? "count"] ?? sorts.count)(a, b));
+    const offset = Math.max(0, Math.floor(p.offset ?? 0));
+    const limit = Math.max(1, Math.min(200, Math.floor(p.limit ?? 100)));
+    return { rows: list.slice(offset, offset + limit).map((i) => this.row(i)), total: list.length, offset };
+  }
+  craftables(p: { q?: string; offset?: number; limit?: number }) {
+    return this.browse({ ...p, filter: "craftable", sort: "name", desc: false });
+  }
+  fluidRows(p: { offset?: number; limit?: number }) {
+    const offset = Math.max(0, Math.floor(p.offset ?? 0));
+    return { rows: this.fluids.slice(offset, offset + Math.min(200, p.limit ?? 100)), total: this.fluids.length };
+  }
+  itemDoc(name: string) {
+    const it = this.items.get(name);
+    if (!it) return null;
+    const w = this.watch.find((x) => x.name === name);
+    // a deterministic 24 h history ending at the current count (48 points)
+    const r = rng(name.length * 31 + name.charCodeAt(0));
+    const history: number[] = [];
+    let v = it.count;
+    for (let i = 0; i < 48; i++) {
+      history.unshift(Math.max(0, Math.round(v)));
+      v = v * (1 + (r() - 0.48) * 0.06) + (r() - 0.5) * it.count * 0.02;
+    }
+    history[history.length - 1] = it.count;
+    return {
+      ...this.row(it),
+      mod: name.split(":")[0],
+      watch: w ? { min: w.min, target: w.target ?? w.min, autoCraft: !!w.autoCraft, state: w.state ?? "idle", failures: w.failures ?? 0 } : null,
+      jobs: this.jobs.filter((j) => j.name === name).slice(0, 5).map((j) => this.jobRow(j)),
+      history,
+    };
+  }
+  cpus() {
+    const running = this.jobs.filter((j) => j.status === "running");
+    return {
+      cpus: Array.from({ length: CPUS }, (_, i) => {
+        const j = running[i];
+        return {
+          id: `cpu-${i + 1}`,
+          name: i === 0 ? "Main CPU" : `CPU ${i + 1}`,
+          coProcessors: i === 0 ? 4 : 1,
+          storage: i === 0 ? 65_536 : 16_384,
+          busy: !!j,
+          job: j ? { name: j.name, displayName: j.displayName, count: j.count, progress: Math.round(j.progress * 100) / 100, elapsedMs: Date.now() - (j.started ?? Date.now()) } : null,
+        };
+      }),
+      tasks: this.jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => ({ id: j.jobId, name: j.name, displayName: j.displayName, count: j.count, progress: Math.round(j.progress * 100) / 100, own: true })),
+    };
+  }
+  cancel(jobId: string): { ok: boolean; error?: string } {
+    const j = this.jobs.find((x) => x.jobId === jobId.replace(/^cpu-\d+:/, ""));
+    if (!j || (j.status !== "running" && j.status !== "queued")) return { ok: false, error: "unknown_item" };
+    j.status = "cancelled";
+    return { ok: true };
+  }
+  favorite(name: string, on: boolean): { ok: boolean; error?: string } {
+    if (!this.items.has(name)) return { ok: false, error: "unknown_item" };
+    if (on && this.favorites.size >= 64 && !this.favorites.has(name)) return { ok: false, error: "invalid" };
+    if (on) this.favorites.add(name);
+    else this.favorites.delete(name);
+    return { ok: true };
+  }
+  autostock(p: { name?: string; min?: number; target?: number; autoCraft?: boolean }): { ok: boolean; error?: string } {
+    const name = String(p.name ?? "");
+    if (!this.items.has(name)) return { ok: false, error: "unknown_item" };
+    const min = Math.floor(Number(p.min));
+    const target = Math.floor(Number(p.target));
+    if (!Number.isFinite(min) || !Number.isFinite(target) || min < 0 || target < min || target > 2 ** 31 - 1) return { ok: false, error: "invalid" };
+    let w = this.watch.find((x) => x.name === name);
+    if (!w) {
+      if (this.watch.length >= 32) return { ok: false, error: "invalid" };
+      w = { name, min, below: false };
+      this.watch.push(w);
+    }
+    w.min = min;
+    w.target = target;
+    w.autoCraft = !!p.autoCraft;
+    w.failures = 0;
+    w.state = "idle";
+    w.cooldownUntil = 0;
+    return { ok: true };
+  }
+  /** Craft plan: two ingredients per item, made up but stable. */
+  preview(name: string, count: number) {
+    const it = this.items.get(name);
+    if (!it) return { ok: false as const, error: "unknown_item" };
+    if (!it.craftable) return { ok: false as const, error: "not_craftable" };
+    if (!Number.isInteger(count) || count < 1 || count > MAX_CRAFT) return { ok: false as const, error: "invalid" };
+    const pool = [...this.items.values()].filter((i) => i.name !== name);
+    const h = [...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const ings = [pool[h % pool.length], pool[(h >> 5) % pool.length]];
+    const missingAll = name === "ae2:singularity" || name === "mekanism:ultimate_control_circuit";
+    const entries = ings.map((g, i) => {
+      const need = count * (i === 0 ? 2 : 1);
+      const stored = Math.min(g.count, need);
+      const toCraft = g.craftable ? need - stored : 0;
+      const missing = missingAll ? need : g.craftable ? 0 : need - stored;
+      return { name: g.name, displayName: g.displayName, stored, toCraft, missing };
+    });
+    entries.unshift({ name, displayName: it.displayName, stored: 0, toCraft: count, missing: 0 });
+    const busy = this.jobs.filter((j) => j.status === "running").length;
+    return {
+      ok: true as const,
+      plan: {
+        name,
+        count,
+        missing: entries.some((e) => e.missing > 0),
+        bytes: count * 8 + 1024,
+        entries,
+        cpu: { available: CPUS - busy, enough: CPUS - busy > 0 },
+        timeMs: null,
+      },
+    };
+  }
+
+  craft(name: string, count: number, notify = false, source: Job["source"] = "dashboard"): CraftResult {
     const it = this.items.get(name);
     if (!it) return { ok: false, error: "unknown_item" };
     if (!it.craftable) return { ok: false, error: "not_craftable" };
@@ -195,6 +364,9 @@ export class FakeAe2 {
       status: running >= CPUS ? "queued" : "running",
       progress: 0,
       speed: Math.min(0.25, 6 / Math.max(6, count)),
+      notify,
+      source,
+      started: Date.now(),
     };
     this.jobs.unshift(job);
     if (this.jobs.length > 12) this.jobs.length = 12;
@@ -211,7 +383,7 @@ export class FakeAe2 {
         j.status = "done";
         const it = this.items.get(j.name);
         if (it) it.count += j.count;
-        events.push({ level: "info", text: `Crafted ${j.count.toLocaleString("en-US")}× ${j.displayName}` });
+        if (j.notify || j.source !== "autostock") events.push({ level: "info", text: `Crafted ${j.count.toLocaleString("en-US")}× ${j.displayName}` });
       }
     }
     // start queued jobs on free CPUs
@@ -226,6 +398,31 @@ export class FakeAe2 {
     this.items.get("minecraft:cobblestone")!.count += Math.round(this.rand() * 2_000);
     this.energy = Math.min(1, Math.max(0.2, this.energy + (this.rand() - 0.5) * 0.02));
 
+    // auto-stock (level maintainer)
+    const now = Date.now();
+    for (const w of this.watch) {
+      if (!w.autoCraft || w.state === "paused") continue;
+      const it = this.items.get(w.name);
+      if (!it?.craftable) continue;
+      const active = this.jobs.some((j) => j.name === w.name && (j.status === "running" || j.status === "queued"));
+      if (active) {
+        w.state = "crafting";
+        continue;
+      }
+      if (it.count >= w.min) {
+        w.state = "idle";
+        continue;
+      }
+      if ((w.cooldownUntil ?? 0) > now) continue;
+      const r = this.craft(w.name, Math.min((w.target ?? w.min) - it.count, 64), false, "autostock");
+      w.cooldownUntil = now + 30_000;
+      if (r.ok) w.state = "crafting";
+      else if (r.error === "no_cpu") w.state = "waiting_cpu";
+      else {
+        w.failures = (w.failures ?? 0) + 1;
+        w.state = w.failures >= 3 ? "paused" : "missing";
+      }
+    }
     for (const w of this.watch) {
       const count = this.items.get(w.name)?.count ?? 0;
       const below = count < w.min;

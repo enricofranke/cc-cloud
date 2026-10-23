@@ -106,11 +106,13 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "minecraft:redstone": { en: "Redstone Dust", de: "Redstonestaub" },
   "minecraft:redstone_block": { en: "Block of Redstone", de: "Redstoneblock" },
   "minecraft:string": { en: "String", de: "Faden" },
+  "minecraft:book": { en: "Book", de: "Buch" },
+  "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" },
   // every CC: Cloud item, from the mod's lang files (build step dev/build-recipes.ts)
   ...GEN.names,
 };
 /** Mod names for recipe conditions ("requires …"). */
-export const MODS: Record<string, string> = { allthemodium: "AllTheModium", allthetweaks: "All The Tweaks", ae2: "Applied Energistics 2", refinedstorage: "Refined Storage" };
+export const MODS: Record<string, string> = { guideme: "GuideME", allthemodium: "AllTheModium", allthetweaks: "All The Tweaks", ae2: "Applied Energistics 2", refinedstorage: "Refined Storage" };
 
 /** Tags have no icon of their own: show a typical member. */
 const TAG_ICON: Record<string, string> = {

@@ -33,6 +33,14 @@ Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Cr
 
 Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). Items unter ihrem Minimum stehen rot ganz oben und lösen pro Unterschreitung einmal eine **warn**-Meldung aus. Minimum ändern oder Items entfernen geht jederzeit. Die Merkliste wird in der Bridge gespeichert.
 
+## Durchsuchen, Auto-Lager und Crafting-CPUs
+
+- **Browse** (neben der Suche): alle Items als Raster mit Icons – sortiert nach Menge, Name oder Mod, mit einem Tab **Craftable**, **Fluids** und ★ **Favoriten** oben angepinnt. Weiter scrollen lädt mehr.
+- **Item-Details:** Menge, ein 24-Stunden-Verlauf, letzte Aufträge, ★, **Craft…** und **Keep in stock…**.
+- **Crafting-Vorschau:** Bevor ein Auftrag startet, siehst du, was aus dem Lager genommen, was gecraftet wird und was fehlt, dazu freie CPUs. Mit **Notify me** bekommst du eine Meldung, wenn er fertig ist oder fehlschlägt.
+- **Auf Lager halten (Auto-Lager):** Minimum und Ziel festlegen – fällt die Menge unter das Minimum und es gibt ein Muster, craftet der Server in Paketen zu 64 bis zum Ziel (ein Auftrag pro Item, höchstens alle 30 s). Das Abzeichen zeigt den Zustand: crafting, waiting for a CPU, missing resources oder nach 3 Fehlschlägen pausiert. Läuft auf dem Server – kein Computer nötig. Aus Lua: `bridge.setAutoStock(name, min, target, enabled)`.
+- **CPUs & Aufträge:** jede Crafting-CPU mit ihrem aktuellen Auftrag, alle laufenden Aufträge und **Cancel** (Operatoren).
+
 ## Aus Lua
 
 ```lua

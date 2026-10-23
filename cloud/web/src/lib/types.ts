@@ -36,6 +36,10 @@ export interface WatchRow {
   displayName: string;
   count: number;
   min: number;
+  /** storage v2 auto-stock */
+  target?: number;
+  autoCraft?: boolean;
+  state?: "idle" | "crafting" | "waiting_cpu" | "missing" | "paused";
 }
 export interface JobRow {
   jobId: string;
@@ -44,6 +48,9 @@ export interface JobRow {
   count: number;
   status: "queued" | "running" | "done" | "failed" | "cancelled";
   progress: number;
+  source?: "dashboard" | "lua" | "autostock" | "rule";
+  notify?: boolean;
+  error?: string;
 }
 export type Color = "cyan" | "green" | "yellow" | "red" | "gray";
 export type AlertLevel = "info" | "warn" | "crit";

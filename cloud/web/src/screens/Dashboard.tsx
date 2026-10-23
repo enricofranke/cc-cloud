@@ -3,7 +3,8 @@ import { getConn, syncConns, accountLoading } from "../lib/conns.ts";
 import { formatDuration } from "../lib/conn.ts";
 import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
-import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
+import { navigate, notifyPermission, pendingInstall, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
+import type { ComponentType } from "preact";
 import { Pages } from "./Pages.tsx";
 import { MainframeSwitcher } from "../components/MainframeSwitcher.tsx";
 import { ROLE_INFO } from "./Account.tsx";
@@ -133,6 +134,14 @@ export function Dashboard({ id }: { id: string }) {
   const entry = saved.value.find((m) => m.mainframeId === id);
   const conn = getConn(id);
   const [sheet, setSheet] = useState<"alerts" | "settings" | null>(null);
+  const [store, setStore] = useState<{ want?: { id: string; version?: string } } | null>(null);
+  // a /store#install link waits for a dashboard of a mainframe with the store
+  useEffect(() => {
+    if (conn && pendingInstall.value && conn.store.value && conn.can("scripts.upload")) {
+      setStore({ want: pendingInstall.value });
+      pendingInstall.value = null;
+    }
+  }, [conn?.store.value, conn?.status.value]);
   const [editing, setEditing] = useState(false);
   const [powerOpen, setPowerOpen] = useState(false);
   const st = statusOf(conn);
@@ -288,6 +297,7 @@ export function Dashboard({ id }: { id: string }) {
         </Sheet>
       )}
 
+      {store && <StoreLoader conn={conn} want={store.want} onClose={() => setStore(null)} />}
       {sheet === "settings" && (
         <Sheet title="This mainframe" onClose={() => setSheet(null)}>
           <dl class="facts">
@@ -331,6 +341,11 @@ export function Dashboard({ id }: { id: string }) {
             <a href="#/devices">Devices</a>
             {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
             {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
+            {conn.store.value && conn.can("scripts.upload") && (
+              <button type="button" class="link-btn" onClick={() => (setSheet(null), setStore({}))}>
+                Script Store
+              </button>
+            )}
             {!conn.isAdmin && conn.role.value && <span class="muted small">Access and share links need the admin role.</span>}
           </div>
           <p class="small">
@@ -355,4 +370,14 @@ export function Dashboard({ id }: { id: string }) {
       )}
     </>
   );
+}
+
+type StoreProps = { conn: MainframeConn; want?: { id: string; version?: string }; onClose: () => void };
+let StoreComp: ComponentType<StoreProps> | null = null;
+function StoreLoader(props: StoreProps) {
+  const [C, setC] = useState<ComponentType<StoreProps> | null>(() => StoreComp);
+  useEffect(() => {
+    if (!C) import("../scripts/StoreSheet.tsx").then((m) => setC(() => (StoreComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
 }

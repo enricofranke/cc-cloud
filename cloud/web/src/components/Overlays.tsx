@@ -71,13 +71,13 @@ export function useFocusTrap(ref: { current: HTMLElement | null }) {
   }, []);
 }
 
-export function Sheet(props: { title: string; onClose: () => void; children: ComponentChildren }) {
+export function Sheet(props: { title: string; onClose: () => void; children: ComponentChildren; wide?: boolean }) {
   useEscape(props.onClose);
   const ref = useRef<HTMLElement>(null);
   useFocusTrap(ref);
   return (
     <div class="backdrop backdrop-sheet" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
-      <section ref={ref} class="sheet" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1}>
+      <section ref={ref} class={`sheet ${props.wide ? "sheet-wide" : ""}`} role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1}>
         <header class="sheet-head">
           <h2 class="px-title">{props.title}</h2>
           <button type="button" class="icon-btn" aria-label="Close" onClick={props.onClose}>

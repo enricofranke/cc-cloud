@@ -33,6 +33,14 @@ Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job ap
 
 Add items with a minimum amount (from a search result or by id). Items below their minimum are listed first in red and trigger a **warn** alert once per crossing. Edit the minimum or remove items any time. The watchlist is stored in the bridge.
 
+## Browse, auto-stock and crafting CPUs
+
+- **Browse** (next to the search): every item as a grid with icons – sorted by amount, name or mod, with a **Craftable** tab, **Fluids** and ★ **favourites** pinned on top. Scroll for more.
+- **Item details:** amount, a 24-hour chart, recent jobs, ★, **Craft…** and **Keep in stock…**.
+- **Craft preview:** before a craft starts you see what is taken from storage, what gets crafted and what is missing, plus free CPUs. Tick **Notify me** to get a notice when it is done or fails.
+- **Keep in stock (auto-stock):** set a minimum and a target – when the amount drops below the minimum and there is a pattern, the server crafts up to the target in batches of 64 (one job per item, every 30 s at most). The badge shows the state: crafting, waiting for a CPU, missing resources or paused after 3 failures. It runs on the server – no computer needed. From Lua: `bridge.setAutoStock(name, min, target, enabled)`.
+- **CPUs & jobs:** every crafting CPU with its current job, all running jobs, and **Cancel** (operators).
+
 ## From Lua
 
 ```lua

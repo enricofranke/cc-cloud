@@ -340,6 +340,12 @@ Admins can put Lua programs on a computer without typing them in-game: click **<
 - **Files:** see what is on the computer, open, download or delete files, and how much disk space is left.
 
 Only admins of the mainframe see this, and changes need the mainframe PIN if one is set. The code runs on that CC computer inside CC's sandbox – never on the Minecraft server itself. Every upload is logged and the owner gets a chat note. Limits: 256 KB per file, 10 changes per minute.
+
+## Script Store {#store}
+
+Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the store's SHA-256 before you see it. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
+
+On the project website, **Install** opens your dashboard at \`/store#install=<script>\` – the same view, nothing is installed without your click. Server admins can switch the store off (\`scriptStore=false\`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server.
 `,
 
   // ---------------------------------------------------------- ui library
@@ -545,6 +551,10 @@ ${C.recipeSection("devices", "en")}
 ## Mainframe upgrades {#upgrades}
 
 ${C.recipeSection("upgrades", "en")}
+
+## Other {#misc}
+
+${C.recipeSection("misc", "en")}
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage
@@ -573,6 +583,14 @@ Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job ap
 ## Watchlist {#watchlist}
 
 Add items with a minimum amount (from a search result or by id). Items below their minimum are listed first in red and trigger a **warn** alert once per crossing. Edit the minimum or remove items any time. The watchlist is stored in the bridge.
+
+## Browse, auto-stock and crafting CPUs {#storage-v2}
+
+- **Browse** (next to the search): every item as a grid with icons – sorted by amount, name or mod, with a **Craftable** tab, **Fluids** and ★ **favourites** pinned on top. Scroll for more.
+- **Item details:** amount, a 24-hour chart, recent jobs, ★, **Craft…** and **Keep in stock…**.
+- **Craft preview:** before a craft starts you see what is taken from storage, what gets crafted and what is missing, plus free CPUs. Tick **Notify me** to get a notice when it is done or fails.
+- **Keep in stock (auto-stock):** set a minimum and a target – when the amount drops below the minimum and there is a pattern, the server crafts up to the target in batches of 64 (one job per item, every 30 s at most). The badge shows the state: crafting, waiting for a CPU, missing resources or paused after 3 failures. It runs on the server – no computer needed. From Lua: \`bridge.setAutoStock(name, min, target, enabled)\`.
+- **CPUs & jobs:** every crafting CPU with its current job, all running jobs, and **Cancel** (operators).
 
 ## From Lua {#lua}
 

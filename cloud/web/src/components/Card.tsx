@@ -69,7 +69,7 @@ export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget;
     case "watchlist":
       return <Watchlist {...p} />;
     case "jobs":
-      return <Jobs w={w} />;
+      return <Jobs w={w} uplink={card.uplink} conn={conn} />;
     case "chart":
       return <Chart {...p} />;
     case "progress":

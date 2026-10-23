@@ -340,6 +340,12 @@ Admins können Lua-Programme auf einen Computer bringen, ohne sie im Spiel abzut
 - **Files:** sehen, was auf dem Computer liegt, Dateien öffnen, herunterladen oder löschen, und wie viel Speicher frei ist.
 
 Das sehen nur Admins des Mainframes, und Änderungen brauchen die Mainframe-PIN, falls eine gesetzt ist. Der Code läuft auf diesem CC-Computer in CCs Sandbox – nie auf dem Minecraft-Server selbst. Jeder Upload wird protokolliert, und der Besitzer bekommt eine Chat-Nachricht. Grenzen: 256 KB pro Datei, 10 Änderungen pro Minute.
+
+## Script Store {#store}
+
+Fertige Programme aus der Community: **Script Store** im Menü des Mainframes (Admins). Jedes Skript zeigt, was es tut, was es **nutzt** (Redstone, Peripherie, Internet …) und den vollständigen Quelltext – vor der Anzeige gegen den SHA-256 des Stores geprüft. Computer wählen und installieren; sofort starten oder automatisch beim Start. Installierte Store-Skripte zeigen **Update available**, wenn es eine neuere Version gibt, und du wirst gewarnt, bevor eine auf dem Computer geänderte Datei überschrieben wird.
+
+Auf der Projekt-Website öffnet **Install** dein Dashboard unter \`/store#install=<skript>\` – dieselbe Ansicht, ohne deinen Klick wird nichts installiert. Server-Admins können den Store abschalten (\`scriptStore=false\`). Community-Skripte laufen auf deinem CC-Computer und können steuern, was er steuert – den Minecraft-Server selbst können sie nicht anfassen.
 `,
 
   // ---------------------------------------------------------- ui library
@@ -545,6 +551,10 @@ ${C.recipeSection("devices", "de")}
 ## Mainframe-Upgrades {#upgrades}
 
 ${C.recipeSection("upgrades", "de")}
+
+## Sonstiges {#misc}
+
+${C.recipeSection("misc", "de")}
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 und Refined Storage
@@ -573,6 +583,14 @@ Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Cr
 ## Merkliste {#watchlist}
 
 Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). Items unter ihrem Minimum stehen rot ganz oben und lösen pro Unterschreitung einmal eine **warn**-Meldung aus. Minimum ändern oder Items entfernen geht jederzeit. Die Merkliste wird in der Bridge gespeichert.
+
+## Durchsuchen, Auto-Lager und Crafting-CPUs {#storage-v2}
+
+- **Browse** (neben der Suche): alle Items als Raster mit Icons – sortiert nach Menge, Name oder Mod, mit einem Tab **Craftable**, **Fluids** und ★ **Favoriten** oben angepinnt. Weiter scrollen lädt mehr.
+- **Item-Details:** Menge, ein 24-Stunden-Verlauf, letzte Aufträge, ★, **Craft…** und **Keep in stock…**.
+- **Crafting-Vorschau:** Bevor ein Auftrag startet, siehst du, was aus dem Lager genommen, was gecraftet wird und was fehlt, dazu freie CPUs. Mit **Notify me** bekommst du eine Meldung, wenn er fertig ist oder fehlschlägt.
+- **Auf Lager halten (Auto-Lager):** Minimum und Ziel festlegen – fällt die Menge unter das Minimum und es gibt ein Muster, craftet der Server in Paketen zu 64 bis zum Ziel (ein Auftrag pro Item, höchstens alle 30 s). Das Abzeichen zeigt den Zustand: crafting, waiting for a CPU, missing resources oder nach 3 Fehlschlägen pausiert. Läuft auf dem Server – kein Computer nötig. Aus Lua: \`bridge.setAutoStock(name, min, target, enabled)\`.
+- **CPUs & Aufträge:** jede Crafting-CPU mit ihrem aktuellen Auftrag, alle laufenden Aufträge und **Cancel** (Operatoren).
 
 ## Aus Lua {#lua}
 

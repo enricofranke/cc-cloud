@@ -7,6 +7,7 @@ import { Sheet } from "./Overlays.tsx";
 import { fmtCount } from "../lib/format.ts";
 import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
+import { AutoStockSheet, ItemDetailSheet, STATE_TEXT, StorageBrowser } from "./StorageV2.tsx";
 
 // ------------------------------------------------------------------ helpers
 const full = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -25,9 +26,18 @@ export const CRAFT_ERRORS: Record<string, string> = {
 const errorText = (r: ActionOutcome, max?: number) =>
   r.error === "too_many" && max ? `Pick an amount between 1 and ${full(max)}.` : CRAFT_ERRORS[r.error ?? ""] ?? REJECT_TEXT[r.error ?? ""] ?? "That did not work. Please try again.";
 
+const STATES = ["idle", "crafting", "waiting_cpu", "missing", "paused"] as const;
 function watchRows(w: Widget | undefined): WatchRow[] {
   return Array.isArray(w?.value)
-    ? w!.value.map((r) => ({ name: str(r.name), displayName: str(r.displayName) || str(r.name), count: num(r.count), min: num(r.min) })).filter((r) => r.name)
+    ? w!.value
+        .map((r) => ({
+          name: str(r.name),
+          displayName: str(r.displayName) || str(r.name),
+          count: num(r.count),
+          min: num(r.min),
+          ...(typeof r.target === "number" ? { target: r.target, autoCraft: r.autoCraft === true, state: (STATES as readonly string[]).includes(str(r.state)) ? (r.state as WatchRow["state"]) : "idle" } : {}),
+        }))
+        .filter((r) => r.name)
     : [];
 }
 function jobRows(w: Widget): JobRow[] {
@@ -40,6 +50,9 @@ function jobRows(w: Widget): JobRow[] {
           count: num(r.count),
           status: (["queued", "running", "done", "failed", "cancelled"].includes(str(r.status)) ? r.status : "queued") as JobRow["status"],
           progress: Math.min(1, Math.max(0, num(r.progress))),
+          ...(["dashboard", "lua", "autostock", "rule"].includes(str(r.source)) ? { source: r.source as JobRow["source"] } : {}),
+          ...(r.notify === true ? { notify: true } : {}),
+          ...(str(r.error) ? { error: str(r.error).slice(0, 200) } : {}),
         }))
         .filter((r) => r.jobId || r.name)
     : [];
@@ -91,6 +104,8 @@ function useItemSearch(conn: MainframeConn, uplinkId: string, widgetId: string |
 export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Uplink; conn: MainframeConn; locked: boolean }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<ItemRow | null>(null);
+  const [classic, setClassic] = useState(false);
+  const [browse, setBrowse] = useState(false);
   const canSearch = conn.status.value === "open" && !!conn.info.value?.online && uplink.online;
   const res = useItemSearch(conn, uplink.uplinkId, canSearch ? w.id : undefined, q);
   const watch = uplink.widgets.find((x) => x.type === "watchlist");
@@ -123,6 +138,11 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
           onInput={(e) => setQ((e.target as HTMLInputElement).value)}
         />
         {res.loading && <span class="search-spin" aria-label="Searching" />}
+        {!q && canSearch && (
+          <button type="button" class="btn btn-small sb-browse" onClick={() => setBrowse(true)} title="Browse all items, craftables, fluids, CPUs">
+            Browse
+          </button>
+        )}
         {q && !res.loading && (
           <button
             type="button"
@@ -168,7 +188,11 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
       )}
       {res.truncated && <p class="store-note">Showing the first {res.rows.length} results – type more to narrow it down.</p>}
 
-      {open && (
+      {browse && <StorageBrowser conn={conn} uplink={uplink} widgetId={w.id} onClose={() => setBrowse(false)} />}
+      {open && !classic && (
+        <ItemDetailSheet conn={conn} uplink={uplink} widgetId={w.id} name={open.name} displayName={open.displayName} onClose={() => setOpen(null)} onFallback={() => setClassic(true)} />
+      )}
+      {open && classic && (
         <ItemSheet
           item={open}
           w={w}
@@ -333,6 +357,8 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
   }, [w.value]);
   const [edit, setEdit] = useState<WatchRow | null>(null);
   const [adding, setAdding] = useState(false);
+  const [stock, setStock] = useState<WatchRow | null>(null);
+  const searchW = uplink.widgets.find((x) => x.type === "item_search");
   const below = rows.filter((r) => r.count < r.min).length;
   const readOnly = locked || !conn.canControl.value;
 
@@ -350,7 +376,19 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
         )}
       </header>
       {rows.length === 0 ? (
-        <p class="store-note">Nothing watched yet. Add items to get a warning when they run low.</p>
+        <div class="store-empty">
+          <p class="store-note">Nothing watched yet. Get a warning when something runs low – or let the network craft it for you.</p>
+          {!viewOnly && (
+            <button
+              type="button"
+              class="btn store-cta"
+              disabled={readOnly}
+              onClick={() => setStock({ name: "minecraft:iron_ingot", displayName: "Iron Ingot", count: 0, min: 1000 })}
+            >
+              Keep 1,000 iron in stock automatically →
+            </button>
+          )}
+        </div>
       ) : (
         <ul class="watch-list">
           {rows.map((r) => {
@@ -358,12 +396,13 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
             const tone = r.count < r.min ? "low" : ratio < 1.1 ? "near" : "ok";
             return (
               <li key={r.name}>
-                <button type="button" class={`watch-row tone-${tone} ${viewOnly ? "static" : ""}`} disabled={viewOnly} onClick={() => !viewOnly && setEdit(r)}>
+                <button type="button" class={`watch-row tone-${tone} ${viewOnly ? "static" : ""}`} disabled={viewOnly} onClick={() => !viewOnly && (r.target !== undefined || searchW ? setStock(r) : setEdit(r))}>
                   <ItemIcon name={r.name} displayName={r.displayName} />
                   <span class="item-main">
                     <span class="item-name">{r.displayName}</span>
                     <span class="item-sub">
                       <ModTag name={r.name} />
+                      {r.autoCraft && <span class={`stock-badge sb-${r.state ?? "idle"}`}>{r.state && r.state !== "idle" ? STATE_TEXT[r.state] : `auto → ${fmtCount(r.target ?? r.min)}`}</span>}
                     </span>
                   </span>
                   <span class="watch-side">
@@ -383,6 +422,16 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
         </ul>
       )}
       {edit && <WatchEdit row={edit} w={w} uplink={uplink} conn={conn} readOnly={readOnly} onClose={() => setEdit(null)} />}
+      {stock && (
+        <AutoStockSheet
+          conn={conn}
+          uplink={uplink}
+          widgetId={searchW?.id ?? w.id}
+          item={stock}
+          current={stock.target !== undefined ? { min: stock.min, target: stock.target, autoCraft: !!stock.autoCraft, state: stock.state } : rows.some((x) => x.name === stock.name) ? { min: stock.min, target: Math.max(stock.min, stock.min * 2), autoCraft: false } : null}
+          onClose={() => setStock(null)}
+        />
+      )}
       {adding && <WatchAdd w={w} uplink={uplink} conn={conn} existing={new Set(rows.map((r) => r.name))} onClose={() => setAdding(false)} />}
     </section>
   );
@@ -547,8 +596,10 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
 // --------------------------------------------------------------------- jobs
 const STATUS_TEXT: Record<JobRow["status"], string> = { queued: "Queued", running: "Running", done: "Done", failed: "Failed", cancelled: "Cancelled" };
 
-export function Jobs({ w }: { w: Widget }) {
+export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: MainframeConn }) {
   const rows = jobRows(w);
+  const [browse, setBrowse] = useState(false);
+  const searchW = uplink?.widgets.find((x) => x.type === "item_search");
   const active = rows.filter((r) => r.status === "running" || r.status === "queued").length;
   return (
     <section class="store-sec store-half" aria-label={w.label ?? "Crafting jobs"}>
@@ -559,7 +610,14 @@ export function Jobs({ w }: { w: Widget }) {
         </h4>
       </header>
       {rows.length === 0 ? (
-        <p class="store-note">No crafting jobs.</p>
+        <div class="store-empty">
+          <p class="store-note">Nothing is crafting right now.</p>
+          {conn && uplink && searchW && (
+            <button type="button" class="btn store-cta" onClick={() => setBrowse(true)}>
+              Browse craftable items →
+            </button>
+          )}
+        </div>
       ) : (
         <ul class="job-list">
           {rows.map((j) => (
@@ -568,8 +626,19 @@ export function Jobs({ w }: { w: Widget }) {
                 <ItemIcon name={j.name} displayName={j.displayName ?? prettyName(j.name)} />
                 <span class="job-name">
                   {j.displayName ?? prettyName(j.name)} <span class="muted">× {full(j.count)}</span>
+                  {j.source === "autostock" && <span class="mini-badge run">auto</span>}
+                  {j.notify && (
+                    <span class="mini-badge" title="You get a notice when it finishes">
+                      notify
+                    </span>
+                  )}
                 </span>
                 <span class={`job-status js-${j.status}`}>{STATUS_TEXT[j.status]}</span>
+                {conn && uplink && conn.canControl.value && (j.status === "running" || j.status === "queued") && (
+                  <button type="button" class="icon-btn sm" aria-label={`Cancel ${j.displayName ?? j.name}`} title="Cancel" onClick={() => conn.storage(uplink.uplinkId, "cancel", { jobId: j.jobId }, searchW?.id).catch(() => {})}>
+                    ×
+                  </button>
+                )}
               </div>
               <div class="job-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
                 <span class="job-fill" style={{ width: `${Math.round((j.status === "done" ? 1 : j.progress) * 100)}%` }} />
@@ -578,6 +647,7 @@ export function Jobs({ w }: { w: Widget }) {
           ))}
         </ul>
       )}
+      {browse && conn && uplink && <StorageBrowser conn={conn} uplink={uplink} widgetId={searchW?.id} initialTab="craftable" onClose={() => setBrowse(false)} />}
     </section>
   );
 }

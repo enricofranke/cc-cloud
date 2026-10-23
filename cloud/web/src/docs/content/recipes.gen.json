@@ -244,6 +244,18 @@
    }
   },
   {
+   "file": "handbook",
+   "result": "guideme:guide",
+   "shapeless": true,
+   "items": [
+    "minecraft:book",
+    "cccloud:cloud_core"
+   ],
+   "requires": [
+    "mod:guideme"
+   ]
+  },
+  {
    "file": "me_cloud_bridge",
    "result": "cccloud:me_cloud_bridge",
    "grid": [
@@ -955,6 +967,10 @@
   "cccloud:cloud_analyzer": {
    "en": "Cloud Analyzer",
    "de": "Cloud-Analysator"
+  },
+  "cccloud:handbook": {
+   "en": "CC: Cloud Handbook",
+   "de": "CC: Cloud-Handbuch"
   }
  }
 }

@@ -216,14 +216,16 @@ export const RECIPE_GROUPS: { id: string; en: string; de: string; match: (r: Gen
   { id: "bridges", en: "Bridges", de: "Bridges", match: (r) => /bridge/.test(r.result) },
   { id: "devices", en: "Tablet, display, analyzer", de: "Tablet, Display, Analyzer", match: (r) => /tablet|display|analyzer/.test(r.result) },
   { id: "upgrades", en: "Mainframe upgrades", de: "Mainframe-Upgrades", match: (r) => /upgrade_|quantum_core/.test(r.result) },
+  { id: "misc", en: "Other", de: "Sonstiges", match: () => true },
 ];
 export function groupOf(r: GenRecipe) {
-  return RECIPE_GROUPS.find((g) => g.match(r))?.id ?? "other";
+  return RECIPE_GROUPS.find((g) => g.match(r))?.id ?? "misc";
 }
 /** Markdown for one group: a heading per item, then its recipes (normal and fallback). */
 const NAMES = GEN.names as Record<string, { en: string; de: string }>;
 export function recipeSection(groupId: string, lang: "en" | "de") {
-  const name = (id: string) => NAMES[id]?.[lang] ?? id.replace(/^[a-z0-9_]+:/, "").replace(/_/g, " ");
+  const EXTRA: Record<string, { en: string; de: string }> = { "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" } };
+  const name = (id: string) => NAMES[id]?.[lang] ?? EXTRA[id]?.[lang] ?? id.replace(/^[a-z0-9_]+:/, "").replace(/_/g, " ");
   const rs = ALL_RECIPES.filter((r) => groupOf(r) === groupId);
   const results = [...new Set(rs.map((r) => r.result))];
   return results

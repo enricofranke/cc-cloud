@@ -19,7 +19,7 @@ function markFailed(name: string) {
   } catch {}
 }
 
-export function ItemIcon({ name, displayName, size = 24 }: { name: string; displayName?: string; size?: 24 | 48 }) {
+export function ItemIcon({ name, displayName, size = 24 }: { name: string; displayName?: string; size?: 20 | 24 | 32 | 48 }) {
   const url = iconUrl(name);
   const [broken, setBroken] = useState(() => !url || failed.has(name));
   const letter = (displayName || name.split(":").pop() || "?").trim().charAt(0).toUpperCase() || "?";

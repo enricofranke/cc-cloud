@@ -77,7 +77,7 @@ try {
   await p.waitForSelector(".waiting");
   await p.waitForTimeout(600);
   await shot(p, "phone-03-waiting-for-approval");
-  await p.waitForSelector(".card", { timeout: 15_000 });
+  await p.waitForSelector(".card", { timeout: 40_000 });
   await p.waitForTimeout(700);
   await shot(p, "phone-04-dashboard");
   await shot(p, "phone-05-dashboard-full", true);
@@ -203,22 +203,33 @@ try {
   await p.fill(".search-input", "processor");
   await p.waitForSelector('.item-row:has-text("Logic Processor")');
   await p.click('.item-row:has-text("Logic Processor")');
-  await p.waitForSelector(".amounts");
-  await shot(p, "phone-s3-craft-sheet");
-  await p.click('.chip:has-text("Custom")');
+  // storage v2: item details (24 h chart), then the craft preview
+  await p.waitForSelector(".spark");
+  await shot(p, "phone-s3-item-detail");
+  await p.click('.detail-actions .pxbtn:has-text("Craft")');
+  await p.waitForSelector(".plan-table");
   await p.fill(".input-amount", "250");
-  await p.click('.pxbtn-gold:has-text("Craft")');
+  await p.waitForTimeout(700);
+  await shot(p, "phone-s3b-craft-preview");
+  await p.click('.sheet .pxbtn-gold:has-text("Craft")');
   await p.waitForSelector(".result-ok");
   await shot(p, "phone-s4-craft-started");
-  await p.keyboard.press("Escape");
+  for (let i = 0; i < 4 && (await p.locator(".backdrop-sheet").count()); i++) {
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(200);
+  }
   await p.fill(".search-input", "singularity");
   await p.waitForSelector('.item-row:has-text("Singularity")');
   await p.click('.item-row:has-text("Singularity")');
-  await p.click('.chip:has-text("16")');
-  await p.click('.pxbtn-gold:has-text("Craft")');
-  await p.waitForSelector(".result-err");
-  await shot(p, "phone-s5-craft-error");
-  await p.keyboard.press("Escape");
+  await p.waitForSelector(".spark");
+  await p.click('.detail-actions .pxbtn:has-text("Craft")');
+  await p.waitForSelector(".plan-table tr.missing");
+  await p.waitForTimeout(300);
+  await shot(p, "phone-s5-craft-missing");
+  for (let i = 0; i < 4 && (await p.locator(".backdrop-sheet").count()); i++) {
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(200);
+  }
   await p.fill(".search-input", "");
   await p.evaluate(() => {
     const el = document.querySelector(".watch-list")!;
@@ -227,15 +238,42 @@ try {
   await p.waitForTimeout(1500); // let jobs progress a bit
   await shot(p, "phone-s6-watchlist-jobs");
   await p.click(".watch-row.tone-low");
-  await p.waitForSelector(".stepper");
-  await shot(p, "phone-s7-watch-edit");
+  await p.waitForSelector(".stock-fields");
+  await shot(p, "phone-s7-autostock");
   await p.keyboard.press("Escape");
   await p.click('.sec-head .btn:has-text("Add")');
   await p.fill('.sheet .input[type="search"]', "diamond");
   await p.waitForSelector('.sheet .item-row:has-text("Diamond")');
   await shot(p, "phone-s8-watch-add");
   await p.keyboard.press("Escape");
+  await p.waitForTimeout(200);
+  await clearToasts(p);
+  await p.click(".sb-browse");
+  await p.waitForSelector(".sb-tile");
+  await p.waitForTimeout(400);
+  await shot(p, "phone-s8b-browse");
+  await p.locator(".sb-tile:has(.sb-craft) .sb-open").first().click();
+  await p.waitForSelector(".spark");
+  await shot(p, "phone-s8c-item");
+  for (let i = 0; i < 4 && (await p.locator(".backdrop-sheet").count()); i++) {
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(200);
+  }
+  await p.keyboard.press("Escape");
   await p.evaluate(() => window.scrollTo(0, 0));
+  await p.click('button[aria-label="Settings"]');
+  await p.click('.settings-links button:has-text("Script Store")');
+  await p.waitForSelector(".store-card");
+  await p.waitForTimeout(300);
+  await shot(p, "phone-ss1-store");
+  await p.locator(".store-card .btn").nth(1).click();
+  await p.waitForSelector(".src-code");
+  await p.waitForTimeout(300);
+  await shot(p, "phone-ss2-script-detail");
+  for (let i = 0; i < 4 && (await p.locator(".backdrop-sheet").count()); i++) {
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(200);
+  }
 
   // SCRAM is PIN-protected (mock PIN 1234): keypad, wrong PIN, then right PIN
   await p.click(".pxbtn-red");
@@ -507,6 +545,59 @@ try {
   await d.waitForSelector(".file-row");
   await shot(d, "desktop-x5-scripts-files");
   await d.keyboard.press("Escape");
+  // ---- storage card v2: browse grid, item details + craft preview, CPUs & jobs
+  const closeSheets = async (pg: Page) => {
+    for (let i = 0; i < 5 && (await pg.locator(".backdrop-sheet").count()); i++) {
+      await pg.keyboard.press("Escape");
+      await pg.waitForTimeout(200);
+    }
+  };
+  await clearToasts(d);
+  await d.click(".sb-browse");
+  await d.waitForSelector(".sb-tile");
+  await d.waitForTimeout(400);
+  await shot(d, "desktop-st1-browse");
+  await d.locator(".sb-tile:has(.sb-craft) .sb-open").first().click();
+  await d.waitForSelector(".spark");
+  await shot(d, "desktop-st2-item");
+  await d.click('.detail-actions .pxbtn:has-text("Craft")');
+  await d.waitForSelector(".plan-table");
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-st3-craft-preview");
+  await closeSheets(d);
+  await d.click(".sb-browse");
+  await d.click('.sb .nd-tab:has-text("CPUs")');
+  await d.waitForSelector(".cpu-list");
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-st4-cpus");
+  await closeSheets(d);
+  await d.locator(".watch-row").first().click();
+  await d.waitForSelector(".stock-fields");
+  await shot(d, "desktop-st5-autostock");
+  await closeSheets(d);
+  // Script Store: settings -> store list -> script detail with verified source
+  await d.click('button[aria-label="Settings"]');
+  await d.click('.settings-links button:has-text("Script Store")');
+  await d.waitForSelector(".store-card");
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-ss1-store");
+  await d.locator(".store-card .btn").first().click();
+  await d.waitForSelector(".src-code");
+  await d.waitForTimeout(300);
+  await shot(d, "desktop-ss2-script-detail");
+  await d.click('.store-install .pxbtn');
+  for (let i = 0; i < 4; i++) {
+    await d.waitForSelector(".store .form-ok, .pin-dialog, .dialog", { timeout: 10000 });
+    if (await d.locator(".pin-dialog").count()) await pinEnter(d, "1234");
+    else if (await d.locator('.dialog button:has-text("Continue")').count()) await d.click('.dialog button:has-text("Continue")');
+    else break;
+    await d.waitForTimeout(300);
+  }
+  await d.waitForSelector(".store .form-ok", { timeout: 10000 });
+  await d.waitForTimeout(600);
+  await clearToasts(d);
+  await shot(d, "desktop-ss3-installed");
+  await closeSheets(d);
   await d.click('.toptabs .tab-network');
   await d.waitForSelector(".topo svg .tnode");
   await d.waitForTimeout(500);
