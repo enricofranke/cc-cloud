@@ -248,7 +248,12 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
               </li>
             ))}
           </ul>
-          <p class="muted small">It runs on the computer you pick and can control everything that computer controls. It cannot touch the Minecraft server. Read the code below before you install it.</p>
+          <p class="muted small">It runs on the computer you pick and can control everything that computer controls. It cannot touch the Minecraft server.</p>
+        </div>
+        <div class="banner banner-warn store-safety" role="note">
+          <div class="banner-text">
+            <b>Read the code before you install it.</b> The check only proves the files are the ones the store lists – the list and the files come from the same server, so it is not a guarantee that the code is safe. “Reviewed” means a maintainer looked at this version.
+          </div>
         </div>
         {error && <p class="form-error">{error}</p>}
         {!files && !error && <p class="muted small">Downloading and checking the files…</p>}
@@ -256,7 +261,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
           sc.files.map((f) => (
             <details key={f.path} class="src" open={sc.files.length === 1}>
               <summary>
-                <span class="mono">{f.path}</span> <span class="muted small">{f.size} bytes · SHA-256 verified ✓</span>
+                <span class="mono">{f.path}</span> <span class="muted small">{f.size} bytes · matches the store index</span>
               </summary>
               <pre class="code src-code">{files[f.path]}</pre>
             </details>

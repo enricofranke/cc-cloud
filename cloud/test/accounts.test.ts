@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, REACTOR, STORAGE, ME, CONTROL, type MockServer } from "../dev/mock-server.ts";
 import { MainframeConn } from "../web/src/lib/conn.ts";
-import { takeShareSecret } from "../web/src/lib/share.ts";
+import { forgetStoredShareSecrets, takeShareSecret } from "../web/src/lib/share.ts";
 import { TestSocket, sleep } from "./helpers.ts";
 
 let mock: MockServer | undefined;
@@ -311,15 +311,17 @@ describe("share links", () => {
     expect(new Set(sent)).toEqual(new Set(["auth_share", "pong"]));
   });
 
-  it("takes the secret from the URL fragment and keeps it for this tab only", () => {
-    const store = new Map<string, string>();
-    const s = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
-    expect(takeShareSecret({ pathname: "/s/abc123", hash: "#S3cr3t-Secret_123456" }, s)).toEqual({ id: "abc123", secret: "S3cr3t-Secret_123456", scrub: true });
-    // after scrubbing the hash (reload): from sessionStorage
-    expect(takeShareSecret({ pathname: "/s/abc123", hash: "" }, s)).toEqual({ id: "abc123", secret: "S3cr3t-Secret_123456", scrub: false });
-    expect(takeShareSecret({ pathname: "/s/other", hash: "" }, s).secret).toBeUndefined();
-    expect(takeShareSecret({ pathname: "/s/abc123", hash: "#<script>" }, s).secret).toBe("S3cr3t-Secret_123456");
-    expect(takeShareSecret({ pathname: "/docs", hash: "#x" }, s).id).toBeUndefined();
+  it("takes the secret from the URL fragment and never stores it", () => {
+    expect(takeShareSecret({ pathname: "/s/abc123", hash: "#S3cr3t-Secret_123456" })).toEqual({ id: "abc123", secret: "S3cr3t-Secret_123456", scrub: true });
+    // after scrubbing the hash (reload): gone – the link has to be opened again
+    expect(takeShareSecret({ pathname: "/s/abc123", hash: "" })).toEqual({ id: "abc123", secret: undefined, scrub: false });
+    expect(takeShareSecret({ pathname: "/s/abc123", hash: "#<script>" }).secret).toBeUndefined();
+    expect(takeShareSecret({ pathname: "/docs", hash: "#x" }).id).toBeUndefined();
+    // leftovers of older builds are removed
+    const data = new Map([["cccloud.share.abc123", "S3cr3t"], ["cccloud.other", "x"]]);
+    const store = { get length() { return data.size; }, key: (i: number) => [...data.keys()][i] ?? null, removeItem: (k: string) => void data.delete(k) };
+    forgetStoredShareSecrets(store);
+    expect([...data.keys()]).toEqual(["cccloud.other"]);
   });
 
   it("serves /s/ pages with noindex and no-referrer", async () => {

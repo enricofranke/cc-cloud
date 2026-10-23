@@ -1,11 +1,11 @@
 // v0.6: /s/<id>#<secret> – a read-only share-link view.
 // The secret only ever lives in the URL fragment (never sent in requests, logs or
 // Referer). We take it from location.hash, remove it from the address bar with
-// history.replaceState, keep it for this tab only (sessionStorage, so a reload
-// still works) and send it in the first WebSocket message.
+// history.replaceState, keep it in memory only (never in any storage) and send it
+// in the first WebSocket message. After a reload the link has to be opened again.
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { MainframeConn } from "../lib/conn.ts";
-import { takeShareSecret } from "../lib/share.ts";
+import { forgetStoredShareSecrets, takeShareSecret } from "../lib/share.ts";
 import { resolveLayout } from "../lib/layout.ts";
 import { timeAgo } from "../lib/ui.ts";
 import { Card } from "../components/Card.tsx";
@@ -22,11 +22,10 @@ const ERRORS: Record<string, string> = {
 
 export function ShareView() {
   const [{ id, secret }] = useState(() => {
-    let store: Storage | null = null;
     try {
-      store = sessionStorage;
+      forgetStoredShareSecrets(sessionStorage);
     } catch {}
-    const r = takeShareSecret(location, store);
+    const r = takeShareSecret(location);
     // remove the secret from the address bar and the history entry
     if (r.scrub) history.replaceState(null, "", `/s/${r.id}`);
     return r;
@@ -55,8 +54,17 @@ export function ShareView() {
     return (
       <div class="app">
         <main class="page page-narrow" id="main">
-          <h1 class="px-heading">Share link incomplete</h1>
-          <p class="muted">The link is missing its secret part (everything after #). Ask for the complete link.</p>
+          {id ? (
+            <>
+              <h1 class="px-heading">Open the link again</h1>
+              <p class="muted">For safety, the secret part of a share link (everything after #) is never stored in this browser – so after a reload or a bookmark it is gone. Open the complete link you were sent again.</p>
+            </>
+          ) : (
+            <>
+              <h1 class="px-heading">Share link incomplete</h1>
+              <p class="muted">The link is missing its secret part (everything after #). Ask for the complete link.</p>
+            </>
+          )}
         </main>
       </div>
     );

@@ -343,7 +343,7 @@ Only admins of the mainframe see this, and changes need the mainframe PIN if one
 
 ## Script Store {#store}
 
-Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the store's SHA-256 before you see it. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
+Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the SHA-256 in the store's index before you see it. That check only proves the files match the index (both come from the store's server), so **read the code before you install it**. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
 
 On the project website, **Install** opens your dashboard at \`/store#install=<script>\` – the same view, nothing is installed without your click. Server admins can switch the store off (\`scriptStore=false\`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server.
 `,

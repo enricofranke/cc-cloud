@@ -376,6 +376,11 @@ pre {
   border-color: color-mix(in srgb, var(--cyan) 40%, transparent);
   background: color-mix(in srgb, var(--cyan) 8%, var(--panel));
 }
+.banner-warn {
+  color: color-mix(in srgb, var(--yellow) 75%, var(--text));
+  border-color: color-mix(in srgb, var(--yellow) 50%, transparent);
+  background: color-mix(in srgb, var(--yellow) 8%, var(--panel));
+}
 .banner-insecure {
   margin: 12px max(16px, env(safe-area-inset-left)) 0;
   color: color-mix(in srgb, var(--yellow) 75%, var(--text));
