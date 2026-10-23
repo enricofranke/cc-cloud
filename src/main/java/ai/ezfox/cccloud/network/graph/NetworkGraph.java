@@ -57,9 +57,16 @@ public final class NetworkGraph {
 
     public enum LinkKind { RADIO, ENDER }
 
-    public record Link(String a, String b, double signal, double distance, LinkKind kind) {
+    /**
+     * @param legacy the synthetic link of a {@code legacy_out_of_range} device to its mainframe (signal 0)
+     */
+    public record Link(String a, String b, double signal, double distance, LinkKind kind, boolean legacy) {
+        public Link(String a, String b, double signal, double distance, LinkKind kind) {
+            this(a, b, signal, distance, kind, false);
+        }
+
         public boolean weak() {
-            return kind == LinkKind.RADIO && signal < WEAK;
+            return kind == LinkKind.RADIO && signal < WEAK && !legacy;
         }
     }
 
@@ -167,30 +174,31 @@ public final class NetworkGraph {
         var routes = new LinkedHashMap<String, Route>();
         for (var device : devices) {
             Route best = null;
-            Link bestLink = null;
             double bestSignal = -1;
             for (var node : byId.values()) {
-                if (!node.available() || !paths.containsKey(node.id())) continue;
-                var path = paths.get(node.id());
-                if (path.size() >= MAX_HOPS + 1) continue; // the device link would exceed the hop limit
+                if (!node.available()) continue;
                 var link = radio(device.id(), device.dim(), device.x(), device.y(), device.z(), device.range(),
                     node.id(), node.dim(), node.x(), node.y(), node.z(), node.deviceRange());
                 if (link == null) continue;
+                // Every link in range is reported (the map shows unused ones faintly); routing uses the reachable ones.
+                links.add(new Link(node.id(), device.id(), link.signal(), link.distance(), LinkKind.RADIO));
+                if (!paths.containsKey(node.id())) continue;
+                var path = paths.get(node.id());
+                if (path.size() >= MAX_HOPS + 1) continue; // the device link would exceed the hop limit
                 double signal = Math.min(pathSignal.get(node.id()), link.signal());
                 boolean better = best == null || path.size() < best.path().size() || (path.size() == best.path().size() && signal > bestSignal);
                 if (better) {
                     best = new Route(path, signal, link.distance(), false);
-                    bestLink = new Link(node.id(), device.id(), link.signal(), link.distance(), LinkKind.RADIO);
                     bestSignal = signal;
                 }
             }
             if (best != null) {
                 routes.put(device.id(), best);
-                links.add(bestLink);
             } else if (device.legacy() && legacyGrace && root != null && root.available()) {
                 // v0.3 device that is out of range under the new rules: keeps working directly, flagged on the map.
-                routes.put(device.id(), new Route(List.of(root.id()), 0,
-                    root.dim().equals(device.dim()) ? distance(root.x(), root.y(), root.z(), device.x(), device.y(), device.z()) : -1, true));
+                double d = root.dim().equals(device.dim()) ? distance(root.x(), root.y(), root.z(), device.x(), device.y(), device.z()) : -1;
+                routes.put(device.id(), new Route(List.of(root.id()), 0, d, true));
+                links.add(new Link(root.id(), device.id(), 0, d, LinkKind.RADIO, true));
             } else {
                 routes.put(device.id(), new Route(List.of(), 0, -1, false));
             }

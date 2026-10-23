@@ -47,6 +47,9 @@ public final class NetworkService {
     private static final Map<UUID, Counts> COUNTS = new HashMap<>();
     private static final Set<UUID> SERVING = new HashSet<>();
     private static long recomputations;
+    /** Last time (ms) a node/device was seen online, and the last known device type (for unloaded devices). */
+    private static final Map<String, Long> LAST_ONLINE = new HashMap<>();
+    private static final Map<String, String> LAST_TYPE = new HashMap<>();
 
     private NetworkService() {
     }
@@ -60,6 +63,8 @@ public final class NetworkService {
         ROUTES.clear();
         COUNTS.clear();
         SERVING.clear();
+        LAST_ONLINE.clear();
+        LAST_TYPE.clear();
         dirty = true;
     }
 
@@ -226,6 +231,30 @@ public final class NetworkService {
         return map;
     }
 
+    /** {@code [{key, count?, fe}]} for the dashboard (keys base, uplinks, advanced_uplinks, bridges, clients, hops; sums to usage). */
+    public static JsonArray breakdownJson(UUID mainframeId, int clients) {
+        var counts = counts(mainframeId);
+        var power = power(mainframeId, clients);
+        var array = new JsonArray();
+        for (var e : power.entrySet()) {
+            if (e.getKey().equals("total")) continue;
+            var item = new JsonObject();
+            item.addProperty("key", e.getKey());
+            Integer count = switch (e.getKey()) {
+                case "uplinks" -> counts.uplinks();
+                case "advanced_uplinks" -> counts.advancedUplinks();
+                case "bridges" -> counts.bridges();
+                case "clients" -> Math.max(0, clients);
+                case "hops" -> counts.extraHops();
+                default -> null;
+            };
+            if (count != null) item.addProperty("count", count);
+            item.addProperty("fe", e.getValue());
+            array.add(item);
+        }
+        return array;
+    }
+
     public static NetworkPower.Rates rates() {
         return new NetworkPower.Rates(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
             CloudConfig.get(CloudConfig.MAINFRAME_PER_ADVANCED_UPLINK_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_BRIDGE_FE),
@@ -257,11 +286,12 @@ public final class NetworkService {
             String status;
             if (isRoot) {
                 n.addProperty("name", mainframe.getDisplayName());
-                status = mainframe.reason() != null ? mainframe.reason() : mainframe.status().getSerializedName();
+                status = "no_power".equals(mainframe.reason()) ? "no_power" : mainframe.isOnline() && mainframe.isEnabled() ? "online" : "offline";
                 var power = new JsonObject();
                 power.addProperty("stored", mainframe.energy().energy());
                 power.addProperty("capacity", mainframe.energy().capacity());
                 power.addProperty("usage", mainframe.energyUsage());
+                power.addProperty("ok", mainframe.hasPower());
                 n.add("power", power);
             } else {
                 var relay = relaysById.get(node.id());
@@ -272,10 +302,12 @@ public final class NetworkService {
                     power.addProperty("stored", relay.energy().energy());
                     power.addProperty("capacity", relay.energy().capacity());
                     power.addProperty("usage", relay.type().usage());
+                    power.addProperty("ok", relay.hasPower());
                     n.add("power", power);
                 }
             }
             n.addProperty("status", status);
+            lastSeen(n, node.id(), status);
             var path = result.nodePaths().get(node.id());
             if (path != null && path.size() > 1) {
                 n.addProperty("parent", path.get(path.size() - 2));
@@ -294,10 +326,16 @@ public final class NetworkService {
             var route = result.route(device.id());
             var n = new JsonObject();
             n.addProperty("id", device.id());
-            n.addProperty("type", device.type().id);
             var section = CloudNetwork.section(UUID.fromString(device.id()));
+            String type = deviceTypeId(device, section);
+            LAST_TYPE.put(device.id(), type);
+            n.addProperty("type", type);
             n.addProperty("name", section != null ? section.getTitle() : "");
-            n.addProperty("status", route == null || !route.connected() ? "no_route" : mainframe.isOnline() ? "online" : "offline");
+            String status = route == null || !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range"
+                : mainframe.isOnline() ? "online" : "offline";
+            n.addProperty("status", status);
+            n.addProperty("uplinkId", device.id());
+            lastSeen(n, device.id(), status);
             if (route != null && route.legacyOutOfRange()) {
                 var flags = new JsonArray();
                 flags.add("legacy_out_of_range");
@@ -317,9 +355,11 @@ public final class NetworkService {
             if (loaded.contains(id)) continue;
             var n = new JsonObject();
             n.addProperty("id", id);
-            n.addProperty("type", "device");
+            n.addProperty("type", LAST_TYPE.getOrDefault(id, NetworkGraph.DeviceType.UPLINK.id));
             n.addProperty("name", "");
             n.addProperty("status", "unloaded");
+            n.addProperty("uplinkId", id);
+            lastSeen(n, id, "unloaded");
             var p = e.getValue().pos();
             if (positions) n.add("pos", pos(p.getX() + .5, p.getY() + .5, p.getZ() + .5));
             n.addProperty("dim", e.getValue().dimension().identifier().toString());
@@ -336,17 +376,43 @@ public final class NetworkService {
             if (positions && link.distance() >= 0) l.addProperty("dist", Math.round(link.distance() * 10) / 10.0);
             l.addProperty("kind", link.kind() == NetworkGraph.LinkKind.ENDER ? "ender" : "radio");
             if (link.weak()) l.addProperty("weak", true);
+            if (link.legacy()) l.addProperty("legacy", true);
             links.add(l);
         }
         json.add("links", links);
+        // Routes: node id -> ids from the mainframe to that node, both ends included.
         var routes = new JsonObject();
+        for (var e : result.nodePaths().entrySet()) {
+            if (!included.contains(e.getKey())) continue;
+            var path = new JsonArray();
+            for (var hop : e.getValue()) path.add(hop);
+            routes.add(e.getKey(), path);
+        }
         for (var e : result.routes().entrySet()) {
+            if (!e.getValue().connected()) continue;
             var path = new JsonArray();
             for (var hop : e.getValue().path()) path.add(hop);
+            path.add(e.getKey());
             routes.add(e.getKey(), path);
         }
         json.add("routes", routes);
         return json;
+    }
+
+    private static String deviceTypeId(NetworkGraph.Device device, @Nullable DashboardSection section) {
+        if (device.type() != NetworkGraph.DeviceType.BRIDGE) return device.type().id;
+        return section instanceof BridgeSection bridge && "rs".equals(bridge.host().bridgeCore().kind()) ? "rs_bridge" : "me_bridge";
+    }
+
+    /** Remembers when a node was online; adds {@code lastSeen} (ms) to nodes that are not online. */
+    private static void lastSeen(JsonObject node, String id, String status) {
+        long now = System.currentTimeMillis();
+        if (status.equals("online")) {
+            LAST_ONLINE.put(id, now);
+            return;
+        }
+        var last = LAST_ONLINE.get(id);
+        if (last != null) node.addProperty("lastSeen", last);
     }
 
     private static boolean nearNetwork(NetworkGraph.Node node, NetworkGraph.Result result) {

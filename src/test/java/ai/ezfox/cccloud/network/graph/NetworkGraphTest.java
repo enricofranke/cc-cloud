@@ -98,6 +98,19 @@ class NetworkGraphTest {
         assertFalse(off.route("old").connected(), "legacyRangeGrace=false");
         var otherDim = NetworkGraph.compute("mf", nodes, List.of(uplink("old2", NETHER, 0, true)), true);
         assertTrue(otherDim.route("old2").legacyOutOfRange(), "v0.3 advanced uplinks worked across dimensions");
+        var legacyLink = r.links().stream().filter(l -> l.b().equals("old")).findFirst().orElseThrow();
+        assertTrue(legacyLink.legacy() && legacyLink.signal() == 0 && legacyLink.a().equals("mf"), "legacy device gets a legacy link to the mainframe");
+        assertFalse(legacyLink.weak(), "legacy links are not reported as weak");
+    }
+
+    @Test
+    void reportsEveryLinkInRange() {
+        // The uplink at 100 reaches both relays (48 device range, 96 relay device range... both within reach) but uses one.
+        var nodes = List.of(mf(0), relay("r1", 80, true), relay("r2", 120, true));
+        var r = NetworkGraph.compute("mf", nodes, List.of(uplink("u", OW, 100, false)), true);
+        long deviceLinks = r.links().stream().filter(l -> l.b().equals("u")).count();
+        assertEquals(2, deviceLinks, "both relays in range are reported, not only the routed one");
+        assertEquals(List.of("mf", "r1"), r.route("u").path(), "fewest hops wins");
     }
 
     @Test

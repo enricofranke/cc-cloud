@@ -156,7 +156,7 @@ public final class WebHub {
     }
 
     /** Mainframe power for the dashboard header: {@code {"t":"state", ..., "power":{stored,capacity,usage,ok}, "reason"}}. */
-    public void publishPower(UUID mainframeId, long stored, long capacity, long usage, boolean ok, @Nullable String reason) {
+    public void publishPower(UUID mainframeId, long stored, long capacity, long usage, boolean ok, @Nullable String reason, @Nullable JsonArray breakdown) {
         var view = view(mainframeId);
         synchronized (view) {
             var power = new JsonObject();
@@ -164,6 +164,7 @@ public final class WebHub {
             power.addProperty("capacity", capacity);
             power.addProperty("usage", usage);
             power.addProperty("ok", ok);
+            if (breakdown != null) power.add("breakdown", breakdown);
             if (power.equals(view.power) && java.util.Objects.equals(reason, view.reason)) return;
             view.power = power;
             view.reason = reason;

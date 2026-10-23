@@ -209,7 +209,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         WebHub.INSTANCE.publishMainframe(mainframeId, getDisplayName(), nowOnline, enabled);
         // Power numbers change every tick: publish once per second, or right away when the power state flips.
         if (powerTicks++ % 20 == 0 || WebHub.INSTANCE.powerOkChanged(mainframeId, hasPower)) {
-            WebHub.INSTANCE.publishPower(mainframeId, energy.energy(), energy.capacity(), energyUsage, hasPower, reason());
+            WebHub.INSTANCE.publishPower(mainframeId, energy.energy(), energy.capacity(), energyUsage, hasPower, reason(),
+                ai.ezfox.cccloud.network.NetworkService.breakdownJson(mainframeId, WebHub.INSTANCE.clientCount(mainframeId)));
         }
     }
 
