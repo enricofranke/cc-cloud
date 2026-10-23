@@ -312,7 +312,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     public boolean canManage(Player player) {
         if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return true;
         UUID id = player.getUUID();
-        return id.equals(owner) || trusted.containsKey(id);
+        return id.equals(owner) || trusted.containsKey(id) || ai.ezfox.cccloud.compat.TeamTrust.trusts(owner, id);
     }
 
     public boolean trust(NameAndId player) {

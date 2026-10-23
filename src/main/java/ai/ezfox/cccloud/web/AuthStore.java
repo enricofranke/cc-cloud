@@ -62,7 +62,8 @@ public final class AuthStore {
     /** Owner and trusted players of a mainframe, mirrored from the block entity so rights can be checked while it is unloaded. */
     public record Acl(@Nullable UUID owner, Set<UUID> trusted) {
         public boolean allows(UUID player) {
-            return player.equals(owner) || trusted.contains(player);
+            // v0.5: integrations (FTB Teams) may trust the owner's team members.
+            return player.equals(owner) || trusted.contains(player) || ai.ezfox.cccloud.compat.TeamTrust.trusts(owner, player);
         }
     }
 

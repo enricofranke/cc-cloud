@@ -37,6 +37,8 @@ public final class WebHub {
         final Map<String, JsonObject> uplinks = new LinkedHashMap<>();
         /** uplinkId → widget id → widget json (points into the snapshot above) */
         final Map<String, Map<String, JsonObject>> widgetIndex = new ConcurrentHashMap<>();
+        /** v0.5: sections only sent to devices with canControl (snapshot {@code "restricted":true}, e.g. the Server card). */
+        final Set<String> restricted = new java.util.HashSet<>();
         Map<String, JsonObject> outbox = new LinkedHashMap<>();
         int alertSeq;
         /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
@@ -190,6 +192,8 @@ public final class WebHub {
         synchronized (view) {
             view.uplinks.put(uplinkId, copy);
             view.widgetIndex.put(uplinkId, index);
+            if (copy.has("restricted") && copy.get("restricted").getAsBoolean()) view.restricted.add(uplinkId);
+            else view.restricted.remove(uplinkId);
             // The snapshot already contains the latest values.
             view.outbox.keySet().removeIf(k -> k.startsWith("v:" + uplinkId + ":"));
             var message = copy.deepCopy();
@@ -291,6 +295,7 @@ public final class WebHub {
         synchronized (view) {
             if (view.uplinks.remove(uplinkId) == null) return;
             view.widgetIndex.remove(uplinkId);
+            view.restricted.remove(uplinkId);
             view.outbox.keySet().removeIf(k -> k.startsWith("v:" + uplinkId + ":"));
             var message = new JsonObject();
             message.addProperty("t", "uplink_removed");
@@ -362,7 +367,9 @@ public final class WebHub {
             json.add("mainframe", mainframe);
             json.addProperty("canControl", canControl);
             var uplinks = new JsonArray();
-            for (var uplink : view.uplinks.values()) uplinks.add(uplink);
+            for (var entry : view.uplinks.entrySet()) {
+                if (canControl || !view.restricted.contains(entry.getKey())) uplinks.add(entry.getValue());
+            }
             json.add("uplinks", uplinks);
             json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
             // Positions only for devices with canControl.
@@ -422,6 +429,7 @@ public final class WebHub {
         for (var view : views.values()) {
             Map<String, JsonObject> pending;
             String networkFull = null, networkStripped = null;
+            Set<String> restricted;
             synchronized (view) {
                 if (view.networkDirty && now - view.networkSentAt >= 500) {
                     view.networkDirty = false;
@@ -432,6 +440,7 @@ public final class WebHub {
                 if (view.outbox.isEmpty() && networkFull == null) continue;
                 pending = view.outbox;
                 view.outbox = new LinkedHashMap<>();
+                restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
             }
             if (networkFull != null && !view.sessions.isEmpty()) {
                 for (var session : view.sessions) {
@@ -443,8 +452,16 @@ public final class WebHub {
             if (pending.isEmpty()) continue;
             if (view.sessions.isEmpty()) continue;
             var messages = new ArrayList<String>(pending.size());
-            for (var message : pending.values()) messages.add(Json.GSON.toJson(message));
-            for (var session : view.sessions) session.send(messages);
+            List<String> readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size());
+            for (var message : pending.values()) {
+                String json = Json.GSON.toJson(message);
+                messages.add(json);
+                if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
+            }
+            for (var session : view.sessions) {
+                var device = session.device();
+                session.send(device == null || device.canControl() ? messages : readOnly);
+            }
         }
     }
 

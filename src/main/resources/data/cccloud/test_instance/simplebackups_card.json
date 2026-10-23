@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "simplebackups"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:simplebackups_card",
+  "max_ticks": 900,
+  "structure": "cccloud:test_floor"
+}

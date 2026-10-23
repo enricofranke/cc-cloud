@@ -41,6 +41,19 @@ public final class Integrations {
         optional("mffs", () -> ai.ezfox.cccloud.compat.mffs.MffsCards::init);
         optional("merequester", () -> ai.ezfox.cccloud.compat.merequester.MeRequesterCards::init);
 
+        // B. Server & team.
+        ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
+            () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));
+        test("server_card", () -> ai.ezfox.cccloud.compat.server.ServerCardGameTests::serverCard);
+        optional("spark", () -> ai.ezfox.cccloud.compat.spark.SparkStats::init);
+        TeamTrust.setEnabled(() -> IntegrationConfig.get(IntegrationConfig.FTB_TEAMS_TRUST));
+        optional("ftbteams", () -> () -> {
+            ai.ezfox.cccloud.compat.ftbteams.FtbTeamsSource.init();
+            test("ftbteams_trust", () -> ai.ezfox.cccloud.compat.ftbteams.FtbTeamsGameTests::trust);
+        });
+        optional("ftbchunks", () -> ai.ezfox.cccloud.compat.ftbchunks.ClaimsCard::init);
+        optional("simplebackups", () -> ai.ezfox.cccloud.compat.simplebackups.BackupsCard::init);
+
         TESTS.register(bus);
     }
 
