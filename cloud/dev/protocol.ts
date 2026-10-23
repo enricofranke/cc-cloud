@@ -57,6 +57,7 @@ export const MAX_LAYOUT_BYTES = 64 * 1024;
 
 export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("layout_set"), reqId: z.string().min(1).max(64), layout: z.unknown() }),
+  z.object({ t: z.literal("net_unlink"), reqId: z.string().min(1).max(64), nodeId: z.string().min(1).max(64) }),
   z.object({
     t: z.literal("query"),
     reqId: z.string().min(1).max(64),

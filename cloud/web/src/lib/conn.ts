@@ -4,7 +4,7 @@
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
 import { signal, batch } from "@preact/signals";
-import { WIDGET_TYPES, type PowerInfo, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -126,6 +126,8 @@ export class MainframeConn {
   readonly pinLockedUntil = signal(0);
   /** Shared dashboard layout of this mainframe (null = defaults). */
   readonly layout = signal<LayoutDoc | null>(null);
+  /** v0.4 network graph (null = server without network map) */
+  readonly network = signal<NetworkInfo | null>(null);
 
   private ws?: WebSocket;
   private stopped = true;
@@ -134,6 +136,7 @@ export class MainframeConn {
   private retryTimer?: ReturnType<typeof setTimeout>;
   private silenceTimer?: ReturnType<typeof setTimeout>;
   private authFailed = false;
+  private netReqs = new Map<string, { resolve: () => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private layoutReqs = new Map<string, { resolve: (server?: LayoutDoc) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private queries = new Map<string, { resolve: (r: QueryResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private pendingMeta = new Map<string, Pending>();
@@ -293,6 +296,7 @@ export class MainframeConn {
           this.uplinks.value = msg.uplinks.map(normalizeUplink).filter(Boolean) as Uplink[];
           if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
+          this.network.value = normalizeNetwork(msg.network);
           const cc = msg.canControl ?? msg.device?.canControl ?? msg.mainframe?.canControl;
           if (typeof cc === "boolean") this.canControl.value = cc;
           this.status.value = "open";
@@ -376,6 +380,18 @@ export class MainframeConn {
         });
         this.queryFailed(String(msg.reqId ?? ""), typeof msg.error === "string" ? msg.error : "rejected");
         break;
+      case "network":
+        this.network.value = normalizeNetwork(msg.network);
+        break;
+      case "net_result": {
+        const r = this.netReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.netReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve();
+        else r.reject(new Error(typeof msg.error === "string" ? msg.error : "rejected"));
+        break;
+      }
       case "layout":
         this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
         break;
@@ -480,6 +496,20 @@ export class MainframeConn {
     }
   }
 
+  /** v0.4: unlinks a device or relay from the network ({"t":"net_unlink"} → net_result). */
+  unlinkNode(nodeId: string, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      if (!this.canControl.value) return reject(new Error("read_only"));
+      if (!this.send({ t: "net_unlink", reqId, nodeId })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
   /** Saves the shared layout: {"t":"layout_set"} → layout_result. Rejects with the server error code. */
   saveLayout(layout: LayoutDoc, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
@@ -548,6 +578,11 @@ export class MainframeConn {
 
   private dropAllPending() {
     for (const [id] of this.queries) this.queryFailed(id, "disconnected");
+    for (const [id, r] of this.netReqs) {
+      clearTimeout(r.timer);
+      r.reject(new Error("disconnected"));
+      this.netReqs.delete(id);
+    }
     for (const [id, l] of this.layoutReqs) {
       clearTimeout(l.timer);
       l.reject(new Error("disconnected"));
@@ -621,7 +656,61 @@ export function normalizePower(p: any): PowerInfo | undefined {
   if (!p || typeof p !== "object") return undefined;
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
   const capacity = n(p.capacity);
-  return { stored: Math.min(n(p.stored), capacity || Infinity), capacity, usage: n(p.usage), ok: p.ok !== false };
+  const out: PowerInfo = { stored: Math.min(n(p.stored), capacity || Infinity), capacity, usage: n(p.usage), ok: p.ok !== false };
+  if (Array.isArray(p.breakdown))
+    out.breakdown = p.breakdown
+      .filter((b: any) => b && typeof b.key === "string")
+      .slice(0, 16)
+      .map((b: any) => ({ key: b.key.slice(0, 32), fe: n(b.fe), ...(typeof b.count === "number" ? { count: n(b.count) } : {}) }));
+  return out;
+}
+
+const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "me_bridge", "rs_bridge"];
+const NODE_STATUS = ["online", "offline", "no_power", "no_route", "unloaded", "legacy_out_of_range"];
+
+/** Validates the untrusted network graph (v0.4 map). */
+export function normalizeNetwork(raw: any): NetworkInfo | null {
+  if (!raw || typeof raw !== "object" || !Array.isArray(raw.nodes)) return null;
+  const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  const nodes: NetNode[] = [];
+  const ids = new Set<string>();
+  for (const n of raw.nodes.slice(0, 512)) {
+    if (!n || typeof n.id !== "string" || ids.has(n.id) || !NODE_TYPES.includes(n.type)) continue;
+    ids.add(n.id);
+    const pos = n.pos && typeof n.pos === "object" ? { x: num(n.pos.x), y: num(n.pos.y), z: num(n.pos.z) } : undefined;
+    nodes.push({
+      id: n.id.slice(0, 64),
+      type: n.type,
+      name: typeof n.name === "string" ? n.name.slice(0, 48) : n.type,
+      ...(pos ? { pos } : {}),
+      dim: typeof n.dim === "string" ? n.dim.slice(0, 64) : "minecraft:overworld",
+      status: NODE_STATUS.includes(n.status) ? n.status : "offline",
+      ...(n.power ? { power: normalizePower(n.power) } : {}),
+      range: Math.max(0, num(n.range)),
+      ...(typeof n.deviceRange === "number" ? { deviceRange: Math.max(0, num(n.deviceRange)) } : {}),
+      ...(typeof n.uplinkId === "string" ? { uplinkId: n.uplinkId.slice(0, 64) } : {}),
+      ...(typeof n.lastSeen === "number" ? { lastSeen: n.lastSeen } : {}),
+    });
+  }
+  const links: NetLink[] = (Array.isArray(raw.links) ? raw.links : [])
+    .filter((l: any) => l && ids.has(l.a) && ids.has(l.b) && l.a !== l.b)
+    .slice(0, 2048)
+    .map((l: any) => ({
+      a: l.a,
+      b: l.b,
+      signal: Math.max(0, Math.min(1, num(l.signal))),
+      dist: Math.max(0, num(l.dist)),
+      kind: l.kind === "ender" ? "ender" : "radio",
+      ...(l.legacy === true ? { legacy: true } : {}),
+    }));
+  const routes: Record<string, string[]> = {};
+  if (raw.routes && typeof raw.routes === "object")
+    for (const [k, v] of Object.entries(raw.routes as Record<string, unknown>)) {
+      if (!ids.has(k) || !Array.isArray(v)) continue;
+      const path = v.filter((x): x is string => typeof x === "string" && ids.has(x)).slice(0, 9);
+      if (path.length) routes[k] = path;
+    }
+  return { nodes, links, routes };
 }
 
 function normalizeUplink(u: any): Uplink | null {

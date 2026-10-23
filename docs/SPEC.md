@@ -468,3 +468,108 @@ Every template is a normal set of widgets, so the user can rearrange it in edit 
 ### F. HTTPS via Tailscale + statistics
 - Docs page: "Install as an app with HTTPS via Tailscale" (`tailscale serve --https=443 http://localhost:8787`, or `tailscale cert`) – the mod only needs `publicUrl` set and trusted proxy 127.0.0.1. Detect `Tailscale-User-Login` headers? No – keep auth as is.
 - **Long-term stats**: any numeric widget can opt in (`opts.history="1h"|"24h"|"7d"`); the mod downsamples (1 min / 5 min / 30 min buckets) and stores compactly per mainframe (cap 2 MB). Charts in the dashboard with range switcher; CSV export (canControl).
+
+## v0.6 – Accounts, permissions, roles, teams, share links (approved 2026-10-23)
+"Device" always means any browser – phone, tablet or PC. The UI and docs must never assume a phone.
+
+### Player accounts (one login per player)
+- `/cccloud link` (or the "Link this browser" button in the mainframe screen) shows a one-time code (10 min). Entering it in the browser + in-game approval (same flow as today) links the browser to the **player account**, not to one mainframe. The browser then sees every mainframe where that player has a role (own, trusted, team, admin permission), switching between them in the header.
+- Existing per-mainframe device tokens keep working (migration: they become account tokens limited to that one mainframe).
+- `/cccloud devices` and the web "Devices" page list all browsers of a player with name, type (phone/desktop from the user agent, informational only), last IP, last seen; revoke from either side.
+
+### Roles per mainframe
+- `viewer` – sees everything except coordinates and secrets, cannot act.
+- `operator` – viewer + buttons, toggles, sliders, crafting, rules enable/disable.
+- `admin` – operator + devices, roles, PIN, rules editing, push targets, terminal/editor, layout editing, share links.
+- `owner` – the placer; admin + transfer ownership + delete.
+- Assign per player (`/cccloud role <player> <role>`, mainframe screen, web "Access" page) and per group (see teams). The highest role from all sources wins. Every check in the code goes through one `AccessResolver` (player, mainframe) → role; canControl is derived from it.
+
+### Server permissions (works with the permission mods hosts use)
+- Use NeoForge's **PermissionAPI** (`PermissionNode`s registered in `PermissionGatherEvent.Nodes`), so **LuckPerms** (NeoForge) and **FTB Ranks** (ships with ATM11) control them without extra integration; without a permission mod the default is vanilla op level.
+- Nodes (default → op level 2 unless noted):
+  - `cccloud.use` (default true) – may place/use the blocks and link browsers
+  - `cccloud.admin.view` – view any mainframe's dashboard as viewer
+  - `cccloud.admin.operate` – operate any mainframe
+  - `cccloud.admin.manage` – manage devices/roles of any mainframe (moderation)
+  - `cccloud.command.icons`, `cccloud.command.reload`, `cccloud.bypass.limits` (op 4)
+  - `cccloud.limit.mainframes` (integer node, default 3) – max mainframes per player
+- Admin access is visible: the owner sees "Viewed by admin <name>" entries in the audit log.
+
+### Teams / clans
+- Providers (auto-detected, config to choose/disable): **FTB Teams** (ATM11), **Open Parties and Claims** parties, **vanilla scoreboard teams** (fallback).
+- A mainframe can be assigned to a team (owner/admin). Team rank → role mapping per mainframe, defaults: FTB Teams owner/officer → admin, member → operator, ally → viewer; OPAC party leader → admin, member → operator, ally → viewer; scoreboard team member → operator.
+- Membership changes apply live (re-check on connect and every 5 s, like bans).
+
+### Share links (read-only, opt-in)
+- Admin creates a link for selected cards/pages: `https://host/s/<id>#<secret>`. The secret lives in the URL fragment, so it is never sent in requests, logs or Referer; the client sends it in the first WS message (`{"t":"auth_share","id","secret"}`). 128-bit random secret, stored hashed.
+- Options: expiry (1 h / 24 h / 7 days / never), max concurrent viewers, cards/pages to include, hide exact numbers (show only gauges) – default: no coordinates, no item search, no network map, no history export.
+- Share viewers are a separate role `share` with a hard deny on every action, query and file/terminal API (enforced in the central auth layer, plus a test that walks every message type with a share session). Rate limits per share link; revocable instantly (open sessions are closed).
+- `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex` on /s/ routes.
+
+### Security baseline (re-stated for everything above and v0.5)
+- No server-side code execution from web input, ever: the browser only sends data that is validated against schemas; there is no eval, no scripting endpoint, no command passthrough. The Lua terminal/editor (v0.5 E) only reach the CC computer's own sandbox (CC Lua runs in its own VM; CC's HTTP rules still block private IPs by default – do not loosen them) and are admin-only.
+- File API: canonicalize paths inside the computer's root, reject `..`, absolute paths, symlinks, rom/ and disk mounts; size and quota limits.
+- All JSON parsed with size limits and strict schemas; unknown fields rejected; numbers bounded.
+- Dependencies: keep the web bundle dependency list short and audited (`pnpm audit` in CI); the mod uses only MC/NeoForge/Netty/Gson.
+- Add a `docs/SECURITY.md` threat model (assets, attackers: other players, internet scanners, share-link holders, malicious mod clients; mitigations) and run a dedicated security review before each release.
+
+### v0.4 network map – protocol details used by the dashboard
+(Additions to the v0.4 "Network map" section above; the dev mock in `cloud/dev/network-sim.ts` implements them.)
+- `network.nodes[]`: `{id, type, name, pos?, dim, status, power?, range, deviceRange?, uplinkId?, lastSeen?}`
+  - `type`: `mainframe | relay | advanced_relay | ender_relay | uplink | advanced_uplink | me_bridge | rs_bridge`
+  - `status`: `online | offline | no_power | no_route | unloaded | legacy_out_of_range`
+  - `uplinkId`: the uplink id of the dashboard card this node belongs to (uplinks and bridges), so "Open card" can jump to it. For uplinks it is usually equal to `id`.
+  - `power` (relays and the mainframe): `{stored, capacity, usage, ok}` in FE / FE/t.
+  - `lastSeen`: ms since the epoch, for nodes that are not online.
+- `network.links[]`: `{a, b, signal 0..1, dist, kind: "radio"|"ender", legacy?}`. Send every link that is in range, not only the ones on a route (the map shows unused links faintly). A `legacy_out_of_range` device gets a link to the mainframe with `legacy: true, signal: 0`.
+- `network.routes`: node id → node ids **from the mainframe to that node, both ends included** (e.g. `["mf","relay-north","storage"]`). The mainframe's own route is `[mainframeId]`. Nodes without a path have no entry. Unloaded nodes may keep their last route.
+- Delta: `{"t":"network","network":{…full graph…}}` (at most 2 per second). For devices without `canControl`, omit every `pos`.
+- Unlink from the map (canControl only): client → `{"t":"net_unlink","reqId","nodeId"}`, server → `{"t":"net_result","reqId","ok","error?"}` with errors `read_only | unknown_node | not_allowed` (the mainframe cannot be unlinked). After success the server sends a `network` delta.
+- Power breakdown: the mainframe's `power` object (snapshot and `state` deltas) gains `breakdown: [{key, count?, fe}]` with keys `base | uplinks | advanced_uplinks | bridges | clients | hops` (sums to `usage`). The dashboard shows it in a popover from the header's power bar, plus each relay's own `power` from the network graph.
+
+## v0.7 – Upgrades, wired links, wireless redstone, tablet, display, 3D map, quests (approved 2026-10-23)
+
+### Mainframe upgrades (ATM progression)
+The mainframe gets 4 upgrade slots (in its screen; hoppers cannot insert). Base limits without upgrades (config):
+| Limit | Base |
+|---|---|
+| connected devices (uplinks + bridges + relays) | 16 |
+| concurrent browsers | 4 |
+| rules | 8 |
+| history retention | 1 h |
+| node range (mainframe as node) | 96 |
+Upgrade cards (stack effects by tier, one card per type counts – the highest tier of each type wins):
+| Card | Allthemodium | Vibranium | Unobtainium |
+|---|---|---|---|
+| Capacity (devices) | 48 | 128 | 512 |
+| Bandwidth (browsers, widget update rate) | 8 browsers | 16 | 64 |
+| Range (node range ×) | ×1.5 | ×2 | ×3 |
+| Efficiency (mainframe FE ×) | ×0.8 | ×0.65 | ×0.5 |
+| Memory (rules / history) | 24 / 24 h | 64 / 7 d | 128 / 30 d |
+- **Quantum Core** (ATM Star tier, one per mainframe): unlimited devices and browsers, the mainframe acts as an Ender node (cross-dimension), FE ×0.25.
+- Recipes use the pack's metals by tag (`#c:ingots/allthemodium`, `#c:ingots/vibranium`, `#c:ingots/unobtainium`, `allthetweaks:atm_star` – verify ids in the ATM11 jars); without AllTheModium present, fallback recipes with diamond/netherite/nether star (conditional recipes).
+- Exceeding a limit: new links are refused with a clear message; existing extra devices (after removing a card) go `over_capacity` and stop (highest-hop/most-recent first) until capacity returns.
+
+### Wired links (like AE2 cables)
+- Devices can join the network **by cable** instead of radio: use CC: Tweaked's own wired network (networking cable + wired modems). The mainframe and relays expose a CC `WiredElement`; any uplink/bridge connected to the same CC wired network is a wired member.
+- Wired links: no range limit, 100 % signal, no per-hop FE, shown as solid lines on the map ("cable"); radio links dashed.
+- A device can have both; wired is preferred.
+
+### Wireless redstone over the network
+- New mode on uplinks (set in the uplink screen): **Redstone transmitter** / **receiver** on a channel name (per mainframe network). Receivers output the max signal of all transmitters on that channel (analog 0–15). Works over relays, wired links and across dimensions via ender relays. Latency: next tick after the change; max 64 channels per network, change rate limited (redstone clocks faster than 2 ticks are smoothed).
+- Channels are shown in the dashboard (indicator per channel; operators can override a channel for N seconds or until reset – optional).
+
+### Cloud Tablet (item)
+- Handheld item, opens the dashboard **in-game** (a native screen that renders the same cards/widgets with MC widgets – not a browser). Works within network range of any node (or anywhere in Ender range with an advanced tablet). Uses the player's role on that mainframe. Keybind to open (default unbound) when the tablet is in the inventory/curios slot.
+- Normal and advanced tier; recipe from a CC pocket computer + cloud core (+ gold/ender pearl for advanced).
+
+### Cloud Display (block)
+- A multiblock-capable display (like CC monitors: forms rectangles up to 8×6) that renders one dashboard card or page in-world (read-only, chosen in its screen; operators can make buttons clickable in-world with right-click). Rendered with a BER using cached textures, updated at most 4×/s, culled beyond 48 blocks.
+
+### 3D map in the web dashboard
+- A third view on the Network page: **3D**. three.js (lazy chunk, pinned version, bundled – no CDN at runtime). Devices are rendered with their real block models (reuse the model JSONs + textures from `/assets/...` served by the mod or bundled), placed at real coordinates; links as lines/tubes; ranges as translucent spheres (toggle).
+- Optional coarse terrain: the server samples a heightmap with map colors (`MapColor`) around nodes (radius 96, 2-block grid, only loaded chunks, cached, ≤ 200 KB per request, canControl only, rate-limited) so the base is recognizable.
+- Interaction: orbit/zoom/pan (touch + mouse), click a device → its detail panel with sub-menus (card, widgets, power, routes, actions per role); click a relay → highlight everything routed through it; dimension switcher; "fly to" from search.
+
+### FTB Quests chapters
+- Two chapters for ATM11: **CC: Tweaked** (computers, turtles, monitors, modems, peripherals, first programs) and **CC: Cloud** (mainframe, power, uplinks, link card, pairing a browser, bridges, relays, upgrades, tablet, display, rules). Format: the pack's `config/ftbquests/quests/chapters/*.json5` + lang files; place them in a chapter group that fits ATM11's structure, rewards in ATM style (modest). Ship them in the repo under `integration/ftbquests/` with an install script; contribution to ATM via their process (see docs/ATM_SUBMISSION.md).

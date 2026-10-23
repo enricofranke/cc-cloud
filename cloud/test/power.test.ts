@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 const base = () => `http://127.0.0.1:${mock!.port}`;
 async function start() {
-  mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, ae2: false, controlRoom: false, computer: false, log: () => {} });
+  mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, ae2: false, controlRoom: false, computer: false, network: false, log: () => {} });
 }
 async function token() {
   return (await (await fetch(`${base()}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Vitest" }) })).json()).token as string;

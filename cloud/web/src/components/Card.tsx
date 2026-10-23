@@ -84,7 +84,7 @@ export function Card({ card, conn, locked, children }: { card: ResolvedCard; con
   const cardLocked = locked || !card.uplink.online;
   const cols = bodyCols(card.span);
   return (
-    <article class={`card cs${card.span} accent-${card.color} ${card.uplink.online ? "" : "card-offline"}`} aria-label={card.title}>
+    <article class={`card cs${card.span} accent-${card.color} ${card.uplink.online ? "" : "card-offline"}`} aria-label={card.title} data-card={card.key}>
       <header class="card-head">
         {card.icon ? <PixelIcon name={card.icon} size={16} class="card-icon" /> : <span class={`led ${card.uplink.online ? "led-on" : "led-off"}`} aria-hidden="true" />}
         <h3 class="card-title">{card.title || "Untitled"}</h3>

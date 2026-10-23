@@ -10,6 +10,7 @@ import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { SAMPLE_ICONS } from "./icons.ts";
+import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
 type Level = "info" | "warn" | "crit";
@@ -68,8 +69,10 @@ interface Mainframe {
   clients: Set<Client>;
   layout: object | null;
   layoutSaves: number[];
+  /** v0.4 network map */
+  net?: { nodes: SimNode[]; lastSeen: Record<string, number> };
   /** v0.3 FE buffer; undefined = requirePower=false */
-  power?: { stored: number; capacity: number; input: number; usage: number; ok: boolean; brownout: number };
+  power?: { stored: number; capacity: number; input: number; usage: number; ok: boolean; brownout: number; breakdown?: { key: string; count?: number; fe: number }[] };
   reason?: string;
   /** Simulates a Lua script that never answers (for rollback tests). */
   ignoreActions: boolean;
@@ -100,6 +103,8 @@ export interface MockOptions {
   ae2?: boolean;
   /** Add the Lua v2 "Control Room" uplink with pages/groups (default true). */
   controlRoom?: boolean;
+  /** v0.4: simulate the relay network + map (default true). */
+  network?: boolean;
   /** v0.3: the base mainframe needs FE (default true). */
   power?: boolean;
   /** Add an uplink in v0.3 auto mode: the automatic Computer card (default true). */
@@ -186,7 +191,15 @@ export async function createMockServer(opts: MockOptions = {}) {
   const sendTo = (ws: WebSocket, msg: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(msg));
   const broadcast = (mf: Mainframe, msg: object) => mf.clients.forEach((c) => sendTo(c.ws, msg));
   const powerOf = (mf: Mainframe) =>
-    mf.power ? { stored: Math.round(mf.power.stored), capacity: mf.power.capacity, usage: mf.power.usage, ok: mf.power.ok } : undefined;
+    mf.power
+      ? {
+          stored: Math.round(mf.power.stored),
+          capacity: mf.power.capacity,
+          usage: mf.power.usage,
+          ok: mf.power.ok,
+          ...(mf.power.breakdown ? { breakdown: mf.power.breakdown } : {}),
+        }
+      : undefined;
   const info = (mf: Mainframe) => ({
     id: mf.id,
     name: mf.name,
@@ -201,7 +214,61 @@ export async function createMockServer(opts: MockOptions = {}) {
     canControl: c?.canControl ?? true,
     uplinks: [...mf.uplinks.values()],
     layout: mf.layout,
+    ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
   });
+
+  // ---- v0.4 network map
+  function networkPayload(mf: Mainframe, withPositions: boolean) {
+    if (!mf.net) return null;
+    const { links, routes, status } = computeNetwork(mf.net.nodes);
+    return {
+      nodes: mf.net.nodes.map((n) => {
+        const fe = RELAY_FE[n.type];
+        return {
+          id: n.id,
+          type: n.type,
+          name: n.name,
+          // positions only for devices that may control (in-world information)
+          ...(withPositions ? { pos: n.pos } : {}),
+          dim: n.dim,
+          status: n.type === "mainframe" ? (mf.online ? "online" : mf.reason === "no_power" ? "no_power" : "offline") : status[n.id],
+          range: RANGES[n.type].range,
+          ...(RANGES[n.type].deviceRange !== undefined ? { deviceRange: RANGES[n.type].deviceRange } : {}),
+          ...(n.uplinkId ? { uplinkId: n.uplinkId } : {}),
+          ...(fe ? { power: { stored: n.powered === false ? 0 : 41_000, capacity: n.type === "relay" ? 50_000 : n.type === "advanced_relay" ? 100_000 : 200_000, usage: n.powered === false ? 0 : fe, ok: n.powered !== false } } : {}),
+          lastSeen: mf.net!.lastSeen[n.id] ?? Date.now(),
+        };
+      }),
+      links,
+      routes,
+    };
+  }
+  function broadcastNetwork(mf: Mainframe) {
+    if (!mf.net) return;
+    // deltas: full graph, coordinates stripped for read-only devices
+    const full = { t: "network", network: networkPayload(mf, true) };
+    const ro = { t: "network", network: networkPayload(mf, false) };
+    for (const c of mf.clients) sendTo(c.ws, c.canControl ? full : ro);
+  }
+  /** v0.4 power formula: base 40 + 4/uplink + 8/advanced uplink + 10/bridge + 2/client + 1 per extra hop. */
+  function powerBreakdown(mf: Mainframe) {
+    const items: { key: string; count?: number; fe: number }[] = [{ key: "base", fe: 40 }];
+    if (mf.net) {
+      const { routes, status } = computeNetwork(mf.net.nodes);
+      const routed = mf.net.nodes.filter((n) => routes[n.id] && n.type !== "mainframe" && status[n.id] !== "unloaded");
+      const count = (types: string[]) => routed.filter((n) => types.includes(n.type)).length;
+      const up = count(["uplink"]);
+      const adv = count(["advanced_uplink"]);
+      const br = count(["me_bridge", "rs_bridge"]);
+      const hops = routed.filter((n) => !RELAY_FE[n.type]).reduce((s, n) => s + Math.max(0, routes[n.id].length - 2), 0);
+      items.push({ key: "uplinks", count: up, fe: 4 * up }, { key: "advanced_uplinks", count: adv, fe: 8 * adv }, { key: "bridges", count: br, fe: 10 * br });
+      items.push({ key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size }, { key: "hops", count: hops, fe: hops });
+    } else {
+      const uplinks = [...mf.uplinks.values()].filter((u) => u.online).length;
+      items.push({ key: "uplinks", count: uplinks, fe: 5 * uplinks }, { key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size });
+    }
+    return items;
+  }
   /** Rotates the code when it is used or older than 10 minutes. */
   function currentCode(mf: Mainframe) {
     if (Date.now() - mf.codeIssuedAt > codeTtlMs) {
@@ -554,6 +621,12 @@ export async function createMockServer(opts: MockOptions = {}) {
     };
   }
 
+  if (opts.network !== false)
+    base.net = {
+      nodes: exampleNodes({ reactor: REACTOR, me: ME, storage: STORAGE, turbine: TURBINE, control: CONTROL, computer: COMPUTER }),
+      lastSeen: {},
+    };
+
   if (opts.extras) {
     addMainframe("New Base @ 220 70 -15", true); // freshly paired, nothing linked yet
     const outpost = addMainframe("Outpost @ -340 72 118", false);
@@ -575,8 +648,8 @@ export async function createMockServer(opts: MockOptions = {}) {
   function tickPower(mf: Mainframe) {
     const p = mf.power;
     if (!p) return;
-    const uplinks = [...mf.uplinks.values()].filter((u) => u.online).length;
-    p.usage = 40 + 5 * uplinks + 2 * mf.clients.size;
+    p.breakdown = powerBreakdown(mf);
+    p.usage = p.breakdown.reduce((s, b) => s + b.fe, 0);
     const draw = p.ok ? p.usage : 0;
     p.stored = Math.max(0, Math.min(p.capacity, p.stored + (p.input - draw) * 20));
     if (p.ok && p.stored <= 0) {
@@ -682,6 +755,18 @@ export async function createMockServer(opts: MockOptions = {}) {
           return;
         }
         const msg = parsed.data;
+        if (msg.t === "net_unlink") {
+          const nres = (ok: boolean, error?: string) => sendTo(ws, { t: "net_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          if (!c.canControl) return nres(false, "read_only");
+          const node = m.net?.nodes.find((n) => n.id === msg.nodeId);
+          if (!node) return nres(false, "unknown_node");
+          if (node.type === "mainframe") return nres(false, "not_allowed");
+          m.net!.nodes = m.net!.nodes.filter((n) => n !== node);
+          log(`${c.user} unlinked ${node.name} from the network`);
+          nres(true);
+          broadcastNetwork(m);
+          return;
+        }
         if (msg.t === "layout_set") {
           const lres = (ok: boolean, error?: string) => sendTo(ws, { t: "layout_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
           if (!c.canControl) return lres(false, "read_only");
@@ -890,6 +975,14 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (typeof b.power.stored === "number") mf.power.stored = Math.max(0, Math.min(mf.power.capacity, b.power.stored));
         if (typeof b.power.input === "number") mf.power.input = Math.max(0, b.power.input);
         if (b.power.tick) for (let i = 0; i < Number(b.power.tick); i++) tickPower(mf);
+      }
+      if (b.relay && typeof b.relay === "object" && mf.net) {
+        const n = mf.net.nodes.find((x) => x.id === b.relay.id);
+        if (n) {
+          if (typeof b.relay.powered === "boolean") n.powered = b.relay.powered;
+          if (typeof b.relay.loaded === "boolean") n.loaded = b.relay.loaded;
+          broadcastNetwork(mf);
+        }
       }
       if (b.revokePlayer) {
         // the approving player lost access (untrusted / banned / de-opped): devices die immediately

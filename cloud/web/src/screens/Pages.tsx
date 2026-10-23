@@ -1,5 +1,6 @@
 // Pages/tabs + card grid, and the layout editor (edit mode).
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { ComponentType } from "preact";
 import type { MainframeConn } from "../lib/conn.ts";
 import {
   ACCENTS,
@@ -29,6 +30,17 @@ import { Card, EditCard } from "../components/Card.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconPlus } from "../components/Icons.tsx";
+
+export const NETWORK_PAGE = "__network";
+
+/** The network page is its own lazily loaded chunk. */
+function NetworkLoader({ conn, onOpenCard }: { conn: MainframeConn; onOpenCard: (uplinkId: string) => void }) {
+  const [Comp, setComp] = useState<ComponentType<{ conn: MainframeConn; onOpenCard?: (id: string) => void }> | null>(null);
+  useEffect(() => {
+    import("../network/Network.tsx").then((m) => setComp(() => m.default));
+  }, []);
+  return Comp ? <Comp conn={conn} onOpenCard={onOpenCard} /> : <div class="card skeleton net-skeleton" />;
+}
 
 function useIsPhone() {
   const mq = useMemo(() => matchMedia("(max-width: 719px)"), []);
@@ -76,6 +88,9 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   }, [props.editing]);
 
   const pages = draft ?? view;
+  // the Network page is always there (not part of the editable layout)
+  const showNetwork = !draft && conn.network.value !== null;
+  const onNetwork = showNetwork && current === NETWORK_PAGE;
   const page = pages.find((p) => p.id === current) ?? pages[0];
   const select = (id: string) => {
     setCurrent(id);
@@ -83,7 +98,19 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
       sessionStorage.setItem(pageKey(conn.info.value?.id ?? ""), id);
     } catch {}
   };
-  const showTabs = pages.length > 1 || !!draft;
+  const showTabs = pages.length > 1 || !!draft || showNetwork;
+  const openCard = (uplinkId: string) => {
+    const target = pages.find((p) => p.cards.some((c) => c.uplink.uplinkId === uplinkId));
+    if (!target) return;
+    select(target.id);
+    const key = target.cards.find((c) => c.uplink.uplinkId === uplinkId)!.key;
+    setTimeout(() => {
+      const el = document.querySelector(`[data-card="${CSS.escape(key)}"]`);
+      el?.scrollIntoView({ block: "start", behavior: "smooth" });
+      el?.classList.add("flash-card");
+      setTimeout(() => el?.classList.remove("flash-card"), 1600);
+    }, 60);
+  };
 
   const save = async () => {
     if (!draft) return;
@@ -108,7 +135,8 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
       {showTabs && (
         <Tabs
           pages={pages}
-          current={page.id}
+          network={showNetwork}
+          current={onNetwork ? NETWORK_PAGE : page.id}
           isPhone={isPhone}
           editing={!!draft}
           onSelect={select}
@@ -122,7 +150,9 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
           onDropCard={(cardKey, pageId) => draft && setDraft(moveCard(draft, cardKey, pageId, Number.MAX_SAFE_INTEGER))}
         />
       )}
-      {draft ? (
+      {onNetwork ? (
+        <NetworkLoader conn={conn} onOpenCard={openCard} />
+      ) : draft ? (
         <EditGrid pages={draft} page={page} isPhone={isPhone} onChange={setDraft} />
       ) : page.cards.length === 0 ? (
         <div class="empty">
@@ -144,6 +174,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
 // ---------------------------------------------------------------------- tabs
 function Tabs(props: {
   pages: ResolvedPage[];
+  network?: boolean;
   current: string;
   isPhone: boolean;
   editing: boolean;
@@ -178,6 +209,17 @@ function Tabs(props: {
             {props.editing && p.id === props.current && <span class="tab-edit">✎</span>}
           </button>
         ))}
+        {props.network && (
+          <button
+            type="button"
+            class={`tab tab-network ${props.current === NETWORK_PAGE ? "on" : ""}`}
+            aria-current={props.current === NETWORK_PAGE ? "page" : undefined}
+            onClick={() => props.onSelect(NETWORK_PAGE)}
+          >
+            <PixelIcon name="network" size={props.isPhone ? 18 : 14} />
+            <span class="tab-text">Network</span>
+          </button>
+        )}
         {props.editing && props.pages.length < MAX_PAGES && (
           <button type="button" class="tab tab-add" onClick={() => setPageSheet("new")} aria-label="Add page">
             <IconPlus size={props.isPhone ? 18 : 14} />

@@ -59,12 +59,13 @@ Der Mainframe läuft mit **FE** (Forge Energy, auch RF genannt) – der Einheit 
 | | Standard |
 |---|---|
 | Grundverbrauch | 40 FE/t |
-| Pro verbundenem Uplink | +5 FE/t |
+| Pro Uplink / Advanced Uplink / Bridge | +4 / +8 / +10 FE/t |
 | Pro verbundenem Dashboard | +2 FE/t |
+| Pro zusätzlichem Sprung eines Geräts | +1 FE/t |
 | Puffer | 200.000 FE |
 | Max. Eingang | 2.000 FE/t |
 
-Ohne Strom geht der Mainframe offline (nach 5 Sekunden mit leerem Puffer) und das Dashboard zeigt **„Mainframe has no power“**. Sobald der Puffer wieder voll genug ist, verbindet er sich von selbst. Uplinks und Bridges brauchen kein FE. Server-Admins können die Strompflicht abschalten (\`requirePower = false\`).
+Ohne Strom geht der Mainframe offline (nach 5 Sekunden mit leerem Puffer) und das Dashboard zeigt **„Mainframe has no power“**. Sobald der Puffer wieder voll genug ist, verbindet er sich von selbst. Uplinks und Bridges brauchen kein eigenes FE, [Relays](/docs/network#power) schon. Server-Admins können die Strompflicht abschalten (\`requirePower = false\`).
 
 ## Uplinks und Bridges verbinden {#linking}
 
@@ -292,6 +293,7 @@ Ein Computer neben dem Mainframe kann ihn auslesen:
 | \`setEnabled(bool)\` | Dashboard ein-/ausschalten |
 | \`getUplinks()\` | Liste von {id, title, online, loaded, x, y, z, dimension} |
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | gespeicherte FE, Puffergröße, FE/t |
+| \`getNetwork()\` | {nodes, links, routes} – siehe [Netzwerk](/docs/network#map) |
 
 ${code("lua", C.LUA_MAINFRAME)}
 
@@ -370,6 +372,59 @@ ${code("lua", C.UI_REACTOR)}
 - \`cloud-storage [bridge] [uplink]\` – ein eigenes Lager-Dashboard für eine ME / RS Bridge
 `,
 
+  network: `# Netzwerk, Relays und Reichweite
+
+Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Knoten** – dem Mainframe oder einem Relay – und das Netzwerk leitet ihn über den besten Weg zum Mainframe (wenigste Sprünge, dann bestes Signal; höchstens 8 Sprünge). Wie ein WLAN-Mesh: Mit Relays erreichst du weit entfernte Basen.
+
+## Reichweiten {#ranges}
+
+| Block | Reichweite zu Knoten | Reichweite für Geräte |
+|---|---|---|
+| Cloud Mainframe | 96 | 96 |
+| Cloud Relay | 96 | 48 |
+| Advanced Cloud Relay | 256 | 128 |
+| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 48 |
+| Cloud Uplink | – | 48 |
+| Advanced Cloud Uplink | – | 128 |
+| ME / RS Cloud Bridge | – | 48 |
+
+Entfernungen werden in Blöcken in gerader Linie gemessen (auch nach oben und unten), innerhalb einer Dimension. Eine Verbindung steht, wenn beide Enden einander erreichen – die kleinere Reichweite zählt.
+
+## Signal {#signal}
+
+Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unter 15 % ist eine Verbindung **schwach**: Sie funktioniert, wird aber gelb angezeigt – rück das Gerät näher heran oder setz ein Relay.
+
+## Relays {#relays}
+
+- **Cloud Relay** – ein Mast für mittlere Entfernungen.
+- **Advanced Cloud Relay** – größere Reichweite für Knoten und Geräte.
+- **Ender Relay** – verbindet sich mit anderen Ender Relays über jede Entfernung und **dimensionsübergreifend** (z. B. in den Nether). Ender Relays mit der Link Card zu einer Gruppe verbinden.
+
+Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay. Rezepte: Stein, ein Wired Modem, ein Cloud Core und Redstone (Relay); Relay + Gold + Enderperle (Advanced); Advanced Relay + Enderaugen + Goldblock (Ender) – JEI/EMI zeigen die genauen Raster.
+
+> **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
+
+## Wenn ein Relay ausfällt {#reroute}
+
+Ist ein Relay abgebaut, nicht geladen oder ohne Strom, wird alles dahinter **umgeleitet**, sofern es einen anderen Weg gibt. Sonst zeigen diese Geräte **No route**. Relays laden nie Chunks zwangsweise; Teile in nicht geladenen Chunks zeigen **Unloaded**.
+
+Geräte, die vor v0.4 verbunden wurden und nach den neuen Regeln außer Reichweite sind, funktionieren weiter und zeigen **Out of range (legacy)**, bis du in der Nähe ein Relay aufstellst oder sie neu verbindest.
+
+## Strom {#power}
+
+Das Netzwerk kostet FE. Der Mainframe braucht 40 FE/t + 4 pro Uplink + 8 pro Advanced Uplink + 10 pro Bridge + 2 pro verbundenem Dashboard + 1 pro zusätzlichem Sprung jedes Geräts. Relays brauchen eigenes FE: Cloud Relay 20 FE/t, Advanced 60 FE/t, Ender Relay 120 FE/t. Ein Klick auf die Stromanzeige oben im Dashboard zeigt die Aufschlüsselung.
+
+## Die Netzwerkkarte {#map}
+
+Der Tab **Network** zeigt alles, was verbunden ist:
+
+- **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Die Linien sind nach Signal gefärbt (grün stark, cyan ok, gelb schwach, lila gestrichelt Ender, orange gestrichelt Legacy); der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
+- **Map** – eine Draufsicht (x/z) pro Dimension mit Koordinatengitter, Reichweitenkreisen (umschaltbar), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
+
+Ein Klick auf einen Knoten zeigt Details: Typ, Position, Dimension, Status, Signal, Weg und Sprünge, Reichweite, Strom, was ein Relay weiterleitet, seine Karte. **Open card** springt zur Karte im Dashboard; **Unlink** entfernt ihn aus dem Netzwerk (braucht Steuerrechte). Positionen sehen nur Geräte, die den Mainframe steuern dürfen.
+
+Aus Lua liefert \`cloud_mainframe.getNetwork()\` dieselben Knoten, Verbindungen und Wege.
+`,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 und Refined Storage
 

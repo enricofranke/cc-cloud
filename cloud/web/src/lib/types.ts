@@ -117,6 +117,56 @@ export interface PowerInfo {
   usage: number;
   /** false when the mainframe is out of power */
   ok: boolean;
+  /** v0.4: what costs how much (sums to usage) */
+  breakdown?: PowerItem[];
+}
+
+export interface PowerItem {
+  /** base | uplinks | advanced_uplinks | bridges | clients | hops | other */
+  key: string;
+  count?: number;
+  fe: number;
+}
+
+// ---- v0.4 network map -------------------------------------------------------
+export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "me_bridge" | "rs_bridge";
+export type NodeStatus = "online" | "offline" | "no_power" | "no_route" | "unloaded" | "legacy_out_of_range";
+
+export interface NetNode {
+  id: string;
+  type: NodeType;
+  name: string;
+  /** omitted for read-only devices */
+  pos?: { x: number; y: number; z: number };
+  dim: string;
+  status: NodeStatus;
+  power?: PowerInfo;
+  /** link range to other nodes (blocks) */
+  range: number;
+  /** range for devices attaching to this node */
+  deviceRange?: number;
+  /** uplink id of the dashboard card, when the node is an uplink/bridge with a card */
+  uplinkId?: string;
+  /** ms epoch */
+  lastSeen?: number;
+}
+
+export interface NetLink {
+  a: string;
+  b: string;
+  /** 0..1 */
+  signal: number;
+  dist: number;
+  kind: "radio" | "ender";
+  /** v0.3 device kept connected although out of range */
+  legacy?: boolean;
+}
+
+export interface NetworkInfo {
+  nodes: NetNode[];
+  links: NetLink[];
+  /** node id -> node ids from the mainframe to that node (both ends included) */
+  routes: Record<string, string[]>;
 }
 
 export interface MainframeInfo {

@@ -9,6 +9,7 @@ import { DocsLink } from "../components/DocsLink.tsx";
 import { fmtFE } from "../lib/format.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import type { PowerInfo } from "../lib/types.ts";
+import type { MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
@@ -23,12 +24,91 @@ function useNow(active: boolean) {
   return now;
 }
 
+const BREAKDOWN_LABEL: Record<string, (n?: number) => string> = {
+  base: () => "Mainframe base",
+  uplinks: (n) => `${n ?? 0} uplink${n === 1 ? "" : "s"}`,
+  advanced_uplinks: (n) => `${n ?? 0} advanced uplink${n === 1 ? "" : "s"}`,
+  bridges: (n) => `${n ?? 0} bridge${n === 1 ? "" : "s"}`,
+  clients: (n) => `${n ?? 0} dashboard${n === 1 ? "" : "s"} connected`,
+  hops: (n) => `${n ?? 0} extra hop${n === 1 ? "" : "s"}`,
+};
+
+/** Header popover: what the mainframe's FE/t is spent on, plus relay power. */
+function PowerPopover({ p, conn, onClose }: { p: PowerInfo; conn: MainframeConn; onClose: () => void }) {
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    addEventListener("keydown", h);
+    return () => removeEventListener("keydown", h);
+  }, [onClose]);
+  const relays = (conn.network.value?.nodes ?? []).filter((n) => n.power && n.type !== "mainframe");
+  const pct = p.capacity > 0 ? Math.round((p.stored / p.capacity) * 100) : 0;
+  return (
+    <>
+      <div class="pop-backdrop" onClick={onClose} />
+      <div class="power-pop" role="dialog" aria-label="Power breakdown">
+        <div class="pp-head">
+          <span class="px-title">Power</span>
+          <span class={`pp-state ${p.ok ? "ok" : "bad"}`}>{p.ok ? `${pct} % buffer` : "NO POWER"}</span>
+        </div>
+        <div class="pp-buffer">
+          <span class="pwr-bar big" aria-hidden="true">
+            <span class="pwr-fill" style={{ width: `${pct}%` }} />
+          </span>
+          <span class="mono small">
+            {fmtFE(p.stored)} / {fmtFE(p.capacity)}
+          </span>
+        </div>
+        {p.breakdown && p.breakdown.length > 0 ? (
+          <table class="pp-table">
+            <tbody>
+              {p.breakdown
+                .filter((b) => b.fe > 0 || b.key === "base")
+                .map((b) => (
+                  <tr key={b.key}>
+                    <td>{(BREAKDOWN_LABEL[b.key] ?? (() => b.key))(b.count)}</td>
+                    <td class="mono">{fmtFE(b.fe, true)}</td>
+                  </tr>
+                ))}
+              <tr class="pp-total">
+                <td>Mainframe total</td>
+                <td class="mono">{fmtFE(p.usage, true)}</td>
+              </tr>
+            </tbody>
+          </table>
+        ) : (
+          <p class="muted small">Using {fmtFE(p.usage, true)}.</p>
+        )}
+        {relays.length > 0 && (
+          <>
+            <div class="pp-sub">Relays (own FE)</div>
+            <table class="pp-table">
+              <tbody>
+                {relays.map((r) => (
+                  <tr key={r.id} class={r.power!.ok ? "" : "bad"}>
+                    <td>{r.name}</td>
+                    <td class="mono">{r.power!.ok ? fmtFE(r.power!.usage, true) : "no FE"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+        <p class="muted small pp-foot">
+          <DocsLink to="/docs/network#power">How power scales</DocsLink>
+        </p>
+      </div>
+    </>
+  );
+}
+
 /** Compact FE buffer bar + usage for the header. */
-function PowerMeter({ p }: { p: PowerInfo }) {
+function PowerMeter({ p, onClick }: { p: PowerInfo; onClick?: () => void }) {
   const pct = p.capacity > 0 ? Math.min(100, (p.stored / p.capacity) * 100) : 0;
   const tone = !p.ok || pct < 5 ? "crit" : pct < 25 ? "warn" : "ok";
   return (
-    <span
+    <button
+      type="button"
+      onClick={onClick}
       class={`pwr pwr-${tone}`}
       title={`Power: ${Math.round(p.stored).toLocaleString("en-US")} / ${Math.round(p.capacity).toLocaleString("en-US")} FE, using ${Math.round(p.usage)} FE/t`}
       role="meter"
@@ -43,7 +123,7 @@ function PowerMeter({ p }: { p: PowerInfo }) {
       </span>
       <span class="pwr-usage">{p.ok ? fmtFE(p.usage, true) : "NO POWER"}</span>
       <span class="pwr-stored">{fmtFE(p.stored)}</span>
-    </span>
+    </button>
   );
 }
 
@@ -52,6 +132,7 @@ export function Dashboard({ id }: { id: string }) {
   const conn = getConn(id);
   const [sheet, setSheet] = useState<"alerts" | "settings" | null>(null);
   const [editing, setEditing] = useState(false);
+  const [powerOpen, setPowerOpen] = useState(false);
   const st = statusOf(conn);
   const retryAt = conn?.nextRetryAt.value ?? null;
   const pinLock = conn?.pinLockedUntil.value ?? 0;
@@ -78,7 +159,7 @@ export function Dashboard({ id }: { id: string }) {
         <div class="dash-title">
           <span class="overline-row">
             <span class="overline">Mainframe</span>
-            {info?.power && <PowerMeter p={info.power} />}
+            {info?.power && <PowerMeter p={info.power} onClick={() => setPowerOpen(!powerOpen)} />}
           </span>
           <h1 class="dash-name">{info?.name ?? entry.name}</h1>
         </div>
@@ -111,6 +192,7 @@ export function Dashboard({ id }: { id: string }) {
         </button>
       </header>
 
+      {powerOpen && info?.power && <PowerPopover p={info.power} conn={conn} onClose={() => setPowerOpen(false)} />}
       <main class="page page-dash">
         {st.text && (
           <div class={`banner banner-${st.kind}`} role="status">

@@ -16,6 +16,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "dashboard", icon: "chart", title: { en: "The dashboard", de: "Das Dashboard" } },
   { id: "lua", icon: "gear", title: { en: "Lua reference", de: "Lua-Referenz" } },
   { id: "ui-library", icon: "star", title: { en: "cloud.ui library", de: "cloud.ui-Bibliothek" } },
+  { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },
   { id: "bridges", icon: "box", title: { en: "Bridges (AE2 / RS)", de: "Bridges (AE2 / RS)" } },
   { id: "security", icon: "shield", title: { en: "Security & hosting", de: "Sicherheit & Hosting" } },
   { id: "faq", icon: "warning", title: { en: "Troubleshooting", de: "Fehlerbehebung" } },

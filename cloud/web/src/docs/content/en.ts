@@ -59,12 +59,13 @@ The mainframe runs on **FE** (Forge Energy, also called RF) – the unit used by
 | | Default |
 |---|---|
 | Base consumption | 40 FE/t |
-| Per linked uplink | +5 FE/t |
+| Per uplink / advanced uplink / bridge | +4 / +8 / +10 FE/t |
 | Per connected dashboard | +2 FE/t |
+| Per extra hop of a routed device | +1 FE/t |
 | Buffer | 200,000 FE |
 | Max input | 2,000 FE/t |
 
-Without power the mainframe goes offline (after 5 seconds on an empty buffer) and the dashboard says **"Mainframe has no power"**. It reconnects by itself once the buffer refills. Uplinks and bridges need no FE. Server admins can turn the requirement off (\`requirePower = false\`).
+Without power the mainframe goes offline (after 5 seconds on an empty buffer) and the dashboard says **"Mainframe has no power"**. It reconnects by itself once the buffer refills. Uplinks and bridges need no FE of their own; [relays](/docs/network#power) do. Server admins can turn the requirement off (\`requirePower = false\`).
 
 ## Link uplinks and bridges {#linking}
 
@@ -292,6 +293,7 @@ A computer next to the mainframe can read it:
 | \`setEnabled(bool)\` | switch the dashboard on/off |
 | \`getUplinks()\` | list of {id, title, online, loaded, x, y, z, dimension} |
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | FE stored, buffer size, FE/t |
+| \`getNetwork()\` | {nodes, links, routes} – see [network](/docs/network#map) |
 
 ${code("lua", C.LUA_MAINFRAME)}
 
@@ -370,6 +372,59 @@ ${code("lua", C.UI_REACTOR)}
 - \`cloud-storage [bridge] [uplink]\` – a custom storage dashboard for an ME / RS bridge
 `,
 
+  network: `# Network, relays and range
+
+Every uplink and bridge connects to the **nearest reachable node** – the mainframe or a relay – and the network routes it to the mainframe over the best path (fewest hops, then the best signal; at most 8 hops). Like a Wi-Fi mesh: place relays to reach far-away bases.
+
+## Ranges {#ranges}
+
+| Block | Range to nodes | Range for devices |
+|---|---|---|
+| Cloud Mainframe | 96 | 96 |
+| Cloud Relay | 96 | 48 |
+| Advanced Cloud Relay | 256 | 128 |
+| Ender Relay | any distance and dimension to other Ender Relays | 48 |
+| Cloud Uplink | – | 48 |
+| Advanced Cloud Uplink | – | 128 |
+| ME / RS Cloud Bridge | – | 48 |
+
+Distances are measured in blocks in a straight line (also up and down), within one dimension. A link works when both ends reach each other – the smaller range counts.
+
+## Signal {#signal}
+
+Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link is **weak**: it still works but shows yellow – move the device closer or add a relay.
+
+## Relays {#relays}
+
+- **Cloud Relay** – a mast for medium distances.
+- **Advanced Cloud Relay** – longer range for nodes and devices.
+- **Ender Relay** – links to other Ender Relays at any distance and **across dimensions** (e.g. to the Nether). Link Ender Relays into a group with the Link Card.
+
+Place a relay, then link it like any device: Link Card on the mainframe, then on the relay. Recipes: stone, a wired modem, a cloud core and redstone (relay); relay + gold + ender pearl (advanced); advanced relay + ender eyes + gold block (ender) – JEI/EMI show the exact grids.
+
+> **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
+
+## When a relay fails {#reroute}
+
+If a relay is broken, unloaded or out of power, everything behind it **re-routes** over another path. If there is none, those devices show **No route**. Relays never force-load chunks; parts in unloaded chunks show **Unloaded**.
+
+Devices linked before v0.4 that are out of range under the new rules keep working and show **Out of range (legacy)** until you place a relay nearby or re-link them.
+
+## Power {#power}
+
+The network costs FE. The mainframe uses 40 FE/t + 4 per uplink + 8 per advanced uplink + 10 per bridge + 2 per connected dashboard + 1 per extra hop of each routed device. Relays need their own FE: Cloud Relay 20 FE/t, Advanced 60 FE/t, Ender Relay 120 FE/t. Click the power bar in the dashboard header to see the breakdown.
+
+## The network map {#map}
+
+The **Network** tab shows everything that is connected:
+
+- **Topology** – the mainframe at the root, relays as branches, devices as leaves. Lines are coloured by signal (green strong, cyan ok, yellow weak, purple dashed ender, orange dashed legacy); the dot shows the status. Devices without a route are grouped under **Not connected**.
+- **Map** – a top-down x/z map per dimension with a coordinate grid, range circles (toggle), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
+
+Click or tap any node for details: type, position, dimension, status, signal, route and hops, range, power, what a relay carries, its card. **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (needs control rights). Positions are only shown to devices that may control the mainframe.
+
+From Lua, \`cloud_mainframe.getNetwork()\` returns the same nodes, links and routes.
+`,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage
 

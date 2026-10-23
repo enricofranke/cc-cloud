@@ -49,6 +49,9 @@ async function pairViaEmpty(page: Page, code: string, device: string) {
   await enterCode(page, code, device);
   await page.waitForSelector(".setup", { timeout: 15_000 });
 }
+async function clearToasts(page: Page) {
+  for (const b of await page.locator(".toast-close").all()) await b.click({ timeout: 1000 }).catch(() => {});
+}
 async function pinEnter(page: Page, digits: string) {
   for (const d of digits) await page.click(`.keypad .key:text-is("${d}")`);
   await page.click(".key-ok");
@@ -77,6 +80,40 @@ try {
   await p.waitForTimeout(700);
   await shot(p, "phone-04-dashboard");
   await shot(p, "phone-05-dashboard-full", true);
+
+  // ---- v0.4 network: power popover, topology, map
+  await p.click("button.pwr");
+  await p.waitForSelector(".power-pop");
+  await p.waitForTimeout(1200); // let the breakdown arrive with the next power tick
+  await shot(p, "phone-n0-power-breakdown");
+  await p.keyboard.press("Escape");
+  await p.click(".tabbar .tab-network");
+  await p.waitForSelector(".topo svg .tnode");
+  await p.waitForTimeout(500);
+  await clearToasts(p);
+  await shot(p, "phone-n1-topology");
+  await p.click('.tnode[aria-label^="East Relay"]');
+  await p.waitForSelector(".sheet .ndetail");
+  await clearToasts(p);
+  await shot(p, "phone-n2-relay-detail");
+  await p.keyboard.press("Escape");
+  await p.click('.seg-ctl button:has-text("Map")');
+  await p.waitForSelector(".netmap svg .mnode");
+  await p.waitForTimeout(400);
+  await clearToasts(p);
+  await shot(p, "phone-n3-map");
+  await p.click('.mnode[aria-label^="Quarry"]');
+  await p.waitForSelector(".sheet .ndetail");
+  await clearToasts(p);
+  await shot(p, "phone-n4-no-route-detail");
+  await p.keyboard.press("Escape");
+  await p.click('.dim-tab:has-text("Nether")');
+  await p.waitForTimeout(400);
+  await clearToasts(p);
+  await shot(p, "phone-n5-map-nether");
+  await p.click('.seg-ctl button:has-text("Topology")');
+  await p.click('.tabbar .tab:has-text("Overview")');
+  await p.waitForSelector(".search-input");
 
   // ---- v0.3 auto Computer card (redstone sides)
   await p.locator(".card:has(.rs)").scrollIntoViewIfNeeded();
@@ -415,6 +452,24 @@ try {
   await pairVia(d, mock.code(), "Desktop");
   await d.waitForTimeout(800);
   await shot(d, "desktop-01-dashboard");
+  await d.click('.toptabs .tab-network');
+  await d.waitForSelector(".topo svg .tnode");
+  await d.waitForTimeout(500);
+  await d.click('.tnode[aria-label^="North Relay"]');
+  await d.waitForSelector(".net-panel .ndetail");
+  await clearToasts(d);
+  await shot(d, "desktop-n1-topology");
+  await d.click('.seg-ctl button:has-text("Map")');
+  await d.waitForSelector(".netmap svg .mnode");
+  await d.click('.mnode[aria-label^="Tree Farm"]');
+  await d.waitForTimeout(400);
+  await clearToasts(d);
+  await shot(d, "desktop-n2-map");
+  await d.click("button.pwr");
+  await d.waitForSelector(".power-pop");
+  await shot(d, "desktop-n3-power-breakdown");
+  await d.keyboard.press("Escape");
+  await d.click('.toptabs .tab:has-text("Overview")');
   await d.click('.toptabs .tab:has-text("Power")');
   await d.waitForSelector(".chart-svg");
   await d.waitForTimeout(600);
