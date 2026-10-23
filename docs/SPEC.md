@@ -588,6 +588,18 @@ Implemented in `push/` (`PushTarget`, `UrlPolicy` = SSRF rules, `PushFormat`, `P
 - Docs page: "Install as an app with HTTPS via Tailscale" (`tailscale serve --https=443 http://localhost:8787`, or `tailscale cert`) – the mod only needs `publicUrl` set and trusted proxy 127.0.0.1. Detect `Tailscale-User-Login` headers? No – keep auth as is.
 - **Long-term stats**: any numeric widget can opt in (`opts.history="1h"|"24h"|"7d"`); the mod downsamples (1 min / 5 min / 30 min buckets) and stores compactly per mainframe (cap 2 MB). Charts in the dashboard with range switcher; CSV export (canControl).
 
+### F. Long-term statistics – implementation notes (mod side)
+Implemented in `history/` (`HistorySeries` = tiers + storage form, `HistoryStore` = per mainframe with the cap, `HistoryService` = sampling, `HistoryData` = SavedData `data/cccloud/history.dat`, `HistoryApi`).
+- **Opt-in:** numeric widgets (`gauge`, `progress`, `chart`, `slider`, `number`, `indicator` as 0/1) accept `opts.history = "1h"|"24h"|"7d"|"30d"` (Lua: `cloud.gauge("temp","Core",{history="24h"})`). Sampled every second; averaged into 1-minute buckets (kept up to 24 h), 5-minute buckets (7 d) and 30-minute buckets (30 d) – only the tiers the range needs are allocated (`1h` = 60 points, `24h` = 1440, `7d` adds 2016, `30d` adds 1440 half-hour points). Gaps are `null`.
+- **Retention:** the range is limited by the mainframe's history hours (Memory upgrade: base 1 h, then 24 h / 7 d / 30 d). Inserting or removing the upgrade resizes series and keeps the data that fits.
+- **Items:** the count of every watched or favourite item of a storage card (max 64 per bridge) is sampled once a minute with range 24 h; the storage `item` details return it as `history` (5-minute averages).
+- **Limits:** at most 2 MB per mainframe (a 30 d series is ≈ 20 KB, so about 100 series); new series beyond the cap are not recorded (server log once). Series without samples for longer than their range are dropped.
+- **API:** `GET /api/mainframes/<id>/history/<1h|24h|7d|30d>/<json|csv>/<w|i>/<uplinkId>/<widgetId or item>` (Bearer token).
+  - Needs `view`; restricted sections also `view.positions`; items `storage.search`; CSV export `act.buttons` (403 `not_allowed`). Share links never get history.
+  - JSON: `{"key","range","kept":"1h|24h|7d|30d","retentionHours","step":60000|300000|1800000,"points":[[timeMs, value|null], …]}` (oldest first; the last point is the running bucket). Requests longer than what is kept return what is kept (`kept`).
+  - CSV: `time,value` with ISO-8601 UTC times, empty value for gaps (`text/csv`).
+  - `404 no_history` when the widget has no `opts.history` and nothing is stored.
+
 ## v0.6 – Accounts, permissions, roles, teams, share links (approved 2026-10-23)
 "Device" always means any browser – phone, tablet or PC. The UI and docs must never assume a phone.
 
@@ -800,7 +812,7 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 - Items: `upgrade_<capacity|bandwidth|range|efficiency|memory>_<allthemodium|vibranium|unobtainium>`, `quantum_core`, `upgrade_chunk_anchor` (stack size 1, tooltips list the effect).
 - Mainframe inventory: 4 card slots + 1 Quantum Core slot (`upgrades` in the block entity NBT, dropped when the mainframe breaks). No item capability, so hoppers/pipes cannot insert. The mainframe screen has an **Upgrades** tab (all roles see it; changing slots needs `devices.manage`, checked on the server for every click) with the slots (GUI_LAYOUT slot regions), the player inventory and the effective limits.
 - Effects (`UpgradeEffects`, unit tested): base limits from config `upgrades.baseDevices` 16, `baseBrowsers` 4, `baseRules` 8, `baseHistoryHours` 1; highest tier per type wins; Quantum Core = unlimited devices/browsers, FE ×0.25 (or lower), the mainframe is an Ender node of its own group (its Ender Relays link to it directly, any distance/dimension).
-- Applied: node range × factor (mainframe node), FE (breakdown item `efficiency` = −saved FE, so the items still sum to the usage), browsers (WebSocket close `4429 browser_limit`; share viewers do not count), rules (`min(rules.maxRulesPerMainframe = 128 cap, Memory)`; rules document `limit`), history hours (exposed in the screen and to the web, enforced when history storage lands).
+- Applied: node range × factor (mainframe node), FE (breakdown item `efficiency` = −saved FE, so the items still sum to the usage), browsers (WebSocket close `4429 browser_limit`; share viewers do not count), rules (`min(rules.maxRulesPerMainframe = 128 cap, Memory)`; rules document `limit`), history hours (exposed in the screen and to the web; enforced by the long-term statistics, v0.5 F).
 - Capacity (`network/graph/Capacity`, unit tested): relays on device routes count 1, routed devices 1 (fiber `fiberCapacityWeight`). New links beyond the limit are refused (`cccloud.network.capacity_full`). Above the limit (e.g. after removing a card) devices with the most hops, then the most recently linked, get `status:"over_capacity"` on the map, `routeState:"over_capacity"` on the uplink screen, and stop (no route) until capacity returns. The mainframe node's `capacity` object: `{devices, used, limit (null = unlimited), over, wired, fiber}`.
 - Recipes: tier 1 card = ` M /MTM/ C ` (M = metal, T = type catalyst: chest / ender modem / ender pearl / redstone block / disk drive, C = cloud core); tier 2/3 = ` M /MPM/ M ` with P = previous tier card. With AllTheModium (`neoforge:mod_loaded allthemodium`) M = `#c:ingots/allthemodium|vibranium|unobtainium`, else (`*_fallback`) diamond / netherite ingot / nether star. Quantum Core: `UUU/UAU/UCU` with `allthetweaks:atm_star` and unobtainium when All the Tweaks is loaded, else `NSN/SCS/NSN` (netherite blocks, nether stars, cloud core). Chunk Anchor: `OEO/EAE/OCO` (obsidian, ender pearls, lodestone, cloud core).
 
@@ -1016,7 +1028,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
   - `name`, `displayName`, `mod`, `count`, `craftable`, `favorite`;
   - `watch: {"min","target","autoCraft","state","failures"}|null`;
   - `jobs: [recent jobs of this item, see below]`;
-  - `history: [numbers]` (24 h, from the long-term statistics; empty until v0.5 F).
+  - `history: [numbers|null]` (24 h of the count as 5-minute averages, oldest first, `null` for gaps; only for watched and favourite items, limited by the retention).
 - `cpus` (`storage.search`) → a document with two lists:
   - `"cpus":[{"id","name","coProcessors","storage","busy","job":{"name","displayName","count","progress","elapsedMs"}|null}]` (AE2; empty for RS2);
   - `"tasks":[{"id","name","displayName","count","progress","own":bool}]` (every running job of the network; `own` = started through this bridge).

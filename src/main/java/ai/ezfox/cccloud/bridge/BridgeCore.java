@@ -451,6 +451,13 @@ public final class BridgeCore {
     public static final int MAX_FAVORITES = 64;
     private final java.util.LinkedHashSet<String> favorites = new java.util.LinkedHashSet<>();
 
+    /** v0.5 F: items with long-term count statistics: the watchlist and the favourites (at most 64). */
+    public java.util.List<String> trackedItems() {
+        var names = new java.util.LinkedHashSet<String>(watchlist.names());
+        names.addAll(favorites());
+        return names.stream().limit(64).toList();
+    }
+
     public java.util.Set<String> favorites() {
         return java.util.Collections.unmodifiableSet(favorites);
     }

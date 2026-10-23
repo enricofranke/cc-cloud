@@ -390,9 +390,25 @@ public final class MinecraftBridge implements GameBridge {
         }
         if (allowed.isEmpty()) return AccessApi.error(403, "forbidden");
         for (var d : allowed) auth.touch(d.tokenHash(), ip.isEmpty() ? null : ip);
+        if (route == Router.Id.HISTORY) return history(allowed.getFirst(), path);
         var api = new AccessApi(auth, resolver(), players(), hooks());
         if (route == Router.Id.PUSH_GET || route == Router.Id.PUSH_POST) api.withPush(pushApi());
         return api.handle(route, allowed, path, body);
+    }
+
+    /** v0.5 F: {@code /api/mainframes/<id>/history/…} (permissions resolved here, the rest in HistoryApi). */
+    private AccessApi.Response history(AuthStore.Device device, String path) {
+        var m = ai.ezfox.cccloud.history.HistoryApi.PATH.matcher(path);
+        if (!m.matches()) return AccessApi.error(404, "not_found");
+        UUID mainframeId = ClientMessages.parseUuid(path.split("/")[3]);
+        if (mainframeId == null) return AccessApi.error(404, "not_found");
+        var resolution = resolver().resolveDevice(device, mainframeId);
+        if (resolution.role() == Role.NONE) return AccessApi.error(403, "no_access");
+        String uplinkId = m.group(4), id = m.group(5);
+        return ai.ezfox.cccloud.history.HistoryApi.handle(ai.ezfox.cccloud.history.HistoryData.get(server).store(), mainframeId, resolution.perms(),
+            WebHub.INSTANCE.isRestricted(mainframeId, uplinkId), m.group(1), m.group(2), m.group(3), uplinkId, id,
+            m.group(3).equals("w") ? WebHub.INSTANCE.historyRange(mainframeId, uplinkId, id) : null,
+            ai.ezfox.cccloud.history.HistoryService.retentionHours(mainframeId), ai.ezfox.cccloud.history.HistoryService.now());
     }
 
     private ai.ezfox.cccloud.push.PushApi pushApi() {

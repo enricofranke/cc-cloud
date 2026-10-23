@@ -62,6 +62,7 @@ class PermissionWalkTest {
         expected.put(Router.Id.VOXELS, Perm.VIEW_POSITIONS);
         expected.put(Router.Id.PUSH_GET, Perm.PUSH_MANAGE);
         expected.put(Router.Id.SCRIPT_MOVE, Perm.SCRIPTS_UPLOAD);
+        expected.put(Router.Id.HISTORY, Perm.VIEW);
         expected.put(Router.Id.PUSH_POST, Perm.PUSH_MANAGE);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
@@ -75,7 +76,7 @@ class PermissionWalkTest {
             var withoutIt = EnumSet.copyOf(Perm.all());
             withoutIt.remove(expected.get(id));
             assertNotNull(AccessGate.check(Role.ADMIN, withoutIt, AccessGate.routePerm(id)), id + " denied without " + expected.get(id).id);
-            assertNull(AccessGate.check(Role.VIEWER, Set.of(Perm.VIEW, expected.get(id)), AccessGate.routePerm(id)), id + " allowed with it");
+            assertNull(AccessGate.check(Role.VIEWER, EnumSet.of(Perm.VIEW, expected.get(id)), AccessGate.routePerm(id)), id + " allowed with it");
         }
     }
 

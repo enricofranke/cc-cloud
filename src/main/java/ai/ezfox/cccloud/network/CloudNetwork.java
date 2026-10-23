@@ -130,6 +130,13 @@ public final class CloudNetwork {
         BRIDGE_SECTIONS.remove(section.sectionId(), section);
     }
 
+    /** Every loaded section: uplinks and bridges (v0.5 F statistics). Server thread. */
+    public static java.util.List<DashboardSection> sections() {
+        var list = new java.util.ArrayList<DashboardSection>(UPLINKS.values());
+        list.addAll(BRIDGE_SECTIONS.values());
+        return list;
+    }
+
     /** An uplink or a linked bridge by section id. */
     public static @Nullable DashboardSection section(@Nullable UUID id) {
         var uplink = uplink(id);

@@ -146,6 +146,9 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                     if (err != null || response == null) {
                         if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) CloudLog.LOGGER.warn("[cccloud] Error handling {}", route.id(), err);
                         sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (response.raw() != null) {
+                        // v0.5 F CSV export
+                        send(ctx, req, HttpResponseStatus.valueOf(response.status()), "text/csv; charset=utf-8", response.raw(), "no-store");
                     } else {
                         sendJson(ctx, req, HttpResponseStatus.valueOf(response.status()), response.body());
                     }
@@ -361,7 +364,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, MAP_TILE, VOXELS ->
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);

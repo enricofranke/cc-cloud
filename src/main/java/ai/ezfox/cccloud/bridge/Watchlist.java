@@ -74,6 +74,11 @@ public final class Watchlist {
 
     private final Map<String, Entry> entries = new LinkedHashMap<>();
 
+    /** The watched item names (v0.5 F item statistics). */
+    public java.util.Set<String> names() {
+        return new java.util.LinkedHashSet<>(entries.keySet());
+    }
+
     /** Applies a dashboard operation. Returns null on success or an error code. */
     public @Nullable String apply(Op op, java.util.function.Predicate<String> itemExists) {
         return switch (op) {

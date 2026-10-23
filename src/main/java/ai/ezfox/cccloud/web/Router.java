@@ -23,7 +23,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
         public boolean isScriptWrite() {
@@ -41,7 +41,7 @@ public final class Router {
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
-                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || isScript() || isMap();
+                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || this == HISTORY || isScript() || isMap();
         }
     }
 
@@ -84,6 +84,8 @@ public final class Router {
         new Route(Id.SCRIPT_DELETE, HttpMethod.DELETE, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_RUN, HttpMethod.POST, Pattern.compile(COMPUTER + "/run"), Access.DEVICE, EXAMPLE_COMPUTER + "/run"),
         new Route(Id.SCRIPT_MOVE, HttpMethod.POST, Pattern.compile(COMPUTER + "/move"), Access.DEVICE, EXAMPLE_COMPUTER + "/move"),
+        new Route(Id.HISTORY, HttpMethod.GET, ai.ezfox.cccloud.history.HistoryApi.PATH, Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/history/24h/json/w/00000000-0000-0000-0000-000000000001/temp"),
         new Route(Id.MAP_TILE, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
             + "/map/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/(surface|slice/-?[0-9]{1,4})/-?[0-9]{1,6}/-?[0-9]{1,6}\\.png"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/map/minecraft:overworld/surface/0/0.png"),

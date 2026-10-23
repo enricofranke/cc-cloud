@@ -66,6 +66,18 @@ public final class StorageV2TestSupport {
             .thenWaitUntil(() -> {
                 var row = core.get().getItem(PLANKS);
                 helper.assertTrue(row != null && row.count() >= 4, "auto-stock filled planks up to the minimum: " + row);
+            })
+            // 5. v0.5 F: watched items get count statistics (sampled once a minute; here straight into a store).
+            .thenExecute(() -> {
+                helper.assertTrue(core.get().trackedItems().contains(PLANKS), "watched items are tracked: " + core.get().trackedItems());
+                var store = new ai.ezfox.cccloud.history.HistoryStore(() -> { });
+                var mf = java.util.UUID.randomUUID();
+                long now = System.currentTimeMillis();
+                var item = ai.ezfox.cccloud.bridge.ItemNames.byName(PLANKS);
+                store.record(mf, ai.ezfox.cccloud.history.HistoryService.itemKey("bridge", PLANKS), ai.ezfox.cccloud.history.HistoryService.ITEM_RANGE, 24, now,
+                    core.get().adapter().itemCount(item));
+                var points = store.points(mf, ai.ezfox.cccloud.history.HistoryService.itemKey("bridge", PLANKS), ai.ezfox.cccloud.history.HistoryService.ITEM_RANGE, now);
+                helper.assertTrue(points.size() == 1 && points.getFirst().value() >= 4, "count recorded: " + points);
             });
     }
 

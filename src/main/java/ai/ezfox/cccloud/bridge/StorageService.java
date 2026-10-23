@@ -55,7 +55,7 @@ public final class StorageService {
                 yield Result.ok(StorageQueries.craftables(core.index(), core.favorites(), str(args, "q"), num(args, "offset", 0), num(args, "limit", 100)));
             }
             case "fluids" -> fluids(core, args);
-            case "item" -> item(core, args);
+            case "item" -> item(mainframeId, uplinkId, core, args);
             case "cpus" -> keys(args, Set.of()) ? Result.ok(cpus(core)) : Result.fail("invalid");
             case "cancel" -> {
                 String jobId = str(args, "jobId");
@@ -116,7 +116,7 @@ public final class StorageService {
         return Result.ok(data);
     }
 
-    private static Result item(BridgeCore core, JsonObject args) {
+    private static Result item(UUID mainframeId, UUID uplinkId, BridgeCore core, JsonObject args) {
         String name = str(args, "name");
         if (!keys(args, Set.of("name")) || !Op.isItemName(name)) return Result.fail("invalid");
         var item = ItemNames.byName(name);
@@ -141,7 +141,9 @@ public final class StorageService {
             data.add("watch", w);
         }
         data.add("jobs", core.jobRowsFor(name));
-        data.add("history", new JsonArray()); // long-term statistics (v0.5 F)
+        // long-term statistics (v0.5 F): 24 h of the count, 5-min averages (watchlist and favourite items only)
+        var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        data.add("history", server == null ? new JsonArray() : ai.ezfox.cccloud.history.HistoryService.itemSparkline(server, mainframeId, uplinkId.toString(), name));
         return Result.ok(data);
     }
 

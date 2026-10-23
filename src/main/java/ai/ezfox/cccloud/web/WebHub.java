@@ -291,6 +291,51 @@ public final class WebHub {
         return list;
     }
 
+    /** v0.5 F: the current value of a widget that asked for long-term statistics ({@code opts.history}). */
+    public record HistorySample(UUID mainframeId, String uplinkId, String widgetId, String range, double value) {
+    }
+
+    /** Numeric (or boolean as 0/1) values of every published widget with {@code opts.history}. Any thread. */
+    public List<HistorySample> historySamples() {
+        var out = new ArrayList<HistorySample>();
+        for (var entry : views.entrySet()) {
+            var view = entry.getValue();
+            synchronized (view) {
+                for (var uplink : view.widgetIndex.entrySet()) {
+                    for (var widget : uplink.getValue().entrySet()) {
+                        var w = widget.getValue();
+                        if (!(w.get("opts") instanceof JsonObject opts) || !(opts.get("history") instanceof com.google.gson.JsonPrimitive h) || !h.isString()) continue;
+                        if (!(w.get("value") instanceof com.google.gson.JsonPrimitive v)) continue;
+                        double d = v.isNumber() ? v.getAsDouble() : v.isBoolean() ? (v.getAsBoolean() ? 1 : 0) : Double.NaN;
+                        if (Double.isFinite(d)) out.add(new HistorySample(entry.getKey(), uplink.getKey(), widget.getKey(), h.getAsString(), d));
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    /** v0.5 F: the {@code opts.history} range of a published widget, or null. */
+    public @Nullable String historyRange(UUID mainframeId, String uplinkId, String widgetId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var index = view.widgetIndex.get(uplinkId);
+            var w = index == null ? null : index.get(widgetId);
+            return w != null && w.get("opts") instanceof JsonObject opts && opts.get("history") instanceof com.google.gson.JsonPrimitive h && h.isString()
+                ? h.getAsString() : null;
+        }
+    }
+
+    /** Whether a published section is restricted (needs {@code view.positions}). */
+    public boolean isRestricted(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return false;
+        synchronized (view) {
+            return view.restricted.contains(uplinkId);
+        }
+    }
+
     /** v0.7 in-game display: a copy of a section's published snapshot, or null. */
     public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);

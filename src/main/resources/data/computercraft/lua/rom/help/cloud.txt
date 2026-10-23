@@ -38,6 +38,7 @@ cloud.alert(text, level)   cloud.notify(text, level)   level: info, warn, crit (
 cloud.isOnline()   cloud.getClients()   cloud.getLastClientSeen()
 
 Every widget also takes the layout options page, group, span (1-4), order (0-10000), color (cyan, green, yellow, red, gray) and icon (home bolt flame drop box fan lock warning gear chart star leaf heart cpu shield pick).
+Numeric widgets (gauge, progress, chart, slider, number, indicator) also take history="1h"|"24h"|"7d"|"30d": long-term statistics in the dashboard (kept as long as the mainframe's Memory upgrade allows; base 1 h).
 
 Events: os.pullEvent("cloud_action") returns "cloud_action", id, value, user, side. Buttons send true, toggles a boolean, sliders and number inputs a number, select and buttons the chosen option, text inputs a string. A craft started from an itemSearch widget sends a table {op="craft", name, count, jobId}.
 

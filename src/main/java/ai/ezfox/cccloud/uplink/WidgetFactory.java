@@ -81,8 +81,9 @@ public final class WidgetFactory {
                 value = new JsonPrimitive(o.get("value") != null && bool("value", o.get("value")));
             }
             case SLIDER -> {
-                allowKeys(type, o, "min", "max", "step", "value", "unit", "pin");
+                allowKeys(type, o, "min", "max", "step", "value", "unit", "pin", "history");
                 pin(opts, o);
+                history(opts, o);
                 double min = num("min", o.get("min"), 0);
                 double max = num("max", o.get("max"), 100);
                 double step = num("step", o.get("step"), 1);
@@ -97,7 +98,8 @@ public final class WidgetFactory {
                 value = Json.number(ActionValidator.snap(v, min, max, step));
             }
             case GAUGE -> {
-                allowKeys(type, o, "min", "max", "unit", "warn", "crit", "value");
+                allowKeys(type, o, "min", "max", "unit", "warn", "crit", "value", "history");
+                history(opts, o);
                 range(type, opts, o);
                 unit(opts, o);
                 if (o.get("warn") != null) opts.add("warn", Json.number(num("warn", o.get("warn"), 0)));
@@ -109,7 +111,8 @@ public final class WidgetFactory {
                 value = new JsonPrimitive(checkText("text", label, Limits.STRING_VALUE));
             }
             case CHART -> {
-                allowKeys(type, o, "min", "max", "unit", "points", "interval", "style", "value");
+                allowKeys(type, o, "min", "max", "unit", "points", "interval", "style", "value", "history");
+                history(opts, o);
                 if (o.get("min") != null || o.get("max") != null) range(type, opts, o);
                 unit(opts, o);
                 int points = intIn("points", o.get("points"), Limits.CHART_POINTS_DEFAULT, Limits.CHART_POINTS_MIN, Limits.CHART_POINTS_MAX);
@@ -123,13 +126,15 @@ public final class WidgetFactory {
                 if (o.get("value") != null) value = Json.number(num("value", o.get("value"), 0));
             }
             case PROGRESS -> {
-                allowKeys(type, o, "min", "max", "unit", "value");
+                allowKeys(type, o, "min", "max", "unit", "value", "history");
+                history(opts, o);
                 range(type, opts, o);
                 unit(opts, o);
                 if (o.get("value") != null) value = Json.number(num("value", o.get("value"), 0));
             }
             case INDICATOR -> {
-                allowKeys(type, o, "value", "onColor", "offColor");
+                allowKeys(type, o, "value", "onColor", "offColor", "history");
+                history(opts, o);
                 value = new JsonPrimitive(o.get("value") != null && bool("value", o.get("value")));
                 if (o.get("onColor") != null) opts.addProperty("onColor", color(o.get("onColor")));
                 if (o.get("offColor") != null) opts.addProperty("offColor", color(o.get("offColor")));
@@ -145,8 +150,9 @@ public final class WidgetFactory {
                 value = new JsonPrimitive(v);
             }
             case NUMBER -> {
-                allowKeys(type, o, "min", "max", "step", "value", "unit", "pin", "confirm");
+                allowKeys(type, o, "min", "max", "step", "value", "unit", "pin", "confirm", "history");
                 pin(opts, o);
+                history(opts, o);
                 confirm(opts, o);
                 double min = num("min", o.get("min"), Limits.NUMBER_DEFAULT_MIN);
                 double max = num("max", o.get("max"), Limits.NUMBER_DEFAULT_MAX);
@@ -320,6 +326,16 @@ public final class WidgetFactory {
         var array = new JsonArray(list.size());
         for (var s : list) array.add(s);
         return array;
+    }
+
+    /** v0.5 F: {@code history = "1h"|"24h"|"7d"|"30d"} – long-term statistics of this widget's value. */
+    private static void history(JsonObject opts, Map<?, ?> o) throws WidgetException {
+        var h = o.get("history");
+        if (h == null) return;
+        if (!(h instanceof String s) || ai.ezfox.cccloud.history.HistorySeries.Range.byId(s) == null) {
+            throw new WidgetException("bad history " + describe(h) + " (expected \"1h\", \"24h\", \"7d\" or \"30d\")");
+        }
+        opts.addProperty("history", s);
     }
 
     private static void allowKeys(WidgetType type, Map<?, ?> opts, String... specific) throws WidgetException {

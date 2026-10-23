@@ -59,4 +59,12 @@ class WidgetFactoryTest {
         assertEquals(slider.toJson(), copy.toJson());
         assertNull(Widget.fromJson(new com.google.gson.JsonObject()));
     }
+
+    @org.junit.jupiter.api.Test
+    void historyOption() throws Exception {
+        var gauge = WidgetFactory.create(WidgetType.GAUGE, "g", "G", Map.of("history", "24h"));
+        assertEquals("24h", gauge.toJson().getAsJsonObject("opts").get("history").getAsString());
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.create(WidgetType.GAUGE, "g", "G", Map.of("history", "1y")));
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.create(WidgetType.BUTTON, "b", "B", Map.of("history", "1h")), "only numeric widgets");
+    }
 }
