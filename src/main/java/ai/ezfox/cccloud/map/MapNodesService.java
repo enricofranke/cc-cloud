@@ -48,6 +48,9 @@ public final class MapNodesService {
             SUBSCRIBED.remove(player.getUUID());
             return;
         }
+        // only an actual change rebuilds, at most once a second (security review M6); the timer keeps it up to date
+        if (SUBSCRIBED.containsKey(player.getUUID())
+            || !ai.ezfox.cccloud.ingame.PacketLimiter.IN_GAME.allow(player.getUUID(), "map_nodes", System.currentTimeMillis())) return;
         SUBSCRIBED.put(player.getUUID(), "");
         update(player);
     }

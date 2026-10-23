@@ -133,6 +133,8 @@ public final class TabletService {
 
     /** The "open tablet" key: the first linked tablet in the hands, the inventory, then the Curios slots. */
     public static void openFromKey(ServerPlayer player) {
+        // opening builds a full dashboard snapshot: at most once a second per player (security review M6)
+        if (!ai.ezfox.cccloud.ingame.PacketLimiter.IN_GAME.allow(player.getUUID(), "tablet_open", System.currentTimeMillis())) return;
         var stack = findTablet(player, null);
         if (stack == null) {
             player.sendSystemMessage(Component.translatable("cccloud.tablet.none").withStyle(ChatFormatting.YELLOW));
