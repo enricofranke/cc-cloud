@@ -13,6 +13,8 @@ import { RedstoneSides } from "./Redstone.tsx";
 import { powerButtonState } from "../lib/redstone.ts";
 import { DocsLink } from "./DocsLink.tsx";
 import { timeAgo } from "../lib/ui.ts";
+import { historyOf } from "../lib/history.ts";
+import type { Uplink, Widget } from "../lib/types.ts";
 
 /** Widgets that only exist to act: left out entirely in read-only (share) views. */
 const ACTION_ONLY = new Set(["button", "item_search"]);
@@ -100,6 +102,26 @@ function ScriptsLoader(props: ScriptSheetProps) {
   return C ? <C {...props} /> : null;
 }
 
+type TermProps = { conn: MainframeConn; uplinkId: string; title: string; onClose: () => void };
+let TermComp: ComponentType<TermProps> | null = null;
+function TermLoader(props: TermProps) {
+  const [C, setC] = useState<ComponentType<TermProps> | null>(() => TermComp);
+  useEffect(() => {
+    if (!C) import("../scripts/Terminal.tsx").then((m) => setC(() => (TermComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
+}
+
+type HistoryProps = { conn: MainframeConn; uplink: Uplink; w: Widget; onClose: () => void };
+let HistoryComp: ComponentType<HistoryProps> | null = null;
+function HistoryLoader(props: HistoryProps) {
+  const [C, setC] = useState<ComponentType<HistoryProps> | null>(() => HistoryComp);
+  useEffect(() => {
+    if (!C) import("./History.tsx").then((m) => setC(() => (HistoryComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
+}
+
 export interface CardEdit {
   selected: Set<string>;
   cardSelected: boolean;
@@ -150,6 +172,8 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
   // the chunk is unloaded: the mod sends the cached last snapshot
   const cached = !card.custom && card.uplink.loaded === false;
   const [scripts, setScripts] = useState(false);
+  const [hist, setHist] = useState<ResolvedWidget | null>(null);
+  const [term, setTerm] = useState(false);
   const shown = card.widgets.filter((w) => !w.hidden);
   return (
     <article
@@ -175,6 +199,11 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
           </span>
         )}
         {cached ? <span class="tag tag-gray">Not loaded</span> : !online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
+        {!edit && !viewOnly && !card.custom && conn.can("terminal") && online && card.uplink.mode !== "direct" && (
+          <button type="button" class="icon-btn card-term" title="Terminal" aria-label={`Terminal of ${card.title || "this computer"}`} onClick={() => setTerm(true)}>
+            <span aria-hidden="true">{">_"}</span>
+          </button>
+        )}
         {!edit && !viewOnly && !card.custom && conn.can("scripts.upload") && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-scripts" title="Scripts on this computer" aria-label={`Upload script to ${card.title || "this computer"}`} onClick={() => setScripts(true)}>
             <span aria-hidden="true">{"</>"}</span>
@@ -197,6 +226,8 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
           <DocsLink to="/docs/faq#unloaded">Why?</DocsLink>
         </p>
       )}
+      {term && <TermLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setTerm(false)} />}
+      {hist && <HistoryLoader conn={conn} uplink={hist.uplink} w={hist.w} onClose={() => setHist(null)} />}
       {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
       {shown.length === 0 && !edit ? (
         <p class="card-empty">
@@ -224,6 +255,13 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
               >
                 <WidgetView rw={rw} conn={conn} locked={locked || !rw.uplink.online || rw.uplink.loaded === false || !!viewOnly} viewOnly={viewOnly} />
               </div>
+              {!edit && !viewOnly && !conn.isShare && historyOf(rw.w) && (
+                <button type="button" class="w-hist" aria-label={`History of ${rw.label}`} title="History" onClick={() => setHist(rw)}>
+                  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path d="M1 13h14M2 11l3-4 3 2 3-5 3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              )}
               {edit && (
                 <>
                   <span class="w-tools" onPointerDown={(e) => e.stopPropagation()}>

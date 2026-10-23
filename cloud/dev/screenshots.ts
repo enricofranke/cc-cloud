@@ -81,6 +81,12 @@ try {
   await p.waitForTimeout(700);
   await shot(p, "phone-04-dashboard");
   await shot(p, "phone-05-dashboard-full", true);
+  await p.click('button[aria-label="History of Core temperature"]');
+  await p.waitForSelector(".hist-line");
+  await p.waitForTimeout(400);
+  await shot(p, "phone-h1-history");
+  await p.keyboard.press("Escape");
+  await p.waitForTimeout(200);
 
   // ---- v0.4 network: power popover, topology, map
   await p.click("button.pwr");
@@ -159,6 +165,16 @@ try {
   await p.click('.ex-card:has-text("cloud-test.lua") button:has-text("Use this")');
   await p.waitForTimeout(200);
   await shot(p, "phone-x2-scripts-upload");
+  await p.click(".open-editor");
+  await p.waitForSelector(".ed-tree");
+  await p.waitForTimeout(500);
+  if (await p.locator(".ed-file:not(.dir) .ed-name").count()) {
+    await p.locator(".ed-file:not(.dir) .ed-name").first().click();
+    await p.waitForSelector(".ed-cm .cm-line");
+  }
+  await p.waitForTimeout(300);
+  await shot(p, "phone-x3-editor");
+  await p.keyboard.press("Escape");
   await p.keyboard.press("Escape");
   // shut it down: "Turn on" becomes the only active power button
   await p.click('.card:has(.rs) .pxbtn:has-text("Shut down")');
@@ -552,6 +568,21 @@ try {
   await d.click('.scripts .nd-tab:has-text("Files")');
   await d.waitForSelector(".file-row");
   await shot(d, "desktop-x5-scripts-files");
+  // ---- v0.5 E Lua editor (CodeMirror): open a file, change a line, the dirty marker shows
+  await d.locator('.file-row:has-text("control-room.lua") button:has-text("Edit")').click();
+  await d.waitForSelector(".ed-cm .cm-content"); // Playwright CSS selectors pierce the open shadow root
+  await d.waitForSelector('.ed-path:has-text("control-room.lua")');
+  await d.click(".ed-cm .cm-line >> nth=3");
+  await d.keyboard.press("End");
+  await d.keyboard.type("  -- edited in the browser");
+  await d.waitForTimeout(300);
+  await clearToasts(d);
+  await shot(d, "desktop-x6-editor");
+  await d.click('.lua-editor button:has-text("Save")');
+  await d.waitForSelector(".pin-dialog, .ed-path:not(:has(.ed-dirty))", { timeout: 10000 });
+  if (await d.locator(".pin-dialog").count()) await pinEnter(d, "1234");
+  await d.waitForSelector(".ed-path:not(:has(.ed-dirty))");
+  await d.keyboard.press("Escape");
   await d.keyboard.press("Escape");
   // ---- storage card v2: browse grid, item details + craft preview, CPUs & jobs
   const closeSheets = async (pg: Page) => {
@@ -605,6 +636,17 @@ try {
   await d.waitForTimeout(600);
   await clearToasts(d);
   await shot(d, "desktop-ss3-installed");
+  await closeSheets(d);
+  // v0.5 F long-term history of the reactor's core temperature (7 days kept)
+  await d.click('button[aria-label="History of Core temperature"]');
+  await d.waitForSelector(".hist-line");
+  await d.click('.hist .seg-ctl button:has-text("7d")');
+  await d.waitForTimeout(600);
+  const hb = await d.locator(".hist-svg").boundingBox();
+  if (hb) await d.mouse.move(hb.x + hb.width * 0.7, hb.y + hb.height / 2);
+  await d.waitForTimeout(200);
+  await clearToasts(d);
+  await shot(d, "desktop-h1-history");
   await closeSheets(d);
   await d.click('.toptabs .tab-network');
   await d.waitForSelector(".topo svg .tnode");
@@ -859,6 +901,40 @@ try {
     await ep.evaluate(() => window.scrollTo(0, 0));
     await ep.waitForTimeout(200);
     await shot(ep, "desktop-a3c-access-saved");
+    // v0.5 C rules and D notifications
+    await ep.goto(`${origin}/#/m/${mock.base.id}/rules`);
+    await ep.waitForSelector(".rule-row");
+    await ep.waitForTimeout(300);
+    await shot(ep, "desktop-r1-rules");
+    await ep.click('.pxbtn:has-text("New rule")');
+    await ep.waitForSelector(".rule-editor");
+    await ep.fill('.rule-editor input[placeholder="Cool the reactor"]', "Refill coolant");
+    await ep.locator('.rule-editor select[aria-label="Trigger"]').selectOption("widget");
+    await ep.locator('.rule-editor select[aria-label="Card"]').first().selectOption({ label: "Fission Reactor" });
+    await ep.locator('.rule-editor select[aria-label="Widget"]').first().selectOption({ label: "Coolant" });
+    await ep.locator('.rule-editor select[aria-label="Comparison"]').first().selectOption("<");
+    await ep.fill('.rule-editor input[aria-label="Value"]', "30");
+    await ep.click('.rule-editor button:has-text("Condition")');
+    await ep.fill('.rule-editor input[aria-label="Alert text"]', "Coolant low – pump on");
+    await ep.waitForTimeout(300);
+    await shot(ep, "desktop-r2-rule-editor");
+    await ep.click('.rule-editor .pxbtn');
+    await ep.waitForSelector('.rule-row:has-text("Refill coolant")');
+    await ep.keyboard.press("Escape");
+    await ep.goto(`${origin}/#/m/${mock.base.id}/push`);
+    await ep.waitForSelector(".push-row");
+    await ep.click('.pxbtn:has-text("Add target")');
+    await ep.waitForSelector(".push-form");
+    await ep.click('.push-form .seg-ctl button:has-text("ntfy")');
+    await ep.fill('.push-form input[type="url"]', "https://ntfy.sh/foxworks-base-7f3a9c");
+    await ep.waitForTimeout(200);
+    await shot(ep, "desktop-r3-push-add");
+    await ep.click('.push-form .pxbtn');
+    await ep.waitForSelector('.push-row:has-text("ntfy")');
+    await ep.locator('.push-row:has-text("ntfy") button:has-text("Send test")').click();
+    await ep.waitForTimeout(2200);
+    await clearToasts(ep);
+    await shot(ep, "desktop-r4-push");
     await ep.goto(`${origin}/#/devices`);
     await ep.waitForSelector(".dev-row");
     await shot(ep, "desktop-a4-devices");
@@ -916,6 +992,14 @@ try {
     await op.waitForSelector(".perm-editor");
     await op.waitForTimeout(200);
     await shot(op, "phone-a2-access-custom");
+    await op.goto(`${origin}/#/m/${mock.base.id}/rules`);
+    await op.waitForSelector(".rule-row");
+    await op.waitForTimeout(300);
+    await shot(op, "phone-r1-rules");
+    await op.locator('.rule-row:has-text("Cool the reactor") button:has-text("Edit")').click();
+    await op.waitForSelector(".rule-editor");
+    await op.waitForTimeout(300);
+    await shot(op, "phone-r2-rule-editor");
     await op.context().close();
     // keyboard: focus ring on the page tabs
     await vp.keyboard.press("Tab");
@@ -944,6 +1028,32 @@ try {
     await lp.waitForSelector(".pair-from-link");
     if (new URL(lp.url()).hash.includes("code")) problems.push("pair link: code still in the URL");
     await shot(lp, name);
+    await ctx.close();
+  }
+  // ---- v0.5 E browser terminal (desktop and phone)
+  for (const [ctx, name] of [[await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop-t1-terminal"], [await phoneCtx(), "phone-t1-terminal"]] as const) {
+    const tp = await ctx.newPage();
+    watch(tp);
+    const tt = await (await fetch(`${origin}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Terminal" }) })).json();
+    await tp.addInitScript((t) => {
+      localStorage.setItem("cccloud.mainframes.v1", JSON.stringify([{ mainframeId: t.mainframeId, token: t.token, name: t.name, deviceName: "Terminal", pairedAt: Date.now() }]));
+    }, tt);
+    await tp.goto(`${origin}/#/m/${tt.mainframeId}`);
+    await tp.waitForSelector(".card", { timeout: 40_000 });
+    await tp.locator('button[aria-label^="Terminal of"]').first().click();
+    await tp.waitForSelector(".pin-dialog");
+    await pinEnter(tp, "1234");
+    await tp.waitForSelector(".term-row");
+    await tp.click(".term-screen");
+    await tp.keyboard.type("ls");
+    await tp.keyboard.press("Enter");
+    await tp.keyboard.type("hello");
+    await tp.keyboard.press("Enter");
+    await tp.keyboard.type("echo Base online");
+    await tp.keyboard.press("Enter");
+    await tp.waitForTimeout(500);
+    await clearToasts(tp);
+    await shot(tp, name);
     await ctx.close();
   }
   // ---- every compat card of the mod (dev/compat-cards.ts) on the "Mod Showcase" mainframe: rendering check

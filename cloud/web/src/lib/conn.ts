@@ -4,6 +4,8 @@
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
 import { presetHas } from "./permissions.ts";
+import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
+import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch } from "@preact/signals";
 import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
@@ -201,6 +203,14 @@ export class MainframeConn {
   readonly network = signal<NetworkInfo | null>(null);
   /** v0.7 wireless redstone channels (null = none / older mod) */
   readonly redstone = signal<RedstoneInfo | null>(null);
+  /** v0.5 E open browser terminals by uplink id */
+  readonly terminals = signal<Record<string, TermState>>({});
+  /** why a terminal was closed by the server (forbidden, unknown_computer, disabled, unsupported) */
+  readonly termClosed = signal<Record<string, string>>({});
+  private termReqs = new Map<string, { resolve: () => void; reject: (e: Error & { attemptsLeft?: number; retryAfter?: number }) => void; timer: ReturnType<typeof setTimeout> }>();
+  /** v0.5 C rules document (null = none / older mod / share session) */
+  readonly rules = signal<RulesDoc | null>(null);
+  private ruleReqs = new Map<string, { resolve: (r: { id?: string }) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
   private ws?: WebSocket;
   private stopped = true;
@@ -409,6 +419,7 @@ export class MainframeConn {
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
           this.redstone.value = normalizeRedstone(msg.redstone);
+          this.rules.value = normalizeRules(msg.rules);
           this.role.value = ROLES.includes(msg.role) ? msg.role : null;
           this.perms.value = parsePerms(msg.perms);
           this.store.value = parseStore(msg.store);
@@ -517,6 +528,50 @@ export class MainframeConn {
       case "redstone":
         this.redstone.value = normalizeRedstone(msg);
         break;
+      case "rules":
+        this.rules.value = normalizeRules(msg);
+        break;
+      case "term": {
+        const id = String(msg.uplinkId ?? "");
+        if (!id || !(id in this.terminals.value)) return;
+        const next = applyTermFrame(this.terminals.value[id] ?? null, msg);
+        if (next) this.terminals.value = { ...this.terminals.value, [id]: next };
+        break;
+      }
+      case "term_closed": {
+        const id = String(msg.uplinkId ?? "");
+        const { [id]: _gone, ...rest } = this.terminals.value;
+        this.terminals.value = rest;
+        this.termClosed.value = { ...this.termClosed.value, [id]: typeof msg.reason === "string" ? msg.reason.slice(0, 32) : "closed" };
+        break;
+      }
+      case "term_result": {
+        const r = this.termReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.termReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve();
+        else {
+          const e = new Error(typeof msg.error === "string" ? msg.error : "rejected") as Error & { attemptsLeft?: number; retryAfter?: number };
+          if (typeof msg.attemptsLeft === "number") e.attemptsLeft = msg.attemptsLeft;
+          if (typeof msg.retryAfter === "number") e.retryAfter = msg.retryAfter;
+          r.reject(e);
+        }
+        break;
+      }
+      case "rule_result": {
+        const r = this.ruleReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.ruleReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve(typeof msg.id === "string" ? { id: msg.id } : {});
+        else {
+          const e = new Error(typeof msg.error === "string" ? msg.error : "rejected") as Error & { detail?: string };
+          if (typeof msg.detail === "string") e.detail = msg.detail.slice(0, 200);
+          r.reject(e);
+        }
+        break;
+      }
       case "rs_result":
       case "net_result": {
         const r = this.netReqs.get(String(msg.reqId ?? ""));
@@ -675,6 +730,75 @@ export class MainframeConn {
     });
   }
 
+  /** v0.5 E: opens (or refreshes) the terminal of the computer behind a card. Frames arrive in `terminals`. */
+  termOpen(uplinkId: string, pin?: string, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("terminal");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "term_open", reqId, uplinkId, ...(pin ? { pin } : {}) })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.termReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.termReqs.set(reqId, {
+        resolve: () => {
+          const { [uplinkId]: _c, ...rest } = this.termClosed.value;
+          this.termClosed.value = rest;
+          if (!(uplinkId in this.terminals.value)) this.terminals.value = { ...this.terminals.value, [uplinkId]: applyTermFrame(null, { on: false })! };
+          resolve();
+        },
+        reject,
+        timer,
+      });
+    });
+  }
+  /**
+   * Sends keyboard/mouse/power events. Fast typing is batched (one message per 50 ms, ≤ 32 events each),
+   * so it stays under the server's 20 messages per second.
+   */
+  termInput(uplinkId: string, events: TermEvent[]) {
+    const q = this.termQueue.get(uplinkId) ?? [];
+    q.push(...events);
+    this.termQueue.set(uplinkId, q);
+    if (this.termTimer) return;
+    const flush = () => {
+      this.termTimer = undefined;
+      for (const [id, list] of this.termQueue) {
+        const batch = list.splice(0, 32);
+        if (batch.length) this.send({ t: "term_input", uplinkId: id, events: batch });
+        if (!list.length) this.termQueue.delete(id);
+      }
+      if (this.termQueue.size) this.termTimer = setTimeout(flush, 50);
+    };
+    // the first keystroke goes out at once, the rest of a burst is collected
+    flush();
+    this.termTimer = setTimeout(flush, 50);
+  }
+  private termQueue = new Map<string, TermEvent[]>();
+  private termTimer: ReturnType<typeof setTimeout> | undefined;
+  termClose(uplinkId: string) {
+    this.send({ t: "term_close", uplinkId });
+    const { [uplinkId]: _gone, ...rest } = this.terminals.value;
+    this.terminals.value = rest;
+  }
+
+  /** v0.5 C: rule_set / rule_delete / rule_enable / rule_run → rule_result (rejects with the error code, `detail` attached). */
+  ruleOp(msg: { t: "rule_set"; rule: Rule } | { t: "rule_delete"; id: string } | { t: "rule_enable"; id: string; enabled: boolean } | { t: "rule_run"; id: string }, timeoutMs = 8000): Promise<{ id?: string }> {
+    const reqId = newReqId();
+    const perm = msg.t === "rule_set" || msg.t === "rule_delete" ? "rules.edit" : "rules.toggle";
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode(perm);
+      if (no) return reject(new Error(no));
+      if (!this.send({ ...msg, reqId })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.ruleReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.ruleReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
   /** Saves the shared layout: {"t":"layout_set"} → layout_result. Rejects with the server error code. */
   saveLayout(layout: LayoutDoc, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
@@ -768,6 +892,16 @@ export class MainframeConn {
       clearTimeout(r.timer);
       r.reject(new Error("disconnected"));
       this.storageReqs.delete(id);
+    }
+    for (const [id, r] of this.termReqs) {
+      clearTimeout(r.timer);
+      r.reject(new Error("disconnected"));
+      this.termReqs.delete(id);
+    }
+    for (const [id, r] of this.ruleReqs) {
+      clearTimeout(r.timer);
+      r.reject(new Error("disconnected"));
+      this.ruleReqs.delete(id);
     }
     for (const [id, r] of this.netReqs) {
       clearTimeout(r.timer);

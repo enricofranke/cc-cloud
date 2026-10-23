@@ -100,6 +100,15 @@ export const MAX_LAYOUT_BYTES = 64 * 1024;
 export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("layout_set"), reqId: z.string().min(1).max(64), layout: z.unknown() }),
   z.object({ t: z.literal("net_unlink"), reqId: z.string().min(1).max(64), nodeId: z.string().min(1).max(64) }),
+  // v0.5 E terminal (events are checked by the handler like the mod's TerminalInput)
+  z.object({ t: z.literal("term_open"), reqId: z.string().min(1).max(64), uplinkId: entityId, pin: z.string().max(16).optional() }),
+  z.object({ t: z.literal("term_input"), uplinkId: entityId, events: z.array(z.record(z.string(), z.unknown())).max(32), reqId: z.string().min(1).max(64).optional() }),
+  z.object({ t: z.literal("term_close"), uplinkId: entityId }),
+  // v0.5 C rules (the rule document itself is checked by the handler, like the mod's RuleCodec)
+  z.object({ t: z.literal("rule_set"), reqId: z.string().min(1).max(64), rule: z.record(z.string(), z.unknown()) }),
+  z.object({ t: z.literal("rule_delete"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
+  z.object({ t: z.literal("rule_enable"), reqId: z.string().min(1).max(64), id: z.string().max(16), enabled: z.boolean() }),
+  z.object({ t: z.literal("rule_run"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
   // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
   z.object({

@@ -14,6 +14,7 @@ import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { SAMPLE_ICONS } from "./icons.ts";
 import { COMPAT_CARDS } from "./compat-cards.ts";
+import { FakeTerminal } from "./terminal-sim.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
@@ -71,6 +72,9 @@ interface Client {
   hits: number[];
   queryHits: number[];
   storageHits?: number[];
+  /** v0.5 E open terminals (uplink ids) */
+  terms?: Set<string>;
+  termHits?: number[];
 }
 interface Token {
   /** device tokens: their one mainframe; account tokens: undefined */
@@ -117,7 +121,13 @@ interface Mainframe {
   /** v0.4 network map */
   net?: { nodes: SimNode[]; lastSeen: Record<string, number> };
   /** v0.7 upgrade effects: device limit (null = Quantum Core) and the FE factor of an Efficiency card */
-  upgrades?: { devices: number | null; feFactor: number };
+  upgrades?: { devices: number | null; feFactor: number; historyHours?: number };
+  /** v0.5 E fake terminals per computer uplink */
+  terms?: Map<string, FakeTerminal>;
+  /** v0.5 C rules (run state in memory like the mod) */
+  rules?: { list: Record<string, any>[]; log: { time: number; rule: string; name: string; result: string; manual: boolean }[] };
+  /** v0.5 D push targets (url/token kept here, masked in answers) */
+  push?: { id: string; type: "discord" | "ntfy" | "webhook"; name: string; url: string; token?: string; minLevel: string; events: string[]; enabled: boolean; lastSent: number | null; lastResult: string | null }[];
   /** v0.7 wireless redstone channels */
   redstone?: Map<string, { signal: number; transmitters: number; receivers: number; override?: { level: number; until: number | null } }>;
   /** v0.3 FE buffer; undefined = requirePower=false */
@@ -169,6 +179,8 @@ export interface MockOptions {
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
+  /** v0.5 D config pushEnabled (default true) */
+  pushEnabled?: boolean;
   /** serve ../store/dist at /store/ and announce it in the snapshot (default true) */
   scriptStore?: boolean;
   /** add the underground "Deep Base" mainframe (also with extras) */
@@ -396,6 +408,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           layout: mf.layout,
           ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
           ...(mf.redstone ? { redstone: redstonePayload(mf) } : {}),
+          ...(mf.rules ? { rules: rulesPayload(mf) } : {}),
         };
 
   // ---- v0.4 network map
@@ -492,6 +505,74 @@ export async function createMockServer(opts: MockOptions = {}) {
         .map(([name, c]) => ({ name, level: c.override ? c.override.level : c.signal, signal: c.signal, transmitters: c.transmitters, receivers: c.receivers, ...(c.override ? { override: c.override } : {}) })),
       limit: 64,
     };
+  }
+  /** v0.5 C rules document: rules + run state, last 50 runs, limit from the Memory upgrade */
+  function rulesPayload(mf: Mainframe) {
+    if (!mf.rules) return null;
+    const h = mf.upgrades?.historyHours ?? 1;
+    return { rules: mf.rules.list, log: mf.rules.log.slice(-50), limit: h >= 720 ? 128 : h >= 168 ? 64 : h >= 24 ? 24 : 8 };
+  }
+  function broadcastRules(mf: Mainframe) {
+    const r = rulesPayload(mf);
+    if (r) for (const c of mf.clients) if (!c.share) sendTo(c.ws, { t: "rules", ...r });
+  }
+  /** Runs a rule's actions (the mock skips trigger evaluation; "Run now" and tests use this). */
+  function runRule(mf: Mainframe, rule: Record<string, any>, manual: boolean) {
+    let result = "ok";
+    for (const a of rule.then as Record<string, any>[]) {
+      if (a.type === "alert") alert(mf, undefined, String(a.text), a.level === "error" ? "crit" : a.level === "warn" ? "warn" : "info");
+      else if (a.type === "widget") {
+        const u = mf.uplinks.get(a.uplinkId);
+        const w = u?.widgets.find((x) => x.id === a.widgetId);
+        if (!u || !w) result = result === "ok" ? "unknown_widget" : result;
+        else if (w.type !== "button") setValue(mf, a.uplinkId, a.widgetId, a.value);
+      } else if (a.type === "dashboard") setState(mf, { enabled: a.enabled === true });
+      else if ((a.type === "redstone" || a.type === "craft") && !mf.uplinks.get(a.uplinkId)) result = result === "ok" ? "unknown_uplink" : result;
+    }
+    rule.lastRun = Date.now();
+    rule.lastResult = result;
+    rule.runs = (rule.runs ?? 0) + 1;
+    mf.rules!.log.push({ time: Date.now(), rule: rule.id, name: rule.name, result, manual });
+    broadcastRules(mf);
+    return result;
+  }
+  /** The strict schema of docs/SPEC.md "C. Rules" (enough of it for the dashboard: first problem as detail). */
+  function ruleProblem(r: Record<string, any>): string | null {
+    const known = ["id", "name", "enabled", "cooldown", "notify", "when", "if", "then", "lastRun", "lastResult", "runs"];
+    const extra = Object.keys(r).find((k) => !known.includes(k));
+    if (extra) return `unknown key ${extra}`;
+    if (JSON.stringify(r).length > 4096) return "rule too large";
+    if (r.id !== undefined && !/^[0-9a-f]{8}$/.test(r.id)) return "id";
+    if (typeof r.name !== "string" || !r.name.trim() || r.name.length > 48) return "name";
+    if (r.cooldown !== undefined && (!Number.isInteger(r.cooldown) || r.cooldown < 5 || r.cooldown > 86400)) return "cooldown";
+    const ops = ["<", "<=", ">", ">=", "==", "!="];
+    const check = (c: any, trig: boolean): string | null => {
+      if (!c || typeof c !== "object") return "missing";
+      if (c.type === "widget") return typeof c.uplinkId === "string" && typeof c.widgetId === "string" && ops.includes(c.op) && typeof c.value === "number" ? null : "widget check";
+      if (c.type === "items") return /^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(c.item ?? "") && ops.includes(c.op) && c.value >= 0 ? null : "items check";
+      if (c.type === "power") return ops.includes(c.op) && c.value >= 0 && c.value <= 100 ? null : "power check";
+      if (trig && c.type === "offline") return typeof c.uplinkId === "string" ? null : "offline";
+      if (!trig && c.type === "online") return typeof c.uplinkId === "string" ? null : "online";
+      if (trig && c.type === "interval") return Number.isInteger(c.minutes) && c.minutes >= 1 && c.minutes <= 1440 ? null : "interval";
+      if (trig && c.type === "time") return Number.isInteger(c.time) && c.time >= 0 && c.time <= 23999 ? null : "time";
+      return `unknown type ${c.type}`;
+    };
+    const w = check(r.when, true);
+    if (w) return `when: ${w}`;
+    if (r.if !== undefined && (!Array.isArray(r.if) || r.if.length > 8)) return "if";
+    for (const c of r.if ?? []) {
+      const e = check(c, false);
+      if (e) return `if: ${e}`;
+    }
+    if (!Array.isArray(r.then) || !r.then.length || r.then.length > 10) return "then: 1–10 actions";
+    for (const a of r.then) {
+      if (a.type === "redstone" && !(["top", "bottom", "left", "right", "front", "back"].includes(a.side) && Number.isInteger(a.value) && a.value >= 0 && a.value <= 15)) return "then: redstone";
+      else if (a.type === "alert" && !(typeof a.text === "string" && a.text.trim() && a.text.length <= 120 && ["info", "warn", "error"].includes(a.level))) return "then: alert";
+      else if (a.type === "craft" && !(Number.isInteger(a.amount) && a.amount >= 1 && a.amount <= 4096)) return "then: craft amount";
+      else if (!["redstone", "widget", "craft", "alert", "dashboard"].includes(a.type)) return `then: unknown type ${a.type}`;
+    }
+    if (r.when.type === "widget" && r.then.some((a: any) => a.type === "widget" && a.uplinkId === r.when.uplinkId && a.widgetId === r.when.widgetId)) return "loop: an action writes the trigger's widget";
+    return null;
   }
   function broadcastRedstone(mf: Mainframe) {
     const r = redstonePayload(mf);
@@ -613,7 +694,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       widgets: [
         { id: "scram", type: "button", label: "SCRAM", opts: { color: "red", confirm: true, pin: true } },
         { id: "power", type: "toggle", label: "Reactor power", opts: { value: true }, value: true },
-        { id: "temp", type: "gauge", label: "Core temperature", opts: { min: 0, max: 1200, unit: "K", warn: WARN, crit: CRIT }, value: 640 },
+        { id: "temp", type: "gauge", label: "Core temperature", opts: { min: 0, max: 1200, unit: "K", warn: WARN, crit: CRIT, history: "30d" }, value: 640 },
         { id: "coolant", type: "gauge", label: "Coolant", opts: { min: 0, max: 100, unit: "%", warn: 30, crit: 15 }, value: 82 },
         { id: "status", type: "label", label: "Status", value: "Running" },
         { id: "vent", type: "button", label: "Vent steam", opts: { color: "yellow" } },
@@ -806,7 +887,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         { id: "server", title: "Server", page: "power", cols: 1 },
       ],
       widgets: [
-        { id: "load", type: "chart", label: "Grid load", opts: { group: "grid", min: 0, max: 200, unit: "kFE/t", warn: 160, crit: 185, points: 60 }, value: loadHistory.at(-1)!, history: loadHistory },
+        { id: "load", type: "chart", label: "Grid load", opts: { group: "grid", min: 0, max: 200, unit: "kFE/t", warn: 160, crit: 185, points: 60, history: "7d" }, value: loadHistory.at(-1)!, history: loadHistory },
         { id: "gens", type: "indicator", label: "Generators", opts: { group: "grid", onColor: "green" }, value: true },
         { id: "fault", type: "indicator", label: "Fault", opts: { group: "grid", onColor: "red" }, value: false },
         { id: "mode", type: "select", label: "Mode", opts: { group: "grid", options: ["eco", "normal", "boost"] }, value: "normal" },
@@ -946,13 +1027,55 @@ export async function createMockServer(opts: MockOptions = {}) {
     };
 
   // v0.7: an Allthemodium Capacity card (48 devices) and Efficiency card (×0.8); wireless redstone channels
-  base.upgrades = { devices: 48, feFactor: 0.8 };
+  base.upgrades = { devices: 48, feFactor: 0.8, historyHours: 168 };
   base.redstone = new Map([
     ["alarm", { signal: 0, transmitters: 1, receivers: 3, override: { level: 15, until: null } }],
     ["base_door", { signal: 15, transmitters: 2, receivers: 1 }],
     ["farm.lights", { signal: 9, transmitters: 1, receivers: 4 }],
     ["reactor_scram", { signal: 0, transmitters: 1, receivers: 1 }],
   ]);
+  // v0.5 C: two example rules
+  base.rules = {
+    list: [
+      {
+        id: "0a1b2c3d",
+        name: "Cool the reactor",
+        enabled: true,
+        cooldown: 30,
+        notify: true,
+        when: { type: "widget", uplinkId: REACTOR, widgetId: "temp", op: ">", value: 900 },
+        if: [{ type: "power", op: ">=", value: 20 }],
+        then: [
+          { type: "widget", uplinkId: REACTOR, widgetId: "power", value: false },
+          { type: "alert", text: "Reactor hot – shut down", level: "warn" },
+        ],
+        lastRun: Date.now() - 42 * 60_000,
+        lastResult: "ok",
+        runs: 3,
+      },
+      {
+        id: "5e6f7a8b",
+        name: "Night lights",
+        enabled: false,
+        cooldown: 60,
+        notify: false,
+        when: { type: "time", time: 13000 },
+        if: [],
+        then: [{ type: "alert", text: "Lights on", level: "info" }],
+        lastRun: null,
+        lastResult: null,
+        runs: 0,
+      },
+    ],
+    log: [
+      { time: Date.now() - 42 * 60_000, rule: "0a1b2c3d", name: "Cool the reactor", result: "ok", manual: false },
+      { time: Date.now() - 3 * 3600_000, rule: "0a1b2c3d", name: "Cool the reactor", result: "pin_required", manual: false },
+    ],
+  };
+  // v0.5 D: one Discord target
+  base.push = [
+    { id: "p1", type: "discord", name: "Base channel", url: "https://discord.com/api/webhooks/1234567890/abcdefghijk7f3a", minLevel: "warn", events: ["alerts", "rules", "power"], enabled: true, lastSent: Date.now() - 42 * 60_000, lastResult: "ok" },
+  ];
   // FTB Chunks claims and Waystones mainframe cards (restricted: they carry coordinates)
   if (opts.extras)
     for (const card of COMPAT_CARDS.filter((k) => k.key === "claims" || k.key === "waystones")) {
@@ -1187,6 +1310,98 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} unlinked ${node.name} from the network`);
           nres(true);
           broadcastNetwork(m);
+          return;
+        }
+        if (msg.t === "term_open" || msg.t === "term_input" || msg.t === "term_close") {
+          const id = msg.uplinkId;
+          const tres = (reqId: string | undefined, ok: boolean, extra: Record<string, unknown> = {}) => reqId && sendTo(ws, { t: "term_result", reqId, ok, ...extra });
+          if (msg.t === "term_close") {
+            c.terms?.delete(id);
+            return;
+          }
+          if (msg.t === "term_open") {
+            const td = denied(c, "terminal");
+            if (td) return tres(msg.reqId, false, { error: td });
+            if (pin) {
+              if (!msg.pin) return tres(msg.reqId, false, { error: "pin_required" });
+              if (msg.pin !== pin) return tres(msg.reqId, false, { error: "wrong_pin", attemptsLeft: 4 });
+            }
+            const fsys = computerFor(m, id);
+            if (!fsys) return tres(msg.reqId, false, { error: "unknown_computer" });
+            c.terms ??= new Set();
+            if (!c.terms.has(id) && c.terms.size >= 2) return tres(msg.reqId, false, { error: "too_many" });
+            m.terms ??= new Map();
+            let term = m.terms.get(id);
+            if (!term) {
+              term = new FakeTerminal(fsys.info.label, fsys.info.advanced, () => [...fsys.files.keys()].filter((p) => !p.includes("/")));
+              m.terms.set(id, term);
+            }
+            c.terms.add(id);
+            log(`${c.user} opened the terminal of ${fsys.info.label}`);
+            tres(msg.reqId, true);
+            sendTo(ws, term.frame(id, true));
+            return;
+          }
+          // term_input
+          if (!c.terms?.has(id)) return tres(msg.reqId, false, { error: "not_open" });
+          const now = Date.now();
+          c.termHits = [...(c.termHits ?? []).filter((h) => now - h < 1000), now];
+          if (c.termHits.length > 20) return tres(msg.reqId, false, { error: "rate_limited" });
+          const term = m.terms!.get(id)!;
+          const ev = msg.events as Record<string, any>[];
+          const valid = ev.every(
+            (e) =>
+              (e.type === "char" && typeof e.c === "string" && e.c.length === 1) ||
+              (e.type === "key" && Number.isInteger(e.key) && e.key >= 1 && e.key <= 348) ||
+              (e.type === "key_up" && Number.isInteger(e.key)) ||
+              (e.type === "paste" && typeof e.text === "string" && e.text.length <= 512) ||
+              ["terminate", "turn_on", "reboot", "shutdown"].includes(e.type) ||
+              (/^mouse_(click|up|drag|scroll)$/.test(e.type) && Number.isInteger(e.x) && Number.isInteger(e.y)),
+          );
+          if (!valid) return tres(msg.reqId, false, { error: "invalid_input" });
+          const powerWasOn = term.on;
+          if (!term.on && ev.some((e) => e.type !== "turn_on")) return tres(msg.reqId, false, { error: "computer_off" });
+          for (const e of ev) term.input(e as { type: string });
+          const full = powerWasOn !== term.on || ev.some((e) => e.type === "reboot" || e.type === "turn_on");
+          const frame = term.frame(id, full);
+          for (const x of m.clients) if (x.terms?.has(id)) sendTo(x.ws, frame);
+          tres(msg.reqId, true);
+          return;
+        }
+        if (msg.t === "rule_set" || msg.t === "rule_delete" || msg.t === "rule_enable" || msg.t === "rule_run") {
+          const rr = (ok: boolean, extra: Record<string, unknown> = {}) => sendTo(ws, { t: "rule_result", reqId: msg.reqId, ok, ...extra });
+          const rd = denied(c, msg.t === "rule_set" || msg.t === "rule_delete" ? "rules.edit" : "rules.toggle");
+          if (rd) return rr(false, { error: rd });
+          if (!m.rules) m.rules = { list: [], log: [] };
+          const list = m.rules.list;
+          if (msg.t === "rule_set") {
+            const r = msg.rule as Record<string, any>;
+            const problem = ruleProblem(r);
+            if (problem) return rr(false, { error: "invalid_rule", detail: problem });
+            if ((r.then as any[]).some((a) => a.type === "widget" && (m.uplinks.get(a.uplinkId)?.widgets.find((w) => w.id === a.widgetId)?.opts as { pin?: boolean } | undefined)?.pin)) return rr(false, { error: "pin_widget" });
+            const i = r.id ? list.findIndex((x) => x.id === r.id) : -1;
+            if (i < 0 && list.length >= rulesPayload(m)!.limit) return rr(false, { error: "too_many" });
+            const id = r.id && i >= 0 ? r.id : Math.floor(Math.random() * 2 ** 32).toString(16).padStart(8, "0");
+            const prev = i >= 0 ? list[i] : { lastRun: null, lastResult: null, runs: 0 };
+            const rule = { id, name: r.name.trim(), enabled: r.enabled !== false, cooldown: r.cooldown ?? 30, notify: r.notify === true, when: r.when, if: r.if ?? [], then: r.then, lastRun: prev.lastRun, lastResult: prev.lastResult, runs: prev.runs };
+            if (i >= 0) list[i] = rule;
+            else list.push(rule);
+            log(`${c.user} saved rule ${rule.name}`);
+            rr(true, { id });
+            broadcastRules(m);
+            return;
+          }
+          const rule = list.find((x) => x.id === msg.id);
+          if (!rule) return rr(false, { error: "unknown_rule" });
+          if (msg.t === "rule_delete") m.rules.list = list.filter((x) => x !== rule);
+          else if (msg.t === "rule_enable") rule.enabled = msg.enabled;
+          else {
+            if (!m.online) return rr(false, { error: "offline" });
+            const res = runRule(m, rule, true);
+            return res === "ok" ? rr(true) : rr(false, { error: res });
+          }
+          rr(true);
+          broadcastRules(m);
           return;
         }
         if (msg.t === "rs_override") {
@@ -1535,7 +1750,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       return json(res, 200, { ok: true });
     }
     // ---- script import (admin; PIN for writes; docs/SPEC.md "Script import – HTTP API")
-    const fm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/computers\/([A-Za-z0-9-]{1,64})\/(files(?:\/.*)?|run)$/.exec(p);
+    const fm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/computers\/([A-Za-z0-9-]{1,64})\/(files(?:\/.*)?|run|move)$/.exec(p);
     if (fm) {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
@@ -1559,6 +1774,139 @@ export async function createMockServer(opts: MockOptions = {}) {
         alert(m, fm[2], fm[3] === "run" ? `${t.name} started a script on ${fs.info.label}` : `${t.name} ${req.method === "PUT" ? "uploaded" : "deleted"} ${file} on ${fs.info.label}`, "info");
       }
       return json(res, r.status, r.body);
+    }
+    // ---- v0.5 D push targets (docs/SPEC.md "D. Push – web protocol")
+    const pushM = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/push$/.exec(p);
+    if (pushM) {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const g = gate(t, pushM[1], "push.manage");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const m = g.m;
+      if (!m.push) m.push = [];
+      const mask = (u: string) => {
+        try {
+          const x = new URL(u);
+          return `${x.protocol}//${x.host}/…${u.slice(-4)}`;
+        } catch {
+          return "…";
+        }
+      };
+      const doc = () => ({
+        enabled: opts.pushEnabled !== false,
+        targets: m.push!.map(({ url, token, ...rest }) => ({ ...rest, url: mask(url), hasToken: !!token })),
+        limit: 5,
+        perMinute: 30,
+        allowedHosts: [],
+      });
+      if (req.method === "GET") return json(res, 200, doc());
+      if (req.method !== "POST") return json(res, 405, { error: "method" });
+      const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+      const urlError = (type: string, url: unknown) => {
+        if (typeof url !== "string" || url.length > 512) return "invalid_url";
+        let u: URL;
+        try {
+          u = new URL(url);
+        } catch {
+          return "invalid_url";
+        }
+        if (u.username || u.password || u.hash) return "invalid_url";
+        if (u.protocol !== "https:") return "https_only";
+        if (/^(localhost|.*\.local|.*\.internal|127\.|10\.|192\.168\.|\d+\.\d+\.\d+\.\d+$)/.test(u.hostname)) return "host_not_allowed";
+        if (type === "discord" && !(/^(discord\.com|discordapp\.com|canary\.discord\.com|ptb\.discord\.com)$/.test(u.hostname) && u.pathname.startsWith("/api/webhooks/"))) return "invalid_url";
+        return null;
+      };
+      const pick = (x: Record<string, any>, cur?: (typeof m.push)[number]) => {
+        const type = x.type ?? cur?.type;
+        if (!["discord", "ntfy", "webhook"].includes(type)) return { error: "invalid" };
+        if (cur && x.type && x.type !== cur.type && !x.url) return { error: "invalid" };
+        if (x.url !== undefined || !cur) {
+          const e = urlError(type, x.url);
+          if (e) return { error: e };
+        }
+        if (x.minLevel !== undefined && !["info", "warn", "error"].includes(x.minLevel)) return { error: "invalid" };
+        if (x.events !== undefined && !(Array.isArray(x.events) && x.events.every((e: unknown) => ["alerts", "rules", "approvals", "power"].includes(e as string)))) return { error: "invalid" };
+        return {
+          value: {
+            id: cur?.id ?? `t${Date.now().toString(36)}`,
+            type,
+            name: typeof x.name === "string" && x.name.trim() ? x.name.trim().slice(0, 48) : (cur?.name ?? type),
+            url: x.url ?? cur!.url,
+            ...(x.token !== undefined ? (x.token ? { token: String(x.token) } : {}) : cur?.token ? { token: cur.token } : {}),
+            minLevel: x.minLevel ?? cur?.minLevel ?? "warn",
+            events: x.events ?? cur?.events ?? ["alerts", "rules", "power"],
+            enabled: typeof x.enabled === "boolean" ? x.enabled : (cur?.enabled ?? true),
+            lastSent: cur?.lastSent ?? null,
+            lastResult: cur?.lastResult ?? null,
+          },
+        };
+      };
+      if (b.op === "add") {
+        if (m.push.length >= 5) return json(res, 400, { error: "too_many" });
+        const r = pick(b.target ?? {});
+        if ("error" in r) return json(res, 400, { error: r.error });
+        m.push.push(r.value as (typeof m.push)[number]);
+      } else if (b.op === "update" || b.op === "delete" || b.op === "test") {
+        const i = m.push.findIndex((x) => x.id === b.id);
+        if (i < 0) return json(res, 404, { error: "unknown_target" });
+        if (b.op === "delete") m.push.splice(i, 1);
+        else if (b.op === "test") {
+          if (opts.pushEnabled === false) return json(res, 409, { error: "disabled" });
+          const tg = m.push[i];
+          setTimeout(() => {
+            tg.lastSent = Date.now();
+            tg.lastResult = /404/.test(tg.url) ? "http_404" : "ok";
+          }, 300);
+        } else {
+          const r = pick(b.target ?? {}, m.push[i]);
+          if ("error" in r) return json(res, 400, { error: r.error });
+          m.push[i] = r.value as (typeof m.push)[number];
+        }
+      } else return json(res, 400, { error: "invalid" });
+      log(`${g.role}: push ${b.op}`);
+      return json(res, 200, doc());
+    }
+    // ---- v0.5 F long-term history (docs/SPEC.md "F. Long-term statistics – implementation notes")
+    const hm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/history\/(1h|24h|7d|30d)\/(json|csv)\/(w|i)\/([A-Za-z0-9-]{1,64})\/([^/]{1,96})$/.exec(p);
+    if (hm && req.method === "GET") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const [, mfId, range, fmtH, kind, uplinkId, rawKey] = hm;
+      const g = gate(t, mfId, kind === "i" ? "storage.search" : fmtH === "csv" ? "act.buttons" : "view");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      if (fmtH === "csv" && !g.perms.includes("act.buttons")) return json(res, 403, { error: "not_allowed" });
+      const key = decodeURIComponent(rawKey);
+      const u = g.m.uplinks.get(uplinkId);
+      if (u?.restricted && !g.perms.includes("view.positions")) return json(res, 403, { error: "not_allowed" });
+      const w = u?.widgets.find((x) => x.id === key);
+      const recorded = kind === "i" ? "24h" : (w?.opts as { history?: string } | undefined)?.history;
+      if (!u || !recorded) return json(res, 404, { error: "no_history" });
+      const order = ["1h", "24h", "7d", "30d"];
+      const retentionHours = g.m.upgrades?.historyHours ?? 1;
+      const keepable = order.filter((r) => ({ "1h": 1, "24h": 24, "7d": 168, "30d": 720 })[r]! <= Math.max(1, retentionHours));
+      const kept = order[Math.min(order.indexOf(range), order.indexOf(recorded), order.indexOf(keepable.at(-1)!))];
+      const step = kept === "30d" ? 1_800_000 : kept === "7d" ? 300_000 : 60_000;
+      const n = { "1h": 60, "24h": 1440, "7d": 2016, "30d": 1440 }[kept]!;
+      const o = (w?.opts ?? {}) as { min?: number; max?: number };
+      const lo = o.min ?? 0;
+      const hi = o.max ?? 100;
+      const now = Math.floor(Date.now() / step) * step;
+      let seed = [...uplinkId + key].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+      const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 2 ** 32);
+      const points: [number, number | null][] = [];
+      for (let i = n - 1; i >= 0; i--) {
+        const tt = now - i * step;
+        // a day/night wave plus noise; a gap where "the chunk was unloaded"
+        const day = Math.sin((tt / 86_400_000) * Math.PI * 2);
+        const v = lo + (hi - lo) * (0.55 + 0.25 * day + 0.08 * Math.sin(tt / 900_000) + (rnd() - 0.5) * 0.06);
+        const gap = i > n * 0.62 && i < n * 0.66;
+        points.push([tt, gap ? null : Math.round(Math.max(lo, Math.min(hi, v)) * 10) / 10]);
+      }
+      if (fmtH === "csv") {
+        res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "text/csv; charset=utf-8", "cache-control": "no-store" });
+        return void res.end(["time,value", ...points.map(([tt, v]) => `${new Date(tt).toISOString()},${v ?? ""}`)].join("\n") + "\n");
+      }
+      return json(res, 200, { key: `${kind}/${uplinkId}/${key}`, range, kept, retentionHours, step, points });
     }
     // ---- map tiles (surface / slice) and voxel sections (docs/SPEC.md "Map tiles – HTTP API", "Voxel view – HTTP API")
     const mt = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(map|voxels)\/([a-z0-9_.-]+:[a-z0-9_./-]+?)\/(.+)$/.exec(p);

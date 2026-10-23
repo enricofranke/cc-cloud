@@ -12,7 +12,9 @@ export type Route =
   | { name: "mainframe"; id: string }
   | { name: "devices" }
   | { name: "access"; id: string }
-  | { name: "shares"; id: string };
+  | { name: "shares"; id: string }
+  | { name: "rules"; id: string }
+  | { name: "push"; id: string };
 
 /** Script Store link (/store#install=<id>@<version>): opened on the next mainframe dashboard. */
 export const pendingInstall = signal<{ id: string; version?: string } | null>(null);
@@ -42,6 +44,8 @@ function parseRoute(): Route {
   if (parts[0] === "devices") return { name: "devices" };
   if (parts[0] === "m" && parts[1] && parts[2] === "access") return { name: "access", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "shares") return { name: "shares", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "rules") return { name: "rules", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "push") return { name: "push", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1]) return { name: "mainframe", id: decodeURIComponent(parts[1]) };
   return { name: "list" };
 }

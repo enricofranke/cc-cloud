@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Alle Rezepte"
-  position: 7
+  position: 8
 ---
 
 # Alle Rezepte

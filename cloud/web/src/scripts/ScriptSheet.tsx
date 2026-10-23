@@ -8,6 +8,18 @@ import { pushToast } from "../lib/ui.ts";
 import { ConfirmDialog, PinDialog, Sheet, type PinState } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
 import { EXAMPLES, type Example } from "./examples.ts";
+import type { ComponentType } from "preact";
+
+type EditorProps = { conn: MainframeConn; uplinkId: string; title: string; initialPath?: string; onClose: () => void };
+let EditorComp: ComponentType<EditorProps> | null = null;
+/** The Lua editor (CodeMirror) is its own chunk, loaded on first use. */
+function EditorLoader(props: EditorProps) {
+  const [C, setC] = useState<ComponentType<EditorProps> | null>(() => EditorComp);
+  useEffect(() => {
+    if (!C) import("./Editor.tsx").then((m) => setC(() => (EditorComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
+}
 
 type Tab = "upload" | "examples" | "files";
 type Confirm = { title: string; text: string; label: string; color: string; resolve: (ok: boolean) => void };
@@ -27,6 +39,7 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
   const [done, setDone] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [pinAsk, setPinAsk] = useState<{ state: PinState; resolve: (pin: string | null) => void } | null>(null);
+  const [editor, setEditor] = useState<{ path?: string } | null>(null);
   const pin = useRef<string | undefined>(undefined);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -147,16 +160,6 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
       pushToast({ level: "warn", title: "Download failed", text: scriptErrorText(e) });
     }
   };
-  const edit = async (path: string) => {
-    try {
-      setCode(await api.read(path));
-      setName(path);
-      setTab("upload");
-      setDone(null);
-    } catch (e) {
-      pushToast({ level: "warn", title: "Could not open", text: scriptErrorText(e) });
-    }
-  };
   const remove = async (path: string) => {
     if (!(await ask({ title: `Delete ${path}?`, text: "The file is removed from the computer. This cannot be undone.", label: "Delete", color: "red" }))) return;
     try {
@@ -186,6 +189,9 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
             <span class="muted small">{listError ?? "Connecting to the computer…"}</span>
           )}
         </div>
+        <button type="button" class="btn btn-small open-editor" onClick={() => setEditor({})}>
+          Open the editor
+        </button>
         <div class="nd-tabs" role="tablist" aria-label="Scripts">
           {(
             [
@@ -341,8 +347,8 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
                     <span class="file-name mono">{f.path.includes("/") ? f.path.split("/")[1] : f.path}</span>
                     <span class="muted small">{fmtBytes(f.size)}</span>
                     <span class="file-actions">
-                      <button type="button" class="btn btn-s" onClick={() => edit(f.path)}>
-                        Open
+                      <button type="button" class="btn btn-s" onClick={() => setEditor({ path: f.path })}>
+                        Edit
                       </button>
                       <button type="button" class="btn btn-s" onClick={() => download(f.path)} aria-label={`Download ${f.path}`}>
                         Download
@@ -390,6 +396,7 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
           }}
         />
       )}
+      {editor && <EditorLoader conn={conn} uplinkId={uplinkId} title={title} initialPath={editor.path} onClose={() => (setEditor(null), refresh())} />}
     </Sheet>
   );
 }

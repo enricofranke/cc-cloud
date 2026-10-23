@@ -6,12 +6,19 @@ export const MAX_SCRIPT = 256 * 1024;
 const PART = /^[A-Za-z0-9_.-]{1,64}$/;
 const RESERVED = /^(rom|disk\d*|\.cloud)$/;
 
-/** Same rules as the mod: "name" or "folder/name", no rom/disk mounts, no "..". Returns an error text or null. */
-export function pathError(path: string): string | null {
+/** First 16 hex characters of SHA-256 of the UTF-8 content – the editor's ifMatch hash. */
+export async function contentHash(text: string) {
+  const { sha256Hex } = await import("./scriptstore.ts");
+  return (await sha256Hex(new TextEncoder().encode(text))).slice(0, 16);
+}
+
+/** Same rules as the mod: "name" or "folder/name" (the editor allows 8 levels), no rom/disk mounts, no "..". Returns an error text or null. */
+export function pathError(path: string, maxLevels = 2): string | null {
   if (!path) return "Enter a file name.";
   if (path.startsWith("/") || path.includes("\\")) return "Use a relative name like control-room.lua.";
   const parts = path.split("/");
-  if (parts.length > 2) return "At most one folder (folder/name.lua).";
+  if (parts.length > maxLevels) return maxLevels === 2 ? "At most one folder (folder/name.lua)." : `At most ${maxLevels - 1} folders deep.`;
+  if (path.length > 255) return "The path is too long.";
   for (const p of parts) {
     if (p === "." || p === "..") return "“.” and “..” are not allowed.";
     if (!PART.test(p)) return "Letters, digits, “_”, “-” and “.” only (max 64 per part).";
@@ -98,6 +105,9 @@ export const SCRIPT_ERRORS: Record<string, string> = {
   pin_required: "This needs the mainframe PIN.",
   wrong_pin: "Wrong PIN.",
   pin_locked: "Too many wrong PINs – locked for a few minutes.",
+  changed: "The file changed on the computer since you opened it.",
+  into_itself: "A folder cannot be moved into itself.",
+  not_a_directory: "A file is in the way of that folder.",
   unreachable: "Server not reachable.",
 };
 export const scriptErrorText = (e: unknown) =>
@@ -105,6 +115,12 @@ export const scriptErrorText = (e: unknown) =>
 
 export interface ScriptApi {
   list(): Promise<FileList>;
+  /** v0.5 E editor: the whole tree (8 levels, depth first) */
+  tree(): Promise<FileList & { truncated?: boolean }>;
+  /** v0.5 E editor save: 409 changed when the file no longer has `hash` */
+  save(path: string, code: string, hash: string | null, pin?: string): Promise<{ path: string; size: number; hash: string }>;
+  mkdir(path: string, pin?: string): Promise<void>;
+  move(from: string, to: string, pin?: string): Promise<void>;
   read(path: string): Promise<string>;
   write(path: string, code: string, opts: { overwrite?: boolean; startup?: boolean; pin?: string }): Promise<{ path: string; size: number }>;
   remove(path: string, pin?: string): Promise<void>;
@@ -135,6 +151,17 @@ export function scriptApi(base: string, token: string, mainframeId: string, upli
   };
   return {
     list: async () => (await call("/files")).json(),
+    tree: async () => (await call("/files?tree=true")).json(),
+    save: async (path, code, hash, pin) => {
+      const q = hash === null ? "" : `?ifMatch=${encodeURIComponent(hash)}`;
+      return (await call(`/files/${enc(path)}${q}`, { method: "PUT", body: code, pin, headers: { "content-type": "text/plain; charset=utf-8" } })).json();
+    },
+    mkdir: async (path, pin) => {
+      await call(`/files/${enc(path)}?dir=true`, { method: "PUT", body: "", pin });
+    },
+    move: async (from, to, pin) => {
+      await call("/move", { method: "POST", body: JSON.stringify({ from, to }), pin, headers: { "content-type": "application/json" } });
+    },
     read: async (path) => (await call(`/files/${enc(path)}`)).text(),
     write: async (path, code, o) => {
       const q = new URLSearchParams();

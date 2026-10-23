@@ -25,6 +25,13 @@
     ]
   },
   "devDependencies": {
+    "@codemirror/commands": "6.9.0",
+    "@codemirror/language": "6.11.3",
+    "@codemirror/legacy-modes": "6.5.2",
+    "@codemirror/search": "6.5.11",
+    "@codemirror/state": "6.5.2",
+    "@codemirror/view": "6.38.6",
+    "@lezer/highlight": "1.2.1",
     "@preact/preset-vite": "^2.10.6",
     "@preact/signals": "^2.11.3",
     "@types/node": "^26.6.5",

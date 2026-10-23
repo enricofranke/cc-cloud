@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Accounts, roles & sharing"
-  position: 9
+  position: 10
   icon: cccloud:cloud_link_card
 ---
 
@@ -58,7 +58,7 @@ Admins can share a **read-only** view – for a stream overlay, a friend or a wa
 2. Pick whole pages or single cards, the expiry (1 hour, 24 hours, 7 days or never), how many people may watch at once, and optionally **hide exact numbers** (only gauges are shown).
 3. Copy the link – it is shown only once.
 
-The secret part after `#` never reaches the server's logs and is removed from the address bar as soon as the page opens. People with the link see **"Shared by …"** and cannot press anything: there are no controls at all, and the server refuses every action from a share link. Never included: coordinates, item search, the network map and history export. Revoking a link disconnects everyone viewing it immediately.
+The secret part after `#` never reaches the server's logs and is removed from the address bar as soon as the page opens. The browser keeps it only in memory – after a reload or from a bookmark, open the full link again. People with the link see **"Shared by …"** and cannot press anything: there are no controls at all, and the server refuses every action from a share link. Never included: coordinates, item search, the network map and history export. Revoking a link disconnects everyone viewing it immediately.
 
 ## Server permissions
 

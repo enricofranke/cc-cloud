@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Konten, Rollen & Teilen"
-  position: 9
+  position: 10
   icon: cccloud:cloud_link_card
 ---
 
@@ -58,7 +58,7 @@ Admins können eine **schreibgeschützte** Ansicht teilen – für ein Stream-Ov
 2. Ganze Seiten oder einzelne Karten wählen, die Laufzeit (1 Stunde, 24 Stunden, 7 Tage oder unbegrenzt), wie viele gleichzeitig zusehen dürfen, und optional **genaue Zahlen ausblenden** (nur Anzeigen).
 3. Link kopieren – er wird nur einmal angezeigt.
 
-Der geheime Teil hinter `#` landet nie in den Server-Logs und verschwindet aus der Adresszeile, sobald die Seite offen ist. Wer den Link hat, sieht **„Shared by …“** und kann nichts drücken: Es gibt gar keine Bedienelemente, und der Server lehnt jede Aktion über einen Freigabe-Link ab. Nie enthalten: Koordinaten, Item-Suche, Netzwerkkarte und Verlaufs-Export. Ein Widerruf trennt alle Zuschauer sofort.
+Der geheime Teil hinter `#` landet nie in den Server-Logs und verschwindet aus der Adresszeile, sobald die Seite offen ist. Der Browser hält ihn nur im Speicher – nach einem Neuladen oder aus einem Lesezeichen den vollständigen Link erneut öffnen. Wer den Link hat, sieht **„Shared by …“** und kann nichts drücken: Es gibt gar keine Bedienelemente, und der Server lehnt jede Aktion über einen Freigabe-Link ab. Nie enthalten: Koordinaten, Item-Suche, Netzwerkkarte und Verlaufs-Export. Ein Widerruf trennt alle Zuschauer sofort.
 
 ## Server-Rechte
 

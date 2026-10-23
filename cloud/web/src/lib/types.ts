@@ -57,6 +57,8 @@ export type AlertLevel = "info" | "warn" | "crit";
 
 export interface WidgetOpts {
   color?: Color;
+  /** v0.5 F: the server records long-term history for this range */
+  history?: string;
   confirm?: boolean;
   /** Ask for the mainframe PIN before sending. */
   pin?: boolean;

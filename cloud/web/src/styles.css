@@ -5700,7 +5700,8 @@ fieldset.field {
 }
 
 /* ---------------------------------------------------------------- script import */
-.card-scripts {
+.card-scripts,
+.card-term {
   margin-left: auto;
   width: 30px;
   height: 30px;
@@ -5708,11 +5709,16 @@ fieldset.field {
   font: 700 12px ui-monospace, Menlo, monospace;
 }
 .card-head .tag + .card-scripts,
-.card-head .led + .card-scripts {
+.card-head .led + .card-scripts,
+.card-head .tag + .card-term,
+.card-head .led + .card-term,
+.card-term + .card-scripts {
   margin-left: 6px;
 }
 .card-scripts:hover,
-.card-scripts:focus-visible {
+.card-scripts:focus-visible,
+.card-term:hover,
+.card-term:focus-visible {
   color: var(--cyan);
 }
 .scripts {
@@ -7397,4 +7403,528 @@ body.rz-nwse * {
 }
 .wr-edit .seg-ctl button {
   text-transform: none;
+}
+
+/* ---------------------------------------------------------------- v0.5 F long-term history */
+.w-hist {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.75;
+}
+.w-hist:hover,
+.w-hist:focus-visible {
+  opacity: 1;
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+.wcell.t-chart .w-hist,
+.wcell.t-progress .w-hist,
+.wcell.t-slider .w-hist,
+.wcell.t-number .w-hist {
+  top: auto;
+  bottom: 4px;
+}
+@media (hover: none) {
+  .w-hist {
+    opacity: 1;
+  }
+}
+.hist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.hist-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hist-chart {
+  position: relative;
+  height: 220px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.hist-chart.skeleton {
+  height: 220px;
+}
+.hist-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+.hist-line {
+  fill: none;
+  stroke: var(--cyan);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.hist-cursor {
+  stroke: var(--yellow);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.hist-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hist-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.hist-stats div {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.hist-stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.hist-stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  .hist-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hist-chart {
+    height: 170px;
+  }
+}
+
+/* ---------------------------------------------------------------- v0.5 C rules, D push */
+.rules-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  margin: 8px 0;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+}
+.rule-list,
+.push-list,
+.rule-log {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rule-row,
+.push-row {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+.rule-row.off,
+.push-row.off {
+  opacity: 0.72;
+}
+.rule-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.rule-name {
+  font-size: 15px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rule-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+.rule-sum,
+.rule-preview {
+  margin: 8px 0 4px;
+  line-height: 1.5;
+}
+.rule-preview {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.kw {
+  font-family: "Silkscreen", monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--gold-text);
+  letter-spacing: 0.04em;
+}
+.rule-meta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.rule-res {
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  border: 1px solid currentColor;
+}
+.rule-res.ok {
+  color: var(--green);
+}
+.rule-res.bad {
+  color: var(--orange);
+}
+.rule-log li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.rule-editor,
+.push-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.rule-head-fields {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 12px;
+}
+.rule-block {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.rule-block legend {
+  padding: 0 4px;
+}
+.rule-block > .btn {
+  align-self: flex-start;
+}
+.rule-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.rule-fields .select,
+.rule-fields .input {
+  width: auto;
+  min-width: 0;
+  flex: 1 1 140px;
+}
+.rule-fields .input-num {
+  flex: 0 1 110px;
+}
+.rule-fields .select-op {
+  flex: 0 1 120px;
+}
+.rule-fields .rule-grow {
+  flex: 3 1 220px;
+}
+.rule-item {
+  display: grid;
+  grid-template-columns: minmax(130px, 180px) 1fr auto;
+  gap: 8px;
+  align-items: start;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.push-type {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font: 600 11px ui-monospace, Menlo, monospace;
+  border: 1px solid currentColor;
+}
+.pt-discord {
+  color: #8c9eff;
+}
+.pt-ntfy {
+  color: var(--green);
+}
+.pt-webhook {
+  color: var(--cyan);
+}
+.push-url {
+  margin: 6px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .rule-head-fields {
+    grid-template-columns: 1fr;
+  }
+  .rule-item {
+    grid-template-columns: 1fr auto;
+  }
+  .rule-item > .rule-fields {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .rule-tools {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* ---------------------------------------------------------------- v0.5 E terminal */
+.term-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.term-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.term-screen {
+  position: relative;
+  padding: 10px;
+  border-radius: 6px;
+  background: #111111;
+  border: 2px solid var(--line-2);
+  font: 15px/1.15 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  overflow: hidden;
+  cursor: text;
+  outline: none;
+  /* 51 columns fill the width: the font scales with the sheet (container units) */
+  font-size: min(15px, calc((100cqw - 24px) / 51 / 0.602));
+}
+.term-wrap {
+  container-type: inline-size;
+}
+.term-screen:focus-visible,
+.term-screen:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent);
+}
+.term-row {
+  position: relative;
+  height: 1.15em;
+}
+.term-cursor {
+  position: absolute;
+  bottom: 0.08em;
+  width: 0.6em;
+  height: 0.14em;
+  background: #f0f0f0;
+  animation: term-blink 1s steps(1) infinite;
+}
+@keyframes term-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .term-cursor {
+    animation: none;
+  }
+}
+.term-screen.off {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+}
+.term-offline {
+  color: #999;
+  font-family: inherit;
+}
+.term-type {
+  display: flex;
+  gap: 8px;
+}
+.term-type .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- v0.5 E Lua editor */
+.open-editor {
+  align-self: flex-start;
+  margin: 4px 0;
+}
+.lua-editor {
+  --cm-kw: #c792ea;
+  --cm-str: #c3e88d;
+  --cm-num: #f78c6c;
+  --cm-com: #7d8790;
+  --cm-var: var(--text);
+  --cm-op: #89ddff;
+  --cm-builtin: #82aaff;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  height: min(72vh, 760px);
+  min-width: 0;
+}
+:root[data-theme="light"] .lua-editor {
+  --cm-kw: #7c3aed;
+  --cm-str: #2f7d32;
+  --cm-num: #c2410c;
+  --cm-com: #6b7280;
+  --cm-op: #0369a1;
+  --cm-builtin: #1d4ed8;
+}
+.ed-toolbar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ed-path {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ed-dirty {
+  color: var(--yellow);
+}
+.ed-tree-toggle {
+  display: none;
+}
+.ed-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--panel-2);
+}
+.ed-tree-actions {
+  display: flex;
+  gap: 6px;
+}
+.ed-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ed-file {
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+.ed-file.on {
+  background: color-mix(in srgb, var(--cyan) 16%, transparent);
+}
+.ed-file:hover {
+  background: var(--panel-3);
+}
+.ed-name {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: 13px ui-monospace, Menlo, monospace;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ed-file.dir .ed-name {
+  color: var(--muted);
+}
+.ed-file-tools {
+  display: none;
+  gap: 2px;
+}
+.ed-file:hover .ed-file-tools,
+.ed-file:focus-within .ed-file-tools,
+.ed-file.on .ed-file-tools {
+  display: flex;
+}
+.ed-main {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ed-cm {
+  height: 100%;
+}
+.ed-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .lua-editor {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    height: 78vh;
+  }
+  .ed-tree-toggle {
+    display: inline-flex;
+  }
+  .lua-editor.tree-hidden .ed-tree {
+    display: none;
+  }
+  .ed-tree {
+    max-height: 34vh;
+  }
+  .ed-file-tools {
+    display: flex;
+  }
+  .ed-toolbar .ed-run {
+    padding: 6px 10px;
+  }
+  .ed-toolbar .ed-run span {
+    font-size: 10px;
+  }
 }

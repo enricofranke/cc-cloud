@@ -23,7 +23,9 @@ describe("paths", () => {
     const cases: [string, boolean][] = [
       ["control-room.lua", true],
       ["lib/util.lua", true],
-      ["a/b/c.lua", false],
+      ["a/b/c.lua", true],
+      ["a/b/c/d/e/f/g/h.lua", true],
+      ["a/b/c/d/e/f/g/h/i.lua", false],
       ["/abs.lua", false],
       ["..", false],
       ["lib/..", false],
@@ -36,9 +38,11 @@ describe("paths", () => {
       ["", false],
     ];
     for (const [p, ok] of cases) {
-      expect(pathError(p) === null, `client ${p}`).toBe(ok);
+      // the editor allows 8 levels like the mod (v0.5 E); the upload form keeps one folder
+      expect(pathError(p, 8) === null, `client ${p}`).toBe(ok);
       expect(checkPath(p) !== null, `mock ${p}`).toBe(ok);
     }
+    expect(pathError("a/b/c.lua")).toMatch(/one folder/);
   });
 
   it("suggests file names", () => {
@@ -74,7 +78,7 @@ describe("script import API (mock)", () => {
     const api = scriptApi(base(), await token(), mf, CONTROL);
     await expect(api.write("farm.lua", "print(1)", {})).rejects.toMatchObject({ code: "pin_required", status: 403 });
     await expect(api.write("farm.lua", "print(1)", { pin: "0000" })).rejects.toMatchObject({ code: "wrong_pin", attemptsLeft: 4 });
-    expect(await api.write("farm.lua", "print(1)", { pin: "1234", startup: true })).toEqual({ ok: true, path: "farm.lua", size: 8 });
+    expect(await api.write("farm.lua", "print(1)", { pin: "1234", startup: true })).toMatchObject({ ok: true, path: "farm.lua", size: 8, hash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(await api.read("startup.lua")).toBe('shell.run("farm.lua")\n');
     await expect(api.write("farm.lua", "print(2)", { pin: "1234" })).rejects.toMatchObject({ code: "exists", status: 409 });
     await api.write("farm.lua", "print(2)", { pin: "1234", overwrite: true });
@@ -101,5 +105,31 @@ describe("script import API (mock)", () => {
     const e = await api.write("f10.lua", "x", { pin: "1234" }).catch((x) => x);
     expect(e).toBeInstanceOf(ScriptError);
     expect(e.code).toBe("rate_limited");
+  });
+});
+
+describe("Lua editor API (mock, v0.5 E)", () => {
+  it("lists the tree, saves with a conflict check, makes folders and moves", async () => {
+    const mf = await start();
+    const api = scriptApi(base(), await token(), mf, CONTROL);
+    const { contentHash } = await import("../web/src/lib/scripts.ts");
+    await api.mkdir("lib/net", "1234");
+    const w = await api.write("lib/net/http.lua", "return {}", { pin: "1234" });
+    expect(w.size).toBe(9);
+    const tree = await api.tree();
+    const paths = tree.files.map((f) => f.path);
+    expect(paths.indexOf("lib")).toBeLessThan(paths.indexOf("lib/net"));
+    expect(paths.indexOf("lib/net")).toBeLessThan(paths.indexOf("lib/net/http.lua"));
+    // the hash the browser computes matches the server's
+    const h = await contentHash("return {}");
+    const saved = await api.save("lib/net/http.lua", "return { v = 2 }", h, "1234");
+    expect(saved.hash).toBe(await contentHash("return { v = 2 }"));
+    // a stale hash is a conflict
+    await expect(api.save("lib/net/http.lua", "x", h, "1234")).rejects.toMatchObject({ code: "changed", status: 409 });
+    await api.move("lib", "libs", "1234");
+    expect(await api.read("libs/net/http.lua")).toBe("return { v = 2 }");
+    await expect(api.move("libs", "libs/inner", "1234")).rejects.toMatchObject({ code: "into_itself" });
+    await api.remove("libs", "1234");
+    expect((await api.tree()).files.some((f) => f.path.startsWith("libs"))).toBe(false);
   });
 });
