@@ -565,6 +565,35 @@ try {
   await clearToasts(ng);
   await shot(ng, "desktop-n8-3d-no-webgl");
   await noGl.close();
+  // ---- map tiles on the Deep Base: surface, then a slice through the underground room (y −59)
+  {
+    const deep = [...mock.mainframes.values()].find((m) => m.name.startsWith("Deep"))!;
+    for (const [ctx, pre] of [[await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop"], [await phoneCtx(), "phone"]] as const) {
+      const mp = await ctx.newPage();
+      watch(mp);
+      await mp.goto(origin);
+      await pairVia(mp, mock.code(deep), "Map");
+      await mp.click(pre === "desktop" ? ".toptabs .tab-network" : ".tabbar .tab-network");
+      await mp.click('.seg-ctl button:has-text("Map")');
+      await mp.waitForSelector(".map-tiles");
+      await mp.waitForTimeout(2500);
+      await clearToasts(mp);
+      await shot(mp, `${pre}-m1-map-surface`);
+      await mp.click('.map-layer button:has-text("Slice")');
+      await mp.locator(".slice-y input").fill("-59");
+      await mp.waitForTimeout(600);
+      const mf = (await mp.locator('.mnode[aria-label^="Mainframe"]').boundingBox())!;
+      await mp.mouse.move(mf.x + mf.width / 2, mf.y + mf.height / 2);
+      for (let i = 0; i < (pre === "desktop" ? 5 : 4); i++) {
+        await mp.mouse.wheel(0, -200);
+        await mp.waitForTimeout(80);
+      }
+      await mp.waitForTimeout(2500);
+      await clearToasts(mp);
+      await shot(mp, `${pre}-m2-map-slice`);
+      await ctx.close();
+    }
+  }
   await d.click("button.pwr");
   await d.waitForSelector(".power-pop");
   await shot(d, "desktop-n3-power-breakdown");

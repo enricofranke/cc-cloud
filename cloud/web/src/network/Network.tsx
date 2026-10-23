@@ -1,5 +1,5 @@
 // v0.4 Network page: UniFi-style topology and a top-down map per dimension.
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ComponentChildren, ComponentType } from "preact";
 
 /**
@@ -33,6 +33,7 @@ import {
   mapBounds,
   parentOf,
   pathOf,
+  placeLabels,
   signalBars,
   signalClass,
   statusCounts,
@@ -40,7 +41,8 @@ import {
 } from "../lib/network.ts";
 import { fmtFE } from "../lib/format.ts";
 import { timeAgo, pushToast } from "../lib/ui.ts";
-import { PanZoom } from "./PanZoom.tsx";
+import { PanZoom, type View } from "./PanZoom.tsx";
+import { TILE, TileStore, medianY, tileKey, tilePath, tilesFor, type Layer } from "../lib/maptiles.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
@@ -289,7 +291,51 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
 }
 
 // ----------------------------------------------------------------------- map
-function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; dim: string; selected?: string; onSelect: (id?: string) => void; ranges: boolean }) {
+export interface MapTiles {
+  store: TileStore;
+  mf: string;
+  layer: Layer;
+  y: number;
+}
+
+/** Map tiles drawn on a canvas behind the SVG (same view; crisp pixels when zoomed in). */
+function TileCanvas({ tiles, dim, view, upp, size, nodes }: { tiles: MapTiles; dim: string; view: View; upp: number; size: { w: number; h: number }; nodes: { x: number; z: number }[] }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    tiles.store.onLoad = () => setTick((t) => t + 1);
+    return () => {
+      tiles.store.onLoad = () => {};
+    };
+  }, [tiles.store]);
+  const want = tilesFor(view, nodes, 80);
+  useEffect(() => {
+    tiles.store.want(want.map((t) => ({ key: tileKey(dim, tiles.layer, tiles.y, t), path: tilePath(tiles.mf, dim, tiles.layer, tiles.y, t) })));
+  });
+  useLayoutEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    if (c.width !== Math.round(size.w * dpr)) c.width = Math.round(size.w * dpr);
+    if (c.height !== Math.round(size.h * dpr)) c.height = Math.round(size.h * dpr);
+    const g = c.getContext("2d");
+    if (!g) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, c.width, c.height);
+    const k = dpr / upp;
+    g.setTransform(k, 0, 0, k, -view.x * k, -view.y * k);
+    // pixel art when zoomed in, smooth when zoomed far out
+    g.imageSmoothingEnabled = upp > 1.5;
+    for (const t of want) {
+      const e = tiles.store.get(tileKey(dim, tiles.layer, tiles.y, t));
+      // a block is drawn centred on its coordinate (nodes sit at x, z)
+      if (e && typeof e === "object") g.drawImage(e, t.tx * TILE - 0.5, t.tz * TILE - 0.5, TILE, TILE);
+    }
+  });
+  return <canvas ref={ref} class="map-tiles" aria-hidden="true" />;
+}
+
+function MapView({ net, dim, selected, onSelect, ranges, tiles }: { net: NetworkInfo; dim: string; selected?: string; onSelect: (id?: string) => void; ranges: boolean; tiles?: MapTiles | null }) {
   const nodes = net.nodes.filter((n) => n.dim === dim);
   // fit to the nodes; range circles may extend past the screen
   const bounds = useMemo(() => mapBounds(nodes, false), [net, dim]);
@@ -311,7 +357,16 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
     return set;
   }, [net]);
   return (
-    <PanZoom bounds={bounds} fitKey={`map-${dim}`} minW={40} maxW={20000} class="netmap" label={`Network map, ${dimLabel(dim)}`} onBackgroundClick={() => onSelect(undefined)}>
+    <PanZoom
+      bounds={bounds}
+      fitKey={`map-${dim}`}
+      minW={40}
+      maxW={20000}
+      class={`netmap ${tiles ? "has-tiles" : ""}`}
+      label={`Network map, ${dimLabel(dim)}`}
+      onBackgroundClick={() => onSelect(undefined)}
+      background={tiles ? (v, u, size) => <TileCanvas tiles={tiles} dim={dim} view={v} upp={u} size={size} nodes={nodes.filter((n) => n.pos).map((n) => ({ x: n.pos!.x, z: n.pos!.z }))} /> : undefined}
+    >
       {(v, upp) => {
         const step = gridStep(v.w);
         const lines = [];
@@ -377,7 +432,21 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
                   })}
               </g>
             )}
-            {cached(cache, [net, dim, selected, upp], () => (
+            {cached(cache, [net, dim, selected, upp], () => {
+              // labels: important ones first, never overlapping (the rest show when zoomed in)
+              const labels = placeLabels(
+                nodes
+                  .filter((n) => n.pos)
+                  .map((n) => ({
+                    id: n.id,
+                    x: n.pos!.x / upp,
+                    y: n.pos!.z / upp,
+                    text: n.name || "Device",
+                    r: 9,
+                    priority: n.id === selected ? 100 : n.type === "mainframe" ? 50 : isNodeType(n.type) ? 40 : n.status !== "online" ? 30 : 10,
+                  })),
+              );
+              return (
               <>
             {net.links
               .filter((l) => byId.get(l.a)?.dim === dim && byId.get(l.b)?.dim === dim && l.kind !== "ender")
@@ -419,8 +488,8 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
                     <circle r={r * 0.75} class="mdot" />
                   )}
                   {n.type === "ender_relay" && <circle r={r * 1.6} class="ender-ring" vector-effect="non-scaling-stroke" />}
-                  {(isNodeType(n.type) || upp < 0.45 || selected === n.id || n.status !== "online") && (
-                    <text y={r * 2.4} class="mlabel" font-size={fs}>
+                  {labels.get(n.id) && (
+                    <text x={labels.get(n.id)!.x * upp} y={labels.get(n.id)!.y * upp} class={`mlabel a-${labels.get(n.id)!.anchor}`} font-size={fs}>
                       {n.name}
                     </text>
                   )}
@@ -428,7 +497,8 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
               ) : null,
             )}
               </>
-            ))}
+              );
+            })}
           </>
         );
       }}
@@ -709,6 +779,21 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const [dim, setDim] = useState<string>("minecraft:overworld");
   const activeDim = dims.includes(dim) ? dim : dims[0];
   const use3d = mode === "3d" && webgl && !failed3d;
+  // map tiles (operator+: positions are sensitive); one store per mainframe connection
+  const store = useMemo(() => new TileStore(conn.baseUrl, conn.token), [conn]);
+  useEffect(() => () => store.dispose(), [store]);
+  const [layer, setLayer] = useState<Layer | "off">("surface");
+  const dimYs = (net?.nodes ?? []).filter((n) => n.dim === (dims.includes(dim) ? dim : dims[0]) && n.pos).map((n) => n.pos!.y);
+  const [sliceY, setSliceY] = useState<number | null>(null);
+  const [sliceDraft, setSliceDraft] = useState<number | null>(null);
+  const yNow = sliceY ?? medianY(dimYs);
+  useEffect(() => {
+    if (sliceDraft === null) return;
+    const t = setTimeout(() => setSliceY(sliceDraft), 280);
+    return () => clearTimeout(t);
+  }, [sliceDraft]);
+  const mfId = conn.info.value?.id ?? "";
+  const tiles: MapTiles | null = layer !== "off" && conn.canControl.value && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
   const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn);
   if (!net)
     return (
@@ -772,6 +857,31 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           </div>
           <div class="net-opts">
             {use3d && hasPos && <FlySearch net={net} onPick={flyTo} />}
+            {!use3d && conn.canControl.value && !store.unavailable && (
+              <div class="map-layer">
+                <div class="seg-ctl seg-s" role="radiogroup" aria-label="Map background">
+                  {(["surface", "slice", "off"] as const).map((l) => (
+                    <button key={l} type="button" role="radio" aria-checked={layer === l} class={layer === l ? "on" : ""} onClick={() => setLayer(l)}>
+                      {l === "surface" ? "Surface" : l === "slice" ? "Slice" : "No map"}
+                    </button>
+                  ))}
+                </div>
+                {layer === "slice" && (
+                  <label class="slice-y small">
+                    <span>Y {sliceDraft ?? yNow}</span>
+                    <input
+                      type="range"
+                      min={-64}
+                      max={320}
+                      step={1}
+                      value={sliceDraft ?? yNow}
+                      aria-label="Slice height (Y)"
+                      onInput={(e) => setSliceDraft(Number((e.target as HTMLInputElement).value))}
+                    />
+                  </label>
+                )}
+              </div>
+            )}
             <label class="check-row small">
               <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
               {use3d ? "Ranges" : "Range circles"}
@@ -807,7 +917,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           ) : use3d && hasPos ? (
             <View3DLoader net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} terrain={terrain} flyKey={flyKey} onFail={setFailed3d} />
           ) : (
-            <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} />
+            <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} tiles={tiles} />
           )}
           <Legend ranges={mode === "map" && !use3d && ranges} />
           {mode === "map" && !use3d && <MapHelp />}
@@ -859,10 +969,10 @@ export function Legend({ ranges }: { ranges?: boolean }) {
     <div class="net-legend" aria-hidden="true">
       {ranges && (
         <>
-          <span>
+          <span class="lg-range-row">
             <i class="lg lg-range" /> solid circle = node range (reach to other relays / mainframe)
           </span>
-          <span>
+          <span class="lg-range-row">
             <i class="lg lg-range dev" /> dashed = device range (reach for uplinks & bridges)
           </span>
         </>
