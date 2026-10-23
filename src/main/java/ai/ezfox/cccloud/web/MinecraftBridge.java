@@ -141,6 +141,11 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String verifyStoreFile(GameBridge.ScriptRequest request) {
+        return ai.ezfox.cccloud.script.StoreTrust.verify(request);
+    }
+
+    @Override
     public boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
         return share.creator() == null || resolver().resolve(share.creator(), share.mainframeId()).has(ai.ezfox.cccloud.access.Perm.SHARES_CREATE);
     }

@@ -31,6 +31,7 @@ class ScriptRouteTest {
     @AfterEach
     void cleanup() {
         instance.pinExecutor.shutdownNow();
+        instance.storeExecutor.shutdownNow();
     }
 
     String token() {
@@ -87,5 +88,17 @@ class ScriptRouteTest {
         assertEquals(413, bigRun.status().code(), "only uploads may exceed 4 KB");
         assertEquals(404, send(HttpMethod.GET, base + "/files/a/b/c.lua", token, new byte[0], null).status().code(), "two folder levels never match");
         // "../x.lua" matches the URL pattern but is refused by ScriptFiles.validate on the server thread (unit tested).
+    }
+
+    @Test
+    void storeInstallsAreVerifiedBeforeTheGame() throws Exception {
+        String token = token();
+        byte[] lua = "print('guard')".getBytes(StandardCharsets.UTF_8);
+        var refused = send(HttpMethod.PUT, base + "/files/guard.lua?store=reactor-guard@1.2.0", token, lua, null);
+        assertEquals(409, refused.status().code());
+        assertEquals("store_not_configured", error(refused), "the bridge refuses (no key in the test bridge)");
+        assertTrue(bridge.dispatched.isEmpty(), "an unverified store install never reaches the game");
+        send(HttpMethod.PUT, base + "/files/guard.lua", token, lua, null);
+        assertEquals(List.of("script:SCRIPT_PUT"), bridge.dispatched, "plain uploads are not affected");
     }
 }

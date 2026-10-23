@@ -48,6 +48,9 @@ final class WebInstance {
     /** Share links: logins per share link (30 per minute). */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> shareLogins = new java.util.concurrent.ConcurrentHashMap<>();
     /** PIN hashing is slow on purpose, so it runs on its own thread with a small bounded queue. */
+    /** Store install verification (fetches the signed index; L9). */
+    final ThreadPoolExecutor storeExecutor = new ThreadPoolExecutor(1, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16),
+        new DefaultThreadFactory("cccloud-store", true));
     final ThreadPoolExecutor pinExecutor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32),
         new DefaultThreadFactory("cccloud-pin", true));
     /** Set again after binding when the requested port was 0 (GameTests: a free port). */
@@ -91,6 +94,7 @@ final class WebInstance {
     }
 
     void shutdownExecutors() {
+        storeExecutor.shutdownNow();
         pinExecutor.shutdownNow();
     }
 }

@@ -383,7 +383,38 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
     }
 
+    /** Store installs ({@code ?store=}) are verified against the signed store index first, off the server thread (L9). */
     private void runScript(ChannelHandlerContext ctx, FullHttpRequest req, GameBridge.ScriptRequest request) {
+        if (request.route() != Router.Id.SCRIPT_PUT || request.query().get("store") == null) {
+            runScriptNow(ctx, req, request);
+            return;
+        }
+        req.retain();
+        try {
+            instance.storeExecutor.execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.verifyStoreFile(request);
+                } catch (RuntimeException e) {
+                    error = "store_unreachable";
+                }
+                String result = error;
+                ctx.executor().execute(() -> {
+                    try {
+                        if (result != null) sendJson(ctx, req, HttpResponseStatus.CONFLICT, error(result));
+                        else runScriptNow(ctx, req, request);
+                    } finally {
+                        req.release();
+                    }
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            req.release();
+            sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("busy"));
+        }
+    }
+
+    private void runScriptNow(ChannelHandlerContext ctx, FullHttpRequest req, GameBridge.ScriptRequest request) {
         req.retain();
         CompletableFuture.supplyAsync(() -> instance.bridge.script(request), instance.bridge.serverExecutor())
             .orTimeout(5, TimeUnit.SECONDS)

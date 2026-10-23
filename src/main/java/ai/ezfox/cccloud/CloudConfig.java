@@ -63,6 +63,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue TERMINAL_ENABLED;
     public static final ModConfigSpec.BooleanValue SCRIPT_STORE;
     public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_URL;
+    public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_KEY;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
@@ -238,6 +239,10 @@ public final class CloudConfig {
         SCRIPT_STORE_URL = b.comment("Base URL of the Script Store index (https, ending with /). Placeholder until the official store is online.")
             .translation("cccloud.configuration.scriptStoreUrl")
             .define("scriptStoreUrl", "https://cccloud.example/store/", o -> o instanceof String s && ai.ezfox.cccloud.web.PublicConfig.validStoreUrl(s) != null);
+        SCRIPT_STORE_KEY = b.comment("Ed25519 public key of the store (base64 of the 32 raw bytes). The server checks every store install against the",
+                "signed index (index.json + index.json.sig). Empty = store installs are refused (store_not_configured).")
+            .translation("cccloud.configuration.scriptStoreKey")
+            .define("scriptStoreKey", "", o -> o instanceof String s && (s.isEmpty() || ai.ezfox.cccloud.script.StoreVerifier.publicKey(s) != null));
         b.pop();
 
         b.push("terminal");

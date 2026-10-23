@@ -39,6 +39,12 @@ class PushHttpTest {
             ex.sendResponseHeaders(200, -1);
             ex.close();
         });
+        server.createContext("/index.json", ex -> {
+            byte[] body = "{\"format\":1}".getBytes(StandardCharsets.UTF_8);
+            ex.sendResponseHeaders(200, body.length);
+            ex.getResponseBody().write(body);
+            ex.close();
+        });
         server.createContext("/moved", ex -> {
             ex.getResponseHeaders().add("Location", "http://127.0.0.1:1/");
             ex.sendResponseHeaders(302, -1);
@@ -58,6 +64,9 @@ class PushHttpTest {
             assertEquals("http_302", moved.code(), "redirects are not followed");
             assertFalse(moved.retryable());
             assertEquals("blocked_address", http.post(target.url(), PushFormat.request(target, message), Set.of()).code(), "not without the allowlist");
+            var get = http.get("http://127.0.0.1:" + port + "/index.json", Set.of("127.0.0.1"), 1024);
+            assertTrue(get.ok() && "{\"format\":1}".equals(new String(get.body(), StandardCharsets.UTF_8)), "GET returns the body (store index)");
+            assertEquals("blocked_address", http.get("http://127.0.0.1:" + port + "/index.json", Set.of(), 1024).code(), "the same SSRF rules");
             assertEquals("connect_failed", http.post("http://127.0.0.1:1/x", PushFormat.request(target, message), Set.of("127.0.0.1")).code());
         } finally {
             http.shutdown();

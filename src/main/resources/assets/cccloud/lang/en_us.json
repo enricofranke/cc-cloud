@@ -325,6 +325,7 @@
   "cccloud.configuration.maxRules": "Rules per mainframe",
   "cccloud.configuration.store": "Script Store",
   "cccloud.configuration.scriptStore": "Script Store in the dashboard",
+  "cccloud.configuration.scriptStoreKey": "Store public key",
   "cccloud.configuration.scriptStoreUrl": "Script Store URL",
   "cccloud.configuration.terminal": "Terminal",
   "cccloud.configuration.terminalEnabled": "Allow the browser terminal",

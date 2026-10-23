@@ -41,7 +41,11 @@ public final class PushHttp {
     public static final int TIMEOUT_MS = 5000;
 
     /** status = HTTP status, or 0 with an error ({@code unresolved}, {@code blocked_address}, {@code connect_failed}, {@code timeout}, {@code tls}, {@code io}). */
-    public record Result(int status, @Nullable String error) {
+    public record Result(int status, @Nullable String error, byte @Nullable [] body) {
+        public Result(int status, @Nullable String error) {
+            this(status, error, null);
+        }
+
         public boolean ok() {
             return error == null && status >= 200 && status < 300;
         }
@@ -82,6 +86,19 @@ public final class PushHttp {
     }
 
     public Result post(String url, PushFormat.Request request, Set<String> allowedHosts) {
+        return exchange(url, HttpMethod.POST, request, allowedHosts, 64 * 1024);
+    }
+
+    /**
+     * A GET with the same SSRF rules (Script Store index and signature, security review L9); the body (≤ maxBytes)
+     * is in the result.
+     */
+    public Result get(String url, Set<String> allowedHosts, int maxBytes) {
+        return exchange(url, HttpMethod.GET, new PushFormat.Request(java.util.Map.of("User-Agent", "CC-Cloud (Minecraft mod)"), new byte[0]),
+            allowedHosts, maxBytes);
+    }
+
+    private Result exchange(String url, HttpMethod method, PushFormat.Request request, Set<String> allowedHosts, int maxBytes) {
         URI uri;
         try {
             uri = new URI(url);
@@ -100,7 +117,7 @@ public final class PushHttp {
         var address = pick(addresses, UrlPolicy.allowed(host, allowedHosts));
         if (address == null) return new Result(0, "blocked_address");
         try {
-            return send(new InetSocketAddress(address, port), host, port, https, uri, request).get(3L * TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            return send(new InetSocketAddress(address, port), host, port, https, uri, method, request, maxBytes).get(3L * TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             return new Result(0, "timeout");
         } catch (Exception e) {
@@ -118,16 +135,17 @@ public final class PushHttp {
         return ssl;
     }
 
-    private CompletableFuture<Result> send(InetSocketAddress target, String host, int port, boolean https, URI uri, PushFormat.Request request) throws SSLException {
+    private CompletableFuture<Result> send(InetSocketAddress target, String host, int port, boolean https, URI uri, HttpMethod method,
+                                           PushFormat.Request request, int maxBytes) throws SSLException {
         var future = new CompletableFuture<Result>();
         SslContext context = https ? ssl() : null;
         String path = uri.getRawPath() == null || uri.getRawPath().isEmpty() ? "/" : uri.getRawPath();
         if (uri.getRawQuery() != null) path += "?" + uri.getRawQuery();
-        var httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, path, Unpooled.wrappedBuffer(request.body()));
+        var httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, path, Unpooled.wrappedBuffer(request.body()));
         boolean defaultPort = uri.getPort() <= 0;
         httpRequest.headers().set(HttpHeaderNames.HOST, defaultPort ? host : host + ":" + port);
         httpRequest.headers().set(HttpHeaderNames.CONNECTION, "close");
-        httpRequest.headers().set(HttpHeaderNames.CONTENT_LENGTH, request.body().length);
+        if (method == HttpMethod.POST) httpRequest.headers().set(HttpHeaderNames.CONTENT_LENGTH, request.body().length);
         request.headers().forEach((k, v) -> httpRequest.headers().set(k, v));
         var bootstrap = new Bootstrap()
             .group(group())
@@ -139,11 +157,13 @@ public final class PushHttp {
                     if (context != null) ch.pipeline().addLast(context.newHandler(ch.alloc(), host.startsWith("[") ? host.substring(1, host.length() - 1) : host, port));
                     ch.pipeline().addLast(new ReadTimeoutHandler(TIMEOUT_MS, TimeUnit.MILLISECONDS));
                     ch.pipeline().addLast(new HttpClientCodec());
-                    ch.pipeline().addLast(new HttpObjectAggregator(64 * 1024));
+                    ch.pipeline().addLast(new HttpObjectAggregator(maxBytes));
                     ch.pipeline().addLast(new SimpleChannelInboundHandler<FullHttpResponse>() {
                         @Override
                         protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse msg) {
-                            future.complete(new Result(msg.status().code(), null)); // 3xx is not followed: counts as a failure
+                            byte[] body = new byte[msg.content().readableBytes()];
+                            msg.content().getBytes(msg.content().readerIndex(), body);
+                            future.complete(new Result(msg.status().code(), null, body)); // 3xx is not followed: counts as a failure
                             ctx.close();
                         }
 
