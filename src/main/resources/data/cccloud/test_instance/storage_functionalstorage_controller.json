@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "functionalstorage"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:storage_functionalstorage_controller",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}

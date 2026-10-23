@@ -867,7 +867,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 #### Fine-grained permissions – protocol (mod side, implemented)
 **Mapping of check sites to permissions.** `AccessGate` holds it, and `PermissionWalkTest` checks every route and message.
 - WebSocket:
-  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown;
+  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown, and device cards' own redstone modes (widget id `redstone` or `*_redstone`, direct mode);
   - crafting through `item_search`: `storage.craft`;
   - watchlist edits: `storage.autostock`;
   - `query`: `storage.search`;

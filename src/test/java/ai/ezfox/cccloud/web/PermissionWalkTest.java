@@ -32,6 +32,7 @@ class PermissionWalkTest {
     private final UUID player = UUID.randomUUID();
     private final String lua = UUID.randomUUID().toString();
     private final String auto = UUID.randomUUID().toString();
+    private final String direct = UUID.randomUUID().toString();
     private final TestBridge bridge = new TestBridge();
     private final AuthStore auth = new AuthStore(System::currentTimeMillis, () -> {
     });
@@ -103,6 +104,17 @@ class PermissionWalkTest {
         cw.add(widget("note", "text"));
         b.add("widgets", cw);
         WebHub.INSTANCE.publishUplink(mainframe, b);
+        // A device card (v0.5/v0.8): the machine's own redstone mode needs act.redstone, its other controls act.buttons.
+        var c = new JsonObject();
+        c.addProperty("uplinkId", direct);
+        c.addProperty("mode", "direct");
+        c.addProperty("online", true);
+        var dw = new JsonArray();
+        dw.add(widget("redstone", "select"));
+        dw.add(widget("spawner_redstone", "toggle"));
+        dw.add(widget("field", "toggle"));
+        c.add("widgets", dw);
+        WebHub.INSTANCE.publishUplink(mainframe, c);
     }
 
     private EmbeddedChannel connect() {
@@ -143,6 +155,9 @@ class PermissionWalkTest {
         cases.put(action(auto, "power", "true"), Perm.ACT_REDSTONE);
         cases.put(action(auto, "reboot", "true"), Perm.ACT_REDSTONE);
         cases.put(action(auto, "note", "\"hi\""), Perm.ACT_BUTTONS);
+        cases.put(action(direct, "redstone", "\"Ignore\""), Perm.ACT_REDSTONE);
+        cases.put(action(direct, "spawner_redstone", "true"), Perm.ACT_REDSTONE);
+        cases.put(action(direct, "field", "true"), Perm.ACT_BUTTONS);
         cases.put("{\"t\":\"query\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"id\":\"search\",\"q\":\"iron\"}", Perm.STORAGE_SEARCH);
         cases.put("{\"t\":\"layout_set\",\"reqId\":\"r\",\"layout\":{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{}}}", Perm.LAYOUT_EDIT);
         cases.put("{\"t\":\"net_unlink\",\"reqId\":\"r\",\"nodeId\":\"" + lua + "\"}", Perm.NETWORK_LINK);

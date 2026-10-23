@@ -11,6 +11,7 @@ public final class IntegrationConfig {
 
     public static final ModConfigSpec.BooleanValue DEVICE_CARDS;
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
+    public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
     public static final ModConfigSpec.BooleanValue FTB_CHUNKS_CLAIMS;
@@ -25,6 +26,9 @@ public final class IntegrationConfig {
         MFFS_REQUIRE_PIN = b.comment("Switching an MFFS force field projector from the dashboard needs the mainframe PIN (in addition to canControl).")
             .translation("cccloud.configuration.mffsRequirePin")
             .define("mffsRequirePin", true);
+        STORAGE_CARDS = b.comment("Storage controllers (Functional Storage, Sophisticated Storage, Occultism, DimStorage) show a Storage card with item search. Read-only.")
+            .translation("cccloud.configuration.storageCards")
+            .define("storageCards", true);
         b.pop();
 
         b.push("server");

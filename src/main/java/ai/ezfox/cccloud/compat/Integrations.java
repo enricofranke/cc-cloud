@@ -41,6 +41,15 @@ public final class Integrations {
         optional("mffs", () -> ai.ezfox.cccloud.compat.mffs.MffsCards::init);
         optional("merequester", () -> ai.ezfox.cccloud.compat.merequester.MeRequesterCards::init);
 
+        // v0.8 wave 2 (docs/SPEC.md "v0.8"). 1. Storage controllers as Storage cards (capabilities only, no mod classes).
+        for (String mod : ai.ezfox.cccloud.compat.storage.StorageControllers.mods()) {
+            optional(mod, () -> () -> ai.ezfox.cccloud.compat.storage.StorageControllers.init(mod));
+        }
+        test("storage_dimstorage_chest", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageChest);
+        test("storage_dimstorage_tank", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageTank);
+        test("storage_sophisticated_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::sophisticatedController);
+        test("storage_functionalstorage_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::functionalStorageController);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

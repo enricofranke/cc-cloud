@@ -57,7 +57,8 @@ public final class AccessGate {
 
     /**
      * Which permission a dashboard action needs: crafting {@code storage.craft}, watchlist edits
-     * {@code storage.autostock}, redstone sides and the auto Computer card's power buttons {@code act.redstone},
+     * {@code storage.autostock}, redstone sides, the auto Computer card's power buttons and device cards' redstone modes
+     * ({@link #isRedstoneControl}) {@code act.redstone},
      * everything else (buttons, toggles, sliders, inputs) {@code act.buttons}.
      */
     public static Perm actionPerm(@Nullable String widgetType, @Nullable String uplinkMode, String widgetId) {
@@ -67,8 +68,16 @@ public final class AccessGate {
             case "watchlist" -> Perm.STORAGE_AUTOSTOCK;
             case "redstone_sides" -> Perm.ACT_REDSTONE;
             default -> "auto".equals(uplinkMode) && (widgetId.equals("power") || widgetId.equals("turn_on") || widgetId.equals("reboot")
-                || widgetId.equals("shutdown")) ? Perm.ACT_REDSTONE : Perm.ACT_BUTTONS;
+                || widgetId.equals("shutdown")) || "direct".equals(uplinkMode) && isRedstoneControl(widgetId) ? Perm.ACT_REDSTONE : Perm.ACT_BUTTONS;
         };
+    }
+
+    /**
+     * Device cards (direct mode) name a machine's own redstone control {@code redstone} or {@code <something>_redstone}
+     * (Energy card redstone mode, quarry/spawner/router redstone modes, ...); those need {@code act.redstone}.
+     */
+    static boolean isRedstoneControl(String widgetId) {
+        return widgetId.equals("redstone") || widgetId.endsWith("_redstone");
     }
 
     /** The permission of an HTTP route that touches a mainframe (null: not mainframe-scoped). */

@@ -48,6 +48,16 @@ public abstract class DeviceCard {
         return "not_interactive";
     }
 
+    /**
+     * Answers an item search on an {@code item_search} widget of this card (v0.8 storage cards). Server thread; the web
+     * layer has already checked the device's rights and rate limit.
+     *
+     * @return the rows, or null if the card has no searchable storage (the uplink answers {@code unknown_widget})
+     */
+    public ai.ezfox.cccloud.web.@Nullable QueryResult query(String widgetId, String query) {
+        return null;
+    }
+
     /** Where a card writes its values and alerts. */
     public interface CardOutput {
         void value(String widgetId, JsonElement value);

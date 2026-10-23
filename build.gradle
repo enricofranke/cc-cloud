@@ -199,6 +199,11 @@ def integrationMods = [
     ftbchunks      : ["dev.ftb.mods:ftb-chunks-neoforge:${ftbchunks_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
                       "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     simplebackups  : ["de.melanx:SimpleBackups:${simplebackups_version}"],
+    // v0.8 wave 2 (CurseForge files of ATM11 0.12.0-beta via cursemaven, SHA-1 checked, see docs/BUILD.md).
+    dimstorage          : ["curse.maven:dimstorage-353882:${dimstorage_curse_file}", "curse.maven:edivadlib-638508:${edivadlib_curse_file}"],
+    sophisticatedstorage: ["curse.maven:sophisticatedstorage-619320:${sophisticatedstorage_curse_file}",
+                           "curse.maven:sophisticatedcore-618298:${sophisticatedcore_curse_file}"],
+    functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 
 def extractProductiveLib = tasks.register('extractProductiveLib', Copy) {

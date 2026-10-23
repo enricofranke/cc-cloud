@@ -131,6 +131,16 @@ public final class DeviceCards {
         }
     }
 
+    /** Runs an item search; a failing card answers "unavailable" and is disabled. */
+    public static ai.ezfox.cccloud.web.@Nullable QueryResult query(DeviceCard card, String widgetId, String query) {
+        try {
+            return card.query(widgetId, query);
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return ai.ezfox.cccloud.web.QueryResult.fail("unavailable");
+        }
+    }
+
     private static String providerOf(DeviceCard card) {
         // Cards are named after their provider by convention (kind prefix), see Integrations.
         String kind;

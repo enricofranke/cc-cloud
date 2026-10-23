@@ -49,6 +49,17 @@ The integrations in `compat/<modid>` compile against the exact jars of All the M
 - **ExtendedAE** has no request/level-maintainer block, so there is no ExtendedAE integration (and no dependency).
 - Each repository is declared with `exclusiveContent`, so it only serves its own group.
 
+### Wave 2 (v0.8, docs/COMPAT.md)
+All wave-2 artifacts come from cursemaven (`curse.maven:<slug>-<projectId>:<fileId>`), i.e. the exact CurseForge files of
+ATM11 0.12.0-beta (file ids from the instance's `minecraftinstance.json`); the SHA-1 of every downloaded jar was compared
+with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_curse_file`).
+
+| Key (`-PintegrationMods=`) | Mod (version) | Extra runtime jars | Compile use |
+| --- | --- | --- | --- |
+| `dimstorage` | DimStorage 10.0.1 | EdivadLib 4.0.1 | none (capabilities + block ids) |
+| `sophisticatedstorage` | Sophisticated Storage 1.5.121 | Sophisticated Core 1.5.13 | none |
+| `functionalstorage` | Functional Storage 1.6.4 | Titanium 4.0.12 | none |
+
 ```sh
 ./gradlew runGameTestServer -PintegrationMods -PdevWebPort=18797 --max-workers=3          # all integration mods
 ./gradlew runGameTestServer -PintegrationMods=powah,mffs -PdevWebPort=18797 --max-workers=3   # a subset (keys: see build.gradle)
