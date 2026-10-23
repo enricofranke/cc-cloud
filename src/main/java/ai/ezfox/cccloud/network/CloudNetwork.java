@@ -148,6 +148,16 @@ public final class CloudNetwork {
 
     private static void onServerStarted(ServerStartedEvent event) {
         server = event.getServer();
+        var srv = event.getServer();
+        ai.ezfox.cccloud.web.WebHub.onSectionRemoved = (mainframeId, sectionId) -> {
+            if (srv.isSameThread()) SectionCache.get(srv).forget(mainframeId, sectionId);
+            else srv.execute(() -> SectionCache.get(srv).forget(mainframeId, sectionId));
+        };
+        try {
+            SectionCache.get(srv).publishAll();
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] Could not load cached dashboard sections", e);
+        }
         try {
             ai.ezfox.cccloud.layout.LayoutData.get(event.getServer()).publishAll();
         } catch (RuntimeException e) {
@@ -157,6 +167,11 @@ public final class CloudNetwork {
     }
 
     private static void onServerStopping(ServerStoppingEvent event) {
+        try {
+            SectionCache.get(event.getServer()).captureAll();
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] Could not cache dashboard sections", e);
+        }
         CloudWebServer.stop();
     }
 

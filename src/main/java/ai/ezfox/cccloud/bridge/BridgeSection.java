@@ -161,7 +161,12 @@ public final class BridgeSection implements DashboardSection {
         CloudNetwork.unregisterSection(this);
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
-        if (!broken && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
+        if (!broken && link != null) {
+            var cached = ai.ezfox.cccloud.network.SectionCache.unloaded(snapshot());
+            WebHub.INSTANCE.publishUplink(link.id(), cached);
+            var server = CloudNetwork.server();
+            if (server != null) ai.ezfox.cccloud.network.SectionCache.get(server).store(link.id(), cached);
+        }
     }
 
     /** The block is being broken: remove the section from the dashboard. */

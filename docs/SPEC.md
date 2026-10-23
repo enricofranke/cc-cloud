@@ -795,6 +795,14 @@ Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
 8. Not in this step (security review first): exporting items out of the network into the world.
 
+### Cached sections of unloaded uplinks/bridges (mod side, implemented)
+- When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".
+- Live sections always carry `"loaded":true`.
+- The mod keeps these snapshots in SavedData (`data/cccloud/sections.dat`, ≤ 64 KB per section, ≤ 256 per mainframe). They are captured on chunk unload and at server stop, published at server start, and replaced by the live snapshot as soon as the chunk loads. No chunk is ever loaded for this.
+- Actions on an unloaded section get `action_result.error = "unloaded"`.
+- Unlinking or breaking a section, or breaking the mainframe, drops its cached snapshot.
+- The network map keeps such devices as `unloaded` with their last position.
+
 ### Script import (pulled forward from v0.5 E, requested 2026-10-23)
 Push Lua programs from the browser straight onto a CC computer through the mainframe → uplink path.
 - Dashboard: on every computer card (auto or Lua) an **"Upload script"** action: drop a `.lua` file, paste code, or pick from the **example gallery** (bundled: control-room, cloud-test, cloud-demo variants, storage dashboard; each with a short description and screenshot). Choose a file name, options: overwrite (with confirm), **run now** (in a new multishell tab if available, otherwise only when no program is running → ask), **set as startup** (writes `startup.lua` that runs the file).
@@ -846,3 +854,12 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 - **Install flow** (no connection from the Minecraft server to the store needed): on the website, "Install" opens the user's own dashboard at `<dashboard>/store#install=<id>@<version>` (the dashboard URL is remembered in the website's localStorage after the first time, or entered). The dashboard fetches the script from the store index (CSP `connect-src` gets the configured store origin, config `scriptStoreUrl`, default the official site; can be disabled by server admins with `scriptStore=false`), verifies the SHA-256 against the index, **shows the full source and the manifest's "uses" list**, lets the admin pick the computer, then installs via the Script import API (admin role, PIN, audit log). Updates: the dashboard shows "update available" for installed store scripts (stored metadata per file).
 - The dashboard also gets a **Store tab** that browses the same index directly.
 - Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).
+
+### Fine-grained permissions per mainframe (requested 2026-10-23)
+Roles stay as presets, but every grant can be customized with individual permissions.
+- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
+- Presets: viewer = {view, storage.search}; operator = viewer + {act.*, storage.craft, rules.toggle}; admin = everything except ownership transfer; owner = all. A grant = preset + `allow`/`deny` lists (deny wins). Team-rank grants work the same way.
+- `AccessResolver` returns an effective permission set; every check uses `has(perm)` instead of role comparisons (keep the role for display). PIN-protected widgets additionally require the PIN as today.
+- Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.
+- Server-level NeoForge permission nodes stay as an outer gate (e.g. a server can forbid `cccloud.scripts` entirely: new node `cccloud.feature.scripts`, default true).
+- Migration: existing roles → presets without overrides. Tests for every permission check site (a test walks all actions/routes and asserts which permission each one needs).
