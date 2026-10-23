@@ -59,6 +59,7 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `dimstorage` | DimStorage 10.0.1 | EdivadLib 4.0.1 | none (capabilities + block ids) |
 | `sophisticatedstorage` | Sophisticated Storage 1.5.121 | Sophisticated Core 1.5.13 | none |
 | `functionalstorage` | Functional Storage 1.6.4 | Titanium 4.0.12 | none |
+| `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh
 ./gradlew runGameTestServer -PintegrationMods -PdevWebPort=18797 --max-workers=3          # all integration mods

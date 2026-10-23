@@ -203,6 +203,10 @@ def integrationMods = [
     dimstorage          : ["curse.maven:dimstorage-353882:${dimstorage_curse_file}", "curse.maven:edivadlib-638508:${edivadlib_curse_file}"],
     sophisticatedstorage: ["curse.maven:sophisticatedstorage-619320:${sophisticatedstorage_curse_file}",
                            "curse.maven:sophisticatedcore-618298:${sophisticatedcore_curse_file}"],
+    // Advanced AE jar-in-jars ae2addonlib + ae2wtlib_api; it needs ae2wtlib and GeckoLib at runtime.
+    advancedae          : ["curse.maven:advancedae-1084104:${advancedae_curse_file}", "org.appliedenergistics:appliedenergistics2:${ae2_version}",
+                           "org.appliedenergistics:guideme:${guideme_version}", "curse.maven:ae2wtlib-459929:${ae2wtlib_curse_file}",
+                           "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 
