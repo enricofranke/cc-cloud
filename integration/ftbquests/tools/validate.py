@@ -2,7 +2,7 @@
 """Validates the generated FTB Quests files against an ATM11 instance (read-only).
 
 Checks: every JSON5 file parses (json5 reference parser via `npx json5`), every item id exists in a
-jar of the instance (or vanilla) or is on tools/planned_ids.json (full variant only), all our ids are
+jar of the instance (or the vanilla client jar), all our ids are
 unique and do not clash with the pack, dependencies resolve and have no cycles, every quest has en_us
 and de_de text, reward tables and the chapter group exist.
 
@@ -112,19 +112,12 @@ def main():
     reg = registry(instance, mc_jar)
     if not mc_jar:
         print("warning: no Minecraft client jar found, minecraft:* ids are not checked")
-    planned = set(json.load(open(os.path.join(HERE, "planned_ids.json"))))
 
     variants = {
-        "current": {
+        "chapters": {
             "chapters": [os.path.join(ROOT, "quests/chapters/cc_tweaked.json5"), os.path.join(ROOT, "quests/chapters/cc_cloud.json5")],
             "lang": {loc: [os.path.join(ROOT, f"quests/lang/{loc}/chapters/cc_tweaked.json5"),
                            os.path.join(ROOT, f"quests/lang/{loc}/chapters/cc_cloud.json5"),
-                           os.path.join(ROOT, f"quests/lang/{loc}/chapter.additions.json5")] for loc in ("en_us", "de_de")},
-        },
-        "full": {
-            "chapters": [os.path.join(ROOT, "quests/chapters/cc_tweaked.json5"), os.path.join(ROOT, "variants/full/chapters/cc_cloud.json5")],
-            "lang": {loc: [os.path.join(ROOT, f"quests/lang/{loc}/chapters/cc_tweaked.json5"),
-                           os.path.join(ROOT, f"variants/full/lang/{loc}/chapters/cc_cloud.json5"),
                            os.path.join(ROOT, f"quests/lang/{loc}/chapter.additions.json5")] for loc in ("en_us", "de_de")},
         },
     }
@@ -199,9 +192,7 @@ def main():
                 continue
             if it.startswith("minecraft:") and not mc_jar:
                 continue
-            if vname == "full" and it in planned:
-                continue
-            err(f"[{vname}] item id not in any jar{'' if vname == 'current' else ' nor planned'}: {it}")
+            err(f"[{vname}] item id not in any jar: {it}")
 
         # lang
         for loc, files in v["lang"].items():
@@ -234,7 +225,7 @@ def main():
         print(f"[{vname}] {len(chapters)} chapters, {len(quests)} quests, {len(items)} item ids checked")
 
     # existing chapter files / order_index collisions in the target group
-    for c in [parse_json5(variants["current"]["chapters"][0]), parse_json5(variants["current"]["chapters"][1])]:
+    for c in [parse_json5(p) for p in variants["chapters"]["chapters"]]:
         if c is None:
             continue
         target = os.path.join(pack_q, "chapters", c["filename"] + ".json5")

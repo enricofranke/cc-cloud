@@ -3,10 +3,9 @@
 
 Source of truth for every quest (layout, tasks, rewards, en_us + de_de text).
 Output (relative to integration/ftbquests/):
-  quests/chapters/cc_tweaked.json5, quests/chapters/cc_cloud.json5          ("current" variant)
+  quests/chapters/cc_tweaked.json5, quests/chapters/cc_cloud.json5
   quests/lang/<locale>/chapters/<chapter>.json5
   quests/lang/<locale>/chapter.additions.json5                              (merged into chapter.json5)
-  variants/full/chapters/cc_cloud.json5 + variants/full/lang/<locale>/chapters/cc_cloud.json5
 
 Ids are stable: they live in tools/ids.json. New symbolic names get a fresh random id that is
 checked against every id of the ATM11 quest book (pass --pack <instance>/config/ftbquests/quests).
@@ -634,14 +633,6 @@ CLOUD_CHAPTER = dict(
     subtitle=T("Your base on a web dashboard", "Deine Basis im Web-Dashboard"),
 )
 
-SOON = "&6Coming soon - CC: Cloud {v}&r"
-SOON_DE = "&6Demnächst - CC: Cloud {v}&r"
-
-
-def soon(v):
-    return T(SOON.format(v=v), SOON_DE.format(v=v))
-
-
 CLOUD = [
     Q("cloud.core", 0, 0,
       T("Cloud Core", "Cloud-Kern"),
@@ -799,11 +790,11 @@ CLOUD = [
 
     Q("cloud.advuplink", 6.25, 2,
       T("Advanced Cloud Uplink", "Erweiterter Cloud-Uplink"),
-      T("&7More range, other dimensions", "&7Mehr Reichweite, andere Dimensionen"),
+      T("&7More range", "&7Mehr Reichweite"),
       T([
-          "The &eAdvanced Cloud Uplink&r reaches much further and works across dimensions - for that farm in the Mining Dimension.",
+          "The &eAdvanced Cloud Uplink&r reaches much further than the normal one. For other dimensions, use Ender Relays or an Ender Fiber Link.",
       ], [
-          "Der &eErweiterte Cloud-Uplink&r reicht viel weiter und funktioniert über Dimensionen hinweg - für die Farm in der Mining-Dimension.",
+          "Der &eErweiterte Cloud-Uplink&r reicht viel weiter als der normale. Für andere Dimensionen nimmst du Ender-Relais oder eine Ender-Glasfaserbrücke.",
       ]),
       [item("cccloud:advanced_cloud_uplink")], [xp(100), give("minecraft:ender_pearl", 2)],
       deps=["cloud.linkcard"]),
@@ -853,7 +844,6 @@ CLOUD = [
       shape="hexagon", size=1.25, icon={"id": "minecraft:crafting_table", "count": 1}),
 ]
 
-# ---- "coming soon" section (only in the full variant) -----------------------------------------
 UPGRADE_TYPES = ["capacity", "bandwidth", "range", "efficiency", "memory"]
 UPGRADE_TIERS = ["allthemodium", "vibranium", "unobtainium"]
 
@@ -862,136 +852,275 @@ def upgrade_ids(tier):
     return [f"cccloud:upgrade_{t}_{tier}" for t in UPGRADE_TYPES]
 
 
-CLOUD_SOON = [
-    Q("cloud.soon", -1.5, 4.5,
-      T("Coming Soon", "Demnächst"),
-      soon("v0.4+"),
-      T([
-          "The quests in this row need a newer &eCC: Cloud&r version. They unlock as soon as the items exist in the pack.",
-      ], [
-          "Die Quests in diesem Bereich brauchen eine neuere &eCC: Cloud&r-Version. Sie werden freigeschaltet, sobald es die Items im Pack gibt.",
-      ]),
-      [check("Got it", "Verstanden")], [], deps=[], shape="gear", optional=True,
-      icon={"id": "cccloud:cloud_core", "count": 1}),
+HANDBOOK = {"id": "guideme:guide", "count": 1, "components": {"guideme:guide_id": "cccloud:handbook"}}
 
-    Q("cloud.relay", 0, 4.5,
-      T("Cloud Relay", "Cloud-Relais"),
-      soon("v0.4"),
+CLOUD += [
+    # ---- handbook ----------------------------------------------------------------------------
+    Q("cloud.handbook", 0, -1.75,
+      T("The Handbook", "Das Handbuch"),
+      T("&7Read it in-game", "&7Im Spiel nachlesen"),
       T([
-          "Devices connect to the nearest &enode&r - the mainframe or a relay. A &eCloud Relay&r extends your network's range; the network finds the best route on its own.",
+          "Craft a &eBook&r with a &eCloud Core&r to get the &eCC: Cloud Handbook&r: every block, the dashboard, Lua and recipes, in English and German.",
+          "",
+          "&7Needs GuideMe, which ships with ATM11. The same pages are in the dashboard under Docs.",
+      ], [
+          "Crafte ein &eBuch&r mit einem &eCloud-Kern&r zum &eCC: Cloud-Handbuch&r: alle Blöcke, das Dashboard, Lua und Rezepte, auf Deutsch und Englisch.",
+          "",
+          "&7Braucht GuideMe, das in ATM11 enthalten ist. Dieselben Seiten stehen im Dashboard unter Docs.",
+      ]),
+      [("item", HANDBOOK, 1, {"match_components": "fuzzy"})], [xp(25)], deps=["cloud.core"], optional=True, icon=HANDBOOK),
+
+    # ---- dashboard power features --------------------------------------------------------------
+    Q("cloud.terminal", 6.25, -2.5,
+      T("Terminal in the Browser", "Terminal im Browser"),
+      T("&7Type from anywhere", "&7Von überall tippen"),
+      T([
+          "Open &bTerminal&r on a computer card: you see the computer's screen live and can type into it, like standing in front of it.",
+          "",
+          "&7Needs the right role on the mainframe and the PIN if one is set. Server admins can turn it off.",
+      ], [
+          "Öffne &bTerminal&r auf einer Computer-Karte: Du siehst den Bildschirm des Computers live und kannst tippen, als stündest du davor.",
+          "",
+          "&7Braucht die passende Rolle am Mainframe und die PIN, falls eine gesetzt ist. Server-Admins können es abschalten.",
+      ]),
+      [check("Use a computer from the browser terminal", "Einen Computer über das Browser-Terminal bedienen")],
+      [xp(75)], deps=["cloud.autocard"], icon={"id": "computercraft:monitor_advanced", "count": 1}),
+
+    Q("cloud.store", 9.25, -2.5,
+      T("Script Store and Upload", "Script Store und Upload"),
+      T("&7No typing required", "&7Ohne Abtippen"),
+      T([
+          "&bUpload script&r on a computer card puts a &a.lua&r file onto that computer - drop a file, paste code or pick an example, then run it or make it the startup program.",
+          "",
+          "The &bStore&r lists community scripts. You see the full source before installing, and the server checks the store's signature.",
+          "",
+          "&7Scripts run on your CC computer, not on the Minecraft server.",
+      ], [
+          "&bSkript hochladen&r auf einer Computer-Karte legt eine &a.lua&r-Datei auf den Computer - Datei ablegen, Code einfügen oder ein Beispiel wählen, dann starten oder als Startprogramm setzen.",
+          "",
+          "Der &bStore&r listet Community-Skripte. Du siehst den ganzen Quelltext vor der Installation, und der Server prüft die Signatur des Stores.",
+          "",
+          "&7Skripte laufen auf deinem CC-Computer, nicht auf dem Minecraft-Server.",
+      ]),
+      [check("Upload or install a script", "Ein Skript hochladen oder installieren")],
+      [xp(75)], deps=["cloud.demo"], icon={"id": "computercraft:disk", "count": 1}),
+
+    Q("cloud.autostock", 10.75, 0,
+      T("Auto-Stock", "Auto-Vorrat"),
+      T("&7Your network refills itself", "&7Dein Netz füllt sich selbst auf"),
+      T([
+          "Give a watchlist entry a &btarget&r and turn on &bauto-craft&r: when the item falls below its minimum, the bridge crafts it back up - no computer needed.",
+          "",
+          "The Storage card also shows a &bcraft preview&r, your crafting CPUs and running jobs, which you can cancel.",
+          "",
+          "&7Lua: &2bridge.setAutoStock(name, min, target, true)",
+      ], [
+          "Gib einem Merklisten-Eintrag ein &bZiel&r und schalte &bAuto-Craft&r ein: Fällt das Item unter sein Minimum, craftet die Bridge es wieder auf - ganz ohne Computer.",
+          "",
+          "Die Speicher-Karte zeigt auch eine &bCrafting-Vorschau&r, deine Crafting-CPUs und laufende Aufträge, die du abbrechen kannst.",
+          "",
+          "&7Lua: &2bridge.setAutoStock(name, min, ziel, true)",
+      ]),
+      [check("Set up auto-stock for an item", "Auto-Vorrat für ein Item einrichten")],
+      [xp(100), table("uncommon")], deps=["cloud.watchlist"], icon={"id": "minecraft:hopper", "count": 1}),
+
+    Q("cloud.rules", 10.75, -1.5,
+      T("Rules and Notifications", "Regeln und Benachrichtigungen"),
+      T("&7Automation without code", "&7Automatisierung ohne Code"),
+      T([
+          "Automate on the dashboard's &bRules&r page: &bWhen&r (a value crosses a limit, an item runs low, power drops, every N minutes) &bIf&r (conditions) &bThen&r (redstone, press a button, craft, alert).",
+          "",
+          "Under &bNotifications&r, send alerts to &bDiscord&r, &bntfy&r or a webhook, so your phone buzzes when the reactor gets hot.",
+      ], [
+          "Automatisiere auf der Seite &bRegeln&r im Dashboard: &bWenn&r (ein Wert eine Grenze überschreitet, ein Item knapp wird, der Strom sinkt, alle N Minuten) &bFalls&r (Bedingungen) &bDann&r (Redstone, Knopf drücken, craften, Alarm).",
+          "",
+          "Unter &bBenachrichtigungen&r schickst du Alarme an &bDiscord&r, &bntfy&r oder einen Webhook, damit dein Handy vibriert, wenn der Reaktor heiß wird.",
+      ]),
+      [check("Create a rule", "Eine Regel anlegen"),
+       check("Send a test notification", "Eine Testbenachrichtigung senden")],
+      [xp(100), table("uncommon")], deps=["cloud.watchlist"], icon={"id": "minecraft:comparator", "count": 1}),
+
+    # ---- network: analyzer, relays, cables ----------------------------------------------------
+    Q("cloud.analyzer", 3.25, 3.5,
+      T("Cloud Analyzer", "Cloud-Analysator"),
+      T("&7See your signal", "&7Sieh dein Signal"),
+      T([
+          "Every device connects to the nearest &enode&r - the mainframe or a relay - and each has a limited radio range in its dimension.",
+          "",
+          "Hold the &eCloud Analyzer&r to see range bubbles, links coloured by signal and where a new device would connect. Right-click a device for its route and status.",
+          "",
+          "&7Sneak + scroll switches between rings, spheres and off.",
+      ], [
+          "Jedes Gerät verbindet sich mit dem nächsten &eKnoten&r - dem Mainframe oder einem Relais - und jedes hat eine begrenzte Funkreichweite in seiner Dimension.",
+          "",
+          "Halte den &eCloud-Analysator&r und sieh Reichweiten, nach Signal gefärbte Verbindungen und wo sich ein neues Gerät verbinden würde. Rechtsklick auf ein Gerät zeigt Route und Status.",
+          "",
+          "&7Schleichen + Mausrad wechselt zwischen Ringen, Kugeln und aus.",
+      ]),
+      [item("cccloud:cloud_analyzer")], [xp(50)], deps=["cloud.uplink"]),
+
+    Q("cloud.relay", 4.75, 3.5,
+      T("Cloud Relay", "Cloud-Relais"),
+      T("&7Extend your range", "&7Reichweite erweitern"),
+      T([
+          "A &eCloud Relay&r extends your network's range; the network finds the best route on its own. Relays are shared and need no linking.",
           "",
           "&7Relays need their own FE. The dashboard's Network page shows every node, link and signal strength.",
       ], [
-          "Geräte verbinden sich mit dem nächsten &eKnoten&r - dem Mainframe oder einem Relais. Ein &eCloud-Relais&r erweitert die Reichweite deines Netzes; die beste Route findet es selbst.",
+          "Ein &eCloud-Relais&r erweitert die Reichweite deines Netzes; die beste Route findet es selbst. Relais werden geteilt und müssen nicht verknüpft werden.",
           "",
           "&7Relais brauchen eigenen FE-Strom. Die Netzwerk-Seite im Dashboard zeigt alle Knoten, Verbindungen und Signalstärken.",
       ]),
-      [item("cccloud:cloud_relay")], [xp(75)], deps=["cloud.linkcard"], hide_lines=True),
+      [item("cccloud:cloud_relay")], [xp(75)], deps=["cloud.analyzer"]),
 
-    Q("cloud.advrelay", 1.5, 4.5,
+    Q("cloud.advrelay", 6.25, 3.5,
       T("Advanced Cloud Relay", "Erweitertes Cloud-Relais"),
-      soon("v0.4"),
+      T("&7For spread-out bases", "&7Für weitläufige Basen"),
       T(["More than double the range of a normal relay, for spread-out bases."],
         ["Mehr als die doppelte Reichweite eines normalen Relais, für weitläufige Basen."]),
       [item("cccloud:advanced_cloud_relay")], [xp(100)], deps=["cloud.relay"]),
 
-    Q("cloud.enderrelay", 3, 4.5,
+    Q("cloud.enderrelay", 7.75, 3.5,
       T("Ender Relay", "Ender-Relais"),
-      soon("v0.4"),
-      T(["&eEnder Relays&r link to each other over any distance and across dimensions. Pair them with the Link Card."],
-        ["&eEnder-Relais&r verbinden sich über jede Entfernung und über Dimensionen hinweg. Gekoppelt wird mit der Verbindungskarte."]),
+      T("&7Other dimensions", "&7Andere Dimensionen"),
+      T(["&eEnder Relays&r link to each other over any distance and across dimensions. Join each one to your mainframe with the Link Card."],
+        ["&eEnder-Relais&r verbinden sich über jede Entfernung und über Dimensionen hinweg. Verknüpfe jedes mit der Verbindungskarte mit deinem Mainframe."]),
       [item("cccloud:ender_relay")], [xp(150), give("minecraft:ender_eye", 2)], deps=["cloud.advrelay"]),
 
-    Q("cloud.upg1", 0, 6,
-      T("Allthemodium Upgrades", "Allthemodium-Upgrades"),
-      soon("v0.7"),
+    Q("cloud.cccable", 3.25, 5,
+      T("CC Cables", "CC-Kabel"),
+      T("&7Wired is always 100 %", "&7Kabel hat immer 100 %"),
       T([
-          "The mainframe has &e4 upgrade slots&r. Upgrade cards raise its limits: &bCapacity&r (devices), &bBandwidth&r (browsers), &bRange&r, &bEfficiency&r (less FE) and &bMemory&r (rules, history).",
+          "The mainframe, relays, uplinks and bridges also connect through CC: Tweaked's &eNetworking Cable&r and &eWired Modems&r: any length, full signal, no extra hop power.",
+          "",
+          "&7Computers on the same cable also see the mainframe and bridges as peripherals.",
+      ], [
+          "Mainframe, Relais, Uplinks und Bridges verbinden sich auch über das &eNetzwerkkabel&r und &eKabelmodems&r von CC: Tweaked: beliebig lang, volles Signal, kein Strom pro Hop.",
+          "",
+          "&7Computer am selben Kabel sehen Mainframe und Bridges auch als Peripherie.",
+      ]),
+      [check("Connect a device by cable", "Ein Gerät per Kabel verbinden")],
+      [xp(50)], deps=["cloud.analyzer"], icon={"id": "computercraft:cable", "count": 1}),
+
+    Q("cloud.fiber", 4.75, 5,
+      T("Fiber Cable", "Glasfaserkabel"),
+      T("&7The better cable", "&7Das bessere Kabel"),
+      T([
+          "&eFiber Cable&r only connects cloud devices: a clean network of its own. Devices on fiber count only half against the mainframe's device limit and use half the power.",
+      ], [
+          "&eGlasfaserkabel&r verbindet nur Cloud-Geräte: ein eigenes, sauberes Netz. Geräte am Glasfaserkabel zählen nur halb für das Gerätelimit des Mainframes und brauchen halb so viel Strom.",
+      ]),
+      [item("cccloud:fiber_cable", 8)], [xp(75), give("minecraft:prismarine_crystals", 8)], deps=["cloud.cccable"]),
+
+    Q("cloud.junction", 6.25, 5,
+      T("Fiber Junction", "Glasfaser-Verteiler"),
+      T("&7Splits and walls", "&7Abzweige und Wände"),
+      T(["The &eFiber Junction&r splits a fiber line and takes it through walls."],
+        ["Der &eGlasfaser-Verteiler&r teilt eine Glasfaserleitung auf und führt sie durch Wände."]),
+      [item("cccloud:fiber_junction")], [xp(50)], deps=["cloud.fiber"]),
+
+    Q("cloud.enderfiber", 7.75, 5,
+      T("Ender Fiber Link", "Ender-Glasfaserbrücke"),
+      T("&7Fiber across dimensions", "&7Glasfaser über Dimensionen", ),
+      T([
+          "Two &eEnder Fiber Links&r joined to the same mainframe with the Link Card connect their fiber networks across any distance and dimension.",
+      ], [
+          "Zwei &eEnder-Glasfaserbrücken&r, die mit der Verbindungskarte am selben Mainframe hängen, verbinden ihre Glasfasernetze über jede Entfernung und Dimension.",
+      ]),
+      [item("cccloud:ender_fiber_link")], [xp(200), table("uncommon")], deps=["cloud.junction", "cloud.enderrelay"]),
+
+    # ---- mainframe upgrades --------------------------------------------------------------------
+    Q("cloud.upg1", 1.75, -4,
+      T("Allthemodium Upgrades", "Allthemodium-Upgrades"),
+      T("&7Four slots, five kinds", "&7Vier Plätze, fünf Sorten"),
+      T([
+          "The mainframe has &e4 upgrade slots&r (Upgrades tab in its screen). Cards raise its limits: &bCapacity&r (devices), &bBandwidth&r (browsers), &bRange&r, &bEfficiency&r (less FE) and &bMemory&r (rules, history).",
           "",
           "Craft any one &6Allthemodium&r card.",
       ], [
-          "Der Mainframe hat &e4 Upgrade-Plätze&r. Upgrade-Karten heben seine Grenzen: &bKapazität&r (Geräte), &bBandbreite&r (Browser), &bReichweite&r, &bEffizienz&r (weniger FE) und &bSpeicher&r (Regeln, Verlauf).",
+          "Der Mainframe hat &e4 Upgrade-Plätze&r (Reiter Upgrades in seinem Bildschirm). Karten heben seine Grenzen: &bKapazität&r (Geräte), &bBandbreite&r (Browser), &bReichweite&r, &bEffizienz&r (weniger FE) und &bSpeicher&r (Regeln, Verlauf).",
           "",
           "Crafte eine beliebige &6Allthemodium&r-Karte.",
       ]),
       [anyof("cccloud:upgrade_capacity_allthemodium", upgrade_ids("allthemodium"))], [xp(150)],
-      deps=["cloud.mainframe"], hide_lines=True,
-      icon={"id": "cccloud:upgrade_capacity_allthemodium", "count": 1}),
+      deps=["cloud.mainframe"], icon={"id": "cccloud:upgrade_capacity_allthemodium", "count": 1}),
 
-    Q("cloud.upg2", 1.5, 6,
+    Q("cloud.upg2", 3.25, -4,
       T("Vibranium Upgrades", "Vibranium-Upgrades"),
-      soon("v0.7"),
+      T("&7The next tier", "&7Die nächste Stufe"),
       T(["The next tier: more devices, more browsers, more range. Only the highest card of each type counts."],
         ["Die nächste Stufe: mehr Geräte, mehr Browser, mehr Reichweite. Pro Typ zählt nur die höchste Karte."]),
       [anyof("cccloud:upgrade_capacity_vibranium", upgrade_ids("vibranium"))], [xp(250)],
       deps=["cloud.upg1"], icon={"id": "cccloud:upgrade_capacity_vibranium", "count": 1}),
 
-    Q("cloud.upg3", 3, 6,
+    Q("cloud.upg3", 4.75, -4,
       T("Unobtainium Upgrades", "Unobtainium-Upgrades"),
-      soon("v0.7"),
+      T("&7The strongest cards", "&7Die stärksten Karten"),
       T(["The strongest cards: up to 512 devices, 64 browsers and half the power use."],
         ["Die stärksten Karten: bis zu 512 Geräte, 64 Browser und halber Stromverbrauch."]),
       [anyof("cccloud:upgrade_capacity_unobtainium", upgrade_ids("unobtainium"))], [xp(400), table("uncommon")],
       deps=["cloud.upg2"], icon={"id": "cccloud:upgrade_capacity_unobtainium", "count": 1}),
 
-    Q("cloud.quantum", 4.5, 6,
+    Q("cloud.quantum", 6.25, -4,
       T("Quantum Core", "Quantenkern"),
-      soon("v0.7"),
-      T(["The &dQuantum Core&r removes the device and browser limits, turns the mainframe into an Ender node and cuts its FE use to a quarter. Made with an &6ATM Star&r."],
-        ["Der &dQuantenkern&r hebt die Geräte- und Browser-Grenzen auf, macht den Mainframe zum Ender-Knoten und senkt seinen FE-Verbrauch auf ein Viertel. Hergestellt mit einem &6ATM-Stern&r."]),
+      T("&7No limits", "&7Keine Grenzen"),
+      T(["The &dQuantum Core&r has its own slot. It removes the device and browser limits, turns the mainframe into an Ender node and cuts its FE use to a quarter. Made with an &6ATM Star&r."],
+        ["Der &dQuantenkern&r hat einen eigenen Platz. Er hebt die Geräte- und Browser-Grenzen auf, macht den Mainframe zum Ender-Knoten und senkt seinen FE-Verbrauch auf ein Viertel. Hergestellt mit einem &6ATM-Stern&r."]),
       [item("cccloud:quantum_core")], [xp(1000), table("rare")], deps=["cloud.upg3"],
       shape="hexagon", size=1.5),
 
-    Q("cloud.tablet", 6.25, 4.5,
+    Q("cloud.anchor", 1.75, -5.5,
+      T("Chunk Anchor Upgrade", "Chunk-Anker-Upgrade"),
+      T("&7Keep it loaded", "&7Geladen halten"),
+      T([
+          "In a card slot, the &eChunk Anchor Upgrade&r keeps the mainframe's chunk and the chunks of its linked devices loaded while it is online and powered. It costs extra FE per chunk.",
+          "",
+          "&cOff by default:&r the server admin must enable it in the config (upgrades.chunkAnchor). The number of chunks per player is limited.",
+      ], [
+          "In einem Karten-Platz hält das &eChunk-Anker-Upgrade&r den Chunk des Mainframes und die Chunks seiner verknüpften Geräte geladen, solange er online ist und Strom hat. Es kostet extra FE pro Chunk.",
+          "",
+          "&cStandardmäßig aus:&r Der Server-Admin muss es in der Config einschalten (upgrades.chunkAnchor). Die Anzahl Chunks pro Spieler ist begrenzt.",
+      ]),
+      [item("cccloud:upgrade_chunk_anchor")], [xp(100)], deps=["cloud.upg1"], optional=True),
+
+    # ---- in-game devices -----------------------------------------------------------------------
+    Q("cloud.wireless", 9.25, 3.5,
+      T("Wireless Redstone", "Kabelloses Redstone"),
+      T("&7Redstone over the cloud", "&7Redstone über die Cloud"),
+      T([
+          "In an uplink's screen, set &bWireless redstone&r to &eTransmitter&r or &eReceiver&r and pick a channel name. Receivers output the strongest signal of all transmitters on that channel.",
+          "",
+          "&7Works over relays, cables and Ender links, even across dimensions. The dashboard shows every channel.",
+      ], [
+          "Stell im Bildschirm eines Uplinks &bKabelloses Redstone&r auf &eSender&r oder &eEmpfänger&r und wähle einen Kanalnamen. Empfänger geben das stärkste Signal aller Sender auf dem Kanal aus.",
+          "",
+          "&7Funktioniert über Relais, Kabel und Ender-Verbindungen, sogar über Dimensionen. Das Dashboard zeigt alle Kanäle.",
+      ]),
+      [check("Send a redstone signal over the cloud", "Ein Redstone-Signal über die Cloud senden")], [xp(75)],
+      deps=["cloud.uplink"], hide_lines=True, icon={"id": "minecraft:redstone_torch", "count": 1}),
+
+    Q("cloud.tablet", 10.75, 1.75,
       T("Cloud Tablet", "Cloud-Tablet"),
-      soon("v0.7"),
+      T("&7The dashboard in your hand", "&7Das Dashboard in der Hand"),
       T(["The &eCloud Tablet&r opens your dashboard in-game, anywhere in range of your network. Made from a pocket computer and a cloud core."],
         ["Das &eCloud-Tablet&r öffnet dein Dashboard im Spiel, überall in Reichweite deines Netzes. Hergestellt aus Taschencomputer und Cloud-Kern."]),
       [item("cccloud:cloud_tablet")], [xp(100)], deps=["cloud.demo", "ext:cct.pocket"], hide_lines=True),
 
-    Q("cloud.advtablet", 7.75, 4.5,
+    Q("cloud.advtablet", 12.25, 1.75,
       T("Advanced Cloud Tablet", "Erweitertes Cloud-Tablet"),
-      soon("v0.7"),
+      T("&7Anywhere", "&7Überall"),
       T(["Works anywhere in Ender range, across dimensions."],
         ["Funktioniert überall in Ender-Reichweite, auch über Dimensionen hinweg."]),
       [item("cccloud:advanced_cloud_tablet")], [xp(150)], deps=["cloud.tablet"]),
 
-    Q("cloud.display", 6.25, 6,
+    Q("cloud.display", 10.75, 3.5,
       T("Cloud Display", "Cloud-Display"),
-      soon("v0.7"),
+      T("&7A dashboard on the wall", "&7Ein Dashboard an der Wand"),
       T(["Build &eCloud Displays&r into a wall (up to 8 x 6) and show any dashboard card or page in your base."],
         ["Bau &eCloud-Displays&r zu einer Wand (bis 8 x 6) zusammen und zeig eine beliebige Dashboard-Karte oder Seite in deiner Basis."]),
       [item("cccloud:cloud_display")], [xp(100)], deps=["cloud.demo"], hide_lines=True),
-
-    Q("cloud.wireless", 7.75, 6,
-      T("Wireless Redstone", "Kabelloses Redstone"),
-      soon("v0.7"),
-      T(["Set an uplink to &eRedstone transmitter&r or &ereceiver&r on a channel in its screen. Signals travel over relays and even across dimensions."],
-        ["Stell einen Uplink in seinem Bildschirm auf &eRedstone-Sender&r oder &e-Empfänger&r auf einem Kanal. Signale laufen über Relais und sogar über Dimensionen."]),
-      [check("Send a redstone signal over the cloud", "Ein Redstone-Signal über die Cloud senden")], [xp(75)],
-      deps=["cloud.autocard"], hide_lines=True, icon={"id": "minecraft:redstone_torch", "count": 1}),
-
-    Q("cloud.rules", 9.25, 6,
-      T("Rules", "Regeln"),
-      soon("v0.5"),
-      T([
-          "Automate without code: &bWhen&r (a value crosses a limit, an item runs low, power drops, every N minutes) &bIf&r (conditions) &bThen&r (redstone, press a button, craft, alert).",
-          "",
-          "Create a rule on the dashboard's Rules page.",
-      ], [
-          "Automatisieren ohne Code: &bWenn&r (ein Wert eine Grenze überschreitet, ein Item knapp wird, der Strom sinkt, alle N Minuten) &bFalls&r (Bedingungen) &bDann&r (Redstone, Knopf drücken, craften, Alarm).",
-          "",
-          "Leg eine Regel auf der Regeln-Seite im Dashboard an.",
-      ]),
-      [check("Create a rule", "Eine Regel anlegen")], [xp(100), table("uncommon")],
-      deps=["cloud.watchlist"], hide_lines=True, icon={"id": "minecraft:comparator", "count": 1}),
 ]
 
-PLANNED_IDS = sorted({
-    "cccloud:cloud_relay", "cccloud:advanced_cloud_relay", "cccloud:ender_relay",
-    "cccloud:quantum_core", "cccloud:cloud_tablet", "cccloud:advanced_cloud_tablet", "cccloud:cloud_display",
-    *[f"cccloud:upgrade_{t}_{tier}" for t in UPGRADE_TYPES for tier in UPGRADE_TIERS],
-})
 
 # ---------------------------------------------------------------------------------------------
 # build
@@ -1034,6 +1163,8 @@ def build_chapter(ids, chap, quests, link_quests=()):
                 td = {"id": tid, "type": "item", "item": t[1]}
                 if t[2] != 1:
                     td["count"] = t[2]
+                if len(t) > 3:
+                    td.update(t[3])
             elif t[0] == "filter":
                 _, flt, icon_id, icon_comp = t
                 icon = {"id": icon_id, "count": 1}
@@ -1108,25 +1239,20 @@ def main():
     link = [{"key": "cloud.link.cct_advanced", "quest": "cct.advanced", "x": -1.75, "y": 0}]
 
     cct, cct_lang, cct_clang = build_chapter(ids, CCT_CHAPTER, CCT)
-    cur, cur_lang, cloud_clang = build_chapter(ids, CLOUD_CHAPTER, CLOUD, link)
-    full, full_lang, _ = build_chapter(ids, CLOUD_CHAPTER, CLOUD + CLOUD_SOON, link)
+    cloud, cloud_lang, cloud_clang = build_chapter(ids, CLOUD_CHAPTER, CLOUD, link)
 
     q = os.path.join(ROOT, "quests")
-    v = os.path.join(ROOT, "variants", "full")
     write(os.path.join(q, "chapters", "cc_tweaked.json5"), emit(cct))
-    write(os.path.join(q, "chapters", "cc_cloud.json5"), emit(cur))
-    write(os.path.join(v, "chapters", "cc_cloud.json5"), emit(full))
+    write(os.path.join(q, "chapters", "cc_cloud.json5"), emit(cloud))
     for loc in LOCALES:
         write_lang(os.path.join(q, "lang", loc, "chapters", "cc_tweaked.json5"), cct_lang[loc])
-        write_lang(os.path.join(q, "lang", loc, "chapters", "cc_cloud.json5"), cur_lang[loc])
-        write_lang(os.path.join(v, "lang", loc, "chapters", "cc_cloud.json5"), full_lang[loc])
+        write_lang(os.path.join(q, "lang", loc, "chapters", "cc_cloud.json5"), cloud_lang[loc])
         merged = dict(cct_clang[loc])
         merged.update(cloud_clang[loc])
         write_lang(os.path.join(q, "lang", loc, "chapter.additions.json5"), merged)
 
-    write(os.path.join(HERE, "planned_ids.json"), json.dumps(PLANNED_IDS, indent=2))
     ids.save()
-    print(f"CC: Tweaked: {len(CCT)} quests, CC: Cloud: {len(CLOUD)} current / {len(CLOUD) + len(CLOUD_SOON)} full")
+    print(f"CC: Tweaked: {len(CCT)} quests, CC: Cloud: {len(CLOUD)} quests")
 
 
 if __name__ == "__main__":
