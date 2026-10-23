@@ -71,6 +71,29 @@ public final class InGamePayloads {
     }
 
     /** Server → client: Cloud Analyzer overlay data ({@code {}} = nothing to show) or a route highlight. */
+    /** v0.8 wave 3: network nodes for a client map mod (JourneyMap waypoints), see {@code map/MapNodes}. */
+    public record MapNodesData(String json) implements CustomPacketPayload {
+        public static final Type<MapNodesData> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "map_nodes"));
+        public static final StreamCodec<ByteBuf, MapNodesData> CODEC = StreamCodec.composite(
+            ByteBufCodecs.stringUtf8(262_144), MapNodesData::json, MapNodesData::new);
+
+        @Override
+        public Type<MapNodesData> type() {
+            return TYPE;
+        }
+    }
+
+    /** Client → server: send me {@link MapNodesData} (true) or stop (false). */
+    public record MapNodesSubscribe(boolean on) implements CustomPacketPayload {
+        public static final Type<MapNodesSubscribe> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "map_nodes_subscribe"));
+        public static final StreamCodec<ByteBuf, MapNodesSubscribe> CODEC = StreamCodec.composite(ByteBufCodecs.BOOL, MapNodesSubscribe::on, MapNodesSubscribe::new);
+
+        @Override
+        public Type<MapNodesSubscribe> type() {
+            return TYPE;
+        }
+    }
+
     public record AnalyzerData(String json) implements CustomPacketPayload {
         public static final Type<AnalyzerData> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "analyzer_data"));
         public static final StreamCodec<ByteBuf, AnalyzerData> CODEC = StreamCodec.composite(
@@ -85,6 +108,7 @@ public final class InGamePayloads {
     /** Set by the client entry point. */
     public static volatile @Nullable Consumer<TabletData> clientTabletHandler;
     public static volatile @Nullable Consumer<AnalyzerData> clientAnalyzerHandler;
+    public static volatile @Nullable Consumer<MapNodesData> clientMapNodesHandler;
 
     private InGamePayloads() {
     }
@@ -102,6 +126,13 @@ public final class InGamePayloads {
         registrar.playToClient(AnalyzerData.TYPE, AnalyzerData.CODEC, (payload, context) -> {
             var handler = clientAnalyzerHandler;
             if (handler != null) handler.accept(payload);
+        });
+        registrar.playToClient(MapNodesData.TYPE, MapNodesData.CODEC, (payload, context) -> {
+            var handler = clientMapNodesHandler;
+            if (handler != null) handler.accept(payload);
+        });
+        registrar.playToServer(MapNodesSubscribe.TYPE, MapNodesSubscribe.CODEC, (payload, context) -> {
+            if (context.player() instanceof ServerPlayer player) ai.ezfox.cccloud.map.MapNodesService.subscribe(player, payload.on());
         });
         registrar.playToServer(TabletRequest.TYPE, TabletRequest.CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) ai.ezfox.cccloud.tablet.TabletService.request(player, payload);

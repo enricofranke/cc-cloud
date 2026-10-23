@@ -36,6 +36,11 @@ public final class StorageGameTests {
         storage(helper, "sophisticatedstorage_storage", "sophisticatedstorage:controller", "sophisticatedstorage:chest", 100);
     }
 
+    /** Occultism's storage actuator has a base capacity of its own (stabilizers only add to it). */
+    public static void occultismActuator(GameTestHelper helper) {
+        storage(helper, "occultism_storage", "occultism:storage_controller", null, 100);
+    }
+
     /** Functional Storage links drawers with its linking tool only; the bare controller shows an empty card. */
     public static void functionalStorageController(GameTestHelper helper) {
         storage(helper, "functionalstorage_storage", "functionalstorage:storage_controller", null, 0);

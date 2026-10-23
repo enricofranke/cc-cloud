@@ -31,6 +31,28 @@ public class FluidTankCard extends BlockCard<BlockEntity> {
         this.title = title != null ? title : blockTitle();
     }
 
+    /**
+     * Generic provider (wave 3, lowest priority): any block entity with a fluid capability, no energy capability and at
+     * most {@link #MAX_ITEM_SLOTS} item slots – such as EvilCraft's Dark Tank or Stellaris tanks. Machines with fluid
+     * tanks keep their own or the Energy card.
+     */
+    public static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side) {
+        var be = level.getBlockEntity(pos);
+        if (be == null) return null;
+        var id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock());
+        if (ai.ezfox.cccloud.CCCloud.MODID.equals(id.getNamespace())) return null;
+        var fluids = handler(level, pos, side);
+        if (fluids == null || fluids.size() == 0) return null;
+        if (EnergyCard.handler(level, pos, side) != null) return null;
+        var items = ItemStorageCard.handler(level, pos, side);
+        if (items != null && items.size() > MAX_ITEM_SLOTS) return null;
+        return new FluidTankCard(KIND, null, level, pos, side, be);
+    }
+
+    public static final String KIND = "tank";
+    /** Tanks may have a couple of bucket/container slots (EvilCraft's Dark Tank); more slots means a machine. */
+    static final int MAX_ITEM_SLOTS = 2;
+
     public static @Nullable ResourceHandler<FluidResource> handler(ServerLevel level, BlockPos pos, @Nullable Direction side) {
         var handler = level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
         if (handler == null && side != null) handler = level.getCapability(Capabilities.Fluid.BLOCK, pos, null);

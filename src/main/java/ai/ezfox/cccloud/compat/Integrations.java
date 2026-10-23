@@ -29,6 +29,9 @@ public final class Integrations {
 
         // A. Ready-made cards. Mod-specific providers first, the generic FE card last.
         DeviceCards.register("energy", DeviceCards.GENERIC, EnergyCard::detect);
+        // Wave 3: plain fluid tanks (fluid capability only), below the Energy card.
+        DeviceCards.register(ai.ezfox.cccloud.compat.card.FluidTankCard.KIND, DeviceCards.GENERIC - 1, ai.ezfox.cccloud.compat.card.FluidTankCard::detect);
+        test("tank_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericTank);
         test("energy_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericEnergy);
         optional("powah", () -> ai.ezfox.cccloud.compat.powah.PowahCompat::init);
         optional("enderio", () -> ai.ezfox.cccloud.compat.enderio.EnderIoCards::init);
@@ -48,6 +51,7 @@ public final class Integrations {
         test("storage_dimstorage_chest", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageChest);
         test("storage_dimstorage_tank", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageTank);
         test("storage_sophisticated_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::sophisticatedController);
+        test("storage_occultism_actuator", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::occultismActuator);
         test("storage_functionalstorage_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::functionalStorageController);
 
         // 2. Advanced AE quantum computer.
@@ -78,6 +82,12 @@ public final class Integrations {
         // 8. World & progression.
         optional("waystones", () -> ai.ezfox.cccloud.compat.waystones.WaystonesCard::init);
         optional("ftbquests", () -> ai.ezfox.cccloud.compat.ftbquests.QuestsCard::init);
+
+        // Wave 3: more ATM11 machines.
+        optional("witchery", () -> ai.ezfox.cccloud.compat.witchery.WitcheryCards::init);
+        optional("forbidden_arcanus", () -> ai.ezfox.cccloud.compat.forbiddenarcanus.HephaestusForgeCards::init);
+        optional("pylons", () -> ai.ezfox.cccloud.compat.pylons.PylonCards::init);
+        optional("arsmagicalegacy", () -> ai.ezfox.cccloud.compat.arsmagica.EtheriumCards::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

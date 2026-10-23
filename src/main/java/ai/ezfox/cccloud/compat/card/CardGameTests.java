@@ -50,4 +50,28 @@ public final class CardGameTests {
             })
             .thenSucceed();
     }
+
+    /** Wave 3: EvilCraft's Dark Tank (fluid capability only) gets the generic Tank card. */
+    public static void genericTank(GameTestHelper helper) {
+        helper.setBlock(DEVICE, block(helper, "evilcraft:dark_tank"));
+        placeUplink(helper);
+        var linked = placeMainframe(helper);
+        helper.startSequence()
+            .thenExecute(() -> {
+                var handler = FluidTankCard.handler(helper.getLevel(), helper.absolutePos(DEVICE), deviceSide());
+                helper.assertTrue(handler != null, "dark tank has a fluid capability");
+                try (var tx = net.neoforged.neoforge.transfer.transaction.Transaction.openRoot()) {
+                    handler.insert(net.neoforged.neoforge.transfer.fluid.FluidResource.of(net.minecraft.world.level.material.Fluids.WATER), 1000, tx);
+                    tx.commit();
+                }
+            })
+            .thenWaitUntil(() -> assertCard(helper, FluidTankCard.KIND, null))
+            .thenExecute(() -> bind(helper, linked))
+            .thenWaitUntil(() -> {
+                assertCard(helper, FluidTankCard.KIND, linked);
+                helper.assertTrue(text(helper, FluidTankCard.FLUID).equals("Water"), "fluid: " + text(helper, FluidTankCard.FLUID));
+                helper.assertTrue(number(helper, FluidTankCard.FILL) > 0, "filled: " + value(helper, FluidTankCard.FILL));
+            })
+            .thenSucceed();
+    }
 }

@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:map_nodes_filtering",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}
