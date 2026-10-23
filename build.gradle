@@ -188,6 +188,8 @@ configurations {
     runtimeClasspath.extendsFrom localRuntime
     // Productive Bees ships productivelib only inside its jar (META-INF/jarjar); we extract it to compile against it.
     productiveBeesJar { transitive = false }
+    // JourneyMap ships its API only inside its jar (META-INF/jarjar); we extract it to compile the client plugin.
+    journeyMapJar { transitive = false }
 }
 
 // The optional integration mods (v0.5). Compile-only; -PintegrationMods puts them (or a comma-separated subset of the
@@ -245,9 +247,20 @@ def integrationMods = [
     modularrouters      : ["curse.maven:modularrouters-250294:${modularrouters_curse_file}"],
     integrateddynamics  : ["curse.maven:integrateddynamics-236307:${integrateddynamics_curse_file}", "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}",
                            "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
+    // JourneyMap is client-side: use -PintegrationMods=journeymap with runClient.
+    journeymap          : ["curse.maven:journeymap-32274:${journeymap_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
 ]
+
+def extractJourneyMapApi = tasks.register('extractJourneyMapApi', Copy) {
+    from({ zipTree(configurations.journeyMapJar.singleFile) }) {
+        include 'META-INF/jarjar/journeymap-api-neoforge-*.jar'
+        eachFile { it.path = it.name }
+    }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('jarjar')
+}
 
 def extractProductiveLib = tasks.register('extractProductiveLib', Copy) {
     from({ zipTree(configurations.productiveBeesJar.singleFile) }) {
@@ -279,6 +292,8 @@ dependencies {
     integrationMods.each { key, coords -> coords.each { compileOnly(it) { transitive = false } } }
     compileOnly("com.enderio:endercore:${enderio_version}") { transitive = false }
     productiveBeesJar "curse.maven:productivebees-377897:${productivebees_curse_file}"
+    journeyMapJar "curse.maven:journeymap-32274:${journeymap_curse_file}"
+    compileOnly files(layout.buildDirectory.file("jarjar/journeymap-api-neoforge-${journeymap_api_version}.jar")).builtBy(extractJourneyMapApi)
     compileOnly files(layout.buildDirectory.file("jarjar/productivelib-${productivelib_version}.jar")).builtBy(extractProductiveLib)
     if (project.hasProperty("integrationMods")) {
         def wanted = project.property("integrationMods").toString().trim()

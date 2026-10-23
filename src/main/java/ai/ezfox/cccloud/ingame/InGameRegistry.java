@@ -59,6 +59,7 @@ public final class InGameRegistry {
         TESTS.register("display_content", () -> ai.ezfox.cccloud.display.DisplayGameTests::content);
         TESTS.register("analyzer_filtering", () -> ai.ezfox.cccloud.analyzer.AnalyzerGameTests::filtering);
         TESTS.register("analyzer_preview", () -> ai.ezfox.cccloud.analyzer.AnalyzerGameTests::preview);
+        TESTS.register("map_nodes_filtering", () -> ai.ezfox.cccloud.map.MapNodesGameTests::filtering);
     }
 
     private InGameRegistry() {
@@ -74,6 +75,7 @@ public final class InGameRegistry {
         InGamePayloads.init(bus);
         TabletService.init();
         ai.ezfox.cccloud.analyzer.AnalyzerService.init();
+        ai.ezfox.cccloud.map.MapNodesService.init();
         ai.ezfox.cccloud.dev.DemoScene.init();
     }
 

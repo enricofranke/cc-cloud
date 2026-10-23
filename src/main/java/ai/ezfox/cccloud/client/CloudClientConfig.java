@@ -8,6 +8,7 @@ public final class CloudClientConfig {
     public static final ModConfigSpec.BooleanValue ANIMATIONS;
     public static final ModConfigSpec.BooleanValue SHARE_ICON_RENDERS;
     public static final ModConfigSpec.BooleanValue ANALYZER_OVERLAY;
+    public static final ModConfigSpec.BooleanValue JOURNEYMAP_WAYPOINTS;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -20,6 +21,9 @@ public final class CloudClientConfig {
         ANALYZER_OVERLAY = b.comment("Show the network overlay (ranges, links, placement preview, signal line) while holding a Cloud Analyzer, Link Card or cloud device.")
             .translation("cccloud.configuration.analyzerOverlay")
             .define("analyzerOverlay", true);
+        JOURNEYMAP_WAYPOINTS = b.comment("With JourneyMap installed: show the mainframes, relays and devices of every network where you may see positions as (temporary) JourneyMap waypoints.")
+            .translation("cccloud.configuration.journeyMapWaypoints")
+            .define("journeyMapWaypoints", true);
         SPEC = b.build();
     }
 
@@ -32,6 +36,10 @@ public final class CloudClientConfig {
 
     public static boolean analyzerOverlay() {
         return SPEC.isLoaded() ? ANALYZER_OVERLAY.get() : ANALYZER_OVERLAY.getDefault();
+    }
+
+    public static boolean journeyMapWaypoints() {
+        return SPEC.isLoaded() ? JOURNEYMAP_WAYPOINTS.get() : JOURNEYMAP_WAYPOINTS.getDefault();
     }
 
     public static boolean shareIconRenders() {

@@ -75,6 +75,7 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `sfm` | Super Factory Manager 4.34.0 | – | `compat/sfm` |
 | `modularrouters` | Modular Routers 26.1.2.2 | – | `compat/modularrouters` |
 | `integrateddynamics` | Integrated Dynamics 1.36.1 | Cyclops Core 1.31.3, Common Capabilities 2.11.8 | `compat/integrateddynamics` (part container + panel state) |
+| `journeymap` | JourneyMap 6.0.10 (client; for `runClient`) | – | its API (`journeymap-api-neoforge-2.0.0-26.1`, only inside the JourneyMap jar) is extracted by `extractJourneyMapApi`; the extracted jar's SHA-1 equals the one in ATM11's jar (`51b77c19…`). JourneyMap's maven only has snapshots of it. |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh
