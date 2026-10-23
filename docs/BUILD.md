@@ -106,6 +106,11 @@ Some integration mods ship GameTests of their own (Cobblegen Galore, Productive 
 - Approving from the server console or RCON works without a player: `cccloud approve <id>` / `cccloud deny <id>` (`cccloud approve` without an id suggests the waiting requests). The browser gets the role of the mainframe's owner (account codes: of that player); the audit log records "Console approved …".
 - E2E only: with `-Dcccloud.devCommands=true`, the console command `cccloud test-token <mainframeId>` prints a device token of the mainframe's owner (never available to players or without the property).
 
+### Releases
+- Version: `mod_version` in `gradle.properties` (0.9.0); changes go into `CHANGELOG.md`.
+- CI (`.github/workflows/build.yml`) on every push and pull request: web dashboard typecheck, tests and build (into `src/main/resources/cccloud_web`), then `./gradlew build` (unit tests, handbook check); the jar is kept as a workflow artifact. Pushing a tag `v*` (e.g. `git tag v0.9.0 && git push origin v0.9.0`) also creates a GitHub release with the jar and the changelog (tags with a `-`, e.g. `v0.9.0-rc1`, become pre-releases). No CurseForge upload yet.
+- The release jar contains no GameTest data (`data/cccloud/test_instance`, `test_environment`, the test structure); the test functions are only registered when NeoForge enables GameTests (development and the GameTest server). Dev helpers (`-PiconBenchmark`, `-PdemoShots`, `-PguideShots`, `-PguiScreenshot`, `-PtextureCheck`, `cccloud.devCommands`, `cccloud.gametest`) do nothing without their system property.
+
 ### Handbook check
 `./gradlew check` (and so `build`) runs `node tools/gen_handbook.ts --check` (task `checkHandbook`, Node ≥ 24): the in-game handbook pages must match the dashboard docs in `cloud/web/src/docs/content`. After editing the docs, run `node tools/gen_handbook.ts` and commit the pages with them. `-PskipHandbookCheck` skips it locally (e.g. while someone else's docs edits are not regenerated yet); CI always runs it.
 

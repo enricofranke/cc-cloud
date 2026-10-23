@@ -107,7 +107,7 @@ public final class Integrations {
         optional("kubejs", () -> ai.ezfox.cccloud.compat.kubejs.KubeJSGameTests::init);
         test("script_sections", () -> ai.ezfox.cccloud.api.ScriptSectionGameTests::sections);
 
-        TESTS.register(bus);
+        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestEnabled()) TESTS.register(bus); // dev / GameTest server only
     }
 
     /** Whether uplinks look for device cards (config {@code deviceCards}). */

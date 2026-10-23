@@ -403,6 +403,12 @@ def checkHandbook = tasks.register('checkHandbook', Exec) {
 }
 tasks.named('check') { dependsOn checkHandbook }
 
+// The release jar carries no GameTest data (test instances reference test functions that are only registered in
+// development and on the GameTest server); dev runs read the resources directly and keep them.
+tasks.named('jar', Jar) {
+    exclude 'data/cccloud/test_instance/**', 'data/cccloud/test_environment/**', 'data/cccloud/structure/test_*'
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,

@@ -201,6 +201,7 @@ public final class ModRegistry {
         COMPONENTS.register(bus);
         TABS.register(bus);
         MENUS.register(bus);
-        TEST_FUNCTIONS.register(bus);
+        // GameTests only in development and on the GameTest server; the release jar carries no test instances.
+        if (net.neoforged.neoforge.gametest.GameTestHooks.isGametestEnabled()) TEST_FUNCTIONS.register(bus);
     }
 }
