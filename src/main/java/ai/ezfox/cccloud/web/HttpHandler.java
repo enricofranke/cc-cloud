@@ -98,7 +98,13 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
     }
 
-    /** Resolves the Bearer tokens and re-checks the players' live rights on the server thread. */
+    /** Max v0.6 API requests per minute per IP. */
+    static final int API_RATE = 120;
+
+    /**
+     * Resolves the Bearer tokens, then runs the route on the server thread, where the {@link AccessApi} checks the
+     * live role of the device's player on the mainframe the request touches (deny by default).
+     */
     private void authenticateDevices(ChannelHandlerContext ctx, FullHttpRequest req, Router.Route route, String ip) {
         var devices = new ArrayList<AuthStore.Device>();
         for (String token : bearerTokens(req)) {
@@ -109,19 +115,26 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.UNAUTHORIZED, error("unauthorized"));
             return;
         }
-        req.retain();
-        CompletableFuture.supplyAsync(() -> devices.stream().filter(d -> instance.bridge.checkRights(d) == null).toList(), instance.bridge.serverExecutor())
+        if (instance.apiLimits.size() > 10_000) instance.apiLimits.clear();
+        if (!instance.apiLimits.computeIfAbsent(ip, k -> new TokenBucket(API_RATE, API_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        String path = new QueryStringDecoder(req.uri()).path();
+        String body = req.content().toString(StandardCharsets.UTF_8);
+        CompletableFuture.supplyAsync(() -> instance.bridge.api(route.id(), devices, path, body, ip), instance.bridge.serverExecutor())
             .orTimeout(5, TimeUnit.SECONDS)
-            .whenComplete((allowed, err) -> ctx.executor().execute(() -> {
+            .whenComplete((response, err) -> ctx.executor().execute(() -> {
                 try {
-                    if (err != null) sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
-                    else if (allowed.isEmpty()) sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("forbidden"));
-                    else dispatch(ctx, req, route, ip, allowed);
+                    if (err != null || response == null) {
+                        if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) CloudLog.LOGGER.warn("[cccloud] Error handling {}", route.id(), err);
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(response.status()), response.body());
+                    }
                 } catch (Exception e) {
                     CloudLog.LOGGER.warn("[cccloud] Error handling request", e);
                     sendJson(ctx, req, HttpResponseStatus.INTERNAL_SERVER_ERROR, error("internal_error"));
-                } finally {
-                    req.release();
                 }
             }));
     }
@@ -131,7 +144,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         switch (route.id()) {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
-            case MAINFRAMES -> mainframes(ctx, req, devices);
+            case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE ->
+                sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
             case STATIC -> {
@@ -224,7 +238,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         req.retain();
         CompletableFuture.supplyAsync(() -> {
-                var pending = instance.auth.pair(request.code(), request.name(), ip);
+                var pending = instance.auth.pair(request.code(), request.name(), ip, req.headers().get(HttpHeaderNames.USER_AGENT, ""));
                 if (pending != null) instance.bridge.requestApproval(pending);
                 else CloudLog.LOGGER.info("[cccloud] Failed pairing attempt from {}", ip);
                 return pending;
@@ -269,38 +283,28 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             }
             case APPROVED -> {
                 var device = pending.device();
-                json.addProperty("status", "approved");
-                json.addProperty("token", pending.token());
-                json.addProperty("mainframeId", pending.mainframeId().toString());
-                var info = WebHub.INSTANCE.info(pending.mainframeId());
-                json.addProperty("name", info != null ? info.name() : "Mainframe");
-                if (device != null) {
-                    json.addProperty("device", device.name());
-                    json.addProperty("canControl", device.canControl());
+                if (device == null) {
+                    sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("expired"));
+                    return;
                 }
-                sendJson(ctx, req, HttpResponseStatus.OK, json);
+                // The token is handed out exactly once (poll removed it); the role comes from the server thread.
+                String token = pending.token();
+                req.retain();
+                CompletableFuture.supplyAsync(() -> instance.bridge.api(Router.Id.PAIR_STATUS, List.of(device), "", "", ""), instance.bridge.serverExecutor())
+                    .orTimeout(5, TimeUnit.SECONDS)
+                    .whenComplete((info, err) -> ctx.executor().execute(() -> {
+                        try {
+                            var body = new JsonObject();
+                            body.addProperty("status", "approved");
+                            body.addProperty("token", token);
+                            if (info != null) for (var e : info.body().entrySet()) body.add(e.getKey(), e.getValue());
+                            sendJson(ctx, req, HttpResponseStatus.OK, body);
+                        } finally {
+                            req.release();
+                        }
+                    }));
             }
         }
-    }
-
-    // ---- /api/mainframes ---------------------------------------------------------------------------------------------
-
-    private void mainframes(ChannelHandlerContext ctx, FullHttpRequest req, List<AuthStore.Device> devices) {
-        var list = new JsonArray();
-        for (var device : devices) {
-            var info = WebHub.INSTANCE.info(device.mainframeId());
-            var json = new JsonObject();
-            json.addProperty("id", device.mainframeId().toString());
-            json.addProperty("name", info != null ? info.name() : "Mainframe");
-            json.addProperty("online", info != null && info.online());
-            json.addProperty("enabled", info != null && info.enabled());
-            json.addProperty("device", device.name());
-            json.addProperty("canControl", device.canControl());
-            list.add(json);
-        }
-        var body = new JsonObject();
-        body.add("mainframes", list);
-        sendJson(ctx, req, HttpResponseStatus.OK, body);
     }
 
     // ---- WebSocket ---------------------------------------------------------------------------------------------------
@@ -434,6 +438,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         h.set("Cross-Origin-Opener-Policy", "same-origin");
         h.set("Cross-Origin-Resource-Policy", "same-origin");
         h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        // Dashboards and share links (/s/<id>) must never be indexed.
+        h.set("X-Robots-Tag", "noindex, nofollow");
         if (tls) h.set("Strict-Transport-Security", "max-age=31536000");
     }
 }

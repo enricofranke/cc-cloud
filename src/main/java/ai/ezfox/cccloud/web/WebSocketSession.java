@@ -1,6 +1,8 @@
 package ai.ezfox.cccloud.web;
 
 import ai.ezfox.cccloud.CloudLog;
+import ai.ezfox.cccloud.access.AccessStore;
+import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonObject;
 import io.netty.channel.Channel;
@@ -23,8 +25,10 @@ import java.util.concurrent.TimeUnit;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One dashboard WebSocket. The first message must be {@code {"t":"auth","token":"..."}} within 5 seconds. Every other
- * message type is denied until authentication (token + live rights of the owning player) succeeded.
+ * One dashboard WebSocket. The first message must be {@code {"t":"auth","token","mainframeId?"}} or (share links)
+ * {@code {"t":"auth_share","id","secret"}} within 5 seconds. Every other message type is denied until authentication
+ * (token + live role of the owning player) succeeded. Every message of an authenticated session goes through the
+ * central {@link AccessGate}; share sessions are hard-denied everything except pong.
  */
 final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame> implements HubSession {
     private static final int MAX_INVALID_MESSAGES = 20;
@@ -40,6 +44,9 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private @Nullable Channel channel;
     private volatile State state = State.NEW;
     private volatile AuthStore.@Nullable Device device;
+    private volatile AccessStore.@Nullable Share share;
+    private volatile Role role = Role.NONE;
+    private volatile UUID mainframeId = new UUID(0, 0);
     private volatile boolean closed;
     private int invalidMessages;
     private @Nullable ScheduledFuture<?> authDeadline;
@@ -89,9 +96,24 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         // Deny by default: before READY only the auth message is processed.
         if (state != State.READY) {
             if (state == State.NEW && message instanceof ClientMessages.Auth auth) {
-                authenticate(auth.token());
+                authenticate(auth.token(), auth.mainframeId());
+            } else if (state == State.NEW && message instanceof ClientMessages.AuthShare auth) {
+                authenticateShare(auth.id(), auth.secret());
             } else if (!ClientMessages.isPublic(message) || state == State.NEW) {
                 close(4401, "auth required");
+            }
+            return;
+        }
+
+        if (share != null) {
+            // Share viewers are read-only: hard deny on everything but pong.
+            String deny = AccessGate.shareDeny(text);
+            if (deny != null) {
+                if (++invalidMessages > MAX_INVALID_MESSAGES * 5) {
+                    close(1008, "too many messages");
+                    return;
+                }
+                send(List.of(deny));
             }
             return;
         }
@@ -106,6 +128,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             }
             case ClientMessages.Auth auth -> {
             }
+            case ClientMessages.AuthShare auth -> {
+            }
             case ClientMessages.Invalid invalid -> {
                 if (++invalidMessages > MAX_INVALID_MESSAGES) {
                     close(1008, "too many invalid messages");
@@ -117,32 +141,50 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.Action action -> action(current, action);
             case ClientMessages.Query query -> query(current, query);
             case ClientMessages.LayoutSet layout -> layout(current, layout);
+            case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
         }
     }
 
-    private void authenticate(String token) {
+    private void authenticate(String token, @Nullable UUID requested) {
         var candidate = instance.auth.authenticate(token);
         if (candidate == null) {
             CloudLog.LOGGER.info("[cccloud] Rejected WebSocket login with an invalid or expired token from {}", ip);
-            send(List.of(errorJson("unauthorized")));
-            close(4401, "unauthorized");
+            deny("unauthorized", 4401);
+            return;
+        }
+        // Account tokens must name the mainframe; mainframe-limited tokens may only open their own.
+        UUID target = requested != null ? requested : candidate.mainframeId();
+        if (target == null) {
+            deny("mainframe_required", 4401);
+            return;
+        }
+        if (candidate.mainframeId() != null && !candidate.mainframeId().equals(target)) {
+            deny("no_access", 4403);
             return;
         }
         state = State.AUTHENTICATING;
         try {
             instance.bridge.serverExecutor().execute(() -> {
-                String error = instance.bridge.checkRights(candidate);
+                Role resolved;
+                try {
+                    resolved = instance.bridge.authorize(candidate, target, ip);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while authorizing a dashboard login from {}", ip, e);
+                    resolved = Role.NONE;
+                }
                 var ch = channel;
                 if (ch == null) return;
+                Role granted = resolved;
                 ch.eventLoop().execute(() -> {
-                    if (error != null) {
-                        CloudLog.LOGGER.info("[cccloud] Rejected WebSocket login of device '{}' ({}): {}", candidate.name(), ip, error);
-                        send(List.of(errorJson(error)));
-                        close(4403, error);
+                    if (granted == Role.NONE) {
+                        CloudLog.LOGGER.info("[cccloud] Rejected WebSocket login of device '{}' ({}) to {}: no role", candidate.name(), ip, target);
+                        deny("no_access", 4403);
                         return;
                     }
                     if (closed) return;
                     device = candidate;
+                    mainframeId = target;
+                    role = granted;
                     state = State.READY;
                     // Only authenticated sessions may send big frames (layout_set, up to 64 KB).
                     if (sizeGuard != null) sizeGuard.raiseLimit(ClientMessages.MAX_LAYOUT_FRAME);
@@ -155,16 +197,62 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
     }
 
+    /** Share-link viewer: id + 128-bit secret (from the URL fragment), expiry and the viewer limit. */
+    private void authenticateShare(String id, String secret) {
+        if (instance.shareLimiter.isBlocked(ip)) {
+            deny("rate_limited", 4429);
+            return;
+        }
+        if (instance.shareLogins.size() > 10_000) instance.shareLogins.clear();
+        if (!instance.shareLogins.computeIfAbsent(id.length() > 32 ? id.substring(0, 32) : id, k -> new TokenBucket(30, 0.5)).tryAcquire()) {
+            deny("rate_limited", 4429);
+            return;
+        }
+        var check = instance.access.checkShare(id, secret);
+        switch (check.status()) {
+            case INVALID -> {
+                instance.shareLimiter.recordFailure(ip);
+                CloudLog.LOGGER.info("[cccloud] Rejected share link login from {}", ip);
+                deny("share_invalid", 4401);
+                return;
+            }
+            case EXPIRED -> {
+                deny("share_expired", 4401);
+                return;
+            }
+            case OK -> {
+            }
+        }
+        var granted = check.share();
+        share = granted;
+        mainframeId = granted.mainframeId();
+        role = Role.SHARE;
+        state = State.READY;
+        if (authDeadline != null) authDeadline.cancel(false);
+        if (!WebHub.INSTANCE.tryAddSession(this)) {
+            state = State.NEW;
+            share = null;
+            deny("share_full", 4429);
+        }
+    }
+
+    private void deny(String error, int code) {
+        send(List.of(errorJson(error)));
+        close(code, error);
+    }
+
     private void action(AuthStore.Device current, ClientMessages.Action action) {
-        if (!current.canControl()) {
-            sendResult(action.reqId(), "read_only");
+        String denied = AccessGate.check(role, AccessGate.Kind.ACTION);
+        if (denied != null) {
+            sendResult(action.reqId(), denied);
             return;
         }
         if (!actionLimit.tryAcquire()) {
             sendResult(action.reqId(), "rate_limited");
             return;
         }
-        boolean needsPin = WebHub.INSTANCE.widgetNeedsPin(current.mainframeId(), action.uplinkId().toString(), action.id());
+        UUID mainframe = mainframeId;
+        boolean needsPin = WebHub.INSTANCE.widgetNeedsPin(mainframe, action.uplinkId().toString(), action.id());
         if (!needsPin) {
             runOnServer(current, action, false);
             return;
@@ -180,14 +268,14 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
         try {
             instance.pinExecutor.execute(() -> {
-                var check = instance.auth.checkPin(current.mainframeId(), current.tokenHash(), action.pin());
+                var check = instance.auth.checkPin(mainframe, current.tokenHash(), action.pin());
                 switch (check.result()) {
                     case OK -> runOnServer(current, action, true);
                     case NOT_SET -> sendResult(action.reqId(), "pin_not_set");
                     case WRONG -> sendResult(action.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
                     case LOCKED -> {
                         sendResult(action.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
-                        instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, ip));
+                        instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));
                     }
                 }
             });
@@ -201,7 +289,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             instance.bridge.serverExecutor().execute(() -> {
                 java.util.concurrent.CompletableFuture<ActionResult> result;
                 try {
-                    result = instance.bridge.dispatchAction(current, action, pinVerified, ip);
+                    result = instance.bridge.dispatchAction(current, mainframeId, action, pinVerified, ip);
                 } catch (RuntimeException e) {
                     CloudLog.LOGGER.error("[cccloud] Error while dispatching an action from {}", ip, e);
                     result = ActionResult.done("internal_error");
@@ -216,13 +304,18 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
     }
 
-    /** Item search. Read-only, so devices without canControl may search too. */
+    /** Item search. Read-only, so viewers may search too. */
     private void query(AuthStore.Device current, ClientMessages.Query query) {
+        String denied = AccessGate.check(role, AccessGate.Kind.QUERY);
+        if (denied != null) {
+            sendQueryResult(query.reqId(), QueryResult.fail(denied));
+            return;
+        }
         if (!queryLimit.tryAcquire()) {
             sendQueryResult(query.reqId(), QueryResult.fail("rate_limited"));
             return;
         }
-        if (!"item_search".equals(WebHub.INSTANCE.widgetType(current.mainframeId(), query.uplinkId().toString(), query.id()))) {
+        if (!"item_search".equals(WebHub.INSTANCE.widgetType(mainframeId, query.uplinkId().toString(), query.id()))) {
             sendQueryResult(query.reqId(), QueryResult.fail("unknown_widget"));
             return;
         }
@@ -230,7 +323,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             instance.bridge.serverExecutor().execute(() -> {
                 QueryResult result;
                 try {
-                    result = instance.bridge.dispatchQuery(current, query);
+                    result = instance.bridge.dispatchQuery(current, mainframeId, query);
                 } catch (RuntimeException e) {
                     CloudLog.LOGGER.error("[cccloud] Error while running an item search from {}", ip, e);
                     result = QueryResult.fail("internal_error");
@@ -243,15 +336,16 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     /**
-     * Saves the shared dashboard layout (validated during parsing). Needs canControl; at most 5 saves per 10 s per
+     * Saves the shared dashboard layout (validated during parsing). Needs the admin role; at most 5 saves per 10 s per
      * mainframe. Answered with layout_result; on success every client of the mainframe gets {"t":"layout"}.
      */
     private void layout(AuthStore.Device current, ClientMessages.LayoutSet layout) {
-        if (!current.canControl()) {
-            sendLayoutResult(layout.reqId(), "read_only");
+        String denied = AccessGate.check(role, AccessGate.Kind.LAYOUT);
+        if (denied != null) {
+            sendLayoutResult(layout.reqId(), denied);
             return;
         }
-        if (!WebHub.INSTANCE.tryLayoutSave(current.mainframeId())) {
+        if (!WebHub.INSTANCE.tryLayoutSave(mainframeId)) {
             sendLayoutResult(layout.reqId(), "rate_limited");
             return;
         }
@@ -263,7 +357,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             instance.bridge.serverExecutor().execute(() -> {
                 String error;
                 try {
-                    error = instance.bridge.setLayout(current, layout.layout());
+                    error = instance.bridge.setLayout(current, mainframeId, layout.layout());
                 } catch (RuntimeException e) {
                     CloudLog.LOGGER.error("[cccloud] Error while saving a dashboard layout from {}", ip, e);
                     error = "internal_error";
@@ -273,6 +367,42 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         } catch (RejectedExecutionException e) {
             sendLayoutResult(layout.reqId(), "offline");
         }
+    }
+
+    /** Unlink a device from the network map (admin): {@code net_result}, then a network delta on success. */
+    private void netUnlink(AuthStore.Device current, ClientMessages.NetUnlink unlink) {
+        String denied = AccessGate.check(role, AccessGate.Kind.NET_UNLINK);
+        if (denied != null) {
+            sendNetResult(unlink.reqId(), denied);
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendNetResult(unlink.reqId(), "rate_limited");
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.unlinkNode(current, mainframeId, unlink.nodeId());
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while unlinking a node from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendNetResult(unlink.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendNetResult(unlink.reqId(), "offline");
+        }
+    }
+
+    private void sendNetResult(String reqId, @Nullable String error) {
+        var json = new JsonObject();
+        json.addProperty("t", "net_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", error == null);
+        if (error != null) json.addProperty("error", error);
+        send(List.of(Json.GSON.toJson(json)));
     }
 
     private void sendLayoutResult(String reqId, @Nullable String error) {
@@ -324,8 +454,22 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     @Override
     public UUID mainframeId() {
-        var d = device;
-        return d == null ? new UUID(0, 0) : d.mainframeId();
+        return mainframeId;
+    }
+
+    @Override
+    public AccessStore.@Nullable Share share() {
+        return share;
+    }
+
+    @Override
+    public Role role() {
+        return role;
+    }
+
+    @Override
+    public void setRole(Role role) {
+        if (share == null) this.role = role;
     }
 
     @Override

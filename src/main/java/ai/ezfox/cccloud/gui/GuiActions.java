@@ -1,5 +1,6 @@
 package ai.ezfox.cccloud.gui;
 
+import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.web.AuthStore;
 import java.util.Locale;
 import java.util.UUID;
@@ -18,9 +19,12 @@ public final class GuiActions {
     private static final Pattern DEVICE_ID = Pattern.compile("[0-9a-f]{" + AuthStore.DEVICE_ID_LENGTH + "}");
     private static final Pattern PLAYER_NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
 
-    /** Mainframe screen actions. All of them need owner, trusted or operator rights. */
+    /**
+     * Mainframe screen actions. All of them need the admin role, except {@link #LINK_ACCOUNT} ("Link this browser", any
+     * player who may use the mod).
+     */
     public enum Mainframe {
-        TOGGLE_DASHBOARD, NEW_CODE, APPROVE, DENY, REVOKE, REVOKE_ALL, TRUST, UNTRUST, PIN_SET, PIN_CLEAR;
+        TOGGLE_DASHBOARD, NEW_CODE, APPROVE, DENY, REVOKE, REVOKE_ALL, TRUST, UNTRUST, SET_ROLE, PIN_SET, PIN_CLEAR, LINK_ACCOUNT;
 
         public String id() {
             return name().toLowerCase(Locale.ROOT);
@@ -64,6 +68,12 @@ public final class GuiActions {
 
         @Nullable String untrust(UUID player);
 
+        /** Direct role of a player (viewer, operator, admin). */
+        @Nullable String setRole(UUID player, Role role);
+
+        /** Shows an account code for "Link this browser". */
+        @Nullable String linkAccount();
+
         @Nullable String setPin(String pin);
 
         @Nullable String clearPin();
@@ -78,13 +88,14 @@ public final class GuiActions {
 
     /**
      * @param screenOpen the player has this mainframe's screen open (matching container id) and is still in range
-     * @param canManage  owner, trusted or operator, checked live on the server
+     * @param canManage  admin role on the mainframe, checked live on the server (AccessResolver)
      * @return null on success, else an error code
      */
     public static @Nullable String mainframe(String action, String arg, boolean screenOpen, boolean canManage, MainframeOps ops) {
         var a = Mainframe.byId(action);
         if (a == null) return "unknown_action";
         if (!screenOpen) return "no_screen";
+        if (a == Mainframe.LINK_ACCOUNT) return arg.isEmpty() ? ops.linkAccount() : "invalid_argument";
         if (!canManage) return "not_owner";
         if (arg.length() > MAX_ARG) return "invalid_argument";
         return switch (a) {
@@ -99,8 +110,15 @@ public final class GuiActions {
                 UUID uuid = parseUuid(arg);
                 yield uuid == null ? "invalid_argument" : ops.untrust(uuid);
             }
+            case SET_ROLE -> {
+                int colon = arg.indexOf(':');
+                UUID uuid = colon < 0 ? null : parseUuid(arg.substring(0, colon));
+                Role role = colon < 0 ? null : Role.parse(arg.substring(colon + 1));
+                yield uuid == null || role == null || role == Role.OWNER ? "invalid_argument" : ops.setRole(uuid, role);
+            }
             case PIN_SET -> AuthStore.isValidPin(arg) ? ops.setPin(arg) : "invalid_pin";
             case PIN_CLEAR -> arg.isEmpty() ? ops.clearPin() : "invalid_argument";
+            case LINK_ACCOUNT -> "invalid_argument"; // handled above
         };
     }
 

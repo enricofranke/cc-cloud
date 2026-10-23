@@ -89,7 +89,7 @@ public final class CloudWebServer {
         int expired = auth.expireDevices();
         if (expired > 0) CloudLog.LOGGER.info("[cccloud] {} dashboard device(s) expired after 30 days without use", expired);
 
-        var instance = new WebInstance(new MinecraftBridge(server, auth), auth, ssl, proxies, allowInternet,
+        var instance = new WebInstance(new MinecraftBridge(server, auth), auth, WebAuthData.access(server), ssl, proxies, allowInternet,
             computeUrl(server, bind, port, ssl != null), port);
         instance.bannedIps = bannedIps(server);
         var group = new MultiThreadIoEventLoopGroup(2, new DefaultThreadFactory("cccloud-web", true), NioIoHandler.newFactory());
@@ -153,36 +153,63 @@ public final class CloudWebServer {
     }
 
     /**
-     * Periodic housekeeping on the server thread (every 5 s): refreshes the IP ban snapshot, re-checks the rights of
-     * every connected device (ban, untrust, de-op take effect immediately) and expires old devices.
+     * Periodic housekeeping on the server thread (every 5 s): refreshes the IP ban snapshot, re-checks the role of
+     * every connected device (bans, role and team changes, de-op take effect live), closes sessions of revoked/expired
+     * share links and expires old devices.
      */
     public static void serverTick(MinecraftServer server) {
         var instance = current;
         if (instance == null) return;
         try {
             instance.bannedIps = bannedIps(server);
-            for (var session : WebHub.INSTANCE.sessions()) {
-                var device = session.device();
-                if (device == null) continue;
-                if (!instance.auth.isValid(device.tokenHash())) {
-                    session.close(4401, "revoked");
-                    continue;
-                }
-                String error = instance.bridge.checkRights(device);
-                if (error != null) {
-                    CloudLog.LOGGER.info("[cccloud] Disconnecting device '{}' of {}: {}", device.name(), device.playerName(), error);
-                    session.send(java.util.List.of("{\"t\":\"error\",\"error\":\"access_revoked\"}"));
-                    session.close(4403, "access_revoked");
-                }
-            }
+            recheck(instance, null);
             long now = System.currentTimeMillis();
             if (now - lastExpiry > 3_600_000L) {
                 lastExpiry = now;
                 int expired = instance.auth.expireDevices();
                 if (expired > 0) CloudLog.LOGGER.info("[cccloud] {} dashboard device(s) expired after 30 days without use", expired);
+                instance.access.expireShares();
             }
         } catch (RuntimeException e) {
             CloudLog.LOGGER.error("[cccloud] Error in dashboard housekeeping", e);
+        }
+    }
+
+    /** Re-checks the sessions of one mainframe right away (after a role, team or device change). Server thread. */
+    public static void recheck(MinecraftServer server, java.util.UUID mainframeId) {
+        var instance = current;
+        if (instance != null) recheck(instance, mainframeId);
+    }
+
+    private static void recheck(WebInstance instance, java.util.@Nullable UUID only) {
+        for (var session : WebHub.INSTANCE.sessions()) {
+            if (only != null && !only.equals(session.mainframeId())) continue;
+            var share = session.share();
+            if (share != null) {
+                var stored = instance.access.share(share.id());
+                if (stored == null) {
+                    session.send(List.of("{\"t\":\"error\",\"error\":\"share_revoked\"}"));
+                    session.close(4401, "share_revoked");
+                } else if (stored.expires() != 0 && stored.expires() <= System.currentTimeMillis()) {
+                    session.send(List.of("{\"t\":\"error\",\"error\":\"share_expired\"}"));
+                    session.close(4401, "share_expired");
+                }
+                continue;
+            }
+            var device = session.device();
+            if (device == null) continue;
+            if (!instance.auth.isValid(device.tokenHash())) {
+                session.close(4401, "revoked");
+                continue;
+            }
+            var role = instance.bridge.role(device, session.mainframeId());
+            if (role == ai.ezfox.cccloud.access.Role.NONE) {
+                CloudLog.LOGGER.info("[cccloud] Disconnecting device '{}' of {}: no role on {} any more", device.name(), device.playerName(), session.mainframeId());
+                session.send(List.of("{\"t\":\"error\",\"error\":\"no_access\"}"));
+                session.close(4403, "no_access");
+            } else if (role != session.role()) {
+                WebHub.INSTANCE.pushRole(session, role);
+            }
         }
     }
 
@@ -234,7 +261,7 @@ public final class CloudWebServer {
     public static @Nullable String issueTestToken(MinecraftServer server, java.util.UUID mainframeId, java.util.UUID player) {
         var auth = WebAuthData.get(server);
         var code = auth.currentCode(mainframeId, player);
-        var pending = auth.pair(code.code(), "loadtest", "127.0.0.1");
+        var pending = auth.pair(AuthStore.formatCode(code.code()), "loadtest", "127.0.0.1");
         if (pending == null) return null;
         var approved = auth.approve(pending.id(), player, "loadtest", true);
         return approved == null ? null : approved.token();

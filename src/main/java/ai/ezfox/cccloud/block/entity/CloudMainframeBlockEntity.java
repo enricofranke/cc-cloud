@@ -27,7 +27,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.permissions.Permissions;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
@@ -54,7 +54,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private boolean enabled = true;
     private @Nullable UUID owner;
     private String ownerName = "";
-    private final Map<UUID, String> trusted = new LinkedHashMap<>();
+    /** v0.3 trust list, only read from old saves and moved into the v0.6 AccessStore (as admins) on load. */
+    private final Map<UUID, String> legacyTrusted = new LinkedHashMap<>();
     private final Map<UUID, GlobalPos> linkedUplinks = new LinkedHashMap<>();
 
     private boolean registered;
@@ -99,8 +100,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         enabled = input.getBooleanOr("enabled", true);
         owner = input.read("owner", UUIDUtil.STRING_CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
-        trusted.clear();
-        input.read("trusted", NameAndId.CODEC.listOf()).ifPresent(list -> list.forEach(t -> trusted.put(t.id(), t.name())));
+        legacyTrusted.clear();
+        input.read("trusted", NameAndId.CODEC.listOf()).ifPresent(list -> list.forEach(t -> legacyTrusted.put(t.id(), t.name())));
         linkedUplinks.clear();
         input.read("uplinks", LinkedUplink.CODEC.listOf()).ifPresent(list -> list.forEach(u -> linkedUplinks.put(u.id(), u.pos())));
         energy.set(Math.min(energy.capacity(), Math.max(0, input.getIntOr("energy", 0))));
@@ -113,7 +114,9 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         output.putBoolean("enabled", enabled);
         output.storeNullable("owner", UUIDUtil.STRING_CODEC, owner);
         output.putString("owner_name", ownerName);
-        output.store("trusted", NameAndId.CODEC.listOf(), trusted.entrySet().stream().map(e -> new NameAndId(e.getKey(), e.getValue())).toList());
+        if (!legacyTrusted.isEmpty()) {
+            output.store("trusted", NameAndId.CODEC.listOf(), legacyTrusted.entrySet().stream().map(e -> new NameAndId(e.getKey(), e.getValue())).toList());
+        }
         output.store("uplinks", LinkedUplink.CODEC.listOf(), linkedUplinks.entrySet().stream().map(e -> new LinkedUplink(e.getKey(), e.getValue())).toList());
         output.putInt("energy", energy.energy());
     }
@@ -136,10 +139,21 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
-    /** Mirrors owner + trust list into the auth store so device rights can be checked while this chunk is unloaded. */
+    /**
+     * Makes sure the AccessStore knows this mainframe and its owner (rights are checked there, also while this chunk is
+     * unloaded). Migrates a v0.3 trust list once: trusted players become admins.
+     */
     private void syncAcl() {
-        if (level instanceof ServerLevel serverLevel) {
-            WebAuthData.get(serverLevel.getServer()).setAcl(mainframeId, owner, trusted.keySet());
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        var store = WebAuthData.access(serverLevel.getServer());
+        if (store.migrateLegacy(mainframeId, owner, ownerName, legacyTrusted) && !legacyTrusted.isEmpty()) {
+            CCCloud.LOGGER.info("[cccloud] {}: {} trusted player(s) are admins now (v0.6 roles)", getDisplayName(), legacyTrusted.size());
+        }
+        var access = store.access(mainframeId);
+        if (owner != null && access != null && !owner.equals(access.owner())) store.setOwner(mainframeId, owner, ownerName);
+        if (!legacyTrusted.isEmpty()) {
+            legacyTrusted.clear();
+            setChanged();
         }
     }
 
@@ -163,6 +177,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             var store = WebAuthData.get(serverLevel.getServer());
             int devices = store.devices(mainframeId).size();
             store.forgetMainframe(mainframeId);
+            WebAuthData.access(serverLevel.getServer()).forget(mainframeId);
             CCCloud.LOGGER.info("[cccloud] {} was removed; its pairing code, PIN and {} device(s) were deleted", getDisplayName(), devices);
             WebHub.INSTANCE.removeMainframe(mainframeId);
             ai.ezfox.cccloud.layout.LayoutData.get(serverLevel.getServer()).remove(mainframeId);
@@ -304,32 +319,38 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         return ownerName;
     }
 
-    public Map<UUID, String> getTrusted() {
-        return trusted;
+    /** Players with a direct role (v0.6; "trusted" players of v0.3 are admins). Server side only. */
+    public Map<UUID, ai.ezfox.cccloud.access.MainframeAccess.Grant> getGrants() {
+        if (!(level instanceof ServerLevel serverLevel)) return Map.of();
+        var access = WebAuthData.access(serverLevel.getServer()).access(mainframeId);
+        return access == null ? Map.of() : access.grants();
     }
 
-    /** Owner, trusted players and operators (permission level 2+) may manage the mainframe. */
+    /** Admins and the owner manage the mainframe (role from the AccessResolver: owner, roles, teams, admin nodes). */
     public boolean canManage(Player player) {
-        if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return true;
-        UUID id = player.getUUID();
-        return id.equals(owner) || trusted.containsKey(id);
+        return player instanceof ServerPlayer sp && ai.ezfox.cccloud.access.Access.canManage(sp, mainframeId);
     }
 
+    /** Gives a player a direct role (NONE removes it). Returns false if nothing changed or the player is the owner. */
+    public boolean setRole(NameAndId player, ai.ezfox.cccloud.access.Role role) {
+        if (!(level instanceof ServerLevel serverLevel) || player.id().equals(owner)) return false;
+        var store = WebAuthData.access(serverLevel.getServer());
+        var before = store.access(mainframeId);
+        var grant = before == null ? null : before.grants().get(player.id());
+        if (role == ai.ezfox.cccloud.access.Role.NONE ? grant == null : grant != null && grant.role() == role) return false;
+        if (store.setRole(mainframeId, player.id(), player.name(), role) != null) return false;
+        ai.ezfox.cccloud.web.CloudWebServer.recheck(serverLevel.getServer(), mainframeId);
+        return true;
+    }
+
+    /** v0.3 "trust" = admin. */
     public boolean trust(NameAndId player) {
-        if (player.id().equals(owner)) return false;
-        boolean added = trusted.put(player.id(), player.name()) == null;
-        setChanged();
-        syncAcl();
-        return added;
+        return setRole(player, ai.ezfox.cccloud.access.Role.ADMIN);
     }
 
     public boolean untrust(UUID player) {
-        boolean removed = trusted.remove(player) != null;
-        if (removed) {
-            setChanged();
-            syncAcl();
-        }
-        return removed;
+        var grant = getGrants().get(player);
+        return grant != null && setRole(new NameAndId(player, grant.name()), ai.ezfox.cccloud.access.Role.NONE);
     }
 
     // ---- uplinks -----------------------------------------------------------------------------------------------------

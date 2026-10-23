@@ -18,7 +18,6 @@ class AuthStoreTest {
     void setUp() {
         store = new AuthStore(now::get, () -> {
         });
-        store.setAcl(mainframe, owner, Set.of());
     }
 
     private AuthStore.Pending pairNewDevice(String name) {
@@ -179,11 +178,35 @@ class AuthStoreTest {
     }
 
     @Test
-    void aclAllowsOwnerAndTrusted() {
-        var trusted = UUID.randomUUID();
-        store.setAcl(mainframe, owner, Set.of(trusted));
-        assertTrue(store.acl(mainframe).allows(owner));
-        assertTrue(store.acl(mainframe).allows(trusted));
-        assertFalse(store.acl(mainframe).allows(UUID.randomUUID()));
+    void accountCodesCreateAccountTokensOnlyTheirPlayerMayApprove() {
+        var player = UUID.randomUUID();
+        var code = store.accountCode(player);
+        var pending = store.pair(code.code(), "Laptop", "10.0.0.2", "Mozilla/5.0 (Macintosh; Intel Mac OS X)");
+        assertNotNull(pending);
+        assertTrue(pending.isAccount());
+        assertNull(pending.mainframeId());
+        assertNull(store.approve(pending.id(), owner, "Owner", true), "another player cannot approve an account code");
+        var approved = store.approve(pending.id(), player, "Alex", true);
+        assertNotNull(approved);
+        var device = store.authenticate(approved.token());
+        assertTrue(device.isAccount());
+        assertEquals("desktop", device.type());
+        assertEquals("10.0.0.2", device.lastIp());
+        assertNull(store.pair(code.code(), "Again", "10.0.0.2"), "single use");
+        assertEquals(1, store.devicesOf(player).size());
+        assertNull(store.revokeDevice(device.id(), d -> false), "predicate denies");
+        assertNotNull(store.revokeDevice(device.id(), d -> d.player().equals(player)));
+        assertNull(store.authenticate(approved.token()));
+    }
+
+    @Test
+    void mainframeCodesStayLimitedToTheirMainframe() {
+        var pending = pairNewDevice("Phone");
+        var approved = store.approve(pending.id(), owner, "Owner", true);
+        assertEquals(mainframe, store.authenticate(approved.token()).mainframeId());
+        assertFalse(store.authenticate(approved.token()).isAccount());
+        assertEquals("phone", AuthStore.deviceType("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0) Mobile"));
+        assertEquals("tablet", AuthStore.deviceType("Mozilla/5.0 (Linux; Android 14; Tablet)"));
+        assertEquals("other", AuthStore.deviceType(""));
     }
 }

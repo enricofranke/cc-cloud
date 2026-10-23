@@ -29,8 +29,15 @@ class RouteAuthTest {
         }
 
         @Override
-        public @Nullable String checkRights(AuthStore.Device device) {
-            return null;
+        public ai.ezfox.cccloud.access.Role role(AuthStore.Device device, UUID mainframeId) {
+            fail("role must not be reached without authentication");
+            return ai.ezfox.cccloud.access.Role.NONE;
+        }
+
+        @Override
+        public ai.ezfox.cccloud.access.Role authorize(AuthStore.Device device, UUID mainframeId, String ip) {
+            fail("authorize must not be reached without authentication");
+            return ai.ezfox.cccloud.access.Role.NONE;
         }
 
         @Override
@@ -38,30 +45,42 @@ class RouteAuthTest {
         }
 
         @Override
-        public java.util.concurrent.CompletableFuture<ActionResult> dispatchAction(AuthStore.Device device, ClientMessages.Action action, boolean pinVerified, String ip) {
+        public java.util.concurrent.CompletableFuture<ActionResult> dispatchAction(AuthStore.Device device, UUID mainframeId, ClientMessages.Action action, boolean pinVerified, String ip) {
             fail("dispatchAction must not be reached without authentication");
             return ActionResult.done(null);
         }
 
         @Override
-        public QueryResult dispatchQuery(AuthStore.Device device, ClientMessages.Query query) {
+        public QueryResult dispatchQuery(AuthStore.Device device, UUID mainframeId, ClientMessages.Query query) {
             fail("dispatchQuery must not be reached without authentication");
             return QueryResult.fail("x");
         }
 
         @Override
-        public @Nullable String setLayout(AuthStore.Device device, com.google.gson.@Nullable JsonObject layout) {
+        public @Nullable String setLayout(AuthStore.Device device, UUID mainframeId, com.google.gson.@Nullable JsonObject layout) {
             fail("setLayout must not be reached without authentication");
             return null;
         }
 
         @Override
-        public void onPinLockout(AuthStore.Device device, String ip) {
+        public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
+            fail("unlinkNode must not be reached without authentication");
+            return null;
+        }
+
+        @Override
+        public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         }
 
         @Override
         public String mainframeName(UUID mainframeId) {
             return "Test";
+        }
+
+        @Override
+        public AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip) {
+            fail("api must not be reached without authentication");
+            return AccessApi.error(500, "x");
         }
     }
 

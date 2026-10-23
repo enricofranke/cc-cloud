@@ -76,6 +76,7 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
         BlockPos pos = context.getClickedPos();
         Level level = context.getLevel();
         if (pos.getY() >= level.getMaxY() || !level.getBlockState(pos.above()).canBeReplaced(context)) return null;
+        if (context.getPlayer() instanceof net.minecraft.server.level.ServerPlayer player && !ai.ezfox.cccloud.access.UseGuard.mayPlaceMainframe(player)) return null;
         return defaultBlockState()
             .setValue(FACING, context.getHorizontalDirection().getOpposite())
             .setValue(HALF, DoubleBlockHalf.LOWER);

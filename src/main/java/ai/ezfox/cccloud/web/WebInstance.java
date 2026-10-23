@@ -20,6 +20,8 @@ import org.jspecify.annotations.Nullable;
 final class WebInstance {
     final GameBridge bridge;
     final AuthStore auth;
+    /** Roles and share links (share logins are checked here, off the server thread; the store is thread-safe). */
+    final ai.ezfox.cccloud.access.AccessStore access;
     final @Nullable SslContext ssl;
     final List<IpUtil.Cidr> trustedProxies;
     final boolean allowInternet;
@@ -27,6 +29,12 @@ final class WebInstance {
     /** /api/icon: 200 requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> iconLimits = new java.util.concurrent.ConcurrentHashMap<>();
     final FailureLimiter pairLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
+    /** v0.6 API: requests per minute per IP. */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Share links: wrong share id/secret attempts per IP (5 per minute, then blocked). */
+    final FailureLimiter shareLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
+    /** Share links: logins per share link (30 per minute). */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> shareLogins = new java.util.concurrent.ConcurrentHashMap<>();
     /** PIN hashing is slow on purpose, so it runs on its own thread with a small bounded queue. */
     final ThreadPoolExecutor pinExecutor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32),
         new DefaultThreadFactory("cccloud-pin", true));
@@ -39,8 +47,14 @@ final class WebInstance {
     @Nullable ScheduledFuture<?> cleanupTask;
 
     WebInstance(GameBridge bridge, AuthStore auth, @Nullable SslContext ssl, List<IpUtil.Cidr> trustedProxies, boolean allowInternet, String url, int port) {
+        this(bridge, auth, new ai.ezfox.cccloud.access.AccessStore(System::currentTimeMillis, () -> { }), ssl, trustedProxies, allowInternet, url, port);
+    }
+
+    WebInstance(GameBridge bridge, AuthStore auth, ai.ezfox.cccloud.access.AccessStore access, @Nullable SslContext ssl, List<IpUtil.Cidr> trustedProxies,
+                boolean allowInternet, String url, int port) {
         this.bridge = bridge;
         this.auth = auth;
+        this.access = access;
         this.ssl = ssl;
         this.trustedProxies = trustedProxies;
         this.allowInternet = allowInternet;

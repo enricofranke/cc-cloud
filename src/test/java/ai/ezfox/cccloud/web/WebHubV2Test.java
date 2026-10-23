@@ -38,6 +38,11 @@ class WebHubV2Test {
         }
 
         @Override
+        public ai.ezfox.cccloud.access.Role role() {
+            return device.canControl() ? ai.ezfox.cccloud.access.Role.OPERATOR : ai.ezfox.cccloud.access.Role.VIEWER;
+        }
+
+        @Override
         public void send(List<String> messages) {
             received.addAll(messages);
         }

@@ -27,14 +27,17 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
- * {@code /cccloud status|devices|revoke|trust|untrust|pin|approve|deny}. All mainframe commands act on the mainframe
- * the player is looking at and need owner, trusted or operator rights.
+ * {@code /cccloud status|devices|revoke|trust|untrust|role|pin|approve|deny|link|browsers}. Mainframe commands act on the
+ * mainframe the player is looking at and need the admin role (AccessResolver: owner, roles, teams, admin nodes).
  */
 public final class CloudCommand {
     private static final SimpleCommandExceptionType NOT_LOOKING = new SimpleCommandExceptionType(Component.translatable("cccloud.command.not_looking"));
     private static final SimpleCommandExceptionType NOT_OWNER = new SimpleCommandExceptionType(Component.translatable("cccloud.mainframe.not_owner"));
     private static final SimpleCommandExceptionType UNKNOWN_REQUEST = new SimpleCommandExceptionType(Component.translatable("cccloud.approval.unknown"));
     private static final SimpleCommandExceptionType BAD_PIN = new SimpleCommandExceptionType(Component.translatable("cccloud.pin.invalid"));
+    private static final SimpleCommandExceptionType BAD_ROLE = new SimpleCommandExceptionType(Component.translatable("cccloud.command.bad_role"));
+    private static final SimpleCommandExceptionType NO_USE = new SimpleCommandExceptionType(Component.translatable("cccloud.access.no_use"));
+    private static final SimpleCommandExceptionType UNKNOWN_DEVICE = new SimpleCommandExceptionType(Component.translatable("cccloud.gui.notice.unknown_device"));
 
     private CloudCommand() {
     }
@@ -50,11 +53,14 @@ public final class CloudCommand {
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("cccloud")
             .then(Commands.literal("status").executes(CloudCommand::status))
-            .then(Commands.literal("icons").requires(src -> src.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+            .then(Commands.literal("icons").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.COMMAND_ICONS))
                 .then(Commands.literal("status").executes(c -> icons(c, "status")))
                 .then(Commands.literal("rebuild").executes(c -> icons(c, "rebuild")))
                 .then(Commands.literal("clear").executes(c -> icons(c, "clear"))))
-            .then(Commands.literal("devices").executes(CloudCommand::devices))
+            // v0.6: all browsers of the player; "devices here" lists the browsers limited to the mainframe you look at.
+            .then(Commands.literal("devices").executes(CloudCommand::browsers)
+                .then(Commands.literal("here").executes(CloudCommand::devices))
+                .then(Commands.literal("revoke").then(Commands.argument("id", StringArgumentType.word()).executes(CloudCommand::revokeBrowser))))
             .then(Commands.literal("revoke")
                 .then(Commands.argument("device", StringArgumentType.greedyString())
                     .suggests((c, b) -> {
@@ -71,6 +77,12 @@ public final class CloudCommand {
                 .then(Commands.argument("player", GameProfileArgument.gameProfile()).executes(c -> trust(c, true))))
             .then(Commands.literal("untrust")
                 .then(Commands.argument("player", GameProfileArgument.gameProfile()).executes(c -> trust(c, false))))
+            .then(Commands.literal("role")
+                .then(Commands.argument("player", GameProfileArgument.gameProfile())
+                    .then(Commands.argument("role", StringArgumentType.word())
+                        .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.List.of("viewer", "operator", "admin", "none"), b))
+                        .executes(CloudCommand::role))))
+            .then(Commands.literal("link").executes(CloudCommand::link))
             .then(Commands.literal("pin")
                 .then(Commands.literal("set").then(Commands.argument("pin", StringArgumentType.word()).executes(CloudCommand::setPin)))
                 .then(Commands.literal("clear").executes(CloudCommand::clearPin)))
@@ -94,7 +106,84 @@ public final class CloudCommand {
         return mainframe;
     }
 
-    /** {@code /cccloud icons status|rebuild|clear} (operators). */
+    /** Permission node check for command requirements (PermissionAPI: LuckPerms / FTB Ranks; default op level 2). */
+    private static boolean hasNode(CommandSourceStack src, ai.ezfox.cccloud.access.ServerPermissions.Node node) {
+        if (src.getEntity() instanceof ServerPlayer player) return ai.ezfox.cccloud.access.Access.has(player, node);
+        return src.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER); // console, command blocks
+    }
+
+    /** {@code /cccloud role <player> <viewer|operator|admin|none>} on the mainframe you look at. */
+    private static int role(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var mainframe = target(c.getSource());
+        var role = ai.ezfox.cccloud.access.Role.parse(StringArgumentType.getString(c, "role"));
+        if (role == null || role == ai.ezfox.cccloud.access.Role.OWNER) throw BAD_ROLE.create();
+        var caller = c.getSource().getPlayerOrException();
+        var callerRole = ai.ezfox.cccloud.access.Access.role(caller, mainframe.getMainframeId());
+        boolean moderator = callerRole == ai.ezfox.cccloud.access.Role.OWNER
+            || ai.ezfox.cccloud.access.Access.has(caller, ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_MANAGE);
+        int changed = 0;
+        for (var profile : GameProfileArgument.getGameProfiles(c, "player")) {
+            var current = mainframe.getGrants().get(profile.id());
+            if (!moderator && ((current != null && current.role().rank >= callerRole.rank) || role.rank > callerRole.rank)) throw NOT_OWNER.create();
+            if (mainframe.setRole(profile, role)) {
+                changed++;
+                ai.ezfox.cccloud.web.WebAuthData.access(c.getSource().getServer()).audit(mainframe.getMainframeId(),
+                    c.getSource().getTextName() + (role == ai.ezfox.cccloud.access.Role.NONE ? " removed " + profile.name() : " set " + profile.name() + " to " + role.id));
+                CCCloud.LOGGER.info("[cccloud] {} set the role of {} on {} to {}", c.getSource().getTextName(), profile.name(), mainframe.getDisplayName(), role.id);
+            }
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.role_set", profile.name(), Component.translatable("cccloud.role." + role.id)));
+        }
+        return changed;
+    }
+
+    /** {@code /cccloud link}: an account code – one login for every mainframe where the player has a role. */
+    private static int link(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer player = c.getSource().getPlayerOrException();
+        if (!ai.ezfox.cccloud.access.Access.has(player, ai.ezfox.cccloud.access.ServerPermissions.Node.USE)) throw NO_USE.create();
+        var code = WebAuthData.get(c.getSource().getServer()).accountCode(player.getUUID());
+        long minutes = Math.max(1, (code.expiresAt() - System.currentTimeMillis() + 59_999) / 60_000);
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.link_code",
+            Component.literal(AuthStore.formatCode(code.code())).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), minutes));
+        String url = ai.ezfox.cccloud.web.CloudWebServer.dashboardUrl();
+        if (url != null && !url.isEmpty()) c.getSource().sendSystemMessage(Component.literal(url).withStyle(ChatFormatting.AQUA));
+        return 1;
+    }
+
+    /** {@code /cccloud browsers}: every browser of the player (account and mainframe-limited tokens). */
+    private static int browsers(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer player = c.getSource().getPlayerOrException();
+        var list = WebAuthData.get(c.getSource().getServer()).devicesOf(player.getUUID());
+        if (list.isEmpty()) {
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.no_devices"));
+            return 0;
+        }
+        var format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.browsers_header", list.size()).withStyle(ChatFormatting.AQUA));
+        for (var device : list) {
+            String id = AuthStore.deviceId(device);
+            var revoke = Component.translatable("cccloud.command.revoke_button").withStyle(style -> style.withColor(ChatFormatting.RED)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/cccloud devices revoke " + id)));
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.browser_line", device.name(), device.type(),
+                device.lastIp().isEmpty() ? "-" : device.lastIp(), format.format(new Date(device.lastUsed())),
+                device.isAccount() ? Component.translatable("cccloud.command.browser_account") : Component.literal(
+                    ai.ezfox.cccloud.web.WebHub.INSTANCE.info(device.mainframeId()) != null ? ai.ezfox.cccloud.web.WebHub.INSTANCE.info(device.mainframeId()).name() : "Mainframe"),
+                revoke));
+        }
+        return list.size();
+    }
+
+    private static int revokeBrowser(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer player = c.getSource().getPlayerOrException();
+        String id = StringArgumentType.getString(c, "id");
+        var removed = WebAuthData.get(c.getSource().getServer()).revokeDevice(id, d -> d.player().equals(player.getUUID()));
+        if (removed == null) throw UNKNOWN_DEVICE.create();
+        ai.ezfox.cccloud.web.WebHub.INSTANCE.closeDevice(removed.tokenHash());
+        CCCloud.LOGGER.info("[cccloud] {} revoked their browser '{}'", player.getGameProfile().name(), removed.name());
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.revoked", 1));
+        return 1;
+    }
+
+    /** {@code /cccloud icons status|rebuild|clear} (cccloud.command.icons). */
     private static int icons(CommandContext<CommandSourceStack> c, String what) {
         var service = ai.ezfox.cccloud.icons.IconService.current();
         if (service == null) {
@@ -124,9 +213,10 @@ public final class CloudCommand {
         var mainframe = target(c.getSource());
         mainframe.showStatus(c.getSource().getPlayerOrException());
         var auth = WebAuthData.get(c.getSource().getServer());
+        var grants = mainframe.getGrants().values().stream().map(g -> g.name() + " (" + g.role().id + ")").toList();
         c.getSource().sendSystemMessage(Component.translatable("cccloud.command.owner",
             mainframe.getOwnerName().isEmpty() ? "-" : mainframe.getOwnerName(),
-            mainframe.getTrusted().isEmpty() ? "-" : String.join(", ", mainframe.getTrusted().values())).withStyle(ChatFormatting.GRAY));
+            grants.isEmpty() ? "-" : String.join(", ", grants)).withStyle(ChatFormatting.GRAY));
         c.getSource().sendSystemMessage(Component.translatable(auth.hasPin(mainframe.getMainframeId()) ? "cccloud.pin.is_set" : "cccloud.pin.not_set")
             .withStyle(ChatFormatting.GRAY));
         return 1;
@@ -208,9 +298,9 @@ public final class CloudCommand {
         String id = StringArgumentType.getString(c, "request");
         var pending = auth.pending(id);
         if (pending == null || pending.state() != AuthStore.PendingState.PENDING) throw UNKNOWN_REQUEST.create();
-        var acl = auth.acl(pending.mainframeId());
-        boolean op = player.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
-        if (!op && (acl == null || !acl.allows(player.getUUID()))) throw NOT_OWNER.create();
+        // Account codes: only the player whose code it is. Mainframe codes: admins of that mainframe.
+        if (pending.isAccount() ? !player.getUUID().equals(pending.account())
+            : !ai.ezfox.cccloud.access.Access.canManage(player, pending.mainframeId())) throw NOT_OWNER.create();
         if (allow) {
             var approved = auth.approve(id, player.getUUID(), player.getGameProfile().name(), true);
             if (approved == null) throw UNKNOWN_REQUEST.create();

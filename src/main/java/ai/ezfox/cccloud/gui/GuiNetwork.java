@@ -19,7 +19,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 import net.minecraft.server.players.NameAndId;
 import net.minecraft.world.SimpleMenuProvider;
 import net.neoforged.bus.api.IEventBus;
@@ -99,6 +98,10 @@ public final class GuiNetwork {
     // ---- opening ---------------------------------------------------------------------------------------------------
 
     public static void openMainframe(ServerPlayer player, CloudMainframeBlockEntity mainframe) {
+        var resolution = ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId());
+        if (resolution.source() == ai.ezfox.cccloud.access.AccessResolver.Source.SERVER_ADMIN && player.level().getServer() != null) {
+            ai.ezfox.cccloud.access.Access.auditAdmin(player.level().getServer(), mainframe.getMainframeId(), player.getGameProfile().name(), "Screen opened by admin");
+        }
         String view = GuiViews.mainframe(mainframe, player, null);
         var pos = mainframe.getBlockPos();
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, pos, view), Component.translatable("block.cccloud.cloud_mainframe")),
@@ -133,14 +136,9 @@ public final class GuiNetwork {
 
     // ---- rights ----------------------------------------------------------------------------------------------------
 
-    /** Owner, trusted or op of a mainframe, also when the mainframe itself is not loaded (ACL from SavedData). */
+    /** Admin role on a mainframe, also when the mainframe itself is not loaded (AccessResolver, SavedData). */
     public static boolean canManageMainframe(ServerPlayer player, UUID mainframeId) {
-        var server = player.level().getServer();
-        if (server == null) return false;
-        if (server.getPlayerList().getBans().isBanned(new NameAndId(player.getUUID(), player.getGameProfile().name()))) return false;
-        if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return true;
-        var acl = WebAuthData.get(server).acl(mainframeId);
-        return acl != null && acl.allows(player.getUUID());
+        return ai.ezfox.cccloud.access.Access.canManage(player, mainframeId);
     }
 
     // ---- actions ---------------------------------------------------------------------------------------------------
@@ -201,6 +199,8 @@ public final class GuiNetwork {
         @Override public @Nullable String revokeAll() { return "no_screen"; }
         @Override public @Nullable String trust(String name) { return "no_screen"; }
         @Override public @Nullable String untrust(UUID player) { return "no_screen"; }
+        @Override public @Nullable String setRole(UUID player, ai.ezfox.cccloud.access.Role role) { return "no_screen"; }
+        @Override public @Nullable String linkAccount() { return "no_screen"; }
         @Override public @Nullable String setPin(String pin) { return "no_screen"; }
         @Override public @Nullable String clearPin() { return "no_screen"; }
     };
@@ -302,20 +302,42 @@ public final class GuiNetwork {
             return null;
         }
 
+        /** Adds a player as operator (the role can be changed in the list). */
         @Nullable String applyTrust(NameAndId profile) {
-            if (profile.id().equals(mainframe.getOwner())) return "already_trusted";
-            if (!mainframe.trust(profile)) return "already_trusted";
-            CCCloud.LOGGER.info("[cccloud] {} trusted {} on {} (screen)", who(), profile.name(), mainframe.getDisplayName());
+            if (profile.id().equals(mainframe.getOwner()) || mainframe.getGrants().containsKey(profile.id())) return "already_trusted";
+            if (!mainframe.setRole(profile, ai.ezfox.cccloud.access.Role.OPERATOR)) return "already_trusted";
+            CCCloud.LOGGER.info("[cccloud] {} added {} as operator on {} (screen)", who(), profile.name(), mainframe.getDisplayName());
+            WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " added " + profile.name() + " as operator");
             notice = "trusted";
             return null;
         }
 
         @Override
         public @Nullable String untrust(UUID target) {
+            var grant = mainframe.getGrants().get(target);
             if (!mainframe.untrust(target)) return "not_trusted";
-            CCCloud.LOGGER.info("[cccloud] {} untrusted {} on {} (screen)", who(), target, mainframe.getDisplayName());
-            CloudWebServer.serverTick(server); // their devices stop working right away
+            CCCloud.LOGGER.info("[cccloud] {} removed the role of {} on {} (screen)", who(), grant != null ? grant.name() : target, mainframe.getDisplayName());
+            WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " removed " + (grant != null ? grant.name() : target.toString()));
             notice = "untrusted";
+            return null;
+        }
+
+        @Override
+        public @Nullable String setRole(UUID target, ai.ezfox.cccloud.access.Role role) {
+            var grant = mainframe.getGrants().get(target);
+            if (grant == null) return "not_trusted"; // the screen only edits existing grants; add players by name
+            if (!mainframe.setRole(new NameAndId(target, grant.name()), role)) return null;
+            CCCloud.LOGGER.info("[cccloud] {} set the role of {} on {} to {} (screen)", who(), grant.name(), mainframe.getDisplayName(), role.id);
+            WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " set " + grant.name() + " to " + role.id);
+            notice = "role_changed";
+            return null;
+        }
+
+        @Override
+        public @Nullable String linkAccount() {
+            if (!ai.ezfox.cccloud.access.Access.has(player, ai.ezfox.cccloud.access.ServerPermissions.Node.USE)) return "not_allowed";
+            auth.accountCode(player.getUUID());
+            notice = "account_code";
             return null;
         }
 

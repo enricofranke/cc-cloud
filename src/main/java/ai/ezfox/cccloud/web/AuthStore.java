@@ -19,8 +19,9 @@ import javax.crypto.spec.PBEKeySpec;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Pairing codes, pending device approvals, device tokens, mainframe ACLs and PINs. Plain Java (no Minecraft classes)
- * so it can be unit tested.
+ * Pairing codes (per mainframe, and v0.6 account codes per player), pending device approvals, device tokens and PINs.
+ * Roles live in the {@link ai.ezfox.cccloud.access.AccessStore}. Plain Java (no Minecraft classes) so it can be unit
+ * tested.
  * <p>
  * Reads are thread-safe (concurrent maps of immutable records). Mutations are synchronized; in the mod they happen on
  * the server thread, except {@link #verifyPin} which runs on a background thread because hashing is slow on purpose.
@@ -41,29 +42,57 @@ public final class AuthStore {
     public record PairingCode(String code, long expiresAt, @Nullable UUID issuer) {
     }
 
-    /** A device. Only the SHA-256 of its token is stored; it acts with the rights of {@code player}. */
-    public record Device(String tokenHash, UUID mainframeId, String name, boolean canControl, long created, long lastUsed,
-                         UUID player, String playerName) {
-        Device withLastUsed(long time) {
-            return new Device(tokenHash, mainframeId, name, canControl, created, time, player, playerName);
+    /**
+     * A browser ("device": phone, tablet or PC). Only the SHA-256 of its token is stored; it acts with the role of
+     * {@code player} (resolved live by the {@link ai.ezfox.cccloud.access.AccessResolver}).
+     *
+     * @param mainframeId null for an account token (every mainframe where the player has a role); set for tokens from a
+     *                    mainframe pairing code and for v0.3 device tokens, which are limited to that one mainframe
+     * @param canControl  false caps the role at viewer (read-only devices)
+     * @param type        desktop|phone|tablet|other from the User-Agent at pairing time (informational only)
+     */
+    public record Device(String tokenHash, @Nullable UUID mainframeId, String name, boolean canControl, long created, long lastUsed,
+                         UUID player, String playerName, String type, String lastIp) {
+        /** v0.3 shape: a device limited to one mainframe. */
+        public Device(String tokenHash, UUID mainframeId, String name, boolean canControl, long created, long lastUsed, UUID player, String playerName) {
+            this(tokenHash, mainframeId, name, canControl, created, lastUsed, player, playerName, "other", "");
+        }
+
+        Device withLastUsed(long time, String ip) {
+            return new Device(tokenHash, mainframeId, name, canControl, created, time, player, playerName, type, ip);
+        }
+
+        public boolean isAccount() {
+            return mainframeId == null;
+        }
+
+        /** The public id (see {@link AuthStore#deviceId}). */
+        public String id() {
+            return deviceId(this);
         }
     }
 
     public enum PendingState { PENDING, APPROVED, DENIED }
 
-    /** A device waiting for in-game approval (memory only). */
-    public record Pending(String id, UUID mainframeId, String deviceName, String ip, @Nullable UUID issuer, long expiresAt,
-                          PendingState state, @Nullable String token, @Nullable Device device) {
+    /**
+     * A device waiting for in-game approval (memory only).
+     *
+     * @param mainframeId the mainframe of a mainframe pairing code, null for an account code
+     * @param account     the player of an account code (only that player may approve), null for mainframe codes
+     */
+    public record Pending(String id, @Nullable UUID mainframeId, @Nullable UUID account, String deviceName, String ip, @Nullable UUID issuer,
+                          long expiresAt, PendingState state, @Nullable String token, @Nullable Device device, String type) {
         Pending with(PendingState state, @Nullable String token, @Nullable Device device) {
-            return new Pending(id, mainframeId, deviceName, ip, issuer, expiresAt, state, token, device);
+            return new Pending(id, mainframeId, account, deviceName, ip, issuer, expiresAt, state, token, device, type);
+        }
+
+        public boolean isAccount() {
+            return account != null;
         }
     }
 
-    /** Owner and trusted players of a mainframe, mirrored from the block entity so rights can be checked while it is unloaded. */
+    /** v0.3 owner + trusted list (only read from old saves and migrated into the AccessStore). */
     public record Acl(@Nullable UUID owner, Set<UUID> trusted) {
-        public boolean allows(UUID player) {
-            return player.equals(owner) || trusted.contains(player);
-        }
     }
 
     public record PinHash(String salt, String hash, int iterations) {
@@ -84,7 +113,8 @@ public final class AuthStore {
     private final Map<UUID, PairingCode> codes = new ConcurrentHashMap<>();
     private final Map<String, Device> devices = new ConcurrentHashMap<>();
     private final Map<String, Pending> pending = new ConcurrentHashMap<>();
-    private final Map<UUID, Acl> acls = new ConcurrentHashMap<>();
+    /** v0.6 account codes per player (memory only, 10 minutes). */
+    private final Map<UUID, PairingCode> accountCodes = new ConcurrentHashMap<>();
     private final Map<UUID, PinHash> pins = new ConcurrentHashMap<>();
     private final Map<String, PinFailures> pinFailures = new ConcurrentHashMap<>();
 
@@ -103,18 +133,13 @@ public final class AuthStore {
         return devices;
     }
 
-    public Map<UUID, Acl> acls() {
-        return acls;
-    }
-
     public Map<UUID, PinHash> pins() {
         return pins;
     }
 
-    public synchronized void load(Map<UUID, PairingCode> codes, Iterable<Device> devices, Map<UUID, Acl> acls, Map<UUID, PinHash> pins) {
+    public synchronized void load(Map<UUID, PairingCode> codes, Iterable<Device> devices, Map<UUID, PinHash> pins) {
         this.codes.putAll(codes);
         for (var device : devices) this.devices.put(device.tokenHash(), device);
-        this.acls.putAll(acls);
         this.pins.putAll(pins);
     }
 
@@ -142,20 +167,50 @@ public final class AuthStore {
         if (codes.remove(mainframeId) != null) onChange.run();
     }
 
+    /** v0.6: the current account code of a player ({@code /cccloud link}), creating a fresh one if needed. */
+    public synchronized PairingCode accountCode(UUID player) {
+        var existing = accountCodes.get(player);
+        long now = clock.getAsLong();
+        if (existing != null && existing.expiresAt() > now) return existing;
+        var code = new PairingCode(newCode(), now + CODE_TTL_MS, player);
+        accountCodes.put(player, code);
+        return code;
+    }
+
+    /** The player's account code if one is active (does not create one). */
+    public @Nullable PairingCode activeAccountCode(UUID player) {
+        var code = accountCodes.get(player);
+        return code != null && code.expiresAt() > clock.getAsLong() ? code : null;
+    }
+
+    public synchronized void dropAccountCode(UUID player) {
+        accountCodes.remove(player);
+    }
     /**
      * Step 1 of pairing: checks the code (single use, 10 minutes) and creates a pending approval.
      *
      * @return the pending request, or null if the code is unknown or expired.
      */
-    public synchronized @Nullable Pending pair(String input, String deviceName, String ip) {
+    public @Nullable Pending pair(String input, String deviceName, String ip) {
+        return pair(input, deviceName, ip, "");
+    }
+
+    /**
+     * Step 1 of pairing: checks the code (single use, 10 minutes) and creates a pending approval. Accepts mainframe
+     * pairing codes and v0.6 account codes.
+     *
+     * @param userAgent only used to guess the device type (informational)
+     * @return the pending request, or null if the code is unknown or expired.
+     */
+    public synchronized @Nullable Pending pair(String input, String deviceName, String ip, String userAgent) {
         String normalized = normalizeCode(input);
         if (normalized.length() != 8) return null;
         long now = clock.getAsLong();
         pending.values().removeIf(p -> p.expiresAt() <= now && p.state() != PendingState.APPROVED);
         if (pending.size() >= MAX_PENDING) return null;
+        byte[] given = normalized.getBytes(StandardCharsets.US_ASCII);
         UUID match = null;
         PairingCode matched = null;
-        byte[] given = normalized.getBytes(StandardCharsets.US_ASCII);
         for (var entry : codes.entrySet()) {
             boolean equal = MessageDigest.isEqual(entry.getValue().code().getBytes(StandardCharsets.US_ASCII), given);
             if (equal && entry.getValue().expiresAt() > now) {
@@ -163,13 +218,28 @@ public final class AuthStore {
                 matched = entry.getValue();
             }
         }
-        if (match == null) return null;
-        codes.remove(match);
-        onChange.run();
-        var request = new Pending(randomId(), match, sanitizeName(deviceName), ip, matched.issuer(), now + APPROVAL_TTL_MS,
-            PendingState.PENDING, null, null);
-        pending.put(request.id(), request);
-        return request;
+        UUID account = null;
+        for (var entry : accountCodes.entrySet()) {
+            boolean equal = MessageDigest.isEqual(entry.getValue().code().getBytes(StandardCharsets.US_ASCII), given);
+            if (equal && entry.getValue().expiresAt() > now) account = entry.getKey();
+        }
+        String type = deviceType(userAgent);
+        if (match != null) {
+            codes.remove(match);
+            onChange.run();
+            var request = new Pending(randomId(), match, null, sanitizeName(deviceName), ip, matched.issuer(), now + APPROVAL_TTL_MS,
+                PendingState.PENDING, null, null, type);
+            pending.put(request.id(), request);
+            return request;
+        }
+        if (account != null) {
+            accountCodes.remove(account);
+            var request = new Pending(randomId(), null, account, sanitizeName(deviceName), ip, account, now + APPROVAL_TTL_MS,
+                PendingState.PENDING, null, null, type);
+            pending.put(request.id(), request);
+            return request;
+        }
+        return null;
     }
 
     public @Nullable Pending pending(String id) {
@@ -182,18 +252,24 @@ public final class AuthStore {
         return p;
     }
 
-    /** Step 2: a player approves the device. The token is bound to that player. */
+    /**
+     * Step 2: a player approves the device. The token is bound to that player. Account requests can only be approved
+     * by the player whose account code was used.
+     */
     public synchronized @Nullable Pending approve(String id, UUID player, String playerName, boolean canControl) {
         var p = pending(id);
         if (p == null || p.state() != PendingState.PENDING) return null;
+        if (p.isAccount() && !player.equals(p.account())) return null;
         byte[] raw = new byte[32];
         random.nextBytes(raw);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
         long now = clock.getAsLong();
-        var device = new Device(hash(token), p.mainframeId(), uniqueName(p.mainframeId(), p.deviceName()), canControl, now, now, player, playerName);
+        var device = new Device(hash(token), p.mainframeId(), uniqueName(p.mainframeId(), player, p.deviceName()), canControl, now, now, player, playerName,
+            p.type(), p.ip());
         devices.put(device.tokenHash(), device);
         // Keep the result around briefly so the browser can pick up the token.
-        var approved = new Pending(p.id(), p.mainframeId(), device.name(), p.ip(), p.issuer(), now + APPROVAL_TTL_MS, PendingState.APPROVED, token, device);
+        var approved = new Pending(p.id(), p.mainframeId(), p.account(), device.name(), p.ip(), p.issuer(), now + APPROVAL_TTL_MS, PendingState.APPROVED,
+            token, device, p.type());
         pending.put(id, approved);
         onChange.run();
         return approved;
@@ -217,7 +293,7 @@ public final class AuthStore {
     }
 
     public List<Pending> pendingFor(UUID mainframeId) {
-        return pending.values().stream().filter(p -> p.mainframeId().equals(mainframeId) && p.state() == PendingState.PENDING).toList();
+        return pending.values().stream().filter(p -> mainframeId.equals(p.mainframeId()) && p.state() == PendingState.PENDING).toList();
     }
 
     // ---- devices -----------------------------------------------------------------------------------------------------
@@ -238,14 +314,20 @@ public final class AuthStore {
         return device != null && device.lastUsed() + DEVICE_EXPIRY_MS >= clock.getAsLong();
     }
 
-    /** Records use of a device (at most once per hour, to keep saves cheap). */
-    public synchronized void touch(String tokenHash) {
+    /** Records use of a device (at most once per hour or when the IP changed, to keep saves cheap). */
+    public synchronized void touch(String tokenHash, @Nullable String ip) {
         var device = devices.get(tokenHash);
         long now = clock.getAsLong();
-        if (device != null && now - device.lastUsed() > LAST_USED_GRANULARITY_MS) {
-            devices.put(tokenHash, device.withLastUsed(now));
+        if (device == null) return;
+        boolean ipChanged = ip != null && !ip.isEmpty() && !ip.equals(device.lastIp());
+        if (ipChanged || now - device.lastUsed() > LAST_USED_GRANULARITY_MS) {
+            devices.put(tokenHash, device.withLastUsed(now, ipChanged ? ip : device.lastIp()));
             onChange.run();
         }
+    }
+
+    public void touch(String tokenHash) {
+        touch(tokenHash, null);
     }
 
     /** Removes devices unused for 30 days. Returns the number removed. */
@@ -258,11 +340,35 @@ public final class AuthStore {
         return removed;
     }
 
+    /** Devices limited to this mainframe (mainframe pairing codes and v0.3 tokens). */
     public List<Device> devices(UUID mainframeId) {
         var list = new ArrayList<Device>();
-        for (var device : devices.values()) if (device.mainframeId().equals(mainframeId)) list.add(device);
+        for (var device : devices.values()) if (mainframeId.equals(device.mainframeId())) list.add(device);
         list.sort((a, b) -> Long.compare(a.created(), b.created()));
         return list;
+    }
+
+    /** v0.6: every browser of a player (account tokens and mainframe-limited tokens). */
+    public List<Device> devicesOf(UUID player) {
+        var list = new ArrayList<Device>();
+        for (var device : devices.values()) if (device.player().equals(player)) list.add(device);
+        list.sort((a, b) -> Long.compare(a.created(), b.created()));
+        return list;
+    }
+
+    /** Revokes a device by its public id, if {@code allowed} accepts it. Returns the removed device or null. */
+    public synchronized @Nullable Device revokeDevice(String id, java.util.function.Predicate<Device> allowed) {
+        if (id.length() != DEVICE_ID_LENGTH) return null;
+        Device match = null;
+        for (var device : devices.values()) {
+            if (!device.tokenHash().startsWith(id)) continue;
+            if (match != null) return null;
+            match = device;
+        }
+        if (match == null || !allowed.test(match)) return null;
+        devices.remove(match.tokenHash());
+        onChange.run();
+        return match;
     }
 
     /** Revokes one device by name (case-insensitive) or all devices with "all". Returns the removed devices. */
@@ -301,23 +407,11 @@ public final class AuthStore {
         return device.tokenHash().substring(0, DEVICE_ID_LENGTH);
     }
 
-    // ---- ACL ---------------------------------------------------------------------------------------------------------
-
-    public synchronized void setAcl(UUID mainframeId, @Nullable UUID owner, Set<UUID> trusted) {
-        var acl = new Acl(owner, Set.copyOf(trusted));
-        if (!acl.equals(acls.put(mainframeId, acl))) onChange.run();
-    }
-
-    public @Nullable Acl acl(UUID mainframeId) {
-        return acls.get(mainframeId);
-    }
-
     public synchronized void forgetMainframe(UUID mainframeId) {
-        acls.remove(mainframeId);
         pins.remove(mainframeId);
         codes.remove(mainframeId);
-        devices.values().removeIf(d -> d.mainframeId().equals(mainframeId));
-        pending.values().removeIf(p -> p.mainframeId().equals(mainframeId));
+        devices.values().removeIf(d -> mainframeId.equals(d.mainframeId()));
+        pending.values().removeIf(p -> mainframeId.equals(p.mainframeId()));
         onChange.run();
     }
 
@@ -424,8 +518,18 @@ public final class AuthStore {
         return clean.isEmpty() ? "Device" : clean;
     }
 
-    private String uniqueName(UUID mainframeId, String name) {
-        var existing = devices(mainframeId).stream().map(d -> d.name().toLowerCase()).toList();
+    /** Device type from the User-Agent (informational only, never used for decisions). */
+    public static String deviceType(@Nullable String ua) {
+        if (ua == null || ua.isEmpty()) return "other";
+        if (ua.contains("iPad") || ua.contains("Tablet") || (ua.contains("Android") && !ua.contains("Mobile"))) return "tablet";
+        if (ua.contains("iPhone") || ua.contains("Mobile")) return "phone";
+        if (ua.contains("Windows") || ua.contains("Macintosh") || ua.contains("Linux") || ua.contains("X11") || ua.contains("CrOS")) return "desktop";
+        return "other";
+    }
+
+    private String uniqueName(@Nullable UUID mainframeId, UUID player, String name) {
+        var scope = mainframeId != null ? devices(mainframeId) : devicesOf(player).stream().filter(Device::isAccount).toList();
+        var existing = scope.stream().map(d -> d.name().toLowerCase()).toList();
         if (!existing.contains(name.toLowerCase()) && !name.equalsIgnoreCase("all")) return name;
         for (int i = 2; ; i++) {
             String candidate = name + " (" + i + ")";
@@ -444,7 +548,7 @@ public final class AuthStore {
             var sb = new StringBuilder(8);
             for (int i = 0; i < 8; i++) sb.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
             String code = sb.toString();
-            if (codes.values().stream().noneMatch(c -> c.code().equals(code))) return code;
+            if (codes.values().stream().noneMatch(c -> c.code().equals(code)) && accountCodes.values().stream().noneMatch(c -> c.code().equals(code))) return code;
         }
     }
 }

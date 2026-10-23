@@ -23,6 +23,8 @@ public class CCCloud {
         modEventBus.addListener(CCCloud::registerCapabilities);
         CloudNetwork.init();
         CloudCommand.init();
+        ai.ezfox.cccloud.access.Access.init();
+        ai.ezfox.cccloud.access.TeamProviders.setDisabled(() -> java.util.Set.copyOf(CloudConfig.get(CloudConfig.DISABLED_TEAM_PROVIDERS)));
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
         // Config changes (ranges, power) change the topology.

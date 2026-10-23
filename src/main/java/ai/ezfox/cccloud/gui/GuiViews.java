@@ -25,8 +25,10 @@ public final class GuiViews {
 
     public static String mainframe(CloudMainframeBlockEntity mainframe, ServerPlayer player, @Nullable String notice) {
         var server = player.level().getServer();
-        boolean manage = mainframe.canManage(player);
+        var resolution = ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId());
+        boolean manage = resolution.role().atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
         var json = new JsonObject();
+        json.addProperty("role", resolution.role().id);
         json.addProperty("name", mainframe.getDisplayName());
         var pos = mainframe.getBlockPos();
         json.addProperty("pos", pos.getX() + " " + pos.getY() + " " + pos.getZ());
@@ -58,6 +60,14 @@ public final class GuiViews {
             json.addProperty("iconsTotal", status.total());
         }
         if (notice != null) json.addProperty("notice", notice);
+        if (server != null) {
+            // "Link this browser": the player's account code, if one is active.
+            var account = WebAuthData.get(server).activeAccountCode(player.getUUID());
+            if (account != null) {
+                json.addProperty("accountCode", AuthStore.formatCode(account.code()));
+                json.addProperty("accountCodeSeconds", Math.max(0, (account.expiresAt() - System.currentTimeMillis()) / 1000));
+            }
+        }
         if (!manage || server == null) return Json.GSON.toJson(json);
 
         var auth = WebAuthData.get(server);
@@ -89,14 +99,31 @@ public final class GuiViews {
         }
         json.add("devices", devices);
         json.addProperty("owner", mainframe.getOwnerName());
+        // Players with a direct role (v0.6); the web Access page also shows team members and server admins.
         var trusted = new JsonArray();
-        for (var t : mainframe.getTrusted().entrySet()) {
+        for (var t : mainframe.getGrants().entrySet()) {
             var row = new JsonObject();
             row.addProperty("uuid", t.getKey().toString());
-            row.addProperty("name", t.getValue());
+            row.addProperty("name", t.getValue().name().isEmpty() ? t.getKey().toString().substring(0, 8) : t.getValue().name());
+            row.addProperty("role", t.getValue().role().id);
             trusted.add(row);
         }
         json.add("trusted", trusted);
+        var access = WebAuthData.access(server).access(id);
+        if (access != null && access.team() != null) {
+            var team = ai.ezfox.cccloud.access.TeamProviders.get(access.team().provider());
+            var info = team == null ? null : team.team(access.team().teamId());
+            json.addProperty("team", (info != null ? info.name() : access.team().teamId()) + " (" + access.team().provider() + ")");
+        }
+        var audit = new JsonArray();
+        var entries = WebAuthData.access(server).audit(id);
+        for (int i = entries.size() - 1; i >= 0 && audit.size() < 20; i--) {
+            var row = new JsonObject();
+            row.addProperty("ago", Math.max(0, (now - entries.get(i).time()) / 1000));
+            row.addProperty("text", entries.get(i).text());
+            audit.add(row);
+        }
+        json.add("audit", audit);
         json.addProperty("pinSet", auth.hasPin(id));
         return Json.GSON.toJson(json);
     }

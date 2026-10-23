@@ -321,6 +321,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             textRow(Component.translatable("cccloud.gui.icons", String.format("%,d", done), String.format("%,d", total)),
                 done >= total ? CloudGui.TEXT_DIM : CloudGui.CYAN);
         }
+        linkAccount();
         if (!manage()) {
             textRow(Component.translatable("cccloud.gui.readonly_hint"), CloudGui.TEXT_DIM);
             return;
@@ -407,20 +408,32 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             c.text(label, x + 2, y + 3, CloudGui.GOLD);
             c.text(owner.isEmpty() ? "-" : owner, x + 6 + font.width(label), y + 3, CloudGui.TEXT, w - 10 - font.width(label));
         }));
+        if (view.has("team")) textRow(Component.translatable("cccloud.gui.team", str(view, "team")), CloudGui.TEXT_DIM);
         heading("cccloud.gui.trusted_players");
         var trusted = view.has("trusted") ? view.getAsJsonArray("trusted") : new com.google.gson.JsonArray();
         if (trusted.isEmpty()) textRow(Component.translatable("cccloud.gui.no_trusted"), CloudGui.TEXT_DIM);
         for (var e : trusted) {
             var t = e.getAsJsonObject();
             String uuid = str(t, "uuid");
+            String role = str(t, "role").isEmpty() ? "admin" : str(t, "role");
+            // Click the role to cycle viewer → operator → admin.
+            String next = switch (role) {
+                case "viewer" -> "operator";
+                case "operator" -> "admin";
+                default -> "viewer";
+            };
             rows.add(new Row(ROW, (c, x, y, w) -> {
                 CloudGui.row(c.g(), x, y, w, ROW, c.hover(x, y, w, ROW));
                 var remove = Component.translatable("cccloud.gui.remove");
+                var roleLabel = Component.translatable("cccloud.role." + role);
                 int bw = c.buttonWidth(remove);
-                c.text(str(t, "name"), x + 4, y + 5, CloudGui.TEXT, w - bw - 12);
+                int rw = c.buttonWidth(roleLabel);
+                c.text(str(t, "name"), x + 4, y + 5, CloudGui.TEXT, w - bw - rw - 16);
+                c.button(x + w - bw - rw - 6, y + 2, roleLabel, CloudGui.ButtonStyle.NORMAL, true, () -> send("set_role", uuid + ":" + next));
                 c.button(x + w - bw - 3, y + 2, remove, CloudGui.ButtonStyle.DANGER, true, () -> send("untrust", uuid));
             }));
         }
+        textRow(Component.translatable("cccloud.gui.roles_hint"), CloudGui.TEXT_DIM);
         rows.add(new Row(20, (c, x, y, w) -> {
             var add = Component.translatable("cccloud.gui.add");
             int bw = c.buttonWidth(add);
@@ -457,6 +470,30 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         if (!bool(view, "internet")) warningRow(Component.translatable("cccloud.gui.lan_only"));
         else textRow(Component.translatable("cccloud.gui.internet_allowed"), CloudGui.TEXT);
         textRow(Component.translatable(bool(view, "tls") ? "cccloud.gui.tls_on" : "cccloud.gui.tls_off"), bool(view, "tls") ? CloudGui.GREEN : CloudGui.TEXT_DIM);
+        heading("cccloud.gui.audit");
+        var audit = view.has("audit") ? view.getAsJsonArray("audit") : new com.google.gson.JsonArray();
+        if (audit.isEmpty()) textRow(Component.translatable("cccloud.gui.audit_empty"), CloudGui.TEXT_DIM);
+        for (var e : audit) {
+            var a = e.getAsJsonObject();
+            textRow(Component.literal(ago(num(a, "ago")) + "  " + str(a, "text")), CloudGui.TEXT);
+        }
+    }
+
+    /** "Link this browser": an account code for the player (all mainframes where they have a role). */
+    private void linkAccount() {
+        heading("cccloud.gui.link_browser");
+        String code = str(view, "accountCode");
+        if (code.isEmpty()) {
+            rows.add(new Row(20, (c, x, y, w) -> {
+                var link = Component.translatable("cccloud.gui.link_browser_button");
+                c.button(x + 2, y + 3, link, CloudGui.ButtonStyle.ACCENT, true, () -> send("link_account", ""));
+            }));
+            textRow(Component.translatable("cccloud.gui.link_browser_hint"), CloudGui.TEXT_DIM);
+            return;
+        }
+        long seconds = num(view, "accountCodeSeconds");
+        rows.add(new Row(14, (c, x, y, w) -> c.text(Component.literal(code).withStyle(net.minecraft.ChatFormatting.BOLD), x + 4, y + 3, CloudGui.GOLD)));
+        textRow(Component.translatable("cccloud.gui.link_browser_code", Math.max(1, (seconds + 59) / 60)), CloudGui.TEXT_DIM);
     }
 
     private void setPin() {

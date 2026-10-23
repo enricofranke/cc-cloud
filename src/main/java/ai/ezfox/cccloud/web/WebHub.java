@@ -1,5 +1,7 @@
 package ai.ezfox.cccloud.web;
 
+import ai.ezfox.cccloud.access.AccessStore;
+import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -322,13 +324,14 @@ public final class WebHub {
         for (var session : view.sessions) session.close(4404, "mainframe removed");
     }
 
-    /** Disconnects the sessions of a mainframe; if tokenHash is non-null only that device. */
+    /** Disconnects the device sessions of a mainframe (share viewers stay); if tokenHash is non-null only that device. */
     public void closeSessions(UUID mainframeId, @Nullable String tokenHash) {
         var view = views.get(mainframeId);
         if (view == null) return;
         for (var session : view.sessions) {
             var device = session.device();
-            if (tokenHash == null || (device != null && device.tokenHash().equals(tokenHash))) session.close(4401, "revoked");
+            if (device == null) continue;
+            if (tokenHash == null || device.tokenHash().equals(tokenHash)) session.close(4401, "revoked");
         }
     }
 
@@ -349,28 +352,148 @@ public final class WebHub {
 
     /** Registers a session and sends it the full snapshot. */
     public void addSession(HubSession session) {
+        if (!tryAddSession(session)) session.close(4429, "share_full");
+    }
+
+    /**
+     * Registers a session and sends it the snapshot (role-dependent; filtered for share sessions). Returns false (and
+     * does not register) if the session's share link already has {@code maxViewers} viewers.
+     */
+    public boolean tryAddSession(HubSession session) {
         var view = view(session.mainframeId());
         String snapshot;
         synchronized (view) {
+            var share = session.share();
+            if (share != null) {
+                int viewers = 0;
+                for (var s : view.sessions) if (s.share() != null && s.share().id().equals(share.id())) viewers++;
+                if (viewers >= share.maxViewers()) return false;
+            }
             view.sessions.add(session);
-            var json = new JsonObject();
-            json.addProperty("t", "snapshot");
-            var mainframe = view.mainframeJson();
-            var device = session.device();
-            boolean canControl = device == null || device.canControl();
-            mainframe.addProperty("canControl", canControl);
-            json.add("mainframe", mainframe);
-            json.addProperty("canControl", canControl);
-            var uplinks = new JsonArray();
-            for (var uplink : view.uplinks.values()) uplinks.add(uplink);
-            json.add("uplinks", uplinks);
-            json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
-            // Positions only for devices with canControl.
-            var network = canControl ? view.networkFullJson : view.networkStrippedJson;
-            if (network != null) json.add("network", network);
-            snapshot = Json.GSON.toJson(json);
+            snapshot = Json.GSON.toJson(share != null ? shareSnapshot(view, share) : snapshot(view, session));
         }
         session.send(List.of(snapshot));
+        return true;
+    }
+
+    private static JsonObject snapshot(View view, HubSession session) {
+        var json = new JsonObject();
+        json.addProperty("t", "snapshot");
+        var mainframe = view.mainframeJson();
+        boolean canControl = session.canControl();
+        mainframe.addProperty("canControl", canControl);
+        json.add("mainframe", mainframe);
+        json.addProperty("canControl", canControl);
+        json.addProperty("role", session.role().id);
+        var device = session.device();
+        if (device != null) {
+            var account = new JsonObject();
+            account.addProperty("player", device.playerName());
+            json.add("account", account);
+        } else {
+            json.add("account", com.google.gson.JsonNull.INSTANCE);
+        }
+        var uplinks = new JsonArray();
+        for (var uplink : view.uplinks.values()) uplinks.add(uplink);
+        json.add("uplinks", uplinks);
+        json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
+        // Positions only for devices with canControl.
+        var network = canControl ? view.networkFullJson : view.networkStrippedJson;
+        if (network != null) json.add("network", network);
+        return json;
+    }
+
+    /** v0.6 share snapshot: only the shared cards, no network, no positions, no item search. */
+    private static JsonObject shareSnapshot(View view, AccessStore.Share share) {
+        var json = new JsonObject();
+        json.addProperty("t", "snapshot");
+        json.addProperty("role", Role.SHARE.id);
+        var info = new JsonObject();
+        info.addProperty("id", share.id());
+        info.addProperty("label", share.label());
+        info.addProperty("sharedBy", share.createdBy());
+        if (share.expires() == 0) info.add("expires", com.google.gson.JsonNull.INSTANCE);
+        else info.addProperty("expires", share.expires());
+        info.addProperty("hideNumbers", share.hideNumbers());
+        json.add("share", info);
+        var mainframe = new JsonObject();
+        mainframe.addProperty("id", view.id.toString());
+        mainframe.addProperty("name", view.name);
+        mainframe.addProperty("online", view.online);
+        mainframe.addProperty("enabled", view.enabled);
+        json.add("mainframe", mainframe);
+        json.addProperty("canControl", false);
+        var keys = ShareFilter.cardKeys(view.uplinks.values(), view.layout, share);
+        var uplinks = new JsonArray();
+        for (var uplink : view.uplinks.values()) {
+            var filtered = ShareFilter.uplink(uplink, keys, share.hideNumbers());
+            if (filtered != null) uplinks.add(filtered);
+        }
+        json.add("uplinks", uplinks);
+        json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout.deepCopy());
+        return json;
+    }
+
+    /** Sends a role change ({@code {"t":"role","role","canControl"}}) and the network view matching the new role. */
+    public void pushRole(HubSession session, Role role) {
+        var view = views.get(session.mainframeId());
+        session.setRole(role);
+        var json = new JsonObject();
+        json.addProperty("t", "role");
+        json.addProperty("role", role.id);
+        json.addProperty("canControl", role.canControl());
+        var messages = new ArrayList<String>();
+        messages.add(Json.GSON.toJson(json));
+        if (view != null) {
+            synchronized (view) {
+                String network = role.canControl() ? view.networkFull : view.networkStripped;
+                if (network != null) messages.add(network);
+            }
+        }
+        session.send(messages);
+    }
+
+    /** Number of open sessions of a share link. */
+    public int shareViewers(String shareId) {
+        int count = 0;
+        for (var view : views.values()) {
+            for (var s : view.sessions) if (s.share() != null && s.share().id().equals(shareId)) count++;
+        }
+        return count;
+    }
+
+    /** Closes every session of a share link (revoked or expired). */
+    public void closeShare(String shareId, String reason) {
+        for (var view : views.values()) {
+            for (var s : view.sessions) {
+                if (s.share() == null || !s.share().id().equals(shareId)) continue;
+                s.send(List.of("{\"t\":\"error\",\"error\":\"" + reason + "\"}"));
+                s.close(4401, reason);
+            }
+        }
+    }
+
+    /** Closes every session of a device on any mainframe (device revoked). */
+    public void closeDevice(String tokenHash) {
+        for (var view : views.values()) {
+            for (var s : view.sessions) {
+                var device = s.device();
+                if (device == null || !device.tokenHash().equals(tokenHash)) continue;
+                s.send(List.of("{\"t\":\"error\",\"error\":\"revoked\"}"));
+                s.close(4401, "revoked");
+            }
+        }
+    }
+
+    /** All mainframes the hub knows (published since the server started). */
+    public List<MainframeInfo> mainframes() {
+        var list = new ArrayList<MainframeInfo>();
+        for (var view : views.values()) {
+            synchronized (view) {
+                list.add(new MainframeInfo(view.id, view.name, view.online, view.enabled));
+            }
+        }
+        return list;
     }
 
     public void removeSession(HubSession session) {
@@ -435,16 +558,39 @@ public final class WebHub {
             }
             if (networkFull != null && !view.sessions.isEmpty()) {
                 for (var session : view.sessions) {
-                    var device = session.device();
-                    boolean control = device == null || device.canControl();
-                    session.send(List.of(control ? networkFull : networkStripped));
+                    if (session.share() != null) continue; // share viewers never get the network map
+                    session.send(List.of(session.canControl() ? networkFull : networkStripped));
                 }
             }
             if (pending.isEmpty()) continue;
             if (view.sessions.isEmpty()) continue;
-            var messages = new ArrayList<String>(pending.size());
-            for (var message : pending.values()) messages.add(Json.GSON.toJson(message));
-            for (var session : view.sessions) session.send(messages);
+            List<String> messages = null;
+            Map<String, List<String>> shareMessages = null;
+            for (var session : view.sessions) {
+                var share = session.share();
+                if (share == null) {
+                    if (messages == null) {
+                        messages = new ArrayList<>(pending.size());
+                        for (var message : pending.values()) messages.add(Json.GSON.toJson(message));
+                    }
+                    session.send(messages);
+                    continue;
+                }
+                if (shareMessages == null) shareMessages = new java.util.HashMap<>();
+                var filtered = shareMessages.get(share.id());
+                if (filtered == null) {
+                    filtered = new ArrayList<>();
+                    synchronized (view) {
+                        var keys = ShareFilter.cardKeys(view.uplinks.values(), view.layout, share);
+                        for (var message : pending.values()) {
+                            var m = ShareFilter.message(message, view.uplinks, keys, share.hideNumbers());
+                            if (m != null) filtered.add(Json.GSON.toJson(m));
+                        }
+                    }
+                    shareMessages.put(share.id(), filtered);
+                }
+                if (!filtered.isEmpty()) session.send(filtered);
+            }
         }
     }
 

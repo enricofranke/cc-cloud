@@ -41,6 +41,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -162,6 +163,13 @@ public final class CloudConfig {
         MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
             .translation("cccloud.configuration.maxCraftAmount")
             .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
+        b.pop();
+
+        b.push("teams");
+        DISABLED_TEAM_PROVIDERS = b.comment("Team providers that must not be used for mainframe roles (ftbteams, opac, scoreboard). "
+                + "Providers are detected automatically when their mod is installed.")
+            .translation("cccloud.configuration.disabledTeamProviders")
+            .defineListAllowEmpty("disabledTeamProviders", java.util.List.of(), () -> "scoreboard", o -> o instanceof String);
         b.pop();
 
         SPEC = b.build();

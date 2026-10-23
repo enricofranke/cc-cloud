@@ -20,10 +20,28 @@ public final class ClientMessages {
     public static final int MAX_BODY = 4 * 1024;
     private static final Pattern REQ_ID = Pattern.compile("[A-Za-z0-9_.:-]{1,64}");
 
-    public sealed interface Message permits Auth, Action, Query, LayoutSet, Pong, Invalid {
+    private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
+
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, Pong, Invalid {
     }
 
-    public record Auth(String token) implements Message {
+    /** {@code {"t":"auth","token","mainframeId?"}}: account tokens must name the mainframe (v0.6). */
+    public record Auth(String token, @Nullable UUID mainframeId) implements Message {
+        public Auth(String token) {
+            this(token, null);
+        }
+    }
+
+    /** {@code {"t":"auth_share","id","secret"}}: a share-link viewer (v0.6). The secret comes from the URL fragment. */
+    public record AuthShare(String id, String secret) implements Message {
+    }
+
+    /** {@code {"t":"net_unlink","reqId","nodeId"}}: unlink a device from the network map (admin). */
+    public record NetUnlink(String reqId, String nodeId) implements Message {
+    }
+
+    /** Only the type and request id of a message (for the hard deny of share sessions). */
+    public record Peek(@Nullable String t, @Nullable String reqId) {
     }
 
     /**
@@ -60,7 +78,19 @@ public final class ClientMessages {
 
     /** Message types that are accepted before authentication. Everything else needs an authenticated session. */
     public static boolean isPublic(Message message) {
-        return message instanceof Auth || message instanceof Pong || message instanceof Invalid;
+        return message instanceof Auth || message instanceof AuthShare || message instanceof Pong || message instanceof Invalid;
+    }
+
+    /** Reads only {@code t} and a well-formed {@code reqId} (bounded; used to answer share sessions with "forbidden"). */
+    public static Peek peek(String text) {
+        if (text.length() > MAX_LAYOUT_FRAME) return new Peek(null, null);
+        JsonObject obj = parseObject(text);
+        if (obj == null) return new Peek(null, null);
+        String t = string(obj, "t");
+        String reqId = string(obj, "reqId");
+        if (t != null && t.length() > 32) t = null;
+        if (reqId != null && !REQ_ID.matcher(reqId).matches()) reqId = null;
+        return new Peek(t, reqId);
     }
 
     private ClientMessages() {
@@ -76,7 +106,22 @@ public final class ClientMessages {
         return switch (t) {
             case "auth" -> {
                 String token = string(obj, "token");
-                yield token == null || token.isEmpty() || token.length() > 128 ? new Invalid("invalid_message", null) : new Auth(token);
+                String mainframe = string(obj, "mainframeId");
+                UUID mainframeId = mainframe == null ? null : parseUuid(mainframe);
+                if (token == null || token.isEmpty() || token.length() > 128 || (mainframe != null && mainframeId == null)) yield new Invalid("invalid_message", null);
+                yield new Auth(token, mainframeId);
+            }
+            case "auth_share" -> {
+                String id = string(obj, "id");
+                String secret = string(obj, "secret");
+                yield id == null || secret == null || id.length() > 32 || secret.isEmpty() || secret.length() > 64
+                    ? new Invalid("invalid_message", null) : new AuthShare(id, secret);
+            }
+            case "net_unlink" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                String nodeId = string(obj, "nodeId");
+                yield nodeId == null || !NODE_ID.matcher(nodeId).matches() ? new Invalid("invalid_message", reqId) : new NetUnlink(reqId, nodeId);
             }
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);

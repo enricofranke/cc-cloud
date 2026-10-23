@@ -13,17 +13,19 @@ import org.junit.jupiter.api.Test;
 
 /** Every screen packet type: screen-open check, rights check and argument validation happen before anything runs. */
 class GuiActionsTest {
-    private static final Map<GuiActions.Mainframe, String> VALID_ARGS = Map.of(
-        GuiActions.Mainframe.TOGGLE_DASHBOARD, "",
-        GuiActions.Mainframe.NEW_CODE, "",
-        GuiActions.Mainframe.APPROVE, "AbC_123-xyz",
-        GuiActions.Mainframe.DENY, "AbC_123-xyz",
-        GuiActions.Mainframe.REVOKE, "0123456789abcdef",
-        GuiActions.Mainframe.REVOKE_ALL, "",
-        GuiActions.Mainframe.TRUST, "Smokey_de",
-        GuiActions.Mainframe.UNTRUST, "112a047d-444c-4422-b20e-4f86afe7f0cb",
-        GuiActions.Mainframe.PIN_SET, "1234",
-        GuiActions.Mainframe.PIN_CLEAR, ""
+    private static final Map<GuiActions.Mainframe, String> VALID_ARGS = Map.ofEntries(
+        Map.entry(GuiActions.Mainframe.TOGGLE_DASHBOARD, ""),
+        Map.entry(GuiActions.Mainframe.NEW_CODE, ""),
+        Map.entry(GuiActions.Mainframe.APPROVE, "AbC_123-xyz"),
+        Map.entry(GuiActions.Mainframe.DENY, "AbC_123-xyz"),
+        Map.entry(GuiActions.Mainframe.REVOKE, "0123456789abcdef"),
+        Map.entry(GuiActions.Mainframe.REVOKE_ALL, ""),
+        Map.entry(GuiActions.Mainframe.TRUST, "Smokey_de"),
+        Map.entry(GuiActions.Mainframe.UNTRUST, "112a047d-444c-4422-b20e-4f86afe7f0cb"),
+        Map.entry(GuiActions.Mainframe.PIN_SET, "1234"),
+        Map.entry(GuiActions.Mainframe.PIN_CLEAR, ""),
+        Map.entry(GuiActions.Mainframe.SET_ROLE, "112a047d-444c-4422-b20e-4f86afe7f0cb:operator"),
+        Map.entry(GuiActions.Mainframe.LINK_ACCOUNT, "")
     );
 
     /** Records which operation ran. */
@@ -43,6 +45,8 @@ class GuiActionsTest {
         @Override public @Nullable String revokeAll() { return call("revoke_all"); }
         @Override public @Nullable String trust(String name) { return call("trust:" + name); }
         @Override public @Nullable String untrust(UUID player) { return call("untrust:" + player); }
+        @Override public @Nullable String setRole(UUID player, ai.ezfox.cccloud.access.Role role) { return call("set_role:" + player + ":" + role.id); }
+        @Override public @Nullable String linkAccount() { return call("link_account"); }
         @Override public @Nullable String setPin(String pin) { return call("pin_set"); }
         @Override public @Nullable String clearPin() { return call("pin_clear"); }
         @Override public @Nullable String unlink() { return call("unlink"); }
@@ -55,6 +59,12 @@ class GuiActionsTest {
             String arg = VALID_ARGS.get(action);
             var ops = new Recorder();
             assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, true, ops), action + " without open screen");
+            if (action == GuiActions.Mainframe.LINK_ACCOUNT) {
+                // "Link this browser" is for every player (cccloud.use is checked by the op itself).
+                assertNull(GuiActions.mainframe(action.id(), arg, true, false, ops));
+                assertEquals(List.of("link_account"), ops.calls);
+                continue;
+            }
             assertEquals("not_owner", GuiActions.mainframe(action.id(), arg, true, false, ops), action + " without rights");
             assertEquals("no_screen", GuiActions.mainframe(action.id(), arg, false, false, ops), action + " without both");
             assertTrue(ops.calls.isEmpty(), action + " must not run when denied: " + ops.calls);
@@ -72,6 +82,8 @@ class GuiActionsTest {
             {"revoke", "0123"}, {"revoke", "0123456789ABCDEF"}, {"revoke", "0123456789abcdeg"},
             {"trust", ""}, {"trust", "a-b"}, {"trust", "x".repeat(17)}, {"trust", "§cRed"},
             {"untrust", "not-a-uuid"}, {"untrust", ""},
+            {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb"}, {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb:owner"},
+            {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb:god"}, {"set_role", "x:admin"}, {"link_account", "x"},
         };
         for (var b : bad) {
             var ops = new Recorder();
