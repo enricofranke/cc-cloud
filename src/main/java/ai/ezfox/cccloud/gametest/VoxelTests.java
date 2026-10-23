@@ -30,6 +30,11 @@ public final class VoxelTests {
         var center = new BlockPos(5, 3, 5);
         for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) helper.setBlock(center.offset(dx, dy, dz), Blocks.STONE);
         helper.setBlock(center, Blocks.DIAMOND_ORE);
+        // M4: an ore that touches air: shown near the mainframe's nodes, stone for a dashboard without nodes there
+        var exposedOre = new BlockPos(8, 3, 8);
+        helper.setBlock(exposedOre, Blocks.GOLD_ORE);
+        var oreAbs = helper.absolutePos(exposedOre);
+        @SuppressWarnings("unchecked") CompletableFuture<com.google.gson.JsonObject>[] oreViews = new CompletableFuture[2];
         var abs = helper.absolutePos(center);
         String dim = helper.getLevel().dimension().identifier().toString();
         int cx = abs.getX() >> 4, cy = abs.getY() >> 4, cz = abs.getZ() >> 4;
@@ -48,11 +53,11 @@ public final class VoxelTests {
                 "mainframe online with its network"))
             .thenExecute(() -> {
                 var access = Access.resolver(server).resolve(owner.getUUID(), mainframe.getMainframeId());
-                result[0] = MinecraftBridge.voxels(server, access, mainframe.getMainframeId(), dim, cx, cy, cz);
-                var far = MinecraftBridge.voxels(server, access, mainframe.getMainframeId(), dim, cx + 20, cy, cz).getNow(null);
+                result[0] = MinecraftBridge.voxels(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, cx, cy, cz);
+                var far = MinecraftBridge.voxels(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, cx + 20, cy, cz).getNow(null);
                 helper.assertTrue(far != null && far.status() == 403 && "out_of_range".equals(far.error()), "only near the network: " + far);
                 mainframe.setRole(new NameAndId(viewer, "viewer"), Role.VIEWER);
-                var asViewer = MinecraftBridge.voxels(server, Access.resolver(server).resolve(viewer, mainframe.getMainframeId()),
+                var asViewer = MinecraftBridge.voxels(server, Access.resolver(server).resolve(viewer, mainframe.getMainframeId()), viewer,
                     mainframe.getMainframeId(), dim, cx, cy, cz).getNow(null);
                 helper.assertTrue(asViewer != null && asViewer.status() == 403 && "not_allowed".equals(asViewer.error()), "viewers get no voxels: " + asViewer);
             })
@@ -77,6 +82,20 @@ public final class VoxelTests {
                 helper.assertTrue(json.has("atlas") && json.getAsJsonObject("atlas").get("url").getAsString().startsWith("/api/voxel-atlas/"), "atlas: " + json.get("atlas"));
                 var px2 = ai.ezfox.cccloud.icons.PngCodec.size(textures.atlas());
                 helper.assertTrue(px2 != null && px2[0] >= 16, "atlas image");
+                oreViews[0] = VoxelService.section(helper.getLevel(), oreAbs.getX() >> 4, oreAbs.getY() >> 4, oreAbs.getZ() >> 4, mainframe.getMainframeId());
+                oreViews[1] = VoxelService.section(helper.getLevel(), oreAbs.getX() >> 4, oreAbs.getY() >> 4, oreAbs.getZ() >> 4, UUID.randomUUID());
+            })
+            .thenWaitUntil(() -> helper.assertTrue(oreViews[0] != null && oreViews[1] != null && oreViews[0].isDone() && oreViews[1].isDone(), "ore sections encoded"))
+            .thenExecute(() -> {
+                int i = VoxelSection.index(oreAbs.getX() & 15, oreAbs.getY() & 15, oreAbs.getZ() & 15);
+                var near = oreViews[0].join();
+                var nearIdx = VoxelSection.decode(near.get("runs").getAsString())[i];
+                helper.assertTrue(nearIdx > 0 && near.getAsJsonArray("palette").get(nearIdx - 1).getAsJsonObject().get("id").getAsString().equals("minecraft:gold_ore"),
+                    "an ore touching air near the network is shown");
+                var far = oreViews[1].join();
+                var farIdx = VoxelSection.decode(far.get("runs").getAsString())[i];
+                helper.assertTrue(farIdx > 0 && far.getAsJsonArray("palette").get(farIdx - 1).getAsJsonObject().get("id").getAsString().equals("minecraft:stone"),
+                    "without own nodes nearby the ore is shown as stone: " + far.getAsJsonArray("palette"));
             })
             .thenSucceed();
     }

@@ -54,6 +54,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
     public static final ModConfigSpec.IntValue AUTO_STOCK_BATCH;
     public static final ModConfigSpec.BooleanValue VOXEL_VIEW;
+    public static final ModConfigSpec.ConfigValue<String> MAP_SLICES;
     public static final ModConfigSpec.IntValue VOXEL_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
@@ -200,7 +201,14 @@ public final class CloudConfig {
         b.pop();
 
         b.push("map");
-        VOXEL_VIEW = b.comment("The dashboard's 3D voxel view of the blocks around the network (exposed blocks only, no X-ray).")
+        MAP_SLICES = b.comment("Cave slices on the 2D map (horizontal cuts below the surface): auto = on in singleplayer and for LAN-only dashboards,",
+                "off when webAllowInternet is set; on; off. Slices show caves near the network; ores are shown only where they touch air near",
+                "your own nodes, and nothing from chunks claimed by other teams (FTB Chunks).")
+            .translation("cccloud.configuration.mapSlices")
+            .define("mapSlices", "auto", o -> o instanceof String s && (s.equals("auto") || s.equals("on") || s.equals("off")));
+        VOXEL_VIEW = b.comment("The dashboard's 3D voxel view of the blocks around the network. Only blocks with a face to air or a see-through",
+                "block are sent, ores only where they touch air near your own nodes, nothing from chunks claimed by other teams. It still shows",
+                "caves and structures within voxelRadius of the network to everyone with view.positions; turn it off if that is too much.")
             .translation("cccloud.configuration.voxelView")
             .define("voxelView", true);
         VOXEL_RADIUS = b.comment("Voxel view: sections within this many blocks of a network node may be requested.")

@@ -99,10 +99,20 @@ public final class VoxelService {
      * (or right away from the cache).
      */
     public static CompletableFuture<@Nullable JsonObject> section(ServerLevel level, int cx, int cy, int cz) {
+        return section(level, cx, cy, cz, null);
+    }
+
+    /**
+     * The section as a mainframe's dashboard sees it: ores show only where they touch air near that mainframe's nodes
+     * (security review M4), so the cache is per mainframe.
+     */
+    public static CompletableFuture<@Nullable JsonObject> section(ServerLevel level, int cx, int cy, int cz, @Nullable UUID mainframeId) {
         String dim = level.dimension().identifier().toString();
-        String key = key(dim, cx, cy, cz);
+        String area = key(dim, cx, cy, cz);
+        String key = area + "|" + mainframeId;
+        int[][] nodes = mainframeId == null ? new int[0][] : ai.ezfox.cccloud.map.XrayGuard.nodes(mainframeId, dim);
         var cached = CACHE.get(key);
-        Long changed = DIRTY.get(key);
+        Long changed = DIRTY.get(area);
         if (cached != null && (changed == null || changed <= cached.renderedAt() || System.currentTimeMillis() - changed < DEBOUNCE_MS)) {
             return CompletableFuture.completedFuture(cached.json());
         }
@@ -133,7 +143,7 @@ public final class VoxelService {
         }
         long started = System.currentTimeMillis();
         return CompletableFuture.supplyAsync(() -> {
-            var json = encode(dim, cx, cy, cz, states, known);
+            var json = encode(dim, cx, cy, cz, states, known, nodes);
             CACHE.put(key, new Entry(json, started));
             return json;
         }, executor());
@@ -166,11 +176,21 @@ public final class VoxelService {
     }
 
     static JsonObject encode(String dim, int cx, int cy, int cz, BlockState[] states, boolean[] known) {
+        return encode(dim, cx, cy, cz, states, known, new int[0][]);
+    }
+
+    static JsonObject encode(String dim, int cx, int cy, int cz, BlockState[] states, boolean[] known, int[][] nodes) {
         var kinds = new HashMap<BlockState, VoxelSection.Kind>();
         var encoded = VoxelSection.encode(new VoxelSection.Lookup() {
             @Override
             public VoxelSection.@Nullable Kind at(int x, int y, int z) {
-                return kind(states[(x + 1) + 18 * (z + 1) + 324 * (y + 1)], kinds);
+                var state = states[(x + 1) + 18 * (z + 1) + 324 * (y + 1)];
+                // ores look like stone unless they touch air near one of the mainframe's own nodes (inside the section only)
+                if (x >= 0 && x < 16 && y >= 0 && y < 16 && z >= 0 && z < 16 && ai.ezfox.cccloud.map.XrayGuard.isOre(state)
+                    && !(touchesAir(states, known, x, y, z) && ai.ezfox.cccloud.map.XrayGuard.nearNode(nodes, cx * 16 + x, cy * 16 + y, cz * 16 + z))) {
+                    state = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+                }
+                return kind(state, kinds);
             }
 
             @Override
@@ -195,6 +215,15 @@ public final class VoxelService {
         json.addProperty("runs", encoded.runs());
         json.addProperty("exposed", encoded.exposed());
         return json;
+    }
+
+    private static boolean touchesAir(BlockState[] states, boolean[] known, int x, int y, int z) {
+        int[][] dirs = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+        for (var d : dirs) {
+            int i = (x + d[0] + 1) + 18 * (z + d[2] + 1) + 324 * (y + d[1] + 1);
+            if (known[i] && (states[i] == null || states[i].isAir())) return true;
+        }
+        return false;
     }
 
     public static void clearForTest() {

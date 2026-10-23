@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -44,9 +45,18 @@ public final class MapTileService {
 
     public enum Layer { SURFACE, SLICE }
 
-    public record Key(String dim, Layer layer, int y, int tx, int tz) {
+    /**
+     * Slices depend on who asks (ore visibility near the mainframe's nodes, claims of other teams): their key carries the
+     * mainframe and the player. Surface tiles are shared (both null).
+     */
+    public record Key(String dim, Layer layer, int y, int tx, int tz, @Nullable UUID mainframe, @Nullable UUID player) {
+        public Key(String dim, Layer layer, int y, int tx, int tz) {
+            this(dim, layer, y, tx, tz, null, null);
+        }
+
         String file() {
-            return dim.replace(':', '_').replace('/', '_') + "/" + (layer == Layer.SURFACE ? "surface" : "slice_" + y) + "/" + tx + "_" + tz + ".png";
+            String scope = layer == Layer.SURFACE ? "surface" : "slice_" + y + "_" + mainframe + "_" + player;
+            return dim.replace(':', '_').replace('/', '_') + "/" + scope + "/" + tx + "_" + tz + ".png";
         }
 
         String area() {
@@ -67,6 +77,8 @@ public final class MapTileService {
         final MapTileRenderer.Samples samples = new MapTileRenderer.Samples();
         final int[] northRow = new int[MapTileRenderer.SIZE];
         int nextChunk;
+        /** Slices: the mainframe's node positions (ores near them may show). */
+        int[][] nodes = new int[0][];
 
         Job(Key key) {
             this.key = key;
@@ -126,6 +138,7 @@ public final class MapTileService {
             var running = JOBS.get(key);
             if (running != null) return running.future;
             var job = new Job(key);
+            if (key.mainframe() != null) job.nodes = XrayGuard.nodes(key.mainframe(), key.dim());
             JOBS.put(key, job);
             QUEUE.add(job);
             return job.future;
@@ -158,7 +171,8 @@ public final class MapTileService {
                 int cx = baseChunkX + (job.nextChunk & 7), cz = baseChunkZ + (job.nextChunk >> 3);
                 job.nextChunk++;
                 LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz); // never loads or generates
-                if (chunk != null) sampleChunk(level, chunk, job);
+                // slices never show chunks claimed by another team (they stay unknown/transparent)
+                if (chunk != null && !(job.key.layer() == Layer.SLICE && XrayGuard.claimedByOther(level, cx, cz, job.key.player()))) sampleChunk(level, chunk, job);
             }
             if (job.nextChunk >= 64) {
                 synchronized (JOBS) {
@@ -204,6 +218,10 @@ public final class MapTileService {
                     for (int d = 0; d < MapTileRenderer.SLICE_DEPTH && top - d >= minY; d++) {
                         var state = chunk.getBlockState(pos.set(x, top - d, z));
                         var color = state.getMapColor(level, pos);
+                        // ores look like stone unless they touch air near one of the mainframe's own nodes
+                        if (color != MapColor.NONE && XrayGuard.isOre(state) && !(touchesAir(level, x, top - d, z) && XrayGuard.nearNode(job.nodes, x, top - d, z))) {
+                            color = MapColor.STONE;
+                        }
                         if (color != MapColor.NONE) {
                             s.color[i] = color.id;
                             s.depth[i] = d;
@@ -216,6 +234,16 @@ public final class MapTileService {
                 }
             }
         }
+    }
+
+    private static boolean touchesAir(ServerLevel level, int x, int y, int z) {
+        var pos = new BlockPos.MutableBlockPos();
+        for (var d : net.minecraft.core.Direction.values()) {
+            pos.set(x + d.getStepX(), y + d.getStepY(), z + d.getStepZ());
+            var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
+            if (chunk != null && chunk.getBlockState(pos).isAir()) return true;
+        }
+        return false;
     }
 
     /** Heights of the row north of the tile, so the first row is shaded like the rest (only loaded chunks). */

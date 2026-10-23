@@ -950,6 +950,12 @@ On top of the 3D network view: render the actual blocks around the network as vo
   - Filtering and encoding run on 2 background threads.
   - Results are cached (1024 sections) and invalidated, debounced 2 s, when a block in or next to the section changes.
 
+#### X-ray guard for slices and voxels (security review M4)
+- Config `map.mapSlices`: `auto` (default: on in singleplayer and for LAN-only dashboards, off with `webAllowInternet`), `on`, `off`. Disabled → `404 disabled` for slice tiles.
+- Slice tiles only within 32 blocks (Y) of one of the mainframe's nodes/devices → else `403 out_of_range`.
+- Chunks claimed by another team (FTB Chunks; the player is not a member or ally) are never sampled for slices (transparent) and voxel sections there answer `403 claimed`.
+- Ores (`#c:ores`) appear as stone in slices and voxels unless the ore touches air **and** is within 16 blocks of one of the requesting mainframe's nodes/devices. Slice tiles are therefore cached per mainframe and player, voxel sections per mainframe.
+
 #### Voxel view – stage 2: block textures (mod side, implemented)
 Game clients with the mod read the block textures and upload them, like item icons (same opt-in: client config `shareIconRenders`); the server builds one texture atlas; voxel responses say which tile each face uses. Blocks without textures keep the map colour (stage 1).
 - **What a client sends:** for a block id, the sprite of each face of the default state's model, in the order `down, up, north, south, west, east` (first quad per side; models without side quads – flowers, torches – use their first inner quad for every face), and which faces are tinted (grass, leaves: the texture is grey and gets the biome colour). Each sprite is a **16×16 RGBA PNG** (first animation frame; larger resource-pack textures are box-averaged down, smaller ones scaled up), ≤ 4 KB, named by its sprite id (`minecraft:block/stone`).

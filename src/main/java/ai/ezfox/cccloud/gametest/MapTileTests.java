@@ -50,13 +50,13 @@ public final class MapTileTests {
                 "mainframe online with its network"))
             .thenExecute(() -> {
                 var access = Access.resolver(server).resolve(owner.getUUID(), mainframe.getMainframeId());
-                surface[0] = MinecraftBridge.mapTile(server, access, mainframe.getMainframeId(), dim, false, 0, tx, tz);
+                surface[0] = MinecraftBridge.mapTile(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, false, 0, tx, tz);
                 // The cut at the air above the diamond floor.
-                slice[0] = MinecraftBridge.mapTile(server, access, mainframe.getMainframeId(), dim, true, caveAbs.getY() + 2, ctx, ctz);
-                var far = MinecraftBridge.mapTile(server, access, mainframe.getMainframeId(), dim, false, 0, tx + 100, tz).getNow(null);
+                slice[0] = MinecraftBridge.mapTile(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, true, caveAbs.getY() + 2, ctx, ctz);
+                var far = MinecraftBridge.mapTile(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, false, 0, tx + 100, tz).getNow(null);
                 helper.assertTrue(far != null && far.status() == 403 && "out_of_range".equals(far.error()), "only near the network: " + far);
                 mainframe.setRole(new NameAndId(viewer, "viewer"), Role.VIEWER);
-                var asViewer = MinecraftBridge.mapTile(server, Access.resolver(server).resolve(viewer, mainframe.getMainframeId()), mainframe.getMainframeId(),
+                var asViewer = MinecraftBridge.mapTile(server, Access.resolver(server).resolve(viewer, mainframe.getMainframeId()), viewer, mainframe.getMainframeId(),
                     dim, false, 0, tx, tz).getNow(null);
                 helper.assertTrue(asViewer != null && asViewer.status() == 403 && "not_allowed".equals(asViewer.error()), "viewers get no map: " + asViewer);
             })
@@ -82,7 +82,7 @@ public final class MapTileTests {
                 }
                 var c = slice[0].join();
                 helper.assertTrue(c.status() == 200, "slice tile: " + c.status());
-                var cut = MapTileService.argbForTest(new MapTileService.Key(dim, MapTileService.Layer.SLICE, caveAbs.getY() + 2, ctx, ctz));
+                var cut = MapTileService.argbForTest(new MapTileService.Key(dim, MapTileService.Layer.SLICE, caveAbs.getY() + 2, ctx, ctz, mainframe.getMainframeId(), owner.getUUID()));
                 int j = Math.floorMod(caveAbs.getZ(), MapTileRenderer.SIZE) * MapTileRenderer.SIZE + Math.floorMod(caveAbs.getX(), MapTileRenderer.SIZE);
                 int floor = MapColor.DIAMOND.calculateARGBColor(MapColor.Brightness.HIGH);
                 helper.assertTrue(cut != null && cut[j] == floor, "slice shows the cave floor two blocks below the cut: " + Integer.toHexString(cut == null ? 0 : cut[j])

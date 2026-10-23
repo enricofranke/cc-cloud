@@ -8,6 +8,7 @@ import ai.ezfox.cccloud.compat.server.MainframeCards;
 import ai.ezfox.cccloud.uplink.Widget;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import ai.ezfox.cccloud.map.XrayGuard;
 import dev.ftb.mods.ftbchunks.api.ClaimedChunk;
 import dev.ftb.mods.ftbchunks.api.FTBChunksAPI;
 import dev.ftb.mods.ftbteams.api.FTBTeamsAPI;
@@ -48,6 +49,7 @@ public final class ClaimsCard extends MainframeCard {
     }
 
     public static void init() {
+        XrayGuard.claims = new FtbClaims();
         MainframeCards.register(KIND, () -> IntegrationConfig.get(IntegrationConfig.FTB_CHUNKS_CLAIMS), ClaimsCard::new);
         ai.ezfox.cccloud.compat.Integrations.test("ftbchunks_claims", () -> FtbGameTests::claims);
     }

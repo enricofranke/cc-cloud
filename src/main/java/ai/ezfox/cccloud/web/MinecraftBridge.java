@@ -313,17 +313,17 @@ public final class MinecraftBridge implements GameBridge {
 
     @Override
     public CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
-        return mapTile(server, access(device, mainframeId), mainframeId, dim, slice, y, tx, tz);
+        return mapTile(server, access(device, mainframeId), device.player(), mainframeId, dim, slice, y, tx, tz);
     }
 
     @Override
     public CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
-        return voxels(server, access(device, mainframeId), mainframeId, dim, cx, cy, cz);
+        return voxels(server, access(device, mainframeId), device.player(), mainframeId, dim, cx, cy, cz);
     }
 
     /** The voxel endpoint after authentication (public for the GameTests). */
-    public static CompletableFuture<GameBridge.VoxelResult> voxels(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
-                                                                   int cx, int cy, int cz) {
+    public static CompletableFuture<GameBridge.VoxelResult> voxels(MinecraftServer server, AccessResolver.Resolution access, UUID player, UUID mainframeId,
+                                                                   String dim, int cx, int cy, int cz) {
         if (!ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.VOXEL_VIEW)) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "disabled"));
         if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "no_access"));
         if (AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) != null) {
@@ -334,7 +334,10 @@ public final class MinecraftBridge implements GameBridge {
         if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, cx, cy, cz)) {
             return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "out_of_range"));
         }
-        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz)
+        if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, cx, cz, player)) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "claimed"));
+        }
+        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz, mainframeId)
             .thenApply(json -> {
                 if (json == null) return new GameBridge.VoxelResult(204, null, null);
                 var copy = json.deepCopy(); // the cached section stays undecorated; textures may arrive later
@@ -344,8 +347,8 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     /** The map tile endpoint after authentication (public for the GameTests). */
-    public static CompletableFuture<GameBridge.MapResult> mapTile(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
-                                                                  boolean slice, int y, int tx, int tz) {
+    public static CompletableFuture<GameBridge.MapResult> mapTile(MinecraftServer server, AccessResolver.Resolution access, UUID player, UUID mainframeId,
+                                                                  String dim, boolean slice, int y, int tx, int tz) {
         if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "no_access"));
         String error = AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
         if (error != null) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "not_allowed"));
@@ -353,8 +356,15 @@ public final class MinecraftBridge implements GameBridge {
         if (!ai.ezfox.cccloud.map.MapAccess.allowed(mainframeId, dim, tx, tz)) {
             return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "out_of_range"));
         }
-        var key = new ai.ezfox.cccloud.map.MapTileService.Key(dim, slice ? ai.ezfox.cccloud.map.MapTileService.Layer.SLICE : ai.ezfox.cccloud.map.MapTileService.Layer.SURFACE,
-            slice ? y : 0, tx, tz);
+        if (slice) {
+            if (!ai.ezfox.cccloud.map.XrayGuard.slicesEnabled(server)) return CompletableFuture.completedFuture(new GameBridge.MapResult(404, null, null, "disabled"));
+            if (!ai.ezfox.cccloud.map.XrayGuard.sliceInRange(ai.ezfox.cccloud.map.XrayGuard.nodes(mainframeId, dim), y)) {
+                return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "out_of_range"));
+            }
+        }
+        var key = slice
+            ? new ai.ezfox.cccloud.map.MapTileService.Key(dim, ai.ezfox.cccloud.map.MapTileService.Layer.SLICE, y, tx, tz, mainframeId, player)
+            : new ai.ezfox.cccloud.map.MapTileService.Key(dim, ai.ezfox.cccloud.map.MapTileService.Layer.SURFACE, 0, tx, tz);
         return ai.ezfox.cccloud.map.MapTileService.tile(server, key)
             .thenApply(tile -> new GameBridge.MapResult(tile.png() == null ? 204 : 200, tile.png(), tile.etag(), null));
     }
