@@ -3,8 +3,7 @@
 NeoForge 26.1.2 addon for CC: Tweaked 1.120.0. Mod id `cccloud`, Java package `ai.ezfox.cccloud`.
 Goal: control CC: Tweaked computers and machines in-game from a mobile-first web dashboard.
 
-CC: Tweaked 26.1 source for reference (read-only):
-`~/ref/cct-26.1`
+CC: Tweaked 26.1 source for reference (read-only): a local checkout of https://github.com/cc-tweaked/CC-Tweaked (branch for MC 26.1), e.g. in `$CCT_SRC`.
 
 ## Gameplay
 
@@ -592,6 +591,84 @@ The dashboard follows the format in "v0.4 – Implementation notes" (mod side) e
 - Snapshots with large networks are fine: the client parses any size (browsers reassemble fragmented frames) and is tested with 500 nodes; panning re-uses the rendered SVG layers.
 - Unlink from the map (admin): client → `{"t":"net_unlink","reqId","nodeId"}`, server → `{"t":"net_result","reqId","ok","error?"}` (`read_only | not_allowed | unknown_node`), then a `network` delta. (Optional; the button is hidden when the mod does not support it – the dashboard shows it to admins only.)
 - Power breakdown in the header popover: the mainframe's `power` object may carry `breakdown: [{key, count?, fe}]` (keys `base | uplinks | advanced_uplinks | bridges | clients | hops`, matching `powerBreakdown` / `getPowerBreakdown()`); relays' own power comes from their `power` in the graph.
+
+### v0.6 – Implementation notes (mod side)
+- **One decision point:** `access/AccessResolver` (pure Java, unit tested) resolves (player, mainframe) → role from the owner, direct grants, team ranks and the PermissionAPI nodes. The highest role wins. Banned players and players without `cccloud.use` get `none`.
+  - In the game, use `access/Access` (`role`, `canManage` = admin, `auditAdmin`).
+  - The web layer turns roles into allow/deny with `web/AccessGate`:
+    - viewer: query;
+    - operator: action;
+    - admin: layout_set, net_unlink, the access/shares/devices APIs.
+  - The gate runs once on the Netty thread (cached role) and again on the server thread (live role).
+  - Viewers get `read_only` for actions, layout and unlink. Operators get `not_allowed` for layout and unlink.
+- **Data:** `access/AccessStore` lives in the same SavedData as the auth store (`data/cccloud/web.dat`, keys `access`, `shares`, `audit`). It holds:
+  - owner and direct grants (never `owner`, never more than 256 per mainframe);
+  - the team binding with its rank → role mapping;
+  - share links (SHA-256 of the secret);
+  - an audit log (50 entries per mainframe, shown in the in-game Security tab).
+- **Migration from v0.3:**
+  - The old `acls` (owner + trusted) and the block entity's `trusted` list become access entries; trusted players become **admins**. This happens once per mainframe, and later edits are kept.
+  - Old device tokens keep their mainframe. They are account tokens limited to that mainframe, with role = the approving player's role (capped at viewer for read-only devices).
+  - `acls` is read but never written again. The GameTest `access_migration_v03` decodes v0.3 data.
+- **Accounts:**
+  - `/cccloud link` and the "Link this browser" button in the mainframe screen (every player with `cccloud.use`) show an account code: same alphabet, 10 minutes, single use, memory only.
+  - `POST /api/pair` accepts both kinds of code. Only the code's own player can approve an account code (chat prompt `cccloud.approval.account_request`).
+  - `Device.mainframeId == null` marks an account token. `type` comes from the User-Agent. `lastIp` is updated on use.
+- **Commands:**
+  - `/cccloud role <player> <viewer|operator|admin|none>` acts on the mainframe you look at. Escalation rules as for the API.
+  - `/cccloud devices` lists all of the player's browsers, with a clickable revoke (`/cccloud devices revoke <id>`).
+  - The old per-mainframe list is now `/cccloud devices here`.
+  - `/cccloud trust|untrust` remain and mean admin / remove.
+  - `/cccloud icons` uses `cccloud.command.icons`. There is no reload command yet; `cccloud.command.reload` is registered for it.
+- **Escalation rules (Access API and `/cccloud role`):**
+  - Admins may only change players whose current role is below their own, and may grant at most their own role.
+  - The owner and server moderators (`cccloud.admin.manage`) may change everyone except the owner.
+  - `set_team` needs the caller to be in that team (rankOf ≠ null); moderators may assign any team.
+  - Players are looked up by name only among online players and names the mod already knows (grants, owners, devices). The web API never triggers a blocking Mojang lookup; unknown names → `unknown_player` (use `/cccloud role`, which resolves profiles in-game).
+- **Limits and use:**
+  - `cccloud.limit.mainframes` is checked in `CloudMainframeBlock#getStateForPlacement`, counting mainframes owned in the AccessStore; `cccloud.bypass.limits` skips the check.
+  - `cccloud.use` blocks placing and using all `cccloud:` blocks (`access/UseGuard`).
+- **Live checks:**
+  - `CloudWebServer.serverTick` (every 5 s) re-checks every session. It sends `{"t":"role","role","canControl"}`, followed by the network view for the new role (and a new snapshot if restricted sections appear or disappear), or closes with 4403 `no_access`.
+  - Role changes from the API, the screen or commands, and FTB Teams change events, run the check at once.
+- **Server admins** (node `cccloud.admin.*`, not a role on the mainframe): dashboard logins, Access-page opens and screen opens are written to the audit log as "… by admin <name>", once per 10 minutes.
+- **Share links:**
+  - `auth_share` is checked off the server thread; the AccessStore is thread-safe.
+  - Limits: 5 wrong secrets per IP per minute (then 4429 `rate_limited`), 30 logins per link per minute, at most 16 links per mainframe.
+  - The viewer limit is checked atomically in `WebHub.tryAddSession`.
+  - Filtering is done by `web/ShareFilter`: card keys and page resolution as in the dashboard's `resolveLayout`. Shared uplinks only carry `uplinkId, title, online, pages, groups, widgets`.
+  - `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy: no-referrer` are set on every response, `/s/` included.
+- **Restricted sections (v0.5 mainframe cards):** shown from the **operator** role up (`WebHub.seesRestricted`), never to viewers or share links.
+- **HTTP API:**
+  - `web/AccessApi` (pure Java with injected hooks, unit tested) runs on the server thread and allows 120 requests per minute per IP.
+  - `GET /api/pair/<id>` adds `role` (mainframe codes) or `account` + `mainframes` (account codes).
+  - `GET /api/mainframes` lists the device's mainframe (mainframe tokens) or every mainframe with a role (account tokens).
+  - The access document's `team` carries `"implicit":true` for the owner's-team fallback described below.
+- **Not done yet:** ownership transfer and deletion from the web (owner-only operations).
+
+### TeamProvider (for integrations)
+Team mods plug into the resolver through `ai.ezfox.cccloud.access.TeamProvider`. Register it with `TeamProviders.register(provider)` during mod construction, and only when the team mod is loaded. Server config `teams.disabledTeamProviders` can switch providers off.
+
+```java
+public interface TeamProvider {
+    record Team(String id, String name) {}            // id stable across restarts (e.g. team UUID)
+    record Member(UUID uuid, String name, String rank) {}
+    String id();                                        // "ftbteams" | "opac" | "scoreboard" | …
+    default boolean available() { return true; }       // false while the mod's data is not loaded
+    List<String> ranks();                               // highest first, e.g. owner, officer, member, ally
+    Map<String, Role> defaultMapping();                 // rank → role for a newly assigned team (Role.NONE = no access)
+    @Nullable String rankOf(String teamId, UUID player); // null = not in the team
+    @Nullable Team team(String teamId);
+    List<Team> teamsOf(UUID player);                    // offered when assigning a team
+    default List<Member> members(String teamId) { return List.of(); } // display only
+}
+```
+- All methods run on the server thread, on every rights check. They must be cheap (in-memory data, no I/O) and must not throw (return null or empty instead).
+- Built-in providers:
+  - `access/ScoreboardTeams`: vanilla `/team`, rank `member` → operator. Members are listed only while online.
+  - `compat/team/TeamSourceProvider`: wraps the v0.5 `TeamSource` adapters. FTB Teams: owner/officer → admin, member → operator, ally → viewer.
+- **Owner's-team fallback (v0.5 `ftbTeamsTrust`):** a mainframe without an explicit team uses its owner's FTB team with the default mapping (`compat/TeamTrust.ownerTeam`). An explicit `set_team` replaces it, and `ftbTeamsTrust=false` turns it off.
+- After membership changes, adapters call `Teams.fireChanged(player)`. That triggers the immediate session re-check; otherwise changes apply within 5 s.
 
 ## v0.7 – Upgrades, wired links, wireless redstone, tablet, display, 3D map, quests (approved 2026-10-23)
 

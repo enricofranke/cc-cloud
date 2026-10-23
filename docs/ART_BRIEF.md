@@ -2,7 +2,7 @@ Du baust 3D-Blockmodelle + Texturen für einen Minecraft-Mod (NeoForge 26.1), ei
 Mod-ID: `cccloud`. Ziel: Die Blöcke sollen richtig hochwertig und "krass" aussehen – detailreich, mit Tiefe, Leuchteffekten und beweglichen Teilen – aber trotzdem eindeutig in den CC: Tweaked Stil passen.
 
 ## Referenzen
-`~/ref/cct-reference/` enthält die Original-Assets von CC: Tweaked (aktueller Stand für MC 26.x):
+Ein lokaler Ordner `cct-reference/` (Pfad in `$CCT_REFERENCE`, nicht im Repo) enthält die Original-Assets von CC: Tweaked (aktueller Stand für MC 26.x):
 - `textures/block/` – alle Block-Texturen (Computer, Monitore, Modems, Kabel, Disk Drive, Drucker, Lautsprecher, Turtles …)
 - `textures/item/`, `textures/gui/` – Items und GUIs
 - `models/block/`, `models/item/` – die Original-Modell-JSONs (z. B. `modem.json`, `cable_*.json`, `turtle_*.json`)
