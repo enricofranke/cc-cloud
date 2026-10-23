@@ -14,12 +14,19 @@ dash:toggle("lamp", "Lampe hinten", { value = redstone.getOutput("back") }, func
   print(user .. " -> Lampe " .. (on and "an" or "aus"))
 end)
 
--- Open a door on the left side for 5 seconds
-dash:button("door", "Tuer 5 s oeffnen", { color = "cyan" }, function(user)
+-- Open a door on the left side for 5 seconds.
+-- No sleep() inside handlers: it would block all other dashboard actions. Use a timer instead.
+local doorTimer
+dash:button("door", "Tuer oeffnen", { color = "cyan" }, function(user)
   redstone.setOutput("left", true)
+  doorTimer = os.startTimer(5)
   dash:notify(user .. " hat die Tuer geoeffnet", "info")
-  sleep(5)
-  redstone.setOutput("left", false)
+end)
+dash:onEvent("timer", function(id)
+  if id == doorTimer then
+    redstone.setOutput("left", false)
+    doorTimer = nil
+  end
 end)
 
 -- Redstone strength 0-15 on the right side (e.g. machine speed)
@@ -35,7 +42,7 @@ dash:select("program", "Programm", { options = programs, value = chosen }, funct
   chosen = value
   dash:set("program", value)
 end)
-dash:button("start", "Programm starten", { color = "green", confirm = true }, function(user)
+dash:button("start", "Starten", { color = "green", confirm = true }, function(user)
   if multishell then
     shell.openTab(chosen)
     dash:notify(user .. " startet " .. chosen, "info")
