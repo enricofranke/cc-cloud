@@ -122,7 +122,7 @@ export function App() {
       </a>
       {effective.name !== "mainframe" && <TopBar />}
       <InsecureBanner />
-      {effective.name === "pair" && <PairScreen initialCode={"code" in effective ? effective.code : undefined} />}
+      {effective.name === "pair" && <PairScreen initialCode={"code" in effective ? effective.code : undefined} link={"link" in effective ? effective.link : undefined} />}
       {effective.name === "list" && <MainframeList />}
       {effective.name === "mainframe" && <Dashboard key={effective.id} id={effective.id} />}
       {effective.name === "devices" && <DevicesScreen />}

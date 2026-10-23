@@ -717,6 +717,8 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 ### v0.7 web protocol (wired links, terrain, 3D view)
 Implemented by the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) and the dashboard.
 
+**"Pair in browser" chat link:** the mod links to `<dashboard-url>/pair#code=XXXX-XXXX` (account codes: `#code=XXXX-XXXX&account=1`). The web server must serve `index.html` for `/pair` (SPA route, like `/s/<id>`; `Referrer-Policy: no-referrer` recommended). The dashboard reads the code from the fragment at start-up, replaces the URL with `/#/pair` via `history.replaceState` before any request, prefills the form (device name defaults to e.g. "Enrico's Mac – Chrome") and sends the code only in the `POST /api/pair` body. Invalid codes are ignored (empty form).
+
 **Wired links** in the `network` payload: `{"a","b","kind":"wired","signal":1}` (no `dist`, never `weak`). `a` is the mainframe or relay that owns the CC wired network, `b` the cabled member; the member's `parent` points at `a` when the cable route is used (wired is preferred over radio). Wired hops cost no FE, so they are not in the power breakdown's `hops`. Radio links for a pair that is cabled are not sent. The dashboard draws cables solid, radio dashed (coloured by signal), ender links dotted – in the topology, the map and the 3D view.
 
 **Coarse terrain** (optional, for the 3D view):
@@ -779,3 +781,23 @@ Players must be able to plan relays without opening the web dashboard.
 - **Ender Fiber Link** (`cccloud:ender_fiber_link`, endgame): a pair of blocks linked with the Link Card that bridges two fiber networks across any distance/dimension (expensive recipe: ender relay core + eyes of ender + unobtainium/netherite fallback).
 - Recipes: fiber cable ×8 from glass panes + prismarine crystals + cloud core + string/wool jacket; junction from fiber + stone + redstone.
 - Rendering: cable connections like CC cables (multipart blockstate with 6 directions), no BER; the cyan core is an emissive element.
+
+### Storage card v2: auto-crafting & more (requested 2026-10-23)
+Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
+1. **Auto-stock (level maintainer)**: each watchlist entry gets an optional `target` and `autoCraft` flag. When the count drops below `min` and the item is craftable, the bridge requests a craft of `min(target − count, batch)` (batch default 64, config max), at most one active job per item, cooldown 30 s, pauses when no CPU is free or a job fails 3× (state shown: idle / crafting / waiting for CPU / missing resources / paused). Operator role to edit. Server-side, works without a computer. Lua: `bridge.setAutoStock(name, min, target, enabled)`.
+2. **Craft preview**: before starting a craft the dashboard asks for a plan: required items, what will be crafted, what is missing (AE2 `CraftingPlan` / RS2 preview APIs), time estimate if available; confirm → start. New message `craft_preview` → `craft_plan` result.
+3. **Crafting CPUs / autocrafting status**: list CPUs (AE2: name, co-processors, storage, busy/idle, current job) and RS2 autocrafting monitor tasks; per job: progress, items done/total, elapsed, **cancel** (operator).
+4. **Browse**: an item grid with icons (sorted by count / name / mod, filter craftable-only, favorites ★ pinned on top), infinite scroll, compact numbers; fluids tab (and AE2 chemicals if present via addons – skip if not available).
+5. **Craftables list**: everything with a pattern, searchable, one-tap craft with preview.
+6. **Item details**: count history chart (uses long-term stats: 24 h sparkline), craftable yes/no, autostock config, watch, mod tag, recent jobs.
+7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
+8. Not in this step (security review first): exporting items out of the network into the world.
+
+### Script import (pulled forward from v0.5 E, requested 2026-10-23)
+Push Lua programs from the browser straight onto a CC computer through the mainframe → uplink path.
+- Dashboard: on every computer card (auto or Lua) an **"Upload script"** action: drop a `.lua` file, paste code, or pick from the **example gallery** (bundled: control-room, cloud-test, cloud-demo variants, storage dashboard; each with a short description and screenshot). Choose a file name, options: overwrite (with confirm), **run now** (in a new multishell tab if available, otherwise only when no program is running → ask), **set as startup** (writes `startup.lua` that runs the file).
+- Server: write into the computer's own filesystem via CC's server-side API (the computer's writable mount), only the computer behind that uplink (auto card / Lua section owner). Path validation: relative names `[A-Za-z0-9_.-]{1,64}` (+ optional one subfolder), no `..`, no `rom/`, no disk mounts; max 256 KB per file; respect the computer's quota; atomic write.
+- Run: queue the program via `shell.openTab`/`shell.run` through a small helper the mod adds to the ROM (`cloud-run <file>` listens for a `cloud_run` event) – no arbitrary command strings from the web, only the uploaded file name.
+- Permissions: **admin** role (code runs on the computer), PIN if one is set, rate limit 10 uploads/min, audit log entry + in-game chat note to the owner ("<device> uploaded control-room.lua to Computer #0").
+- Lua running on a CC computer is sandboxed by CC (no Java access, CC's HTTP rules unchanged), so this cannot execute code on the Minecraft server itself.
+- Also list/download/delete files of that computer (admin), as the base for the later full Lua editor.

@@ -5280,3 +5280,15 @@ fieldset.field {
     right: auto;
   }
 }
+
+/* chat link "Pair in browser" */
+.pair-from-link {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 40%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cyan) 8%, var(--panel));
+  color: color-mix(in srgb, var(--cyan) 70%, var(--text));
+  font-size: 14px;
+  line-height: 1.45;
+}

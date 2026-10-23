@@ -665,6 +665,16 @@ try {
   }
 
   // server gone -> unreachable banner (phone, outpost still paired there)
+  // ---- "Pair in browser" chat link: code prefilled, fragment cleared, only the name left to confirm
+  for (const [ctx, name] of [[await phoneCtx(), "phone-p1-pair-link"], [await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop-p1-pair-link"]] as const) {
+    const lp = await ctx.newPage();
+    watch(lp);
+    await lp.goto(`${origin}/pair#code=${mock.code()}`);
+    await lp.waitForSelector(".pair-from-link");
+    if (new URL(lp.url()).hash.includes("code")) problems.push("pair link: code still in the URL");
+    await shot(lp, name);
+    await ctx.close();
+  }
   await mock.close();
   await p.goto(`${origin}/#/m/${outpost.id}`).catch(() => {});
   await p.waitForTimeout(2500);
