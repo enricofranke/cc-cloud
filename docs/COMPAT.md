@@ -90,3 +90,6 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | FTB Quests (`ftbquests`) | 26.1.2.9 | **Quests** mainframe card (restricted, `view.positions`): the owner's FTB team – overall %, chapters done / total, quests done / total, the 5 most recent completions with chapter and age; info alert on a new completion. Config `world.questsCard`. | none | partly: card, restricted flag and quest file access; a mock player has no FTB team, so progress values are not covered |
 | JourneyMap (`journeymap`) | 6.0.10 | skipped for now: waypoints would have to be created on the client, but the client never receives the network graph (it lives on the server and positions are `view.positions`-gated). It needs a new permission-checked sync packet plus a client-only JourneyMap plugin; left for a later step. | – | – |
 | FTB Chunks | – | already done in v0.5 (Claims card + overlay) | – | – |
+
+## Not in this wave
+Items 9 (in-game handbook) and 10 (KubeJS bindings) of the v0.8 list are done on a separate branch.
