@@ -48,6 +48,12 @@ Der Server erlaubt nur lokale Adressen. Ein Admin kann `webAllowInternet` einsch
 
 Das Dashboard ist ausgeschaltet, der Mainframe offline oder ohne Strom, der Uplink offline, oder dein Gerät ist schreibgeschützt. Das Banner oben sagt, was zutrifft.
 
+## Meine Geräte gehen offline, wenn ich weggehe
+
+Minecraft lässt nur die Chunks in der Nähe von Spielern laufen. Gehst du weg, wird der Chunk eines Computers, Uplinks oder einer Bridge entladen – er steht still, und CC: Cloud erreicht ihn nicht. Das Dashboard behält seine Karte **ausgegraut mit den letzten Werten** und zeigt „last seen 12 min ago – chunk not loaded“; die Bedienelemente sind gesperrt, bis der Chunk wieder geladen ist. CC: Cloud lädt nie selbst Chunks.
+
+Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: mit FTB Chunks **force-loaden** (claimen, dann in der Karte force-load), mit einem Chunk-Loader aus einer anderen Mod, oder über die Spawn-Chunks des Servers. Dann wird die Karte von selbst wieder lebendig.
+
 ## Falsche PIN / gesperrt
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit `/cccloud pin set` ändern.

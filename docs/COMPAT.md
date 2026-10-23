@@ -91,5 +91,17 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | JourneyMap (`journeymap`) | 6.0.10 | skipped for now: waypoints would have to be created on the client, but the client never receives the network graph (it lives on the server and positions are `view.positions`-gated). It needs a new permission-checked sync packet plus a client-only JourneyMap plugin; left for a later step. | – | – |
 | FTB Chunks | – | already done in v0.5 (Claims card + overlay) | – | – |
 
+### 9. In-game handbook
+
+| Mod (id) | Version | What | Tested |
+| --- | --- | --- | --- |
+| GuideME (`guideme`) | 26.1.15-beta | **CC: Cloud Handbook**: a data-driven GuideMe guide (`assets/cccloud/guideme_guides/handbook.json`, pages in `assets/cccloud/guides/cccloud/handbook/`, German in `_de_de/`), generated from the dashboard docs by `tools/gen_handbook.ts` (11 pages per language, recipes as `<RecipeFor>` with a fallback text). Item: GuideMe's guide item with `guideme:guide_id = cccloud:handbook`, crafted shapeless from a book + Cloud Core (recipe only when GuideMe is loaded). No code dependency. | yes (`guideme_handbook` parses every page with GuideMe's parser; screenshots of the EN and DE guide in a dev client). The ME/RS bridge recipe boxes show GuideMe's "missing item" note when AE2 / RS are absent. |
+
+### 10. KubeJS bindings
+
+| Mod (id) | Version | What | Tested |
+| --- | --- | --- | --- |
+| KubeJS (`kubejs`) | 26.1.2-8.0.6 (Rhino 2101.2.8-build.91) | Server scripts get **`CCCloudEvents.action`** (an accepted dashboard action: mainframeId, sectionId, section, widget, value, playerName, player, device), **`CCCloudEvents.deviceLinked`** (uplink/bridge bound with a Link Card: mainframeId, deviceId, type, dimension, pos, player) and **`CCCloudEvents.alert`** (mainframeId, sectionId, text, level), and the binding **`CCCloud`**: `mainframes()`, `mainframesOf(player)`, `has(player, mainframeId, "act.buttons")`, `section(mainframeId, key).title(..).gauge/toggle/button/slider/select/buttons/number/text/label/chart/progress/indicator(..).restricted(true).as(player).onAction(ctx => …).publish()`, `set`, `get`, `alert`, `remove`, `sections`. Widgets and values are validated like Lua; dashboard actions need the same per-widget permission (`act.buttons`) and validation, then `onAction` runs (`ctx.reject("code")` refuses); `as(player)` needs `layout.edit`. | yes (`script_sections` without KubeJS, `kubejs_bindings` with a real server script) |
+
 ## Not in this wave
-Items 9 (in-game handbook) and 10 (KubeJS bindings) of the v0.8 list are done on a separate branch.
+Nothing left from the v0.8 list.

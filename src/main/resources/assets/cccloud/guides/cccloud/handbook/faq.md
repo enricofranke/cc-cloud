@@ -48,6 +48,12 @@ The server only allows local addresses. An admin can enable `webAllowInternet` �
 
 The dashboard is disabled, the mainframe is offline or without power, the uplink is offline, or your device is read-only. The banner at the top says which.
 
+## My devices go offline when I walk away
+
+Minecraft only runs the chunks near players. When you walk away, the chunk of a computer, uplink or bridge unloads – it stops, and CC: Cloud can't talk to it. The dashboard keeps its card **greyed out with the last values** and shows "last seen 12 min ago – chunk not loaded"; its controls are disabled until the chunk loads again. CC: Cloud never loads chunks by itself.
+
+To keep a base running while you are away, keep its chunks loaded: **force-load** them with FTB Chunks (claim, then force-load in the map), use a chunk loader from another mod, or have the server's settings keep spawn chunks loaded. Then the card comes back to life on its own.
+
 ## Wrong PIN / locked
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with `/cccloud pin set`.

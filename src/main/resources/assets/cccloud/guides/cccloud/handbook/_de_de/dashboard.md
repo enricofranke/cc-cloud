@@ -30,14 +30,17 @@ Jeder Uplink wird zu einer **Karte**. Ein Computer ohne eigenes Programm zeigt d
 
 ## Seiten und Layout-Editor
 
-Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Spieler mit Steuerrechten sehen einen **Stift**:
+Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Admins sehen einen **Stift**: Damit wird das Dashboard selbst zum Editor – du ordnest die echten, laufenden Karten an.
 
-- Karten und Widgets umsortieren (mit der Maus ziehen, oder ▲▼ auf schmalen Bildschirmen und per Touch)
-- Kartengröße ändern (rechten Rand ziehen, 1–4 Spalten) und Widget-Breite
-- umbenennen, umfärben, Icon wählen, ausblenden
-- Seiten anlegen, umbenennen, löschen, Karten zwischen Seiten verschieben
+- **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
+- **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
+- **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
+- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe, Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
+- **Ausblenden** mit ×. **+ Add** listet alles Ausgeblendete (zurückziehen oder Show drücken) und zeigt jeden Widget-Typ live mit der Lua-Zeile, die ihn erzeugt.
+- **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
+- **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.
 
-**Save** speichert das Layout auf dem Server – alle Geräte sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben.
+**Save** speichert das Layout auf dem Server – alle Browser sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben. Auf schmalen Bildschirmen stehen die Karten in Lesereihenfolge untereinander (auf Handys zweispaltig).
 
 ## Meldungen
 
