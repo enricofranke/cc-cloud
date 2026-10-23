@@ -81,6 +81,7 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `forbiddenarcanus` | Forbidden & Arcanus 2.8.0-beta.2 | Valhelsia Core 1.1.6 | `compat/forbiddenarcanus` |
 | `pylons` | Pylons 6.0.1 | – | `compat/pylons` |
 | `evilcraft` | EvilCraft 1.2.107 | Cyclops Core | none (generic Tank card test) |
+| `arsmagica` | Ars Magica Legacy 1.7.0 | GeckoLib, Patchouli | `compat/arsmagica` (`EtheriumHandler` API) |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh

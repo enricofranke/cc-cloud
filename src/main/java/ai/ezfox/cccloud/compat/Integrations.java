@@ -87,6 +87,7 @@ public final class Integrations {
         optional("witchery", () -> ai.ezfox.cccloud.compat.witchery.WitcheryCards::init);
         optional("forbidden_arcanus", () -> ai.ezfox.cccloud.compat.forbiddenarcanus.HephaestusForgeCards::init);
         optional("pylons", () -> ai.ezfox.cccloud.compat.pylons.PylonCards::init);
+        optional("arsmagicalegacy", () -> ai.ezfox.cccloud.compat.arsmagica.EtheriumCards::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

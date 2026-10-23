@@ -100,13 +100,13 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | Forbidden & Arcanus (`forbidden_arcanus`) | 2.8.0-beta.2 | **Hephaestus Forge** card: tier, ritual running, main item, the four essences (aureal, ectoplasm, blood, experience) as gauges and amount / limit; info alert when a ritual finishes | none | yes (lone forge: tier 1, idle, empty) |
 | Pylons (`pylons`) | 6.0.1 | **Pylon** card for all five pylons: on/off, owner, range | on/off toggle (the pylon's own switch), confirm, `act.buttons` | yes (expulsion pylon toggled off and on) |
 | EvilCraft (`evilcraft`) | 1.2.107 | Dark Tank via the generic Tank card; Blood Infuser / Spirit Furnace keep the generic Energy/tank cards | – | see Tank |
-| Stellaris (`stellaris`) | 2.0.7 | fluid tanks via the generic Tank card, generators via the Energy card; rockets are entities (nothing on a block) | – | no |
-| Theurgy (`theurgy`) | 1.116.0 | skipped: its machines (liquefaction cauldron, distiller, incubator) have no state beyond their inventories; tanks via the Tank card | – | – |
-| Ars Magica Legacy (`arsmagicalegacy`) | 1.7.0 | skipped for now: etherium is stored in obelisks/the altar core as private fields without getters; a card would need reflection | – | – |
-| Reliquary (`reliquary`) | 2.0.92 | skipped: altar and cauldron are short brewing/transmutation steps with nothing to monitor | – | – |
+| Stellaris (`stellaris`) | 2.0.7 | no own card: fluid tanks via the generic Tank card, generators via the Energy card where they expose the capabilities (not verified in a test); rockets are entities | – | no |
+| Theurgy (`theurgy`) | 1.116.0 | no own card in this pass: its machines (calcination oven, distiller, incubator, accumulators) were not examined in depth; tanks are covered by the Tank card, powered blocks by the Energy card | – | – |
+| Ars Magica Legacy (`arsmagicalegacy`) | 1.7.0 | **Etherium** card for every block of its public `EtheriumHandler` API (obelisk, celestial prism, black aurem, altar core): gauge + amount / max per etherium type; the widgets follow the block's types | none | yes (obelisk) |
+| Reliquary (`reliquary`) | 2.0.92 | skipped: altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth | – | – |
 | Interdimensional Wireless Transmitter | 1.0.1 | skipped: an RS2 network node; the RS Cloud Bridge already shows the network | – | – |
 | Trash Cans, Item Collectors | 1.1.1a / 1.1.12a | skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range) | – | – |
-| Just Dire Things | 1.6.11 | skipped: its machines are generic FE machines (Energy card) | – | – |
+| Just Dire Things | 1.6.11 | no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined | – | – |
 
 ## Not in this wave
 Items 9 (in-game handbook) and 10 (KubeJS bindings) of the v0.8 list are done on a separate branch.
