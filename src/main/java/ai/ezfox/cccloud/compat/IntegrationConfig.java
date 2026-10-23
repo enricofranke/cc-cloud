@@ -17,6 +17,8 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue FTB_CHUNKS_CLAIMS;
     public static final ModConfigSpec.BooleanValue BACKUP_CARD;
     public static final ModConfigSpec.BooleanValue GATEWAYS_CARD;
+    public static final ModConfigSpec.BooleanValue WAYSTONES_CARD;
+    public static final ModConfigSpec.BooleanValue QUESTS_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -51,6 +53,12 @@ public final class IntegrationConfig {
         GATEWAYS_CARD = b.comment("Gateways to Eternity: a Gateways card with the gates open near the mainframe (needs view.positions).")
             .translation("cccloud.configuration.gatewaysCard")
             .define("gatewaysCard", true);
+        WAYSTONES_CARD = b.comment("Waystones: a Waystones card and network-map overlay with the waystones of the owner's team and global ones (needs view.positions).")
+            .translation("cccloud.configuration.waystonesCard")
+            .define("waystonesCard", true);
+        QUESTS_CARD = b.comment("FTB Quests: a Quests card with the quest progress of the owner's team (needs view.positions).")
+            .translation("cccloud.configuration.questsCard")
+            .define("questsCard", true);
         b.pop();
         SPEC = b.build();
     }

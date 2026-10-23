@@ -66,3 +66,12 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | Mystical Agriculture (`mysticalagriculture`) | 9.0.10 | **Machine** card for Essence Furnace, Seed Reprocessor, Soul Extractor, Harvester, Ore Infuser, Soulium Spawner: status, progress, energy, fuel left, upgrade tier | none | untested: a dev server with only Mystical Agriculture + Cucumber crashes while building MA's creative tab ("Inferium Essence has already been added"), which is unrelated to CC: Cloud |
 | Mystical Automation (`mysticalautomation`) | 2.0.7 | no own card: its machines only expose energy, so the generic Energy card applies | – | – |
 | Railcraft Reborn (`railcraft`) | 1.4.5 | **Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode) | none | yes (lone firebox, "Not formed") |
+
+### 8. World & progression
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| Waystones (`waystones`) | 26.1.2.16 | **Waystones** mainframe card (restricted, `view.positions`): waystones owned by the mainframe owner or a member of the owner's team (team providers, e.g. FTB Teams), plus global waystones – name, dimension, coordinates (8 rows) and the network-map overlay in the snapshot: `"waystones":{"items":[{"name","dim","x","y","z","kind","global"?}],"truncated"}` (max 512, re-read every 10 s). Config `world.waystonesCard`. The dashboard does not draw the overlay yet. | none | yes (own waystone listed, a stranger's private one hidden) |
+| FTB Quests (`ftbquests`) | 26.1.2.9 | **Quests** mainframe card (restricted, `view.positions`): the owner's FTB team – overall %, chapters done / total, quests done / total, the 5 most recent completions with chapter and age; info alert on a new completion. Config `world.questsCard`. | none | partly: card, restricted flag and quest file access; a mock player has no FTB team, so progress values are not covered |
+| JourneyMap (`journeymap`) | 6.0.10 | skipped for now: waypoints would have to be created on the client, but the client never receives the network graph (it lives on the server and positions are `view.positions`-gated). It needs a new permission-checked sync packet plus a client-only JourneyMap plugin; left for a later step. | – | – |
+| FTB Chunks | – | already done in v0.5 (Claims card + overlay) | – | – |

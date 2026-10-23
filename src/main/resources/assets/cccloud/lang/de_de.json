@@ -321,5 +321,7 @@
   "cccloud.script.note": "[CC: Cloud] %s (%s): %s auf %s",
   "cccloud.configuration.storageCards": "Speicher-Controller: Lager-Karte",
   "cccloud.configuration.world": "Welt & Fortschritt",
-  "cccloud.configuration.gatewaysCard": "Gateways to Eternity: Gateway-Karte"
+  "cccloud.configuration.gatewaysCard": "Gateways to Eternity: Gateway-Karte",
+  "cccloud.configuration.waystonesCard": "Waystones: Wegstein-Karte und Kartenebene",
+  "cccloud.configuration.questsCard": "FTB Quests: Quest-Fortschritt-Karte"
 }

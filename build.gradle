@@ -224,6 +224,10 @@ def integrationMods = [
     agritechevolved     : ["curse.maven:agritechevolved-1287394:${agritechevolved_curse_file}"],
     mysticalagriculture : ["curse.maven:mysticalagriculture-246640:${mysticalagriculture_curse_file}", "curse.maven:cucumber-272335:${cucumber_curse_file}"],
     railcraft           : ["curse.maven:railcraftreborn-901491:${railcraft_curse_file}"],
+    waystones           : ["curse.maven:waystones-245755:${waystones_curse_file}", "curse.maven:balm-531761:${balm_curse_file}",
+                           "curse.maven:shogi-1475746:${shogi_curse_file}"],
+    ftbquests           : ["dev.ftb.mods:ftb-quests-neoforge:${ftbquests_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
+                           "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 

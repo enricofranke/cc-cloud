@@ -70,6 +70,8 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `agritechevolved` | Agritech: Evolved 2.2.0.5 | – | `compat/agritechevolved` |
 | `mysticalagriculture` | Mystical Agriculture 9.0.10 | Cucumber 9.0.6 | `compat/mysticalagriculture` (compile only; a dev run crashes in MA's creative tab) |
 | `railcraft` | Railcraft Reborn 1.4.5 | – | `compat/railcraft` (boiler module API) |
+| `waystones` | Waystones 26.1.2.16 | Balm 26.1.2.15, Shogi 26.1.2.12 | `compat/waystones` (WaystonesAPI) |
+| `ftbquests` | FTB Quests 26.1.2.9 (`dev.ftb.mods:ftb-quests-neoforge`, maven.ftb.dev, SHA-1 identical) | FTB Teams, FTB Library | `compat/ftbquests` |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh

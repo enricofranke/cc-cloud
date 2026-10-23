@@ -70,6 +70,10 @@ public final class Integrations {
         optional("mysticalagriculture", () -> ai.ezfox.cccloud.compat.mysticalagriculture.MysticalCards::init);
         optional("railcraft", () -> ai.ezfox.cccloud.compat.railcraft.RailcraftCards::init);
 
+        // 8. World & progression.
+        optional("waystones", () -> ai.ezfox.cccloud.compat.waystones.WaystonesCard::init);
+        optional("ftbquests", () -> ai.ezfox.cccloud.compat.ftbquests.QuestsCard::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));
