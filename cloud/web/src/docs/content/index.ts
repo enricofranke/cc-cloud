@@ -1,4 +1,5 @@
 import { de } from "./de.ts";
+import GEN from "./recipes.gen.json" with { type: "json" };
 import { en } from "./en.ts";
 import type { IconName } from "../../lib/layout.ts";
 
@@ -18,6 +19,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "ui-library", icon: "star", title: { en: "cloud.ui library", de: "cloud.ui-Bibliothek" } },
   { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },
   { id: "upgrades", icon: "star", title: { en: "Upgrades, tablet & display", de: "Upgrades, Tablet & Display" } },
+  { id: "recipes", icon: "pick", title: { en: "All recipes", de: "Alle Rezepte" } },
   { id: "bridges", icon: "box", title: { en: "Bridges (AE2 / RS)", de: "Bridges (AE2 / RS)" } },
   { id: "accounts", icon: "lock", title: { en: "Accounts, roles & sharing", de: "Konten, Rollen & Teilen" } },
   { id: "security", icon: "shield", title: { en: "Security & hosting", de: "Sicherheit & Hosting" } },
@@ -43,6 +45,8 @@ export const UI: Record<Lang, Record<string, string>> = {
     language: "Language",
     any: "any",
     shapeless: "Shapeless – any arrangement",
+    requires: "Needs",
+    without: "Only without",
     result: "Result",
   },
   de: {
@@ -60,6 +64,8 @@ export const UI: Record<Lang, Record<string, string>> = {
     language: "Sprache",
     any: "beliebig",
     shapeless: "Formlos – beliebige Anordnung",
+    requires: "Braucht",
+    without: "Nur ohne",
     result: "Ergebnis",
   },
 };
@@ -78,19 +84,33 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "computercraft:wired_modem": { en: "Wired Modem", de: "Wired Modem" },
   "ae2:interface": { en: "ME Interface", de: "ME Interface" },
   "refinedstorage:interface": { en: "RS Interface", de: "RS Interface" },
-  "cccloud:cloud_core": { en: "Cloud Core", de: "Cloud Core" },
-  "cccloud:cloud_mainframe": { en: "Cloud Mainframe", de: "Cloud Mainframe" },
-  "cccloud:cloud_uplink": { en: "Cloud Uplink", de: "Cloud Uplink" },
-  "cccloud:advanced_cloud_uplink": { en: "Advanced Cloud Uplink", de: "Advanced Cloud Uplink" },
-  "cccloud:cloud_link_card": { en: "Cloud Link Card", de: "Cloud Link Card" },
-  "cccloud:me_cloud_bridge": { en: "ME Cloud Bridge", de: "ME Cloud Bridge" },
-  "cccloud:rs_cloud_bridge": { en: "RS Cloud Bridge", de: "RS Cloud Bridge" },
-  "cccloud:cloud_relay": { en: "Cloud Relay", de: "Cloud Relay" },
-  "cccloud:advanced_cloud_relay": { en: "Advanced Cloud Relay", de: "Advanced Cloud Relay" },
-  "cccloud:ender_relay": { en: "Ender Relay", de: "Ender Relay" },
   "minecraft:ender_eye": { en: "Eye of Ender", de: "Enderauge" },
   "#c:storage_blocks/gold": { en: "Block of Gold", de: "Goldblock" },
+  "#c:glass_panes": { en: "Glass Pane", de: "Glasscheibe" },
+  "#c:ingots/allthemodium": { en: "Allthemodium Ingot", de: "Allthemodiumbarren" },
+  "#c:ingots/vibranium": { en: "Vibranium Ingot", de: "Vibraniumbarren" },
+  "#c:ingots/unobtainium": { en: "Unobtainium Ingot", de: "Unobtainiumbarren" },
+  "allthetweaks:atm_star": { en: "ATM Star", de: "ATM-Stern" },
+  "computercraft:monitor_advanced": { en: "Advanced Monitor", de: "Advanced Monitor" },
+  "computercraft:pocket_computer_normal": { en: "Pocket Computer", de: "Pocket Computer" },
+  "computercraft:pocket_computer_advanced": { en: "Advanced Pocket Computer", de: "Advanced Pocket Computer" },
+  "computercraft:wireless_modem_advanced": { en: "Ender Modem", de: "Ender Modem" },
+  "minecraft:chest": { en: "Chest", de: "Truhe" },
+  "minecraft:diamond": { en: "Diamond", de: "Diamant" },
+  "minecraft:ender_pearl": { en: "Ender Pearl", de: "Enderperle" },
+  "minecraft:lodestone": { en: "Lodestone", de: "Leitstein" },
+  "minecraft:nether_star": { en: "Nether Star", de: "Netherstern" },
+  "minecraft:netherite_block": { en: "Block of Netherite", de: "Netheritblock" },
+  "minecraft:netherite_ingot": { en: "Netherite Ingot", de: "Netheritbarren" },
+  "minecraft:obsidian": { en: "Obsidian", de: "Obsidian" },
+  "minecraft:redstone": { en: "Redstone Dust", de: "Redstonestaub" },
+  "minecraft:redstone_block": { en: "Block of Redstone", de: "Redstoneblock" },
+  "minecraft:string": { en: "String", de: "Faden" },
+  // every CC: Cloud item, from the mod's lang files (build step dev/build-recipes.ts)
+  ...GEN.names,
 };
+/** Mod names for recipe conditions ("requires …"). */
+export const MODS: Record<string, string> = { allthemodium: "AllTheModium", allthetweaks: "All The Tweaks", ae2: "Applied Energistics 2", refinedstorage: "Refined Storage" };
 
 /** Tags have no icon of their own: show a typical member. */
 const TAG_ICON: Record<string, string> = {
@@ -99,6 +119,10 @@ const TAG_ICON: Record<string, string> = {
   "#c:ender_pearls": "minecraft:ender_pearl",
   "#c:dusts/redstone": "minecraft:redstone",
   "#c:storage_blocks/gold": "minecraft:gold_block",
+  "#c:glass_panes": "minecraft:glass_pane",
+  "#c:ingots/allthemodium": "allthemodium:allthemodium_ingot",
+  "#c:ingots/vibranium": "allthemodium:vibranium_ingot",
+  "#c:ingots/unobtainium": "allthemodium:unobtainium_ingot",
 };
 export function iconItem(id: string) {
   return TAG_ICON[id] ?? id.replace(/^#/, "");

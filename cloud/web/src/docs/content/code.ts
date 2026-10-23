@@ -1,4 +1,5 @@
 // Code examples shared by both languages (Lua is the same in DE and EN).
+import GEN from "./recipes.gen.json" with { type: "json" };
 
 export const FENCE = "```";
 
@@ -177,19 +178,61 @@ export const COMMANDS = `/cccloud status
 /cccloud pin set <4-8 digits>
 /cccloud pin clear`;
 
-/** Crafting recipes (match src/main/resources/data/cccloud/recipe). */
-export const RECIPES = {
-  core: { result: "cccloud:cloud_core", count: 2, grid: ["nPn", "PEP", "nPn"], key: { n: "#c:nuggets/gold", P: "minecraft:prismarine_crystals", E: "#c:ender_pearls" } },
-  mainframe: { result: "cccloud:cloud_mainframe", grid: ["GKG", "GAG", "GDG"], key: { G: "#c:ingots/gold", K: "cccloud:cloud_core", A: "computercraft:computer_advanced", D: "computercraft:disk_drive" } },
-  uplink: { result: "cccloud:cloud_uplink", count: 2, grid: ["SKS", "SMS"], key: { S: "minecraft:stone", K: "cccloud:cloud_core", M: "computercraft:wired_modem" } },
-  advancedUplink: { result: "cccloud:advanced_cloud_uplink", grid: ["GGG", "GUG", "GEG"], key: { G: "#c:ingots/gold", U: "cccloud:cloud_uplink", E: "#c:ender_pearls" } },
-  linkCard: { result: "cccloud:cloud_link_card", shapeless: true, items: ["minecraft:paper", "#c:nuggets/gold", "#c:dusts/redstone", "minecraft:prismarine_crystals"] },
-  meBridge: { result: "cccloud:me_cloud_bridge", grid: ["GKG", "MIM", "GGG"], key: { G: "#c:ingots/gold", K: "cccloud:cloud_core", M: "computercraft:wired_modem", I: "ae2:interface" } },
-  relay: { result: "cccloud:cloud_relay", grid: ["SMS", "RKR", "SSS"], key: { S: "minecraft:stone", M: "computercraft:wired_modem", K: "cccloud:cloud_core", R: "#c:dusts/redstone" } },
-  advancedRelay: { result: "cccloud:advanced_cloud_relay", grid: ["GEG", "GXG", "GGG"], key: { G: "#c:ingots/gold", E: "#c:ender_pearls", X: "cccloud:cloud_relay" } },
-  enderRelay: { result: "cccloud:ender_relay", grid: [" Y ", "YXY", " B "], key: { Y: "minecraft:ender_eye", B: "#c:storage_blocks/gold", X: "cccloud:advanced_cloud_relay" } },
-  rsBridge: { result: "cccloud:rs_cloud_bridge", grid: ["GKG", "MIM", "GGG"], key: { G: "#c:ingots/gold", K: "cccloud:cloud_core", M: "computercraft:wired_modem", I: "refinedstorage:interface" } },
+/** Every crafting recipe of the mod, generated from its recipe JSONs (dev/build-recipes.ts). */
+export const ALL_RECIPES = GEN.recipes as GenRecipe[];
+const byFile = (f: string) => {
+  const r = ALL_RECIPES.find((x) => x.file === f);
+  if (!r) throw new Error(`recipe ${f} missing`);
+  return r;
 };
+/** Named recipes used in the text. */
+export const RECIPES = {
+  core: byFile("cloud_core"),
+  mainframe: byFile("cloud_mainframe"),
+  uplink: byFile("cloud_uplink"),
+  advancedUplink: byFile("advanced_cloud_uplink"),
+  linkCard: byFile("cloud_link_card"),
+  meBridge: byFile("me_cloud_bridge"),
+  relay: byFile("cloud_relay"),
+  advancedRelay: byFile("advanced_cloud_relay"),
+  enderRelay: byFile("ender_relay"),
+  rsBridge: byFile("rs_cloud_bridge"),
+};
+export interface GenRecipe {
+  file: string;
+  result: string;
+  count?: number;
+  shapeless?: boolean;
+  grid?: string[];
+  key?: Record<string, string>;
+  items?: string[];
+  requires?: string[];
+}
+
+/** Groups for the "All recipes" page (by result id). */
+export const RECIPE_GROUPS: { id: string; en: string; de: string; match: (r: GenRecipe) => boolean }[] = [
+  { id: "basics", en: "Basics", de: "Grundlagen", match: (r) => /cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(r.result) },
+  { id: "network", en: "Relays and cables", de: "Relays und Kabel", match: (r) => /relay|fiber/.test(r.result) },
+  { id: "bridges", en: "Bridges", de: "Bridges", match: (r) => /bridge/.test(r.result) },
+  { id: "devices", en: "Tablet, display, analyzer", de: "Tablet, Display, Analyzer", match: (r) => /tablet|display|analyzer/.test(r.result) },
+  { id: "upgrades", en: "Mainframe upgrades", de: "Mainframe-Upgrades", match: (r) => /upgrade_|quantum_core/.test(r.result) },
+];
+export function groupOf(r: GenRecipe) {
+  return RECIPE_GROUPS.find((g) => g.match(r))?.id ?? "other";
+}
+/** Markdown for one group: a heading per item, then its recipes (normal and fallback). */
+const NAMES = GEN.names as Record<string, { en: string; de: string }>;
+export function recipeSection(groupId: string, lang: "en" | "de") {
+  const name = (id: string) => NAMES[id]?.[lang] ?? id.replace(/^[a-z0-9_]+:/, "").replace(/_/g, " ");
+  const rs = ALL_RECIPES.filter((r) => groupOf(r) === groupId);
+  const results = [...new Set(rs.map((r) => r.result))];
+  return results
+    .map((res) => {
+      const list = rs.filter((r) => r.result === res);
+      return `### ${name(res)}\n${list.map((r) => recipe(r)).join("\n")}`;
+    })
+    .join("\n\n");
+}
 
 export const recipe = (r: object) => `${FENCE}recipe\n${JSON.stringify(r)}\n${FENCE}`;
 export const code = (lang: string, src: string) => `${FENCE}${lang}\n${src}\n${FENCE}`;

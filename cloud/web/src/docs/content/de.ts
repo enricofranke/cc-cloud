@@ -522,6 +522,30 @@ Ein Display-Block, der eine Dashboard-Karte oder -Seite **in der Welt** zeigt, w
 
 Uplinks bekommen in ihrem Fenster einen **Redstone-Modus**: **Sender** oder **Empfänger** auf einem Kanalnamen. Empfänger geben das stärkste Signal aller Sender auf diesem Kanal aus (0–15). Das funktioniert über Relays, Kabel und – mit Ender Relays – dimensionsübergreifend, mit dem nächsten Tick als Verzögerung. Bis zu 64 Kanäle pro Netzwerk; sehr schnelle Takte (schneller als 2 Ticks) werden geglättet.
 `,
+  recipes: `# Alle Rezepte
+
+Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie). JEI oder EMI zeigen dasselbe im Spiel.
+
+## Grundlagen {#basics}
+
+${C.recipeSection("basics", "de")}
+
+## Relays und Kabel {#network}
+
+${C.recipeSection("network", "de")}
+
+## Bridges {#bridges}
+
+${C.recipeSection("bridges", "de")}
+
+## Tablet, Display, Analyzer {#devices}
+
+${C.recipeSection("devices", "de")}
+
+## Mainframe-Upgrades {#upgrades}
+
+${C.recipeSection("upgrades", "de")}
+`,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 und Refined Storage
 

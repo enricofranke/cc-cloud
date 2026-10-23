@@ -6546,3 +6546,11 @@ body.rz-nwse * {
     display: none;
   }
 }
+.recipe-req {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--cyan);
+}
+.recipe-req.without {
+  color: var(--yellow);
+}

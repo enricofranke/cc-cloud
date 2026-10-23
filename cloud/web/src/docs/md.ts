@@ -24,6 +24,8 @@ export interface Recipe {
   /** shapeless ingredients */
   items?: string[];
   note?: string;
+  /** "mod:<id>" = needs that mod, "!mod:<id>" = only without it */
+  requires?: string[];
 }
 
 export type Block =

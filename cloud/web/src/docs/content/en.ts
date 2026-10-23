@@ -522,6 +522,30 @@ A display block that shows one dashboard card or page **in the world**, like a C
 
 Uplinks get a **redstone mode** in their screen: **transmitter** or **receiver** on a channel name. Receivers output the strongest signal of all transmitters on that channel (0–15). It works over relays, cables and – with Ender Relays – across dimensions, with the next tick as latency. Up to 64 channels per network; very fast clocks (faster than 2 ticks) are smoothed.
 `,
+  recipes: `# All recipes
+
+Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). JEI or EMI show the same in-game.
+
+## Basics {#basics}
+
+${C.recipeSection("basics", "en")}
+
+## Relays and cables {#network}
+
+${C.recipeSection("network", "en")}
+
+## Bridges {#bridges}
+
+${C.recipeSection("bridges", "en")}
+
+## Tablet, display, analyzer {#devices}
+
+${C.recipeSection("devices", "en")}
+
+## Mainframe upgrades {#upgrades}
+
+${C.recipeSection("upgrades", "en")}
+`,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage
 
