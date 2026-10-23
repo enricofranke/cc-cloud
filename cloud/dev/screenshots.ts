@@ -5,7 +5,7 @@ import { chromium, type Page } from "playwright";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { createMockServer, REACTOR } from "./mock-server.ts";
+import { createMockServer, COMPUTER, REACTOR } from "./mock-server.ts";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const out = resolve(here, "../screenshots");
@@ -143,6 +143,15 @@ try {
   });
   await p.waitForTimeout(300);
   await shot(p, "phone-c1-computer-card");
+  await p.click(`.card[data-card="${COMPUTER}"] .card-scripts`);
+  await p.waitForSelector(".scripts-comp b");
+  await p.click('.scripts .nd-tab:has-text("Examples")');
+  await p.waitForSelector(".ex-card");
+  await shot(p, "phone-x1-scripts-examples");
+  await p.click('.ex-card:has-text("cloud-test.lua") button:has-text("Use this")');
+  await p.waitForTimeout(200);
+  await shot(p, "phone-x2-scripts-upload");
+  await p.keyboard.press("Escape");
   // shut it down: "Turn on" becomes the only active power button
   await p.click('.card:has(.rs) .pxbtn:has-text("Shut down")');
   await p.waitForSelector(".dialog");
@@ -475,6 +484,28 @@ try {
   await pairVia(d, mock.code(), "Desktop");
   await d.waitForTimeout(800);
   await shot(d, "desktop-01-dashboard");
+  // ---- script import: examples → upload & run (PIN, basic computer asks to restart) → files
+  await d.click(`.card[data-card="${COMPUTER}"] .card-scripts`);
+  await d.waitForSelector(".scripts .dropzone");
+  await d.waitForSelector(".scripts-comp b");
+  await shot(d, "desktop-x1-scripts-upload");
+  await d.click('.scripts .nd-tab:has-text("Examples")');
+  await d.waitForSelector(".ex-card");
+  await shot(d, "desktop-x2-scripts-examples");
+  await d.click('.ex-card:has-text("control-room.lua") button:has-text("Use this")');
+  await d.click('.scripts button[type="submit"]');
+  await d.waitForSelector(".pin-dialog");
+  await pinEnter(d, "1234");
+  await d.waitForSelector('.dialog:has-text("Restart the computer?")');
+  await shot(d, "desktop-x3-scripts-restart-ask");
+  await d.click('.dialog button:has-text("Restart & run")');
+  await d.waitForSelector(".scripts .form-ok");
+  await clearToasts(d);
+  await shot(d, "desktop-x4-scripts-uploaded");
+  await d.click('.scripts .nd-tab:has-text("Files")');
+  await d.waitForSelector(".file-row");
+  await shot(d, "desktop-x5-scripts-files");
+  await d.keyboard.press("Escape");
   await d.click('.toptabs .tab-network');
   await d.waitForSelector(".topo svg .tnode");
   await d.waitForTimeout(500);
@@ -709,5 +740,5 @@ try {
   await mock.close().catch(() => {});
 }
 
-const relevant = problems.filter((m) => !/ERR_CONNECTION_REFUSED|WebSocket connection|status of 40[34]|status of 429/.test(m));
+const relevant = problems.filter((m) => !/ERR_CONNECTION_REFUSED|WebSocket connection|status of 40[349]|status of 429/.test(m));
 console.log(relevant.length ? `\nPage problems:\n${relevant.join("\n")}` : "\nNo page errors or CSP violations.");

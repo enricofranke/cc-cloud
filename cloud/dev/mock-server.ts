@@ -14,6 +14,7 @@ import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, createShare, deviceTy
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
+import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
 type Level = "info" | "warn" | "crit";
@@ -107,6 +108,8 @@ interface Mainframe {
   onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string };
   onQuery?: (uplinkId: string, id: string, q: string) => { rows: object[]; truncated: boolean } | undefined;
   tick?: () => void;
+  /** script import: one file system per uplink that sits on a computer */
+  computers?: Map<string, ComputerFs>;
 }
 
 export interface MockOptions {
@@ -568,6 +571,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       uplinkId: ME,
       title: "ME Network",
       online: true,
+      mode: "direct", // a bridge's ready-made card: no computer behind it
       widgets: [
         ...statWidgets(),
         { id: "search", type: "item_search", label: "Search network", opts: { max: 4096 } },
@@ -1063,6 +1067,41 @@ export async function createMockServer(opts: MockOptions = {}) {
     return JSON.parse(Buffer.concat(chunks).toString("utf8") || "null");
   }
   const terrainCalls = new WeakMap<object, number>();
+  const fsWrites = new WeakMap<object, number[]>();
+  /** script import: which uplinks sit on a computer (bridges have none) */
+  const computerFor = (m: Mainframe, uplinkId: string) => {
+    m.computers ??= new Map();
+    let fs = m.computers.get(uplinkId);
+    if (fs) return fs;
+    const u = m.uplinks.get(uplinkId);
+    if (!u || uplinkId === ME || !u.online) return undefined;
+    const known: Record<string, [number, string, boolean]> = {
+      [CONTROL]: [0, "Base", true],
+      [REACTOR]: [3, "Reactor", true],
+      [STORAGE]: [12, "Storage", true],
+      [COMPUTER]: [7, "Computer #7", false],
+    };
+    const [id, label, advanced] = known[uplinkId] ?? [20 + m.computers.size, u.title || "Computer", true];
+    fs = new ComputerFs({ id, label, on: true, advanced });
+    if (uplinkId === CONTROL) {
+      fs.files.set("control-room.lua", Buffer.from('local ui = require("cloud.ui")\nlocal dash = ui.connect()\ndash:title("Kontrollraum")\ndash:run()\n'));
+      fs.files.set("startup.lua", Buffer.from('shell.run("control-room.lua")\n'));
+      fs.files.set("lib/util.lua", Buffer.from("return {}\n"));
+    }
+    if (uplinkId === REACTOR) fs.files.set("reactor.lua", Buffer.from("-- reactor control\n"));
+    m.computers.set(uplinkId, fs);
+    return fs;
+  };
+  async function rawBody(req: IncomingMessage, max: number): Promise<Buffer | null> {
+    const chunks: Buffer[] = [];
+    let n = 0;
+    for await (const ch of req) {
+      n += (ch as Buffer).length;
+      if (n > max) return null;
+      chunks.push(ch as Buffer);
+    }
+    return Buffer.concat(chunks);
+  }
   const terrainRateMs = opts.terrainRateMs ?? 5000;
   const bearer = (req: IncomingMessage) => {
     const m = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? "");
@@ -1197,6 +1236,33 @@ export async function createMockServer(opts: MockOptions = {}) {
           }
         });
       return json(res, 200, { ok: true });
+    }
+    // ---- script import (admin; PIN for writes; docs/SPEC.md "Script import – HTTP API")
+    const fm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/computers\/([A-Za-z0-9-]{1,64})\/(files(?:\/.*)?|run)$/.exec(p);
+    if (fm) {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const m = mainframes.get(fm[1]);
+      const role = m ? roleFor(t, m) : undefined;
+      if (!m || !role) return json(res, 403, { error: "no_access" });
+      if (rank(role) < 3) return json(res, 403, { error: "not_allowed" });
+      if (!m.online) return json(res, 409, { error: "offline" });
+      const fs = computerFor(m, fm[2]);
+      if (!fs) return json(res, 404, { error: "unknown_computer" });
+      const body = req.method === "PUT" || req.method === "POST" ? await rawBody(req, MAX_FILE) : null;
+      if ((req.method === "PUT" || req.method === "POST") && !body) return json(res, 413, { error: "too_large" });
+      if (!fsWrites.has(t)) fsWrites.set(t, []);
+      const r = handleFs(fs, req.method ?? "GET", fm[3], url.searchParams, req.headers, body, { pin, device: t, pinLockMs, log: (x) => log(`${t.name}: ${x}`) }, fsWrites.get(t)!);
+      if (r.raw !== undefined) {
+        res.writeHead(r.status, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
+        return void res.end(r.raw);
+      }
+      if (r.status === 200 && fm[3] !== "files" && req.method !== "GET") {
+        const file = (r.body as { path?: string }).path ?? decodeURIComponent(fm[3].replace(/^files\//, ""));
+        // like the mod's chat note to the owner
+        alert(m, fm[2], fm[3] === "run" ? `${t.name} started a script on ${fs.info.label}` : `${t.name} ${req.method === "PUT" ? "uploaded" : "deleted"} ${file} on ${fs.info.label}`, "info");
+      }
+      return json(res, r.status, r.body);
     }
     // ---- v0.7 coarse terrain for the 3D view (operator+, rate-limited per token)
     const tm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/terrain$/.exec(p);
