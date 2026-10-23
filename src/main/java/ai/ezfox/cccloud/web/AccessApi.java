@@ -417,8 +417,7 @@ public final class AccessApi {
                     : Set.of("op", "player", "role", "allow", "deny"))) return error(400, "invalid");
                 var custom = overrides(obj);
                 if (custom == null) return error(400, "invalid");
-                // Nobody grants permissions they do not have themselves (moderators excepted).
-                if (!moderator && !callerPerms.containsAll(custom.allow())) return error(403, "not_allowed");
+                var caller = new ai.ezfox.cccloud.access.AccessRules.Caller(yourRole, callerPerms, moderator);
                 String playerArg = string(obj, "player");
                 if (playerArg == null || playerArg.isEmpty() || playerArg.length() > 36) return error(400, "invalid");
                 Role role = Role.NONE;
@@ -429,7 +428,8 @@ public final class AccessApi {
                     var access = store.access(mainframeId);
                     var grant = access == null ? null : access.grants().get(target.uuid());
                     if (grant == null) return error(400, "invalid");
-                    if (!moderator && grant.role().rank >= yourRole.rank) return error(403, "not_allowed");
+                    if (ai.ezfox.cccloud.access.AccessRules.changeGrant(caller, grant.role(), false, target.uuid().equals(device.player()), grant.role(),
+                        custom.allow()) != null) return error(403, "not_allowed");
                     store.setOverrides(mainframeId, target.uuid(), custom);
                     store.audit(mainframeId, who + " changed the permissions of " + target.name());
                     hooks.accessChanged(mainframeId);
@@ -445,7 +445,8 @@ public final class AccessApi {
                 var access = store.access(mainframeId);
                 if (access != null && target.uuid().equals(access.owner())) return error(400, "invalid");
                 var currentGrant = access == null ? null : access.grants().get(target.uuid());
-                if (!moderator && ((currentGrant != null && currentGrant.role().rank >= yourRole.rank) || role.rank > yourRole.rank)) {
+                if (ai.ezfox.cccloud.access.AccessRules.changeGrant(caller, currentGrant == null ? Role.NONE : currentGrant.role(), false,
+                    target.uuid().equals(device.player()), role, custom.allow()) != null) {
                     return error(403, "not_allowed");
                 }
                 if (op.equals("remove") && currentGrant == null) return new Response(200, accessDoc(mainframeId, device, yourRole));
@@ -458,6 +459,11 @@ public final class AccessApi {
                 if (!onlyKeys(obj, Set.of("op", "provider", "teamId"))) return error(400, "invalid");
                 var teamIdElement = obj.get("teamId");
                 if (teamIdElement == null) return error(400, "invalid");
+                // Replacing or removing a team takes access away from its members: only from roles below the caller.
+                var existing = store.access(mainframeId);
+                if (!moderator && existing != null && existing.team() != null) {
+                    for (var mapped : existing.team().mapping().values()) if (mapped.rank >= yourRole.rank) return error(403, "not_allowed");
+                }
                 if (teamIdElement.isJsonNull()) {
                     store.setTeam(mainframeId, null);
                     store.audit(mainframeId, who + " removed the team assignment");
@@ -471,6 +477,9 @@ public final class AccessApi {
                     // Only teams the caller belongs to, also for owners (server moderators: any team).
                     boolean serverModerator = resolver.permissions().has(device.player(), ServerPermissions.Node.ADMIN_MANAGE);
                     if (!serverModerator && provider.rankOf(teamId, device.player()) == null) return error(403, "not_allowed");
+                    // The team's default mapping counts as granted: never more than the caller holds.
+                    if (ai.ezfox.cccloud.access.AccessRules.bindTeam(new ai.ezfox.cccloud.access.AccessRules.Caller(yourRole, callerPerms, moderator),
+                        defaultMapping(provider)) != null) return error(403, "not_allowed");
                     store.setTeam(mainframeId, new MainframeAccess.TeamBinding(providerId, teamId, defaultMapping(provider)));
                     store.audit(mainframeId, who + " assigned the team " + team.name() + " (" + providerId + ")");
                 }
@@ -479,12 +488,12 @@ public final class AccessApi {
                 if (!onlyKeys(obj, Set.of("op", "rank", "role", "allow", "deny"))) return error(400, "invalid");
                 var custom = overrides(obj);
                 if (custom == null) return error(400, "invalid");
-                if (!moderator && !callerPerms.containsAll(custom.allow())) return error(403, "not_allowed");
                 String rank = string(obj, "rank");
                 String roleArg = string(obj, "role");
                 Role role = roleArg == null ? null : Role.parse(roleArg);
                 if (rank == null || role == null || role == Role.OWNER) return error(400, "invalid");
-                if (!moderator && role.rank > yourRole.rank) return error(403, "not_allowed");
+                if (ai.ezfox.cccloud.access.AccessRules.changeMapping(new ai.ezfox.cccloud.access.AccessRules.Caller(yourRole, callerPerms, moderator),
+                    role, custom.allow()) != null) return error(403, "not_allowed");
                 if (!store.setMapping(mainframeId, rank, role)) return error(400, "invalid");
                 if (obj.has("allow") || obj.has("deny")) store.setRankOverrides(mainframeId, rank, custom);
                 store.audit(mainframeId, who + " mapped the team rank " + rank + " to " + role.id);

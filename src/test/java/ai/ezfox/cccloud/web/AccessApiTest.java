@@ -236,6 +236,26 @@ class AccessApiTest {
             "a moved out; c points at a missing card and stays home");
     }
 
+    @Test
+    void securityReviewEscalationsAreRefused() {
+        // H1 on the web path: a viewer with a custom access.manage cannot make anyone (or themselves) more than a viewer
+        store.setOverrides(mf, viewer, new ai.ezfox.cccloud.access.MainframeAccess.Overrides(Set.of(ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE), Set.of()));
+        var vic = account(viewer, "Vic");
+        assertEquals(403, api.handle(Router.Id.ACCESS_POST, List.of(vic), accessPath(mf), "{\"op\":\"set_role\",\"player\":\"Vic\",\"role\":\"admin\"}").status());
+        assertEquals(403, api.handle(Router.Id.ACCESS_POST, List.of(vic), accessPath(mf), "{\"op\":\"set_role\",\"player\":\"Fred\",\"role\":\"operator\"}").status());
+        assertEquals(200, api.handle(Router.Id.ACCESS_POST, List.of(vic), accessPath(mf), "{\"op\":\"set_role\",\"player\":\"Fred\",\"role\":\"viewer\"}").status());
+        // M1: an admin with terminal/scripts denied gets nothing back through a team or a rank mapping
+        store.setOverrides(mf, admin, new ai.ezfox.cccloud.access.MainframeAccess.Overrides(Set.of(),
+            Set.of(ai.ezfox.cccloud.access.Perm.TERMINAL, ai.ezfox.cccloud.access.Perm.SCRIPTS_UPLOAD)));
+        teams.put("party", admin, "owner");
+        var ada = account(admin, "Ada");
+        assertEquals(403, api.handle(Router.Id.ACCESS_POST, List.of(ada), accessPath(mf), "{\"op\":\"set_team\",\"provider\":\"fake\",\"teamId\":\"party\"}").status(),
+            "the team's default mapping would grant the full admin preset");
+        assertEquals(403, api.handle(Router.Id.ACCESS_POST, List.of(ada), accessPath(mf), "{\"op\":\"set_mapping\",\"rank\":\"owner\",\"role\":\"admin\"}").status());
+        assertEquals(403, api.handle(Router.Id.ACCESS_POST, List.of(ada), accessPath(mf), "{\"op\":\"set_role\",\"player\":\"Fred\",\"role\":\"admin\"}").status());
+        assertFalse(resolver.resolve(admin, mf).perms().contains(ai.ezfox.cccloud.access.Perm.TERMINAL));
+    }
+
     private static JsonObject widget(String id, String type, @Nullable String page) {
         var w = new JsonObject();
         w.addProperty("id", id);

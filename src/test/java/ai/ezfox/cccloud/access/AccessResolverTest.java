@@ -151,4 +151,24 @@ class AccessResolverTest {
         assertFalse(Role.VIEWER.canControl());
         assertNull(Role.parse("share"), "share is never parsed from input");
     }
+
+    @org.junit.jupiter.api.Test
+    void aDenyOnAnySourceWins() {
+        var store = new AccessStore(System::currentTimeMillis, () -> { });
+        var teams = new FakeTeams();
+        var perms = new FakePermissions();
+        var resolver = new AccessResolver(store, perms, id -> id.equals("fake") ? teams : null);
+        var mf = java.util.UUID.randomUUID();
+        var owner = java.util.UUID.randomUUID();
+        var ada = java.util.UUID.randomUUID();
+        store.setOwner(mf, owner, "Owner");
+        store.setRole(mf, ada, "Ada", Role.ADMIN);
+        store.setOverrides(mf, ada, new MainframeAccess.Overrides(java.util.Set.of(), java.util.Set.of(Perm.TERMINAL, Perm.SCRIPTS_UPLOAD)));
+        teams.put("party", ada, "owner");
+        store.setTeam(mf, new MainframeAccess.TeamBinding("fake", "party", java.util.Map.of("owner", Role.ADMIN)));
+        var r = resolver.resolve(ada, mf);
+        org.junit.jupiter.api.Assertions.assertFalse(r.perms().contains(Perm.TERMINAL), "the team's admin role does not bring back a direct deny");
+        org.junit.jupiter.api.Assertions.assertFalse(r.perms().contains(Perm.SCRIPTS_UPLOAD));
+        org.junit.jupiter.api.Assertions.assertTrue(r.perms().contains(Perm.ACCESS_MANAGE));
+    }
 }

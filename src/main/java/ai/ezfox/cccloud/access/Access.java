@@ -44,6 +44,12 @@ public final class Access {
         return resolve(player, mainframeId).role();
     }
 
+    /** The caller for {@link AccessRules}: role, permissions and moderation (owner or {@code cccloud.admin.manage}). */
+    public static AccessRules.Caller caller(ServerPlayer player, UUID mainframeId) {
+        var r = resolve(player, mainframeId);
+        return new AccessRules.Caller(r.role(), r.perms(), r.role() == Role.OWNER || has(player, ServerPermissions.Node.ADMIN_MANAGE));
+    }
+
     /** Manage the mainframe's access (roles) – what "admin" meant before fine-grained permissions. */
     public static boolean canManage(ServerPlayer player, UUID mainframeId) {
         return has(player, mainframeId, Perm.ACCESS_MANAGE);

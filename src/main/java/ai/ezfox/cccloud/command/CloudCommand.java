@@ -269,13 +269,12 @@ public final class CloudCommand {
         var role = ai.ezfox.cccloud.access.Role.parse(StringArgumentType.getString(c, "role"));
         if (role == null || role == ai.ezfox.cccloud.access.Role.OWNER) throw BAD_ROLE.create();
         var caller = c.getSource().getPlayerOrException();
-        var callerRole = ai.ezfox.cccloud.access.Access.role(caller, mainframe.getMainframeId());
-        boolean moderator = callerRole == ai.ezfox.cccloud.access.Role.OWNER
-            || ai.ezfox.cccloud.access.Access.has(caller, ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_MANAGE);
+        var rules = ai.ezfox.cccloud.access.Access.caller(caller, mainframe.getMainframeId());
         int changed = 0;
         for (var profile : GameProfileArgument.getGameProfiles(c, "player")) {
             var current = mainframe.getGrants().get(profile.id());
-            if (!moderator && ((current != null && current.role().rank >= callerRole.rank) || role.rank > callerRole.rank)) throw NOT_OWNER.create();
+            if (ai.ezfox.cccloud.access.AccessRules.changeGrant(rules, current == null ? ai.ezfox.cccloud.access.Role.NONE : current.role(),
+                profile.id().equals(mainframe.getOwner()), profile.id().equals(caller.getUUID()), role, java.util.Set.of()) != null) throw NOT_OWNER.create();
             if (mainframe.setRole(profile, role)) {
                 changed++;
                 ai.ezfox.cccloud.web.WebAuthData.access(c.getSource().getServer()).audit(mainframe.getMainframeId(),
@@ -405,9 +404,16 @@ public final class CloudCommand {
     private static int trust(CommandContext<CommandSourceStack> c, boolean trust) throws CommandSyntaxException {
         var mainframe = target(c.getSource(), ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE);
         var profiles = GameProfileArgument.getGameProfiles(c, "player");
+        var caller = c.getSource().getPlayerOrException();
+        var rules = ai.ezfox.cccloud.access.Access.caller(caller, mainframe.getMainframeId());
+        var newRole = trust ? ai.ezfox.cccloud.access.AccessRules.trustRole(rules, ai.ezfox.cccloud.access.Role.ADMIN) : ai.ezfox.cccloud.access.Role.NONE;
         int changed = 0;
         for (var profile : profiles) {
-            boolean ok = trust ? mainframe.trust(profile) : mainframe.untrust(profile.id());
+            var current = mainframe.getGrants().get(profile.id());
+            // the same rank rule as the web and the screen: never above the caller's role, only players below them
+            if (ai.ezfox.cccloud.access.AccessRules.changeGrant(rules, current == null ? ai.ezfox.cccloud.access.Role.NONE : current.role(),
+                profile.id().equals(mainframe.getOwner()), profile.id().equals(caller.getUUID()), newRole, java.util.Set.of()) != null) throw NOT_OWNER.create();
+            boolean ok = trust ? mainframe.trust(profile, newRole) : mainframe.untrust(profile.id());
             if (ok) {
                 changed++;
                 CCCloud.LOGGER.info("[cccloud] {} {} {} on {}", c.getSource().getTextName(), trust ? "trusted" : "untrusted", profile.name(), mainframe.getDisplayName());

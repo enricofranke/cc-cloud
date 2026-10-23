@@ -437,8 +437,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     }
 
     /** v0.3 "trust" = admin. */
-    public boolean trust(NameAndId player) {
-        return setRole(player, ai.ezfox.cccloud.access.Role.ADMIN);
+    /** Adds a player with the given role (the caller's rank was checked with {@link ai.ezfox.cccloud.access.AccessRules}); false if unchanged. */
+    public boolean trust(NameAndId player, ai.ezfox.cccloud.access.Role role) {
+        var grant = getGrants().get(player.id());
+        if (grant != null) return false; // already has a role: change it with /cccloud role
+        return setRole(player, role);
     }
 
     public boolean untrust(UUID player) {

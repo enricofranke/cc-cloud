@@ -228,6 +228,11 @@ public final class GuiNetwork {
         @Override public @Nullable String clearPin() { return "no_screen"; }
     };
 
+    /** GameTests: the screen operations of a player on a mainframe (the same object a screen action uses). */
+    public static GuiActions.MainframeOps opsForTest(ServerPlayer player, CloudMainframeBlockEntity mainframe) {
+        return new Ops(player, mainframe);
+    }
+
     /** The real mainframe operations (server thread, rights already checked). */
     private static final class Ops implements GuiActions.MainframeOps {
         private final ServerPlayer player;
@@ -325,12 +330,16 @@ public final class GuiNetwork {
             return null;
         }
 
-        /** Adds a player as operator (the role can be changed in the list). */
+        /** Adds a player as operator, never above the caller's own role (the role can be changed in the list). */
         @Nullable String applyTrust(NameAndId profile) {
             if (profile.id().equals(mainframe.getOwner()) || mainframe.getGrants().containsKey(profile.id())) return "already_trusted";
-            if (!mainframe.setRole(profile, ai.ezfox.cccloud.access.Role.OPERATOR)) return "already_trusted";
-            CCCloud.LOGGER.info("[cccloud] {} added {} as operator on {} (screen)", who(), profile.name(), mainframe.getDisplayName());
-            WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " added " + profile.name() + " as operator");
+            var caller = ai.ezfox.cccloud.access.Access.caller(player, mainframe.getMainframeId());
+            var role = ai.ezfox.cccloud.access.AccessRules.trustRole(caller, ai.ezfox.cccloud.access.Role.OPERATOR);
+            if (ai.ezfox.cccloud.access.AccessRules.changeGrant(caller, ai.ezfox.cccloud.access.Role.NONE, false, profile.id().equals(player.getUUID()), role,
+                java.util.Set.of()) != null) return "no_permission";
+            if (!mainframe.setRole(profile, role)) return "already_trusted";
+            CCCloud.LOGGER.info("[cccloud] {} added {} as {} on {} (screen)", who(), profile.name(), role.id, mainframe.getDisplayName());
+            WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " added " + profile.name() + " as " + role.id);
             notice = "trusted";
             return null;
         }
@@ -338,6 +347,8 @@ public final class GuiNetwork {
         @Override
         public @Nullable String untrust(UUID target) {
             var grant = mainframe.getGrants().get(target);
+            if (grant != null && ai.ezfox.cccloud.access.AccessRules.changeGrant(ai.ezfox.cccloud.access.Access.caller(player, mainframe.getMainframeId()),
+                grant.role(), false, target.equals(player.getUUID()), ai.ezfox.cccloud.access.Role.NONE, java.util.Set.of()) != null) return "no_permission";
             if (!mainframe.untrust(target)) return "not_trusted";
             CCCloud.LOGGER.info("[cccloud] {} removed the role of {} on {} (screen)", who(), grant != null ? grant.name() : target, mainframe.getDisplayName());
             WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " removed " + (grant != null ? grant.name() : target.toString()));
@@ -349,6 +360,8 @@ public final class GuiNetwork {
         public @Nullable String setRole(UUID target, ai.ezfox.cccloud.access.Role role) {
             var grant = mainframe.getGrants().get(target);
             if (grant == null) return "not_trusted"; // the screen only edits existing grants; add players by name
+            if (ai.ezfox.cccloud.access.AccessRules.changeGrant(ai.ezfox.cccloud.access.Access.caller(player, mainframe.getMainframeId()), grant.role(), false,
+                target.equals(player.getUUID()), role, java.util.Set.of()) != null) return "no_permission";
             if (!mainframe.setRole(new NameAndId(target, grant.name()), role)) return null;
             CCCloud.LOGGER.info("[cccloud] {} set the role of {} on {} to {} (screen)", who(), grant.name(), mainframe.getDisplayName(), role.id);
             WebAuthData.access(server).audit(mainframe.getMainframeId(), who() + " set " + grant.name() + " to " + role.id);

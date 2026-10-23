@@ -90,11 +90,15 @@ public final class AccessResolver {
         if (access != null && player.equals(access.owner())) return withFeatures(player, new Resolution(Role.OWNER, Source.OWNER, null, Perm.all()));
         var best = Resolution.NONE;
         var perms = EnumSet.noneOf(Perm.class);
+        // A deny on any source (the player's own grant or their team rank) removes the permission from the result, so a
+        // team role cannot bring back what the owner denied directly.
+        var denied = EnumSet.noneOf(Perm.class);
         if (access != null) {
             var grant = access.grants().get(player);
             if (grant != null) {
                 best = higher(best, new Resolution(grant.role(), Source.DIRECT, null));
                 perms.addAll(Perm.effective(grant.role(), grant.overrides().allow(), grant.overrides().deny()));
+                denied.addAll(grant.overrides().deny());
             }
             var team = effectiveTeam(access);
             if (team != null) {
@@ -106,9 +110,11 @@ public final class AccessResolver {
                     best = higher(best, new Resolution(mapped, Source.TEAM, rank));
                     var o = team.overridesFor(rank);
                     perms.addAll(Perm.effective(mapped, o.allow(), o.deny()));
+                    denied.addAll(o.deny());
                 }
             }
         }
+        perms.removeAll(denied);
         // Server admins (moderation), visible in the owner's audit log.
         Role admin = permissions.has(player, ServerPermissions.Node.ADMIN_MANAGE) ? Role.ADMIN
             : permissions.has(player, ServerPermissions.Node.ADMIN_OPERATE) ? Role.OPERATOR
@@ -135,12 +141,12 @@ public final class AccessResolver {
     public Resolution resolveDevice(AuthStore.Device device, UUID mainframeId) {
         if (device.mainframeId() != null && !device.mainframeId().equals(mainframeId)) return Resolution.NONE;
         var r = resolve(device.player(), mainframeId);
-        if (!device.canControl() && r.role().rank > Role.VIEWER.rank) {
-            // Read-only devices: at most the viewer preset.
+        if (!device.canControl() && (r.role().rank > Role.VIEWER.rank || !Perm.preset(Role.VIEWER).containsAll(r.perms()))) {
+            // Read-only devices: at most the viewer preset (also for viewers with extra allows).
             var perms = EnumSet.noneOf(Perm.class);
             perms.addAll(r.perms());
             perms.retainAll(Perm.preset(Role.VIEWER));
-            return new Resolution(Role.VIEWER, r.source(), r.teamRank(), perms);
+            return new Resolution(r.role().rank > Role.VIEWER.rank ? Role.VIEWER : r.role(), r.source(), r.teamRank(), perms);
         }
         return r;
     }

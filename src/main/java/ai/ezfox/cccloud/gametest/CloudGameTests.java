@@ -82,7 +82,7 @@ public final class CloudGameTests {
         helper.assertTrue(owner.getUUID().equals(mainframe.getOwner()), "Placer must be the owner");
         helper.assertTrue(mainframe.canManage(owner), "Owner can manage");
         helper.assertTrue(!mainframe.canManage(stranger), "Stranger must not manage");
-        mainframe.trust(new NameAndId(stranger.getUUID(), "stranger"));
+        mainframe.trust(new NameAndId(stranger.getUUID(), "stranger"), ai.ezfox.cccloud.access.Role.ADMIN);
         helper.assertTrue(mainframe.canManage(stranger), "Trusted player can manage");
         mainframe.untrust(stranger.getUUID());
         helper.assertTrue(!mainframe.canManage(stranger), "Untrusted player must not manage");

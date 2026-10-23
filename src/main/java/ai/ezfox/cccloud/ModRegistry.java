@@ -175,6 +175,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("rules_widget_redstone", () -> ai.ezfox.cccloud.gametest.RuleTests::widgetThresholdSetsRedstone);
         TEST_FUNCTIONS.register("terminal_type_and_see", () -> ai.ezfox.cccloud.gametest.TerminalTests::typeAndSee);
         TEST_FUNCTIONS.register("history_widget_series", () -> ai.ezfox.cccloud.gametest.HistoryTests::widgetSeries);
+        TEST_FUNCTIONS.register("security_no_escalation", () -> ai.ezfox.cccloud.gametest.SecurityTests::noEscalationInGame);
         TEST_FUNCTIONS.register("section_cache", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::unloadAndReload);
         TEST_FUNCTIONS.register("map_tiles", () -> ai.ezfox.cccloud.gametest.MapTileTests::tiles);
         TEST_FUNCTIONS.register("voxel_exposed", () -> ai.ezfox.cccloud.gametest.VoxelTests::exposedOnly);

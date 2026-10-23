@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:ingame",
+  "function": "cccloud:security_no_escalation",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}
