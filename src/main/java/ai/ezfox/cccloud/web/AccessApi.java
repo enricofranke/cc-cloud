@@ -576,7 +576,7 @@ public final class AccessApi {
         boolean hideNumbers = hide != null && hide.getAsBoolean();
         String invalid = store.validateShare(mainframeId, label, expiresIn, maxViewers, pages, cards);
         if (invalid != null) return error(400, invalid);
-        var created = store.createShare(mainframeId, label, device.playerName(), expiresIn, maxViewers, pages, cards, hideNumbers);
+        var created = store.createShare(mainframeId, label, device.playerName(), device.player(), expiresIn, maxViewers, pages, cards, hideNumbers);
         store.audit(mainframeId, device.playerName() + " created the share link '" + label + "'");
         hooks.log(device.playerName() + " created share link " + created.share().id() + " for " + mainframeId);
         var json = new JsonObject();

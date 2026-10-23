@@ -248,6 +248,10 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             }
         }
         var granted = check.share();
+        if (!instance.bridge.shareCreatorAllowed(granted)) {
+            deny("share_revoked", 4401);
+            return;
+        }
         share = granted;
         mainframeId = granted.mainframeId();
         role = Role.SHARE;

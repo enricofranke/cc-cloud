@@ -112,6 +112,23 @@ class ShareSessionTest {
     }
 
     @Test
+    void sharesStopWhenTheCreatorLosesTheRight() {
+        publish();
+        var share = access.createShare(mainframe, "Base", "Alex", java.util.UUID.randomUUID(), 3600L, 2, List.of("main"), List.of(), false);
+        var ok = connect(authShare(share.share().id(), share.secret()));
+        assertEquals("snapshot", drain(ok, null).getFirst().get("t").getAsString());
+        bridge.shareCreatorAllowed = false;
+        int[] close = {-1};
+        var denied = drain(connect(authShare(share.share().id(), share.secret())), close);
+        assertEquals("share_revoked", denied.getFirst().get("error").getAsString(), "new logins are refused");
+        CloudWebServer.recheckForTest(instance, mainframe);
+        close[0] = -1;
+        var closed = drain(ok, close);
+        assertEquals("share_revoked", closed.getFirst().get("error").getAsString(), "open viewers are closed");
+        bridge.shareCreatorAllowed = true;
+    }
+
+    @Test
     void snapshotIsFiltered() {
         publish();
         var share = access.createShare(mainframe, "Base", "Alex", null, 5, List.of("main"), List.of(), true);

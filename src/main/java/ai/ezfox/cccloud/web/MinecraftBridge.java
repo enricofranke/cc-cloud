@@ -140,6 +140,11 @@ public final class MinecraftBridge implements GameBridge {
         else ai.ezfox.cccloud.terminal.TerminalService.close(mainframeId, uplinkId, viewer);
     }
 
+    @Override
+    public boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
+        return share.creator() == null || resolver().resolve(share.creator(), share.mainframeId()).has(ai.ezfox.cccloud.access.Perm.SHARES_CREATE);
+    }
+
     /** v0.5 D: push "approval needed" (server thread). */
     private void pushApproval(UUID mainframeId, String deviceName) {
         if (server.isSameThread()) ai.ezfox.cccloud.push.PushService.approvalPending(mainframeId, deviceName);

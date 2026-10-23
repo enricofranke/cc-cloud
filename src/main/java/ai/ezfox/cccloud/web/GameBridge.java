@@ -116,4 +116,9 @@ public interface GameBridge {
 
     default void terminalClose(UUID mainframeId, @Nullable UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
     }
+
+    /** Security review L3: a share link works only while its creator may still create shares (null creator: older links). */
+    default boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
+        return true;
+    }
 }

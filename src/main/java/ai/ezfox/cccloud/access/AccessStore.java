@@ -39,11 +39,17 @@ public final class AccessStore {
      *
      * @param expires ms since the epoch, 0 = never
      */
+    /** @param creator the player who created it (null for shares from before L3); it stops working when they lose shares.create */
     public record Share(String id, UUID mainframeId, String secretHash, String label, String createdBy, long created, long expires,
-                        int maxViewers, List<String> pages, List<String> cards, boolean hideNumbers) {
+                        int maxViewers, List<String> pages, List<String> cards, boolean hideNumbers, @Nullable UUID creator) {
         public Share {
             pages = List.copyOf(pages);
             cards = List.copyOf(cards);
+        }
+
+        public Share(String id, UUID mainframeId, String secretHash, String label, String createdBy, long created, long expires,
+                     int maxViewers, List<String> pages, List<String> cards, boolean hideNumbers) {
+            this(id, mainframeId, secretHash, label, createdBy, created, expires, maxViewers, pages, cards, hideNumbers, null);
         }
     }
 
@@ -222,6 +228,11 @@ public final class AccessStore {
      */
     public synchronized NewShare createShare(UUID mainframeId, String label, String createdBy, @Nullable Long expiresIn, int maxViewers,
                                              List<String> pages, List<String> cards, boolean hideNumbers) {
+        return createShare(mainframeId, label, createdBy, null, expiresIn, maxViewers, pages, cards, hideNumbers);
+    }
+
+    public synchronized NewShare createShare(UUID mainframeId, String label, String createdBy, @Nullable UUID creator, @Nullable Long expiresIn,
+                                             int maxViewers, List<String> pages, List<String> cards, boolean hideNumbers) {
         byte[] raw = new byte[16]; // 128 bit
         random.nextBytes(raw);
         String secret = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
@@ -233,7 +244,7 @@ public final class AccessStore {
         } while (shares.containsKey(id));
         long now = clock.getAsLong();
         var share = new Share(id, mainframeId, hash(secret), label, createdBy, now, expiresIn == null ? 0 : now + expiresIn * 1000, maxViewers,
-            pages, cards, hideNumbers);
+            pages, cards, hideNumbers, creator);
         shares.put(id, share);
         onChange.run();
         return new NewShare(share, secret);

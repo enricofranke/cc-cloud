@@ -114,8 +114,10 @@ public final class WebAuthData extends SavedData {
         Codec.INT.optionalFieldOf("max_viewers", 5).forGetter(AccessStore.Share::maxViewers),
         Codec.STRING.listOf().optionalFieldOf("pages", List.of()).forGetter(AccessStore.Share::pages),
         Codec.STRING.listOf().optionalFieldOf("cards", List.of()).forGetter(AccessStore.Share::cards),
-        Codec.BOOL.optionalFieldOf("hide_numbers", false).forGetter(AccessStore.Share::hideNumbers)
-    ).apply(i, AccessStore.Share::new));
+        Codec.BOOL.optionalFieldOf("hide_numbers", false).forGetter(AccessStore.Share::hideNumbers),
+        UUIDUtil.STRING_CODEC.optionalFieldOf("creator").forGetter(s -> java.util.Optional.ofNullable(s.creator()))
+    ).apply(i, (id, mf, hash, label, by, created, expires, max, pages, cards, hide, creator) ->
+        new AccessStore.Share(id, mf, hash, label, by, created, expires, max, pages, cards, hide, creator.orElse(null))));
 
     private static final Codec<AccessStore.AuditEntry> AUDIT_CODEC = RecordCodecBuilder.create(i -> i.group(
         Codec.LONG.fieldOf("time").forGetter(AccessStore.AuditEntry::time),

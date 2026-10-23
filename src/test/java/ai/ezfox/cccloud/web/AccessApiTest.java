@@ -234,6 +234,12 @@ class AccessApiTest {
         var home = ShareFilter.uplink(uplink, ShareFilter.scope(List.of(uplink), layout, byKey), false);
         assertEquals(List.of("b", "c"), home.getAsJsonArray("widgets").asList().stream().map(w -> w.getAsJsonObject().get("id").getAsString()).toList(),
             "a moved out; c points at a missing card and stays home");
+        // L2: share viewers get only the shared parts of the layout
+        var shared = ShareFilter.layout(layout, List.of(uplink), ShareFilter.scope(List.of(uplink), layout, byPage));
+        assertEquals(Set.of("c:wall"), shared.getAsJsonObject("cards").keySet(), "only the shared card");
+        assertEquals(Set.of("u1/a"), shared.getAsJsonObject("widgets").keySet(), "only widgets in shared cards");
+        assertEquals(1, shared.getAsJsonArray("pages").size());
+        assertEquals("tv", shared.getAsJsonArray("pages").get(0).getAsJsonObject().get("id").getAsString(), "the page of the other cards stays private");
     }
 
     @Test

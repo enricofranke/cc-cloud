@@ -209,6 +209,9 @@ public final class CloudWebServer {
                 } else if (stored.expires() != 0 && stored.expires() <= System.currentTimeMillis()) {
                     session.send(List.of("{\"t\":\"error\",\"error\":\"share_expired\"}"));
                     session.close(4401, "share_expired");
+                } else if (!instance.bridge.shareCreatorAllowed(stored)) {
+                    session.send(List.of("{\"t\":\"error\",\"error\":\"share_revoked\"}"));
+                    session.close(4401, "share_revoked");
                 }
                 continue;
             }

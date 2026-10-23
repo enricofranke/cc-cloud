@@ -46,7 +46,11 @@ public final class ShareFilter {
      *
      * @param moved widget key ({@code <uplinkId>/<widgetId>}) → the card it sits in now
      */
-    public record Scope(Set<String> cards, Map<String, String> moved) {
+    public record Scope(Set<String> cards, Map<String, String> moved, Set<String> pages) {
+        public Scope(Set<String> cards, Map<String, String> moved) {
+            this(cards, moved, Set.of());
+        }
+
         public static Scope of(Set<String> cards) {
             return new Scope(cards, Map.of());
         }
@@ -60,7 +64,7 @@ public final class ShareFilter {
 
     public static Scope scope(Collection<JsonObject> uplinks, @Nullable JsonObject layout, AccessStore.Share share) {
         var cards = cardKeys(uplinks, layout, share);
-        if (layout == null || !(layout.get("widgets") instanceof JsonObject widgetPatches)) return Scope.of(cards);
+        if (layout == null || !(layout.get("widgets") instanceof JsonObject widgetPatches)) return new Scope(cards, Map.of(), Set.copyOf(share.pages()));
         var existing = new HashSet<String>();
         for (var uplink : uplinks) {
             String uplinkId = str(uplink.get("uplinkId"));
@@ -78,7 +82,7 @@ public final class ShareFilter {
             String card = entry.getValue() instanceof JsonObject patch ? str(patch.get("card")) : null;
             if (card != null && existing.contains(card)) moved.put(entry.getKey(), card);
         }
-        return new Scope(cards, moved);
+        return new Scope(cards, moved, Set.copyOf(share.pages()));
     }
 
     /** Every card key the share includes: its explicit cards plus all cards placed on its pages (custom cards too). */
@@ -144,6 +148,50 @@ public final class ShareFilter {
         return ids;
     }
 
+    /**
+     * The layout as a share viewer may see it (security review L2): only shared cards, the widgets in them and the pages
+     * those cards are on (titles of other cards and pages stay private).
+     */
+    public static @Nullable JsonObject layout(@Nullable JsonObject layout, Collection<JsonObject> uplinks, Scope scope) {
+        if (layout == null) return null;
+        var out = new JsonObject();
+        if (layout.has("v")) out.add("v", layout.get("v").deepCopy());
+        var cards = new JsonObject();
+        var usedPages = new HashSet<String>();
+        if (layout.get("cards") instanceof JsonObject c) {
+            for (var e : c.entrySet()) {
+                if (!scope.cards().contains(e.getKey())) continue;
+                cards.add(e.getKey(), e.getValue().deepCopy());
+                if (e.getValue() instanceof JsonObject patch && str(patch.get("page")) != null) usedPages.add(str(patch.get("page")));
+            }
+        }
+        // widget key → its card now (moved or home)
+        var homes = new HashMap<String, String>();
+        for (var uplink : uplinks) {
+            String uplinkId = str(uplink.get("uplinkId"));
+            if (uplinkId == null || !(uplink.get("widgets") instanceof JsonArray widgets)) continue;
+            for (var w : widgets) if (w instanceof JsonObject wo && str(wo.get("id")) != null) homes.put(uplinkId + "/" + str(wo.get("id")), scope.cardOf(uplinkId, wo));
+        }
+        var widgets = new JsonObject();
+        if (layout.get("widgets") instanceof JsonObject w) {
+            for (var e : w.entrySet()) {
+                String card = homes.get(e.getKey());
+                if (card != null && scope.cards().contains(card)) widgets.add(e.getKey(), e.getValue().deepCopy());
+            }
+        }
+        var pages = new JsonArray();
+        if (layout.get("pages") instanceof JsonArray p) {
+            for (var page : p) {
+                String id = page instanceof JsonObject po ? str(po.get("id")) : null;
+                if (id != null && (usedPages.contains(id) || scope.pages().contains(id))) pages.add(page.deepCopy());
+            }
+        }
+        out.add("pages", pages);
+        out.add("cards", cards);
+        out.add("widgets", widgets);
+        return out;
+    }
+
     public static boolean widgetVisible(String uplinkId, JsonObject widget, Scope scope, boolean hideNumbers) {
         String type = str(widget.get("type"));
         if (type == null || ALWAYS_HIDDEN.contains(type) || (hideNumbers && NUMBERS.contains(type))) return false;
@@ -191,7 +239,13 @@ public final class ShareFilter {
                 if (message.has("name")) state.add("name", message.get("name"));
                 return state;
             }
-            case "layout":
+            case "layout": {
+                var copy = new JsonObject();
+                copy.addProperty("t", "layout");
+                var layout = message.get("layout") instanceof JsonObject l ? layout(l, uplinks.values(), keys) : null;
+                copy.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout);
+                return copy;
+            }
             case "uplink_removed":
                 return message;
             case "uplink": {

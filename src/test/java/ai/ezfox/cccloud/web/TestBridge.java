@@ -142,4 +142,12 @@ class TestBridge implements GameBridge {
         dispatched.add("term_input");
         return null;
     }
+
+    /** Security review L3: the share creator's shares.create (tests switch it off). */
+    volatile boolean shareCreatorAllowed = true;
+
+    @Override
+    public boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
+        return shareCreatorAllowed;
+    }
 }

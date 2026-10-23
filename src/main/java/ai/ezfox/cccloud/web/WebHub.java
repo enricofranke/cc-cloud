@@ -681,7 +681,8 @@ public final class WebHub {
             if (filtered != null) uplinks.add(filtered);
         }
         json.add("uplinks", uplinks);
-        json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout.deepCopy());
+        var layout = ShareFilter.layout(view.layout, view.uplinks.values(), keys);
+        json.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout);
         return json;
     }
 
