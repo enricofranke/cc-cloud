@@ -33,11 +33,17 @@ public final class CloudJadePlugin implements IWailaPlugin {
     @Override
     public void register(IWailaCommonRegistration registration) {
         registration.registerBlockDataProvider(DataProvider.INSTANCE, CloudMainframeBlockEntity.class);
+        // Cloud Analyzer: signal, hops, route and reason on uplinks, relays and bridges.
+        // Uplinks, relays and the bridges (whose classes only exist with AE2/RS); the provider skips other mods' blocks.
+        registration.registerBlockDataProvider(NetworkJadeProvider.INSTANCE, net.minecraft.world.level.block.entity.BlockEntity.class);
     }
 
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(TooltipProvider.INSTANCE, CloudMainframeBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.block.CloudUplinkBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.relay.CloudRelayBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.bridge.CloudBridgeBlock.class);
         registration.addRayTraceCallback((hit, accessor, original) -> {
             if (!(accessor instanceof BlockAccessor block) || !(block.getBlock() instanceof CloudMainframeBlock)) return accessor;
             if (block.getBlockState().getValue(CloudMainframeBlock.HALF) != DoubleBlockHalf.UPPER) return accessor;

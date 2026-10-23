@@ -7,6 +7,7 @@ public final class CloudClientConfig {
     public static final ModConfigSpec SPEC;
     public static final ModConfigSpec.BooleanValue ANIMATIONS;
     public static final ModConfigSpec.BooleanValue SHARE_ICON_RENDERS;
+    public static final ModConfigSpec.BooleanValue ANALYZER_OVERLAY;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -16,6 +17,9 @@ public final class CloudClientConfig {
         SHARE_ICON_RENDERS = b.comment("Render item icons for the CC: Cloud dashboard in the background and send them to the server (≤ 2 ms per frame).")
             .translation("cccloud.configuration.shareIconRenders")
             .define("shareIconRenders", true);
+        ANALYZER_OVERLAY = b.comment("Show the network overlay (ranges, links, placement preview, signal line) while holding a Cloud Analyzer, Link Card or cloud device.")
+            .translation("cccloud.configuration.analyzerOverlay")
+            .define("analyzerOverlay", true);
         SPEC = b.build();
     }
 
@@ -24,6 +28,10 @@ public final class CloudClientConfig {
 
     public static boolean animations() {
         return SPEC.isLoaded() ? ANIMATIONS.get() : ANIMATIONS.getDefault();
+    }
+
+    public static boolean analyzerOverlay() {
+        return SPEC.isLoaded() ? ANALYZER_OVERLAY.get() : ANALYZER_OVERLAY.getDefault();
     }
 
     public static boolean shareIconRenders() {
