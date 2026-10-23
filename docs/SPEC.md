@@ -863,3 +863,17 @@ Roles stay as presets, but every grant can be customized with individual permiss
 - Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.
 - Server-level NeoForge permission nodes stay as an outer gate (e.g. a server can forbid `cccloud.scripts` entirely: new node `cccloud.feature.scripts`, default true).
 - Migration: existing roles → presets without overrides. Tests for every permission check site (a test walks all actions/routes and asserts which permission each one needs).
+
+## v0.8 – ATM11 compatibility wave 2 (planned 2026-10-23)
+Soft dependencies in `compat/<modid>`, same rules as v0.5 A/B (zero-code cards via direct mode, existing widget types, fail soft, GameTests where headless-feasible, `-PintegrationMods` keys). Ordered by value for ATM11 players:
+1. **Storage controllers as storage cards** (direct mode on the controller, same Storage card + search as the bridges where an item-handler aggregate exists): Functional Storage (storage controller / drawers), Sophisticated Storage (controller), Occultism (storage controller / dimensional storage actuator), DimStorage (chest/tank), Integrated Terminals/Tunnels networks if exposed.
+2. **Advanced AE** (quantum computer: CPU listing in the jobs/CPU panel), **ExtendedAE** extras where API exists, **AE2 Infinity Booster/Network Analyzer** awareness (none needed – skip if nothing to show).
+3. **Quarries & miners**: QuarryPlus, Additional Enchanted Miner – status, progress/area, energy, pause/resume (redstone or API), output fullness alert.
+4. **Spawners & mob farms**: Apothic Spawners (stats, redstone control toggle), Gateways to Eternity (active gate, wave), Easy Villagers (breeder/farm status – only if trivial).
+5. **Processing**: Iron Furnaces (smelting progress, fuel, upgrades), Cobblegen Galore (rate), Productive Metalworks / Silent Gear Metalworks (foundry state), Agritech Evolved & Productive Farming planters, Mystical Agriculture / Mystical Automation machines (progress, power), Railcraft Reborn boilers/steam (pressure, temperature, water).
+6. **Logistics**: Super Factory Manager (manager on/off, program name, last error), Modular Routers (router on/off via redstone mode), LaserIO / Pipez (nothing to show – skip), Logistics Networks (native CC – document only).
+7. **Integrated Dynamics**: a variable-display card – an uplink on a Display Panel or a variable store shows the evaluated values; optional: ID "proxy" reading.
+8. **World & progression**: **Waystones** – waystones of the owner's team on the network map (name, position, dimension; operator+), **FTB Quests** – team quest progress card (chapters done / total, recent completions), **JourneyMap** (client) – optional waypoints for our network nodes via the JourneyMap API (client config), **FTB Chunks** already done.
+9. **Guides**: an in-game handbook for CC: Cloud using **GuideMe** (AE2's guide system, ships with ATM11) or Patchouli/Modonomicon – content from `docs-content/`.
+10. **KubeJS** bindings for pack makers: events (`CCCloudEvents.action`, `.deviceLinked`, `.alert`) and a server-side API to publish a section with widgets from KubeJS scripts (no Lua needed), guarded by the same permissions.
+Each integration: a manifest entry in `docs/COMPAT.md` (mod, version tested, what the card shows, controls, tested yes/no).
