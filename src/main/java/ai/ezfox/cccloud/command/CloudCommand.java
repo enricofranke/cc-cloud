@@ -31,10 +31,11 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
  * mainframe the player is looking at and need the admin role (AccessResolver: owner, roles, teams, admin nodes).
  */
 public final class CloudCommand {
-    private static final SimpleCommandExceptionType NOT_LOOKING = new SimpleCommandExceptionType(Component.translatable("cccloud.command.not_looking"));
     private static final SimpleCommandExceptionType NOT_OWNER = new SimpleCommandExceptionType(Component.translatable("cccloud.mainframe.not_owner"));
     private static final SimpleCommandExceptionType UNKNOWN_REQUEST = new SimpleCommandExceptionType(Component.translatable("cccloud.approval.unknown"));
     private static final SimpleCommandExceptionType BAD_PIN = new SimpleCommandExceptionType(Component.translatable("cccloud.pin.invalid"));
+    private static final SimpleCommandExceptionType NO_MAINFRAME = new SimpleCommandExceptionType(Component.translatable("cccloud.command.no_mainframe"));
+    private static final SimpleCommandExceptionType CHOOSE = new SimpleCommandExceptionType(Component.translatable("cccloud.command.choose"));
     private static final SimpleCommandExceptionType BAD_ROLE = new SimpleCommandExceptionType(Component.translatable("cccloud.command.bad_role"));
     private static final SimpleCommandExceptionType NO_USE = new SimpleCommandExceptionType(Component.translatable("cccloud.access.no_use"));
     private static final SimpleCommandExceptionType UNKNOWN_DEVICE = new SimpleCommandExceptionType(Component.translatable("cccloud.gui.notice.unknown_device"));
@@ -52,7 +53,12 @@ public final class CloudCommand {
 
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("cccloud")
-            .then(Commands.literal("status").executes(CloudCommand::status))
+            .executes(CloudCommand::help)
+            .then(Commands.literal("help").executes(CloudCommand::help))
+            .then(Commands.literal("status").executes(CloudCommand::status)
+                .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
+            .then(Commands.literal("select")
+                .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
             .then(Commands.literal("icons").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.COMMAND_ICONS))
                 .then(Commands.literal("status").executes(c -> icons(c, "status")))
                 .then(Commands.literal("rebuild").executes(c -> icons(c, "rebuild")))
@@ -60,7 +66,8 @@ public final class CloudCommand {
             // v0.6: all browsers of the player; "devices here" lists the browsers limited to the mainframe you look at.
             .then(Commands.literal("devices").executes(CloudCommand::browsers)
                 .then(Commands.literal("here").executes(CloudCommand::devices))
-                .then(Commands.literal("revoke").then(Commands.argument("id", StringArgumentType.word()).executes(CloudCommand::revokeBrowser))))
+                .then(Commands.literal("revoke").then(Commands.argument("id", StringArgumentType.word()).suggests(CloudCommand::suggestBrowsers)
+                    .executes(CloudCommand::revokeBrowser))))
             .then(Commands.literal("revoke")
                 .then(Commands.argument("device", StringArgumentType.greedyString())
                     .suggests((c, b) -> {
@@ -86,24 +93,169 @@ public final class CloudCommand {
             .then(Commands.literal("pin")
                 .then(Commands.literal("set").then(Commands.argument("pin", StringArgumentType.word()).executes(CloudCommand::setPin)))
                 .then(Commands.literal("clear").executes(CloudCommand::clearPin)))
-            .then(Commands.literal("approve")
-                .then(Commands.argument("request", StringArgumentType.word()).executes(c -> decide(c, true))))
-            .then(Commands.literal("deny")
-                .then(Commands.argument("request", StringArgumentType.word()).executes(c -> decide(c, false)))));
+            .then(Commands.literal("approve").executes(c -> decideNewest(c, true))
+                .then(Commands.argument("request", StringArgumentType.word()).suggests(CloudCommand::suggestPending).executes(c -> decide(c, true))))
+            .then(Commands.literal("deny").executes(c -> decideNewest(c, false))
+                .then(Commands.argument("request", StringArgumentType.word()).suggests(CloudCommand::suggestPending).executes(c -> decide(c, false)))));
     }
 
-    /** The mainframe the player is looking at (within 8 blocks), if the player may manage it. */
-    private static CloudMainframeBlockEntity target(CommandSourceStack source) throws CommandSyntaxException {
-        ServerPlayer player = source.getPlayerOrException();
+    /** Mainframe chosen with {@code /cccloud select} (per player, until the server stops). */
+    private static final java.util.Map<java.util.UUID, java.util.UUID> SELECTED = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The mainframe the player is looking at (within 8 blocks), or null. */
+    private static @org.jspecify.annotations.Nullable CloudMainframeBlockEntity lookedAt(ServerPlayer player) {
         var eye = player.getEyePosition();
         var end = eye.add(player.getViewVector(1).scale(8));
         BlockHitResult hit = player.level().clip(new ClipContext(eye, end, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
-        if (hit.getType() != HitResult.Type.BLOCK) throw NOT_LOOKING.create();
+        if (hit.getType() != HitResult.Type.BLOCK) return null;
         var state = player.level().getBlockState(hit.getBlockPos());
-        var mainframe = CloudMainframeBlock.getBlockEntity(player.level(), hit.getBlockPos(), state);
-        if (mainframe == null) throw NOT_LOOKING.create();
-        if (!mainframe.canManage(player)) throw NOT_OWNER.create();
-        return mainframe;
+        return CloudMainframeBlock.getBlockEntity(player.level(), hit.getBlockPos(), state);
+    }
+
+    /** Admin commands: the targeted mainframe, where the player needs the admin role. */
+    private static CloudMainframeBlockEntity target(CommandSourceStack source) throws CommandSyntaxException {
+        return target(source, ai.ezfox.cccloud.access.Role.ADMIN);
+    }
+
+    /**
+     * The mainframe a command acts on: the one the player looks at, else the one chosen with {@code /cccloud select},
+     * else the only one within 32 blocks, else the only one the player has the needed role on. Otherwise the candidates
+     * are listed (click to select) and the command fails.
+     */
+    private static CloudMainframeBlockEntity target(CommandSourceStack source, ai.ezfox.cccloud.access.Role needed) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        var looked = lookedAt(player);
+        if (looked != null) {
+            if (!ai.ezfox.cccloud.access.Access.role(player, looked.getMainframeId()).atLeast(needed)) throw NOT_OWNER.create();
+            return looked;
+        }
+        var candidates = candidates(player, needed);
+        var picked = TargetPicker.pick(candidates, SELECTED.get(player.getUUID()));
+        if (picked != null) {
+            var mainframe = ai.ezfox.cccloud.network.CloudNetwork.mainframe(picked);
+            if (mainframe != null) return mainframe;
+        }
+        if (candidates.isEmpty()) throw NO_MAINFRAME.create();
+        listMainframes(source, candidates);
+        throw CHOOSE.create();
+    }
+
+    private static java.util.List<TargetPicker.Candidate> candidates(ServerPlayer player, ai.ezfox.cccloud.access.Role needed) {
+        var list = new java.util.ArrayList<TargetPicker.Candidate>();
+        for (var mainframe : ai.ezfox.cccloud.network.CloudNetwork.mainframes()) {
+            if (mainframe.isRemoved() || mainframe.getLevel() == null) continue;
+            if (!ai.ezfox.cccloud.access.Access.role(player, mainframe.getMainframeId()).atLeast(needed)) continue;
+            double distance = mainframe.getLevel() == player.level() ? Math.sqrt(mainframe.getBlockPos().getCenter().distanceToSqr(player.position())) : -1;
+            list.add(new TargetPicker.Candidate(mainframe.getMainframeId(), distance));
+        }
+        return list;
+    }
+
+    /** One clickable line per mainframe: name, position, distance, status. */
+    private static void listMainframes(CommandSourceStack source, java.util.List<TargetPicker.Candidate> candidates) {
+        source.sendSystemMessage(Component.translatable("cccloud.command.choose_header").withStyle(ChatFormatting.AQUA));
+        for (var c : TargetPicker.sorted(candidates)) {
+            var mainframe = ai.ezfox.cccloud.network.CloudNetwork.mainframe(c.id());
+            if (mainframe == null) continue;
+            var pos = mainframe.getBlockPos();
+            String where = pos.getX() + " " + pos.getY() + " " + pos.getZ() + (c.distance() < 0 ? " (" + mainframe.getLevel().dimension().identifier() + ")"
+                : " · " + Math.round(c.distance()) + " m");
+            String command = "/cccloud select " + c.id();
+            source.sendSystemMessage(Component.literal("▸ ").append(Component.literal(mainframe.getDisplayName()).withStyle(style -> style
+                    .withColor(ChatFormatting.GOLD).withUnderlined(true)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand(command))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.translatable("cccloud.command.select_hover")))))
+                .append(Component.literal("  " + where + " · ").withStyle(ChatFormatting.GRAY))
+                .append(mainframe.status().displayName()));
+        }
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestMainframes(
+        CommandContext<CommandSourceStack> c, com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+        if (!(c.getSource().getEntity() instanceof ServerPlayer player)) return b.buildFuture();
+        return SharedSuggestionProvider.suggest(candidates(player, ai.ezfox.cccloud.access.Role.VIEWER).stream().map(x -> x.id().toString()), b);
+    }
+
+    /** {@code /cccloud select <mainframe>} (also {@code /cccloud status <mainframe>}): remember it and show its status. */
+    private static int select(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer player = c.getSource().getPlayerOrException();
+        java.util.UUID id;
+        try {
+            id = java.util.UUID.fromString(StringArgumentType.getString(c, "mainframe"));
+        } catch (IllegalArgumentException e) {
+            throw NO_MAINFRAME.create();
+        }
+        var mainframe = ai.ezfox.cccloud.network.CloudNetwork.mainframe(id);
+        if (mainframe == null || !ai.ezfox.cccloud.access.Access.role(player, id).atLeast(ai.ezfox.cccloud.access.Role.VIEWER)) throw NO_MAINFRAME.create();
+        SELECTED.put(player.getUUID(), id);
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.selected", mainframe.getDisplayName()).withStyle(ChatFormatting.GRAY));
+        return showStatus(c.getSource(), mainframe);
+    }
+
+    /** {@code /cccloud} or {@code /cccloud help}: the subcommands, each suggests itself on click. */
+    private static int help(CommandContext<CommandSourceStack> c) {
+        var source = c.getSource();
+        source.sendSystemMessage(Component.translatable("cccloud.help.header").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+        String[][] entries = {
+            {"status", "/cccloud status"}, {"link", "/cccloud link"}, {"devices", "/cccloud devices"}, {"approve", "/cccloud approve"},
+            {"deny", "/cccloud deny"}, {"role", "/cccloud role "}, {"trust", "/cccloud trust "}, {"pin", "/cccloud pin set "},
+            {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}};
+        for (var e : entries) {
+            String command = e[1];
+            source.sendSystemMessage(Component.literal(command.trim()).withStyle(style -> style.withColor(ChatFormatting.GOLD)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.SuggestCommand(command))
+                    .withHoverEvent(new net.minecraft.network.chat.HoverEvent.ShowText(Component.translatable("cccloud.help.click"))))
+                .append(Component.literal(" – ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.translatable("cccloud.help." + e[0]).withStyle(ChatFormatting.GRAY)));
+        }
+        return 1;
+    }
+
+    /** Pending browser requests this player may decide (own account codes; admin of the mainframe), newest first. */
+    private static java.util.List<AuthStore.Pending> pendingFor(ServerPlayer player) {
+        var server = player.level().getServer();
+        var list = new java.util.ArrayList<AuthStore.Pending>();
+        if (server == null) return list;
+        var resolver = ai.ezfox.cccloud.access.Access.resolver(server);
+        for (var p : WebAuthData.get(server).pendingRequests()) {
+            boolean mine = p.isAccount() ? player.getUUID().equals(p.account())
+                : resolver.role(player.getUUID(), p.mainframeId()).atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
+            if (mine) list.add(p);
+        }
+        list.sort((a, b) -> Long.compare(b.expiresAt(), a.expiresAt()));
+        return list;
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestPending(
+        CommandContext<CommandSourceStack> c, com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+        if (!(c.getSource().getEntity() instanceof ServerPlayer player)) return b.buildFuture();
+        return SharedSuggestionProvider.suggest(pendingFor(player).stream().map(AuthStore.Pending::id), b);
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestBrowsers(
+        CommandContext<CommandSourceStack> c, com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+        if (!(c.getSource().getEntity() instanceof ServerPlayer player)) return b.buildFuture();
+        return SharedSuggestionProvider.suggest(WebAuthData.get(c.getSource().getServer()).devicesOf(player.getUUID()).stream().map(AuthStore::deviceId), b);
+    }
+
+    /** {@code /cccloud approve|deny} without an id: the newest request for this player; several → clickable list. */
+    private static int decideNewest(CommandContext<CommandSourceStack> c, boolean allow) throws CommandSyntaxException {
+        ServerPlayer player = c.getSource().getPlayerOrException();
+        var pending = pendingFor(player);
+        if (pending.isEmpty()) {
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.no_pending").withStyle(ChatFormatting.YELLOW));
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.pairing_howto").withStyle(ChatFormatting.GRAY));
+            return 0;
+        }
+        if (pending.size() > 1) {
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.several_pending", pending.size()).withStyle(ChatFormatting.AQUA));
+            for (var p : pending) {
+                var mainframe = p.mainframeId() == null ? null : ai.ezfox.cccloud.network.CloudNetwork.mainframe(p.mainframeId());
+                ai.ezfox.cccloud.web.ApprovalPrompt.send(player, p, mainframe != null ? mainframe.getDisplayName() : "Mainframe");
+            }
+            return 0;
+        }
+        return decide(c, pending.getFirst().id(), allow);
     }
 
     /** Permission node check for command requirements (PermissionAPI: LuckPerms / FTB Ranks; default op level 2). */
@@ -142,10 +294,10 @@ public final class CloudCommand {
         if (!ai.ezfox.cccloud.access.Access.has(player, ai.ezfox.cccloud.access.ServerPermissions.Node.USE)) throw NO_USE.create();
         var code = WebAuthData.get(c.getSource().getServer()).accountCode(player.getUUID());
         long minutes = Math.max(1, (code.expiresAt() - System.currentTimeMillis() + 59_999) / 60_000);
-        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.link_code",
-            Component.literal(AuthStore.formatCode(code.code())).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), minutes));
-        String url = ai.ezfox.cccloud.web.CloudWebServer.dashboardUrl();
-        if (url != null && !url.isEmpty()) c.getSource().sendSystemMessage(Component.literal(url).withStyle(ChatFormatting.AQUA));
+        String formatted = AuthStore.formatCode(code.code());
+        String url = ai.ezfox.cccloud.web.CloudWebServer.isRunning() ? ai.ezfox.cccloud.web.CloudWebServer.dashboardUrl() : null;
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.link_code", ai.ezfox.cccloud.web.PairingText.code(formatted), minutes)
+            .append(ai.ezfox.cccloud.web.PairingText.pairLink(url, formatted)));
         return 1;
     }
 
@@ -210,14 +362,18 @@ public final class CloudCommand {
     }
 
     private static int status(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        var mainframe = target(c.getSource());
-        mainframe.showStatus(c.getSource().getPlayerOrException());
-        var auth = WebAuthData.get(c.getSource().getServer());
+        return showStatus(c.getSource(), target(c.getSource(), ai.ezfox.cccloud.access.Role.VIEWER));
+    }
+
+    private static int showStatus(CommandSourceStack source, CloudMainframeBlockEntity mainframe) throws CommandSyntaxException {
+        mainframe.showStatus(source.getPlayerOrException());
+        if (!mainframe.canManage(source.getPlayerOrException())) return 1;
+        var auth = WebAuthData.get(source.getServer());
         var grants = mainframe.getGrants().values().stream().map(g -> g.name() + " (" + g.role().id + ")").toList();
-        c.getSource().sendSystemMessage(Component.translatable("cccloud.command.owner",
+        source.sendSystemMessage(Component.translatable("cccloud.command.owner",
             mainframe.getOwnerName().isEmpty() ? "-" : mainframe.getOwnerName(),
             grants.isEmpty() ? "-" : String.join(", ", grants)).withStyle(ChatFormatting.GRAY));
-        c.getSource().sendSystemMessage(Component.translatable(auth.hasPin(mainframe.getMainframeId()) ? "cccloud.pin.is_set" : "cccloud.pin.not_set")
+        source.sendSystemMessage(Component.translatable(auth.hasPin(mainframe.getMainframeId()) ? "cccloud.pin.is_set" : "cccloud.pin.not_set")
             .withStyle(ChatFormatting.GRAY));
         return 1;
     }
@@ -293,9 +449,12 @@ public final class CloudCommand {
     }
 
     private static int decide(CommandContext<CommandSourceStack> c, boolean allow) throws CommandSyntaxException {
+        return decide(c, StringArgumentType.getString(c, "request"), allow);
+    }
+
+    private static int decide(CommandContext<CommandSourceStack> c, String id, boolean allow) throws CommandSyntaxException {
         ServerPlayer player = c.getSource().getPlayerOrException();
         var auth = WebAuthData.get(c.getSource().getServer());
-        String id = StringArgumentType.getString(c, "request");
         var pending = auth.pending(id);
         if (pending == null || pending.state() != AuthStore.PendingState.PENDING) throw UNKNOWN_REQUEST.create();
         // Account codes: only the player whose code it is. Mainframe codes: admins of that mainframe.

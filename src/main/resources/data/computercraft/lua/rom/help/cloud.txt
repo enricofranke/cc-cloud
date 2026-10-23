@@ -9,6 +9,8 @@ dash:button("scram", "SCRAM", {color="red", confirm=true, pin=true}, function(us
 dash:every(1, function() temp:set(math.random(600, 1000)) end)
 dash:run()
 
+Handlers run in their own coroutines (up to 8 at once), so sleep() inside a handler only pauses that handler; other buttons and the dash:every timers keep working. For repeating work prefer dash:every over loops with sleep.
+
 Examples: run "cloud-demo" (every widget) or "cloud-storage" (storage dashboard for an ME/RS Cloud Bridge).
 
 Raw peripheral (local cloud = peripheral.find("cloud_uplink")):

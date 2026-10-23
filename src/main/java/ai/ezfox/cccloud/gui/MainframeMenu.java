@@ -17,6 +17,18 @@ public class MainframeMenu extends CloudMenu {
         super(ModRegistry.MAINFRAME_MENU.get(), id, buf);
     }
 
+    /** Closing the screen while a browser waits for approval: the chat request is sent again (with the time left). */
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) || serverPlayer.level().getServer() == null) return;
+        if (!(player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity mainframe) || !mainframe.canManage(player)) return;
+        var auth = ai.ezfox.cccloud.web.WebAuthData.get(serverPlayer.level().getServer());
+        for (var pending : auth.pendingFor(mainframe.getMainframeId())) {
+            ai.ezfox.cccloud.web.ApprovalPrompt.send(serverPlayer, pending, mainframe.getDisplayName());
+        }
+    }
+
     @Override
     protected boolean blockStillThere(Player player) {
         return player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity;

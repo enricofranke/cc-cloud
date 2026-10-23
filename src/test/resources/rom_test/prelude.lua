@@ -21,6 +21,13 @@ os = os or {}
 function os.queueEvent(...) queue[#queue + 1] = table.pack(...) end
 function os.startTimer(s) next_timer = next_timer + 1; timers[#timers + 1] = next_timer; return next_timer end
 function os.pullEvent(filter)
+    -- Inside a coroutine (a cloud.ui handler) behave like CraftOS: yield to the event loop.
+    local _, main = coroutine.running()
+    if not main then
+        local ev = table.pack(coroutine.yield(filter))
+        if ev[1] == "terminate" then error("Terminated", 0) end
+        return table.unpack(ev, 1, ev.n)
+    end
     while true do
         local ev = table.remove(queue, 1)
         if not ev then error("STOP_TEST", 0) end
@@ -78,3 +85,8 @@ function run_until_stop(fn, ...)
     if ok or err ~= "STOP_TEST" then error("expected the event loop to run until STOP_TEST, got: " .. tostring(err), 0) end
 end
 function assert_no_errors() if #errors > 0 then error("handler errors: " .. table.concat(errors, "; "), 0) end end
+
+function sleep(seconds)
+    local id = os.startTimer(seconds)
+    repeat local _, t = os.pullEvent("timer") until t == id
+end

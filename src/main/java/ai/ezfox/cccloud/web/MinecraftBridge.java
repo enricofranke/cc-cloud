@@ -91,25 +91,10 @@ final class MinecraftBridge implements GameBridge {
         }
         CloudLog.LOGGER.info("[cccloud] Device '{}' from {} asks to connect to {} – waiting for in-game approval", pending.deviceName(), pending.ip(), what);
         for (var player : targets) {
-            // Players with the mainframe screen open see the request there (live update), no chat needed.
+            // Always in chat (clickable, with the time left); an open mainframe screen shows it on top as well.
+            ApprovalPrompt.send(player, pending, name);
             if (pending.mainframeId() != null && ai.ezfox.cccloud.gui.GuiNetwork.hasScreenOpen(player, pending.mainframeId())) {
                 ai.ezfox.cccloud.gui.GuiNetwork.push(player, "approval_request");
-                continue;
-            }
-            var allow = Component.translatable("cccloud.approval.allow").withStyle(style -> style.withColor(ChatFormatting.GREEN).withBold(true)
-                .withClickEvent(new ClickEvent.RunCommand("/cccloud approve " + pending.id()))
-                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("cccloud.approval.allow_hover"))));
-            var deny = Component.translatable("cccloud.approval.deny").withStyle(style -> style.withColor(ChatFormatting.RED).withBold(true)
-                .withClickEvent(new ClickEvent.RunCommand("/cccloud deny " + pending.id()))
-                .withHoverEvent(new HoverEvent.ShowText(Component.translatable("cccloud.approval.deny_hover"))));
-            if (pending.isAccount()) {
-                player.sendSystemMessage(Component.translatable("cccloud.approval.account_request",
-                    Component.literal(pending.deviceName()).withStyle(ChatFormatting.AQUA),
-                    Component.literal(pending.ip()).withStyle(ChatFormatting.GRAY), allow, deny));
-            } else {
-                player.sendSystemMessage(Component.translatable("cccloud.approval.request",
-                    Component.literal(pending.deviceName()).withStyle(ChatFormatting.AQUA),
-                    Component.literal(pending.ip()).withStyle(ChatFormatting.GRAY), name, allow, deny));
             }
         }
     }

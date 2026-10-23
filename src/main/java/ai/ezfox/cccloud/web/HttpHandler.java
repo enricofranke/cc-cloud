@@ -275,6 +275,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         switch (pending.state()) {
             case PENDING -> {
                 json.addProperty("status", "pending");
+                // Seconds left for the in-game approval (the browser shows a countdown).
+                json.addProperty("expiresIn", Math.max(0, (pending.expiresAt() - System.currentTimeMillis() + 999) / 1000));
                 sendJson(ctx, req, HttpResponseStatus.OK, json);
             }
             case DENIED -> {

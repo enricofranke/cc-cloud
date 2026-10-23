@@ -13,6 +13,7 @@ public class CCCloudClient {
     public CCCloudClient(IEventBus modEventBus, net.neoforged.fml.ModContainer container) {
         ai.ezfox.cccloud.client.icons.ClientIcons.init(modEventBus, container);
         modEventBus.addListener(CloudModels::register);
+        DevGuiScreenshot.init();
         modEventBus.addListener(CCCloudClient::registerRenderers);
         modEventBus.addListener(CCCloudClient::registerScreens);
         ai.ezfox.cccloud.gui.GuiNetwork.clientViewHandler = payload -> {

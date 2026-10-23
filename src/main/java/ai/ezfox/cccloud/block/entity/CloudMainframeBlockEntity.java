@@ -408,8 +408,9 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         if (level instanceof ServerLevel serverLevel && enabled) {
             var code = WebAuthData.get(serverLevel.getServer()).currentCode(mainframeId, player.getUUID());
             long minutes = Math.max(1, (code.expiresAt() - System.currentTimeMillis() + 59_999) / 60_000);
-            player.sendSystemMessage(Component.translatable("cccloud.mainframe.pairing_code",
-                Component.literal(AuthStore.formatCode(code.code())).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), minutes));
+            String formatted = AuthStore.formatCode(code.code());
+            player.sendSystemMessage(Component.translatable("cccloud.mainframe.pairing_code", ai.ezfox.cccloud.web.PairingText.code(formatted), minutes)
+                .append(ai.ezfox.cccloud.web.PairingText.pairLink(CloudWebServer.isRunning() ? CloudWebServer.dashboardUrl() : null, formatted)));
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.pairing_hint").withStyle(ChatFormatting.GRAY));
             int devices = WebAuthData.get(serverLevel.getServer()).devices(mainframeId).size();
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.counts", devices, linkedUplinks.size()).withStyle(ChatFormatting.GRAY));
