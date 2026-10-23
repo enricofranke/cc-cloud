@@ -105,6 +105,8 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 
 ## Wave 3 – more ATM11 machines (survey of the ATM11 0.12.0-beta mod list)
 
+False positives of the generic Energy and Tank cards can be excluded by pack makers: block tag `#cccloud:no_generic_card` (data pack) or the config list `cards.genericCardExcludes` in `cccloud-integrations-server.toml` (`"mod:block"` or `"mod:*"`).
+
 | Mod (id) | Version | What | Controls | Tested |
 | --- | --- | --- | --- | --- |
 | any mod: plain fluid tanks | – | generic **Tank** card (kind `tank`, lowest priority, below the Energy card): a block entity with a fluid capability, no energy capability and at most 2 item slots – fill %, fluid, mB (up to 8 tanks summed). Covers EvilCraft's Dark Tank, Stellaris fluid tanks and similar. | none | yes (EvilCraft Dark Tank with 1 bucket of water) |

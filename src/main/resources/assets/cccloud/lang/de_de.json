@@ -515,6 +515,7 @@
   "cccloud.display.cached": "vor %s",
   "cccloud.analyzer.no_positions": "Routen anzeigen braucht die Berechtigung view.positions.",
   "cccloud.configuration.storageCards": "Speicher-Controller: Lager-Karte",
+  "cccloud.configuration.genericCardExcludes": "Keine generischen Karten für",
   "cccloud.configuration.world": "Welt & Fortschritt",
   "cccloud.configuration.gatewaysCard": "Gateways to Eternity: Gateway-Karte",
   "cccloud.configuration.waystonesCard": "Waystones: Wegstein-Karte und Kartenebene",

@@ -12,6 +12,7 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue DEVICE_CARDS;
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
     public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> GENERIC_CARD_EXCLUDES;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
     public static final ModConfigSpec.BooleanValue FTB_CHUNKS_CLAIMS;
@@ -32,6 +33,11 @@ public final class IntegrationConfig {
         STORAGE_CARDS = b.comment("Storage controllers (Functional Storage, Sophisticated Storage, Occultism, DimStorage) show a Storage card with item search. Read-only.")
             .translation("cccloud.configuration.storageCards")
             .define("storageCards", true);
+        GENERIC_CARD_EXCLUDES = b.comment("Blocks that never get the generic Energy or Tank card (false positives): block ids (\"mod:block\") or whole mods (\"mod:*\").",
+                "The block tag #cccloud:no_generic_card does the same for data packs.")
+            .translation("cccloud.configuration.genericCardExcludes")
+            .defineListAllowEmpty("genericCardExcludes", java.util.List.of(), () -> "somemod:machine",
+                o -> o instanceof String s && s.matches("[a-z0-9_.-]+:([a-z0-9_./-]+|\\*)"));
         b.pop();
 
         b.push("server");

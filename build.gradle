@@ -382,6 +382,22 @@ dependencies {
 
 // This block of code expands all declared replace properties in the specified resource targets.
 // A missing property will result in an error. Properties are expanded using ${} Groovy notation.
+// The in-game handbook pages are generated from the dashboard docs (tools/gen_handbook.ts); stale pages fail `check`.
+// Skip locally with -PskipHandbookCheck (e.g. while docs edits are not regenerated yet).
+def checkHandbook = tasks.register('checkHandbook', Exec) {
+    group = 'verification'
+    description = 'Fails when the handbook pages differ from the dashboard docs (node tools/gen_handbook.ts --check).'
+    def skip = project.hasProperty('skipHandbookCheck')
+    onlyIf { !skip }
+    workingDir = projectDir
+    commandLine 'node', 'tools/gen_handbook.ts', '--check'
+    inputs.dir('cloud/web/src/docs')
+    inputs.dir('src/main/resources/assets/cccloud/guides')
+    inputs.file('tools/gen_handbook.ts')
+    outputs.upToDateWhen { false }
+}
+tasks.named('check') { dependsOn checkHandbook }
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,

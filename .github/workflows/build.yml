@@ -18,6 +18,11 @@ jobs:
           java-version: '25'
           distribution: 'temurin'
 
+      - name: Setup Node (handbook check runs node tools/gen_handbook.ts --check)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 

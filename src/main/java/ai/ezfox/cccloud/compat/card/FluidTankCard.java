@@ -41,6 +41,7 @@ public class FluidTankCard extends BlockCard<BlockEntity> {
         if (be == null) return null;
         var id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock());
         if (ai.ezfox.cccloud.CCCloud.MODID.equals(id.getNamespace())) return null;
+        if (GenericCards.excluded(be.getBlockState(), id)) return null;
         var fluids = handler(level, pos, side);
         if (fluids == null || fluids.size() == 0) return null;
         if (EnergyCard.handler(level, pos, side) != null) return null;

@@ -58,6 +58,7 @@ public class EnergyCard extends BlockCard<BlockEntity> {
         if (be == null) return null;
         var id = BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock());
         if (CCCloud.MODID.equals(id.getNamespace())) return null;
+        if (GenericCards.excluded(be.getBlockState(), id)) return null;
         var handler = handler(level, pos, side);
         if (handler == null || handler.getCapacityAsLong() <= 0) return null;
         return new EnergyCard(KIND, null, level, pos, side, be);
