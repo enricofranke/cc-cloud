@@ -207,6 +207,9 @@ def integrationMods = [
     advancedae          : ["curse.maven:advancedae-1084104:${advancedae_curse_file}", "org.appliedenergistics:appliedenergistics2:${ae2_version}",
                            "org.appliedenergistics:guideme:${guideme_version}", "curse.maven:ae2wtlib-459929:${ae2wtlib_curse_file}",
                            "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
+    // QuarryPlus is written in Scala and needs the kotori_scala language loader (Scalable Cat's Force) at runtime.
+    quarryplus          : ["curse.maven:additionalenchantedminer-282837:${quarryplus_curse_file}",
+                           "curse.maven:scalablecatsforce-320926:${scalablecatsforce_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 

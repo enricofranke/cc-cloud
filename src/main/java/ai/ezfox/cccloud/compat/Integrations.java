@@ -53,6 +53,9 @@ public final class Integrations {
         // 2. Advanced AE quantum computer.
         optional("advanced_ae", () -> ai.ezfox.cccloud.compat.advancedae.AdvancedAeCards::init);
 
+        // 3. Quarries.
+        optional("quarryplus", () -> ai.ezfox.cccloud.compat.quarryplus.QuarryPlusCards::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));
