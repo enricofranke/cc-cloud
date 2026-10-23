@@ -56,21 +56,26 @@ public final class HistoryService {
     }
 
     private static void tick(MinecraftServer server) {
-        int t = server.getTickCount();
-        if (t % 20 != 0) return;
-        var store = HistoryData.get(server).store();
-        long now = now();
-        for (var sample : WebHub.INSTANCE.historySamples()) {
-            var range = HistorySeries.Range.byId(sample.range());
-            if (range == null) continue;
-            String key = widgetKey(sample.uplinkId(), sample.widgetId());
-            if (!store.record(sample.mainframeId(), key, range, retentionHours(sample.mainframeId()), now, sample.value()) && CAPPED.add(sample.mainframeId() + key)) {
-                CCCloud.LOGGER.warn("[cccloud] Long-term statistics of mainframe {} are full (2 MB): {} is not recorded", sample.mainframeId(), key);
+        long tickCost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            int t = server.getTickCount();
+            if (t % 20 != 0) return;
+            var store = HistoryData.get(server).store();
+            long now = now();
+            for (var sample : WebHub.INSTANCE.historySamples()) {
+                var range = HistorySeries.Range.byId(sample.range());
+                if (range == null) continue;
+                String key = widgetKey(sample.uplinkId(), sample.widgetId());
+                if (!store.record(sample.mainframeId(), key, range, retentionHours(sample.mainframeId()), now, sample.value()) && CAPPED.add(sample.mainframeId() + key)) {
+                    CCCloud.LOGGER.warn("[cccloud] Long-term statistics of mainframe {} are full (2 MB): {} is not recorded", sample.mainframeId(), key);
+                }
             }
-        }
-        if (t % 1200 == 0) {
-            sampleItems(store, now);
-            store.prune(now);
+            if (t % 1200 == 0) {
+                sampleItems(store, now);
+                store.prune(now);
+            }
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
         }
     }
 

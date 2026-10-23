@@ -94,9 +94,15 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         return mainframeId;
     }
 
+    private @Nullable String displayName;
+
     public String getDisplayName() {
-        var p = getBlockPos();
-        return "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
+        // The position never changes for a block entity: build the name once (it is read every tick)
+        if (displayName == null) {
+            var p = getBlockPos();
+            displayName = "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
+        }
+        return displayName;
     }
 
     public ai.ezfox.cccloud.upgrade.MainframeUpgrades upgrades() {
@@ -252,7 +258,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         try {
             tick(level);
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(cost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.MAINFRAME, cost);
         }
     }
 

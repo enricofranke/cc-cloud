@@ -108,6 +108,9 @@ public final class LoadTest {
         var setNanos = new long[]{0};
         var messagesAtLoadStart = new long[]{0};
         helper.onEachTick(() -> {
+            // The server ticks faster than 20 TPS here: only the one server tick after a simulated tick (its block entity
+            // ticks and global tick handlers, which publish the new values) is measured, like a real 20 TPS tick.
+            ai.ezfox.cccloud.network.TickCost.enabled = false;
             switch (phase[0]) {
                 case CONNECTING -> {
                     if (snapshots.get() >= CLIENTS) {
@@ -116,7 +119,6 @@ public final class LoadTest {
                         takeAverageMs();
                         recording = true;
                         phaseStart[0] = System.nanoTime();
-                        ai.ezfox.cccloud.network.TickCost.enabled = true;
                         ai.ezfox.cccloud.network.TickCost.take();
                     }
                 }
@@ -153,18 +155,27 @@ public final class LoadTest {
                     }
                     setNanos[0] += System.nanoTime() - start;
                     counter[0]++;
+                    ai.ezfox.cccloud.network.TickCost.enabled = true; // measure the next server tick
                     if (start - phaseStart[0] >= PHASE_NANOS) {
                         recording = false;
                         results[1] = takeAverageMs();
                         results[2] = setNanos[0] / 1e6 / counter[0];
                         // Everything cccloud does on the server thread per simulated tick: set() calls + block entity ticks.
-                        double ownCost = results[2] + ai.ezfox.cccloud.network.TickCost.take() / 1e6 / counter[0];
+                        var parts = ai.ezfox.cccloud.network.TickCost.takeParts();
+                        long partsSum = 0;
+                        var breakdown = new StringBuilder();
+                        for (int p = 0; p < parts.length; p++) {
+                            partsSum += parts[p];
+                            breakdown.append(p == 0 ? "" : ", ").append(ai.ezfox.cccloud.network.TickCost.NAMES[p]).append(' ').append(fmt(parts[p] / 1e6 / counter[0])).append(" ms");
+                        }
+                        double ownCost = results[2] + partsSum / 1e6 / counter[0];
                         ai.ezfox.cccloud.network.TickCost.enabled = false;
+                        CCCloud.LOGGER.info("[cccloud] LOAD TEST: per tick: set() {} ms, {}", fmt(results[2]), breakdown);
                         phase[0] = Phase.DONE;
                         long delivered = messages.get() - messagesAtLoadStart[0];
                         CCCloud.LOGGER.info("[cccloud] LOAD TEST: {} clients, {} uplinks x {} widgets updated every tick for {} ticks (simulated 20 TPS, {} s)",
                             CLIENTS, UPLINKS, WIDGETS, counter[0], PHASE_NANOS / 1_000_000_000L);
-                        CCCloud.LOGGER.info("[cccloud] LOAD TEST: cccloud server-thread cost {} ms/tick (set() calls {} ms + block entity ticks {} ms); "
+                        CCCloud.LOGGER.info("[cccloud] LOAD TEST: cccloud server-thread cost {} ms/tick (set() calls {} ms + ticks {} ms); "
                                 + "{} messages delivered to clients, {} clients disconnected",
                             fmt(ownCost), fmt(results[2]), fmt(ownCost - results[2]), delivered, closed.get());
                         CCCloud.LOGGER.info("[cccloud] LOAD TEST: whole tick {} ms with idle clients vs {} ms under load (delta {} ms; "

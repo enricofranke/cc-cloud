@@ -115,6 +115,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private final SpinAnimation clientAnimation = new SpinAnimation();
     private boolean broken;
     private int tickCounter;
+    private boolean statusPending = true;
     private long droppedEvents;
 
     public CloudUplinkBlockEntity(BlockPos pos, BlockState state) {
@@ -244,7 +245,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             CloudNetwork.registerUplink(this);
         }
         registered = true;
-        tickCounter = 0;
+        // Staggered by position: many uplinks loaded together do not all run their checks in the same tick.
+        tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), 2 * BRIDGE_INTERVAL);
+        statusPending = true;
         wired.onLoad();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -294,7 +297,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     }
 
     private void tick(ServerLevel level) {
-        if (tickCounter % STATUS_INTERVAL == 0) updateStatus(level);
+        if (statusPending || tickCounter % STATUS_INTERVAL == 0) {
+            statusPending = false; // right after loading, then every STATUS_INTERVAL ticks
+            updateStatus(level);
+        }
         if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
         if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
         if (tickCounter % BRIDGE_INTERVAL == 15) updateDeviceCard(level);
@@ -310,7 +316,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
         boolean changed = false;
         JsonObject snapshot = null;
-        List<Map.Entry<String, JsonElement>> values = null;
+        int valueCount = 0;
         List<String[]> alerts = null;
         synchronized (this) {
             if (structureDirty) {
@@ -319,10 +325,16 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 snapshot = snapshot();
                 changed = true;
             } else if (!dirtyValues.isEmpty()) {
-                values = new ArrayList<>(dirtyValues.size());
+                // reused buffers: no per-tick allocation for the changed values
+                if (valueIds.length < dirtyValues.size()) {
+                    valueIds = new String[dirtyValues.size() * 2];
+                    valueData = new JsonElement[dirtyValues.size() * 2];
+                }
                 for (var id : dirtyValues) {
                     var widget = widgets.get(id);
-                    if (widget != null) values.add(Map.entry(id, widget.value()));
+                    if (widget == null) continue;
+                    valueIds[valueCount] = id;
+                    valueData[valueCount++] = widget.value();
                 }
                 dirtyValues.clear();
                 changed = true;
@@ -336,14 +348,24 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         UUID mainframeId = link.id();
         String id = uplinkId.toString();
         if (snapshot != null) WebHub.INSTANCE.publishUplink(mainframeId, snapshot);
-        if (values != null) {
-            for (var entry : values) WebHub.INSTANCE.publishValue(mainframeId, id, entry.getKey(), entry.getValue());
+        if (valueCount > 0) {
+            WebHub.INSTANCE.publishValues(mainframeId, id, valueIds, valueData, valueCount);
+            java.util.Arrays.fill(valueData, 0, valueCount, null);
         }
         if (alerts != null && isOnline()) {
             for (var alert : alerts) WebHub.INSTANCE.publishAlert(mainframeId, id, alert[0], alert[1]);
         }
-        if (changed) setChanged();
+        // Saving: at most once a second while values keep changing (the chunk is marked unsaved, not written)
+        if (changed) saveDirty = true;
+        if (saveDirty && (snapshot != null || tickCounter % BRIDGE_INTERVAL == 0)) {
+            saveDirty = false;
+            setChanged();
+        }
     }
+
+    private String[] valueIds = new String[0];
+    private JsonElement[] valueData = new JsonElement[0];
+    private boolean saveDirty;
 
     private static final int BRIDGE_INTERVAL = 20;
 

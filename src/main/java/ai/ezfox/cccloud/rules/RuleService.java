@@ -97,23 +97,28 @@ public final class RuleService {
     // ---- evaluation --------------------------------------------------------------------------------------------------
 
     private static void tick(MinecraftServer server) {
-        if (server.getTickCount() % INTERVAL != 0 || RULES.isEmpty() || !CloudConfig.get(CloudConfig.RULES_ENABLED)) return;
-        for (var e : RULES.entrySet()) {
-            if (e.getValue().isEmpty()) continue;
-            var mainframe = CloudNetwork.mainframe(e.getKey());
-            if (mainframe == null || mainframe.isRemoved() || !mainframe.isOnline()) continue;
-            var engine = ENGINES.computeIfAbsent(e.getKey(), k -> new RuleEngine());
-            List<RuleEngine.Run> runs;
-            try {
-                runs = engine.tick(e.getValue(), world(mainframe));
-            } catch (RuntimeException ex) {
-                CCCloud.LOGGER.error("[cccloud] Error while evaluating the rules of {}", mainframe.getDisplayName(), ex);
-                continue;
+        long tickCost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            if (server.getTickCount() % INTERVAL != 0 || RULES.isEmpty() || !CloudConfig.get(CloudConfig.RULES_ENABLED)) return;
+            for (var e : RULES.entrySet()) {
+                if (e.getValue().isEmpty()) continue;
+                var mainframe = CloudNetwork.mainframe(e.getKey());
+                if (mainframe == null || mainframe.isRemoved() || !mainframe.isOnline()) continue;
+                var engine = ENGINES.computeIfAbsent(e.getKey(), k -> new RuleEngine());
+                List<RuleEngine.Run> runs;
+                try {
+                    runs = engine.tick(e.getValue(), world(mainframe));
+                } catch (RuntimeException ex) {
+                    CCCloud.LOGGER.error("[cccloud] Error while evaluating the rules of {}", mainframe.getDisplayName(), ex);
+                    continue;
+                }
+                if (!runs.isEmpty()) {
+                    for (var run : runs) record(server, mainframe, run);
+                    publish(server, e.getKey());
+                }
             }
-            if (!runs.isEmpty()) {
-                for (var run : runs) record(server, mainframe, run);
-                publish(server, e.getKey());
-            }
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
         }
     }
 

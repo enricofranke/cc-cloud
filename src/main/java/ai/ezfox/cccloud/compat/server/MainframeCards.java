@@ -54,7 +54,12 @@ public final class MainframeCards {
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
-        tick(event.getServer());
+        long tickCost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            tick(event.getServer());
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+        }
     }
 
     static void tick(MinecraftServer server) {

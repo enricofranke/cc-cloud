@@ -210,6 +210,24 @@ public final class WebHub {
         }
     }
 
+    /** Several values of one section under one lock (block entity ticks). */
+    public void publishValues(UUID mainframeId, String uplinkId, String[] widgetIds, JsonElement[] values, int count) {
+        var view = views.get(mainframeId);
+        if (view == null) return;
+        synchronized (view) {
+            var index = view.widgetIndex.get(uplinkId);
+            if (index == null) return;
+            boolean queue = !view.sessions.isEmpty();
+            for (int i = 0; i < count; i++) {
+                var widget = index.get(widgetIds[i]);
+                if (widget == null) continue;
+                widget.add("value", values[i]);
+                appendHistory(widget, values[i]);
+                if (queue) view.outbox.put("v:" + uplinkId + ":" + widgetIds[i], VALUE_PENDING);
+            }
+        }
+    }
+
     public void publishValue(UUID mainframeId, String uplinkId, String widgetId, JsonElement value) {
         var view = views.get(mainframeId);
         if (view == null) return;
@@ -219,12 +237,10 @@ public final class WebHub {
             if (widget == null) return;
             widget.add("value", value);
             appendHistory(widget, value);
-            var message = new JsonObject();
-            message.addProperty("t", "value");
-            message.addProperty("uplinkId", uplinkId);
-            message.addProperty("id", widgetId);
-            message.add("value", value);
-            view.outbox.put("v:" + uplinkId + ":" + widgetId, message);
+            // Nobody subscribed: new sessions get the value with their snapshot, nothing to queue.
+            if (view.sessions.isEmpty()) return;
+            // The message itself is built at flush time (off the server thread) from the latest value; only a marker here.
+            view.outbox.put("v:" + uplinkId + ":" + widgetId, VALUE_PENDING);
         }
     }
 
@@ -830,6 +846,7 @@ public final class WebHub {
                     if (view.outbox.isEmpty() && networkFull == null) continue;
                     pending = view.outbox;
                     view.outbox = new LinkedHashMap<>();
+                    buildValueMessages(view, pending);
                     restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
                 }
                 if (networkFull != null && !view.sessions.isEmpty()) {
@@ -882,6 +899,33 @@ public final class WebHub {
             for (var session : view.sessions) session.close(1001, "server stopping");
         }
         views.clear();
+    }
+
+    /** Marker in the outbox for "send this widget's current value" (see {@link #buildValueMessages}); never serialised. */
+    private static final JsonObject VALUE_PENDING = new JsonObject();
+
+    /** Replaces value markers by {@code {"t":"value",…}} messages with the widget's latest value. Under the view's lock. */
+    private static void buildValueMessages(View view, Map<String, JsonObject> pending) {
+        for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
+            var entry = it.next();
+            if (entry.getValue() != VALUE_PENDING) continue;
+            String key = entry.getKey(); // v:<uplinkId>:<widgetId> (the uplink id has no ':', a widget id may)
+            int sep = key.indexOf(':', 2);
+            String uplinkId = key.substring(2, sep), widgetId = key.substring(sep + 1);
+            var index = view.widgetIndex.get(uplinkId);
+            var widget = index == null ? null : index.get(widgetId);
+            if (widget == null || !widget.has("value")) {
+                it.remove();
+                continue;
+            }
+            var message = new JsonObject();
+            message.addProperty("t", "value");
+            message.addProperty("uplinkId", uplinkId);
+            message.addProperty("id", widgetId);
+            var value = widget.get("value");
+            message.add("value", value.isJsonPrimitive() || value.isJsonNull() ? value : value.deepCopy());
+            entry.setValue(message);
+        }
     }
 
     private static void put(View view, String key, JsonObject message) {

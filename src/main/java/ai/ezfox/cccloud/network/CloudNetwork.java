@@ -145,9 +145,12 @@ public final class CloudNetwork {
     }
 
     private static void onServerTick(ServerTickEvent.Post event) {
+        long cost = TickCost.start();
         NetworkService.tick(event.getServer());
         ai.ezfox.cccloud.redstone.RedstoneService.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
+        TickCost.end(TickCost.GLOBAL, cost);
+        // GameTests only: the hub flush runs on the server tick (normally the web server's thread), not counted
         if (ai.ezfox.cccloud.web.WebHub.FLUSH_EVERY_TICK) ai.ezfox.cccloud.web.WebHub.INSTANCE.flush();
     }
 
