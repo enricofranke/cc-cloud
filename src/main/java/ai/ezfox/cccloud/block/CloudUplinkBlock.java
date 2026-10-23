@@ -97,7 +97,8 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         Direction facing = state.getValue(FACING);
         BlockPos attached = pos.relative(facing);
-        return level.getBlockState(attached).isFaceSturdy(level, attached, facing.getOpposite());
+        // v0.5: machines with a block entity may have non-full models (e.g. the MFFS projector); uplinks stick to them too.
+        return level.getBlockState(attached).isFaceSturdy(level, attached, facing.getOpposite()) || level.getBlockEntity(attached) != null;
     }
 
     @Override

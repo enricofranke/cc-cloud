@@ -19,11 +19,20 @@ public final class Access {
     public static void init() {
         CloudPermissions.init();
         UseGuard.init();
+        // Team changes (FTB Teams events) apply right away, not only on the next 5 s re-check.
+        ai.ezfox.cccloud.compat.team.Teams.onChange(player -> {
+            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+            if (server != null) server.execute(() -> ai.ezfox.cccloud.web.CloudWebServer.serverTick(server));
+        });
+        ai.ezfox.cccloud.compat.team.TeamSourceProvider.setNames(id -> {
+            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+            return server == null ? "" : CloudPermissions.nameOf(server, id);
+        });
         TeamProviders.register(new ScoreboardTeams());
     }
 
     public static AccessResolver resolver(MinecraftServer server) {
-        return new AccessResolver(WebAuthData.access(server), CloudPermissions.of(server), TeamProviders::get);
+        return new AccessResolver(WebAuthData.access(server), CloudPermissions.of(server), TeamProviders::get, ai.ezfox.cccloud.compat.TeamTrust::ownerTeam);
     }
 
     public static AccessResolver.Resolution resolve(ServerPlayer player, UUID mainframeId) {

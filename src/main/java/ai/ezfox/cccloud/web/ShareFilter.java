@@ -108,6 +108,8 @@ public final class ShareFilter {
     public static @Nullable JsonObject uplink(JsonObject uplink, Set<String> keys, boolean hideNumbers) {
         String uplinkId = str(uplink.get("uplinkId"));
         if (uplinkId == null || !(uplink.get("widgets") instanceof JsonArray widgets)) return null;
+        // v0.5 restricted sections (server, claims, backups) are never shared.
+        if (uplink.get("restricted") != null && uplink.get("restricted").isJsonPrimitive() && uplink.get("restricted").getAsBoolean()) return null;
         var visible = new JsonArray();
         for (var e : widgets) {
             if (e instanceof JsonObject w && widgetVisible(uplinkId, w, keys, hideNumbers)) visible.add(w.deepCopy());

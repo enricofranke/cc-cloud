@@ -283,5 +283,13 @@
   "cccloud.command.browsers_header": "Your browsers (%s):",
   "cccloud.command.browser_line": "%s · %s · %s · last seen %s · %s %s",
   "cccloud.command.browser_account": "all your mainframes",
-  "cccloud.command.revoke_button": "[revoke]"
+  "cccloud.command.revoke_button": "[revoke]",
+  "cccloud.configuration.cards": "Ready-made cards",
+  "cccloud.configuration.deviceCards": "Device cards on machines",
+  "cccloud.configuration.mffsRequirePin": "MFFS field toggle needs the PIN",
+  "cccloud.configuration.server": "Server & team",
+  "cccloud.configuration.serverCard": "Server card on mainframes",
+  "cccloud.configuration.ftbTeamsTrust": "FTB Teams: trust the owner's team",
+  "cccloud.configuration.ftbChunksClaims": "FTB Chunks: team claims card",
+  "cccloud.configuration.backupCard": "Simple Backups: backups card"
 }

@@ -260,8 +260,9 @@ public final class AccessApi {
             }
         }
         JsonElement teamJson = JsonNull.INSTANCE;
-        if (access != null && access.team() != null) {
-            var binding = access.team();
+        var effective = resolver.effectiveTeam(access);
+        if (effective != null) {
+            var binding = effective;
             var provider = teams.apply(binding.provider());
             var team = provider == null ? null : provider.team(binding.teamId());
             var t = new JsonObject();
@@ -271,6 +272,8 @@ public final class AccessApi {
             var mapping = new JsonObject();
             for (var m : binding.mapping().entrySet()) mapping.addProperty(m.getKey(), m.getValue().id);
             t.add("mapping", mapping);
+            // Not assigned explicitly: the owner's team (v0.5 ftbTeamsTrust); assigning a team replaces it.
+            if (access.team() == null) t.addProperty("implicit", true);
             teamJson = t;
             if (provider != null) {
                 for (var member : provider.members(binding.teamId())) {

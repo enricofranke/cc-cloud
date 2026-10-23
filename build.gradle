@@ -47,6 +47,31 @@ repositories {
         forRepository { maven { url = "https://api.modrinth.com/maven" } }
         filter { includeGroup("maven.modrinth") }
     }
+    // v0.5 integrations (docs/BUILD.md "Optional integration mods"). Each repository only serves its own group.
+    exclusiveContent {
+        forRepository { maven { url = "https://cursemaven.com" } }
+        filter { includeGroup("curse.maven") }
+    }
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.ftb.dev/releases" } }
+        filter { includeGroup("dev.ftb.mods") }
+    }
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.melanx.de/release" } }
+        filter { includeGroup("de.melanx") }
+    }
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.rover656.dev/releases" } }
+        filter { includeGroup("com.enderio") }
+    }
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.teamresourceful.com/repository/maven-public" } }
+        filter { includeGroup("earth.terrarium.athena") }
+    }
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.shedaniel.me" } }
+        filter { includeGroup("me.shedaniel.cloth") }
+    }
 }
 
 base {
@@ -82,7 +107,7 @@ neoForge {
             server()
             programArgument '--nogui'
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'cccloud.devWebPort', '18787'
+            systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '18787'
         }
 
         // This run config launches GameTestServer and runs all registered gametests, then exits.
@@ -91,7 +116,7 @@ neoForge {
         gameTestServer {
             type = "gameTestServer"
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-            systemProperty 'cccloud.devWebPort', '18787'
+            systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '18787'
         }
 
         data {
@@ -141,6 +166,41 @@ neoForge {
 // "optional", meaning it will not be pulled by dependents of this mod.
 configurations {
     runtimeClasspath.extendsFrom localRuntime
+    // Productive Bees ships productivelib only inside its jar (META-INF/jarjar); we extract it to compile against it.
+    productiveBeesJar { transitive = false }
+}
+
+// The optional integration mods (v0.5). Compile-only; -PintegrationMods puts them (or a comma-separated subset of the
+// keys below, e.g. -PintegrationMods=powah,mffs) into the dev runs. See docs/BUILD.md.
+def integrationMods = [
+    powah          : ["maven.modrinth:powah:${powah_modrinth_version}", "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}",
+                      "org.appliedenergistics:guideme:${guideme_version}"],
+    enderio        : ["maven.modrinth:enderio:${enderio_modrinth_version}"],
+    // Oritech uses GeckoLib without declaring it (ATM11 ships it).
+    oritech        : ["maven.modrinth:oritech:${oritech_modrinth_version}", "earth.terrarium.athena:athena-neoforge-26.1:${athena_version}",
+                      "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
+    energizedpower : ["maven.modrinth:energized-power:${energizedpower_modrinth_version}"],
+    energymeter    : ["maven.modrinth:energymeter:${energymeter_modrinth_version}"],
+    generatorgalore: ["curse.maven:generatorgalore-691049:${generatorgalore_curse_file}"],
+    hostilenetworks: ["maven.modrinth:hostile-neural-networks:${hnn_modrinth_version}", "maven.modrinth:placebo:${placebo_modrinth_version}"],
+    productivebees : ["curse.maven:productivebees-377897:${productivebees_curse_file}"],
+    mffs           : ["maven.modrinth:mffs:${mffs_modrinth_version}"],
+    merequester    : ["maven.modrinth:merequester:${merequester_modrinth_version}", "org.appliedenergistics:appliedenergistics2:${ae2_version}",
+                      "org.appliedenergistics:guideme:${guideme_version}"],
+    spark          : ["maven.modrinth:spark:${spark_modrinth_version}"],
+    ftbteams       : ["dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    ftbchunks      : ["dev.ftb.mods:ftb-chunks-neoforge:${ftbchunks_version}", "dev.ftb.mods:ftb-teams-neoforge:${ftbteams_version}",
+                      "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    simplebackups  : ["de.melanx:SimpleBackups:${simplebackups_version}"],
+]
+
+def extractProductiveLib = tasks.register('extractProductiveLib', Copy) {
+    from({ zipTree(configurations.productiveBeesJar.singleFile) }) {
+        include 'META-INF/jarjar/productivelib-*.jar'
+        eachFile { it.path = it.name }
+    }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('jarjar')
 }
 
 dependencies {
@@ -160,6 +220,21 @@ dependencies {
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     // Run the dev server / game test server WITH both mods: ./gradlew runGameTestServer -PstorageMods
     // (without the property the runs have neither mod, which is the "soft dependency" smoke test).
+    // v0.5 integrations: compile-only, never bundled. Full AE2 jar for ME Requester (its block entity extends AE2 classes).
+    integrationMods.each { key, coords -> coords.each { compileOnly(it) { transitive = false } } }
+    compileOnly("com.enderio:endercore:${enderio_version}") { transitive = false }
+    productiveBeesJar "curse.maven:productivebees-377897:${productivebees_curse_file}"
+    compileOnly files(layout.buildDirectory.file("jarjar/productivelib-${productivelib_version}.jar")).builtBy(extractProductiveLib)
+    if (project.hasProperty("integrationMods")) {
+        def wanted = project.property("integrationMods").toString().trim()
+        def keys = wanted.isEmpty() || wanted == "true" || wanted == "all" ? integrationMods.keySet() : wanted.split(",")*.trim()
+        def runtime = new LinkedHashSet()
+        keys.each { key ->
+            if (!integrationMods.containsKey(key)) throw new GradleException("Unknown integration mod '${key}', known: ${integrationMods.keySet()}")
+            runtime.addAll(integrationMods[key])
+        }
+        runtime.each { localRuntime(it) { transitive = false } }
+    }
     if (project.hasProperty("storageMods")) {
         localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
         localRuntime "org.appliedenergistics:guideme:${guideme_version}"

@@ -31,11 +31,29 @@ public final class AccessResolver {
     private final AccessStore store;
     private final ServerPermissions permissions;
     private final Function<String, @Nullable TeamProvider> teams;
+    private final Function<UUID, MainframeAccess.@Nullable TeamBinding> ownerTeam;
 
     public AccessResolver(AccessStore store, ServerPermissions permissions, Function<String, @Nullable TeamProvider> teams) {
+        this(store, permissions, teams, owner -> null);
+    }
+
+    /**
+     * @param ownerTeam the implicit team of a mainframe without an explicit assignment (v0.5 "owner's FTB team"
+     *                  trust, config {@code ftbTeamsTrust}); null if none
+     */
+    public AccessResolver(AccessStore store, ServerPermissions permissions, Function<String, @Nullable TeamProvider> teams,
+                          Function<UUID, MainframeAccess.@Nullable TeamBinding> ownerTeam) {
         this.store = store;
         this.permissions = permissions;
         this.teams = teams;
+        this.ownerTeam = ownerTeam;
+    }
+
+    /** The team whose ranks give roles on this mainframe: the assigned one, else the owner's team (if enabled). */
+    public MainframeAccess.@Nullable TeamBinding effectiveTeam(@Nullable MainframeAccess access) {
+        if (access == null) return null;
+        if (access.team() != null) return access.team();
+        return access.owner() == null ? null : ownerTeam.apply(access.owner());
     }
 
     public AccessStore store() {
@@ -59,7 +77,7 @@ public final class AccessResolver {
             if (player.equals(access.owner())) return new Resolution(Role.OWNER, Source.OWNER, null);
             var grant = access.grants().get(player);
             if (grant != null) best = higher(best, new Resolution(grant.role(), Source.DIRECT, null));
-            var team = access.team();
+            var team = effectiveTeam(access);
             if (team != null) {
                 var provider = teams.apply(team.provider());
                 String rank = provider == null ? null : provider.rankOf(team.teamId(), player);

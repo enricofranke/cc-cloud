@@ -328,7 +328,10 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
     /** Admins and the owner manage the mainframe (role from the AccessResolver: owner, roles, teams, admin nodes). */
     public boolean canManage(Player player) {
-        return player instanceof ServerPlayer sp && ai.ezfox.cccloud.access.Access.canManage(sp, mainframeId);
+        if (player instanceof ServerPlayer sp) return ai.ezfox.cccloud.access.Access.canManage(sp, mainframeId);
+        // Server-side non-ServerPlayer players (fake/mock players): resolve by UUID.
+        return level instanceof ServerLevel serverLevel && !level.isClientSide()
+            && ai.ezfox.cccloud.access.Access.resolver(serverLevel.getServer()).role(player.getUUID(), mainframeId).atLeast(ai.ezfox.cccloud.access.Role.ADMIN);
     }
 
     /** Gives a player a direct role (NONE removes it). Returns false if nothing changed or the player is the owner. */
