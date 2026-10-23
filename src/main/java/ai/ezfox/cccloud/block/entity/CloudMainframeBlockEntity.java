@@ -65,6 +65,9 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private volatile boolean online;
     private final MainframePeripheral peripheral = new MainframePeripheral(this);
+    /** CC wired network membership on both halves (cables, docs/SPEC.md "Cables"). */
+    private final ai.ezfox.cccloud.cable.CloudWired wired = new ai.ezfox.cccloud.cable.CloudWired(this, () -> mainframeId.toString(), true,
+        () -> peripheral, () -> java.util.List.of(getBlockPos(), getBlockPos().above()));
 
     /** FE buffer (Capabilities.Energy.BLOCK on both halves) and the power logic. */
     private final ai.ezfox.cccloud.power.MainframeEnergy energy = new ai.ezfox.cccloud.power.MainframeEnergy(
@@ -87,6 +90,10 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     public String getDisplayName() {
         var p = getBlockPos();
         return "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
+    }
+
+    public ai.ezfox.cccloud.cable.CloudWired wired() {
+        return wired;
     }
 
     public MainframePeripheral peripheral() {
@@ -135,6 +142,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             CloudNetwork.registerMainframe(this);
         }
         registered = true;
+        wired.onLoad();
         syncAcl();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -160,6 +168,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (registered) {
             registered = false;
             CloudNetwork.unregisterMainframe(this);

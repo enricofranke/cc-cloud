@@ -37,6 +37,9 @@ public class CloudRelayBlockEntity extends BlockEntity {
     private boolean registered;
     private int ticks;
     private final SpinAnimation clientAnimation = new SpinAnimation();
+    private final ai.ezfox.cccloud.peripheral.RelayPeripheral peripheral = new ai.ezfox.cccloud.peripheral.RelayPeripheral(this);
+    /** CC wired network membership (cables, docs/SPEC.md "Cables"). */
+    private final ai.ezfox.cccloud.cable.CloudWired wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> relayId.toString(), true, () -> peripheral);
 
     public CloudRelayBlockEntity(BlockPos pos, BlockState state) {
         super(ModRegistry.RELAY_BE.get(), pos, state);
@@ -62,6 +65,14 @@ public class CloudRelayBlockEntity extends BlockEntity {
 
     public boolean hasPower() {
         return hasPower;
+    }
+
+    public ai.ezfox.cccloud.peripheral.RelayPeripheral peripheral() {
+        return peripheral;
+    }
+
+    public ai.ezfox.cccloud.cable.CloudWired wired() {
+        return wired;
     }
 
     public SpinAnimation clientAnimation() {
@@ -94,12 +105,14 @@ public class CloudRelayBlockEntity extends BlockEntity {
             CloudNetwork.registerRelay(this);
         }
         registered = true;
+        wired.onLoad();
         NetworkService.markDirty();
     }
 
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterRelay(this);

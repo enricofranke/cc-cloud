@@ -53,6 +53,16 @@ public final class ModRegistry {
     public static final DeferredBlock<ai.ezfox.cccloud.relay.CloudRelayBlock> ENDER_RELAY = BLOCKS.registerBlock("ender_relay",
         p -> new ai.ezfox.cccloud.relay.CloudRelayBlock(ai.ezfox.cccloud.relay.RelayType.ENDER, p), p -> relayProperties(p).mapColor(MapColor.GOLD));
 
+    // Cables part B: fiber (docs/SPEC.md "Cables")
+    public static final DeferredBlock<ai.ezfox.cccloud.cable.FiberCableBlock> FIBER_CABLE = BLOCKS.registerBlock("fiber_cable",
+        ai.ezfox.cccloud.cable.FiberCableBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_GRAY).strength(0.3f).sound(SoundType.WOOL).noOcclusion()
+            .pushReaction(PushReaction.DESTROY));
+    public static final DeferredBlock<ai.ezfox.cccloud.cable.FiberJunctionBlock> FIBER_JUNCTION = BLOCKS.registerBlock("fiber_junction",
+        ai.ezfox.cccloud.cable.FiberJunctionBlock::new, p -> p.mapColor(MapColor.STONE).strength(1.5f).sound(SoundType.STONE).noOcclusion());
+    public static final DeferredBlock<ai.ezfox.cccloud.cable.EnderFiberLinkBlock> ENDER_FIBER_LINK = BLOCKS.registerBlock("ender_fiber_link",
+        ai.ezfox.cccloud.cable.EnderFiberLinkBlock::new, p -> p.mapColor(MapColor.GOLD).strength(2.5f).sound(SoundType.METAL).noOcclusion()
+            .pushReaction(PushReaction.BLOCK).lightLevel(s -> 4));
+
     private static BlockBehaviour.Properties relayProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.STONE).strength(2.0f).sound(SoundType.METAL).noOcclusion().pushReaction(PushReaction.BLOCK)
             .lightLevel(s -> s.getValue(ai.ezfox.cccloud.relay.RelayStatus.PROPERTY) == ai.ezfox.cccloud.relay.RelayStatus.ONLINE ? 5 : 0);
@@ -71,6 +81,9 @@ public final class ModRegistry {
     public static final DeferredItem<?> CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_RELAY);
     public static final DeferredItem<?> ADVANCED_CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_RELAY, p -> p.rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> ENDER_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ENDER_RELAY, p -> p.rarity(Rarity.RARE));
+    public static final DeferredItem<?> FIBER_CABLE_ITEM = ITEMS.registerSimpleBlockItem(FIBER_CABLE);
+    public static final DeferredItem<?> FIBER_JUNCTION_ITEM = ITEMS.registerSimpleBlockItem(FIBER_JUNCTION);
+    public static final DeferredItem<?> ENDER_FIBER_LINK_ITEM = ITEMS.registerSimpleBlockItem(ENDER_FIBER_LINK, p -> p.rarity(Rarity.EPIC));
     public static final DeferredItem<Item> CLOUD_CORE = ITEMS.registerSimpleItem("cloud_core");
     public static final DeferredItem<CloudLinkCardItem> CLOUD_LINK_CARD = ITEMS.registerItem("cloud_link_card", CloudLinkCardItem::new, p -> p.stacksTo(1));
 
@@ -81,6 +94,9 @@ public final class ModRegistry {
         () -> new BlockEntityType<>(ai.ezfox.cccloud.relay.CloudRelayBlockEntity::new, CLOUD_RELAY.get(), ADVANCED_CLOUD_RELAY.get(), ENDER_RELAY.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudUplinkBlockEntity>> UPLINK_BE = BLOCK_ENTITIES.register("cloud_uplink",
         () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get()));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity>> ENDER_FIBER_LINK_BE =
+        BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, ENDER_FIBER_LINK.get()));
 
     // Data components
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
@@ -104,6 +120,9 @@ public final class ModRegistry {
             out.accept(CLOUD_RELAY_ITEM.get());
             out.accept(ADVANCED_CLOUD_RELAY_ITEM.get());
             out.accept(ENDER_RELAY_ITEM.get());
+            out.accept(FIBER_CABLE_ITEM.get());
+            out.accept(FIBER_JUNCTION_ITEM.get());
+            out.accept(ENDER_FIBER_LINK_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
             for (var bridge : ai.ezfox.cccloud.bridge.BridgeRegistry.ITEMS) out.accept(bridge.get());
@@ -125,6 +144,11 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
         TEST_FUNCTIONS.register("network_routing", () -> ai.ezfox.cccloud.gametest.NetworkTests::routing);
         TEST_FUNCTIONS.register("network_ender", () -> ai.ezfox.cccloud.gametest.NetworkTests::enderAcrossDimensions);
+        TEST_FUNCTIONS.register("cable_cc_wired", () -> ai.ezfox.cccloud.gametest.CableTests::ccCable);
+        TEST_FUNCTIONS.register("cable_prefers_cable", () -> ai.ezfox.cccloud.gametest.CableTests::prefersCable);
+        TEST_FUNCTIONS.register("cable_fiber_connections", () -> ai.ezfox.cccloud.gametest.CableTests::fiberConnections);
+        TEST_FUNCTIONS.register("cable_fiber_capacity", () -> ai.ezfox.cccloud.gametest.CableTests::fiberCapacity);
+        TEST_FUNCTIONS.register("cable_ender_fiber", () -> ai.ezfox.cccloud.gametest.CableTests::enderFiberAcrossDimensions);
     }
 
     private ModRegistry() {

@@ -102,6 +102,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     private final Map<IComputerAccess, TokenBucket> computers = new ConcurrentHashMap<>();
     private final UplinkPeripheral peripheral = new UplinkPeripheral(this);
+    /** CC wired network membership (a member: it puts no peripheral on the cable). */
+    private final ai.ezfox.cccloud.cable.CloudWired wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> uplinkId.toString(), false, () -> null);
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private boolean registered;
     private final SpinAnimation clientAnimation = new SpinAnimation();
@@ -125,6 +127,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     @Override
     public @Nullable MainframeLink getLink() {
         return link;
+    }
+
+    public ai.ezfox.cccloud.cable.CloudWired wired() {
+        return wired;
     }
 
     public UplinkPeripheral peripheral() {
@@ -226,12 +232,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         registered = true;
         tickCounter = 0;
+        wired.onLoad();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterUplink(this);
@@ -753,7 +761,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var here = GlobalPos.of(serverLevel.dimension(), getBlockPos());
         // Range is checked against the whole network (mainframe and relays), not only the mainframe.
         var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, serverLevel, getBlockPos(),
-            ai.ezfox.cccloud.network.NetworkService.deviceType(this));
+            ai.ezfox.cccloud.network.NetworkService.deviceType(this), uplinkId.toString(), wired);
         if (error != null) {
             player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
             return;

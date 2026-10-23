@@ -44,6 +44,14 @@ public class CCCloud {
             var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
             return mainframe == null ? null : mainframe.peripheral();
         }, ModRegistry.CLOUD_MAINFRAME.get());
+        // Cables: mainframe (both halves), relays and uplinks are CC wired elements; relays are peripherals too.
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.UPLINK_BE.get(), (uplink, side) -> uplink.wired());
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.wired());
+        event.registerBlockEntity(PeripheralCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.peripheral());
+        event.registerBlock(dan200.computercraft.api.network.wired.WiredElementCapability.get(), (level, pos, state, be, side) -> {
+            var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
+            return mainframe == null ? null : mainframe.wired();
+        }, ModRegistry.CLOUD_MAINFRAME.get());
         // Relays: FE input from every side.
         event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.Energy.BLOCK, ModRegistry.RELAY_BE.get(), (relay, side) -> relay.energy());
         // FE input on both halves, all sides (receive-only).

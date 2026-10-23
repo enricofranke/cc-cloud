@@ -291,5 +291,13 @@
   "cccloud.configuration.serverCard": "Server card on mainframes",
   "cccloud.configuration.ftbTeamsTrust": "FTB Teams: trust the owner's team",
   "cccloud.configuration.ftbChunksClaims": "FTB Chunks: team claims card",
-  "cccloud.configuration.backupCard": "Simple Backups: backups card"
+  "cccloud.configuration.backupCard": "Simple Backups: backups card",
+  "block.cccloud.fiber_cable": "Fiber Cable",
+  "block.cccloud.fiber_junction": "Fiber Junction",
+  "block.cccloud.ender_fiber_link": "Ender Fiber Link",
+  "cccloud.fiber.ender_linked": "Ender Fiber Link linked to Mainframe @ %s. It joins the fiber networks of every Ender Fiber Link of that mainframe, any distance and dimension.",
+  "cccloud.fiber.ender_unlinked": "Not linked: use a Cloud Link Card to join a mainframe's Ender Fiber Links.",
+  "cccloud.fiber.ender_group": "Linked to a mainframe's Ender Fiber Links.",
+  "cccloud.configuration.fiberCapacityWeight": "Fiber capacity weight",
+  "cccloud.configuration.fiberPowerFactor": "Fiber device FE share"
 }

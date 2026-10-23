@@ -72,6 +72,18 @@ public class CloudLinkCardItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
+        if (level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity fiberLink) {
+            if (level.isClientSide()) return InteractionResult.SUCCESS;
+            if (player == null) return InteractionResult.FAIL;
+            var link = stack.get(ModRegistry.LINKED_MAINFRAME.get());
+            if (link == null) {
+                player.sendSystemMessage(Component.translatable("cccloud.link_card.empty").withStyle(ChatFormatting.RED));
+                return InteractionResult.FAIL;
+            }
+            fiberLink.bind(link, player);
+            return InteractionResult.SUCCESS;
+        }
+
         if (level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) {
             if (level.isClientSide()) return InteractionResult.SUCCESS;
             if (player == null) return InteractionResult.FAIL;

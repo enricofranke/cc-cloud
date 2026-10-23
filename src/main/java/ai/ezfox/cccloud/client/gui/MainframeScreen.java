@@ -190,8 +190,10 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         var signals = new java.util.HashMap<String, Double>();
         for (var e : network.getAsJsonArray("links")) {
             var l = e.getAsJsonObject();
-            signals.put(str(l, "a") + ">" + str(l, "b"), l.get("signal").getAsDouble());
-            signals.put(str(l, "b") + ">" + str(l, "a"), l.get("signal").getAsDouble());
+            // Cables are stored as -1 (CC cable) / -2 (fiber): the tree shows a cable marker instead of signal bars.
+            double signal = "wired".equals(str(l, "kind")) ? ("fiber".equals(str(l, "medium")) ? -2 : -1) : l.get("signal").getAsDouble();
+            signals.put(str(l, "a") + ">" + str(l, "b"), signal);
+            signals.put(str(l, "b") + ">" + str(l, "a"), signal);
         }
         var orphans = new java.util.ArrayList<com.google.gson.JsonObject>();
         for (var e : nodes) {
@@ -223,7 +225,14 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var g = c.g();
             g.fill(ix, y + 4, ix + 5, y + 9, legacy ? CloudGui.YELLOW : statusColor(status));
             int right = x + w - 2;
-            if (signal != null) {
+            if (signal != null && signal < 0) {
+                // Cable marker: a short plug line (grey = CC cable, cyan = fiber) instead of signal bars.
+                int color = signal < -1.5 ? 0xFF4FE3F0 : 0xFFA0A8AC;
+                g.fill(right - 15, y + 6, right - 3, y + 8, color);
+                g.fill(right - 17, y + 4, right - 15, y + 10, color);
+                g.fill(right - 3, y + 4, right - 1, y + 10, color);
+                right -= 19;
+            } else if (signal != null) {
                 // Signal bars (4)
                 int bars = signal >= 0.75 ? 4 : signal >= 0.5 ? 3 : signal >= 0.15 ? 2 : 1;
                 int color = signal < 0.15 ? CloudGui.YELLOW : CloudGui.CYAN;
@@ -279,9 +288,12 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var a = points.get(str(l, "a"));
             var b = points.get(str(l, "b"));
             if (a == null || b == null) continue;
-            int color = "ender".equals(str(l, "kind")) ? 0xFF9C5BD6 : l.get("signal").getAsDouble() < 0.15 ? 0xFF8A7A20 : 0xFF2C6E7A;
+            boolean cable = "wired".equals(str(l, "kind"));
+            int color = cable ? ("fiber".equals(str(l, "medium")) ? 0xFF4FE3F0 : 0xFFA0A8AC)
+                : "ender".equals(str(l, "kind")) ? 0xFF9C5BD6 : l.get("signal").getAsDouble() < 0.15 ? 0xFF8A7A20 : 0xFF2C6E7A;
             int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
-            for (int i = 0; i <= steps; i += 2) {
+            // Cables solid, radio/ender dotted.
+            for (int i = 0; i <= steps; i += cable ? 1 : 2) {
                 int px = a[0] + (b[0] - a[0]) * i / Math.max(1, steps);
                 int pz = a[1] + (b[1] - a[1]) * i / Math.max(1, steps);
                 g.fill(px, pz, px + 1, pz + 1, color);

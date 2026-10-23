@@ -291,5 +291,13 @@
   "cccloud.configuration.serverCard": "Server-Karte an Mainframes",
   "cccloud.configuration.ftbTeamsTrust": "FTB Teams: dem Team des Besitzers vertrauen",
   "cccloud.configuration.ftbChunksClaims": "FTB Chunks: Karte mit Team-Claims",
-  "cccloud.configuration.backupCard": "Simple Backups: Backup-Karte"
+  "cccloud.configuration.backupCard": "Simple Backups: Backup-Karte",
+  "block.cccloud.fiber_cable": "Glasfaserkabel",
+  "block.cccloud.fiber_junction": "Glasfaser-Verteiler",
+  "block.cccloud.ender_fiber_link": "Ender-Glasfaserbrücke",
+  "cccloud.fiber.ender_linked": "Ender-Glasfaserbrücke mit Mainframe @ %s verbunden. Sie verbindet die Glasfasernetze aller Ender-Glasfaserbrücken dieses Mainframes, über jede Entfernung und Dimension.",
+  "cccloud.fiber.ender_unlinked": "Nicht verbunden: mit einer Cloud-Link-Karte den Ender-Glasfaserbrücken eines Mainframes beitreten.",
+  "cccloud.fiber.ender_group": "Mit den Ender-Glasfaserbrücken eines Mainframes verbunden.",
+  "cccloud.configuration.fiberCapacityWeight": "Kapazitätsgewicht über Glasfaser",
+  "cccloud.configuration.fiberPowerFactor": "FE-Anteil von Geräten über Glasfaser"
 }

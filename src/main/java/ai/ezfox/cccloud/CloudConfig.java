@@ -29,6 +29,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_NODES;
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_DEVICES;
     public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
+    public static final ModConfigSpec.DoubleValue FIBER_CAPACITY_WEIGHT;
+    public static final ModConfigSpec.DoubleValue FIBER_POWER_FACTOR;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_BRIDGE_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_HOP_FE;
@@ -116,6 +118,9 @@ public final class CloudConfig {
                 + "until they are re-linked or a relay is placed.")
             .translation("cccloud.configuration.legacyRangeGrace")
             .define("legacyRangeGrace", true);
+        FIBER_CAPACITY_WEIGHT = b.comment("How much a device attached by Fiber Cable counts against the mainframe's device capacity (1 = like any device).")
+            .translation("cccloud.configuration.fiberCapacityWeight")
+            .defineInRange("fiberCapacityWeight", 0.5, 0.0, 1.0);
         b.pop();
 
         b.push("power");
@@ -146,6 +151,9 @@ public final class CloudConfig {
         MAINFRAME_MAX_INPUT_FE = b.comment("Maximum FE the mainframe accepts per tick.")
             .translation("cccloud.configuration.mainframeMaxInputFE")
             .defineInRange("mainframeMaxInputFE", 2_000, 1, Integer.MAX_VALUE);
+        FIBER_POWER_FACTOR = b.comment("Share of the per-device FE (uplink/advanced uplink/bridge) a device attached by Fiber Cable pays (0.5 = 50 % less).")
+            .translation("cccloud.configuration.fiberPowerFactor")
+            .defineInRange("fiberPowerFactor", 0.5, 0.0, 1.0);
         RELAY_FE = fe(b, "relayFE", 20, "FE per tick of a Cloud Relay (0 = free).");
         ADVANCED_RELAY_FE = fe(b, "advancedRelayFE", 60, "FE per tick of an Advanced Cloud Relay (0 = free).");
         ENDER_RELAY_FE = fe(b, "enderRelayFE", 120, "FE per tick of an Ender Relay (0 = free).");
