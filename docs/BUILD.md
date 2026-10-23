@@ -63,6 +63,13 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `apothicspawners` | Apothic Spawners 2.0.1 | Placebo 10.0.2 | `compat/apothicspawners` (spawner stats API) |
 | `gateways` | Gateways to Eternity 6.0.2 | Placebo, Apothic Attributes 3.1.0 | `compat/gateways` (GatewayEntity getters) |
 | `easyvillagers` | Easy Villagers 1.1.47 | – | `compat/easyvillagers` (block entity getters) |
+| `ironfurnaces` | Iron Furnaces 4.4.2 | – | `compat/ironfurnaces` |
+| `cobblegengalore` | Cobblegen Galore 0.2.9 | – | `compat/cobblegengalore` |
+| `productivemetalworks` | Productive Metalworks 1.17.1 | Productive Bees (+ its productivelib) | `compat/productivemetalworks` |
+| `productivefarming` | Productive Farming 0.13.0 | Productive Bees | `compat/productivefarming` |
+| `agritechevolved` | Agritech: Evolved 2.2.0.5 | – | `compat/agritechevolved` |
+| `mysticalagriculture` | Mystical Agriculture 9.0.10 | Cucumber 9.0.6 | `compat/mysticalagriculture` (compile only; a dev run crashes in MA's creative tab) |
+| `railcraft` | Railcraft Reborn 1.4.5 | – | `compat/railcraft` (boiler module API) |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh
@@ -70,6 +77,8 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 ./gradlew runGameTestServer -PintegrationMods=powah,mffs -PdevWebPort=18797 --max-workers=3   # a subset (keys: see build.gradle)
 ./gradlew runServer -PintegrationMods -PdevWebPort=18797 --max-workers=3
 ```
+Some integration mods ship GameTests of their own (Cobblegen Galore, Productive Farming); they run in the same
+`runGameTestServer` and can fail for reasons outside CC: Cloud (e.g. Productive Farming's Agritech Two recipe check).
 `-PdevWebPort` overrides the dev dashboard port (default 18787) so two checkouts can run tests at the same time. The integration GameTests use their own test environment `cccloud:integrations` (a separate batch), so they do not run at the same time as the load test. Without `-PintegrationMods` none of these mods is loaded, which is the soft-dependency check.
 
 ## Tests

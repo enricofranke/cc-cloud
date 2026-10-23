@@ -61,6 +61,15 @@ public final class Integrations {
         optional("gateways", () -> ai.ezfox.cccloud.compat.gateways.GatewaysCard::init);
         optional("easy_villagers", () -> ai.ezfox.cccloud.compat.easyvillagers.EasyVillagersCards::init);
 
+        // 5. Processing machines.
+        optional("ironfurnaces", () -> ai.ezfox.cccloud.compat.ironfurnaces.IronFurnacesCards::init);
+        optional("cobblegengalore", () -> ai.ezfox.cccloud.compat.cobblegengalore.CobblegenCards::init);
+        optional("productivemetalworks", () -> ai.ezfox.cccloud.compat.productivemetalworks.MetalworksCards::init);
+        optional("productivefarming", () -> ai.ezfox.cccloud.compat.productivefarming.FarmCards::init);
+        optional("agritechevolved", () -> ai.ezfox.cccloud.compat.agritechevolved.AgritechCards::init);
+        optional("mysticalagriculture", () -> ai.ezfox.cccloud.compat.mysticalagriculture.MysticalCards::init);
+        optional("railcraft", () -> ai.ezfox.cccloud.compat.railcraft.RailcraftCards::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

@@ -214,6 +214,16 @@ def integrationMods = [
     gateways            : ["curse.maven:gatewaystoeternity-417802:${gateways_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}",
                            "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
     easyvillagers       : ["curse.maven:easyvillagers-400514:${easyvillagers_curse_file}"],
+    ironfurnaces        : ["curse.maven:ironfurnaces-237664:${ironfurnaces_curse_file}"],
+    cobblegengalore     : ["curse.maven:cobblegengalore-1108467:${cobblegengalore_curse_file}"],
+    // Productive Metalworks / Farming need Productive Bees (and its productivelib) at runtime.
+    productivemetalworks: ["curse.maven:productivemetalworks-1184570:${productivemetalworks_curse_file}",
+                           "curse.maven:productivebees-377897:${productivebees_curse_file}"],
+    productivefarming   : ["curse.maven:productivefarming-944463:${productivefarming_curse_file}",
+                           "curse.maven:productivebees-377897:${productivebees_curse_file}"],
+    agritechevolved     : ["curse.maven:agritechevolved-1287394:${agritechevolved_curse_file}"],
+    mysticalagriculture : ["curse.maven:mysticalagriculture-246640:${mysticalagriculture_curse_file}", "curse.maven:cucumber-272335:${cucumber_curse_file}"],
+    railcraft           : ["curse.maven:railcraftreborn-901491:${railcraft_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 
