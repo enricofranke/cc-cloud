@@ -924,7 +924,7 @@ On top of the 3D network view: render the actual blocks around the network as vo
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
 - Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded or saved chunks only, never generate/force-load; 40 sections/s per session; server-side cache invalidated on block changes (debounced); config `voxelView` (default true).
 - Stage 1 (now): colored voxels with map colors, greedy meshing in a Web Worker, ambient occlusion, emissive blocks glow, water translucent, day/night toggle; our devices drawn with their real models on top; clickable as in the 3D view; clipping plane / Y-slider to cut through floors of a base.
-- Stage 2 (later): real block textures – the game client uploads a block texture atlas the same way it uploads item icons (validated PNG, size caps), and the web renders textured voxels.
+- Stage 2: real block textures – game clients upload block face textures the same way they upload item icons (validated PNG, size caps), the server builds an atlas, and the web renders textured voxels (see "Voxel view – stage 2").
 - Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
 
 #### Voxel view – HTTP API (mod side, stage 1, implemented)
@@ -949,6 +949,14 @@ On top of the 3D network view: render the actual blocks around the network as vo
   - The block states (section + 1-block border) are copied on the server thread from loaded chunks only (no loading or generating).
   - Filtering and encoding run on 2 background threads.
   - Results are cached (1024 sections) and invalidated, debounced 2 s, when a block in or next to the section changes.
+
+#### Voxel view – stage 2: block textures (mod side, implemented)
+Game clients with the mod read the block textures and upload them, like item icons (same opt-in: client config `shareIconRenders`); the server builds one texture atlas; voxel responses say which tile each face uses. Blocks without textures keep the map colour (stage 1).
+- **What a client sends:** for a block id, the sprite of each face of the default state's model, in the order `down, up, north, south, west, east` (first quad per side; models without side quads – flowers, torches – use their first inner quad for every face), and which faces are tinted (grass, leaves: the texture is grey and gets the biome colour). Each sprite is a **16×16 RGBA PNG** (first animation frame; larger resource-pack textures are box-averaged down, smaller ones scaled up), ≤ 4 KB, named by its sprite id (`minecraft:block/stone`).
+- **Flow:** a voxel response lists palette ids; ids without stored textures are queued. Rendering clients get batches (payload `cccloud:block_texture_request`, ≤ 64 ids, one outstanding batch and one request per second per client) and answer with `cccloud:block_texture_upload` (≤ 64 blocks, ≤ 192 sprites). The server accepts only ids of that client's batch, valid ids, validated 16×16 PNGs, and sprites that an accepted block of the same upload references; a block with an empty face list is remembered as "cannot render". Entries are versioned with the mod version (`namespace@version`, game version for `minecraft`) and re-requested after updates. Stored in `<world>/cccloud/block_textures.json`; at most 4096 sprites.
+- **Voxel response additions:** palette entries with textures get `"tex":[tile×6]` (same face order, `-1` = no texture: use the colour) and `"tint":bits` (bit i = face i is tinted: multiply the texture with the entry's `color`). When at least one entry has textures, the response has `"atlas":{"rev","tile":16,"cols":64,"width","height","url":"/api/voxel-atlas/<rev>.png"}`. Tile `t` is at pixel `((t % cols)·16, ⌊t / cols⌋·16)`; tiles are stable (new sprites are appended), so a cached atlas stays valid for older responses.
+- **Atlas:** `GET /api/voxel-atlas/<rev>.png` (public like item icons, rate limited per IP; only game textures): the current atlas, `Cache-Control: public, max-age=31536000, immutable` when `<rev>` is current, else `no-cache` (load the URL from the newest response).
+- Dev check: `./gradlew runClient -PtextureCheck=<dir>` reads a few blocks with the real client path, writes `<dir>/voxel_atlas.png` and quits.
 
 ### In-game network visualization: Cloud Analyzer (requested 2026-10-23)
 Players must be able to plan relays without opening the web dashboard.

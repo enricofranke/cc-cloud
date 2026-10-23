@@ -22,7 +22,7 @@ public final class Router {
     }
 
     public enum Id {
-        PAIR, PAIR_STATUS, CONFIG, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
+        PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
         SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
@@ -97,6 +97,8 @@ public final class Router {
         // Item icons are public (explicitly allow-listed): no secrets, rate limited per IP, still LAN-only by default.
         // Public: version, Script Store URL and feature switches (no secrets).
         new Route(Id.CONFIG, HttpMethod.GET, Pattern.compile("/api/config"), Access.PUBLIC, "/api/config"),
+        // Voxel view stage 2: the block texture atlas (game textures only, like item icons).
+        new Route(Id.VOXEL_ATLAS, HttpMethod.GET, Pattern.compile("/api/voxel-atlas/[0-9]{1,9}\\.png"), Access.PUBLIC, "/api/voxel-atlas/1.png"),
         new Route(Id.ICON, HttpMethod.GET, Pattern.compile("/api/icon/[a-z0-9_.-]{1,64}/[a-z0-9_./-]{1,512}\\.png"), Access.PUBLIC, "/api/icon/minecraft/iron_ingot.png"),
         // The upgrade itself is public; every WebSocket message except auth/pong is denied until the auth message succeeded.
         new Route(Id.WEBSOCKET, HttpMethod.GET, Pattern.compile("/ws/client"), Access.PUBLIC, "/ws/client"),

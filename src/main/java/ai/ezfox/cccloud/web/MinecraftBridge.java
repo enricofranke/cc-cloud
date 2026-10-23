@@ -335,7 +335,12 @@ public final class MinecraftBridge implements GameBridge {
             return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "out_of_range"));
         }
         return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz)
-            .thenApply(json -> new GameBridge.VoxelResult(json == null ? 204 : 200, json, null));
+            .thenApply(json -> {
+                if (json == null) return new GameBridge.VoxelResult(204, null, null);
+                var copy = json.deepCopy(); // the cached section stays undecorated; textures may arrive later
+                ai.ezfox.cccloud.voxel.BlockTextureService.decorate(copy);
+                return new GameBridge.VoxelResult(200, copy, null);
+            });
     }
 
     /** The map tile endpoint after authentication (public for the GameTests). */

@@ -36,6 +36,13 @@ public final class VoxelTests {
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.VoxelResult>[] result = new CompletableFuture[1];
         UUID viewer = UUID.randomUUID();
         VoxelService.clearForTest();
+        // stage 2: stone has stored textures (as if a client had uploaded them), the ore never gets a texture request
+        var textures = ai.ezfox.cccloud.voxel.BlockTextureService.store();
+        var px = new int[256];
+        java.util.Arrays.fill(px, 0xFF7F7F7F);
+        textures.putSprite("minecraft:block/stone", ai.ezfox.cccloud.icons.PngCodec.encode(16, 16, px));
+        String stoneSprite = "minecraft:block/stone";
+        textures.putBlock("minecraft:stone", "gametest", new String[]{stoneSprite, stoneSprite, stoneSprite, stoneSprite, stoneSprite, stoneSprite}, 0);
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId()) != null,
                 "mainframe online with its network"))
@@ -64,6 +71,12 @@ public final class VoxelTests {
                 helper.assertTrue(shell > 0 && palette.get(shell - 1).getAsJsonObject().get("id").getAsString().equals("minecraft:stone"),
                     "the stone shell above it is exposed and sent");
                 helper.assertTrue(json.get("exposed").getAsInt() > 0, "exposed count");
+                var stone = palette.get(shell - 1).getAsJsonObject();
+                helper.assertTrue(stone.has("tex") && stone.getAsJsonArray("tex").size() == 6 && stone.getAsJsonArray("tex").get(1).getAsInt() >= 0,
+                    "stage 2: textured faces: " + stone);
+                helper.assertTrue(json.has("atlas") && json.getAsJsonObject("atlas").get("url").getAsString().startsWith("/api/voxel-atlas/"), "atlas: " + json.get("atlas"));
+                var px2 = ai.ezfox.cccloud.icons.PngCodec.size(textures.atlas());
+                helper.assertTrue(px2 != null && px2[0] >= 16, "atlas image");
             })
             .thenSucceed();
     }

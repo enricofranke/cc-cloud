@@ -220,6 +220,21 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     /** Voxel sections per device per second. */
     static final int VOXEL_RATE = 40;
 
+    /** {@code /api/voxel-atlas/<rev>.png}: the current atlas; immutable when the revision matches, else no-cache. */
+    private void voxelAtlas(ChannelHandlerContext ctx, FullHttpRequest req, String ip, String path) {
+        if (instance.iconLimits.size() > 10_000) instance.iconLimits.clear();
+        if (!instance.iconLimits.computeIfAbsent(ip, k -> new TokenBucket(ICON_RATE, ICON_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        var store = ai.ezfox.cccloud.voxel.BlockTextureService.store();
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        long rev = Long.parseLong(name.substring(0, name.length() - 4));
+        byte[] png = store.atlas();
+        boolean current = rev == store.rev();
+        send(ctx, req, HttpResponseStatus.OK, "image/png", png, current ? "public, max-age=31536000, immutable" : "no-cache");
+    }
+
     private void voxels(ChannelHandlerContext ctx, FullHttpRequest req, AuthStore.Device device) {
         String[] parts = new QueryStringDecoder(req.uri()).path().split("/");
         // /api/mainframes/<mf>/voxels/<dim>/<cx>/<cy>/<cz>
@@ -368,6 +383,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case CONFIG -> sendJson(ctx, req, HttpResponseStatus.OK, PublicConfig.json());
+            case VOXEL_ATLAS -> voxelAtlas(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
             case STATIC -> {
                 var file = StaticFiles.resolve(path);

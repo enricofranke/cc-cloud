@@ -154,6 +154,20 @@ public final class IconService {
         return store;
     }
 
+    /** Public form of {@link #version} (block textures use the same versioning). */
+    public static String versionOf(String namespace) {
+        return version(namespace);
+    }
+
+    /** Players whose client renders (icons and block textures, client config {@code shareIconRenders}). */
+    public static List<UUID> renderers() {
+        var service = current;
+        if (service == null) return List.of();
+        synchronized (service) {
+            return List.copyOf(service.renderers);
+        }
+    }
+
     /** Version key of a namespace: mod id + mod version (game version for minecraft), so updates re-render. */
     static String version(String namespace) {
         if (namespace.equals("minecraft")) return "minecraft@" + SharedConstants.getCurrentVersion().name();

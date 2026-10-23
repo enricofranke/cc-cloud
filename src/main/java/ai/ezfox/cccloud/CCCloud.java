@@ -37,6 +37,7 @@ public class CCCloud {
         ai.ezfox.cccloud.web.WebHub.browserLimit = id -> ai.ezfox.cccloud.network.CloudNetwork.server() == null ? Integer.MAX_VALUE
             : ai.ezfox.cccloud.upgrade.Upgrades.effects(id).browsers();
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
+        ai.ezfox.cccloud.voxel.BlockTextureService.init(modEventBus);
         // Config changes (ranges, power) change the topology.
         modEventBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> ai.ezfox.cccloud.network.NetworkService.markDirty());
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.

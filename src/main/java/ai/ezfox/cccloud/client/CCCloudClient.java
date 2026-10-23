@@ -12,6 +12,8 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 public class CCCloudClient {
     public CCCloudClient(IEventBus modEventBus, net.neoforged.fml.ModContainer container) {
         ai.ezfox.cccloud.client.icons.ClientIcons.init(modEventBus, container);
+        ai.ezfox.cccloud.client.voxel.ClientBlockTextures.init();
+        ai.ezfox.cccloud.client.voxel.DevTextureCheck.init();
         modEventBus.addListener(CloudModels::register);
         DevGuiScreenshot.init();
         modEventBus.addListener(CCCloudClient::registerRenderers);
