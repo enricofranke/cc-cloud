@@ -71,6 +71,10 @@ export interface WidgetOpts {
   points?: number;
   interval?: number;
   style?: "line" | "sparkline";
+  /** editor display style (layout v2), e.g. "bar" for a gauge */
+  display?: string;
+  /** editor icon (layout v2) */
+  wicon?: string;
   /** Lua v2 layout hints */
   page?: string;
   group?: string;
@@ -96,6 +100,10 @@ export interface Uplink {
   widgets: Widget[];
   /** v0.3: "auto" = automatic Computer card, "lua" = script widgets, "direct" = bridge template */
   mode?: "auto" | "lua" | "direct";
+  /** false = the chunk is unloaded: the mod sends the cached last snapshot (values may be old) */
+  loaded?: boolean;
+  /** ms since epoch, with loaded:false */
+  lastSeen?: number;
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
   groups?: { id: string; title?: string; page?: string; cols?: number }[];

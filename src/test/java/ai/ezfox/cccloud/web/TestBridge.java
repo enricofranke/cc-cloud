@@ -67,6 +67,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+        dispatched.add("rs_override:" + override.channel() + "=" + override.level());
+        return null;
+    }
+
+    @Override
     public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
         dispatched.add("unlink:" + nodeId);
         return null;
@@ -76,6 +82,30 @@ class TestBridge implements GameBridge {
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         dispatched.add(command.op());
         return new GameBridge.RuleResult(null, null, null);
+    }
+
+    @Override
+    public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+        dispatched.add("storage:" + request.op());
+        return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());
+    }
+
+    @Override
+    public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+        dispatched.add("preview:" + request.name());
+        done.accept(new GameBridge.StorageResult(null, new com.google.gson.JsonObject()));
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+        dispatched.add("map:" + tx + "," + tz);
+        return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.MapResult(204, null, null, null));
+    }
+
+    @Override
+    public java.util.concurrent.CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
+        dispatched.add("voxels");
+        return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.VoxelResult(204, null, null));
     }
 
     @Override

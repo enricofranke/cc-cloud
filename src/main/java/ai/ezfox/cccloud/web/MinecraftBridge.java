@@ -26,7 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.Nullable;
 
 /** The real {@link GameBridge}. All methods except {@link #serverExecutor()} run on the server thread. */
-final class MinecraftBridge implements GameBridge {
+public final class MinecraftBridge implements GameBridge {
     private final MinecraftServer server;
     private final AuthStore auth;
 
@@ -181,6 +181,19 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+        String error = check(device, mainframeId, AccessGate.Kind.REDSTONE.perm);
+        if (error != null) return error;
+        error = ai.ezfox.cccloud.redstone.RedstoneService.override(mainframeId, override.channel(), override.level(), override.seconds());
+        if (error == null) {
+            WebAuthData.access(server).audit(mainframeId, device.playerName() + (override.level() == null ? " cleared the override of redstone channel "
+                : " set redstone channel ") + override.channel() + (override.level() == null ? "" : " to " + override.level()
+                + (override.seconds() == null ? " until reset" : " for " + override.seconds() + " s")));
+        }
+        return error;
+    }
+
+    @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         String error = check(device, mainframeId, (command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE).perm);
         if (error != null) return new GameBridge.RuleResult(error, null, null);
@@ -211,6 +224,73 @@ final class MinecraftBridge implements GameBridge {
                 return new GameBridge.RuleResult("invalid_message", null, null);
             }
         }
+    }
+
+    @Override
+    public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+        String error = check(device, mainframeId, AccessGate.storagePerm(request.op()));
+        if (error == null) error = SectionChecks.check(mainframeId, request.uplinkId());
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        var result = ai.ezfox.cccloud.bridge.StorageService.handle(mainframeId, request.uplinkId(), request.widgetId(), request.op(), request.args());
+        if (result.error() == null && !ClientMessages.STORAGE_READ_OPS.contains(request.op())) {
+            CloudLog.LOGGER.info("[cccloud] {} ({}) storage {} on {}: {}", device.name(), device.playerName(), request.op(), mainframeName(mainframeId), request.args());
+        }
+        return new GameBridge.StorageResult(result.error(), result.data());
+    }
+
+    @Override
+    public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+        String error = check(device, mainframeId, ai.ezfox.cccloud.access.Perm.STORAGE_CRAFT);
+        if (error == null) error = SectionChecks.check(mainframeId, request.uplinkId());
+        if (error != null) {
+            done.accept(GameBridge.StorageResult.fail(error));
+            return;
+        }
+        ai.ezfox.cccloud.bridge.StorageService.preview(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(),
+            r -> done.accept(new GameBridge.StorageResult(r.error(), r.data())));
+    }
+
+    @Override
+    public CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+        return mapTile(server, access(device, mainframeId), mainframeId, dim, slice, y, tx, tz);
+    }
+
+    @Override
+    public CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
+        return voxels(server, access(device, mainframeId), mainframeId, dim, cx, cy, cz);
+    }
+
+    /** The voxel endpoint after authentication (public for the GameTests). */
+    public static CompletableFuture<GameBridge.VoxelResult> voxels(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
+                                                                   int cx, int cy, int cz) {
+        if (!ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.VOXEL_VIEW)) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "disabled"));
+        if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "no_access"));
+        if (AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) != null) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "not_allowed"));
+        }
+        var level = ai.ezfox.cccloud.map.MapTileService.level(server, dim);
+        if (level == null) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "unknown_dimension"));
+        if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, cx, cy, cz)) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "out_of_range"));
+        }
+        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz)
+            .thenApply(json -> new GameBridge.VoxelResult(json == null ? 204 : 200, json, null));
+    }
+
+    /** The map tile endpoint after authentication (public for the GameTests). */
+    public static CompletableFuture<GameBridge.MapResult> mapTile(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
+                                                                  boolean slice, int y, int tx, int tz) {
+        if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "no_access"));
+        String error = AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+        if (error != null) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "not_allowed"));
+        if (ai.ezfox.cccloud.map.MapTileService.level(server, dim) == null) return CompletableFuture.completedFuture(new GameBridge.MapResult(404, null, null, "unknown_dimension"));
+        if (!ai.ezfox.cccloud.map.MapAccess.allowed(mainframeId, dim, tx, tz)) {
+            return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "out_of_range"));
+        }
+        var key = new ai.ezfox.cccloud.map.MapTileService.Key(dim, slice ? ai.ezfox.cccloud.map.MapTileService.Layer.SLICE : ai.ezfox.cccloud.map.MapTileService.Layer.SURFACE,
+            slice ? y : 0, tx, tz);
+        return ai.ezfox.cccloud.map.MapTileService.tile(server, key)
+            .thenApply(tile -> new GameBridge.MapResult(tile.png() == null ? 204 : 200, tile.png(), tile.etag(), null));
     }
 
     @Override

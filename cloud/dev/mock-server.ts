@@ -35,6 +35,9 @@ interface Uplink {
   online: boolean;
   widgets: Widget[];
   mode?: "auto" | "lua" | "direct";
+  /** false = cached snapshot of an unloaded chunk */
+  loaded?: boolean;
+  lastSeen?: number;
   pages?: { id: string; title: string; icon?: string }[];
   groups?: { id: string; title: string; page?: string; cols?: number }[];
 }
@@ -507,6 +510,9 @@ export async function createMockServer(opts: MockOptions = {}) {
         uplinkId: TURBINE,
         title: "Turbine Hall",
         online: false,
+        // its chunk is unloaded: the cached last snapshot (docs/SPEC.md "Cached sections of unloaded uplinks/bridges")
+        loaded: false,
+        lastSeen: Date.now() - 12 * 60_000,
         widgets: [
           { id: "rpm", type: "gauge", label: "Rotor speed", opts: { min: 0, max: 2000, unit: "RPM", warn: 1800, crit: 1950 }, value: 1240 },
           { id: "coils", type: "toggle", label: "Induction coils", value: true },
@@ -1001,6 +1007,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (!m.enabled) return result(msg.reqId, false, "disabled");
         const u = m.uplinks.get(msg.uplinkId);
         if (!u) return result(msg.reqId, false, "unknown_uplink");
+        if (u.loaded === false) return result(msg.reqId, false, "unloaded");
         if (!u.online) return result(msg.reqId, false, "uplink_offline");
         const w = u.widgets.find((x) => x.id === msg.id);
         if (!w) return result(msg.reqId, false, "unknown_widget");

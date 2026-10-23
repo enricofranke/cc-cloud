@@ -63,10 +63,15 @@ public final class GuiNetwork {
         }
     }
 
-    public record UplinkActionPayload(int containerId, String action) implements CustomPacketPayload {
+    public record UplinkActionPayload(int containerId, String action, String arg) implements CustomPacketPayload {
+        public UplinkActionPayload(int containerId, String action) {
+            this(containerId, action, "");
+        }
+
         public static final Type<UplinkActionPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "uplink_action"));
         public static final StreamCodec<ByteBuf, UplinkActionPayload> CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_INT, UplinkActionPayload::containerId, ByteBufCodecs.stringUtf8(32), UplinkActionPayload::action, UplinkActionPayload::new);
+            ByteBufCodecs.VAR_INT, UplinkActionPayload::containerId, ByteBufCodecs.stringUtf8(32), UplinkActionPayload::action,
+            ByteBufCodecs.stringUtf8(GuiActions.MAX_ARG), UplinkActionPayload::arg, UplinkActionPayload::new);
 
         @Override
         public Type<UplinkActionPayload> type() {
@@ -86,7 +91,7 @@ public final class GuiNetwork {
     }
 
     private static void register(RegisterPayloadHandlersEvent event) {
-        var registrar = event.registrar("1");
+        var registrar = event.registrar("2");
         registrar.playToClient(ViewPayload.TYPE, ViewPayload.CODEC, (payload, context) -> {
             var handler = clientViewHandler;
             if (handler != null) handler.accept(payload);
@@ -104,7 +109,9 @@ public final class GuiNetwork {
         }
         String view = GuiViews.mainframe(mainframe, player, null);
         var pos = mainframe.getBlockPos();
-        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, pos, view), Component.translatable("block.cccloud.cloud_mainframe")),
+        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, inv, pos, view, mainframe.upgrades(),
+                who -> who instanceof ServerPlayer sp && mainframe.has(sp, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)),
+                Component.translatable("block.cccloud.cloud_mainframe")),
             buf -> writeOpen(buf, pos, view));
     }
 
@@ -166,11 +173,13 @@ public final class GuiNetwork {
         if (!(context.player() instanceof ServerPlayer player)) return;
         ai.ezfox.cccloud.network.DashboardSection section = null;
         Runnable unlink = null;
+        CloudUplinkBlockEntity redstoneTarget = null;
         boolean open = false;
         if (player.containerMenu instanceof UplinkMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)) {
             var be = player.level().getBlockEntity(menu.pos());
             if (be instanceof CloudUplinkBlockEntity uplink) {
                 section = uplink;
+                redstoneTarget = uplink;
                 unlink = () -> uplink.unlink(player.getGameProfile().name());
                 open = true;
             } else if (be instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) {
@@ -182,12 +191,25 @@ public final class GuiNetwork {
         var link = section == null ? null : section.getLink();
         boolean canUnlink = link != null && canManageMainframe(player, link.id());
         var doUnlink = unlink;
-        String error = GuiActions.uplink(payload.action(), "", open, canUnlink, () -> {
-            doUnlink.run();
-            return null;
+        var target = redstoneTarget;
+        String error = GuiActions.uplink(payload.action(), payload.arg(), open, canUnlink, new GuiActions.UplinkOps() {
+            @Override
+            public @Nullable String unlink() {
+                doUnlink.run();
+                return null;
+            }
+
+            @Override
+            public @Nullable String redstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
+                if (target == null) return "not_supported";
+                target.setRedstone(mode, channel);
+                CCCloud.LOGGER.info("[cccloud] {} set the uplink at {} to wireless redstone {} on '{}'", player.getGameProfile().name(), target.getBlockPos(),
+                    mode.id(), channel);
+                return null;
+            }
         });
         if (error != null) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
-        if (open) push(player, error != null ? error : "unlinked");
+        if (open) push(player, error != null ? error : "redstone".equals(payload.action()) ? "redstone_saved" : "unlinked");
     }
 
     private static final GuiActions.MainframeOps DENY_ALL = new GuiActions.MainframeOps() {

@@ -31,6 +31,10 @@ final class WebInstance {
     final FailureLimiter pairLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** v0.6 API: requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Voxel sections per device (40 per second). */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> voxelLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Map tiles per device (60 per minute). */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> mapLimits = new java.util.concurrent.ConcurrentHashMap<>();
     /** Script import writes per device (10 per minute). */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> scriptLimits = new java.util.concurrent.ConcurrentHashMap<>();
     /** Share links: wrong share id/secret attempts per IP (5 per minute, then blocked). */

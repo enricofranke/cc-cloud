@@ -24,3 +24,24 @@ export function CodeBlock({ code, label = "Code" }: { code: string; label?: stri
     </div>
   );
 }
+
+/** Just the copy button (for one-liners). */
+export function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return (
+    <button
+      type="button"
+      class={`copy-btn ${state}`}
+      aria-live="polite"
+      onClick={async () => {
+        setState((await copyText(text)) ? "copied" : "failed");
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setState("idle"), 2000);
+      }}
+    >
+      {state === "copied" ? "✓" : state === "failed" ? "!" : "Copy"}
+    </button>
+  );
+}

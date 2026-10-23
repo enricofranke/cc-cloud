@@ -48,10 +48,20 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
         core = new BridgeCore(adapter, "me", this::setChanged);
         section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
         peripheral = new BridgePeripheral("me_cloud_bridge", this);
+        var bridgeSection = section;
+        var bridgePeripheral = peripheral;
+        wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> bridgeSection.sectionId().toString(), false, () -> bridgePeripheral);
     }
 
     IManagedGridNode managedNode() {
         return node;
+    }
+
+    private final ai.ezfox.cccloud.cable.CloudWired wired;
+
+    @Override
+    public ai.ezfox.cccloud.cable.CloudWired cloudWired() {
+        return wired;
     }
 
     public BridgePeripheral peripheral() {
@@ -77,12 +87,14 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
     @Override
     public void onLoad() {
         super.onLoad();
+        wired.onLoad();
         if (level != null && !level.isClientSide()) GridHelper.onFirstTick(this, be -> be.node.create(be.getLevel(), be.getBlockPos()));
     }
 
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         node.destroy();
         if (level != null && !level.isClientSide()) section.removed();
     }

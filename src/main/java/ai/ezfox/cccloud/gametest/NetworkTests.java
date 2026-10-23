@@ -46,9 +46,12 @@ public final class NetworkTests {
         return s;
     }
 
-    private static void relay(ServerLevel level, BlockPos pos, Block block) {
+    private static void relay(ServerLevel level, BlockPos pos, Block block, java.util.UUID mainframeId) {
         level.setBlock(pos, block.defaultBlockState(), Block.UPDATE_ALL);
-        if (level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay) relay.fillForTest();
+        if (level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay) {
+            relay.fillForTest();
+            relay.restrictForTest(mainframeId); // tests run side by side: serve only this test's network
+        }
     }
 
     /** A stone block with an uplink on top (facing down onto the stone). */
@@ -83,9 +86,9 @@ public final class NetworkTests {
         var up = s.base.above(200);
         var far = s.base.above(240).east(1);   // no node within reach
         var legacy = s.base.above(240).west(1);
-        relay(level, r1, ModRegistry.CLOUD_RELAY.get());
-        relay(level, r2, ModRegistry.CLOUD_RELAY.get());
-        relay(level, r2b, ModRegistry.CLOUD_RELAY.get());
+        relay(level, r1, ModRegistry.CLOUD_RELAY.get(), s.mainframe.getMainframeId());
+        relay(level, r2, ModRegistry.CLOUD_RELAY.get(), s.mainframe.getMainframeId());
+        relay(level, r2b, ModRegistry.CLOUD_RELAY.get(), s.mainframe.getMainframeId());
         uplink(level, up);
         uplink(level, far);
         uplink(level, legacy);
@@ -160,8 +163,8 @@ public final class NetworkTests {
         nether.setChunkForced(chunk.x(), chunk.z(), true);
         var e2 = netherBase;
         var up = netherBase.east(20).above(2);
-        relay(level, e1, ModRegistry.ENDER_RELAY.get());
-        relay(nether, e2, ModRegistry.ENDER_RELAY.get());
+        relay(level, e1, ModRegistry.ENDER_RELAY.get(), s.mainframe.getMainframeId());
+        relay(nether, e2, ModRegistry.ENDER_RELAY.get(), s.mainframe.getMainframeId());
         uplink(nether, up);
 
         helper.startSequence()

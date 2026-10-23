@@ -123,6 +123,23 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
   const lit = Math.round(pct * SEGMENTS);
   const cx = 60;
   const cy = 58;
+  if (o.display === "bar")
+    return (
+      <div class={`gauge-bar zone-${zone}`} role="meter" aria-label={w.label ?? w.id} aria-valuemin={min} aria-valuemax={max} aria-valuenow={known ? v : undefined}>
+        <div class="w2-head">
+          <span class="w2-label">{w.label ?? w.id}</span>
+          <span class="w2-value">
+            {known ? fmtNumber(v) : "—"}
+            {o.unit ? ` ${o.unit}` : ""}
+            {zone !== "ok" && <span class={`gauge-flag flag-${zone}`}>{zone === "crit" ? "CRIT" : "WARN"}</span>}
+          </span>
+        </div>
+        <div class="pbar seg-bar">
+          <span class="pbar-fill" style={{ width: `${Math.round(pct * 100)}%` }} />
+        </div>
+      </div>
+    );
+  if (o.display === "number") return <BigNumber label={w.label ?? w.id} value={known ? fmtNumber(v) : "—"} unit={o.unit} zone={zone} sub={`${fmtNumber(min)} – ${fmtNumber(max)}`} />;
 
   const segs = [];
   for (let i = 0; i < SEGMENTS; i++) {
@@ -163,9 +180,24 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
 }
 
 // ------------------------------------------------------------------- label
+/** A big number tile (display styles "number" / "big"). */
+export function BigNumber({ label, value, unit, zone = "ok", sub }: { label?: string; value: string; unit?: string; zone?: string; sub?: string }) {
+  return (
+    <div class={`bignum zone-${zone}`}>
+      {label && <span class="bignum-label">{label}</span>}
+      <span class="bignum-value">
+        {value}
+        {unit && <span class="bignum-unit">{unit}</span>}
+      </span>
+      {sub && <span class="bignum-sub">{sub}</span>}
+    </div>
+  );
+}
+
 export function LabelRow({ w, uplink, conn }: WidgetProps) {
   const { value } = useValue(conn, uplink.uplinkId, w);
   const text = value == null || value === "" ? undefined : typeof value === "number" ? fmtNumber(value) : String(value);
+  if (w.opts?.display === "big") return <BigNumber label={w.label} value={text ?? "—"} />;
   const entries = text ? splitEntries(text) : [];
   // long or multi-entry values (e.g. tick time per dimension): caption above, then a compact list
   if (w.label && text !== undefined && (entries.length > 1 || text.length > 32))

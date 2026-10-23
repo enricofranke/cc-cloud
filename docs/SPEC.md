@@ -251,6 +251,33 @@ A card is one of:
 - Card span: `group.cols`, else 2 when the card contains an `item_search` or a `chart`, else 1. Card colour `gold` (or the widget's `opts.color`), icon from `opts.icon`.
 - Widget order: `opts.order`, else by type (gauge, indicator, chart, progress, label, item_search, watchlist, jobs, inputs, buttons group, buttons), then declaration order. Widget span: `opts.span`, else 1 for gauge/indicator/button, 2 for label/watchlist/jobs, otherwise full width. The card body has 2 columns (1-column cards, phones) or 4 columns (wider cards).
 
+### Layout schema v2 (WYSIWYG editor, 2026-10-23)
+The dashboard now writes `"v": 2` documents (it still reads v1 and migrates it on the first save). Cards sit on a **12-column page grid**, widgets on a **12-column grid inside their card**; both are placed with `x`/`y`/`w`/`h` in grid units (a row is 32 px including the gap; rows grow when content is taller). Widgets can be moved into other cards, including **custom cards** the user creates (`"c:<id>"`). Reference: `cloud/dev/protocol.ts` (`layoutDoc`, zod, accepts v1 and v2) and `cloud/web/src/lib/layout.ts` + `grid.ts`.
+```json
+{
+  "v": 2,
+  "pages": [{"id": "main", "title": "Overview", "icon": "home"}],
+  "cards": {
+    "<cardKey>":   {"page": "main", "x": 0, "y": 0, "w": 3, "h": 10, "title": "Reactor", "hidden": false, "color": "red", "icon": "flame", "style": "compact"},
+    "c:card1":     {"page": "main", "x": 3, "y": 0, "w": 6, "h": 4, "title": "My overview"}
+  },
+  "widgets": {
+    "<uplinkId>/<widgetId>": {"card": "c:card1", "x": 0, "y": 0, "w": 6, "h": 5, "label": "Core temp", "hidden": false, "color": "red", "icon": "flame", "display": "bar"}
+  }
+}
+```
+Validation (reject the whole document with `invalid_layout`; unknown keys are an error; sizes as in v1: ≤ 64 KB, ≤ 12 pages, ≤ 256 cards, ≤ 2048 widgets):
+- `v` = `1` (old rules above) or `2`.
+- `pages`: as in v1.
+- `cards` keys: a card key (1–160 chars) or a custom card `c:` + `[A-Za-z0-9_-]{1,24}`. Values (all optional): `page` ≤ 32, `x` int 0–11, `y` int 0–999, `w` int 1–12, `h` int 1–60, `x + w ≤ 12` when both are set, `title` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `style` ∈ `comfortable|compact`. v1's `order`/`span` are not allowed in v2.
+- `widgets` keys as in v1. Values (all optional): `card` (a card key or custom card key, 1–160 chars), `x` 0–11, `y` 0–999, `w` 1–12, `h` 1–40, `x + w ≤ 12`, `label` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `display` ∈ `dial|bar|number|row|big|line|sparkline|chip|lamp` (gauge: dial/bar/number, progress: bar/number, label: row/big, chart: line/sparkline, indicator: chip/lamp; others ignore it).
+- Overlaps are not an error (the dashboard resolves them by pushing items down); unknown card/widget keys are kept and skipped when rendering, as in v1. A `card` pointing at a card that does not exist (any more) puts the widget back into its own card.
+- Custom cards hold widgets of any uplink; actions still go to the widget's own uplink (`uplinkId` is part of the widget key). Share links may list custom card keys in `cards`.
+
+**Migration v1 → v2 (dashboard):** cards keep their page and reading order and get `w = span × 3`, packed left to right into rows; widgets get `w = span × 6` in 1-column cards and `span × 3` in wider ones, packed in their order; heights come from the widget types (gauge 5, chart 5, label 1, buttons 2, …) and the card height is header (2) + its widgets. The first save writes v2.
+
+**Responsive rendering:** ≥ 1100 px the page grid uses the exact positions; 720–1099 px six columns in reading order (y, then x) with `w ≤ 4 → half width, else full`; < 720 px two columns (`w ≤ 2 → half, else full`). Widget grids inside cards always use their exact positions.
+
 ### Uplink snapshot additions for Lua API v2
 - `uplink.pages`: `[{"id","title","icon"}]` from `cloud.page()`, `uplink.groups`: `[{"id","title","page","cols"}]` from `cloud.group()`.
 - `chart` widgets: the snapshot carries `"history":[numbers…]` (oldest first, ≤ `opts.points`, max 300). A `value` delta with a number appends one point; a `value` delta with an array replaces the history.
@@ -702,12 +729,59 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 - New mode on uplinks (set in the uplink screen): **Redstone transmitter** / **receiver** on a channel name (per mainframe network). Receivers output the max signal of all transmitters on that channel (analog 0–15). Works over relays, wired links and across dimensions via ender relays. Latency: next tick after the change; max 64 channels per network, change rate limited (redstone clocks faster than 2 ticks are smoothed).
 - Channels are shown in the dashboard (indicator per channel; operators can override a channel for N seconds or until reset – optional).
 
+### Chunk Anchor upgrade card (optional, decided 2026-10-23)
+- `cccloud:upgrade_chunk_anchor` goes into one of the 4 card slots. While installed, enabled on the server and the mainframe is online with power, it keeps the mainframe's chunk and the chunks of its linked devices loaded (ticking), across dimensions.
+- **Disabled by default**: server config `upgrades.chunkAnchor=false`. Cost: `anchorBaseFE` 200 FE/t + `anchorPerChunkFE` 20 FE/t per chunk (breakdown key `anchor`).
+- Limit per player (the mainframe owner, counted over all of their mainframes): permission node `cccloud.limit.anchorChunks` (integer, default 9; `cccloud.bypass.limits` = unlimited). The mainframe's own chunk comes first, then devices in link order.
+
+### v0.7 – Implementation notes (mod side): upgrades, chunk anchor, wireless redstone
+**Upgrades** (`upgrade/*`)
+- Items: `upgrade_<capacity|bandwidth|range|efficiency|memory>_<allthemodium|vibranium|unobtainium>`, `quantum_core`, `upgrade_chunk_anchor` (stack size 1, tooltips list the effect).
+- Mainframe inventory: 4 card slots + 1 Quantum Core slot (`upgrades` in the block entity NBT, dropped when the mainframe breaks). No item capability, so hoppers/pipes cannot insert. The mainframe screen has an **Upgrades** tab (all roles see it; changing slots needs `devices.manage`, checked on the server for every click) with the slots (GUI_LAYOUT slot regions), the player inventory and the effective limits.
+- Effects (`UpgradeEffects`, unit tested): base limits from config `upgrades.baseDevices` 16, `baseBrowsers` 4, `baseRules` 8, `baseHistoryHours` 1; highest tier per type wins; Quantum Core = unlimited devices/browsers, FE ×0.25 (or lower), the mainframe is an Ender node of its own group (its Ender Relays link to it directly, any distance/dimension).
+- Applied: node range × factor (mainframe node), FE (breakdown item `efficiency` = −saved FE, so the items still sum to the usage), browsers (WebSocket close `4429 browser_limit`; share viewers do not count), rules (`min(rules.maxRulesPerMainframe = 128 cap, Memory)`; rules document `limit`), history hours (exposed in the screen and to the web, enforced when history storage lands).
+- Capacity (`network/graph/Capacity`, unit tested): relays on device routes count 1, routed devices 1 (fiber `fiberCapacityWeight`). New links beyond the limit are refused (`cccloud.network.capacity_full`). Above the limit (e.g. after removing a card) devices with the most hops, then the most recently linked, get `status:"over_capacity"` on the map, `routeState:"over_capacity"` on the uplink screen, and stop (no route) until capacity returns. The mainframe node's `capacity` object: `{devices, used, limit (null = unlimited), over, wired, fiber}`.
+- Recipes: tier 1 card = ` M /MTM/ C ` (M = metal, T = type catalyst: chest / ender modem / ender pearl / redstone block / disk drive, C = cloud core); tier 2/3 = ` M /MPM/ M ` with P = previous tier card. With AllTheModium (`neoforge:mod_loaded allthemodium`) M = `#c:ingots/allthemodium|vibranium|unobtainium`, else (`*_fallback`) diamond / netherite ingot / nether star. Quantum Core: `UUU/UAU/UCU` with `allthetweaks:atm_star` and unobtainium when All the Tweaks is loaded, else `NSN/SCS/NSN` (netherite blocks, nether stars, cloud core). Chunk Anchor: `OEO/EAE/OCO` (obsidian, ender pearls, lodestone, cloud core).
+
+**Chunk Anchor** (`upgrade/ChunkAnchor`): NeoForge `TicketController` `cccloud:chunk_anchor`, tickets owned by the mainframe id (ticking). The mainframe saves its anchored chunks (`anchor_chunks`) and reconciles every 5 s and on changes, so stale tickets are removed after restarts; with the config off the validation callback drops all saved tickets on load.
+
+**Wireless redstone** (`redstone/*`)
+- Uplink screen section "Wireless redstone": Off / Transmitter / Receiver and a channel name (`[A-Za-z0-9_.-]{1,32}`); needs `network.link` on the linked mainframe (screen action `redstone`, arg `<off|transmit|receive>:<channel>`). Bridges have no redstone mode.
+- Transmitters read the strongest neighbour signal (e.g. a computer's redstone output into the uplink), receivers emit their channel's level on every side (weak power, analog 0–15). Only uplinks with a route to their mainframe take part, so it works over radio, relays, CC cables, fiber and ender links (also across dimensions). Max 64 channels per network (alphabetically first ones), next tick after a change, receivers change at most every 2 ticks.
+
+### v0.7 web protocol: wireless redstone channels (for the dashboard)
+- Snapshot field `redstone` (not for share viewers) and delta `{"t":"redstone","channels":[…],"limit":64}` whenever a channel changes:
+  `{"name":"door","level":15,"signal":15,"transmitters":1,"receivers":2,"override?":{"level":4,"until":<ms epoch>|null}}` – `level` is what receivers output (the override wins), `signal` the transmitters' max. Channels with no members disappear; the list is sorted by name.
+- Override (needs `act.redstone`): client → `{"t":"rs_override","reqId","channel","level":0-15,"seconds":1-86400|null}` (null = until reset); `level:null` clears the override. Server → `{"t":"rs_result","reqId","ok","error?"}` (`not_allowed | read_only | forbidden | invalid_channel | invalid_argument | too_many_channels | rate_limited | offline`), then a `redstone` delta. An override may create a channel that has no transmitter yet. Every override is written to the mainframe's audit log.
+- Power breakdown items may now include `anchor` (Chunk Anchor FE) and `efficiency` (negative, saved FE); unknown keys should be shown with their key as label.
+
 ### Cloud Tablet (item)
 - Handheld item, opens the dashboard **in-game** (a native screen that renders the same cards/widgets with MC widgets – not a browser). Works within network range of any node (or anywhere in Ender range with an advanced tablet). Uses the player's role on that mainframe. Keybind to open (default unbound) when the tablet is in the inventory/curios slot.
 - Normal and advanced tier; recipe from a CC pocket computer + cloud core (+ gold/ender pearl for advanced).
 
 ### Cloud Display (block)
 - A multiblock-capable display (like CC monitors: forms rectangles up to 8×6) that renders one dashboard card or page in-world (read-only, chosen in its screen; operators can make buttons clickable in-world with right-click). Rendered with a BER using cached textures, updated at most 4×/s, culled beyond 48 blocks.
+
+### Tablet + Display – Implementation notes (mod side)
+Code: `ingame/` (shared: access helper, coverage, hub session, payloads, registry, dashboard model), `tablet/`, `display/`, client in `client/gui/{TabletScreen,DisplayScreen}` and `client/display/`. `CCCloud` calls `InGameRegistry.init` once. No new browser message types: in-game clients use the browser protocol inside custom payloads.
+
+**Rights** (all through `ingame.InGameAccess` → the AccessResolver's fine-grained permissions): the tablet needs `view`; every action is checked live by the bridge with the same per-widget-kind permission as a browser action (`act.buttons`, `act.redstone`, `storage.*` via `AccessGate.actionPerm`); restricted sections reach the tablet only with the permissions the hub requires (filtered by the session's permissions, changes are pushed); binding a display needs `network.link`, choosing what it shows `layout.edit`, in-world clicks `act.buttons` of the clicking player. Share-link viewers never get anything: in-game clients are always a real player. Cached sections of unloaded chunks (`loaded:false`, `lastSeen`) are shown greyed with the time they were last seen (tablet and display); their controls are disabled.
+
+**Cloud Tablet** (`cccloud:cloud_tablet`, `cccloud:advanced_cloud_tablet`, stack size 1):
+- Link: right-click a mainframe (viewer and up). Open: right-click, or the key "Open Cloud Tablet" (unbound by default) – the first linked tablet in the hands, inventory or Curios slots. Curios: the tablets are in the `curios:belt` item tag and `data/cccloud/curios/entities/cloud_tablet.json` gives players a belt slot (data only; the Curios API is only used to find a tablet, `compile/runtime` via `top.theillusivec4.curios:curios-neoforge:15.0.0+26.1.2`, soft).
+- Coverage (normal tablet): the player must be within the device range of an available node of the mainframe's network (mainframe 96, relays per type) in the same dimension, from the topology the network service computes. The advanced tablet works anywhere and across dimensions.
+- Server: the open tablet is a slot-less menu plus an `InGameSession` registered with the hub like a browser (synthetic device `ingame:<uuid>`, limited to the mainframe, never stored; its role is the player's role). The hub's messages (snapshot, deltas, role pushes) are sent to the player each tick as `cccloud:tablet_data` (a JSON array of hub messages, ≤ 1 MB per packet; a client that falls behind gets a fresh snapshot). When the web server is disabled the tablet service flushes the hub itself.
+- Every second: the tablet must still be carried and linked to that mainframe, the player in coverage (normal tablet) and still have a role – otherwise the screen closes with a message.
+- Requests: `cccloud:tablet_request` carries a browser-format `action` or `query` message (≤ 8 KB), parsed by `ClientMessages` and run by the same bridge as browsers (live role check, uplink check, widget validation, audit log "<player> (tablet)"). Rate limits: 10 actions/s, 5 queries/s. PIN widgets: the screen asks for the PIN; it is checked off the server thread with the same per-device lockout. Results come back as `action_result`/`query_result` messages in `tablet_data`.
+- Screen: all widget types (gauges/progress bars, labels, indicators, charts, buttons with two-step confirm, toggles, sliders as −/+, select/buttons, number/text inputs, item search, watchlist, jobs, redstone sides) plus an Alerts tab; layout card order and hidden cards/widgets are respected.
+
+**Cloud Display** (`cccloud:cloud_display`, CC-monitor blockstate: `facing` × `orientation` × 16 edge states):
+- Forming exactly like CC: Tweaked monitors (expand into compatible neighbours, contract/split when a block is removed, validate after loading), up to 8×6 blocks. The configuration (mainframe, section, in-world clicks, configuring player) is copied to every block, so it survives growing and splitting.
+- Setup: right-click with a linked Cloud Link Card (admin) binds it; sneak + right-click opens its screen (status; for admins the card picker, which never offers restricted sections, the "in-world clicks" switch and unlink). The display only shows a section while the player who chose it still has at least viewer on the mainframe, and never a restricted one (also re-checked when reading).
+- Content: the origin block reads the section snapshot from the hub at most 4×/s and sends it in the block entity update packet when it changed (≤ 48 KB, else "too large"). The client paints it on the CPU into a cached `DynamicTexture` (64 px per block, Minecraft's `font/ascii.png` glyphs) at most 4×/s and draws one full-bright quad over the rectangle (same face transform as CC monitors); culled beyond 48 blocks, idle textures are freed after 30 s.
+- In-world clicks (if enabled): a right-click on the front is mapped to the display (CC's monitor hit mapping) and hit-tested against the same layout (`DisplayLayout`, deterministic, shared by client and server); only buttons and toggles without `pin`/`confirm` react, and only for players with operator.
+
+**Recipes:** Cloud Tablet = pocket computer + cloud core (shapeless); Advanced Cloud Tablet = advanced pocket computer + cloud core + gold + ender pearl, or a Cloud Tablet + gold + ender pearl; 4 Cloud Displays = advanced monitor + cloud core + 7 gold.
 
 ### 3D map in the web dashboard
 - A third view on the Network page: **3D**. three.js (lazy chunk, pinned version, bundled – no CDN at runtime). Devices are rendered with their real block models (reuse the model JSONs + textures from `/assets/...` served by the mod or bundled), placed at real coordinates; links as lines/tubes; ranges as translucent spheres (toggle).
@@ -750,6 +824,28 @@ The 2D network map gets a real top-down map of the world as background, like a M
 - Rendering off the server thread on a small executor, results cached on disk per world (`cccloud/maptiles/`), invalidated when chunks in the tile change (chunk save/unload events, debounced 30 s). Budget: ≤ 2 ms main-thread per tick for chunk snapshotting, else defer.
 - Web: tiles as the map background with zoom levels (downsampled client-side for far zoom), a layer switch (Surface / Slice + Y slider), node labels with collision avoidance (labels must not overlap like "Computer #0" / "RS Network" did), and the 3D view reuses the same height data.
 
+#### Map tiles – HTTP API (mod side, implemented)
+- **Routes:**
+  - Surface: `GET /api/mainframes/<id>/map/<dim>/surface/<tileX>/<tileZ>.png`
+  - Slice: `GET /api/mainframes/<id>/map/<dim>/slice/<y>/<tileX>/<tileZ>.png`
+  - `<dim>` is the dimension id, e.g. `minecraft:overworld`. Ids that contain a `/` are not supported.
+  - Tile `(tx, tz)` covers blocks `x = tx·128 … tx·128+127`, `z = tz·128 … tz·128+127` (floor division). Pixel `(px, pz)` = block `(tx·128+px, tz·128+pz)`, north up.
+- **Access:**
+  - Bearer token, permission `view.positions` (else `403 {"error":"not_allowed"}`).
+  - Only tiles within 512 blocks of a node or device of that mainframe's network in that dimension (else `403 {"error":"out_of_range"}`).
+  - Unknown dimension → `404 {"error":"unknown_dimension"}`.
+  - 60 tiles per minute per device → `429`.
+- **Responses:**
+  - `200 image/png` (128×128 RGBA, transparent where unknown), `Cache-Control: private, max-age=60`, `ETag` (and `304` with `If-None-Match`).
+  - `204` when no data exists yet (no chunk of the tile was loaded since the server started and nothing is cached).
+- **Rendering:**
+  - Surface: vanilla map colors at 1:1, shaded by the height difference to the north, water by depth.
+  - Slice: the first non-air block from the cut downwards (≤ 16 blocks). Cave floors are bright near the cut and darker deeper; rock at the cut is darkest; nothing within 16 blocks is transparent.
+  - Only chunks that are loaded right now are sampled (never loaded or generated). Other pixels come from the last render, cached in memory and in `<world>/cccloud/maptiles/`.
+  - A tile is re-rendered on request when its chunks were saved or unloaded at least 30 s ago (debounced).
+  - Sampling uses ≤ 2 ms of the server thread per tick; PNG encoding runs in the background.
+  - Reading chunks that are only on disk is not done yet; those areas fill in as players load them.
+
 ### "Crazy 3D": voxel view of the base (requested 2026-10-23)
 On top of the 3D network view: render the actual blocks around the network as voxels.
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
@@ -757,6 +853,29 @@ On top of the 3D network view: render the actual blocks around the network as vo
 - Stage 1 (now): colored voxels with map colors, greedy meshing in a Web Worker, ambient occlusion, emissive blocks glow, water translucent, day/night toggle; our devices drawn with their real models on top; clickable as in the 3D view; clipping plane / Y-slider to cut through floors of a base.
 - Stage 2 (later): real block textures – the game client uploads a block texture atlas the same way it uploads item icons (validated PNG, size caps), and the web renders textured voxels.
 - Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
+
+#### Voxel view – HTTP API (mod side, stage 1, implemented)
+- **Route:** `GET /api/mainframes/<id>/voxels/<dim>/<cx>/<cy>/<cz>`. These are section coordinates: `cx = floor(x/16)`, `cy = floor(y/16)`, `cz = floor(z/16)`.
+- **Access:**
+  - Bearer token, permission `view.positions` (else `403 not_allowed`).
+  - Only sections within config `voxelRadius` blocks (default 64, 16–128) of a node or device of the network, measured box to point (else `403 out_of_range`).
+  - Config `voxelView=false` → `404 disabled`.
+  - 40 sections per second per device → `429`.
+- **Response:** `200` with
+  ```json
+  {"dim","cx","cy","cz",
+   "palette":[{"id":"minecraft:stone","color":ARGB int,"flags":1=transparent|2=fluid|4=emissive}],
+   "runs":"<base64>","exposed":n}
+  ```
+  - `runs` are unsigned LEB128 varint pairs `(runLength, paletteIndex)` covering all 4096 cells in the order `x + 16·z + 256·y`.
+  - Index 0 = nothing (air or hidden); index n = `palette[n-1]`.
+  - `204` when the section's chunk is not loaded.
+  - `Cache-Control: private, max-age=5`.
+- **Anti X-ray:** only exposed blocks are sent: at least one face touches air or a non-occluding block (glass, leaves, fluids…). Neighbors in chunks that are not loaded count as solid, so chunk borders do not leak either.
+- **Server cost and cache:**
+  - The block states (section + 1-block border) are copied on the server thread from loaded chunks only (no loading or generating).
+  - Filtering and encoding run on 2 background threads.
+  - Results are cached (1024 sections) and invalidated, debounced 2 s, when a block in or next to the section changes.
 
 ### In-game network visualization: Cloud Analyzer (requested 2026-10-23)
 Players must be able to plan relays without opening the web dashboard.
@@ -771,6 +890,16 @@ Players must be able to plan relays without opening the web dashboard.
 - Performance: only render within 128 blocks, max 256 lines/spheres, sphere LOD by distance, no allocation per frame; config `analyzerOverlay` (client).
 - Security: positions only for networks where the player has a role; the server never sends other players' networks.
 
+### Cloud Analyzer – Implementation notes (mod side)
+Code: `analyzer/` (geometry + preview, service, item, device info), `client/analyzer/AnalyzerOverlay`, Jade lines in `compat/jade/NetworkJadeProvider`.
+- **Item** `cccloud:cloud_analyzer` (stack size 1, recipe: pocket computer + cloud core + redstone + glass pane, shapeless). The overlay also shows while holding a Link Card or a mainframe/uplink/relay/bridge item (main or off hand); client config `analyzerOverlay` (default true).
+- **Payload** `cccloud:analyzer_data` (S2C, JSON ≤ 256 KB): `{"dim","nodes":[{id,net,name,type,x,y,z,nr,dr,ok,hops,ps,status}],"devices":[{id,net,name,type,x,y,z,r,signal,hops,status}],"links":[{a,b,signal,kind (radio|ender|wired|fiber),used?}],"ranges":{"uplink":[r],"advanced_uplink":[r],"bridge":[r],"relay":[nodeRange,deviceRange],…}}`; `{}` clears it. Only networks where the player has `view.positions`; only the player's dimension; devices and links within 128 blocks, nodes whose device bubble reaches within 128 blocks; at most 256 elements, nearest first. Checked every 10 ticks while such an item is held, sent when it changed and at least every 2 s; one `{}` when the player stops holding it.
+- **Overlay** (client tick, vanilla gizmos, always on top): range bubbles (rings: device range + node range; spheres: latitude rings with LOD by distance; off), cycled with the key "Cloud Analyzer: ranges" (unbound) or sneak + scroll with the analyzer; links coloured by signal (green, yellow below 15 %, red broken; cyan for CC cable and fiber links; faint if unused; dashed ender links); device markers by status; at most 256 shapes.
+- **Placement preview** (holding a relay/uplink/bridge, looking at a block): ghost box and range circle at the placement position, a line to the node it would attach to and the label "Would connect to X · 68 % · 2 hops" / "Out of range – nearest node: X, 143 blocks (range 96)". Same rules as the server's network graph (link if the distance is at most the larger range; fewest hops, then best signal; max 8 hops); a GameTest checks it against `NetworkService.checkLink`. Radio links only: a device that will sit on a CC cable or fiber is not predicted.
+- **HUD line** (top centre): "Signal here: 72 % via X" or "No coverage ↗ X, 143 blocks" (arrow relative to the view direction).
+- **Right-click** a cloud block with the analyzer: chat summary (status, signal, hops, route as block types, power) for networks with `view`; sneak + right-click highlights the route to the mainframe for 10 s (needs `view.positions`).
+- **Jade** on uplinks, relays and bridges: signal and hops, route ("Mainframe → Cloud Relay → Cloud Uplink") and the reason when not online (`no_route`, `no_power`, `legacy_out_of_range`, `unloaded`), only for networks where the looking player has `view`; no coordinates.
+
 ### Cables (decided 2026-10-23): A = CC cables first, B = our own Fiber Cable as an extra
 **A – CC: Tweaked cables (wired links, see v0.7 "Wired links")**
 - Mainframe, relays, uplinks and bridges join CC's wired network as `WiredElement`s (via CC's wired API: `WiredNode`, `WiredElement`, capability on the block faces), so CC Networking Cable + Wired Modems connect them. Devices on the same CC wired network as a node are wired members of that node's network.
@@ -784,6 +913,17 @@ Players must be able to plan relays without opening the web dashboard.
 - Recipes: fiber cable ×8 from glass panes + prismarine crystals + cloud core + string/wool jacket; junction from fiber + stone + redstone.
 - Rendering: cable connections like CC cables (multipart blockstate with 6 directions), no BER; the cyan core is an emissive element.
 
+### Cables – Implementation notes (mod side)
+- **CC wired membership** (`cable/CloudWired`): mainframe (both halves), relays, uplinks and bridges expose CC's `WiredElementCapability` on every face and connect to neighbouring elements once after loading (CC cables/modems connect to us from their side). Membership is found with CC's public API only: nodes put their peripheral on the wired network (`cloud_mainframe_<8 hex of id>`, `cloud_relay_<…>` – relays got a small read-only `cloud_relay` peripheral: `getRelayType`, `getStatus`, `isServing`, `getEnergy`, `getEnergyCapacity`), bridges their bridge peripheral, uplinks nothing (no remote control of uplinks over cables). `networkChanged` tells every element which cloud node peripherals share its network and marks the network dirty, so the graph is recomputed on CC network changes only. The bus id of a CC network is `cc:<smallest node id on it>`.
+- **Fiber** (`cable/FiberNetworks`): no block entities on cables; a flood fill from every loaded cloud element through fiber blocks (cable, junction, ender fiber link), loaded chunks only, at most 65 536 fiber blocks per pass. It runs when fiber blocks or elements are placed/removed/loaded/unloaded and on the 10 s safety pass. Elements are members, they do not pass fiber through. Ender Fiber Links bound (Link Card, owner/admin) to the same mainframe merge their networks across distance and dimension. Bus ids `fiber:<n>`.
+- **Blockstates** (art: docs/MODELS.md): `fiber_cable` and `fiber_junction` have the booleans `north|south|east|west|up|down` (connected on that side; true only towards fiber blocks and cloud devices); `ender_fiber_link` has no properties.
+- **Graph** (`NetworkGraph`, unit tested): nodes and devices carry `cables` / `fibers` (bus ids); elements sharing a bus are linked with kind `WIRED` (CC) or `FIBER` (fiber wins when both are shared), signal 1, any distance/dimension, and the radio/ender link of that pair is dropped. Routing minimises **air hops** (radio + ender; cables are free, max 8), then all hops, then the weakest link; a device with a cable to a reachable node always uses the cable. Hop FE counts air hops beyond the first only.
+- **Fiber benefits** (config `network.fiberCapacityWeight` 0.5, `power.fiberPowerFactor` 0.5): routed devices attached by fiber count with the weight in the mainframe's device capacity (`capacity.used` on the mainframe node, ready for the upgrade tiers) and pay `fiberPowerFactor` of their per-device FE (rounded up per category; breakdown items carry `fiber: n`).
+- **Protocol**: cable links follow the v0.7 protocol – `kind:"wired"` (never `"cable"`, the dashboard draws `wired` solid), no `dist`, never `weak`, plus `medium:"cc"|"fiber"`. Device nodes routed by cable get `via:"cable"|"fiber"`; the mainframe node gets `capacity:{devices,used,wired,fiber}`.
+- **Linking** with the Link Card accepts devices that only reach the network by cable (CC or fiber), whatever the distance.
+- **In-game Network tab**: cabled tree rows show a plug marker (grey = CC cable, cyan = fiber) instead of signal bars; the mini map draws cables as solid lines.
+- **Recipes**: fiber cable ×8 = `SGS/PCP/SGS` (string, `#c:glass_panes`, prismarine crystals, cloud core); junction ×4 = `SFS/FRF/SFS` (stone, fiber, redstone); ender fiber link = `YNY/FXF/YNY` (ender eyes, fiber, ender relay; N = netherite ingot, or `#c:ingots/unobtainium` when AllTheModium is loaded – two conditional recipes).
+
 ### Storage card v2: auto-crafting & more (requested 2026-10-23)
 Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 1. **Auto-stock (level maintainer)**: each watchlist entry gets an optional `target` and `autoCraft` flag. When the count drops below `min` and the item is craftable, the bridge requests a craft of `min(target − count, batch)` (batch default 64, config max), at most one active job per item, cooldown 30 s, pauses when no CPU is free or a job fails 3× (state shown: idle / crafting / waiting for CPU / missing resources / paused). Operator role to edit. Server-side, works without a computer. Lua: `bridge.setAutoStock(name, min, target, enabled)`.
@@ -794,6 +934,65 @@ Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 6. **Item details**: count history chart (uses long-term stats: 24 h sparkline), craftable yes/no, autostock config, watch, mod tag, recent jobs.
 7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
 8. Not in this step (security review first): exporting items out of the network into the world.
+
+#### Storage card v2 – protocol (mod side)
+The storage behind a card: a linked bridge section, an uplink in direct mode (Storage template), or – in Lua – the bridge bound to the widget `id`. Every request is answered once. Errors:
+- `unavailable` (no bridge / not loaded);
+- `offline`;
+- `unknown_item`;
+- `invalid`;
+- `rate_limited` (10 storage requests per second per socket);
+- the permission errors.
+
+**`{"t":"storage","reqId","uplinkId","id?","op",…}` → `{"t":"storage_result","reqId","ok","error?","data":{…}}`.** Operations and permissions:
+- `browse` (`storage.search`):
+  - Request: `{"sort":"count"|"name"|"mod","desc":true,"filter":"all"|"craftable"|"favorites","q":"","offset":0,"limit":100}`, with `limit` ≤ 200.
+  - Response: `{"rows":[{"name","displayName","count","craftable","favorite"}],"total","offset"}`.
+  - Favorites are pinned on top in every sort.
+- `craftables` (`storage.search`): `{"q","offset","limit"}` → the same rows, for every item with a pattern (count may be 0).
+- `fluids` (`storage.search`): `{"offset","limit"}` → `{"rows":[{"name","displayName","amount"}],"total"}`, amounts in mB.
+- `item` (`storage.search`): `{"name"}` → a detail document with these fields:
+  - `name`, `displayName`, `mod`, `count`, `craftable`, `favorite`;
+  - `watch: {"min","target","autoCraft","state","failures"}|null`;
+  - `jobs: [recent jobs of this item, see below]`;
+  - `history: [numbers]` (24 h, from the long-term statistics; empty until v0.5 F).
+- `cpus` (`storage.search`) → a document with two lists:
+  - `"cpus":[{"id","name","coProcessors","storage","busy","job":{"name","displayName","count","progress","elapsedMs"}|null}]` (AE2; empty for RS2);
+  - `"tasks":[{"id","name","displayName","count","progress","own":bool}]` (every running job of the network; `own` = started through this bridge).
+- `cancel` (`storage.craft`): `{"jobId"}` → `{}`. `jobId` is a bridge job id (from the jobs widget or `item`) or a network task/CPU id from `cpus`.
+- `favorite` (`act.buttons`): `{"name","on":bool}` → `{}`. Stored with the bridge, at most 64.
+- `autostock` (`storage.autostock`): `{"name","min","target","autoCraft":bool}` → `{}`.
+  - `target` ≥ `min`, both 0..2^31−1.
+  - The item is added to the watchlist if needed.
+  - `min:0` together with `autoCraft:false` turns it off.
+
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+
+**Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
+- The plan has these fields:
+  - `name`, `count`;
+  - `missing` (bool), `bytes` (AE2 storage needed, else null);
+  - `entries:[{"name","displayName","stored","toCraft","missing"}]`, where `stored` = taken from storage;
+  - `cpu:{"available":n,"enough":bool}|null`;
+  - `timeMs: null` (no mod exposes it yet).
+- The preview starts nothing.
+- After confirmation, the dashboard sends the usual craft action: `{"op":"craft","name","count","notify":bool}` (`notify` is new and optional; it alerts when the job finishes or fails).
+
+**Auto-stock (level maintainer), server side**
+- Every second, each watchlist entry with `autoCraft` and a pattern is checked. When count < `min`, the bridge requests `min(target − count, batch)`:
+  - `batch` is config `autoStockBatch`, default 64, max 4096;
+  - at most one active job per item;
+  - a 30 s cooldown after each request.
+- States, shown in `watch.state` and the watchlist widget rows (`state`, `target`, `autoCraft`):
+  - `idle`;
+  - `crafting`;
+  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted);
+  - `missing` (missing resources: counted as a failure);
+  - `paused` (3 failures in a row; editing the entry resets it).
+- Jobs are started with the user `autostock`.
+- Lua: `bridge.setAutoStock(name, min, target, enabled)` → true | nil, error.
+
+**Notifications:** a job with `notify` raises `{"t":"alert"}` when done (`info`) or failed (`warn`): "Crafted 64× Iron Ingot" / "Crafting failed: …". Push targets (v0.5 D) get the same.
 
 ### Cached sections of unloaded uplinks/bridges (mod side, implemented)
 - When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".

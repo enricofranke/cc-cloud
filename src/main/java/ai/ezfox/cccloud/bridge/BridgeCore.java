@@ -65,6 +65,10 @@ public final class BridgeCore {
         final long count;
         final String user;
         final long created;
+        /** Alert when finished or failed (storage v2 "notify me"). */
+        boolean notify;
+        /** dashboard, lua, autostock or rule. */
+        String source = "dashboard";
         String status = "queued";
         double progress;
         @Nullable String error;
@@ -135,6 +139,39 @@ public final class BridgeCore {
             var state = adapter.jobState(job.handle);
             job.status = state.status();
             job.progress = Math.max(0, Math.min(1, state.progress()));
+            if (job.notify && job.finished()) {
+                if (job.status.equals("done")) addAlert("Crafted " + job.count + "× " + job.displayName, "info");
+                else addAlert("Crafting " + job.status + ": " + job.count + "× " + job.displayName, "warn");
+            }
+        }
+        if (!watchlist.isEmpty() && isConnected()) {
+            // Auto-stock (level maintainer): server side, no computer needed.
+            var log = watchlist.autoStock(System.currentTimeMillis(), CloudConfig.get(CloudConfig.AUTO_STOCK_BATCH), new Watchlist.Crafter() {
+                @Override
+                public boolean craftable(String name) {
+                    return isCraftable(name);
+                }
+
+                @Override
+                public String start(String name, long count) {
+                    var ticket = craft(name, count, "autostock", false, "autostock");
+                    return ticket.error() != null ? "error:" + ticket.error() : ticket.jobId();
+                }
+
+                @Override
+                public @Nullable String status(String jobId) {
+                    for (var job : jobs) if (job.id.equals(jobId)) return job.status;
+                    return null;
+                }
+
+                @Override
+                public @Nullable String error(String jobId) {
+                    for (var job : jobs) if (job.id.equals(jobId)) return job.error;
+                    return null;
+                }
+            });
+            for (String line : log) CCCloud.LOGGER.info("[cccloud] Auto-stock on the {} bridge: {}", kind, line);
+            if (!log.isEmpty()) setChanged.run();
         }
         if (!watchlist.isEmpty() && isConnected()) checkWatchlist();
     }
@@ -253,6 +290,16 @@ public final class BridgeCore {
 
     /** Validates and starts a craft request. Must be called on the server thread. */
     public CraftTicket craft(String name, long count, String user) {
+        return craft(name, count, user, false, user.startsWith("rule:") ? "rule" : "dashboard");
+    }
+
+    /**
+     * Starts a craft request.
+     *
+     * @param notify alert when the job finishes or fails
+     * @param source dashboard, lua, autostock or rule (shown in the job rows)
+     */
+    public CraftTicket craft(String name, long count, String user, boolean notify, String source) {
         String error = null;
         var item = ItemNames.byName(name);
         if (!isConnected()) error = "offline";
@@ -263,6 +310,8 @@ public final class BridgeCore {
         if (error != null) return new CraftTicket(error, null, CompletableFuture.completedFuture(ActionResult.fail(error)));
 
         var job = new Job(UUID.randomUUID().toString().substring(0, 8), ItemNames.id(item), ItemNames.displayName(item), count, user, tick);
+        job.notify = notify;
+        job.source = source;
         var reply = new CompletableFuture<ActionResult>();
         job.reply = reply;
         jobs.addFirst(job);
@@ -273,6 +322,7 @@ public final class BridgeCore {
                 job.status = "failed";
                 job.error = outcome.error();
                 complete(job, ActionResult.fail(outcome.error()));
+                if (job.notify) addAlert("Crafting failed: " + job.count + "× " + job.displayName + " (" + outcome.error() + ")", "warn");
             } else {
                 job.handle = outcome.handle();
                 job.status = "running";
@@ -334,6 +384,8 @@ public final class BridgeCore {
             row.add("progress", Json.number(Math.round((job.status.equals("done") ? 1 : job.progress) * 100) / 100.0));
             if (job.error != null) row.addProperty("error", job.error);
             row.addProperty("user", job.user);
+            row.addProperty("notify", job.notify);
+            row.addProperty("source", job.source);
             array.add(row);
         }
         if (isConnected() && array.size() < limit) {
@@ -372,12 +424,89 @@ public final class BridgeCore {
         });
     }
 
+    /** Watchlist (with auto-stock) and favorites, as stored in the bridge block entity. */
     public String saveWatchlist() {
-        return watchlist.save();
+        var json = new JsonObject();
+        json.add("watch", com.google.gson.JsonParser.parseString(watchlist.save()));
+        var fav = new JsonArray();
+        favorites.forEach(fav::add);
+        json.add("fav", fav);
+        return Json.GSON.toJson(json);
     }
 
     public void loadWatchlist(String json) {
         watchlist.load(json);
+        favorites.clear();
+        try {
+            var parsed = com.google.gson.JsonParser.parseString(json);
+            if (parsed.isJsonObject() && parsed.getAsJsonObject().get("fav") instanceof JsonArray fav) {
+                for (var e : fav) if (favorites.size() < MAX_FAVORITES && Op.isItemName(e.getAsString())) favorites.add(e.getAsString());
+            }
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    // ---- storage v2 ------------------------------------------------------------------------------------------------
+
+    public static final int MAX_FAVORITES = 64;
+    private final java.util.LinkedHashSet<String> favorites = new java.util.LinkedHashSet<>();
+
+    public java.util.Set<String> favorites() {
+        return java.util.Collections.unmodifiableSet(favorites);
+    }
+
+    public @Nullable String setFavorite(String name, boolean on) {
+        if (ItemNames.byName(name) == null) return "unknown_item";
+        if (on && !favorites.contains(name) && favorites.size() >= MAX_FAVORITES) return "too_many";
+        boolean changed = on ? favorites.add(name) : favorites.remove(name);
+        if (changed) setChanged.run();
+        return null;
+    }
+
+    public @Nullable String setAutoStock(String name, long min, long target, boolean autoCraft) {
+        String error = watchlist.setAutoStock(name, min, target, autoCraft, n -> ItemNames.byName(n) != null);
+        if (error == null) {
+            if (isConnected()) checkWatchlist();
+            setChanged.run();
+        }
+        return error;
+    }
+
+    public Watchlist.@Nullable Info watchInfo(String name) {
+        return watchlist.info(name);
+    }
+
+    /** Jobs of one item (newest first) for the item details. */
+    public JsonArray jobRowsFor(String name) {
+        var array = new JsonArray();
+        for (var row : jobRows(MAX_JOBS)) if (row.getAsJsonObject().get("name").getAsString().equals(name)) array.add(row);
+        return array;
+    }
+
+    /** Pending previews per bridge (each runs a crafting calculation). */
+    private int previews;
+
+    /** Plans a craft without starting it (storage v2 craft_preview). Server thread; done runs on the server thread. */
+    public void preview(String name, long count, java.util.function.Consumer<StorageAdapter.Plan> done) {
+        var item = ItemNames.byName(name);
+        if (!isConnected()) done.accept(StorageAdapter.Plan.failed("offline"));
+        else if (item == null) done.accept(StorageAdapter.Plan.failed("unknown_item"));
+        else if (count < 1 || count > maxCraftAmount()) done.accept(StorageAdapter.Plan.failed("too_many"));
+        else if (!adapter.isCraftable(item)) done.accept(StorageAdapter.Plan.failed("not_craftable"));
+        else if (previews >= MAX_PENDING_CRAFTS) done.accept(StorageAdapter.Plan.failed("busy"));
+        else {
+            previews++;
+            adapter.preview(item, count, plan -> {
+                previews--;
+                done.accept(plan);
+            });
+        }
+    }
+
+    /** Cancels a bridge job or a network job / CPU from {@code cpus}. */
+    public boolean cancelAny(String jobId) {
+        if (cancelCraft(jobId)) return true;
+        return isConnected() && adapter.cancelNetworkJob(jobId);
     }
 
     // ---- direct mode (Storage template) ---------------------------------------------------------------------------

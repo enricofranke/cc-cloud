@@ -27,6 +27,9 @@ public final class CloudPermissions implements ServerPermissions {
     private static final Map<Node, PermissionNode<Boolean>> NODES = new EnumMap<>(Node.class);
     public static final PermissionNode<Integer> LIMIT_MAINFRAMES = new PermissionNode<>(CCCloud.MODID, "limit.mainframes", PermissionTypes.INTEGER,
         (player, uuid, ctx) -> 3);
+    /** Chunks one player's mainframes may keep loaded with Chunk Anchor cards (all of their mainframes together). */
+    public static final PermissionNode<Integer> LIMIT_ANCHOR_CHUNKS = new PermissionNode<>(CCCloud.MODID, "limit.anchorChunks", PermissionTypes.INTEGER,
+        (player, uuid, ctx) -> 9);
 
     static {
         for (var node : Node.values()) {
@@ -52,6 +55,7 @@ public final class CloudPermissions implements ServerPermissions {
         NeoForge.EVENT_BUS.addListener(PermissionGatherEvent.Nodes.class, event -> {
             event.addNodes(NODES.values().toArray(PermissionNode[]::new));
             event.addNodes(LIMIT_MAINFRAMES);
+            event.addNodes(LIMIT_ANCHOR_CHUNKS);
         });
     }
 
@@ -100,6 +104,18 @@ public final class CloudPermissions implements ServerPermissions {
             return value == null ? 3 : Math.max(0, value);
         } catch (RuntimeException e) {
             return 3;
+        }
+    }
+
+    /** {@code cccloud.limit.anchorChunks} (integer node, default 9); unlimited with {@code cccloud.bypass.limits}. */
+    public int anchorChunkLimit(UUID player) {
+        if (has(player, Node.BYPASS_LIMITS)) return Integer.MAX_VALUE;
+        try {
+            var online = server.getPlayerList().getPlayer(player);
+            Integer value = online != null ? PermissionAPI.getPermission(online, LIMIT_ANCHOR_CHUNKS) : PermissionAPI.getOfflinePermission(player, LIMIT_ANCHOR_CHUNKS);
+            return value == null ? 9 : Math.max(0, value);
+        } catch (RuntimeException e) {
+            return 9;
         }
     }
 }

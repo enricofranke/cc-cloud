@@ -85,8 +85,9 @@ public final class RuleService {
         }
     }
 
-    public static int limit() {
-        return CloudConfig.get(CloudConfig.MAX_RULES);
+    /** Rules a mainframe may have: its Memory upgrade (or the base limit), capped by {@code maxRulesPerMainframe}. */
+    public static int limit(UUID mainframeId) {
+        return Math.min(CloudConfig.get(CloudConfig.MAX_RULES), ai.ezfox.cccloud.upgrade.Upgrades.effects(mainframeId).rules());
     }
 
     public static List<Rule> rules(UUID mainframeId) {
@@ -256,7 +257,7 @@ public final class RuleService {
         int index = -1;
         for (int i = 0; i < list.size(); i++) if (list.get(i).id().equals(rule.id())) index = i;
         if (index < 0) {
-            if (list.size() >= limit()) return new Edit("too_many", null);
+            if (list.size() >= limit(mainframeId)) return new Edit("too_many", null);
             if (rule.id().isEmpty()) rule = rule.withId(newId(list));
             list.add(rule);
         } else {
@@ -357,7 +358,7 @@ public final class RuleService {
             log.add(e);
         }
         json.add("log", log);
-        json.addProperty("limit", limit());
+        json.addProperty("limit", limit(mainframeId));
         return json;
     }
 

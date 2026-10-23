@@ -49,12 +49,42 @@ public interface GameBridge {
     /** Unlinks a device from the network map (admin). Returns null or {@code unknown_node|not_allowed|read_only}. */
     @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId);
 
+    /** v0.7 wireless redstone override of a channel (act.redstone). Returns null or an error code. */
+    @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override);
+
     /** v0.5 rules command (role already checked by the session, re-checked live here). */
     RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command);
 
     /** @param id the id of a created rule */
     record RuleResult(@Nullable String error, @Nullable String detail, @Nullable String id) {
     }
+
+    /** Storage card v2 result: {@code data} on success, else {@code error}. */
+    record StorageResult(@Nullable String error, @Nullable JsonObject data) {
+        public static StorageResult fail(String error) {
+            return new StorageResult(error, null);
+        }
+    }
+
+    /** Storage card v2 operation (permission re-checked live). Server thread. */
+    StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request);
+
+    /** Craft preview; {@code done} gets the plan (as {@code data}) once the crafting calculation finished. Server thread. */
+    void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<StorageResult> done);
+
+    /** A map tile: status 200 (png), 204 (no data), 403 (error) or 404. */
+    record MapResult(int status, byte @Nullable [] png, @Nullable String etag, @Nullable String error) {
+    }
+
+    /** 2D map tile (view.positions, within 512 blocks of the mainframe's network). Server thread; completes later. */
+    CompletableFuture<MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz);
+
+    /** Voxel view section: status 200 (json), 204 (not loaded), 403/404 (error). */
+    record VoxelResult(int status, @Nullable JsonObject json, @Nullable String error) {
+    }
+
+    /** One 16³ section of exposed blocks (view.positions, within voxelRadius of the network). Server thread; completes later. */
+    CompletableFuture<VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz);
 
     /** Tells the owner that a device got locked because of wrong PINs. */
     void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip);

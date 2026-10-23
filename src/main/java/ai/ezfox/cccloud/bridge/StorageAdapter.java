@@ -60,6 +60,46 @@ public interface StorageAdapter {
     /** Polls asynchronous work. */
     void tick();
 
+    // ---- storage v2 --------------------------------------------------------------------------------------------------
+
+    /**
+     * Plans a craft without starting it. {@code done} is called exactly once (from {@link #tick()} or directly) with
+     * the plan or an error ({@code not_craftable}, {@code offline}, {@code timeout}).
+     */
+    default void preview(Item item, long count, Consumer<Plan> done) {
+        done.accept(Plan.failed("unsupported"));
+    }
+
+    /** Crafting CPUs (AE2); empty if the mod has none. */
+    default List<Cpu> cpus() {
+        return List.of();
+    }
+
+    /** Cancels a job running on the network by the id from {@link #networkJobs} / {@link #cpus}. */
+    default boolean cancelNetworkJob(String id) {
+        return false;
+    }
+
+    /**
+     * A craft plan.
+     *
+     * @param bytes AE2 crafting storage needed, or -1
+     * @param cpus  available (idle) CPUs that can hold the plan, or -1 if the mod has no CPUs
+     */
+    record Plan(@Nullable String error, boolean missing, List<PlanEntry> entries, long bytes, int cpus) {
+        public static Plan failed(String error) {
+            return new Plan(error, false, List.of(), -1, -1);
+        }
+    }
+
+    /** One item of a plan: taken from storage, to be crafted, and missing. */
+    record PlanEntry(Item item, long stored, long toCraft, long missing) {
+    }
+
+    /** A crafting CPU and its current job (item null when idle). */
+    record Cpu(String id, String name, int coProcessors, long storage, boolean busy, @Nullable Item item, long count, double progress, long elapsedMs) {
+    }
+
     @FunctionalInterface
     interface ItemSink {
         void accept(Item item, long count);

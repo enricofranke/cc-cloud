@@ -182,4 +182,32 @@ class GuiActionsTest {
         assertThrows(ai.ezfox.cccloud.uplink.WidgetFactory.WidgetException.class,
             () -> ai.ezfox.cccloud.uplink.WidgetFactory.create(ai.ezfox.cccloud.uplink.WidgetType.REDSTONE_SIDES, "r", "R", null), "not available from Lua");
     }
+
+    @Test
+    void uplinkRedstone() {
+        var ops = new GuiActions.UplinkOps() {
+            String last;
+
+            @Override
+            public String unlink() {
+                return null;
+            }
+
+            @Override
+            public String redstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
+                last = mode.id() + ":" + channel;
+                return null;
+            }
+        };
+        assertNull(GuiActions.uplink("redstone", "transmit:door", true, true, ops));
+        assertEquals("transmit:door", ops.last);
+        assertNull(GuiActions.uplink("redstone", "off:", true, true, ops), "off needs no channel");
+        assertEquals("invalid_channel", GuiActions.uplink("redstone", "receive:", true, true, ops));
+        assertEquals("invalid_channel", GuiActions.uplink("redstone", "receive:bad name", true, true, ops));
+        assertEquals("invalid_argument", GuiActions.uplink("redstone", "loud:door", true, true, ops));
+        assertEquals("invalid_argument", GuiActions.uplink("redstone", "door", true, true, ops));
+        assertEquals("not_owner", GuiActions.uplink("redstone", "receive:door", true, false, ops), "needs network.link");
+        assertEquals("no_screen", GuiActions.uplink("redstone", "receive:door", false, true, ops));
+        assertEquals("not_supported", GuiActions.uplink("redstone", "receive:door", true, true, () -> null), "bridges have no redstone");
+    }
 }

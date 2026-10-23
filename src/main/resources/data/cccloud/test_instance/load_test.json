@@ -1,6 +1,6 @@
 {
   "type": "minecraft:function",
-  "environment": "minecraft:default",
+  "environment": "cccloud:loadtest",
   "function": "cccloud:load_test",
   "max_ticks": 100000,
   "structure": "cccloud:test_floor"

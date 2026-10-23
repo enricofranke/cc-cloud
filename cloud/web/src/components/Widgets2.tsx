@@ -3,6 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import { keyOf } from "../lib/conn.ts";
 import type { Scalar, Uplink, Widget } from "../lib/types.ts";
+import { BigNumber } from "./Widgets.tsx";
 
 export interface W2Props {
   w: Widget;
@@ -86,6 +87,7 @@ export function Progress({ w, uplink, conn }: W2Props) {
   const { value } = current(conn, uplink.uplinkId, w);
   const v = num(value, min);
   const pct = Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100));
+  if (o.display === "number") return <BigNumber label={w.label ?? w.id} value={fmt(v)} unit={o.unit} sub={`of ${fmt(max)} · ${Math.round(pct)} %`} />;
   return (
     <div class="w2 progress">
       <div class="w2-head">
@@ -108,6 +110,14 @@ export function Indicator({ w, uplink, conn }: W2Props) {
   const on = value === true;
   const o = w.opts ?? {};
   const color = on ? COLOR_VAR[o.onColor ?? "green"] ?? "var(--green)" : COLOR_VAR[o.offColor ?? "gray"] ?? "var(--faint)";
+  if (o.display === "lamp")
+    return (
+      <div class={`w2 lamp ${on ? "on" : "off"}`}>
+        <span class="lamp-bulb" style={{ "--led": color }} aria-hidden="true" />
+        <span class="w2-label">{w.label ?? w.id}</span>
+        <span class="ind-state">{on ? "ON" : "OFF"}</span>
+      </div>
+    );
   return (
     <div class={`w2 indicator ${on ? "on" : "off"}`}>
       <span class="led-big" style={{ "--led": color }} aria-hidden="true" />

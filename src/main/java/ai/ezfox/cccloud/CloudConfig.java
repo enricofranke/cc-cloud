@@ -29,6 +29,16 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_NODES;
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_DEVICES;
     public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
+    public static final ModConfigSpec.DoubleValue FIBER_CAPACITY_WEIGHT;
+    public static final ModConfigSpec.DoubleValue FIBER_POWER_FACTOR;
+    // v0.7 mainframe upgrades (base limits without cards) and the optional Chunk Anchor card
+    public static final ModConfigSpec.IntValue BASE_DEVICES;
+    public static final ModConfigSpec.IntValue BASE_BROWSERS;
+    public static final ModConfigSpec.IntValue BASE_RULES;
+    public static final ModConfigSpec.IntValue BASE_HISTORY_HOURS;
+    public static final ModConfigSpec.BooleanValue CHUNK_ANCHOR;
+    public static final ModConfigSpec.IntValue ANCHOR_BASE_FE;
+    public static final ModConfigSpec.IntValue ANCHOR_PER_CHUNK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_BRIDGE_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_HOP_FE;
@@ -41,6 +51,9 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_PER_UPLINK;
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
+    public static final ModConfigSpec.IntValue AUTO_STOCK_BATCH;
+    public static final ModConfigSpec.BooleanValue VOXEL_VIEW;
+    public static final ModConfigSpec.IntValue VOXEL_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.IntValue MAX_RULES;
@@ -116,6 +129,9 @@ public final class CloudConfig {
                 + "until they are re-linked or a relay is placed.")
             .translation("cccloud.configuration.legacyRangeGrace")
             .define("legacyRangeGrace", true);
+        FIBER_CAPACITY_WEIGHT = b.comment("How much a device attached by Fiber Cable counts against the mainframe's device capacity (1 = like any device).")
+            .translation("cccloud.configuration.fiberCapacityWeight")
+            .defineInRange("fiberCapacityWeight", 0.5, 0.0, 1.0);
         b.pop();
 
         b.push("power");
@@ -146,6 +162,9 @@ public final class CloudConfig {
         MAINFRAME_MAX_INPUT_FE = b.comment("Maximum FE the mainframe accepts per tick.")
             .translation("cccloud.configuration.mainframeMaxInputFE")
             .defineInRange("mainframeMaxInputFE", 2_000, 1, Integer.MAX_VALUE);
+        FIBER_POWER_FACTOR = b.comment("Share of the per-device FE (uplink/advanced uplink/bridge) a device attached by Fiber Cable pays (0.5 = 50 % less).")
+            .translation("cccloud.configuration.fiberPowerFactor")
+            .defineInRange("fiberPowerFactor", 0.5, 0.0, 1.0);
         RELAY_FE = fe(b, "relayFE", 20, "FE per tick of a Cloud Relay (0 = free).");
         ADVANCED_RELAY_FE = fe(b, "advancedRelayFE", 60, "FE per tick of an Advanced Cloud Relay (0 = free).");
         ENDER_RELAY_FE = fe(b, "enderRelayFE", 120, "FE per tick of an Ender Relay (0 = free).");
@@ -165,15 +184,51 @@ public final class CloudConfig {
         MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
             .translation("cccloud.configuration.maxCraftAmount")
             .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
+        AUTO_STOCK_BATCH = b.comment("Auto-stock (level maintainer): the largest amount one automatic craft request may ask for.")
+            .translation("cccloud.configuration.autoStockBatch")
+            .defineInRange("autoStockBatch", 64, 1, 4096);
+        b.pop();
+
+        b.push("map");
+        VOXEL_VIEW = b.comment("The dashboard's 3D voxel view of the blocks around the network (exposed blocks only, no X-ray).")
+            .translation("cccloud.configuration.voxelView")
+            .define("voxelView", true);
+        VOXEL_RADIUS = b.comment("Voxel view: sections within this many blocks of a network node may be requested.")
+            .translation("cccloud.configuration.voxelRadius")
+            .defineInRange("voxelRadius", 64, 16, 128);
         b.pop();
 
         b.push("rules");
         RULES_ENABLED = b.comment("Run the no-code automation rules of mainframes (dashboard: When → If → Then).")
             .translation("cccloud.configuration.rulesEnabled")
             .define("rulesEnabled", true);
-        MAX_RULES = b.comment("Maximum number of rules per mainframe.")
+        MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
-            .defineInRange("maxRulesPerMainframe", 32, 1, 128);
+            .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("upgrades");
+        BASE_DEVICES = b.comment("Devices (uplinks + bridges + relays) a mainframe serves without a Capacity upgrade.")
+            .translation("cccloud.configuration.baseDevices")
+            .defineInRange("baseDevices", 16, 1, 100_000);
+        BASE_BROWSERS = b.comment("Concurrent dashboard browsers per mainframe without a Bandwidth upgrade.")
+            .translation("cccloud.configuration.baseBrowsers")
+            .defineInRange("baseBrowsers", 4, 1, 10_000);
+        BASE_RULES = b.comment("Rules per mainframe without a Memory upgrade.")
+            .translation("cccloud.configuration.baseRules")
+            .defineInRange("baseRules", 8, 1, 128);
+        BASE_HISTORY_HOURS = b.comment("History retention (hours) without a Memory upgrade.")
+            .translation("cccloud.configuration.baseHistoryHours")
+            .defineInRange("baseHistoryHours", 1, 1, 24 * 365);
+        CHUNK_ANCHOR = b.comment("Allow the Chunk Anchor upgrade card: it keeps the mainframe's and its linked devices' chunks loaded. Off by default.")
+            .translation("cccloud.configuration.chunkAnchor")
+            .define("chunkAnchor", false);
+        ANCHOR_BASE_FE = b.comment("FE per tick of an active Chunk Anchor.")
+            .translation("cccloud.configuration.anchorBaseFE")
+            .defineInRange("anchorBaseFE", 200, 0, 1_000_000);
+        ANCHOR_PER_CHUNK_FE = b.comment("Additional FE per tick per anchored chunk.")
+            .translation("cccloud.configuration.anchorPerChunkFE")
+            .defineInRange("anchorPerChunkFE", 20, 0, 1_000_000);
         b.pop();
 
         b.push("teams");

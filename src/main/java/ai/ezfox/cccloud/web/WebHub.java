@@ -55,6 +55,8 @@ public final class WebHub {
         long networkSentAt;
         /** v0.5 rules of the mainframe ({rules, log, limit}), null = none yet; never sent to share sessions. */
         @Nullable JsonObject rules;
+        /** v0.7 wireless redstone channels ({channels, limit}), null = none yet; never sent to share sessions. */
+        @Nullable JsonObject redstone;
         /** Shared dashboard layout (validated), null = never edited. */
         @Nullable JsonObject layout;
         /** 5 layout saves per 10 s per mainframe. */
@@ -278,6 +280,33 @@ public final class WebHub {
         }
     }
 
+    /** v0.7 in-game display: a copy of a section's published snapshot, or null. */
+    public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var snapshot = view.uplinks.get(uplinkId);
+            return snapshot == null ? null : snapshot.deepCopy();
+        }
+    }
+
+    /** v0.7 display picker: [{uplinkId, title, restricted}] of the published sections. */
+    public JsonArray sectionList(UUID mainframeId) {
+        var list = new JsonArray();
+        var view = views.get(mainframeId);
+        if (view == null) return list;
+        synchronized (view) {
+            for (var entry : view.uplinks.entrySet()) {
+                var row = new JsonObject();
+                row.addProperty("uplinkId", entry.getKey());
+                row.addProperty("title", entry.getValue().has("title") ? entry.getValue().get("title").getAsString() : "");
+                row.addProperty("restricted", view.restricted.contains(entry.getKey()));
+                list.add(row);
+            }
+        }
+        return list;
+    }
+
     /** Type id of a widget as published to the browsers, or null. */
     public @Nullable String widgetType(UUID mainframeId, String uplinkId, String widgetId) {
         var view = views.get(mainframeId);
@@ -324,6 +353,30 @@ public final class WebHub {
             var message = rules.deepCopy();
             message.addProperty("t", "rules");
             put(view, "rules", message);
+        }
+    }
+
+    /**
+     * v0.7 wireless redstone channels of a mainframe network ({@code {channels:[…], limit}}): snapshot field
+     * {@code redstone}, delta {@code {"t":"redstone", channels, limit}}; never sent to share sessions.
+     */
+    public void publishRedstone(UUID mainframeId, JsonObject redstone) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            if (redstone.equals(view.redstone)) return;
+            view.redstone = redstone.deepCopy();
+            var message = redstone.deepCopy();
+            message.addProperty("t", "redstone");
+            put(view, "redstone", message);
+        }
+    }
+
+    /** Test hook: the published redstone channels. */
+    public @Nullable JsonObject redstoneForTest(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            return view.redstone == null ? null : view.redstone.deepCopy();
         }
     }
 
@@ -421,9 +474,25 @@ public final class WebHub {
         return view != null && view.widgetIndex.containsKey(uplinkId);
     }
 
+    /** v0.7 Bandwidth upgrade: concurrent browsers per mainframe (set by the game side; share viewers do not count). */
+    public static volatile java.util.function.ToIntFunction<UUID> browserLimit = id -> Integer.MAX_VALUE;
+
     /** Registers a session and sends it the full snapshot. */
     public void addSession(HubSession session) {
+        if (session.share() == null && browsersFull(session.mainframeId())) {
+            session.close(4429, "browser_limit");
+            return;
+        }
         if (!tryAddSession(session)) session.close(4429, "share_full");
+    }
+
+    /** All browser slots of the mainframe are taken (Bandwidth upgrade raises the limit). */
+    public boolean browsersFull(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return false;
+        int browsers = 0;
+        for (var s : view.sessions) if (s.share() == null) browsers++;
+        return browsers >= browserLimit.applyAsInt(mainframeId);
     }
 
     /**
@@ -476,6 +545,7 @@ public final class WebHub {
         var network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
         if (network != null) json.add("network", network);
         if (view.rules != null) json.add("rules", view.rules);
+        if (view.redstone != null) json.add("redstone", view.redstone);
         return json;
     }
 

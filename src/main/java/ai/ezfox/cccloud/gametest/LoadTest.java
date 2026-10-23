@@ -72,6 +72,12 @@ public final class LoadTest {
     private enum Phase { CONNECTING, BASELINE, LOAD, DONE }
 
     public static void run(GameTestHelper helper) {
+        // ./gradlew runGameTestServer -PskipLoadTest: the functional tests stay green regardless of machine load.
+        if (Boolean.getBoolean("cccloud.skipLoadTest")) {
+            ai.ezfox.cccloud.CCCloud.LOGGER.info("[cccloud] LOAD TEST skipped (-PskipLoadTest)");
+            helper.succeed();
+            return;
+        }
         if (!listening) {
             listening = true;
             NeoForge.EVENT_BUS.addListener(LoadTest::onTickPre);
@@ -81,6 +87,8 @@ public final class LoadTest {
 
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
+        // 50 browsers: beyond every Bandwidth card, so the mainframe gets a Quantum Core (unlimited browsers).
+        mainframe.upgrades().setItem(ai.ezfox.cccloud.upgrade.MainframeUpgrades.CORE_SLOT, new net.minecraft.world.item.ItemStack(ai.ezfox.cccloud.ModRegistry.QUANTUM_CORE.get()));
         CloudGameTests.keepPowered(helper, mainframe);
         var link = new MainframeLink(GlobalPos.of(helper.getLevel().dimension(), mainframe.getBlockPos()), mainframe.getMainframeId());
 

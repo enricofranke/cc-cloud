@@ -122,12 +122,22 @@ public final class BridgePeripheral implements IPeripheral {
      */
     @LuaFunction(mainThread = true)
     public final Map<String, Object> craft(String name, long count) {
-        var ticket = core().craft(name, count, "computer");
+        var ticket = core().craft(name, count, "computer", false, "lua");
         var map = new LinkedHashMap<String, Object>();
         map.put("ok", ticket.error() == null);
         if (ticket.error() != null) map.put("error", ticket.error());
         if (ticket.jobId() != null) map.put("jobId", ticket.jobId());
         return map;
+    }
+
+    /**
+     * {@code setAutoStock(name, min, target, enabled)} – level maintainer: keeps at least {@code min}, crafting up to
+     * {@code target} (in batches of autoStockBatch). Returns true, or nil and an error.
+     */
+    @LuaFunction(mainThread = true)
+    public final Object[] setAutoStock(String name, long min, long target, boolean enabled) {
+        String error = core().setAutoStock(name, min, target, enabled);
+        return error == null ? new Object[]{true} : new Object[]{null, error};
     }
 
     /** Recent jobs, newest first: {jobId, name, displayName, count, status, progress, error?}. */

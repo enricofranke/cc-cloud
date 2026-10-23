@@ -63,6 +63,12 @@ class RouteAuthTest {
         }
 
         @Override
+        public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+            fail("redstoneOverride must not be reached without authentication");
+            return null;
+        }
+
+        @Override
         public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
             fail("unlinkNode must not be reached without authentication");
             return null;
@@ -72,6 +78,29 @@ class RouteAuthTest {
         public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
             fail("ruleCommand must not be reached without authentication");
             return new GameBridge.RuleResult(null, null, null);
+        }
+
+        @Override
+        public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+            fail("storage must not be reached without authentication");
+            return GameBridge.StorageResult.fail("x");
+        }
+
+        @Override
+        public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+            fail("craftPreview must not be reached without authentication");
+        }
+
+        @Override
+        public java.util.concurrent.CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+            fail("mapTile must not be reached without authentication");
+            return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.MapResult(204, null, null, null));
+        }
+
+        @Override
+        public java.util.concurrent.CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
+            fail("voxels must not be reached without authentication");
+            return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.VoxelResult(204, null, null));
         }
 
         @Override

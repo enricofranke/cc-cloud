@@ -29,10 +29,20 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
         core = new BridgeCore(adapter, "rs", this::setChanged);
         section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
         peripheral = new BridgePeripheral("rs_cloud_bridge", this);
+        var bridgeSection = section;
+        var bridgePeripheral = peripheral;
+        wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> bridgeSection.sectionId().toString(), false, () -> bridgePeripheral);
     }
 
     SimpleNetworkNode node() {
         return mainNetworkNode;
+    }
+
+    private final ai.ezfox.cccloud.cable.CloudWired wired;
+
+    @Override
+    public ai.ezfox.cccloud.cable.CloudWired cloudWired() {
+        return wired;
     }
 
     public BridgePeripheral peripheral() {
@@ -56,8 +66,15 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        wired.onLoad();
+    }
+
+    @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (level != null && !level.isClientSide()) section.removed();
     }
 

@@ -85,7 +85,13 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private volatile boolean computerDetached;
     /** Linked before v0.4 (no "net_v" marker): keeps working out of range while legacyRangeGrace is on. */
     private boolean legacyLink;
-    /** "no_route", "legacy_out_of_range" or null (for the screen). */
+    /** v0.7 wireless redstone: mode, channel (per mainframe network), last input (transmitter) and output (receiver). */
+    private ai.ezfox.cccloud.redstone.RedstoneMode rsMode = ai.ezfox.cccloud.redstone.RedstoneMode.OFF;
+    private String rsChannel = "";
+    private int rsInput;
+    private int rsOutput;
+    private long rsLastChange = Long.MIN_VALUE / 2;
+    /** "no_route", "over_capacity", "legacy_out_of_range" or null (for the screen). */
     private volatile @Nullable String routeState;
     /** v0.5 device card (compat/card): direct mode on a supported machine. {@code deviceKind} is saved; both guarded by this. */
     private ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard;
@@ -102,6 +108,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     private final Map<IComputerAccess, TokenBucket> computers = new ConcurrentHashMap<>();
     private final UplinkPeripheral peripheral = new UplinkPeripheral(this);
+    /** CC wired network membership (a member: it puts no peripheral on the cable). */
+    private final ai.ezfox.cccloud.cable.CloudWired wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> uplinkId.toString(), false, () -> null);
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private boolean registered;
     private final SpinAnimation clientAnimation = new SpinAnimation();
@@ -125,6 +133,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     @Override
     public @Nullable MainframeLink getLink() {
         return link;
+    }
+
+    public ai.ezfox.cccloud.cable.CloudWired wired() {
+        return wired;
     }
 
     public UplinkPeripheral peripheral() {
@@ -151,6 +163,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         input.read("uplink_id", UUIDUtil.STRING_CODEC).ifPresent(id -> uplinkId = id);
         link = input.read("link", MainframeLink.CODEC).orElse(null);
         legacyLink = link != null && (input.getIntOr("net_v", 0) < 1 || input.getBooleanOr("legacy_link", false));
+        var mode = ai.ezfox.cccloud.redstone.RedstoneMode.byId(input.getStringOr("rs_mode", "off"));
+        rsMode = mode == null ? ai.ezfox.cccloud.redstone.RedstoneMode.OFF : mode;
+        rsChannel = input.getStringOr("rs_channel", "");
+        rsOutput = Math.max(0, Math.min(15, input.getIntOr("rs_output", 0)));
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
@@ -180,6 +196,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         output.storeNullable("link", MainframeLink.CODEC, link);
         output.putInt("net_v", 1);
         output.putBoolean("legacy_link", legacyLink);
+        output.putString("rs_mode", rsMode.id());
+        output.putString("rs_channel", rsChannel);
+        output.putInt("rs_output", rsOutput);
         synchronized (this) {
             output.putString("title", title);
             output.putBoolean("template", template);
@@ -226,12 +245,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         registered = true;
         tickCounter = 0;
+        wired.onLoad();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterUplink(this);
@@ -347,6 +368,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var pos = new BlockPos(ref.x(), ref.y(), ref.z());
         if (target == null || !target.isLoaded(pos)) return null;
         return target.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
+    }
+
+    /** The bridge behind a widget (Lua-bound item_search/watchlist/jobs, or the template's bridge), or null. */
+    public synchronized @Nullable BridgeHost bridgeForWidget(String widgetId) {
+        var widget = widgets.get(widgetId);
+        return widget == null ? null : bridgeFor(widget);
     }
 
     /** The storage (bridge) of a direct-mode Storage card, or null (v0.5 rules: item triggers and craft actions). */
@@ -687,7 +714,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                     newStatus = CloudStatus.CONNECTING; // network not computed yet
                     routeState = null;
                 } else if (!route.connected()) {
-                    routeState = "no_route";
+                    routeState = ai.ezfox.cccloud.network.NetworkService.overCapacity(uplinkId) ? "over_capacity" : "no_route";
                 } else {
                     routeState = route.legacyOutOfRange() ? "legacy_out_of_range" : null;
                     newStatus = switch (mainframe.status()) {
@@ -718,6 +745,64 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     public @Nullable String routeState() {
         return routeState;
+    }
+
+    // ---- wireless redstone (v0.7) -------------------------------------------------------------------------------------
+
+    public ai.ezfox.cccloud.redstone.RedstoneMode redstoneMode() {
+        return rsMode;
+    }
+
+    public String redstoneChannel() {
+        return rsChannel;
+    }
+
+    /** Transmitter: the redstone signal this uplink receives from its neighbours (0–15). */
+    public int redstoneInput() {
+        return rsInput;
+    }
+
+    /** Receiver: the signal this uplink emits on every side (0–15). */
+    public int redstoneOutput() {
+        return rsOutput;
+    }
+
+    /** Screen action: mode and channel (the channel is validated by the caller). */
+    public void setRedstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
+        rsMode = mode;
+        rsChannel = channel;
+        readRedstoneInput();
+        setChanged();
+        ai.ezfox.cccloud.redstone.RedstoneService.markDirty();
+    }
+
+    /** Block neighbour update: transmitters re-read their input. */
+    public void onNeighborChanged() {
+        if (rsMode == ai.ezfox.cccloud.redstone.RedstoneMode.TRANSMIT && readRedstoneInput()) ai.ezfox.cccloud.redstone.RedstoneService.markDirty();
+    }
+
+    private boolean readRedstoneInput() {
+        if (level == null) return false;
+        int value = rsMode == ai.ezfox.cccloud.redstone.RedstoneMode.TRANSMIT ? level.getBestNeighborSignal(getBlockPos()) : 0;
+        if (value == rsInput) return false;
+        rsInput = value;
+        return true;
+    }
+
+    /**
+     * Receiver output; changes at most every 2 ticks (redstone clocks faster than that are smoothed).
+     *
+     * @return false if the change has to wait for the next tick
+     */
+    public boolean applyRedstoneOutput(int value, long gameTime) {
+        value = Math.max(0, Math.min(15, value));
+        if (value == rsOutput) return true;
+        if (gameTime - rsLastChange < 2) return false;
+        rsOutput = value;
+        rsLastChange = gameTime;
+        setChanged();
+        if (level != null) level.updateNeighborsAt(getBlockPos(), getBlockState().getBlock());
+        return true;
     }
 
     public boolean isLegacyLink() {
@@ -757,7 +842,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var here = GlobalPos.of(serverLevel.dimension(), getBlockPos());
         // Range is checked against the whole network (mainframe and relays), not only the mainframe.
         var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, serverLevel, getBlockPos(),
-            ai.ezfox.cccloud.network.NetworkService.deviceType(this));
+            ai.ezfox.cccloud.network.NetworkService.deviceType(this), uplinkId.toString(), wired);
         if (error != null) {
             player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
             return;
@@ -979,7 +1064,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (host == null) return ActionResult.done("unavailable");
         var core = host.bridgeCore();
         if (op instanceof Op.Craft craft) {
-            var ticket = core.craft(craft.name(), craft.count(), user);
+            var ticket = core.craft(craft.name(), craft.count(), user, craft.alertWhenDone(), user.startsWith("rule:") ? "rule" : "dashboard");
             if (ticket.error() == null) {
                 setValueLater(core);
                 if (!template) {

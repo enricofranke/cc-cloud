@@ -65,6 +65,9 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private volatile boolean online;
     private final MainframePeripheral peripheral = new MainframePeripheral(this);
+    /** CC wired network membership on both halves (cables, docs/SPEC.md "Cables"). */
+    private final ai.ezfox.cccloud.cable.CloudWired wired = new ai.ezfox.cccloud.cable.CloudWired(this, () -> mainframeId.toString(), true,
+        () -> peripheral, () -> java.util.List.of(getBlockPos(), getBlockPos().above()));
 
     /** FE buffer (Capabilities.Energy.BLOCK on both halves) and the power logic. */
     private final ai.ezfox.cccloud.power.MainframeEnergy energy = new ai.ezfox.cccloud.power.MainframeEnergy(
@@ -73,6 +76,13 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private long energyUsage;
     private boolean hasPower;
     private int powerTicks;
+
+    /** v0.7 upgrade slots (4 cards + Quantum Core); effects are recomputed when they change. */
+    private final ai.ezfox.cccloud.upgrade.MainframeUpgrades upgrades = new ai.ezfox.cccloud.upgrade.MainframeUpgrades(this::upgradesChanged);
+    private ai.ezfox.cccloud.upgrade.UpgradeEffects effects = ai.ezfox.cccloud.upgrade.UpgradeEffects.none(ai.ezfox.cccloud.upgrade.UpgradeEffects.Base.DEFAULT);
+    /** Chunks the Chunk Anchor card keeps loaded (saved, so stale tickets are removed after a restart). */
+    private java.util.Set<ai.ezfox.cccloud.upgrade.ChunkAnchor.Key> anchorChunks = java.util.Set.of();
+    private boolean anchorDirty = true;
 
     public CloudMainframeBlockEntity(BlockPos pos, BlockState state) {
         super(ModRegistry.MAINFRAME_BE.get(), pos, state);
@@ -87,6 +97,27 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     public String getDisplayName() {
         var p = getBlockPos();
         return "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
+    }
+
+    public ai.ezfox.cccloud.upgrade.MainframeUpgrades upgrades() {
+        return upgrades;
+    }
+
+    /** Effective limits from the installed upgrades. */
+    public ai.ezfox.cccloud.upgrade.UpgradeEffects effects() {
+        return effects;
+    }
+
+    private void upgradesChanged() {
+        effects = upgrades.effects(ai.ezfox.cccloud.upgrade.Upgrades.base());
+        ai.ezfox.cccloud.upgrade.Upgrades.publish(mainframeId, effects);
+        anchorDirty = true;
+        setChanged();
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
+    }
+
+    public ai.ezfox.cccloud.cable.CloudWired wired() {
+        return wired;
     }
 
     public MainframePeripheral peripheral() {
@@ -105,6 +136,20 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         linkedUplinks.clear();
         input.read("uplinks", LinkedUplink.CODEC.listOf()).ifPresent(list -> list.forEach(u -> linkedUplinks.put(u.id(), u.pos())));
         energy.set(Math.min(energy.capacity(), Math.max(0, input.getIntOr("energy", 0))));
+        upgrades.clearContent();
+        net.minecraft.world.ContainerHelper.loadAllItems(input.childOrEmpty("upgrades"), upgrades.getItems());
+        var anchored = new java.util.LinkedHashSet<ai.ezfox.cccloud.upgrade.ChunkAnchor.Key>();
+        input.read("anchor_chunks", com.mojang.serialization.Codec.STRING.listOf()).ifPresent(list -> list.forEach(entry -> {
+            var parts = entry.split("\\|");
+            if (parts.length == 3) {
+                try {
+                    anchored.add(new ai.ezfox.cccloud.upgrade.ChunkAnchor.Key(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2])));
+                } catch (NumberFormatException ignored) {
+                    // skip a broken entry
+                }
+            }
+        }));
+        anchorChunks = anchored;
     }
 
     @Override
@@ -114,6 +159,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         output.putBoolean("enabled", enabled);
         output.storeNullable("owner", UUIDUtil.STRING_CODEC, owner);
         output.putString("owner_name", ownerName);
+        net.minecraft.world.ContainerHelper.saveAllItems(output.child("upgrades"), upgrades.getItems());
+        if (!anchorChunks.isEmpty()) {
+            output.store("anchor_chunks", com.mojang.serialization.Codec.STRING.listOf(),
+                anchorChunks.stream().map(k -> k.dim() + "|" + k.x() + "|" + k.z()).toList());
+        }
         if (!legacyTrusted.isEmpty()) {
             output.store("trusted", NameAndId.CODEC.listOf(), legacyTrusted.entrySet().stream().map(e -> new NameAndId(e.getKey(), e.getValue())).toList());
         }
@@ -135,6 +185,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             CloudNetwork.registerMainframe(this);
         }
         registered = true;
+        wired.onLoad();
+        effects = upgrades.effects(ai.ezfox.cccloud.upgrade.Upgrades.base());
+        ai.ezfox.cccloud.upgrade.Upgrades.publish(mainframeId, effects);
+        ai.ezfox.cccloud.upgrade.ChunkAnchor.restore(mainframeId, anchorChunks);
+        anchorDirty = true;
         syncAcl();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -160,6 +215,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+        wired.onRemoved();
         if (registered) {
             registered = false;
             CloudNetwork.unregisterMainframe(this);
@@ -180,6 +236,10 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             WebAuthData.access(serverLevel.getServer()).forget(mainframeId);
             ai.ezfox.cccloud.rules.RuleService.forget(serverLevel.getServer(), mainframeId);
             ai.ezfox.cccloud.network.SectionCache.get(serverLevel.getServer()).forgetMainframe(mainframeId);
+            net.minecraft.world.Containers.dropContents(serverLevel, pos, upgrades);
+            ai.ezfox.cccloud.upgrade.ChunkAnchor.release(serverLevel.getServer(), mainframeId);
+            anchorChunks = java.util.Set.of();
+            ai.ezfox.cccloud.upgrade.Upgrades.forget(mainframeId);
             CCCloud.LOGGER.info("[cccloud] {} was removed; its pairing code, PIN and {} device(s) were deleted", getDisplayName(), devices);
             WebHub.INSTANCE.removeMainframe(mainframeId);
             ai.ezfox.cccloud.layout.LayoutData.get(serverLevel.getServer()).remove(mainframeId);
@@ -219,6 +279,17 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             if (upper.is(state.getBlock()) && upper.getValue(CloudMainframeBlock.HALF) == DoubleBlockHalf.UPPER
                 && upper.getValue(CloudMainframeBlock.STATUS) != newStatus) {
                 level.setBlock(getBlockPos().above(), upper.setValue(CloudMainframeBlock.STATUS, newStatus), Block.UPDATE_ALL);
+            }
+        }
+
+        // Chunk Anchor card: reconcile tickets every 5 s or when something changed.
+        if (anchorDirty || powerTicks % 100 == 0) {
+            anchorDirty = false;
+            boolean active = effects.chunkAnchor() && CloudConfig.get(CloudConfig.CHUNK_ANCHOR) && hasPower && nowOnline;
+            int limit = owner == null ? 0 : ai.ezfox.cccloud.access.CloudPermissions.of(level.getServer()).anchorChunkLimit(owner);
+            if (ai.ezfox.cccloud.upgrade.ChunkAnchor.update(this, active, limit)) {
+                anchorChunks = ai.ezfox.cccloud.upgrade.ChunkAnchor.active(mainframeId);
+                setChanged();
             }
         }
 

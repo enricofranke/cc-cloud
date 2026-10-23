@@ -29,7 +29,9 @@ public final class AccessGate {
         /** Access page (roles, teams, permissions). */
         ACCESS(Perm.ACCESS_MANAGE),
         /** Share links. */
-        SHARES(Perm.SHARES_CREATE);
+        SHARES(Perm.SHARES_CREATE),
+        /** v0.7 wireless redstone channel overrides. */
+        REDSTONE(Perm.ACT_REDSTONE);
 
         public final Perm perm;
 
@@ -80,6 +82,16 @@ public final class AccessGate {
         return widgetId.equals("redstone") || widgetId.endsWith("_redstone");
     }
 
+    /** Storage card v2 operations: reading needs storage.search, cancelling storage.craft, favorites act.buttons. */
+    public static Perm storagePerm(String op) {
+        return switch (op) {
+            case "cancel" -> Perm.STORAGE_CRAFT;
+            case "favorite" -> Perm.ACT_BUTTONS;
+            case "autostock" -> Perm.STORAGE_AUTOSTOCK;
+            default -> Perm.STORAGE_SEARCH;
+        };
+    }
+
     /** The permission of an HTTP route that touches a mainframe (null: not mainframe-scoped). */
     public static @Nullable Perm routePerm(Router.Id route) {
         return switch (route) {
@@ -88,6 +100,7 @@ public final class AccessGate {
             case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT -> Perm.SCRIPTS_UPLOAD;
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;
+            case MAP_TILE, VOXELS -> Perm.VIEW_POSITIONS;
             default -> null;
         };
     }
@@ -107,7 +120,10 @@ public final class AccessGate {
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
             case "net_unlink" -> "net_result";
+            case "rs_override" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
+            case "storage" -> "storage_result";
+            case "craft_preview" -> "craft_plan";
             default -> null;
         };
         var json = new JsonObject();

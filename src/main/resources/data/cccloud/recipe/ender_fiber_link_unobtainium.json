@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "allthemodium"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "Y": "minecraft:ender_eye",
+    "N": "#c:ingots/unobtainium",
+    "F": "cccloud:fiber_cable",
+    "X": "cccloud:ender_relay"
+  },
+  "pattern": [
+    "YNY",
+    "FXF",
+    "YNY"
+  ],
+  "result": {
+    "id": "cccloud:ender_fiber_link"
+  }
+}

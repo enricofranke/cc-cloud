@@ -23,7 +23,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, ICON, WEBSOCKET, STATIC;
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
         public boolean isScriptWrite() {
@@ -34,10 +34,14 @@ public final class Router {
             return isScriptWrite() || this == SCRIPT_LIST || this == SCRIPT_GET;
         }
 
+        public boolean isMap() {
+            return this == MAP_TILE || this == VOXELS;
+        }
+
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
-                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || isScript();
+                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || isScript() || isMap();
         }
     }
 
@@ -75,6 +79,12 @@ public final class Router {
         new Route(Id.SCRIPT_PUT, HttpMethod.PUT, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_DELETE, HttpMethod.DELETE, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_RUN, HttpMethod.POST, Pattern.compile(COMPUTER + "/run"), Access.DEVICE, EXAMPLE_COMPUTER + "/run"),
+        new Route(Id.MAP_TILE, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
+            + "/map/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/(surface|slice/-?[0-9]{1,4})/-?[0-9]{1,6}/-?[0-9]{1,6}\\.png"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/map/minecraft:overworld/surface/0/0.png"),
+        new Route(Id.VOXELS, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
+            + "/voxels/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/-?[0-9]{1,7}/-?[0-9]{1,3}/-?[0-9]{1,7}"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/voxels/minecraft:overworld/0/4/0"),
         new Route(Id.SHARE_DELETE, HttpMethod.DELETE, Pattern.compile("/api/mainframes/" + UUID_RE + "/shares/[0-9a-f]{16}"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares/0123456789abcdef"),
         // Item icons are public (explicitly allow-listed): no secrets, rate limited per IP, still LAN-only by default.

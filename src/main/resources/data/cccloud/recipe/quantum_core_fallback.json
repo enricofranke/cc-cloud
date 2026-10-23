@@ -1,0 +1,26 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:mod_loaded",
+        "modid": "allthetweaks"
+      }
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": "minecraft:netherite_block",
+    "S": "minecraft:nether_star",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "NSN",
+    "SCS",
+    "NSN"
+  ],
+  "result": {
+    "id": "cccloud:quantum_core"
+  }
+}

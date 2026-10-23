@@ -37,6 +37,7 @@ public final class Ae2Compat {
 
     static {
         TEST_FUNCTIONS.register("me_bridge_storage", () -> Ae2GameTests::storage);
+        TEST_FUNCTIONS.register("me_bridge_crafting", () -> Ae2CraftingGameTests::crafting);
     }
 
     private Ae2Compat() {
@@ -54,6 +55,7 @@ public final class Ae2Compat {
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(PeripheralCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.peripheral());
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.cloudWired());
         event.registerBlockEntity(AECapabilities.IN_WORLD_GRID_NODE_HOST, BLOCK_ENTITY.get(), (be, ctx) -> be);
     }
 }

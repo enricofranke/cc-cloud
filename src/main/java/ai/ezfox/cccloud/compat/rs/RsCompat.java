@@ -37,6 +37,7 @@ public final class RsCompat {
 
     static {
         TEST_FUNCTIONS.register("rs_bridge_storage", () -> RsGameTests::storage);
+        TEST_FUNCTIONS.register("rs_bridge_crafting", () -> RsCraftingGameTests::crafting);
     }
 
     private RsCompat() {
@@ -54,6 +55,7 @@ public final class RsCompat {
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(PeripheralCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.peripheral());
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.cloudWired());
         event.registerBlockEntity(RefinedStorageNeoForgeApi.INSTANCE.getNetworkNodeContainerProviderCapability(), BLOCK_ENTITY.get(),
             (be, side) -> be.getContainerProvider());
     }
