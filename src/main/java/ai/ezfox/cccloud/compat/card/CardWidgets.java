@@ -21,8 +21,42 @@ public final class CardWidgets {
 
     private final List<Widget> widgets = new ArrayList<>();
 
+    /** Widget span that fills a card body row (4 columns; the dashboard maps it to the full width, w = 12). */
+    public static final int FULL_ROW = 4;
+
+    /**
+     * The widgets, with full rows for lone ones (same rule for every card): a label whose explicit span leaves the
+     * rest of its row empty is widened to fill it (an odd "Status" or "Energy" label next to nothing), and a single
+     * button gets the whole row instead of a quarter. Widgets with an explicit {@code order} keep their spans.
+     */
     public List<Widget> build() {
+        fillRows();
+        var buttons = widgets.stream().filter(w -> w.type() == WidgetType.BUTTON && !w.opts().has("order")).toList();
+        if (buttons.size() == 1 && !buttons.getFirst().opts().has("span")) buttons.getFirst().opts().addProperty("span", FULL_ROW);
         return List.copyOf(widgets);
+    }
+
+    /** Packs the labels like the dashboard does (in order, rows of 4 columns, no span = full row) and closes gaps. */
+    private void fillRows() {
+        int fill = 0;
+        @Nullable Widget last = null;
+        for (var w : widgets) {
+            if (w.type() != WidgetType.LABEL || w.opts().has("order")) continue;
+            int span = w.opts().has("span") ? w.opts().get("span").getAsInt() : FULL_ROW;
+            if (fill + span > FULL_ROW) {
+                widen(last, fill);
+                fill = 0;
+            }
+            fill += span;
+            last = w;
+        }
+        widen(last, fill);
+    }
+
+    private static void widen(@Nullable Widget last, int fill) {
+        if (last != null && fill > 0 && fill < FULL_ROW && last.opts().has("span")) {
+            last.opts().addProperty("span", last.opts().get("span").getAsInt() + FULL_ROW - fill);
+        }
     }
 
     public CardWidgets gauge(String id, String label, double min, double max, @Nullable String unit, Object... opts) {

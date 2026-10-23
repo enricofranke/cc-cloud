@@ -63,6 +63,33 @@ class CardFormatTest {
     }
 
     @Test
+    void loneLabelsAndButtonsFillTheirRow() {
+        var widgets = new CardWidgets()
+            .percent("stored", "Stored")
+            .label("energy", "Energy", "span", 2)
+            .label("input", "Input")
+            .label("a", "A", "span", 2)
+            .label("b", "B", "span", 2)
+            .label("c", "C", "span", 2)
+            .label("ordered", "Ordered", "span", 2, "order", 5)
+            .button("backup", "Backup now")
+            .build();
+        var span = new java.util.HashMap<String, Integer>();
+        for (var w : widgets) if (w.opts().has("span")) span.put(w.id(), w.opts().get("span").getAsInt());
+        assertEquals(4, span.get("energy"), "a span-2 label followed by a full-row label fills its row");
+        assertNull(span.get("input"), "labels without span are full rows already");
+        assertEquals(2, span.get("a"));
+        assertEquals(2, span.get("b"), "pairs stay side by side");
+        assertEquals(4, span.get("c"), "the odd one out fills its row");
+        assertEquals(2, span.get("ordered"), "explicitly ordered widgets keep their span");
+        assertEquals(4, span.get("backup"), "a single button gets the whole row");
+        assertNull(span.get("stored"));
+
+        var two = new CardWidgets().button("start", "Start").button("stop", "Stop").build();
+        assertFalse(two.get(0).opts().has("span"), "several buttons share a row");
+    }
+
+    @Test
     void invalidWidgetsFailLoudly() {
         assertThrows(IllegalStateException.class, () -> new CardWidgets().select("bad", "x", List.of()));
         assertThrows(IllegalStateException.class, () -> new CardWidgets().label("Bad-Id", "x"));
