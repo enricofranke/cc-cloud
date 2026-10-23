@@ -72,6 +72,12 @@ public final class LoadTest {
     private enum Phase { CONNECTING, BASELINE, LOAD, DONE }
 
     public static void run(GameTestHelper helper) {
+        // ./gradlew runGameTestServer -PskipLoadTest: the functional tests stay green regardless of machine load.
+        if (Boolean.getBoolean("cccloud.skipLoadTest")) {
+            ai.ezfox.cccloud.CCCloud.LOGGER.info("[cccloud] LOAD TEST skipped (-PskipLoadTest)");
+            helper.succeed();
+            return;
+        }
         if (!listening) {
             listening = true;
             NeoForge.EVENT_BUS.addListener(LoadTest::onTickPre);

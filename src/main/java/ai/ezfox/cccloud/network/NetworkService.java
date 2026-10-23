@@ -178,7 +178,9 @@ public final class NetworkService {
     private static List<NetworkGraph.Node> nodes(CloudMainframeBlockEntity m) {
         var nodes = new ArrayList<NetworkGraph.Node>();
         nodes.add(mainframeNode(m));
-        for (var relay : CloudNetwork.relays()) if (relay.getLevel() != null) nodes.add(relayNode(relay, m.getMainframeId()));
+        for (var relay : CloudNetwork.relays()) {
+            if (relay.getLevel() != null && relay.servesForTest(m.getMainframeId())) nodes.add(relayNode(relay, m.getMainframeId()));
+        }
         return nodes;
     }
 

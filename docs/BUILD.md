@@ -65,3 +65,7 @@ The integrations in `compat/<modid>` compile against the exact jars of All the M
 - Set `pause-when-empty-seconds=-1` in `server.properties`: otherwise the server pauses without players and approvals, dashboard actions and rules wait.
 - Approving from the server console or RCON works without a player: `cccloud approve <id>` / `cccloud deny <id>` (`cccloud approve` without an id suggests the waiting requests). The browser gets the role of the mainframe's owner (account codes: of that player); the audit log records "Console approved …".
 - E2E only: with `-Dcccloud.devCommands=true`, the console command `cccloud test-token <mainframeId>` prints a device token of the mainframe's owner (never available to players or without the property).
+
+### Deterministic GameTests and the load test
+- GameTests run side by side in one world. Relays placed by a test serve only that test's mainframe (`restrictForTest`), so networks of neighbouring tests never connect.
+- The load test runs in its own batch (test environment `cccloud:loadtest`), so no other test runs at the same time. It is still timing-sensitive on a busy machine: `./gradlew runGameTestServer -PskipLoadTest --max-workers=3` runs all functional tests; run the full suite (with the load test) at quiet moments.

@@ -195,7 +195,10 @@ public final class CableTests {
         var placed = new ArrayList<BlockPos>();
         var relayPos = s.base().above(FAR + 1);
         level.setBlock(relayPos, ModRegistry.CLOUD_RELAY.get().defaultBlockState(), Block.UPDATE_ALL);
-        if (level.getBlockEntity(relayPos) instanceof CloudRelayBlockEntity relay) relay.fillForTest();
+        if (level.getBlockEntity(relayPos) instanceof CloudRelayBlockEntity relay) {
+            relay.fillForTest();
+            relay.restrictForTest(s.mainframe().getMainframeId()); // tests run side by side: serve only this test's network
+        }
         placed.add(relayPos);
         for (int y = 2; y <= FAR; y++) {
             var pos = s.base().above(y);
