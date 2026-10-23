@@ -136,7 +136,9 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             // ./gradlew runGameTestServer -PskipLoadTest skips the timing-sensitive load test (its own batch otherwise).
             if (project.hasProperty("skipLoadTest")) systemProperty 'cccloud.skipLoadTest', 'true'
-            systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '18787'
+            // A free port per run (parallel checkouts never collide) and hub flushes on the server tick (load-independent tests).
+            systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '0'
+            systemProperty 'cccloud.gametest', 'true'
         }
 
         data {

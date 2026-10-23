@@ -61,6 +61,9 @@ public final class StorageGameTests {
                 helper.assertTrue(text(helper, FluidTankCard.FLUID).equals("Water"), "fluid: " + text(helper, FluidTankCard.FLUID));
                 helper.assertTrue(text(helper, FluidTankCard.AMOUNT).startsWith("4.00 k /"), "amount: " + text(helper, FluidTankCard.AMOUNT));
                 helper.assertTrue(number(helper, FluidTankCard.FILL) > 0, "fill gauge");
+                // The tank keeps broadcasting sync packets to every player while it ticks; other mods' GameTests log in mock
+                // players that cannot receive them (crash). Remove it before the next batch starts.
+                helper.setBlock(DEVICE, net.minecraft.world.level.block.Blocks.AIR);
             })
             .thenSucceed();
     }

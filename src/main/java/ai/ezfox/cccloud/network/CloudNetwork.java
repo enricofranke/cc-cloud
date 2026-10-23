@@ -141,6 +141,7 @@ public final class CloudNetwork {
         NetworkService.tick(event.getServer());
         ai.ezfox.cccloud.redstone.RedstoneService.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
+        if (ai.ezfox.cccloud.web.WebHub.FLUSH_EVERY_TICK) ai.ezfox.cccloud.web.WebHub.INSTANCE.flush();
     }
 
     private static void onServerAboutToStart(ServerAboutToStartEvent event) {

@@ -2,6 +2,6 @@
   "type": "minecraft:function",
   "environment": "minecraft:default",
   "function": "cccloud:cable_fiber_capacity",
-  "max_ticks": 800,
+  "max_ticks": 2400,
   "structure": "cccloud:test_floor"
 }

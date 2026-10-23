@@ -83,6 +83,11 @@ public final class TabletGameTests {
             .thenWaitUntil(() -> {
                 helper.assertTrue(NetworkService.result(setup.id()) != null, "network topology computed");
                 helper.assertTrue(InGameRange.covered(setup.id(), level, near), "covered next to the mainframe");
+                // the Server card has its first values (refreshed once per second of game time)
+                var card = ai.ezfox.cccloud.compat.server.MainframeCards.section(setup.id(), ai.ezfox.cccloud.compat.server.ServerCard.KIND);
+                helper.assertTrue(card != null && card.values().get(ai.ezfox.cccloud.compat.server.ServerCard.TPS).isJsonPrimitive(), "server card refreshed");
+                var published = ai.ezfox.cccloud.web.WebHub.INSTANCE.widgetValue(setup.id(), card.sectionId().toString(), ai.ezfox.cccloud.compat.server.ServerCard.TPS);
+                helper.assertTrue(published != null && published.isJsonPrimitive(), "server card values published to the hub");
             })
             .thenExecute(() -> {
                 helper.assertTrue(!InGameRange.covered(setup.id(), level, near.add(300, 0, 0)), "not covered 300 blocks away");

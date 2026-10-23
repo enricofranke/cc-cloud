@@ -752,64 +752,72 @@ public final class WebHub {
     }
 
     /** Sends all pending changes. Called periodically from a Netty thread. */
+    /** Serialises flushes (the web server's 100 ms timer, the server tick in GameTests, the tablet without web server): messages keep their order. */
+    private final Object flushLock = new Object();
+
+    /** GameTests ({@code -Dcccloud.gametest=true}): flush on every server tick, so delivery does not depend on wall-clock timers. */
+    public static final boolean FLUSH_EVERY_TICK = Boolean.getBoolean("cccloud.gametest");
+
     public void flush() {
-        long now = System.currentTimeMillis();
-        for (var view : views.values()) {
-            Map<String, JsonObject> pending;
-            String networkFull = null, networkStripped = null;
-            Set<String> restricted;
-            synchronized (view) {
-                if (view.networkDirty && now - view.networkSentAt >= 500) {
-                    view.networkDirty = false;
-                    view.networkSentAt = now;
-                    networkFull = view.networkFull;
-                    networkStripped = view.networkStripped;
+        synchronized (flushLock) {
+            long now = System.currentTimeMillis();
+            for (var view : views.values()) {
+                Map<String, JsonObject> pending;
+                String networkFull = null, networkStripped = null;
+                Set<String> restricted;
+                synchronized (view) {
+                    if (view.networkDirty && now - view.networkSentAt >= 500) {
+                        view.networkDirty = false;
+                        view.networkSentAt = now;
+                        networkFull = view.networkFull;
+                        networkStripped = view.networkStripped;
+                    }
+                    if (view.outbox.isEmpty() && networkFull == null) continue;
+                    pending = view.outbox;
+                    view.outbox = new LinkedHashMap<>();
+                    restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
                 }
-                if (view.outbox.isEmpty() && networkFull == null) continue;
-                pending = view.outbox;
-                view.outbox = new LinkedHashMap<>();
-                restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
-            }
-            if (networkFull != null && !view.sessions.isEmpty()) {
+                if (networkFull != null && !view.sessions.isEmpty()) {
+                    for (var session : view.sessions) {
+                        if (session.share() != null) continue; // share viewers never get the network map
+                        session.send(List.of(session.seesPositions() ? networkFull : networkStripped));
+                    }
+                }
+                if (pending.isEmpty()) continue;
+                if (view.sessions.isEmpty()) continue;
+                List<String> messages = null;
+                List<String> readOnly = null;
+                Map<String, List<String>> shareMessages = null;
                 for (var session : view.sessions) {
-                    if (session.share() != null) continue; // share viewers never get the network map
-                    session.send(List.of(session.seesPositions() ? networkFull : networkStripped));
-                }
-            }
-            if (pending.isEmpty()) continue;
-            if (view.sessions.isEmpty()) continue;
-            List<String> messages = null;
-            List<String> readOnly = null;
-            Map<String, List<String>> shareMessages = null;
-            for (var session : view.sessions) {
-                var share = session.share();
-                if (share == null) {
-                    if (messages == null) {
-                        messages = new ArrayList<>(pending.size());
-                        readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size());
-                        for (var message : pending.values()) {
-                            String json = Json.GSON.toJson(message);
-                            messages.add(json);
-                            if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
+                    var share = session.share();
+                    if (share == null) {
+                        if (messages == null) {
+                            messages = new ArrayList<>(pending.size());
+                            readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size());
+                            for (var message : pending.values()) {
+                                String json = Json.GSON.toJson(message);
+                                messages.add(json);
+                                if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
+                            }
                         }
+                        session.send(seesRestricted(session.perms()) ? messages : readOnly);
+                        continue;
                     }
-                    session.send(seesRestricted(session.perms()) ? messages : readOnly);
-                    continue;
-                }
-                if (shareMessages == null) shareMessages = new java.util.HashMap<>();
-                var filtered = shareMessages.get(share.id());
-                if (filtered == null) {
-                    filtered = new ArrayList<>();
-                    synchronized (view) {
-                        var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
-                        for (var message : pending.values()) {
-                            var m = ShareFilter.message(message, view.uplinks, keys, share.hideNumbers());
-                            if (m != null) filtered.add(Json.GSON.toJson(m));
+                    if (shareMessages == null) shareMessages = new java.util.HashMap<>();
+                    var filtered = shareMessages.get(share.id());
+                    if (filtered == null) {
+                        filtered = new ArrayList<>();
+                        synchronized (view) {
+                            var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
+                            for (var message : pending.values()) {
+                                var m = ShareFilter.message(message, view.uplinks, keys, share.hideNumbers());
+                                if (m != null) filtered.add(Json.GSON.toJson(m));
+                            }
                         }
+                        shareMessages.put(share.id(), filtered);
                     }
-                    shareMessages.put(share.id(), filtered);
+                    if (!filtered.isEmpty()) session.send(filtered);
                 }
-                if (!filtered.isEmpty()) session.send(filtered);
             }
         }
     }

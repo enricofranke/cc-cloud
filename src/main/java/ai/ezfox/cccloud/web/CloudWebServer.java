@@ -118,6 +118,11 @@ public final class CloudWebServer {
             return;
         }
 
+        if (port == 0 && instance.channel.localAddress() instanceof InetSocketAddress bound) {
+            // dev/GameTest runs: an ephemeral port, so parallel test runs never collide (a failed bind would keep every mainframe offline)
+            instance.port = bound.getPort();
+            instance.url = computeUrl(server, bind, bound.getPort(), ssl != null);
+        }
         instance.flushTask = group.next().scheduleAtFixedRate(() -> {
             try {
                 WebHub.INSTANCE.flush();

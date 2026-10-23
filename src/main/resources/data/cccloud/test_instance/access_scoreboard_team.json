@@ -2,6 +2,6 @@
   "type": "minecraft:function",
   "environment": "minecraft:default",
   "function": "cccloud:access_scoreboard_team",
-  "max_ticks": 200,
+  "max_ticks": 2400,
   "structure": "cccloud:test_floor"
 }

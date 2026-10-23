@@ -44,8 +44,9 @@ final class WebInstance {
     /** PIN hashing is slow on purpose, so it runs on its own thread with a small bounded queue. */
     final ThreadPoolExecutor pinExecutor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32),
         new DefaultThreadFactory("cccloud-pin", true));
-    final String url;
-    final int port;
+    /** Set again after binding when the requested port was 0 (GameTests: a free port). */
+    volatile String url;
+    volatile int port;
     volatile Set<String> bannedIps = Set.of();
     @Nullable EventLoopGroup group;
     @Nullable Channel channel;

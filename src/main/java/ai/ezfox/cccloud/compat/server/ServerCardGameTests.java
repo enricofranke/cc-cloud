@@ -43,10 +43,12 @@ public final class ServerCardGameTests {
                     helper.assertTrue(values.containsKey("spark_tps"), "spark rows with spark installed");
                 }
             })
-            .thenExecute(() -> {
+            .thenWaitUntil(() -> {
+                // the section answers actions only while the mainframe is online
                 var section = MainframeCards.section(mainframe.getMainframeId(), ServerCard.KIND);
                 var result = section.handleAction(ServerCard.TPS, new JsonPrimitive(1), null, "gametest", true).getNow(null);
-                helper.assertTrue(result != null && "not_interactive".equals(result.error()), "the server card is read-only");
+                helper.assertTrue(result != null && "not_interactive".equals(result.error()),
+                    "the server card is read-only: " + (result == null ? null : result.error()) + ", mainframe " + mainframe.status());
             })
             .thenSucceed();
     }

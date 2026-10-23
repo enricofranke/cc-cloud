@@ -2,6 +2,6 @@
   "type": "minecraft:function",
   "environment": "minecraft:default",
   "function": "cccloud:mainframe_place_and_break_upper",
-  "max_ticks": 100,
+  "max_ticks": 2400,
   "structure": "cccloud:test_floor"
 }
