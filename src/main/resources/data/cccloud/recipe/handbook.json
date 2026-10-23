@@ -1,0 +1,20 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "guideme"
+    }
+  ],
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:book",
+    "cccloud:cloud_core"
+  ],
+  "result": {
+    "id": "guideme:guide",
+    "components": {
+      "guideme:guide_id": "cccloud:handbook"
+    }
+  }
+}

@@ -510,5 +510,7 @@
   "cccloud.analyzer.hud_none": "Kein Empfang %s %s, %s Blöcke",
   "cccloud.tablet.cached": "Nicht geladen – zuletzt vor %s gesehen",
   "cccloud.display.cached": "vor %s",
-  "cccloud.analyzer.no_positions": "Routen anzeigen braucht die Berechtigung view.positions."
+  "cccloud.analyzer.no_positions": "Routen anzeigen braucht die Berechtigung view.positions.",
+  "item.cccloud.handbook": "CC: Cloud-Handbuch",
+  "item.cccloud.handbook.tooltip": "Mainframes, Uplinks, das Dashboard, Lua und mehr"
 }

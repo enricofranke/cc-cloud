@@ -54,6 +54,9 @@ public final class Integrations {
         optional("ftbchunks", () -> ai.ezfox.cccloud.compat.ftbchunks.ClaimsCard::init);
         optional("simplebackups", () -> ai.ezfox.cccloud.compat.simplebackups.BackupsCard::init);
 
+        // v0.8: handbook (GuideMe, data-driven: assets/cccloud/guideme_guides + guides/) and KubeJS bindings.
+        optional("guideme", () -> ai.ezfox.cccloud.compat.guideme.HandbookGameTests::init);
+
         TESTS.register(bus);
     }
 

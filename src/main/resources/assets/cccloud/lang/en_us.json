@@ -510,5 +510,7 @@
   "cccloud.analyzer.hud_none": "No coverage %s %s, %s blocks",
   "cccloud.tablet.cached": "Not loaded – last seen %s ago",
   "cccloud.display.cached": "seen %s ago",
-  "cccloud.analyzer.no_positions": "Showing routes needs the view.positions permission."
+  "cccloud.analyzer.no_positions": "Showing routes needs the view.positions permission.",
+  "item.cccloud.handbook": "CC: Cloud Handbook",
+  "item.cccloud.handbook.tooltip": "Mainframes, uplinks, the dashboard, Lua and more"
 }

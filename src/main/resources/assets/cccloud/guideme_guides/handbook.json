@@ -1,0 +1,14 @@
+{
+  "item_settings": {
+    "display_name": {
+      "translate": "item.cccloud.handbook"
+    },
+    "tooltip_lines": [
+      {
+        "translate": "item.cccloud.handbook.tooltip",
+        "color": "gray"
+      }
+    ]
+  },
+  "default_language": "en_us"
+}
