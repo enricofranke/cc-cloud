@@ -48,6 +48,7 @@ public final class Integrations {
         test("storage_dimstorage_chest", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageChest);
         test("storage_dimstorage_tank", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageTank);
         test("storage_sophisticated_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::sophisticatedController);
+        test("storage_occultism_actuator", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::occultismActuator);
         test("storage_functionalstorage_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::functionalStorageController);
 
         // 2. Advanced AE quantum computer.

@@ -249,6 +249,9 @@ def integrationMods = [
                            "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
     // JourneyMap is client-side: use -PintegrationMods=journeymap with runClient.
     journeymap          : ["curse.maven:journeymap-32274:${journeymap_curse_file}"],
+    // Occultism jar-in-jars CodedDefinedGUI and MagicParticlesLib; it needs Modonomicon, Curios and GeckoLib at runtime.
+    occultism           : ["curse.maven:occultism-361026:${occultism_curse_file}", "curse.maven:modonomicon-538392:${modonomicon_curse_file}",
+                           "top.theillusivec4.curios:curios-neoforge:${curios_version}", "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
 ]
