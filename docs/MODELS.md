@@ -91,7 +91,7 @@ Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memor
 `quantum_core`, `cloud_tablet`, `advanced_cloud_tablet`, `cloud_analyzer` (handheld scanner: stone-grey
 pocket-computer body, cyan signal bars, antenna nub). One shared card base in the ATM metal colour
 ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
-chip = memory).
+chip = memory). `upgrade_chunk_anchor` uses the same base in neutral CC grey with a cyan anchor.
 
 ## Fiber cable, junction, ender fiber link (cables part B)
 
