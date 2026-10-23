@@ -1,6 +1,7 @@
 package ai.ezfox.cccloud.client.gui;
 
 import ai.ezfox.cccloud.ingame.InGamePayloads;
+import ai.ezfox.cccloud.ingame.LabelText;
 import ai.ezfox.cccloud.tablet.TabletMenu;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonArray;
@@ -29,6 +30,8 @@ import org.jspecify.annotations.Nullable;
 public class TabletScreen extends CloudScreen<TabletMenu> {
     private static final int TAB_CARDS = 0;
     private static final int TAB_ALERTS = 1;
+    /** Minimum space between a caption and its value. */
+    private static final int LABEL_GAP = 8;
 
     private final Map<String, EditBox> inputs = new HashMap<>();
     private final EditBox pinBox;
@@ -173,11 +176,7 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
         var value = widget.get("value");
         boolean enabled = online && canControl();
         switch (type) {
-            case "label" -> rows.add(new Row(ROW, (c, x, y, w) -> {
-                int lw = label.isEmpty() ? 0 : Math.min(w / 2, c.font().width(label) + 6);
-                if (!label.isEmpty()) c.text(label, x + 4, y + 5, CloudGui.TEXT_DIM, lw);
-                c.text(text(value), x + 4 + lw, y + 5, CloudGui.TEXT, w - lw - 8);
-            }));
+            case "label" -> label(label, text(value));
             case "gauge", "progress" -> rows.add(new Row(ROW, (c, x, y, w) -> bar(c, x, y, w, label, value, opts)));
             case "indicator" -> rows.add(new Row(ROW, (c, x, y, w) -> {
                 boolean on = value != null && value.isJsonPrimitive() && value.getAsBoolean();
@@ -265,6 +264,50 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
             case "redstone_sides" -> redstone(uplinkId, id, label, value, opts, enabled);
             default -> textRow(Component.literal(label + " (" + type + ")"), CloudGui.TEXT_DIM);
         }
+    }
+
+    /**
+     * A label widget with the web's rule: long or multi-entry values (e.g. tick time per dimension) get the caption on
+     * its own row and the value below (one line per entry, with the TPS a tick time allows); otherwise caption and value
+     * share a row and the caption, not the value, is cut with an ellipsis, keeping a minimum gap.
+     */
+    private void label(String label, String value) {
+        if (!LabelText.stacked(label, value)) {
+            rows.add(new Row(ROW, (c, x, y, w) -> {
+                if (label.isEmpty()) {
+                    c.text(value, x + 4, y + 5, CloudGui.TEXT, w - 8);
+                    return;
+                }
+                int inner = w - 8;
+                int vw = Math.min(c.font().width(value), inner * 2 / 3);
+                int lw = Math.max(0, inner - vw - LABEL_GAP);
+                c.text(label, x + 4, y + 5, CloudGui.TEXT_DIM, lw);
+                c.text(value, x + 4 + inner - vw, y + 5, CloudGui.TEXT, vw);
+            }));
+            return;
+        }
+        rows.add(new Row(12, (c, x, y, w) -> c.text(label, x + 4, y + 3, CloudGui.TEXT_DIM, w - 8)));
+        var entries = LabelText.split(value);
+        if (entries.size() > 1) {
+            for (var e : entries) {
+                String right = e.value() + (e.tps() != null ? " · " + e.tps() + " TPS" : "");
+                rows.add(new Row(11, (c, x, y, w) -> {
+                    int inner = w - 12;
+                    int vw = Math.min(c.font().width(right), inner * 2 / 3);
+                    c.text(e.name(), x + 10, y + 1, CloudGui.TEXT, Math.max(0, inner - vw - LABEL_GAP));
+                    c.text(right, x + 10 + inner - vw, y + 1, CloudGui.TEXT, vw);
+                }));
+            }
+            return;
+        }
+        var lines = font.split(Component.literal(value), Math.max(40, listW - 30));
+        rows.add(new Row(Math.max(1, lines.size()) * 10 + 2, (c, x, y, w) -> {
+            int ly = y + 1;
+            for (var line : lines) {
+                c.g().text(font, line, x + 10, ly, CloudGui.TEXT, false);
+                ly += 10;
+            }
+        }));
     }
 
     private void bar(Ctx c, int x, int y, int w, String label, @Nullable JsonElement value, JsonObject opts) {
