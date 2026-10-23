@@ -112,6 +112,8 @@ export function blockAt(dim: string, x: number, y: number, z: number): B {
       return "air";
     }
     if (y === ROOM.y1 && ((x + 9) % 4 === 1) && ((z + 7) % 4 === 1)) return "lamp";
+    // wall lamps every 4 blocks at eye height
+    if (y === ROOM.y0 + 3 && ((x === ROOM.x0 || x === ROOM.x1) ? (z + 7) % 4 === 2 : (x + 9) % 4 === 2)) return "lamp";
     if (y === ROOM.y0) return "floor";
     // an opening to the cave on the west side
     if (x === ROOM.x0 && Math.abs(z) <= 2 && y > ROOM.y0 && y < ROOM.y0 + 4) return "air";

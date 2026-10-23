@@ -17,6 +17,7 @@ import {
   DoubleSide,
   EdgesGeometry,
   BoxGeometry,
+  FogExp2,
   Float32BufferAttribute,
   GridHelper,
   Group,
@@ -45,6 +46,7 @@ import MODELS_RAW from "./models.gen.json";
 import type { NetNode, NetworkInfo } from "../lib/types.ts";
 import type { Terrain } from "../lib/api.ts";
 import { isNodeType } from "../lib/network.ts";
+import { VoxelLayer, type VoxelSource } from "./voxelLayer.ts";
 import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, routedThrough, terrainMesh, type ModelDef } from "../lib/net3d.ts";
 
 interface Part {
@@ -69,6 +71,12 @@ export interface View3DProps {
   flyKey: number;
   /** WebGL failed at runtime (context lost, creation error) */
   onFail: (why: string) => void;
+  /** voxel blocks around the network (null = off / not allowed) */
+  voxels: VoxelSource | null;
+  /** cut away everything above this Y (voxels only) */
+  clipY: number | null;
+  night: boolean;
+  onVoxelStatus?: (s: { loaded: number; total: number; triangles: number; unavailable: boolean }) => void;
 }
 
 // ------------------------------------------------------------- shared assets
@@ -183,6 +191,8 @@ class View3D {
   down: { x: number; y: number; t: number } | null = null;
   dot = dotTexture();
   owned: (BufferGeometry | Material)[] = [];
+  voxels: VoxelLayer | null = null;
+  statusTimer = 0;
 
   host: HTMLDivElement;
 
@@ -192,6 +202,7 @@ class View3D {
     const small = matchMedia("(max-width: 719px)").matches;
     this.renderer = new WebGLRenderer({ antialias: !small || devicePixelRatio < 2, powerPreference: "default", alpha: false });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
+    this.renderer.localClippingEnabled = true;
     this.renderer.domElement.className = "n3d-canvas";
     this.renderer.domElement.tabIndex = 0;
     this.renderer.domElement.setAttribute("aria-label", "3D network view. Drag to rotate, two fingers or right mouse button to pan, scroll or pinch to zoom, arrow keys pan.");
@@ -277,6 +288,7 @@ class View3D {
   // -------------------------------------------------------------------- build
   update(props: View3DProps, prev?: View3DProps) {
     this.props = props;
+    this.updateVoxels(props, prev);
     const rebuild = !prev || prev.net !== props.net || prev.dim !== props.dim || prev.ranges !== props.ranges;
     if (!prev || prev.terrain !== props.terrain || prev.dim !== props.dim) this.buildTerrain();
     if (rebuild) this.build();
@@ -287,6 +299,32 @@ class View3D {
     }
     if (prev && props.flyKey !== prev.flyKey && props.selected) this.flyTo(props.selected);
     this.request();
+  }
+
+  updateVoxels(props: View3DProps, prev?: View3DProps) {
+    if (props.voxels) {
+      if (!this.voxels) {
+        this.voxels = new VoxelLayer();
+        this.scene.add(this.voxels.group);
+        this.voxels.onChange = () => {
+          this.request();
+          clearTimeout(this.statusTimer);
+          this.statusTimer = window.setTimeout(() => {
+            const v = this.voxels;
+            if (v) this.props.onVoxelStatus?.({ loaded: v.loaded, total: v.total, triangles: v.triangleCount, unavailable: v.unavailable });
+          }, 120);
+        };
+      }
+      if (!prev?.voxels || prev.voxels.dim !== props.voxels.dim || prev.voxels.mf !== props.voxels.mf || prev.voxels.radius !== props.voxels.radius) this.voxels.load(props.voxels);
+      this.voxels.group.visible = true;
+      this.voxels.setClip(props.clipY);
+      this.voxels.setNight(props.night);
+    } else if (this.voxels) this.voxels.group.visible = false;
+    const blocks = !!props.voxels && !this.voxels?.unavailable;
+    this.terrainGroup.visible = !blocks;
+    const bg = blocks ? (props.night ? "#070b14" : "#6f93bb") : cssVar(this.host, "--screen", "#0a0c0f");
+    (this.scene.background as Color).set(bg);
+    this.scene.fog = blocks ? new FogExp2(bg, props.night ? 0.0045 : 0.003) : null;
   }
 
   clear() {
@@ -628,6 +666,8 @@ class View3D {
 
   dispose() {
     cancelAnimationFrame(this.anim);
+    clearTimeout(this.statusTimer);
+    this.voxels?.dispose();
     cancelAnimationFrame(this.pending);
     this.ro.disconnect();
     this.controls.dispose();

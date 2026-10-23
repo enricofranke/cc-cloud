@@ -13,7 +13,7 @@ mkdirSync(out, { recursive: true });
 for (const f of readdirSync(out)) if (f.endsWith(".png")) rmSync(resolve(out, f));
 const staticDir = resolve(here, "../../src/main/resources/cccloud_web");
 
-const mock = await createMockServer({ port: 0, host: "127.0.0.1", extras: true, tickMs: 700, approveDelayMs: 2500, staticDir, log: () => {} });
+const mock = await createMockServer({ port: 0, host: "127.0.0.1", extras: true, tickMs: 700, approveDelayMs: 2500, voxelRate: 120, staticDir, log: () => {} });
 const origin = `http://localhost:${mock.port}`;
 const control = (body: object, mainframeId?: string) =>
   fetch(`${origin}/dev/control`, { method: "POST", body: JSON.stringify({ ...body, mainframeId }) });
@@ -591,6 +591,37 @@ try {
       await mp.waitForTimeout(2500);
       await clearToasts(mp);
       await shot(mp, `${pre}-m2-map-slice`);
+      // ---- voxel 3D ("crazy 3D" stage 1): blocks around the base, then a night cut through the room
+      await mp.click('.seg-ctl button:has-text("3D")');
+      await mp.waitForSelector(".n3d canvas");
+      await mp.waitForTimeout(3000);
+      for (let i = 0; i < 40 && (await mp.locator(".vox-progress").count()); i++) await mp.waitForTimeout(1000);
+      await mp.waitForTimeout(800);
+      await clearToasts(mp);
+      await mp.evaluate(() => document.querySelector(".net-canvas")!.scrollIntoView({ block: "end" }));
+      await shot(mp, `${pre}-v1-voxels-day`);
+      await mp.click('label:has-text("Cut") input');
+      await mp.click('label:has-text("Night") input');
+      await mp.fill(".fly-input", "Mainframe");
+      await mp.keyboard.press("Enter");
+      await mp.waitForTimeout(900);
+      if (pre === "desktop") await mp.click(".net-panel-close").catch(() => {});
+      else await mp.keyboard.press("Escape");
+      const cv = (await mp.locator(".n3d canvas").boundingBox())!;
+      await mp.mouse.move(cv.x + cv.width / 2, cv.y + cv.height / 2);
+      for (let i = 0; i < 2; i++) {
+        await mp.mouse.wheel(0, 240);
+        await mp.waitForTimeout(60);
+      }
+      await mp.waitForTimeout(900);
+      await clearToasts(mp);
+      await mp.evaluate(() => document.querySelector(".net-canvas")!.scrollIntoView({ block: "end" }));
+      await shot(mp, `${pre}-v2-voxels-night-cut`);
+      if (pre === "desktop") {
+        // README hero: the canvas alone
+        await mp.locator(".net-canvas").screenshot({ path: `${out}/hero-voxel-base.png` });
+        console.log("saved screenshots/hero-voxel-base.png");
+      }
       await ctx.close();
     }
   }
