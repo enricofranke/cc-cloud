@@ -1099,7 +1099,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 #### Fine-grained permissions – protocol (mod side, implemented)
 **Mapping of check sites to permissions.** `AccessGate` holds it, and `PermissionWalkTest` checks every route and message.
 - WebSocket:
-  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown;
+  - actions: `act.buttons`; `act.redstone` for redstone sides and the auto Computer card's power, turn-on, reboot and shutdown, and device cards' own redstone modes (widget id `redstone` or `*_redstone`, direct mode);
   - crafting through `item_search`: `storage.craft`;
   - watchlist edits: `storage.autostock`;
   - `query`: `storage.search`;
@@ -1161,3 +1161,10 @@ Soft dependencies in `compat/<modid>`, same rules as v0.5 A/B (zero-code cards v
 9. **Guides**: an in-game handbook for CC: Cloud using **GuideMe** (AE2's guide system, ships with ATM11) or Patchouli/Modonomicon – content from `docs-content/`.
 10. **KubeJS** bindings for pack makers: events (`CCCloudEvents.action`, `.deviceLinked`, `.alert`) and a server-side API to publish a section with widgets from KubeJS scripts (no Lua needed), guarded by the same permissions.
 Each integration: a manifest entry in `docs/COMPAT.md` (mod, version tested, what the card shows, controls, tested yes/no).
+
+### v0.8 – Implementation notes (mod side)
+- Everything is a v0.5 device card (direct mode) or mainframe card (restricted section); no new message types. The manifest with every integration, its version, card, controls and test status is docs/COMPAT.md.
+- **Storage cards (item 1):** `compat/card/ItemStorageCard` reads `Capabilities.Item.BLOCK` (scan every 5 s, max 32 768 slots) and answers `query` on its `item_search` widget: `DeviceCard.query` is a new hook, `CloudUplinkBlockEntity.handleQuery` asks the device card before the bridges. Rows are never craftable; a craft op answers `not_craftable`. `compat/storage` only names the block ids per mod. Config `cards.storageCards`.
+- **act.redstone on device cards:** a device card's widget with id `redstone` or `*_redstone` (the machine's own redstone mode) needs `act.redstone` (`AccessGate.isRedstoneControl`); every other control `act.buttons`.
+- **Mainframe cards of wave 2:** `gateways`, `waystones`, `quests` (config `world.*`), all restricted (`view.positions`). Waystones add the map overlay `"waystones":{"items":[{"name","dim","x","y","z","kind","global"?}],"truncated"}` to their snapshot, like the claims overlay.
+- Skipped with reasons (docs/COMPAT.md): ExtendedAE, AE2 Infinity Booster / Network Analyzer, Integrated Terminals/Tunnels storage, Silent Gear Metalworks, Mystical Automation (generic Energy card), JourneyMap waypoints (client never gets the network graph). Items 9 (handbook) and 10 (KubeJS) are done on another branch.

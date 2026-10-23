@@ -41,6 +41,44 @@ public final class Integrations {
         optional("mffs", () -> ai.ezfox.cccloud.compat.mffs.MffsCards::init);
         optional("merequester", () -> ai.ezfox.cccloud.compat.merequester.MeRequesterCards::init);
 
+        // v0.8 wave 2 (docs/SPEC.md "v0.8"). 1. Storage controllers as Storage cards (capabilities only, no mod classes).
+        for (String mod : ai.ezfox.cccloud.compat.storage.StorageControllers.mods()) {
+            optional(mod, () -> () -> ai.ezfox.cccloud.compat.storage.StorageControllers.init(mod));
+        }
+        test("storage_dimstorage_chest", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageChest);
+        test("storage_dimstorage_tank", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::dimStorageTank);
+        test("storage_sophisticated_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::sophisticatedController);
+        test("storage_functionalstorage_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::functionalStorageController);
+
+        // 2. Advanced AE quantum computer.
+        optional("advanced_ae", () -> ai.ezfox.cccloud.compat.advancedae.AdvancedAeCards::init);
+
+        // 3. Quarries.
+        optional("quarryplus", () -> ai.ezfox.cccloud.compat.quarryplus.QuarryPlusCards::init);
+
+        // 4. Spawners and mob farms.
+        optional("apothic_spawners", () -> ai.ezfox.cccloud.compat.apothicspawners.ApothicSpawnerCards::init);
+        optional("gateways", () -> ai.ezfox.cccloud.compat.gateways.GatewaysCard::init);
+        optional("easy_villagers", () -> ai.ezfox.cccloud.compat.easyvillagers.EasyVillagersCards::init);
+
+        // 5. Processing machines.
+        optional("ironfurnaces", () -> ai.ezfox.cccloud.compat.ironfurnaces.IronFurnacesCards::init);
+        optional("cobblegengalore", () -> ai.ezfox.cccloud.compat.cobblegengalore.CobblegenCards::init);
+        optional("productivemetalworks", () -> ai.ezfox.cccloud.compat.productivemetalworks.MetalworksCards::init);
+        optional("productivefarming", () -> ai.ezfox.cccloud.compat.productivefarming.FarmCards::init);
+        optional("agritechevolved", () -> ai.ezfox.cccloud.compat.agritechevolved.AgritechCards::init);
+        optional("mysticalagriculture", () -> ai.ezfox.cccloud.compat.mysticalagriculture.MysticalCards::init);
+        optional("railcraft", () -> ai.ezfox.cccloud.compat.railcraft.RailcraftCards::init);
+
+        // 6. Logistics. 7. Integrated Dynamics.
+        optional("sfm", () -> ai.ezfox.cccloud.compat.sfm.SfmCards::init);
+        optional("modularrouters", () -> ai.ezfox.cccloud.compat.modularrouters.RouterCards::init);
+        optional("integrateddynamics", () -> ai.ezfox.cccloud.compat.integrateddynamics.IntegratedDynamicsCards::init);
+
+        // 8. World & progression.
+        optional("waystones", () -> ai.ezfox.cccloud.compat.waystones.WaystonesCard::init);
+        optional("ftbquests", () -> ai.ezfox.cccloud.compat.ftbquests.QuestsCard::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

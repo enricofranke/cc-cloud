@@ -510,5 +510,10 @@
   "cccloud.analyzer.hud_none": "No coverage %s %s, %s blocks",
   "cccloud.tablet.cached": "Not loaded – last seen %s ago",
   "cccloud.display.cached": "seen %s ago",
-  "cccloud.analyzer.no_positions": "Showing routes needs the view.positions permission."
+  "cccloud.analyzer.no_positions": "Showing routes needs the view.positions permission.",
+  "cccloud.configuration.storageCards": "Storage controllers: Storage card",
+  "cccloud.configuration.world": "World & progression",
+  "cccloud.configuration.gatewaysCard": "Gateways to Eternity: gateways card",
+  "cccloud.configuration.waystonesCard": "Waystones: waystones card and map overlay",
+  "cccloud.configuration.questsCard": "FTB Quests: quest progress card"
 }

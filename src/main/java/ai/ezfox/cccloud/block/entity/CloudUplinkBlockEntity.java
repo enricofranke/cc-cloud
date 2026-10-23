@@ -1107,6 +1107,15 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             widget = widgets.get(widgetId);
         }
         if (widget == null || widget.type() != WidgetType.ITEM_SEARCH) return QueryResult.fail("unknown_widget");
+        ai.ezfox.cccloud.compat.card.DeviceCard card;
+        synchronized (this) {
+            card = deviceCard;
+        }
+        if (card != null) {
+            // v0.8 storage cards (Functional Storage, Sophisticated Storage, ...) search their own inventory.
+            var result = ai.ezfox.cccloud.compat.card.DeviceCards.query(card, widgetId, query);
+            return result != null ? result : QueryResult.fail("unknown_widget");
+        }
         var host = bridgeFor(widget);
         if (host == null || !host.bridgeCore().isConnected()) return QueryResult.fail("offline");
         var core = host.bridgeCore();
