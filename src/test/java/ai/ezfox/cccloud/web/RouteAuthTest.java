@@ -81,6 +81,23 @@ class RouteAuthTest {
         }
 
         @Override
+        public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
+            fail("storage must not be reached without authentication");
+            return GameBridge.StorageResult.fail("x");
+        }
+
+        @Override
+        public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
+            fail("craftPreview must not be reached without authentication");
+        }
+
+        @Override
+        public java.util.concurrent.CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+            fail("mapTile must not be reached without authentication");
+            return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.MapResult(204, null, null, null));
+        }
+
+        @Override
         public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         }
 

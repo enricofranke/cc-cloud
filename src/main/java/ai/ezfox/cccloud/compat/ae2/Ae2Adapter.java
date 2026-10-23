@@ -46,6 +46,12 @@ final class Ae2Adapter implements StorageAdapter {
     private record Pending(Future<ICraftingPlan> future, AEItemKey key, long count, Consumer<CraftOutcome> done, long started) {
     }
 
+    /** A craft preview being calculated (storage v2). */
+    private record PendingPreview(Future<ICraftingPlan> future, Consumer<Plan> done, long started) {
+    }
+
+    private final List<PendingPreview> previews = new ArrayList<>();
+
     Ae2Adapter(MeBridgeBlockEntity be) {
         this.be = be;
     }
@@ -183,8 +189,102 @@ final class Ae2Adapter implements StorageAdapter {
     }
 
     @Override
+    public void preview(Item item, long count, Consumer<Plan> done) {
+        var grid = grid();
+        if (grid == null || be.getLevel() == null) {
+            done.accept(Plan.failed("offline"));
+            return;
+        }
+        IActionSource source = IActionSource.ofMachine(be);
+        var future = grid.getCraftingService().beginCraftingCalculation(be.getLevel(), () -> source, AEItemKey.of(item), count,
+            CalculationStrategy.REPORT_MISSING_ITEMS);
+        previews.add(new PendingPreview(future, done, tick));
+    }
+
+    /** Turns an AE2 plan into the neutral plan: used (from storage), crafted (pattern outputs × times), missing. */
+    private Plan toPlan(ICraftingPlan plan) {
+        var entries = new java.util.LinkedHashMap<Item, long[]>();
+        for (var e : plan.usedItems()) {
+            if (e.getKey() instanceof AEItemKey key) entries.computeIfAbsent(key.getItem(), k -> new long[3])[0] += e.getLongValue();
+        }
+        for (var e : plan.patternTimes().entrySet()) {
+            for (var output : e.getKey().getOutputs()) {
+                if (output.what() instanceof AEItemKey key) entries.computeIfAbsent(key.getItem(), k -> new long[3])[1] += output.amount() * e.getValue();
+            }
+        }
+        for (var e : plan.missingItems()) {
+            if (e.getKey() instanceof AEItemKey key) entries.computeIfAbsent(key.getItem(), k -> new long[3])[2] += e.getLongValue();
+        }
+        var list = new ArrayList<PlanEntry>();
+        for (var e : entries.entrySet()) list.add(new PlanEntry(e.getKey(), e.getValue()[0], e.getValue()[1], e.getValue()[2]));
+        int idle = 0;
+        var grid = grid();
+        if (grid != null) {
+            for (var cpu : grid.getCraftingService().getCpus()) if (!cpu.isBusy() && cpu.getAvailableStorage() >= plan.bytes()) idle++;
+        }
+        return new Plan(null, plan.simulation() || !plan.missingItems().isEmpty(), list, plan.bytes(), idle);
+    }
+
+    @Override
+    public List<Cpu> cpus() {
+        var grid = grid();
+        var list = new ArrayList<Cpu>();
+        if (grid == null) return list;
+        int i = 0;
+        for (var cpu : grid.getCraftingService().getCpus()) {
+            i++;
+            var status = cpu.isBusy() ? cpu.getJobStatus() : null;
+            Item item = status != null && status.crafting().what() instanceof AEItemKey key ? key.getItem() : null;
+            String name = cpu.getName() != null ? cpu.getName().getString() : "CPU " + i;
+            list.add(new Cpu("cpu-" + i, name, cpu.getCoProcessors(), cpu.getAvailableStorage(), cpu.isBusy(), item,
+                status == null ? 0 : status.crafting().amount(),
+                status == null || status.totalItems() <= 0 ? 0 : (double) status.progress() / status.totalItems(),
+                status == null ? 0 : status.elapsedTimeNanos() / 1_000_000));
+        }
+        return list;
+    }
+
+    @Override
+    public boolean cancelNetworkJob(String id) {
+        var grid = grid();
+        if (grid == null || !id.startsWith("cpu-")) return false;
+        int index;
+        try {
+            index = Integer.parseInt(id.substring(4));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        int i = 0;
+        for (var cpu : grid.getCraftingService().getCpus()) {
+            if (++i != index) continue;
+            if (!cpu.isBusy()) return false;
+            cpu.cancelJob();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
     public void tick() {
         tick++;
+        for (Iterator<PendingPreview> it = previews.iterator(); it.hasNext(); ) {
+            var p = it.next();
+            if (!p.future().isDone()) {
+                if (tick - p.started() > CALC_TIMEOUT_TICKS) {
+                    p.future().cancel(true);
+                    it.remove();
+                    p.done().accept(Plan.failed("timeout"));
+                }
+                continue;
+            }
+            it.remove();
+            try {
+                var plan = p.future().get();
+                p.done().accept(plan == null ? Plan.failed("not_craftable") : toPlan(plan));
+            } catch (Exception e) {
+                p.done().accept(Plan.failed("not_craftable"));
+            }
+        }
         for (Iterator<Pending> it = pending.iterator(); it.hasNext(); ) {
             var p = it.next();
             if (!p.future().isDone()) {

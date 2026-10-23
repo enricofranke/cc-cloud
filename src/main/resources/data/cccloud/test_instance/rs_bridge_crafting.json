@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "refinedstorage"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:rs_bridge_crafting",
+  "max_ticks": 1200,
+  "structure": "cccloud:test_floor"
+}

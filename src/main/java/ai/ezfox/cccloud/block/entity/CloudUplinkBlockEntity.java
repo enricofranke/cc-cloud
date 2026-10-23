@@ -370,6 +370,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return target.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
     }
 
+    /** The bridge behind a widget (Lua-bound item_search/watchlist/jobs, or the template's bridge), or null. */
+    public synchronized @Nullable BridgeHost bridgeForWidget(String widgetId) {
+        var widget = widgets.get(widgetId);
+        return widget == null ? null : bridgeFor(widget);
+    }
+
     /** The storage (bridge) of a direct-mode Storage card, or null (v0.5 rules: item triggers and craft actions). */
     public @Nullable BridgeHost storageBridge() {
         return template && level instanceof ServerLevel serverLevel ? attachedBridge(serverLevel) : null;
@@ -1058,7 +1064,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (host == null) return ActionResult.done("unavailable");
         var core = host.bridgeCore();
         if (op instanceof Op.Craft craft) {
-            var ticket = core.craft(craft.name(), craft.count(), user);
+            var ticket = core.craft(craft.name(), craft.count(), user, craft.alertWhenDone(), user.startsWith("rule:") ? "rule" : "dashboard");
             if (ticket.error() == null) {
                 setValueLater(core);
                 if (!template) {

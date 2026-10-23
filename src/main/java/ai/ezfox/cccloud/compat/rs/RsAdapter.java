@@ -68,6 +68,11 @@ final class RsAdapter implements StorageAdapter {
         }
     }
 
+    private record PendingPreview(CompletableFuture<Optional<Preview>> future, DeadlineToken token, Consumer<Plan> done, long started) {
+    }
+
+    private final List<PendingPreview> previews = new ArrayList<>();
+
     RsAdapter(RsBridgeBlockEntity be) {
         this.be = be;
     }
@@ -207,8 +212,62 @@ final class RsAdapter implements StorageAdapter {
     }
 
     @Override
+    public void preview(Item item, long count, Consumer<Plan> done) {
+        var network = network();
+        if (network == null) {
+            done.accept(Plan.failed("offline"));
+            return;
+        }
+        var token = new DeadlineToken(30_000_000_000L);
+        var future = network.getComponent(AutocraftingNetworkComponent.class).getPreview(new ItemResource(item), count, token);
+        previews.add(new PendingPreview(future, token, done, tick));
+    }
+
+    private static Plan toPlan(Preview preview) {
+        if (preview.type() == PreviewType.CANCELLED) return Plan.failed("timeout");
+        var list = new ArrayList<PlanEntry>();
+        for (var entry : preview.items()) {
+            if (entry.resource() instanceof ItemResource item) list.add(new PlanEntry(item.item(), entry.available(), entry.toCraft(), entry.missing()));
+        }
+        boolean missing = preview.type() != PreviewType.SUCCESS;
+        return new Plan(null, missing, list, -1, -1);
+    }
+
+    @Override
+    public boolean cancelNetworkJob(String id) {
+        var network = network();
+        if (network == null || id.length() < 8) return false;
+        var component = network.getComponent(AutocraftingNetworkComponent.class);
+        for (var status : component.getStatuses()) {
+            if (status.info().id().id().toString().startsWith(id)) {
+                component.cancel(status.info().id());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public void tick() {
         tick++;
+        for (Iterator<PendingPreview> it = previews.iterator(); it.hasNext(); ) {
+            var p = it.next();
+            if (!p.future().isDone()) {
+                if (tick - p.started() > CALC_TIMEOUT_TICKS) {
+                    p.token().cancel();
+                    it.remove();
+                    p.done().accept(Plan.failed("timeout"));
+                }
+                continue;
+            }
+            it.remove();
+            try {
+                var preview = p.future().get();
+                p.done().accept(preview.isEmpty() ? Plan.failed("not_craftable") : toPlan(preview.get()));
+            } catch (Exception e) {
+                p.done().accept(Plan.failed("not_craftable"));
+            }
+        }
         for (Iterator<Pending> it = pending.iterator(); it.hasNext(); ) {
             var p = it.next();
             if (!p.future().isDone()) {

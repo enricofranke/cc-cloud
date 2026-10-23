@@ -319,6 +319,7 @@
   "cccloud.configuration.rulesEnabled": "Run rules",
   "cccloud.configuration.maxRules": "Rules per mainframe",
   "cccloud.script.note": "[CC: Cloud] %s (%s) %s on %s",
+  "cccloud.configuration.autoStockBatch": "Auto-stock batch size",
   "block.cccloud.fiber_cable": "Fiber Cable",
   "block.cccloud.fiber_junction": "Fiber Junction",
   "block.cccloud.ender_fiber_link": "Ender Fiber Link",

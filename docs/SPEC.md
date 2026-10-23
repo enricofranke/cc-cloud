@@ -776,6 +776,28 @@ The 2D network map gets a real top-down map of the world as background, like a M
 - Rendering off the server thread on a small executor, results cached on disk per world (`cccloud/maptiles/`), invalidated when chunks in the tile change (chunk save/unload events, debounced 30 s). Budget: ≤ 2 ms main-thread per tick for chunk snapshotting, else defer.
 - Web: tiles as the map background with zoom levels (downsampled client-side for far zoom), a layer switch (Surface / Slice + Y slider), node labels with collision avoidance (labels must not overlap like "Computer #0" / "RS Network" did), and the 3D view reuses the same height data.
 
+#### Map tiles – HTTP API (mod side, implemented)
+- **Routes:**
+  - Surface: `GET /api/mainframes/<id>/map/<dim>/surface/<tileX>/<tileZ>.png`
+  - Slice: `GET /api/mainframes/<id>/map/<dim>/slice/<y>/<tileX>/<tileZ>.png`
+  - `<dim>` is the dimension id, e.g. `minecraft:overworld`. Ids that contain a `/` are not supported.
+  - Tile `(tx, tz)` covers blocks `x = tx·128 … tx·128+127`, `z = tz·128 … tz·128+127` (floor division). Pixel `(px, pz)` = block `(tx·128+px, tz·128+pz)`, north up.
+- **Access:**
+  - Bearer token, permission `view.positions` (else `403 {"error":"not_allowed"}`).
+  - Only tiles within 512 blocks of a node or device of that mainframe's network in that dimension (else `403 {"error":"out_of_range"}`).
+  - Unknown dimension → `404 {"error":"unknown_dimension"}`.
+  - 60 tiles per minute per device → `429`.
+- **Responses:**
+  - `200 image/png` (128×128 RGBA, transparent where unknown), `Cache-Control: private, max-age=60`, `ETag` (and `304` with `If-None-Match`).
+  - `204` when no data exists yet (no chunk of the tile was loaded since the server started and nothing is cached).
+- **Rendering:**
+  - Surface: vanilla map colors at 1:1, shaded by the height difference to the north, water by depth.
+  - Slice: the first non-air block from the cut downwards (≤ 16 blocks). Cave floors are bright near the cut and darker deeper; rock at the cut is darkest; nothing within 16 blocks is transparent.
+  - Only chunks that are loaded right now are sampled (never loaded or generated). Other pixels come from the last render, cached in memory and in `<world>/cccloud/maptiles/`.
+  - A tile is re-rendered on request when its chunks were saved or unloaded at least 30 s ago (debounced).
+  - Sampling uses ≤ 2 ms of the server thread per tick; PNG encoding runs in the background.
+  - Reading chunks that are only on disk is not done yet; those areas fill in as players load them.
+
 ### "Crazy 3D": voxel view of the base (requested 2026-10-23)
 On top of the 3D network view: render the actual blocks around the network as voxels.
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
@@ -831,6 +853,65 @@ Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 6. **Item details**: count history chart (uses long-term stats: 24 h sparkline), craftable yes/no, autostock config, watch, mod tag, recent jobs.
 7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
 8. Not in this step (security review first): exporting items out of the network into the world.
+
+#### Storage card v2 – protocol (mod side)
+The storage behind a card: a linked bridge section, an uplink in direct mode (Storage template), or – in Lua – the bridge bound to the widget `id`. Every request is answered once. Errors:
+- `unavailable` (no bridge / not loaded);
+- `offline`;
+- `unknown_item`;
+- `invalid`;
+- `rate_limited` (10 storage requests per second per socket);
+- the permission errors.
+
+**`{"t":"storage","reqId","uplinkId","id?","op",…}` → `{"t":"storage_result","reqId","ok","error?","data":{…}}`.** Operations and permissions:
+- `browse` (`storage.search`):
+  - Request: `{"sort":"count"|"name"|"mod","desc":true,"filter":"all"|"craftable"|"favorites","q":"","offset":0,"limit":100}`, with `limit` ≤ 200.
+  - Response: `{"rows":[{"name","displayName","count","craftable","favorite"}],"total","offset"}`.
+  - Favorites are pinned on top in every sort.
+- `craftables` (`storage.search`): `{"q","offset","limit"}` → the same rows, for every item with a pattern (count may be 0).
+- `fluids` (`storage.search`): `{"offset","limit"}` → `{"rows":[{"name","displayName","amount"}],"total"}`, amounts in mB.
+- `item` (`storage.search`): `{"name"}` → a detail document with these fields:
+  - `name`, `displayName`, `mod`, `count`, `craftable`, `favorite`;
+  - `watch: {"min","target","autoCraft","state","failures"}|null`;
+  - `jobs: [recent jobs of this item, see below]`;
+  - `history: [numbers]` (24 h, from the long-term statistics; empty until v0.5 F).
+- `cpus` (`storage.search`) → a document with two lists:
+  - `"cpus":[{"id","name","coProcessors","storage","busy","job":{"name","displayName","count","progress","elapsedMs"}|null}]` (AE2; empty for RS2);
+  - `"tasks":[{"id","name","displayName","count","progress","own":bool}]` (every running job of the network; `own` = started through this bridge).
+- `cancel` (`storage.craft`): `{"jobId"}` → `{}`. `jobId` is a bridge job id (from the jobs widget or `item`) or a network task/CPU id from `cpus`.
+- `favorite` (`act.buttons`): `{"name","on":bool}` → `{}`. Stored with the bridge, at most 64.
+- `autostock` (`storage.autostock`): `{"name","min","target","autoCraft":bool}` → `{}`.
+  - `target` ≥ `min`, both 0..2^31−1.
+  - The item is added to the watchlist if needed.
+  - `min:0` together with `autoCraft:false` turns it off.
+
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+
+**Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
+- The plan has these fields:
+  - `name`, `count`;
+  - `missing` (bool), `bytes` (AE2 storage needed, else null);
+  - `entries:[{"name","displayName","stored","toCraft","missing"}]`, where `stored` = taken from storage;
+  - `cpu:{"available":n,"enough":bool}|null`;
+  - `timeMs: null` (no mod exposes it yet).
+- The preview starts nothing.
+- After confirmation, the dashboard sends the usual craft action: `{"op":"craft","name","count","notify":bool}` (`notify` is new and optional; it alerts when the job finishes or fails).
+
+**Auto-stock (level maintainer), server side**
+- Every second, each watchlist entry with `autoCraft` and a pattern is checked. When count < `min`, the bridge requests `min(target − count, batch)`:
+  - `batch` is config `autoStockBatch`, default 64, max 4096;
+  - at most one active job per item;
+  - a 30 s cooldown after each request.
+- States, shown in `watch.state` and the watchlist widget rows (`state`, `target`, `autoCraft`):
+  - `idle`;
+  - `crafting`;
+  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted);
+  - `missing` (missing resources: counted as a failure);
+  - `paused` (3 failures in a row; editing the entry resets it).
+- Jobs are started with the user `autostock`.
+- Lua: `bridge.setAutoStock(name, min, target, enabled)` → true | nil, error.
+
+**Notifications:** a job with `notify` raises `{"t":"alert"}` when done (`info`) or failed (`warn`): "Crafted 64× Iron Ingot" / "Crafting failed: …". Push targets (v0.5 D) get the same.
 
 ### Cached sections of unloaded uplinks/bridges (mod side, implemented)
 - When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".

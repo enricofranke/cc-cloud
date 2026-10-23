@@ -2,6 +2,7 @@ package ai.ezfox.cccloud.web;
 
 import ai.ezfox.cccloud.CloudLog;
 import ai.ezfox.cccloud.access.AccessStore;
+import ai.ezfox.cccloud.access.Perm;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonObject;
@@ -145,6 +146,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RuleCommand command -> rule(current, command);
+            case ClientMessages.Storage storage -> storage(current, storage);
+            case ClientMessages.CraftPreview preview -> craftPreview(current, preview);
         }
     }
 
@@ -425,6 +428,69 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         } catch (RejectedExecutionException e) {
             sendRuleResult(command.reqId(), new GameBridge.RuleResult("offline", null, null));
         }
+    }
+
+    /** Storage requests: 10 per second per socket (browse pages, details, CPU lists). */
+    private final TokenBucket storageLimit = new TokenBucket(10, 10);
+
+    private void storage(AuthStore.Device current, ClientMessages.Storage request) {
+        String denied = AccessGate.check(role, perms, AccessGate.storagePerm(request.op()));
+        if (denied != null) {
+            sendStorage("storage_result", "data", request.reqId(), GameBridge.StorageResult.fail(denied));
+            return;
+        }
+        if (!storageLimit.tryAcquire()) {
+            sendStorage("storage_result", "data", request.reqId(), GameBridge.StorageResult.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.StorageResult result;
+                try {
+                    result = instance.bridge.storage(current, mainframeId, request);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a storage request from {}", ip, e);
+                    result = GameBridge.StorageResult.fail("internal_error");
+                }
+                sendStorage("storage_result", "data", request.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendStorage("storage_result", "data", request.reqId(), GameBridge.StorageResult.fail("offline"));
+        }
+    }
+
+    private void craftPreview(AuthStore.Device current, ClientMessages.CraftPreview request) {
+        String denied = AccessGate.check(role, perms, Perm.STORAGE_CRAFT);
+        if (denied != null) {
+            sendStorage("craft_plan", "plan", request.reqId(), GameBridge.StorageResult.fail(denied));
+            return;
+        }
+        if (!storageLimit.tryAcquire()) {
+            sendStorage("craft_plan", "plan", request.reqId(), GameBridge.StorageResult.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                try {
+                    instance.bridge.craftPreview(current, mainframeId, request, result -> sendStorage("craft_plan", "plan", request.reqId(), result));
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while planning a craft preview from {}", ip, e);
+                    sendStorage("craft_plan", "plan", request.reqId(), GameBridge.StorageResult.fail("internal_error"));
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            sendStorage("craft_plan", "plan", request.reqId(), GameBridge.StorageResult.fail("offline"));
+        }
+    }
+
+    private void sendStorage(String type, String field, String reqId, GameBridge.StorageResult result) {
+        var json = new JsonObject();
+        json.addProperty("t", type);
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", result.error() == null);
+        if (result.error() != null) json.addProperty("error", result.error());
+        if (result.data() != null) json.add(field, result.data());
+        send(List.of(Json.GSON.toJson(json)));
     }
 
     private void sendRuleResult(String reqId, GameBridge.RuleResult result) {

@@ -16,7 +16,11 @@ public sealed interface Op {
     Pattern ITEM_NAME = Pattern.compile("[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,128}");
     long MAX_INT = Integer.MAX_VALUE;
 
-    record Craft(String name, long count) implements Op {
+    /** @param notify alert when the job finishes or fails (storage v2) */
+    record Craft(String name, long count, boolean alertWhenDone) implements Op {
+        public Craft(String name, long count) {
+            this(name, count, false);
+        }
     }
 
     record WatchAdd(String name, long min) implements Op {
@@ -26,6 +30,10 @@ public sealed interface Op {
     }
 
     record WatchSetMin(String name, long min) implements Op {
+    }
+
+    /** Storage v2: auto-stock settings of a watchlist entry (dashboard storage op, Lua setAutoStock). */
+    record AutoStock(String name, long min, long target, boolean autoCraft) implements Op {
     }
 
     /** Auto Computer card: set a redstone output (0-15) on a computer-local side. */
@@ -50,9 +58,11 @@ public sealed interface Op {
         if (op == null || !isItemName(name)) return null;
         return switch (op) {
             case "craft" -> {
-                if (!onlyKeys(obj, Set.of("op", "name", "count"))) yield null;
+                if (!onlyKeys(obj, Set.of("op", "name", "count", "notify"))) yield null;
                 Long count = integer(obj.get("count"), 1, MAX_INT);
-                yield count == null ? null : new Craft(name, count);
+                var notify = obj.get("notify");
+                if (notify != null && !(notify.isJsonPrimitive() && notify.getAsJsonPrimitive().isBoolean())) yield null;
+                yield count == null ? null : new Craft(name, count, notify != null && notify.getAsBoolean());
             }
             case "add" -> {
                 if (!onlyKeys(obj, Set.of("op", "name", "min"))) yield null;
