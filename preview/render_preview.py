@@ -701,3 +701,57 @@ def analyzer_preview():
 
 if __name__ == "__main__" and os.environ.get("ANALYZER"):
     analyzer_preview()
+
+
+# --------------------------------------------------------------------------- fiber preview
+FIBER_ROT = {"south": (0, 0), "north": (0, 180), "west": (0, 90), "east": (0, 270), "up": (90, 0), "down": (270, 0)}
+DIR_VEC = {"north": (0, 0, -1), "south": (0, 0, 1), "west": (-1, 0, 0), "east": (1, 0, 0), "up": (0, 1, 0), "down": (0, -1, 0)}
+
+
+def cable_run(a, cells, core, arm, connectors=()):
+    """Evaluate a CC-style multipart: core + one rotated arm per side that touches another cell."""
+    q = []
+    allc = set(cells) | set(connectors)
+    for c in cells:
+        q += model_quads(a, core, blockstate_transform(offset=c))
+        for d, v in DIR_VEC.items():
+            n = (c[0] + v[0], c[1] + v[1], c[2] + v[2])
+            if n in allc:
+                x, y = FIBER_ROT[d]
+                q += model_quads(a, arm, blockstate_transform(x, y, c))
+    return q
+
+
+def fiber_preview(a):
+    # fiber: run along x with a bend up, ending in a junction and an ender fiber link
+    fiber = [(0, 0, 0), (-1, 0, 0), (-2, 0, 0), (-2, 1, 0)]
+    junction = (1, 0, 0)
+    link = (-2, 2, 0)
+    q = cable_run(a, fiber, "cccloud:block/fiber_cable_core", "cccloud:block/fiber_cable_arm", connectors=(junction, link))
+    jstubs = []
+    q += model_quads(a, "cccloud:block/fiber_junction", blockstate_transform(offset=junction))
+    for d, v in DIR_VEC.items():
+        n = (junction[0] + v[0], junction[1] + v[1], junction[2] + v[2])
+        if n in fiber:
+            x, y = FIBER_ROT[d]
+            q += model_quads(a, "cccloud:block/fiber_junction_stub", blockstate_transform(x, y, junction))
+    q += model_quads(a, "cccloud:block/ender_fiber_link", blockstate_transform(offset=link))
+    # CC networking cable run for comparison (behind), between two CC computers
+    cc_cells = [(0, 0, 2), (-1, 0, 2), (-2, 0, 2)]
+    q += cable_run(a, cc_cells, "computercraft:block/cable_core_any", "computercraft:block/cable_arm",
+                   connectors=((1, 0, 2), (-3, 0, 2)))
+    q += cc(a, "computercraft:block/computer_advanced_on", pos=(1, 0, 2))
+    q += cc(a, "computercraft:block/wired_modem_full_off", pos=(-3, 0, 2))
+    shots = [label(render(q, 620, yaw=200, pitch=28), "fiber run + junction + ender fiber link (front), CC cable run (back)"),
+             label(render(q, 620, yaw=200, pitch=28, night=True), "night: emissive core through the slit")]
+    close = cable_run(a, [(0, 0, 0)], "cccloud:block/fiber_cable_core", "cccloud:block/fiber_cable_arm",
+                      connectors=((1, 0, 0), (-1, 0, 0), (0, 1, 0)))
+    shots.append(label(render(close, 620, yaw=210, pitch=25), "fiber T-piece close-up"))
+    shots.append(label(render(model_quads(a, "cccloud:block/ender_fiber_link") +
+                              model_quads(a, "cccloud:block/fiber_junction", blockstate_transform(offset=(1.5, 0, 0))),
+                              620, yaw=210, pitch=35), "ender fiber link + junction"))
+    grid(shots, 2).save(os.path.join(HERE, "renders", "fiber.png"))
+
+
+if __name__ == "__main__" and os.environ.get("FIBER"):
+    fiber_preview(Assets(DEFAULT_CC))

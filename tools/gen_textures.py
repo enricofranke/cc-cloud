@@ -198,6 +198,12 @@ LAYOUTS = {
                   "dark": (0, 1), "ring": (1, 1), "beacon": (2, 1), "core": (3, 1)},
         "regions": {"eye": (0, 32, 4, 4)},
     },
+    "fiber": {
+        "size": 64,
+        "tiles": {"jacket": (0, 0), "core": (1, 0), "junction": (2, 0), "link_side": (3, 0),
+                  "link_top": (0, 1), "link_body": (1, 1), "dark": (2, 1)},
+        "regions": {"eye": (48, 16, 4, 4)},
+    },
 }
 
 
@@ -734,6 +740,54 @@ def gen_hud():
     cv.save(os.path.join(TEX, "gui", "hud.png"))
 
 
+def gen_fiber():
+    """Fiber cable / junction / ender fiber link atlas (textures/block/fiber.png)."""
+    L = LAYOUTS["fiber"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("fiber", n)
+    ox, oy = T("jacket")             # CC cable grey, flat
+    cv.noise(ox, oy, 16, 16, CABLE, 700)
+    ox, oy = T("core")               # glowing fiber core
+    for y in range(16):
+        for x in range(16):
+            cv.set(ox + x, oy + y, CYAN_L if (x + y) % 4 == 0 else CYAN)
+    ox, oy = T("dark")
+    cv.noise(ox, oy, 16, 16, CHASSIS, 701)
+
+    def socket(ox, oy):
+        cv.outline(ox + 5, oy + 5, 6, 6, EDGE, 702)
+        cv.rect(ox + 6, oy + 6, 4, 4, RECESS[0])
+
+    # junction box faces: box spans block 2..14 -> CC outline at cols/rows 2 and 13, band, socket
+    ox, oy = T("junction")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, GREY_L if y >= 9 else GREY, 703 + y)
+    cv.outline(ox + 2, oy + 2, 12, 12, EDGE, 704)
+    for y in range(9, 13):
+        cv.set(ox + 2, oy + y, EDGE_L[y % len(EDGE_L)])
+    socket(ox, oy)
+    # ender fiber link: gold CC casing, sockets on the sides, eye port (dark floor) on top
+    ox, oy = T("link_side")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, GOLD_L if y >= 9 else GOLD, 705 + y)
+    cv.outline(ox, oy, 16, 16, EDGE, 706)
+    for y in range(9, 15):
+        cv.set(ox, oy + y, EDGE_L[y % len(EDGE_L)])
+    socket(ox, oy)
+    ox, oy = T("link_top")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, GOLD, 707 + y)
+    cv.outline(ox, oy, 16, 16, EDGE, 708)
+    cv.rect(ox + 5, oy + 5, 6, 6, RECESS[0])
+    for (x, y) in ((4, 4), (11, 4), (4, 11), (11, 11)):
+        cv.set(ox + x, oy + y, CYAN_D)
+    ox, oy = T("link_body")
+    cv.noise(ox, oy, 16, 16, GOLD, 709)
+    x, y, _, _ = L["regions"]["eye"]
+    cv.ascii(x, y, ["dEEd", "EkCE", "EkEE", "dEEd"], {"d": ENDER_D, "E": ENDER, "k": hx("102a22"), "C": CYAN_L})
+    cv.save(os.path.join(TEX, "block", "fiber.png"))
+
+
 # --------------------------------------------------------------------------- v0.7: cloud display (CC-monitor-like multiblock)
 DISPLAY_STATES = ("none", "l", "r", "lr", "u", "d", "ud", "lu", "ld", "ru", "rd", "lud", "rud", "lru", "lrd", "lrud")
 DISPLAY_SIDE = ("none", "u", "ud", "d")   # east/west faces: only vertical continuity matters
@@ -1225,6 +1279,7 @@ def main():
     gen_tablet(True)
     gen_display()
     gen_analyzer()
+    gen_fiber()
     gen_hud()
     gen_gui_screen("mainframe")
     gen_gui_screen("uplink")

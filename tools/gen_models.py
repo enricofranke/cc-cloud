@@ -672,6 +672,91 @@ V07_ITEMS = [f"upgrade_{k}_{t}" for k in gt.UPGRADE_TYPES for t in gt.ATM_TIERS]
     ["quantum_core", "cloud_tablet", "advanced_cloud_tablet", "cloud_analyzer"]
 
 
+# --------------------------------------------------------------------------- fiber (cables part B)
+FIBER_DIRS = {"south": {}, "north": {"y": 180}, "west": {"y": 90}, "east": {"y": 270},
+              "up": {"x": 90}, "down": {"x": 270}}   # identical to CC's cable_arm rotations
+
+
+def _fiber_tex():
+    tex = f"{NS}:block/fiber"
+    T = lambda n: Tile("atlas", "fiber", n)
+    return tex, T
+
+
+def _fiber_segment(m, T, lo, hi):
+    """A 4x4 fiber run from z=lo to z=hi: two jacket halves around a 1 px slit + an inset emissive core
+    (6.25..9.75) that glows through the slit. No coplanar faces. Open ends (the neighbour covers them)."""
+    m.box([6, 6, lo], [10, 7.5, hi], T("jacket"), only=("down", "west", "east", "up"))
+    m.box([6, 8.5, lo], [10, 10, hi], T("jacket"), only=("down", "west", "east", "up"))
+    # core starts 0.25 px early so it meets the centre core (6.25..9.75) without a dark break
+    m.box([6.25, 7.5, lo - 0.25], [9.75, 8.5, hi], T("core"), emit=15, only=("west", "east"))
+
+
+def fiber_core():
+    tex, T = _fiber_tex()
+    m = Model(textures={"particle": tex, "atlas": tex})
+    m.box([6, 6, 6], [10, 7.5, 10], T("jacket"))
+    m.box([6, 8.5, 6], [10, 10, 10], T("jacket"))
+    m.box([6.25, 7.5, 6.25], [9.75, 8.5, 9.75], T("core"), emit=15, skip=("up", "down"))
+    return m
+
+
+def fiber_arm(start=10):
+    """Arm towards +Z (south) from the core to the block edge, rotated per direction like CC."""
+    tex, T = _fiber_tex()
+    m = Model(textures={"particle": tex, "atlas": tex})
+    _fiber_segment(m, T, start, 16)
+    return m
+
+
+def fiber_cable_item():
+    """Straight 12 px piece with closed ends, like CC's cable item (z 2..14)."""
+    tex, T = _fiber_tex()
+    m = Model(textures={"particle": tex, "atlas": tex})
+    m.box([6, 6, 2], [10, 7.5, 14], T("jacket"))
+    m.box([6, 8.5, 2], [10, 10, 14], T("jacket"))
+    m.box([6.25, 7.5, 2], [9.75, 8.5, 14], T("core"), emit=15, skip=("up", "down"))
+    return m
+
+
+def fiber_junction():
+    """12x12x12 CC casing box, a socket on every face with a glowing 2x2 pin (0.1 px proud)."""
+    tex, T = _fiber_tex()
+    m = Model(textures={"particle": tex, "atlas": tex})
+    m.box([2, 2, 2], [14, 14, 14], T("junction"))
+    e = 0.1
+    for (frm, to, d) in (([7, 7, 14], [9, 9, 14 + e], "south"), ([7, 7, 2 - e], [9, 9, 2], "north"),
+                         ([2 - e, 7, 7], [2, 9, 9], "west"), ([14, 7, 7], [14 + e, 9, 9], "east"),
+                         ([7, 14, 7], [9, 14 + e, 9], "up"), ([7, 2 - e, 7], [9, 2, 9], "down")):
+        m.box(frm, to, T("core"), emit=15, skip=({"south": "north", "north": "south", "west": "east",
+                                                    "east": "west", "up": "down", "down": "up"}[d],))
+    return m
+
+
+def ender_fiber_link():
+    """Gold CC block: recessed ender-eye port on top (6x6, 1 px deep), fiber sockets with glowing pins
+    on the four sides and the bottom."""
+    tex, T = _fiber_tex()
+    m = Model(textures={"particle": tex, "atlas": tex})
+    side, top, body, dark = T("link_side"), T("link_top"), T("link_body"), T("dark")
+    m.box([0, 0, 0], [16, 15, 16], {"*": side, "up": top, "down": side})
+    f = {"*": side, "up": top}
+    m.box([0, 15, 0], [16, 16, 5], {**f, "south": dark}, skip=("down",))
+    m.box([0, 15, 11], [16, 16, 16], {**f, "north": dark}, skip=("down",))
+    m.box([0, 15, 5], [5, 16, 11], {**f, "east": dark}, skip=("down", "north", "south"))
+    m.box([11, 15, 5], [16, 16, 11], {**f, "west": dark}, skip=("down", "north", "south"))
+    eye = Region("atlas", "fiber", "eye")
+    m.box([6, 15, 6], [10, 15.6, 10], {"*": T("core"), "up": eye}, emit=15, skip=("down",))
+    e = 0.1
+    for (frm, to, d) in (([7, 7, 16], [9, 9, 16 + e], "south"), ([7, 7, -e], [9, 9, 0], "north"),
+                         ([-e, 7, 7], [0, 9, 9], "west"), ([16, 7, 7], [16 + e, 9, 9], "east"),
+                         ([7, -e, 7], [9, 0, 9], "down")):
+        el = m.box(frm, to, T("core"), emit=15, skip=({"south": "north", "north": "south", "west": "east",
+                                                         "east": "west", "down": "up"}[d],))
+        el["faces"][d]["cullface"] = d
+    return m
+
+
 # --------------------------------------------------------------------------- writing
 written = []
 
@@ -713,6 +798,12 @@ def main():
         "block/cloud_relay_ring": relay_ring("cloud_relay"),
         "block/advanced_cloud_relay_ring": relay_ring("advanced_cloud_relay"),
         "block/ender_relay_core": ender_core(),
+        "block/fiber_cable_core": fiber_core(),
+        "block/fiber_cable_arm": fiber_arm(10),
+        "block/fiber_junction": fiber_junction(),
+        "block/fiber_junction_stub": fiber_arm(14),
+        "block/ender_fiber_link": ender_fiber_link(),
+        "item/fiber_cable": fiber_cable_item(),
     }
     counts = {}
     for name, m in models.items():
@@ -745,10 +836,22 @@ def main():
             write(f"models/block/{block}_{st_}.json",
                   variant_child(f"{NS}:block/{block}", {"status": f"{NS}:block/relay_status_{st_}"}))
         write(f"blockstates/{block}.json", {"variants": {
-            f"status={st_}": {"model": f"{NS}:block/{block}_{st_}"} for st_ in STATES}})
+            f"status={st_}": {"model": f"{NS}:block/{block}_{st_}"} for st_ in RELAY_STATES}})
         write(f"items/{block}.json", {"model": {"type": "minecraft:composite", "models": [
             {"type": "minecraft:model", "model": f"{NS}:block/{block}_online"},
             {"type": "minecraft:model", "model": f"{NS}:block/{part}"}]}})
+
+    # fiber cable (multipart like CC's cable: core + one arm per connected side)
+    for block, base, arm in (("fiber_cable", "fiber_cable_core", "fiber_cable_arm"),
+                             ("fiber_junction", "fiber_junction", "fiber_junction_stub")):
+        parts = [{"apply": {"model": f"{NS}:block/{base}"}}]
+        for d, r in FIBER_DIRS.items():
+            parts.append({"when": {d: "true"}, "apply": {"model": f"{NS}:block/{arm}", **r}})
+        write(f"blockstates/{block}.json", {"multipart": parts})
+    write("blockstates/ender_fiber_link.json", {"variants": {"": {"model": f"{NS}:block/ender_fiber_link"}}})
+    write("items/fiber_cable.json", {"model": {"type": "minecraft:model", "model": f"{NS}:item/fiber_cable"}})
+    write("items/fiber_junction.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/fiber_junction"}})
+    write("items/ender_fiber_link.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/ender_fiber_link"}})
 
     # v0.7 cloud display (CC-monitor-like multiblock)
     for st_ in gt.DISPLAY_STATES:
@@ -927,9 +1030,14 @@ def validate():
     for it in V07_ITEMS:
         if f"items/{it}.json" not in data:
             problems.append(f"missing item definition {it}")
+    for blk in ("fiber_cable", "fiber_junction"):
+        mp = data.get(f"blockstates/{blk}.json", {}).get("multipart", [])
+        props = sorted(next(iter(p["when"])) for p in mp if "when" in p)
+        if props != sorted(FIBER_DIRS):
+            problems.append(f"{blk}: multipart must have one arm per direction, got {props}")
     for blk in ("cloud_relay", "advanced_cloud_relay", "ender_relay"):
-        if len(data.get(f"blockstates/{blk}.json", {}).get("variants", {})) != 3:
-            problems.append(f"{blk}: expected 3 status variants")
+        if len(data.get(f"blockstates/{blk}.json", {}).get("variants", {})) != len(RELAY_STATES):
+            problems.append(f"{blk}: expected {len(RELAY_STATES)} status variants (incl. no_power)")
     for kind in ("me", "rs"):
         bv = data.get(f"blockstates/{kind}_cloud_bridge.json", {}).get("variants", {})
         if len(bv) != 4 * 3:
@@ -1001,8 +1109,8 @@ Items: `items/{{me,rs}}_cloud_bridge.json` -> the `_online` block model (vanilla
 
 `block/cloud_relay`, `block/advanced_cloud_relay`, `block/ender_relay`: no facing (symmetric), blockstate
 `status` only. Each has `_online/_connecting/_offline/_no_power` children (swap `relay_status_*`);
-`_no_power` = all LEDs dark. The blockstates map the three spec states; when the Java side adds a
-`no_power` status value, map it to the `_no_power` model. Moving parts (BER, not in blockstates):
+`_no_power` = all LEDs dark. The blockstates map all four `status` values
+(online, connecting, offline, no_power). Moving parts (BER, not in blockstates):
 emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
 moving part (vanilla `block/block` display).
 
@@ -1023,6 +1131,21 @@ Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memor
 pocket-computer body, cyan signal bars, antenna nub). One shared card base in the ATM metal colour
 ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
 chip = memory).
+
+## Fiber cable, junction, ender fiber link (cables part B)
+
+Blockstate properties (the cables code must use exactly these):
+- `cccloud:fiber_cable`: `north`, `south`, `east`, `west`, `up`, `down` = `true|false` (connected on that
+  side). Multipart: `block/fiber_cable_core` always, `block/fiber_cable_arm` per `true` side. The arm points
+  +Z (south) and is rotated like CC's `cable_arm`: south none, north y180, west y90, east y270, up x90,
+  down x270.
+- `cccloud:fiber_junction`: the same six boolean properties; `block/fiber_junction` (12x12x12 box) always,
+  `block/fiber_junction_stub` (a 2 px fiber stub from the box to the block edge, same rotations) per
+  connected side.
+- `cccloud:ender_fiber_link`: no properties (single variant `""`); eye port on top, sockets on the sides.
+Fiber geometry: 4x4 jacket (6..10) in two halves around a 1 px slit (y 7.5..8.5), emissive cyan core
+inset to 6.25..9.75 so it glows through the slit without coplanar faces. Items: `item/fiber_cable`
+(straight 12 px piece with closed ends, like CC's cable item), the junction and link use their block models. No BER.
 
 ## Render types / translucency (MC 26.1)
 

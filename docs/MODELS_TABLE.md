@@ -47,3 +47,9 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/cloud_relay_ring` | 13 |
 | `block/advanced_cloud_relay_ring` | 15 |
 | `block/ender_relay_core` | 4 |
+| `block/fiber_cable_core` | 3 |
+| `block/fiber_cable_arm` | 3 |
+| `block/fiber_junction` | 7 |
+| `block/fiber_junction_stub` | 3 |
+| `block/ender_fiber_link` | 11 |
+| `item/fiber_cable` | 3 |

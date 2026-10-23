@@ -48,6 +48,12 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/cloud_relay_ring` | 13 |
 | `block/advanced_cloud_relay_ring` | 15 |
 | `block/ender_relay_core` | 4 |
+| `block/fiber_cable_core` | 3 |
+| `block/fiber_cable_arm` | 3 |
+| `block/fiber_junction` | 7 |
+| `block/fiber_junction_stub` | 3 |
+| `block/ender_fiber_link` | 11 |
+| `item/fiber_cable` | 3 |
 
 
 ## Cloud bridges (v0.2)
@@ -64,8 +70,8 @@ Items: `items/{me,rs}_cloud_bridge.json` -> the `_online` block model (vanilla `
 
 `block/cloud_relay`, `block/advanced_cloud_relay`, `block/ender_relay`: no facing (symmetric), blockstate
 `status` only. Each has `_online/_connecting/_offline/_no_power` children (swap `relay_status_*`);
-`_no_power` = all LEDs dark. The blockstates map the three spec states; when the Java side adds a
-`no_power` status value, map it to the `_no_power` model. Moving parts (BER, not in blockstates):
+`_no_power` = all LEDs dark. The blockstates map all four `status` values
+(online, connecting, offline, no_power). Moving parts (BER, not in blockstates):
 emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
 moving part (vanilla `block/block` display).
 
@@ -86,6 +92,21 @@ Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memor
 pocket-computer body, cyan signal bars, antenna nub). One shared card base in the ATM metal colour
 ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
 chip = memory).
+
+## Fiber cable, junction, ender fiber link (cables part B)
+
+Blockstate properties (the cables code must use exactly these):
+- `cccloud:fiber_cable`: `north`, `south`, `east`, `west`, `up`, `down` = `true|false` (connected on that
+  side). Multipart: `block/fiber_cable_core` always, `block/fiber_cable_arm` per `true` side. The arm points
+  +Z (south) and is rotated like CC's `cable_arm`: south none, north y180, west y90, east y270, up x90,
+  down x270.
+- `cccloud:fiber_junction`: the same six boolean properties; `block/fiber_junction` (12x12x12 box) always,
+  `block/fiber_junction_stub` (a 2 px fiber stub from the box to the block edge, same rotations) per
+  connected side.
+- `cccloud:ender_fiber_link`: no properties (single variant `""`); eye port on top, sockets on the sides.
+Fiber geometry: 4x4 jacket (6..10) in two halves around a 1 px slit (y 7.5..8.5), emissive cyan core
+inset to 6.25..9.75 so it glows through the slit without coplanar faces. Items: `item/fiber_cable`
+(straight 12 px piece with closed ends, like CC's cable item), the junction and link use their block models. No BER.
 
 ## Render types / translucency (MC 26.1)
 
