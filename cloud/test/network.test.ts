@@ -25,7 +25,7 @@ describe("routing (dev simulation of the mod's rules)", () => {
 
   it("re-routes when a relay gets power back (and loses it again)", () => {
     const nodes = exampleNodes(ids);
-    expect(computeNetwork(nodes).routes["dev-farm"]).toEqual(["mf", "relay-north", "dev-farm"]);
+    expect(computeNetwork(nodes).routes["dev-farm"]).toEqual(["mf", "relay-west", "dev-farm"]);
     nodes.find((n) => n.id === "relay-east")!.powered = true;
     const r = computeNetwork(nodes);
     expect(r.routes["dev-farm"]).toEqual(["mf", "relay-east", "dev-farm"]); // better weakest link
@@ -70,11 +70,18 @@ describe("network protocol", () => {
     await start();
     const { snap } = await client();
     const n = snap.network.nodes.find((x: any) => x.id === STORAGE);
-    expect(n).toMatchObject({ type: "uplink", name: "Storage", dim: "minecraft:overworld", status: "online", range: 48, uplinkId: STORAGE, pos: { x: 40, y: 64, z: -140 } });
-    expect(snap.network.routes[STORAGE]).toEqual(["mf", "relay-north", STORAGE]);
+    // the mod's format: parent/hops on the node, device routes are the nodes before the device
+    expect(n).toMatchObject({ type: "uplink", name: "Storage", dim: "minecraft:overworld", status: "online", range: 48, parent: "relay-north", hops: 2, pos: { x: 40, y: 64, z: -270 } });
+    expect(snap.network.routes[STORAGE]).toEqual(["mf", "relay-north"]);
+    expect(snap.network.routes["relay-north"]).toEqual(["mf", "relay-north"]);
+    expect(snap.network.links.find((l: any) => l.a === "mf" && l.b === "relay-north")).toMatchObject({ weak: true, kind: "radio" });
+    expect(snap.network.nodes.find((x: any) => x.id === "dev-old")).toMatchObject({ status: "online", flags: ["legacy_out_of_range"], parent: "mf" });
+    expect(snap.network.nodes.find((x: any) => x.id === "relay-east")).toMatchObject({ status: "no_power", type: "advanced_relay" });
+    expect(snap.network.nodes.find((x: any) => x.name === "" && x.type === "device")).toMatchObject({ status: "unloaded" });
     const ro = await client({ canControl: false });
     expect(ro.snap.network.nodes.every((x: any) => x.pos === undefined)).toBe(true);
-    expect(ro.snap.network.routes[STORAGE]).toEqual(["mf", "relay-north", STORAGE]);
+    expect(ro.snap.network.links.every((x: any) => x.dist === undefined)).toBe(true);
+    expect(ro.snap.network.routes[STORAGE]).toEqual(["mf", "relay-north"]);
   });
 
   it("pushes network deltas when a relay changes and unlinks nodes (control only)", async () => {
@@ -83,7 +90,8 @@ describe("network protocol", () => {
     const ro = await client({ canControl: false });
     await fetch(`${base()}/dev/control`, { method: "POST", body: JSON.stringify({ relay: { id: "relay-east", powered: true } }) });
     const d = await c.next("network");
-    expect(d.network.routes["dev-quarry"]).toEqual(["mf", "relay-east", "dev-quarry"]);
+    expect(d.network.routes["dev-quarry"]).toEqual(["mf", "relay-east"]);
+    expect(d.network.nodes.find((x: any) => x.id === "dev-farm")).toMatchObject({ parent: "relay-east", hops: 2 });
     expect((await ro.c.next("network")).network.nodes[0].pos).toBeUndefined();
 
     ro.c.send({ t: "net_unlink", reqId: "x", nodeId: "dev-quarry" });
@@ -167,5 +175,48 @@ describe("client helpers", () => {
     expect(b.maxY).toBeGreaterThan(70);
     expect(gridStep(400)).toBe(64);
     expect(gridStep(60)).toBe(8);
+  });
+});
+
+describe("large networks (~500 nodes)", () => {
+  function big(n = 500) {
+    const nodes: any[] = [{ id: "mf", type: "mainframe", name: "Mainframe", status: "online", pos: { x: 0, y: 64, z: 0 }, dim: "minecraft:overworld", range: 96, deviceRange: 96 }];
+    const links: any[] = [];
+    const routes: Record<string, string[]> = {};
+    for (let r = 0; r < 20; r++) {
+      const id = `relay-${r}`;
+      nodes.push({ id, type: "advanced_relay", name: `Relay ${r}`, status: "online", parent: "mf", hops: 1, pos: { x: Math.cos(r) * 200, y: 70, z: Math.sin(r) * 200 }, dim: "minecraft:overworld", range: 256, deviceRange: 128 });
+      links.push({ a: "mf", b: id, signal: 0.4, dist: 200, kind: "radio" });
+      routes[id] = ["mf", id];
+    }
+    for (let d = 0; nodes.length < n; d++) {
+      const parent = `relay-${d % 20}`;
+      const id = `dev-${d}`;
+      nodes.push({ id, type: "uplink", name: `Device ${d}`, status: "online", parent, hops: 2, pos: { x: d, y: 64, z: -d }, dim: "minecraft:overworld", range: 48 });
+      links.push({ a: parent, b: id, signal: 0.7, dist: 30, kind: "radio" });
+      routes[id] = ["mf", parent];
+    }
+    return { nodes, links, routes };
+  }
+
+  it("normalises and lays out 500 nodes quickly", () => {
+    const raw = big();
+    const t0 = performance.now();
+    const net = normalizeNetwork(raw)!;
+    const tree = layoutTree(net);
+    const lr = layoutTree(net, "lr");
+    const ms = performance.now() - t0;
+    expect(net.nodes).toHaveLength(500);
+    expect(tree.nodes).toHaveLength(500);
+    expect(tree.nodes.filter((t) => t.orphan)).toHaveLength(0);
+    expect(lr.height).toBeGreaterThan(lr.width); // portrait-friendly
+    expect(ms).toBeLessThan(150);
+  });
+
+  it("does not assume small messages: a ~200 KB snapshot is parsed in one piece", () => {
+    const raw = big(500);
+    const json = JSON.stringify({ t: "network", network: raw });
+    expect(json.length).toBeGreaterThan(80_000);
+    expect(normalizeNetwork(JSON.parse(json).network)!.links).toHaveLength(raw.links.length);
   });
 });

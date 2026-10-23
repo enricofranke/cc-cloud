@@ -10,6 +10,8 @@ import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { SAMPLE_ICONS } from "./icons.ts";
+import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
+import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
@@ -39,19 +41,39 @@ interface Client {
   tokenHash: string;
   user: string;
   canControl: boolean;
+  /** v0.6 role on this mainframe ("share" for share-link viewers) */
+  role: Role | "share";
+  /** share-link sessions */
+  share?: Share;
+  uuid?: string;
   alive: boolean;
   hits: number[];
   queryHits: number[];
 }
 interface Token {
-  mainframeId: string;
+  /** device tokens: their one mainframe; account tokens: undefined */
+  mainframeId?: string;
+  kind: "device" | "account";
+  /** the player who approved it (role source); undefined for dev tokens */
+  uuid?: string;
+  /** dev tokens: fixed role */
+  fixedRole?: Role;
+  deviceId: string;
+  type: "desktop" | "phone" | "tablet" | "other";
+  lastIp: string;
+  created: number;
+  lastSeen: number;
   name: string;
   canControl: boolean;
   pinFails: number;
   lockedUntil: number;
 }
 interface PendingPairing {
-  mainframeId: string;
+  mainframeId?: string;
+  /** account linking: the player whose /cccloud link code was used */
+  accountUuid?: string;
+  ua: string;
+  ip: string;
   name: string;
   status: "pending" | "approved" | "denied" | "expired";
   token?: string;
@@ -69,6 +91,7 @@ interface Mainframe {
   clients: Set<Client>;
   layout: object | null;
   layoutSaves: number[];
+  access: Access;
   /** v0.4 network map */
   net?: { nodes: SimNode[]; lastSeen: Record<string, number> };
   /** v0.3 FE buffer; undefined = requirePower=false */
@@ -158,11 +181,40 @@ export async function createMockServer(opts: MockOptions = {}) {
     }, ms);
     timers.add(t);
   };
-  const newToken = (mainframeId: string, name: string, canControl = true) => {
+  const newToken = (mainframeId: string | undefined, name: string, canControl = true, extra: Partial<Token> = {}) => {
     const token = randomBytes(32).toString("base64url");
-    tokens.set(sha(token), { mainframeId, name, canControl, pinFails: 0, lockedUntil: 0 });
+    const now = Date.now();
+    tokens.set(sha(token), {
+      mainframeId,
+      kind: mainframeId ? "device" : "account",
+      name,
+      canControl,
+      pinFails: 0,
+      lockedUntil: 0,
+      deviceId: randomUUID(),
+      type: "desktop",
+      lastIp: "127.0.0.1",
+      created: now,
+      lastSeen: now,
+      ...extra,
+    });
     return token;
   };
+  const accountCodes = new Map<string, { uuid: string; code: string }>(); // code -> player
+  for (const p of PLAYERS.slice(0, 3)) {
+    const code = newCode();
+    accountCodes.set(code, { uuid: p.uuid, code });
+  }
+  const shares = new Map<string, Share>();
+  /** Effective role of a token on a mainframe. */
+  function roleFor(t: Token, mf: Mainframe): Role | undefined {
+    if (t.kind === "device" && t.mainframeId !== mf.id) return undefined;
+    if (t.fixedRole) return t.fixedRole;
+    if (t.uuid) return resolveRole(mf.access, t.uuid);
+    // dev tokens without a player: canControl decides
+    return t.canControl ? "admin" : "viewer";
+  }
+  const rank = (r: string | undefined) => RANK[r ?? "none"] ?? 0;
   function decide(id: string, approve: boolean) {
     const pp = pairings.get(id);
     if (!pp || pp.status !== "pending") return;
@@ -171,7 +223,10 @@ export async function createMockServer(opts: MockOptions = {}) {
       return;
     }
     pp.status = approve ? "approved" : "denied";
-    if (approve) pp.token = newToken(pp.mainframeId, pp.name);
+    const extra: Partial<Token> = { type: deviceType(pp.ua), lastIp: pp.ip };
+    if (approve && pp.accountUuid) pp.token = newToken(undefined, pp.name, true, { ...extra, uuid: pp.accountUuid });
+    // mainframe codes are approved by the mainframe's owner
+    else if (approve) pp.token = newToken(pp.mainframeId, pp.name, true, { ...extra, uuid: mainframes.get(pp.mainframeId!)?.access.owner });
     log(`pairing "${pp.name}" ${pp.status} in-game`);
   }
   const lanBlocked = (req: IncomingMessage) => {
@@ -189,7 +244,48 @@ export async function createMockServer(opts: MockOptions = {}) {
 
   // ------------------------------------------------------------ broadcasting
   const sendTo = (ws: WebSocket, msg: object) => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify(msg));
-  const broadcast = (mf: Mainframe, msg: object) => mf.clients.forEach((c) => sendTo(c.ws, msg));
+  const broadcast = (mf: Mainframe, msg: object) =>
+    mf.clients.forEach((c) => {
+      if (!c.share) return sendTo(c.ws, msg);
+      const filtered = shareFilter(mf, c.share, msg as Record<string, any>);
+      if (filtered) sendTo(c.ws, filtered);
+    });
+  // ---- v0.6 share links: what a share session may see
+  function shareCards(mf: Mainframe, share: Share) {
+    const pages = resolveLayout([...mf.uplinks.values()] as never, mf.layout ? normalizeLayout(mf.layout) : null);
+    const keys = new Set(share.cards);
+    for (const p of pages) if (share.pages.includes(p.id)) for (const c of p.cards) keys.add(c.key);
+    return keys;
+  }
+  function shareUplink(mf: Mainframe, share: Share, u: Uplink): Uplink | null {
+    const keys = shareCards(mf, share);
+    const hidden = new Set(["item_search", ...(share.hideNumbers ? ["label", "text", "number"] : [])]);
+    const widgets = u.widgets.filter((w) => keys.has(cardKeyOf(u.uplinkId, w as never)) && !hidden.has(w.type));
+    return widgets.length ? { ...u, widgets } : null;
+  }
+  function shareFilter(mf: Mainframe, share: Share, msg: Record<string, any>): object | null {
+    switch (msg.t) {
+      case "state":
+        return { t: "state", online: msg.online, enabled: msg.enabled };
+      case "layout":
+        return msg;
+      case "uplink": {
+        const u = shareUplink(mf, share, msg as unknown as Uplink);
+        return u ? { t: "uplink", ...u } : { t: "uplink_removed", uplinkId: msg.uplinkId };
+      }
+      case "uplink_removed":
+        return msg;
+      case "value": {
+        const u = mf.uplinks.get(msg.uplinkId);
+        const visible = u && shareUplink(mf, share, u)?.widgets.some((w) => w.id === msg.id);
+        return visible ? msg : null;
+      }
+      case "alert":
+        return msg.uplinkId && mf.uplinks.get(msg.uplinkId) && shareUplink(mf, share, mf.uplinks.get(msg.uplinkId)!) ? msg : null;
+      default:
+        return null; // network, power details, results … never reach share sessions
+    }
+  }
   const powerOf = (mf: Mainframe) =>
     mf.power
       ? {
@@ -208,39 +304,74 @@ export async function createMockServer(opts: MockOptions = {}) {
     ...(mf.reason ? { reason: mf.reason } : {}),
     ...(mf.power ? { power: powerOf(mf) } : {}),
   });
-  const snapshot = (mf: Mainframe, c?: Client) => ({
-    t: "snapshot",
-    mainframe: info(mf),
-    canControl: c?.canControl ?? true,
-    uplinks: [...mf.uplinks.values()],
-    layout: mf.layout,
-    ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
-  });
+  const snapshot = (mf: Mainframe, c?: Client) =>
+    c?.share
+      ? {
+          t: "snapshot",
+          role: "share",
+          share: {
+            id: c.share.id,
+            label: c.share.label,
+            sharedBy: c.share.createdBy,
+            expires: c.share.expires,
+            hideNumbers: c.share.hideNumbers,
+          },
+          mainframe: { id: mf.id, name: mf.name, online: mf.online, enabled: mf.enabled },
+          canControl: false,
+          uplinks: [...mf.uplinks.values()].map((u) => shareUplink(mf, c.share!, u)).filter(Boolean),
+          layout: mf.layout,
+        }
+      : {
+          t: "snapshot",
+          mainframe: info(mf),
+          canControl: c?.canControl ?? true,
+          role: c?.role ?? "admin",
+          account: c?.uuid ? { player: playerByUuid(c.uuid)?.player ?? "?" } : null,
+          uplinks: [...mf.uplinks.values()],
+          layout: mf.layout,
+          ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
+        };
 
   // ---- v0.4 network map
+  /** The network graph in the mod's format (docs/SPEC.md "v0.4 – Implementation notes"). */
   function networkPayload(mf: Mainframe, withPositions: boolean) {
     if (!mf.net) return null;
     const { links, routes, status } = computeNetwork(mf.net.nodes);
+    const isNodeT = (t: string) => t === "mainframe" || RELAY_FE[t as keyof typeof RELAY_FE] !== undefined;
+    const nodes = mf.net.nodes.map((n) => {
+      const path = routes[n.id];
+      const fe = RELAY_FE[n.type];
+      const pos = withPositions ? { pos: { x: Math.floor(n.pos.x), y: Math.floor(n.pos.y), z: Math.floor(n.pos.z) } } : {};
+      // unloaded devices: the mod only knows the link entry
+      if (!isNodeT(n.type) && status[n.id] === "unloaded")
+        return { id: n.id, type: "device", name: "", status: "unloaded", ...pos, dim: n.dim };
+      const st = n.type === "mainframe" ? (mf.online ? "online" : (mf.reason ?? "offline")) : status[n.id] === "legacy_out_of_range" ? "online" : status[n.id];
+      return {
+        id: n.id,
+        type: n.type,
+        name: n.name,
+        status: st,
+        ...(path && path.length > 1 ? { parent: path[path.length - 2], hops: path.length - 1 } : {}),
+        ...(status[n.id] === "legacy_out_of_range" ? { flags: ["legacy_out_of_range"] } : {}),
+        ...pos,
+        dim: n.dim,
+        range: RANGES[n.type].range,
+        ...(isNodeT(n.type) ? { deviceRange: RANGES[n.type].deviceRange } : {}),
+        ...(fe ? { power: { stored: n.powered === false ? 0 : 41_000, capacity: n.type === "relay" ? 50_000 : n.type === "advanced_relay" ? 100_000 : 200_000, usage: fe } } : {}),
+        ...(n.type === "mainframe" && mf.power ? { power: { stored: Math.round(mf.power.stored), capacity: mf.power.capacity, usage: mf.power.usage } } : {}),
+      };
+    });
     return {
-      nodes: mf.net.nodes.map((n) => {
-        const fe = RELAY_FE[n.type];
-        return {
-          id: n.id,
-          type: n.type,
-          name: n.name,
-          // positions only for devices that may control (in-world information)
-          ...(withPositions ? { pos: n.pos } : {}),
-          dim: n.dim,
-          status: n.type === "mainframe" ? (mf.online ? "online" : mf.reason === "no_power" ? "no_power" : "offline") : status[n.id],
-          range: RANGES[n.type].range,
-          ...(RANGES[n.type].deviceRange !== undefined ? { deviceRange: RANGES[n.type].deviceRange } : {}),
-          ...(n.uplinkId ? { uplinkId: n.uplinkId } : {}),
-          ...(fe ? { power: { stored: n.powered === false ? 0 : 41_000, capacity: n.type === "relay" ? 50_000 : n.type === "advanced_relay" ? 100_000 : 200_000, usage: n.powered === false ? 0 : fe, ok: n.powered !== false } } : {}),
-          lastSeen: mf.net!.lastSeen[n.id] ?? Date.now(),
-        };
-      }),
-      links,
-      routes,
+      nodes,
+      links: links
+        .filter((l) => !l.legacy)
+        .map((l) => ({ a: l.a, b: l.b, signal: l.signal, ...(withPositions && l.dist ? { dist: l.dist } : {}), kind: l.kind, ...(l.kind === "radio" && l.signal < 0.15 ? { weak: true } : {}) })),
+      // like the mod: relays' paths include themselves, devices' paths are the nodes before them
+      routes: Object.fromEntries(
+        Object.entries(routes)
+          .filter(([id]) => id !== mf.net!.nodes[0].id)
+          .map(([id, path]) => [id, isNodeT(mf.net!.nodes.find((x) => x.id === id)!.type) ? path : path.slice(0, -1)]),
+      ),
     };
   }
   function broadcastNetwork(mf: Mainframe) {
@@ -248,7 +379,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     // deltas: full graph, coordinates stripped for read-only devices
     const full = { t: "network", network: networkPayload(mf, true) };
     const ro = { t: "network", network: networkPayload(mf, false) };
-    for (const c of mf.clients) sendTo(c.ws, c.canControl ? full : ro);
+    for (const c of mf.clients) if (!c.share) sendTo(c.ws, c.canControl ? full : ro);
   }
   /** v0.4 power formula: base 40 + 4/uplink + 8/advanced uplink + 10/bridge + 2/client + 1 per extra hop. */
   function powerBreakdown(mf: Mainframe) {
@@ -259,7 +390,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       const count = (types: string[]) => routed.filter((n) => types.includes(n.type)).length;
       const up = count(["uplink"]);
       const adv = count(["advanced_uplink"]);
-      const br = count(["me_bridge", "rs_bridge"]);
+      const br = count(["bridge"]);
       const hops = routed.filter((n) => !RELAY_FE[n.type]).reduce((s, n) => s + Math.max(0, routes[n.id].length - 2), 0);
       items.push({ key: "uplinks", count: up, fe: 4 * up }, { key: "advanced_uplinks", count: adv, fe: 8 * adv }, { key: "bridges", count: br, fe: 10 * br });
       items.push({ key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size }, { key: "hops", count: hops, fe: hops });
@@ -322,6 +453,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       clients: new Set(),
       layout: null,
       layoutSaves: [],
+      access: newAccess(PLAYERS[0].uuid),
       ignoreActions: false,
     };
     mainframes.set(mf.id, mf);
@@ -621,6 +753,10 @@ export async function createMockServer(opts: MockOptions = {}) {
     };
   }
 
+  // v0.6: Enrico owns the base; Lisa is a direct admin; the "Builders" FTB team (Tom member, Sam ally) is assigned
+  base.access.direct.set(PLAYERS[1].uuid, "admin");
+  base.access.team = { provider: "ftbteams", id: "ftb-builders", mapping: { ...DEFAULT_MAPPING.ftbteams } };
+
   if (opts.network !== false)
     base.net = {
       nodes: exampleNodes({ reactor: REACTOR, me: ME, storage: STORAGE, turbine: TURBINE, control: CONTROL, computer: COMPUTER }),
@@ -734,14 +870,39 @@ export async function createMockServer(opts: MockOptions = {}) {
         const json = parseJson(raw) as { reqId?: unknown } | undefined;
         const parsed = clientMessage.safeParse(json);
         if (!client) {
+          const deny = (error: string, code: number) => {
+            sendTo(ws, { t: "error", error });
+            ws.close(code, error);
+          };
+          // v0.6 share links: {"t":"auth_share","id","secret"}
+          if (parsed.success && parsed.data.t === "auth_share") {
+            const sh = shares.get(parsed.data.id);
+            if (!sh || sha(parsed.data.secret) !== sh.secretHash || !mainframes.has(sh.mainframeId)) return deny("share_invalid", 4401);
+            if (sh.expires && sh.expires < Date.now()) return deny("share_expired", 4401);
+            const smf = mainframes.get(sh.mainframeId)!;
+            if ([...smf.clients].filter((x) => x.share?.id === sh.id).length >= sh.maxViewers) return deny("share_full", 4429);
+            clearTimeout(authTimer);
+            mf = smf;
+            client = { ws, tokenHash: `share:${sh.id}`, user: `share ${sh.label}`, canControl: false, role: "share", share: sh, alive: true, hits: [], queryHits: [] };
+            mf.clients.add(client);
+            sendTo(ws, snapshot(mf, client));
+            return;
+          }
           // first message must be auth
           if (!parsed.success || parsed.data.t !== "auth") return reject("unauthorized");
           const hash = sha(parsed.data.token);
           const t = tokens.get(hash);
-          if (!t || !mainframes.has(t.mainframeId)) return reject("unauthorized");
+          if (!t) return reject("unauthorized");
+          const mfId = parsed.data.mainframeId ?? t.mainframeId;
+          if (!mfId) return deny("mainframe_required", 4401);
+          const target = mainframes.get(mfId);
+          if (!target) return deny("no_access", 4403);
+          const role = roleFor(t, target);
+          if (!role) return deny("no_access", 4403);
           clearTimeout(authTimer);
-          mf = mainframes.get(t.mainframeId)!;
-          client = { ws, tokenHash: hash, user: t.name, canControl: t.canControl, alive: true, hits: [], queryHits: [] };
+          mf = target;
+          t.lastSeen = Date.now();
+          client = { ws, tokenHash: hash, user: t.name, canControl: rank(role) >= 2, role, uuid: t.uuid, alive: true, hits: [], queryHits: [] };
           t.pinFails = t.pinFails ?? 0;
           mf.clients.add(client);
           sendTo(ws, snapshot(mf, client));
@@ -750,6 +911,15 @@ export async function createMockServer(opts: MockOptions = {}) {
         const c = client;
         const m = mf!;
         c.alive = true;
+        if (c.share) {
+          // share sessions are strictly read-only: a hard deny on everything but pong
+          const t = (json as { t?: unknown } | undefined)?.t;
+          if (t === "pong") return;
+          const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
+          const type = t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : null;
+          if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
+          return sendTo(ws, { t: "error", error: "forbidden" });
+        }
         if (!parsed.success) {
           if (json && typeof json.reqId === "string") result(json.reqId.slice(0, 64), false, "invalid_message");
           return;
@@ -758,6 +928,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (msg.t === "net_unlink") {
           const nres = (ok: boolean, error?: string) => sendTo(ws, { t: "net_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
           if (!c.canControl) return nres(false, "read_only");
+          if (rank(c.role) < 3) return nres(false, "not_allowed");
           const node = m.net?.nodes.find((n) => n.id === msg.nodeId);
           if (!node) return nres(false, "unknown_node");
           if (node.type === "mainframe") return nres(false, "not_allowed");
@@ -770,6 +941,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (msg.t === "layout_set") {
           const lres = (ok: boolean, error?: string) => sendTo(ws, { t: "layout_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
           if (!c.canControl) return lres(false, "read_only");
+          if (rank(c.role) < 3) return lres(false, "not_allowed");
           const now = Date.now();
           m.layoutSaves = m.layoutSaves.filter((t) => now - t < 10_000);
           if (m.layoutSaves.length >= 5) return lres(false, "rate_limited");
@@ -901,6 +1073,19 @@ export async function createMockServer(opts: MockOptions = {}) {
       }
       if (!parsed.success) return json(res, 400, { error: "invalid_request" });
       const code = normalizeCode(parsed.data.code);
+      const ua = String(req.headers["user-agent"] ?? "");
+      // v0.6: an account code from /cccloud link links the browser to the player account
+      const acc = accountCodes.get(code);
+      if (acc) {
+        accountCodes.delete(code);
+        const fresh = newCode();
+        accountCodes.set(fresh, { uuid: acc.uuid, code: fresh });
+        const pairingId = randomUUID();
+        pairings.set(pairingId, { accountUuid: acc.uuid, ua, ip, name: parsed.data.name, status: "pending", createdAt: now });
+        log(`"${parsed.data.name}" wants to link to the account of ${playerByUuid(acc.uuid)?.player}`);
+        if (approveDelayMs >= 0) later(approveDelayMs, () => decide(pairingId, !/deny/i.test(parsed.data.name)));
+        return json(res, 202, { status: "pending", pairingId, expiresIn: Math.round(pairTtlMs / 1000) });
+      }
       const mf = [...mainframes.values()].find((m) => currentCode(m) === code);
       if (!mf) {
         fails.push(now);
@@ -909,7 +1094,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       mf.code = newCode();
       mf.codeIssuedAt = Date.now();
       const pairingId = randomUUID();
-      pairings.set(pairingId, { mainframeId: mf.id, name: parsed.data.name, status: "pending", createdAt: now });
+      pairings.set(pairingId, { mainframeId: mf.id, ua, ip, name: parsed.data.name, status: "pending", createdAt: now });
       log(`"${parsed.data.name}" wants to connect to ${mf.name} from ${ip} – waiting for approval; new code ${fmt(mf.code)}`);
       if (approveDelayMs >= 0) later(approveDelayMs, () => decide(pairingId, !/deny/i.test(parsed.data.name)));
       return json(res, 202, { status: "pending", pairingId, expiresIn: Math.round(pairTtlMs / 1000) });
@@ -929,13 +1114,24 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (pp.status === "pending" && Date.now() - pp.createdAt > pairTtlMs) pp.status = "expired";
       if (pp.status === "approved") {
         pairings.delete(pm[1]); // the token is handed out exactly once
+        if (pp.accountUuid) {
+          const t = tokens.get(sha(pp.token!))!;
+          return json(res, 200, {
+            status: "approved",
+            token: pp.token,
+            account: { player: playerByUuid(pp.accountUuid)?.player, uuid: pp.accountUuid },
+            mainframes: [...mainframes.values()].map((m) => ({ id: m.id, name: m.name, role: roleFor(t, m) })).filter((m) => m.role),
+          });
+        }
+        const role = roleFor(tokens.get(sha(pp.token!))!, mainframes.get(pp.mainframeId!)!);
         return json(res, 200, {
           status: "approved",
           token: pp.token,
           mainframeId: pp.mainframeId,
-          name: mainframes.get(pp.mainframeId)?.name,
+          name: mainframes.get(pp.mainframeId!)?.name,
           device: pp.name,
-          canControl: true,
+          canControl: rank(role) >= 2,
+          role,
         });
       }
       if (pp.status !== "pending") pairings.delete(pm[1]);
@@ -944,18 +1140,161 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (p === "/api/mainframes" && req.method === "GET") {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
-      return json(res, 200, { mainframes: [{ ...info(mainframes.get(t.mainframeId)!), canControl: t.canControl }] });
+      const list = [...mainframes.values()]
+        .map((m) => ({ m, role: roleFor(t, m) }))
+        .filter((x) => x.role)
+        .map(({ m, role }) => ({ ...info(m), role, canControl: rank(role) >= 2 }));
+      return json(res, 200, { mainframes: list, account: t.uuid && t.kind === "account" ? { player: playerByUuid(t.uuid)?.player, uuid: t.uuid } : null });
+    }
+    // ---- v0.6 devices: all browsers of the player
+    if (p === "/api/devices" && req.method === "GET") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const mine = [...tokens.values()].filter((x) => x === t || (t.kind === "account" && t.uuid && x.uuid === t.uuid));
+      return json(res, 200, {
+        devices: mine.map((x) => ({
+          id: x.deviceId,
+          name: x.name,
+          type: x.type,
+          lastIp: x.lastIp,
+          lastSeen: x.lastSeen,
+          created: x.created,
+          current: x === t,
+          mainframes: x.kind === "account" ? null : [x.mainframeId],
+        })),
+      });
+    }
+    const dm = /^\/api\/devices\/([A-Za-z0-9-]{1,64})$/.exec(p);
+    if (dm && req.method === "DELETE") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const entry = [...tokens.entries()].find(([, x]) => x.deviceId === dm[1]);
+      if (!entry || !(entry[1] === t || (t.kind === "account" && t.uuid && entry[1].uuid === t.uuid))) return json(res, 404, { error: "not_found" });
+      tokens.delete(entry[0]);
+      for (const m of mainframes.values())
+        m.clients.forEach((c) => {
+          if (c.tokenHash === entry[0]) {
+            sendTo(c.ws, { t: "error", error: "revoked" });
+            c.ws.close(4401, "revoked");
+          }
+        });
+      return json(res, 200, { ok: true });
+    }
+    // ---- v0.6 access + shares (admin+)
+    const am = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(access|shares)(?:\/([A-Za-z0-9]{1,32}))?$/.exec(p);
+    if (am) {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const m = mainframes.get(am[1]);
+      const role = m ? roleFor(t, m) : undefined;
+      if (!m || !role) return json(res, 403, { error: "no_access" });
+      const you = { player: (t.uuid && playerByUuid(t.uuid)?.player) || t.name, role };
+      if (rank(role) < 3) return json(res, 403, { error: "not_allowed" });
+      if (am[2] === "access") {
+        if (req.method === "GET") return json(res, 200, accessDoc(m.access, you));
+        if (req.method !== "POST") return json(res, 405, { error: "method" });
+        const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+        if (b.op === "set_role" && ["viewer", "operator", "admin"].includes(b.role)) {
+          const pl = playerByName(String(b.player ?? ""));
+          if (!pl) return json(res, 400, { error: "unknown_player" });
+          if (pl.uuid === m.access.owner) return json(res, 400, { error: "invalid" });
+          if (b.role === "admin" && rank(role) < 3) return json(res, 403, { error: "not_allowed" });
+          m.access.direct.set(pl.uuid, b.role);
+        } else if (b.op === "remove") {
+          const pl = playerByName(String(b.player ?? ""));
+          if (!pl) return json(res, 400, { error: "unknown_player" });
+          m.access.direct.delete(pl.uuid);
+        } else if (b.op === "set_team") {
+          if (b.teamId === null) m.access.team = null;
+          else {
+            const team = TEAMS.find((x) => x.provider === b.provider && x.id === b.teamId);
+            if (!team) return json(res, 400, { error: "invalid" });
+            m.access.team = { provider: team.provider, id: team.id, mapping: { ...DEFAULT_MAPPING[team.provider] } };
+          }
+        } else if (b.op === "set_mapping" && m.access.team && ["viewer", "operator", "admin", "none"].includes(b.role)) {
+          if (!(String(b.rank) in m.access.team.mapping)) return json(res, 400, { error: "invalid" });
+          m.access.team.mapping[String(b.rank)] = b.role;
+        } else return json(res, 400, { error: "invalid" });
+        // role changes apply live
+        for (const c of m.clients) {
+          if (!c.uuid || c.share) continue;
+          const nr = resolveRole(m.access, c.uuid);
+          if (!nr) {
+            sendTo(c.ws, { t: "error", error: "no_access" });
+            c.ws.close(4403, "no_access");
+          } else if (nr !== c.role) {
+            c.role = nr;
+            c.canControl = rank(nr) >= 2;
+            sendTo(c.ws, { t: "role", role: nr, canControl: c.canControl });
+          }
+        }
+        log(`${you.player} changed access: ${JSON.stringify(b)}`);
+        return json(res, 200, accessDoc(m.access, { ...you, role: roleFor(t, m)! }));
+      }
+      // shares
+      const list = () => ({
+        shares: [...shares.values()]
+          .filter((s) => s.mainframeId === m.id)
+          .map(({ secretHash: _s, mainframeId: _m, ...rest }) => ({ ...rest, viewers: [...m.clients].filter((c) => c.share?.id === rest.id).length })),
+      });
+      if (req.method === "GET" && !am[3]) return json(res, 200, list());
+      if (req.method === "POST" && !am[3]) {
+        const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+        const pages = Array.isArray(b.pages) ? b.pages.filter((x: unknown) => typeof x === "string").slice(0, 12) : [];
+        const cards = Array.isArray(b.cards) ? b.cards.filter((x: unknown) => typeof x === "string").slice(0, 64) : [];
+        const exp = b.expiresIn === null ? null : [3600, 86400, 604800].includes(b.expiresIn) ? b.expiresIn : undefined;
+        const max = Number.isInteger(b.maxViewers) && b.maxViewers >= 1 && b.maxViewers <= 50 ? b.maxViewers : undefined;
+        if (!pages.length && !cards.length) return json(res, 400, { error: "invalid", detail: "pick at least one page or card" });
+        if (exp === undefined || max === undefined) return json(res, 400, { error: "invalid" });
+        const { share, secret } = createShare({
+          mainframeId: m.id,
+          label: String(b.label ?? "Shared view").slice(0, 48) || "Shared view",
+          createdBy: you.player,
+          maxViewers: max,
+          pages,
+          cards,
+          hideNumbers: b.hideNumbers === true,
+          expiresIn: exp,
+        });
+        shares.set(share.id, share);
+        log(`${you.player} created share link ${share.id}`);
+        return json(res, 200, { id: share.id, secret, url: `/s/${share.id}#${secret}` });
+      }
+      if (req.method === "DELETE" && am[3]) {
+        const sh = shares.get(am[3]);
+        if (!sh || sh.mainframeId !== m.id) return json(res, 404, { error: "not_found" });
+        shares.delete(sh.id);
+        m.clients.forEach((c) => {
+          if (c.share?.id === sh.id) {
+            sendTo(c.ws, { t: "error", error: "share_revoked" });
+            c.ws.close(4401, "share_revoked");
+          }
+        });
+        return json(res, 200, { ok: true });
+      }
+      return json(res, 405, { error: "method" });
     }
     // ---- dev-only helpers (not part of the mod's API) ----
     if (p === "/dev/codes" && req.method === "GET") {
-      return json(res, 200, [...mainframes.values()].map((m) => ({ id: m.id, name: m.name, code: fmt(currentCode(m)) })));
+      return json(res, 200, [
+        ...[...mainframes.values()].map((m) => ({ id: m.id, name: m.name, code: fmt(currentCode(m)) })),
+        ...[...accountCodes.values()].map((a) => ({ account: playerByUuid(a.uuid)?.player, code: fmt(a.code) })),
+      ]);
     }
     if (p === "/dev/token" && req.method === "POST") {
       // issue a token directly, e.g. a read-only device: {"name":"TV","canControl":false}
       const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
       const mf = b.mainframeId ? mainframes.get(b.mainframeId) : base;
       if (!mf) return json(res, 404, { error: "unknown mainframe" });
-      const token = newToken(mf.id, String(b.name ?? "Dev device"), b.canControl !== false);
+      // v0.6: {"account":"Lisa"} -> account token of that player; {"role":"operator"} -> fixed role
+      if (typeof b.account === "string") {
+        const pl = playerByName(b.account);
+        if (!pl) return json(res, 404, { error: "unknown player" });
+        const token = newToken(undefined, String(b.name ?? `${pl.player}'s browser`), true, { uuid: pl.uuid, type: b.type ?? "desktop" });
+        return json(res, 200, { token, account: pl.player });
+      }
+      const fixedRole = ["viewer", "operator", "admin", "owner"].includes(b.role) ? (b.role as Role) : undefined;
+      const token = newToken(mf.id, String(b.name ?? "Dev device"), fixedRole ? rank(fixedRole) >= 2 : b.canControl !== false, fixedRole ? { fixedRole } : {});
       return json(res, 200, { token, mainframeId: mf.id, name: mf.name });
     }
     if (p === "/dev/control" && req.method === "POST") {

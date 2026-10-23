@@ -129,8 +129,10 @@ export interface PowerItem {
 }
 
 // ---- v0.4 network map -------------------------------------------------------
-export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "me_bridge" | "rs_bridge";
-export type NodeStatus = "online" | "offline" | "no_power" | "no_route" | "unloaded" | "legacy_out_of_range";
+/** "device" = a linked device whose chunk is not loaded (type unknown). me_bridge/rs_bridge: older drafts. */
+export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "bridge" | "device" | "me_bridge" | "rs_bridge";
+/** legacy_out_of_range is derived from flags (the device itself is connected). */
+export type NodeStatus = "online" | "offline" | "connecting" | "no_power" | "no_route" | "unloaded" | "redstone" | "cloud_disabled" | "legacy_out_of_range";
 
 export interface NetNode {
   id: string;
@@ -145,10 +147,14 @@ export interface NetNode {
   range: number;
   /** range for devices attaching to this node */
   deviceRange?: number;
-  /** uplink id of the dashboard card, when the node is an uplink/bridge with a card */
+  /** uplink id of the dashboard card (devices: their own id) */
   uplinkId?: string;
   /** ms epoch */
   lastSeen?: number;
+  /** previous hop towards the mainframe */
+  parent?: string;
+  hops?: number;
+  flags?: string[];
 }
 
 export interface NetLink {
@@ -160,6 +166,8 @@ export interface NetLink {
   kind: "radio" | "ender";
   /** v0.3 device kept connected although out of range */
   legacy?: boolean;
+  /** signal below 15 % (sent by the mod) */
+  weak?: boolean;
 }
 
 export interface NetworkInfo {

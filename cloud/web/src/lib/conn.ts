@@ -126,6 +126,10 @@ export class MainframeConn {
   readonly pinLockedUntil = signal(0);
   /** Shared dashboard layout of this mainframe (null = defaults). */
   readonly layout = signal<LayoutDoc | null>(null);
+  /** v0.6 role on this mainframe (null = server without roles: canControl decides) */
+  readonly role = signal<"viewer" | "operator" | "admin" | "owner" | "share" | null>(null);
+  /** v0.6 linked player account, if any */
+  readonly account = signal<{ player: string } | null>(null);
   /** v0.4 network graph (null = server without network map) */
   readonly network = signal<NetworkInfo | null>(null);
 
@@ -156,6 +160,12 @@ export class MainframeConn {
 
   get token() {
     return this.o.token;
+  }
+
+  /** Admin features (layout editing, unlink, access, shares). Servers without roles: canControl. */
+  get isAdmin() {
+    const r = this.role.value;
+    return r === "admin" || r === "owner" || (r === null && this.canControl.value);
   }
 
   get actionable() {
@@ -297,6 +307,8 @@ export class MainframeConn {
           if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
+          this.role.value = ROLES.includes(msg.role) ? msg.role : null;
+          this.account.value = msg.account && typeof msg.account.player === "string" ? { player: msg.account.player.slice(0, 32) } : null;
           const cc = msg.canControl ?? msg.device?.canControl ?? msg.mainframe?.canControl;
           if (typeof cc === "boolean") this.canControl.value = cc;
           this.status.value = "open";
@@ -379,6 +391,12 @@ export class MainframeConn {
           jobId: msg.jobId != null ? String(msg.jobId) : undefined,
         });
         this.queryFailed(String(msg.reqId ?? ""), typeof msg.error === "string" ? msg.error : "rejected");
+        break;
+      case "role":
+        if (ROLES.includes(msg.role)) {
+          this.role.value = msg.role;
+          this.canControl.value = typeof msg.canControl === "boolean" ? msg.canControl : ["operator", "admin", "owner"].includes(msg.role);
+        }
         break;
       case "network":
         this.network.value = normalizeNetwork(msg.network);
@@ -665,36 +683,58 @@ export function normalizePower(p: any): PowerInfo | undefined {
   return out;
 }
 
-const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "me_bridge", "rs_bridge"];
-const NODE_STATUS = ["online", "offline", "no_power", "no_route", "unloaded", "legacy_out_of_range"];
+const ROLES = ["viewer", "operator", "admin", "owner", "share"];
+const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
+const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range"];
+const DEVICE_TYPES = ["uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
 
 /** Validates the untrusted network graph (v0.4 map). */
+const FALLBACK_NAME: Record<string, string> = {
+  mainframe: "Mainframe",
+  relay: "Cloud Relay",
+  advanced_relay: "Advanced Relay",
+  ender_relay: "Ender Relay",
+  uplink: "Uplink",
+  advanced_uplink: "Advanced Uplink",
+  bridge: "Bridge",
+  device: "Unloaded device",
+};
+
 export function normalizeNetwork(raw: any): NetworkInfo | null {
   if (!raw || typeof raw !== "object" || !Array.isArray(raw.nodes)) return null;
   const num = (v: unknown, d = 0) => (typeof v === "number" && Number.isFinite(v) ? v : d);
   const nodes: NetNode[] = [];
   const ids = new Set<string>();
-  for (const n of raw.nodes.slice(0, 512)) {
+  for (const n of raw.nodes.slice(0, 4096)) {
     if (!n || typeof n.id !== "string" || ids.has(n.id) || !NODE_TYPES.includes(n.type)) continue;
     ids.add(n.id);
     const pos = n.pos && typeof n.pos === "object" ? { x: num(n.pos.x), y: num(n.pos.y), z: num(n.pos.z) } : undefined;
+    const flags = Array.isArray(n.flags) ? n.flags.filter((f: unknown): f is string => typeof f === "string").slice(0, 8) : undefined;
+    const legacy = flags?.includes("legacy_out_of_range") || n.status === "legacy_out_of_range";
+    const device = DEVICE_TYPES.includes(n.type);
     nodes.push({
       id: n.id.slice(0, 64),
       type: n.type,
-      name: typeof n.name === "string" ? n.name.slice(0, 48) : n.type,
+      name: typeof n.name === "string" && n.name.trim() ? n.name.slice(0, 48) : FALLBACK_NAME[n.type] ?? n.type,
       ...(pos ? { pos } : {}),
       dim: typeof n.dim === "string" ? n.dim.slice(0, 64) : "minecraft:overworld",
-      status: NODE_STATUS.includes(n.status) ? n.status : "offline",
+      // a connected device kept by the legacy range grace is shown as its own state
+      status: legacy && n.status !== "no_route" ? "legacy_out_of_range" : NODE_STATUS.includes(n.status) ? n.status : "offline",
       ...(n.power ? { power: normalizePower(n.power) } : {}),
       range: Math.max(0, num(n.range)),
       ...(typeof n.deviceRange === "number" ? { deviceRange: Math.max(0, num(n.deviceRange)) } : {}),
-      ...(typeof n.uplinkId === "string" ? { uplinkId: n.uplinkId.slice(0, 64) } : {}),
+      ...(typeof n.uplinkId === "string" ? { uplinkId: n.uplinkId.slice(0, 64) } : device ? { uplinkId: n.id.slice(0, 64) } : {}),
       ...(typeof n.lastSeen === "number" ? { lastSeen: n.lastSeen } : {}),
+      ...(typeof n.parent === "string" ? { parent: n.parent.slice(0, 64) } : {}),
+      ...(typeof n.hops === "number" && n.hops >= 0 ? { hops: Math.min(16, Math.round(n.hops)) } : {}),
+      ...(flags?.length ? { flags } : {}),
     });
   }
+  // a parent that is not in the graph is dropped
+  for (const n of nodes) if (n.parent && !ids.has(n.parent)) delete n.parent;
   const links: NetLink[] = (Array.isArray(raw.links) ? raw.links : [])
     .filter((l: any) => l && ids.has(l.a) && ids.has(l.b) && l.a !== l.b)
-    .slice(0, 2048)
+    .slice(0, 16384)
     .map((l: any) => ({
       a: l.a,
       b: l.b,
@@ -702,6 +742,7 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       dist: Math.max(0, num(l.dist)),
       kind: l.kind === "ender" ? "ender" : "radio",
       ...(l.legacy === true ? { legacy: true } : {}),
+      ...(l.weak === true ? { weak: true } : {}),
     }));
   const routes: Record<string, string[]> = {};
   if (raw.routes && typeof raw.routes === "object")

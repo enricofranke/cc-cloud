@@ -561,19 +561,16 @@ Implemented by the dev mock (`cloud/dev/mock-server.ts`) and the dashboard; all 
 - Share snapshot: `{"t":"snapshot","role":"share","share":{"id","label","sharedBy","expires","hideNumbers"},"mainframe":{"id","name","online","enabled"},"uplinks":[only the shared cards' uplinks and widgets],"layout":{…}}` – no `network`, no positions, no `item_search` widgets, no history export. With `hideNumbers` the server drops `label`/`text`/`number` widgets and the dashboard hides gauge digits.
 - A share session may only send `pong`. Every other message gets a hard deny: requests with a `reqId` are answered with their result type and `"error":"forbidden"` (`action_result`, `query_result`, `layout_result`, `net_result`), everything else with `{"t":"error","error":"forbidden"}`.
 
-### v0.4 network map – protocol details used by the dashboard
-(Additions to the v0.4 "Network map" section above; the dev mock in `cloud/dev/network-sim.ts` implements them.)
-- `network.nodes[]`: `{id, type, name, pos?, dim, status, power?, range, deviceRange?, uplinkId?, lastSeen?}`
-  - `type`: `mainframe | relay | advanced_relay | ender_relay | uplink | advanced_uplink | me_bridge | rs_bridge`
-  - `status`: `online | offline | no_power | no_route | unloaded | legacy_out_of_range`
-  - `uplinkId`: the uplink id of the dashboard card this node belongs to (uplinks and bridges), so "Open card" can jump to it. For uplinks it is usually equal to `id`.
-  - `power` (relays and the mainframe): `{stored, capacity, usage, ok}` in FE / FE/t.
-  - `lastSeen`: ms since the epoch, for nodes that are not online.
-- `network.links[]`: `{a, b, signal 0..1, dist, kind: "radio"|"ender", legacy?}`. Send every link that is in range, not only the ones on a route (the map shows unused links faintly). A `legacy_out_of_range` device gets a link to the mainframe with `legacy: true, signal: 0`.
-- `network.routes`: node id → node ids **from the mainframe to that node, both ends included** (e.g. `["mf","relay-north","storage"]`). The mainframe's own route is `[mainframeId]`. Nodes without a path have no entry. Unloaded nodes may keep their last route.
-- Delta: `{"t":"network","network":{…full graph…}}` (at most 2 per second). For devices without `canControl`, omit every `pos`.
-- Unlink from the map (canControl only): client → `{"t":"net_unlink","reqId","nodeId"}`, server → `{"t":"net_result","reqId","ok","error?"}` with errors `read_only | unknown_node | not_allowed` (the mainframe cannot be unlinked). After success the server sends a `network` delta.
-- Power breakdown: the mainframe's `power` object (snapshot and `state` deltas) gains `breakdown: [{key, count?, fe}]` with keys `base | uplinks | advanced_uplinks | bridges | clients | hops` (sums to `usage`). The dashboard shows it in a popover from the header's power bar, plus each relay's own `power` from the network graph.
+### v0.4 network map – how the dashboard reads it
+The dashboard follows the format in "v0.4 – Implementation notes" (mod side) exactly; the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) emits the same shape.
+- Tree and hops come from each node's `parent` / `hops`. `routes` is only a fallback (relays' paths include themselves, devices' paths are the nodes before them – the client accepts both).
+- Device node ids are uplink ids; the dashboard uses them to find the card ("Open card"). `type:"device"` with `status:"unloaded"` is a linked device in an unloaded chunk.
+- `flags:["legacy_out_of_range"]` is shown as its own state ("Out of range (legacy)") although the device is connected; `weak:true` on a link (or signal < 0.15) colours it yellow.
+- `pos` and `dist` only arrive for devices with canControl; without them the Map view explains that positions are hidden and the topology still works.
+- Statuses shown: `online | offline | connecting | no_power | no_route | unloaded | redstone | cloud_disabled` (+ the legacy flag).
+- Snapshots with large networks are fine: the client parses any size (browsers reassemble fragmented frames) and is tested with 500 nodes; panning re-uses the rendered SVG layers.
+- Unlink from the map (admin): client → `{"t":"net_unlink","reqId","nodeId"}`, server → `{"t":"net_result","reqId","ok","error?"}` (`read_only | not_allowed | unknown_node`), then a `network` delta. (Optional; the button is hidden when the mod does not support it – the dashboard shows it to admins only.)
+- Power breakdown in the header popover: the mainframe's `power` object may carry `breakdown: [{key, count?, fe}]` (keys `base | uplinks | advanced_uplinks | bridges | clients | hops`, matching `powerBreakdown` / `getPowerBreakdown()`); relays' own power comes from their `power` in the graph.
 
 ## v0.7 – Upgrades, wired links, wireless redstone, tablet, display, 3D map, quests (approved 2026-10-23)
 

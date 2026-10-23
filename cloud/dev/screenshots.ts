@@ -102,7 +102,7 @@ try {
   await p.waitForTimeout(400);
   await clearToasts(p);
   await shot(p, "phone-n3-map");
-  await p.click('.mnode[aria-label^="Quarry"]');
+  await p.locator('.mnode[aria-label^="Quarry"]').dispatchEvent("click");
   await p.waitForSelector(".sheet .ndetail");
   await clearToasts(p);
   await shot(p, "phone-n4-no-route-detail");
@@ -461,7 +461,7 @@ try {
   await shot(d, "desktop-n1-topology");
   await d.click('.seg-ctl button:has-text("Map")');
   await d.waitForSelector(".netmap svg .mnode");
-  await d.click('.mnode[aria-label^="Tree Farm"]');
+  await d.locator('.mnode[aria-label^="Tree Farm"]').dispatchEvent("click");
   await d.waitForTimeout(400);
   await clearToasts(d);
   await shot(d, "desktop-n2-map");

@@ -74,7 +74,8 @@ export const clientMessage = z.discriminatedUnion("t", [
     pin: z.string().regex(/^\d{4,8}$/).optional(),
   }),
   z.object({ t: z.literal("pong") }),
-  z.object({ t: z.literal("auth"), token: z.string().min(1).max(128) }),
+  z.object({ t: z.literal("auth"), token: z.string().min(1).max(128), mainframeId: z.string().max(64).optional() }),
+  z.object({ t: z.literal("auth_share"), id: z.string().min(1).max(64), secret: z.string().min(1).max(128) }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 

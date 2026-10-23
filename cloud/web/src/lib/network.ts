@@ -4,6 +4,7 @@ import type { NetLink, NetNode, NetworkInfo, NodeStatus, NodeType } from "./type
 export const WEAK_SIGNAL = 0.15;
 
 export const isNodeType = (t: NodeType) => t === "mainframe" || t === "relay" || t === "advanced_relay" || t === "ender_relay";
+export const isBridge = (t: NodeType) => t === "bridge" || t === "me_bridge" || t === "rs_bridge";
 export const isRelay = (t: NodeType) => t === "relay" || t === "advanced_relay" || t === "ender_relay";
 
 export const TYPE_LABEL: Record<NodeType, string> = {
@@ -13,6 +14,8 @@ export const TYPE_LABEL: Record<NodeType, string> = {
   ender_relay: "Ender Relay",
   uplink: "Cloud Uplink",
   advanced_uplink: "Advanced Cloud Uplink",
+  bridge: "Cloud Bridge",
+  device: "Linked device",
   me_bridge: "ME Cloud Bridge",
   rs_bridge: "RS Cloud Bridge",
 };
@@ -20,6 +23,9 @@ export const TYPE_LABEL: Record<NodeType, string> = {
 export const STATUS_LABEL: Record<NodeStatus, string> = {
   online: "Online",
   offline: "Offline",
+  connecting: "Connecting",
+  redstone: "Redstone kill switch",
+  cloud_disabled: "Cloud disabled",
   no_power: "No power",
   no_route: "No route",
   unloaded: "Unloaded",
@@ -33,13 +39,15 @@ export const STATUS_HINT: Partial<Record<NodeStatus, string>> = {
   legacy_out_of_range:
     "Linked before v0.4 and out of range under the new rules. It keeps working for now – place a relay nearby or re-link it.",
   offline: "The block is offline (broken, redstone kill switch or disabled).",
+  redstone: "A redstone signal on the mainframe switched it off (kill switch).",
+  cloud_disabled: "The server admin disabled the cloud function (allowCloud=false).",
 };
 
 /** green ≥ 50 %, cyan ≥ 15 %, yellow below (weak); ender links are purple. */
-export function signalClass(l: Pick<NetLink, "signal" | "kind" | "legacy">) {
+export function signalClass(l: Pick<NetLink, "signal" | "kind" | "legacy" | "weak">) {
   if (l.legacy) return "sig-legacy";
   if (l.kind === "ender") return "sig-ender";
-  if (l.signal < WEAK_SIGNAL) return "sig-weak";
+  if (l.weak || l.signal < WEAK_SIGNAL) return "sig-weak";
   if (l.signal < 0.5) return "sig-ok";
   return "sig-good";
 }
@@ -59,15 +67,41 @@ export function findLink(net: NetworkInfo, a: string, b: string) {
   return net.links.find((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
 }
 
-/** The link a node uses towards the mainframe (last hop of its route). */
-export function uplinkOf(net: NetworkInfo, id: string): NetLink | undefined {
+/**
+ * Previous hop of a node towards the mainframe. Prefers the node's `parent`
+ * field (mod); falls back to `routes`, which may or may not include the
+ * node itself (devices: path of nodes only; relays: including themselves).
+ */
+export function parentOf(net: NetworkInfo, id: string): string | undefined {
+  const n = net.nodes.find((x) => x.id === id);
+  if (n?.parent) return n.parent;
   const r = net.routes[id];
-  return r && r.length >= 2 ? findLink(net, r[r.length - 2], id) : undefined;
+  if (!r || !r.length) return undefined;
+  if (r[r.length - 1] === id) return r.length >= 2 ? r[r.length - 2] : undefined;
+  return r[r.length - 1];
+}
+
+/** Full path from the mainframe to the node (both ends included). */
+export function pathOf(net: NetworkInfo, id: string): string[] | undefined {
+  const r = net.routes[id];
+  if (r && r.length) return r[r.length - 1] === id ? r : [...r, id];
+  // rebuild from parents
+  const out = [id];
+  for (let cur = parentOf(net, id), guard = 0; cur && guard < 16; cur = parentOf(net, cur), guard++) out.unshift(cur);
+  return out.length > 1 ? out : undefined;
+}
+
+/** The link a node uses towards the mainframe. */
+export function uplinkOf(net: NetworkInfo, id: string): NetLink | undefined {
+  const p = parentOf(net, id);
+  return p ? findLink(net, p, id) : undefined;
 }
 
 export const hopsOf = (net: NetworkInfo, id: string) => {
-  const r = net.routes[id];
-  return r ? r.length - 1 : undefined;
+  const n = net.nodes.find((x) => x.id === id);
+  if (typeof n?.hops === "number") return n.hops;
+  const p = pathOf(net, id);
+  return p ? p.length - 1 : undefined;
 };
 
 export const mainframeOf = (net: NetworkInfo) => net.nodes.find((n) => n.type === "mainframe");
@@ -83,7 +117,7 @@ export interface TreeNode {
   orphan: boolean;
 }
 
-export const TREE_DX = 120;
+export const TREE_DX = 150;
 export const TREE_DY = 120;
 /** left-to-right layout for portrait screens: depth along x, leaves stacked along y */
 export const LR_DX = 190;
@@ -112,14 +146,16 @@ export function layoutTree(
 
 function layoutTreeTB(net: NetworkInfo): { nodes: TreeNode[]; edges: { from: string; to: string; link?: NetLink; orphan: boolean }[]; width: number; height: number } {
   const root = mainframeOf(net);
-  const parentOf = new Map<string, string>();
+  const ids = new Set(net.nodes.map((n) => n.id));
+  const parents = new Map<string, string>();
   for (const n of net.nodes) {
-    const r = net.routes[n.id];
-    if (n !== root && r && r.length >= 2 && r[0] === root?.id) parentOf.set(n.id, r[r.length - 2]);
+    if (n === root || n.status === "no_route") continue;
+    const p = parentOf(net, n.id);
+    if (p && ids.has(p) && p !== n.id) parents.set(n.id, p);
   }
   const children = new Map<string, NetNode[]>();
   for (const n of net.nodes) {
-    const p = parentOf.get(n.id);
+    const p = parents.get(n.id);
     if (!p) continue;
     if (!children.has(p)) children.set(p, []);
     children.get(p)!.push(n);

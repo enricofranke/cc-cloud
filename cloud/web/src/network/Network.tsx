@@ -1,7 +1,21 @@
 // v0.4 Network page: UniFi-style topology and a top-down map per dimension.
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { ComponentChildren } from "preact";
+
+/**
+ * Re-uses the last rendered SVG layer while its inputs are unchanged, so
+ * panning a 500-node graph only moves the viewBox instead of rebuilding nodes.
+ */
+type Cache = { deps: unknown[]; el: ComponentChildren };
+function cached(ref: { current?: Cache }, deps: unknown[], make: () => ComponentChildren) {
+  const c = ref.current;
+  if (c && c.deps.length === deps.length && c.deps.every((d, i) => d === deps[i])) return c.el;
+  const el = make();
+  ref.current = { deps, el };
+  return el;
+}
 import type { MainframeConn } from "../lib/conn.ts";
-import type { NetLink, NetNode, NetworkInfo, NodeType } from "../lib/types.ts";
+import type { NetNode, NetworkInfo, NodeType } from "../lib/types.ts";
 import {
   STATUS_HINT,
   STATUS_LABEL,
@@ -17,6 +31,8 @@ import {
   isRelay,
   layoutTree,
   mapBounds,
+  parentOf,
+  pathOf,
   signalBars,
   signalClass,
   statusCounts,
@@ -36,6 +52,8 @@ const ICON: Record<NodeType, string> = {
   ender_relay: "ender",
   uplink: "uplink",
   advanced_uplink: "uplink",
+  bridge: "bridge",
+  device: "uplink",
   me_bridge: "bridge",
   rs_bridge: "bridge",
 };
@@ -65,6 +83,7 @@ function Bars({ signal, kind }: { signal: number; kind?: string }) {
 // ------------------------------------------------------------------ topology
 function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?: string; onSelect: (id?: string) => void; lr: boolean }) {
   const tree = useMemo(() => layoutTree(net, lr ? "lr" : "tb"), [net, lr]);
+  const cache = useRef<Cache>();
   const pos = new Map(tree.nodes.map((t) => [t.node.id, t]));
   const bounds = lr
     ? { minX: -45, minY: -50, maxX: tree.width + 175, maxY: tree.height + 50 }
@@ -77,7 +96,7 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
   const oMaxY = Math.max(...orphans.map((o) => o.y));
   return (
     <PanZoom bounds={bounds} fitKey={`topo-${net.nodes.length}-${lr}`} minW={150} maxW={8000} class="topo" label="Network topology" onBackgroundClick={() => onSelect(undefined)}>
-      {(_v, upp) => (
+      {(_v, upp) => cached(cache, [tree, selected, lr, upp < 1.4], () => (
         <>
           {orphans.length > 0 && (
             <g class="orphan-zone">
@@ -96,7 +115,7 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
           {tree.edges.map((e) => {
             const a = pos.get(e.from)!;
             const b = pos.get(e.to)!;
-            const cls = e.link ? signalClass(e.link) : "sig-ok";
+            const cls = b.node.status === "legacy_out_of_range" ? "sig-legacy" : e.link ? signalClass(e.link) : "sig-ok";
             const offline = b.node.status !== "online";
             const midX = (a.x + b.x) / 2;
             const midY = (a.y + b.y) / 2;
@@ -139,6 +158,16 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
                 <text x={30} y={-34} class="tlabel end">
                   {t.node.name.length > 18 ? `${t.node.name.slice(0, 17)}…` : t.node.name}
                 </text>
+              ) : !lr && parents.has(t.node.id) ? (
+                // branch nodes in landscape: label beside the tile, the trunk leaves downwards
+                <>
+                  <text x={32} y={-4} class="tlabel start">
+                    {t.node.name.length > 14 ? `${t.node.name.slice(0, 13)}…` : t.node.name}
+                  </text>
+                  <text x={32} y={10} class="tsub start">
+                    {t.node.status === "online" ? TYPE_LABEL[t.node.type].replace("Cloud ", "") : STATUS_LABEL[t.node.status]}
+                  </text>
+                </>
               ) : (
                 <>
                   <text x={lr ? 36 : 0} y={lr ? -2 : 44} class={`tlabel ${lr ? "start" : ""}`}>
@@ -152,7 +181,7 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
             </g>
           ))}
         </>
-      )}
+      ))}
     </PanZoom>
   );
 }
@@ -162,6 +191,7 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
   const nodes = net.nodes.filter((n) => n.dim === dim);
   // fit to the nodes; range circles may extend past the screen
   const bounds = useMemo(() => mapBounds(nodes, false), [net, dim]);
+  const cache = useRef<Cache>();
   if (!nodes.some((n) => n.pos))
     return (
       <div class="net-empty">
@@ -170,8 +200,14 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
       </div>
     );
   const byId = new Map(net.nodes.map((n) => [n.id, n]));
-  const routeLinks = new Set<string>();
-  for (const r of Object.values(net.routes)) for (let i = 1; i < r.length; i++) routeLinks.add([r[i - 1], r[i]].sort().join("|"));
+  const routeLinks = useMemo(() => {
+    const set = new Set<string>();
+    for (const n of net.nodes) {
+      const p = parentOf(net, n.id);
+      if (p) set.add([p, n.id].sort().join("|"));
+    }
+    return set;
+  }, [net]);
   return (
     <PanZoom bounds={bounds} fitKey={`map-${dim}`} minW={40} maxW={20000} class="netmap" label={`Network map, ${dimLabel(dim)}`} onBackgroundClick={() => onSelect(undefined)}>
       {(v, upp) => {
@@ -213,6 +249,8 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
                   ))}
               </g>
             )}
+            {cached(cache, [net, dim, selected, upp], () => (
+              <>
             {net.links
               .filter((l) => byId.get(l.a)?.dim === dim && byId.get(l.b)?.dim === dim && l.kind === "radio")
               .map((l) => {
@@ -261,6 +299,8 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
                 </g>
               ) : null,
             )}
+              </>
+            ))}
           </>
         );
       }}
@@ -272,10 +312,10 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
 function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; node: NetNode; conn: MainframeConn; onOpenCard?: (uplinkId: string) => void; onClose: () => void }) {
   const link = uplinkOf(net, node.id);
   const hops = hopsOf(net, node.id);
-  const route = net.routes[node.id];
+  const route = pathOf(net, node.id);
   const byId = new Map(net.nodes.map((n) => [n.id, n]));
   const uplink = node.uplinkId ? conn.uplinks.value.find((u) => u.uplinkId === node.uplinkId) : undefined;
-  const behind = net.nodes.filter((n) => net.routes[n.id]?.includes(node.id) && n.id !== node.id);
+  const behind = net.nodes.filter((n) => n.id !== node.id && pathOf(net, n.id)?.includes(node.id));
   const enderPeers = node.type === "ender_relay" ? net.links.filter((l) => l.kind === "ender" && (l.a === node.id || l.b === node.id)) : [];
   const [busy, setBusy] = useState(false);
   const unlink = async () => {
@@ -322,8 +362,12 @@ function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; no
             <dt>Signal</dt>
             <dd class="nd-signal">
               <Bars signal={link.signal} kind={link.kind} />
-              {link.kind === "ender" ? "Ender link" : link.legacy ? "out of range (legacy)" : `${Math.round(link.signal * 100)} % · ${Math.round(link.dist)} blocks`}
-              {link.kind === "radio" && !link.legacy && link.signal < 0.15 && <span class="tag tag-weak">weak</span>}
+              {link.kind === "ender"
+                ? "Ender link"
+                : link.legacy
+                  ? "out of range (legacy)"
+                  : `${Math.round(link.signal * 100)} %${link.dist ? ` · ${Math.round(link.dist)} blocks` : ""}`}
+              {link.kind === "radio" && !link.legacy && (link.weak || link.signal < 0.15) && <span class="tag tag-weak">weak</span>}
             </dd>
           </>
         )}
@@ -396,7 +440,7 @@ function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; no
             Open card
           </button>
         )}
-        {conn.canControl.value && node.type !== "mainframe" && (
+        {conn.isAdmin && node.type !== "mainframe" && (
           <button type="button" class="btn btn-danger-ghost" disabled={busy} onClick={unlink}>
             Unlink
           </button>
@@ -428,7 +472,8 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
     );
   const node = selected ? net.nodes.find((n) => n.id === selected) : undefined;
   const counts = statusCounts(net);
-  const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && l.signal < 0.15 && Object.values(net.routes).some((r) => isOnRoute(r, l)));
+  const used = new Set(net.nodes.map((n) => [parentOf(net, n.id), n.id].sort().join("|")));
+  const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && (l.weak || l.signal < 0.15) && used.has([l.a, l.b].sort().join("|")));
   return (
     <section class="netpage">
       <div class="net-toolbar">
@@ -488,11 +533,6 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
       )}
     </section>
   );
-}
-
-function isOnRoute(r: string[], l: NetLink) {
-  for (let i = 1; i < r.length; i++) if ((r[i - 1] === l.a && r[i] === l.b) || (r[i - 1] === l.b && r[i] === l.a)) return true;
-  return false;
 }
 
 function Legend() {
