@@ -44,6 +44,19 @@ class PublicConfigTest {
     }
 
     @Test
+    void storeKeyIsPublishedOnlyWhenValidAndEnabled() throws Exception {
+        var pair = java.security.KeyPairGenerator.getInstance("Ed25519").generateKeyPair();
+        byte[] spki = pair.getPublic().getEncoded();
+        String key = java.util.Base64.getEncoder().encodeToString(java.util.Arrays.copyOfRange(spki, spki.length - 32, spki.length));
+        PublicConfig.setSource(() -> new PublicConfig.Settings("0.9.0", true, "https://store.example.org/store/", key, false, false, false, false, false));
+        assertEquals(key, PublicConfig.json().getAsJsonObject("store").get("key").getAsString());
+        PublicConfig.setSource(() -> new PublicConfig.Settings("0.9.0", true, "https://store.example.org/store/", "not-a-key", false, false, false, false, false));
+        assertTrue(PublicConfig.json().getAsJsonObject("store").get("key").isJsonNull());
+        PublicConfig.setSource(() -> new PublicConfig.Settings("0.9.0", false, "https://store.example.org/store/", key, false, false, false, false, false));
+        assertTrue(PublicConfig.json().getAsJsonObject("store").get("key").isJsonNull());
+    }
+
+    @Test
     void disabledStoreStaysOutOfTheCsp() {
         PublicConfig.setSource(() -> new PublicConfig.Settings("0.9.0", false, "https://store.example.org/store/", false, false, false, false, false));
         assertFalse(PublicConfig.json().getAsJsonObject("store").get("enabled").getAsBoolean());

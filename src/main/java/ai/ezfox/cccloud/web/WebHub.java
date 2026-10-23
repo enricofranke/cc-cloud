@@ -627,6 +627,9 @@ public final class WebHub {
         if (storeUrl != null) {
             var store = new JsonObject();
             store.addProperty("url", storeUrl);
+            String storeKey = PublicConfig.storeKey();
+            if (storeKey != null) store.addProperty("key", storeKey);
+            else store.add("key", com.google.gson.JsonNull.INSTANCE);
             json.add("store", store);
         } else {
             json.add("store", com.google.gson.JsonNull.INSTANCE);
