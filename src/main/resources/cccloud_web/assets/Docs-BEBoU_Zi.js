@@ -1,4 +1,4 @@
-import{a as e,l as t,n,o as r,r as i,t as a}from"./jsxRuntime.module-BRbsxUMc.js";import{C as o,D as s,E as c,S as l,T as u,_ as ee,d as te,g as ne,h as d,m as re,n as f,o as p,p as ie,s as m,t as h,v as ae,x as oe}from"./index-BKMzUWaY.js";var se=Object.defineProperty,ce=((e,t)=>{let n={};for(var r in e)se(n,r,{get:e[r],enumerable:!0});return t||se(n,Symbol.toStringTag,{value:`Module`}),n})({CADDYFILE:()=>j,CLOUDFLARED:()=>M,CLOUDFLARED_YML:()=>N,COMMANDS:()=>I,FENCE:()=>"```",LUA_BRIDGE:()=>x,LUA_BRIDGE_WIDGETS:()=>S,LUA_EVENT:()=>_,LUA_FIRST:()=>g,LUA_LAYOUT:()=>v,LUA_MAINFRAME:()=>b,LUA_SETMANY:()=>y,PKCS8:()=>F,RECIPES:()=>le,SHELL_EDIT:()=>E,SHELL_LUA:()=>O,SHELL_RUN:()=>D,TOML_CADDY:()=>A,TOML_LAN:()=>k,TOML_TLS:()=>P,UI_FARM:()=>w,UI_QUICK:()=>C,UI_REACTOR:()=>T,code:()=>de,recipe:()=>ue}),g=`local cloud = peripheral.find("cloud_uplink")
+import{a as e,l as t,n,o as r,r as i,t as a}from"./jsxRuntime.module-BRbsxUMc.js";import{P as o,R as s,U as c,_ as l,i as ee,k as u,o as te,p as ne,q as re,s as ie,u as d,x as ae,y as oe}from"./Overlays-CjKeW_-z.js";import{a as f,d as p,f as m,r as h}from"./index-Cob01lYh.js";var se=Object.defineProperty,ce=((e,t)=>{let n={};for(var r in e)se(n,r,{get:e[r],enumerable:!0});return t||se(n,Symbol.toStringTag,{value:`Module`}),n})({CADDYFILE:()=>A,CLOUDFLARED:()=>j,CLOUDFLARED_YML:()=>M,COMMANDS:()=>F,FENCE:()=>"```",LUA_BRIDGE:()=>x,LUA_BRIDGE_WIDGETS:()=>S,LUA_EVENT:()=>_,LUA_FIRST:()=>g,LUA_LAYOUT:()=>v,LUA_MAINFRAME:()=>b,LUA_SETMANY:()=>y,PKCS8:()=>P,RECIPES:()=>ue,SHELL_EDIT:()=>T,SHELL_LUA:()=>D,SHELL_RUN:()=>E,TOML_CADDY:()=>k,TOML_LAN:()=>O,TOML_TLS:()=>N,UI_FARM:()=>le,UI_QUICK:()=>C,UI_REACTOR:()=>w,code:()=>fe,recipe:()=>de}),g=`local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("My Base")
 cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100})
 cloud.toggle("lights", "Lights", {value=false})
@@ -50,7 +50,7 @@ dash:button("scram", "SCRAM", {color="red", confirm=true, pin=true}, function(us
   dash:notify(user .. " pressed SCRAM", "crit")
 end)
 dash:every(1, function() temp:set(math.random(600, 1000)) end)
-dash:run()`,w=`-- startup.lua: a tree farm with lights, a counter and a harvest button
+dash:run()`,le=`-- startup.lua: a tree farm with lights, a counter and a harvest button
 local ui = require("cloud.ui")
 local dash = ui.connect()
 dash:title("Tree Farm")
@@ -77,7 +77,7 @@ dash:every(5, function()
   logs:set(count)
 end)
 
-dash:run()`,T=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
+dash:run()`,w=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
 local ui = require("cloud.ui")
 local dash = ui.connect()
 local reactor = peripheral.find("fissionReactorLogicAdapter")
@@ -104,36 +104,36 @@ dash:every(2, function()
   if k > 1100 then reactor.scram(); dash:notify("Auto-SCRAM at " .. math.floor(k) .. " K", "crit") end
 end)
 
-dash:run()`,E=`edit startup.lua`,D=`startup`,O=`lua
+dash:run()`,T=`edit startup.lua`,E=`startup`,D=`lua
 lua> peripheral.find("cloud_uplink").getClients()
 1
-lua> exit()`,k=`[web]
-webAllowInternet = false   # default: only LAN addresses may connect`,A=`[web]
+lua> exit()`,O=`[web]
+webAllowInternet = false   # default: only LAN addresses may connect`,k=`[web]
 webBind = "127.0.0.1"
 webAllowInternet = true
 webTrustedProxies = ["127.0.0.1"]
-publicUrl = "https://dash.example.com"`,j=`dash.example.com {
+publicUrl = "https://dash.example.com"`,A=`dash.example.com {
     reverse_proxy 127.0.0.1:8787
-}`,M=`cloudflared tunnel login
+}`,j=`cloudflared tunnel login
 cloudflared tunnel create cccloud
 cloudflared tunnel route dns cccloud dash.example.com
-cloudflared tunnel run cccloud`,N=`tunnel: cccloud
+cloudflared tunnel run cccloud`,M=`tunnel: cccloud
 credentials-file: /root/.cloudflared/<tunnel-id>.json
 ingress:
   - hostname: dash.example.com
     service: http://127.0.0.1:8787
-  - service: http_status:404`,P=`[web]
+  - service: http_status:404`,N=`[web]
 webAllowInternet = true
 tlsCertPath = "/etc/letsencrypt/live/mc.example.com/fullchain.pem"
 tlsKeyPath = "/srv/mc/privkey-pkcs8.pem"
-publicUrl = "https://mc.example.com:8787"`,F=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,I=`/cccloud status
+publicUrl = "https://mc.example.com:8787"`,P=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,F=`/cccloud status
 /cccloud devices
 /cccloud revoke <device name>
 /cccloud revoke all
 /cccloud trust <player>
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
-/cccloud pin clear`,le={core:{result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},mainframe:{result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},uplink:{result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},advancedUplink:{result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},linkCard:{result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},meBridge:{result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`}},relay:{result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},advancedRelay:{result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},enderRelay:{result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},rsBridge:{result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`}}},ue=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,de=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,{code:L,recipe:R,RECIPES:z}=ce,fe={start:`# Erste Schritte
+/cccloud pin clear`,ue={core:{result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},mainframe:{result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},uplink:{result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},advancedUplink:{result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},linkCard:{result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},meBridge:{result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`}},relay:{result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},advancedRelay:{result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},enderRelay:{result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},rsBridge:{result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`}}},de=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,fe=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,{code:I,recipe:L,RECIPES:R}=ce,pe={start:`# Erste Schritte
 
 CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
 
@@ -155,23 +155,23 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 Zutaten mit „(beliebig)“ akzeptieren jede Variante aus dem Tag (z. B. jeden Goldbarren). JEI/EMI zeigen im Spiel dieselben Rezepte.
 
 ### Cloud Core
-${R(z.core)}
+${L(R.core)}
 
 ### Cloud Mainframe
-${R(z.mainframe)}
+${L(R.mainframe)}
 
 ### Cloud Uplink
-${R(z.uplink)}
+${L(R.uplink)}
 
 ### Advanced Cloud Uplink
-${R(z.advancedUplink)}
+${L(R.advancedUplink)}
 
 ### Cloud Link Card
-${R(z.linkCard)}
+${L(R.linkCard)}
 
 ### ME- und RS Cloud Bridge
-${R(z.meBridge)}
-${R(z.rsBridge)}
+${L(R.meBridge)}
+${L(R.rsBridge)}
 
 ## Mainframe aufstellen {#mainframe}
 
@@ -226,7 +226,7 @@ Ein Computer startet in der **Shell** – einer Kommandozeile wie im Terminal. D
 
 ## Ein Programm mit edit schreiben {#edit}
 
-${L(``,E)}
+${I(``,T)}
 
 1. \`edit startup.lua\` eingeben und Enter drücken. Ein Editor öffnet sich.
 2. Code eintippen oder einfügen. (Aus dem Dashboard: mit **Copy** kopieren, dann in Minecraft Strg+V.)
@@ -238,7 +238,7 @@ Eine Datei namens \`startup.lua\` startet automatisch, wenn der Computer hochfä
 
 Gib seinen Namen ohne \`.lua\` ein:
 
-${L(``,D)}
+${I(``,E)}
 
 Ein laufendes Programm stoppst du mit **Strg+T** (eine Sekunde gedrückt halten). Neustart mit **Strg+R**.
 
@@ -250,7 +250,7 @@ Schreib den Code am PC in einem beliebigen Editor, speichere ihn als \`startup.l
 
 \`lua\` öffnet eine interaktive Lua-Eingabe – praktisch, um einzelne Zeilen auszuprobieren:
 
-${L(``,O)}
+${I(``,D)}
 
 ## Nützliche Befehle {#commands}
 
@@ -289,14 +289,17 @@ Jeder Uplink wird zu einer **Karte**. Ein Computer ohne eigenes Programm zeigt d
 
 ## Seiten und Layout-Editor {#edit-mode}
 
-Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Spieler mit Steuerrechten sehen einen **Stift**:
+Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Admins sehen einen **Stift**: Damit wird das Dashboard selbst zum Editor – du ordnest die echten, laufenden Karten an.
 
-- Karten und Widgets umsortieren (mit der Maus ziehen, oder ▲▼ auf schmalen Bildschirmen und per Touch)
-- Kartengröße ändern (rechten Rand ziehen, 1–4 Spalten) und Widget-Breite
-- umbenennen, umfärben, Icon wählen, ausblenden
-- Seiten anlegen, umbenennen, löschen, Karten zwischen Seiten verschieben
+- **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
+- **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
+- **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
+- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe, Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
+- **Ausblenden** mit ×. **+ Add** listet alles Ausgeblendete (zurückziehen oder Show drücken) und zeigt jeden Widget-Typ live mit der Lua-Zeile, die ihn erzeugt.
+- **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
+- **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.
 
-**Save** speichert das Layout auf dem Server – alle Geräte sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben.
+**Save** speichert das Layout auf dem Server – alle Browser sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben. Auf schmalen Bildschirmen stehen die Karten in Lesereihenfolge untereinander (auf Handys zweispaltig).
 
 ## Meldungen {#alerts}
 
@@ -322,13 +325,13 @@ Alles, was ein Programm mit CC: Cloud tun kann. Im Spiel zeigt \`help cloud\` ei
 
 ## Das Peripheral holen {#peripheral}
 
-${L(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${I(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 Der Uplink muss den Computer berühren oder im Netzwerk seines Wired Modems hängen. Mehrere Uplinks? Nimm \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## Ein erstes Programm {#first-program}
 
-${L(`lua`,g)}
+${I(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -364,13 +367,13 @@ Farben: cyan, green, yellow, red, gray. Eine Gauge gilt als „wenig ist schlech
 | \`cloud.remove(id)\` | ein Widget entfernen |
 | \`cloud.clear()\` | alles entfernen (die automatische Computer-Karte kommt zurück) |
 
-${L(`lua`,y)}
+${I(`lua`,y)}
 
 ## Ereignisse {#events}
 
 Bedient jemand ein Widget, bekommt jeder Computer am Uplink ein \`cloud_action\`-Ereignis:
 
-${L(`lua`,_)}
+${I(`lua`,_)}
 
 | Widget | value |
 |---|---|
@@ -385,7 +388,7 @@ ${L(`lua`,_)}
 
 ## Layout: Seiten und Gruppen {#layout}
 
-${L(`lua`,v)}
+${I(`lua`,v)}
 
 - \`cloud.page(id, title, {icon=})\` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – eine Karte; Widgets kommen mit \`group=\` hinein.
@@ -415,7 +418,7 @@ Ein Computer neben dem Mainframe kann ihn auslesen:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | gespeicherte FE, Puffergröße, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – siehe [Netzwerk](/docs/network#map) |
 
-${L(`lua`,b)}
+${I(`lua`,b)}
 
 Der Kopplungscode ist aus Lua nie lesbar.
 
@@ -437,7 +440,7 @@ Peripheral-Typen \`me_cloud_bridge\` und \`rs_cloud_bridge\`, gleiche Methoden:
 | \`cancelCraft(jobId)\` | wo unterstützt |
 | \`listFluids([limit])\` | Flüssigkeiten |
 
-${L(`lua`,x)}
+${I(`lua`,x)}
 
 ## Grenzen {#limits}
 
@@ -463,7 +466,7 @@ Das sehen nur Admins des Mainframes, und Änderungen brauchen die Mainframe-PIN,
 
 ## Schnellstart {#quick-start}
 
-${L(`lua`,C)}
+${I(`lua`,C)}
 
 ## API {#api}
 
@@ -487,13 +490,13 @@ Fehler in Handlern werden ausgegeben und stoppen die Schleife nicht. Strg+T been
 
 ## Beispiel: Baumfarm {#example-farm}
 
-${L(`lua`,w)}
+${I(`lua`,le)}
 
 ## Beispiel: Reaktor-Panel {#example-reactor}
 
 Peripheral-Name und Methoden an deinen Reaktor-Mod anpassen.
 
-${L(`lua`,T)}
+${I(`lua`,w)}
 
 ## Mitgelieferte Programme {#programs}
 
@@ -532,13 +535,13 @@ Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unte
 Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay.
 
 ### Cloud Relay
-${R(z.relay)}
+${L(R.relay)}
 
 ### Advanced Cloud Relay
-${R(z.advancedRelay)}
+${L(R.advancedRelay)}
 
 ### Ender Relay
-${R(z.enderRelay)}
+${L(R.enderRelay)}
 
 > **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
 
@@ -660,11 +663,11 @@ Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). I
 
 ## Aus Lua {#lua}
 
-${L(`lua`,x)}
+${I(`lua`,x)}
 
 Eine eigene Lager-Karte mit denselben Widgets:
 
-${L(`lua`,S)}
+${I(`lua`,S)}
 
 Oder einfach \`cloud-storage\` starten. Alle Methoden: [Lua-Referenz → Bridges](/docs/lua#bridges).
 `,accounts:`# Konten, Rollen und Teilen
@@ -741,7 +744,7 @@ Tab springt durch alles, Enter oder Leertaste löst aus, Escape schließt Dialog
 
 Ab Werk können nur Geräte im lokalen Netzwerk des Servers (und der Host selbst) das Dashboard öffnen. Alle anderen bekommen „LAN only“.
 
-${L(`toml`,k)}
+${I(`toml`,O)}
 
 Die Konfigurationsdatei ist \`<welt>/serverconfig/cccloud-server.toml\`; Änderungen an \`[web]\` brauchen einen Server-Neustart.
 
@@ -761,7 +764,7 @@ Wer den Mainframe platziert hat, besitzt ihn. Besitzer, vertraute Spieler und OP
 
 Schau den Mainframe an und gib ein:
 
-${L(``,I)}
+${I(``,F)}
 
 ## PIN {#pin}
 
@@ -775,9 +778,9 @@ Setze \`webAllowInternet = true\` und wähle eine der folgenden Varianten. Läuf
 
 ### Caddy als Reverse Proxy (empfohlen) {#caddy}
 
-${L(`toml`,A)}
+${I(`toml`,k)}
 
-${L(``,j)}
+${I(``,A)}
 
 Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
@@ -785,15 +788,15 @@ Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
 Gleiche \`[web]\`-Einstellungen wie bei Caddy, dann:
 
-${L(`bash`,M)}
+${I(`bash`,j)}
 
-${L(`yaml`,N)}
+${I(`yaml`,M)}
 
 ### TLS direkt im Mod {#tls}
 
-${L(`toml`,P)}
+${I(`toml`,N)}
 
-Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${F}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
+Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${P}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
 
 ### Port direkt freigeben {#open-port}
 
@@ -844,10 +847,16 @@ Der Server erlaubt nur lokale Adressen. Ein Admin kann \`webAllowInternet\` eins
 
 Das Dashboard ist ausgeschaltet, der Mainframe offline oder ohne Strom, der Uplink offline, oder dein Gerät ist schreibgeschützt. Das Banner oben sagt, was zutrifft.
 
+## Meine Geräte gehen offline, wenn ich weggehe {#unloaded}
+
+Minecraft lässt nur die Chunks in der Nähe von Spielern laufen. Gehst du weg, wird der Chunk eines Computers, Uplinks oder einer Bridge entladen – er steht still, und CC: Cloud erreicht ihn nicht. Das Dashboard behält seine Karte **ausgegraut mit den letzten Werten** und zeigt „last seen 12 min ago – chunk not loaded“; die Bedienelemente sind gesperrt, bis der Chunk wieder geladen ist. CC: Cloud lädt nie selbst Chunks.
+
+Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: mit FTB Chunks **force-loaden** (claimen, dann in der Karte force-load), mit einem Chunk-Loader aus einer anderen Mod, oder über die Spawn-Chunks des Servers. Dann wird die Karte von selbst wieder lebendig.
+
 ## Falsche PIN / gesperrt {#pin-locked}
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit \`/cccloud pin set\` ändern.
-`},{code:B,recipe:V,RECIPES:H}=ce,pe={start:`# Getting started
+`},{code:z,recipe:B,RECIPES:V}=ce,me={start:`# Getting started
 
 CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
 
@@ -869,23 +878,23 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
 
 ### Cloud Core
-${V(H.core)}
+${B(V.core)}
 
 ### Cloud Mainframe
-${V(H.mainframe)}
+${B(V.mainframe)}
 
 ### Cloud Uplink
-${V(H.uplink)}
+${B(V.uplink)}
 
 ### Advanced Cloud Uplink
-${V(H.advancedUplink)}
+${B(V.advancedUplink)}
 
 ### Cloud Link Card
-${V(H.linkCard)}
+${B(V.linkCard)}
 
 ### ME and RS Cloud Bridge
-${V(H.meBridge)}
-${V(H.rsBridge)}
+${B(V.meBridge)}
+${B(V.rsBridge)}
 
 ## Place the mainframe {#mainframe}
 
@@ -940,7 +949,7 @@ A computer starts in the **shell** – a command line like a terminal. The shell
 
 ## Write a program with edit {#edit}
 
-${B(``,E)}
+${z(``,T)}
 
 1. Type \`edit startup.lua\` and press Enter. An editor opens.
 2. Type or paste your code. (Pasting from the dashboard: copy with the **Copy** button, then Ctrl+V in Minecraft.)
@@ -952,7 +961,7 @@ A file named \`startup.lua\` runs automatically whenever the computer boots – 
 
 Type its name without \`.lua\`:
 
-${B(``,D)}
+${z(``,E)}
 
 Stop a running program with **Ctrl+T** (hold it for a second). Reboot with **Ctrl+R**.
 
@@ -964,7 +973,7 @@ Write the code on your PC in any editor, save it as \`startup.lua\` and **drag t
 
 \`lua\` opens an interactive Lua prompt – handy to try one line at a time:
 
-${B(``,O)}
+${z(``,D)}
 
 ## Useful commands {#commands}
 
@@ -1003,14 +1012,17 @@ Every uplink becomes a **card**. A computer without its own program shows the au
 
 ## Pages and the layout editor {#edit-mode}
 
-Programs can put widgets on **pages** (tabs: on top in wide windows, at the bottom on narrow screens) and in **groups**. Players with control rights see a **pencil**:
+Programs can put widgets on **pages** (tabs: on top in wide windows, at the bottom on narrow screens) and in **groups**. Admins see a **pencil**: it turns the dashboard itself into the editor – you arrange the real, live cards.
 
-- reorder cards and widgets (drag with the mouse, or ▲▼ on narrow screens and touch)
-- resize cards (drag the right edge, 1–4 columns) and widgets
-- rename, recolour, give an icon, hide
-- create, rename and delete pages, move cards between them
+- **Move:** drag a card by its header, or a widget anywhere. The others make room and glide aside; a dashed outline shows where it lands. Drop a widget on another card, on empty space (it gets its **own new card**) or on a page tab (hover a moment to open that page).
+- **Resize:** drag the right edge, the bottom edge or the corner – the badge shows the size (cards use 12 columns of the page, widgets 12 columns of their card).
+- **Select several widgets** with Shift-click and drag one of them to move them together.
+- **Settings** (⚙ or click): label, accent colour, icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style.
+- **Hide** with ×. **+ Add** lists everything hidden (drag it back or press Show) and shows every widget type live with the Lua line that creates it.
+- **Touch:** press and hold to pick up (a short vibration), then drag – a normal swipe still scrolls. **Keyboard:** Tab to a card or widget, Space picks it up, arrow keys move, Shift + arrow keys resize, Page Up/Down move a widget to the previous/next card, Space drops, Esc cancels. Press **?** for all shortcuts.
+- **Undo/redo** (Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z), **Reset** to the scripts' default, and **Save** (Ctrl/⌘ + S). Leaving with unsaved changes asks first.
 
-**Save** stores the layout on the server – all devices see it. A script restart keeps the layout because widget ids stay the same.
+**Save** stores the layout on the server – all browsers see it. A script restart keeps the layout because widget ids stay the same. On narrow screens the cards stack in reading order (two columns on phones).
 
 ## Alerts {#alerts}
 
@@ -1036,13 +1048,13 @@ Everything a program can do with CC: Cloud. In-game, \`help cloud\` prints a sho
 
 ## Getting the peripheral {#peripheral}
 
-${B(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${z(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 The uplink must touch the computer or sit on its wired modem network. Several uplinks? Use \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## A first program {#first-program}
 
-${B(`lua`,g)}
+${z(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -1078,13 +1090,13 @@ Colours: cyan, green, yellow, red, gray. A gauge is "low is bad" when crit < war
 | \`cloud.remove(id)\` | remove a widget |
 | \`cloud.clear()\` | remove everything (the automatic Computer card returns) |
 
-${B(`lua`,y)}
+${z(`lua`,y)}
 
 ## Events {#events}
 
 When someone uses a widget, every computer attached to the uplink gets a \`cloud_action\` event:
 
-${B(`lua`,_)}
+${z(`lua`,_)}
 
 | Widget | value |
 |---|---|
@@ -1099,7 +1111,7 @@ ${B(`lua`,_)}
 
 ## Layout: pages and groups {#layout}
 
-${B(`lua`,v)}
+${z(`lua`,v)}
 
 - \`cloud.page(id, title, {icon=})\` – a tab. With pages an uplink may hold 64 widgets instead of 32.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – a card; widgets join it with \`group=\`.
@@ -1129,7 +1141,7 @@ A computer next to the mainframe can read it:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | FE stored, buffer size, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – see [network](/docs/network#map) |
 
-${B(`lua`,b)}
+${z(`lua`,b)}
 
 The pairing code is never readable from Lua.
 
@@ -1151,7 +1163,7 @@ Peripheral types \`me_cloud_bridge\` and \`rs_cloud_bridge\`, same methods:
 | \`cancelCraft(jobId)\` | where supported |
 | \`listFluids([limit])\` | fluids |
 
-${B(`lua`,x)}
+${z(`lua`,x)}
 
 ## Limits {#limits}
 
@@ -1177,7 +1189,7 @@ Only admins of the mainframe see this, and changes need the mainframe PIN if one
 
 ## Quick start {#quick-start}
 
-${B(`lua`,C)}
+${z(`lua`,C)}
 
 ## API {#api}
 
@@ -1201,13 +1213,13 @@ Errors inside handlers are printed and do not stop the loop. Ctrl+T ends it.
 
 ## Example: tree farm {#example-farm}
 
-${B(`lua`,w)}
+${z(`lua`,le)}
 
 ## Example: reactor panel {#example-reactor}
 
 Adjust the peripheral name and methods to your reactor mod.
 
-${B(`lua`,T)}
+${z(`lua`,w)}
 
 ## Built-in programs {#programs}
 
@@ -1246,13 +1258,13 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
 
 ### Cloud Relay
-${V(H.relay)}
+${B(V.relay)}
 
 ### Advanced Cloud Relay
-${V(H.advancedRelay)}
+${B(V.advancedRelay)}
 
 ### Ender Relay
-${V(H.enderRelay)}
+${B(V.enderRelay)}
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 
@@ -1374,11 +1386,11 @@ Add items with a minimum amount (from a search result or by id). Items below the
 
 ## From Lua {#lua}
 
-${B(`lua`,x)}
+${z(`lua`,x)}
 
 Your own storage card with the same widgets:
 
-${B(`lua`,S)}
+${z(`lua`,S)}
 
 Or just run \`cloud-storage\`. All methods: [Lua reference → Bridges](/docs/lua#bridges).
 `,accounts:`# Accounts, roles and sharing
@@ -1455,7 +1467,7 @@ The dashboard can control things in your world, so it is protected like a real w
 
 Out of the box only devices in the server's local network (and the host itself) can open the dashboard. Everyone else gets "LAN only".
 
-${B(`toml`,k)}
+${z(`toml`,O)}
 
 The config file is \`<world>/serverconfig/cccloud-server.toml\`; changes to \`[web]\` need a server restart.
 
@@ -1475,7 +1487,7 @@ The player who placed the mainframe owns it. Owner, trusted players and ops (lev
 
 Look at the mainframe and run:
 
-${B(``,I)}
+${z(``,F)}
 
 ## PIN {#pin}
 
@@ -1489,9 +1501,9 @@ Set \`webAllowInternet = true\` and pick one of the setups below. The dashboard 
 
 ### Caddy reverse proxy (recommended) {#caddy}
 
-${B(`toml`,A)}
+${z(`toml`,k)}
 
-${B(``,j)}
+${z(``,A)}
 
 Caddy gets a certificate automatically and forwards WebSockets.
 
@@ -1499,15 +1511,15 @@ Caddy gets a certificate automatically and forwards WebSockets.
 
 Same \`[web]\` settings as for Caddy, then:
 
-${B(`bash`,M)}
+${z(`bash`,j)}
 
-${B(`yaml`,N)}
+${z(`yaml`,M)}
 
 ### TLS in the mod {#tls}
 
-${B(`toml`,P)}
+${z(`toml`,N)}
 
-Convert the Let's Encrypt key first: \`${F}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
+Convert the Let's Encrypt key first: \`${P}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
 
 ### Port opened directly {#open-port}
 
@@ -1558,10 +1570,16 @@ The server only allows local addresses. An admin can enable \`webAllowInternet\`
 
 The dashboard is disabled, the mainframe is offline or without power, the uplink is offline, or your device is read-only. The banner at the top says which.
 
+## My devices go offline when I walk away {#unloaded}
+
+Minecraft only runs the chunks near players. When you walk away, the chunk of a computer, uplink or bridge unloads – it stops, and CC: Cloud can't talk to it. The dashboard keeps its card **greyed out with the last values** and shows "last seen 12 min ago – chunk not loaded"; its controls are disabled until the chunk loads again. CC: Cloud never loads chunks by itself.
+
+To keep a base running while you are away, keep its chunks loaded: **force-load** them with FTB Chunks (claim, then force-load in the map), use a chunk loader from another mod, or have the server's settings keep spawn chunks loaded. Then the card comes back to life on its own.
+
 ## Wrong PIN / locked {#pin-locked}
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with \`/cccloud pin set\`.
-`},U=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],me={de:fe,en:pe},W={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,result:`Ergebnis`}},he={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud Core`},"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Advanced Cloud Uplink`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud Link Card`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME Cloud Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS Cloud Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud Relay`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Advanced Cloud Relay`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender Relay`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`}},ge={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`};function _e(e){return ge[e]??e.replace(/^#/,``)}function G(e,t){let n=he[e]?.[t];return n?e.startsWith(`#`)?`${n} (${W[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function ve(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function ye(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function K(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:K(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:K(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(be(o)){r(),t.push({t:`link`,href:o,c:K(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function be(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function q(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:q(e.c)).join(``)}function xe(e){let t=e.replace(/\r\n?/g,`
+`},H=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],he={de:pe,en:me},U={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,result:`Ergebnis`}},ge={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud Core`},"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Advanced Cloud Uplink`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud Link Card`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME Cloud Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS Cloud Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud Relay`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Advanced Cloud Relay`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender Relay`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`}},_e={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`};function ve(e){return _e[e]??e.replace(/^#/,``)}function W(e,t){let n=ge[e]?.[t];return n?e.startsWith(`#`)?`${n} (${U[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function ye(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function be(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function G(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:G(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:G(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(xe(o)){r(),t.push({t:`link`,href:o,c:G(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function xe(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function K(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:K(e.c)).join(``)}function Se(e){let t=e.replace(/\r\n?/g,`
 `).split(`
 `),n=[],r=new Set,i=0,a=e=>{let t=e;for(let n=2;r.has(t);n++)t=`${e}-${n}`;return r.add(t),t};for(;i<t.length;){let e=t[i];if(!e.trim()){i++;continue}let r=/^```\s*([a-z0-9_-]*)\s*$/i.exec(e);if(r){let e=[];for(i++;i<t.length&&!/^```\s*$/.test(t[i]);)e.push(t[i++]);i++;let a=e.join(`
-`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=K(o[2]),t=q(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??ye(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(K),rows:a.map(e=>e.map(K))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(K)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(K)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:K(l.join(` `))})}return n}function Se(e){switch(e.t){case`h`:return e.text;case`p`:return q(e.c);case`ul`:case`ol`:return e.items.map(q).join(` `);case`callout`:return e.c.map(q).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(q).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var Ce=new Map;function J(e,t){let n=`${e}/${t}`,r=Ce.get(n);return r||(r=xe(me[e][t]??``),Ce.set(n,r)),r}var we=new Map;function Te(e){let t=we.get(e);if(t)return t;t=[];for(let n of U){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of J(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+Se(i));t.push(r)}return we.set(e,t),t}var Y=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function Ee(e,t,n=20){let r=Y(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Te(e)){let e=Y(t.heading),n=Y(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),u=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:u})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var X=s((()=>{let e=u(`lang`,``);return e===`de`||e===`en`?e:ve()})()),De=e=>{X.value=e,c(`lang`,e),document.documentElement.lang=e};function Oe(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:U.some(t=>t.id===e?.[1])?e[1]:U[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=s(Oe());addEventListener(`popstate`,()=>Z.value=Oe());function Q(e){history.pushState(null,``,e),Z.value=Oe(),Z.value.anchor||window.scrollTo(0,0)}function ke(e,t){r(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return a(t,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return a(`code`,{children:e.v},t);case`strong`:return a(`strong`,{children:a($,{c:e.c})},t);case`em`:return a(`em`,{children:a($,{c:e.c})},t);case`link`:return a(Ae,{href:e.href,c:e.c},t)}})})}function Ae({href:e,c:t}){return/^https?:/.test(e)?a(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:a($,{c:t})}):a(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:a($,{c:t})})}function je({b:e}){let t=`h${e.level}`;return a(t,{id:e.id,class:`dh dh${e.level}`,children:[a($,{c:e.c}),e.level>1&&a(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":W[X.value].copyLink,title:W[X.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await f(n)&&l({level:`info`,title:W[X.value].docs,text:W[X.value].linkCopied},2500)},children:`#`})]})}function Me({r:e}){let t=X.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return a(`figure`,{class:`recipe`,children:[a(`div`,{class:`recipe-main`,children:[a(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${G(e.result,t)}: ${r.map(e=>G(e,t)).join(`, `)}`,children:n.map((e,n)=>a(`span`,{class:`slot ${e?`full`:``}`,title:e?G(e,t):void 0,children:e&&a(m,{name:_e(e),displayName:G(e,t)})},n))}),a(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),a(`div`,{class:`craft-result`,children:[a(`span`,{class:`slot full result`,title:G(e.result,t),children:[a(m,{name:e.result,displayName:G(e.result,t)}),e.count&&e.count>1&&a(`span`,{class:`slot-count`,children:e.count})]}),a(`span`,{class:`craft-result-name`,children:G(e.result,t)})]})]}),a(`figcaption`,{children:[a(`ul`,{class:`recipe-legend`,children:r.map(e=>a(`li`,{children:[a(m,{name:_e(e),displayName:G(e,t)}),` `,G(e,t)]},e))}),e.shapeless&&a(`p`,{class:`muted small`,children:W[t].shapeless})]})]})}function Ne({b:e}){switch(e.t){case`h`:return a(je,{b:e});case`p`:return a(`p`,{children:a($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return a(t,{children:e.items.map((e,t)=>a(`li`,{children:a($,{c:e})},t))})}case`callout`:return a(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>a(`p`,{children:a($,{c:e})},t))});case`table`:return a(`div`,{class:`table-wrap`,children:a(`table`,{children:[a(`thead`,{children:a(`tr`,{children:e.head.map((e,t)=>a(`th`,{children:a($,{c:e})},t))})}),a(`tbody`,{children:e.rows.map((e,t)=>a(`tr`,{children:e.map((e,t)=>a(`td`,{children:a($,{c:e})},t))},t))})]})});case`code`:return a(h,{code:e.code,label:e.lang||`shell`});case`recipe`:return a(Me,{r:e.recipe})}}function Pe({onPick:t,autoFocus:n}){let[r,o]=e(``),s=X.value,c=i(()=>r.trim().length>=2?Ee(s,r):[],[r,s]);return a(`div`,{class:`docs-search`,children:[a(`input`,{type:`search`,class:`input docs-search-input`,placeholder:W[s].search,value:r,autoFocus:n,"aria-label":W[s].search,onInput:e=>o(e.target.value)}),r.trim().length>=2&&a(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":W[s].results,children:c.length===0?a(`p`,{class:`muted small`,children:[W[s].noResults,` „`,r,`“`]}):c.map(e=>a(`a`,{class:`docs-hit`,href:`/docs/${e.page}${e.anchor?`#${e.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${e.page}${e.anchor?`#${e.anchor}`:``}`),o(``),t?.()},children:[a(`span`,{class:`docs-hit-title`,children:[e.heading,` `,a(`span`,{class:`muted`,children:[`· `,e.pageTitle]})]}),a(`span`,{class:`docs-hit-snippet`,children:e.snippet})]},`${e.page}#${e.anchor}`))})]})}function Fe({page:e,onPick:t}){let n=X.value,r=J(n,e).filter(e=>e.t===`h`&&e.level===2);return a(`nav`,{class:`docs-nav`,"aria-label":W[n].docs,children:U.map(i=>a(`div`,{children:[a(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[a(p,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&a(`div`,{class:`docs-toc`,children:r.map(e=>a(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function Ie(){let e=X.value;return a(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":W[e].language,children:[`de`,`en`].map(t=>a(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>De(t),children:t.toUpperCase()},t))})}function Le({page:e,onClose:t,children:n}){return a(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:a(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":W[X.value].menu,children:[a(`header`,{class:`sheet-head`,children:[a(`h2`,{class:`px-title`,children:W[X.value].docs}),a(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:a(d,{})})]}),a(`div`,{class:`sheet-body`,children:[a(Pe,{onPick:t}),a(Fe,{page:e,onPick:t}),n]})]})})}function Re(){let{page:t,anchor:i}=Z.value,s=X.value,[c,l]=e(!1),u=J(s,t),d=U.findIndex(e=>e.id===t),f=U[d-1],p=U[d+1],m=n(null);ke(t,i),r(()=>{document.documentElement.lang=s,document.title=`${U[d].title[s]} – CC: Cloud ${W[s].docs}`},[t,s]),r(()=>{me[s][t]||Q(`/docs`)},[t,s]);let h=o.value;return a(`div`,{class:`docs`,children:[a(`header`,{class:`topbar docs-top`,children:[a(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[a(ae,{size:26}),a(`span`,{class:`brand-text`,children:[a(`span`,{class:`brand-cc`,children:`CC:`}),a(`span`,{class:`brand-cloud`,children:`Cloud`}),a(`span`,{class:`docs-badge`,children:W[s].docs})]})]}),a(`div`,{class:`docs-top-actions`,children:[a(Ie,{}),a(`button`,{type:`button`,class:`icon-btn`,onClick:oe,"aria-label":`Theme: ${h}`,children:a(h===`dark`?ne:h===`light`?ee:ie,{})}),a(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>l(!0),children:[`☰ `,W[s].menu]})]})]}),a(`div`,{class:`docs-layout`,children:[a(`aside`,{class:`docs-side`,children:[a(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[a(re,{size:16}),` `,W[s].back]}),a(Pe,{}),a(Fe,{page:t})]}),a(`main`,{class:`docs-main`,ref:m,children:[a(`article`,{class:`docs-article`,lang:s,children:u.map((e,n)=>a(Ne,{b:e},`${t}-${s}-${n}`))}),a(`nav`,{class:`docs-pager`,children:[f?a(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[a(`span`,{class:`muted small`,children:[`← `,W[s].prev]}),a(`span`,{children:f.title[s]})]}):a(`span`,{}),p&&a(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[a(`span`,{class:`muted small`,children:[W[s].next,` →`]}),a(`span`,{children:p.title[s]})]})]})]})]}),c&&a(Le,{page:t,onClose:()=>l(!1)}),a(te,{})]})}export{Re as default};
+`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=G(o[2]),t=K(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??be(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(G),rows:a.map(e=>e.map(G))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(G)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(G)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:G(l.join(` `))})}return n}function Ce(e){switch(e.t){case`h`:return e.text;case`p`:return K(e.c);case`ul`:case`ol`:return e.items.map(K).join(` `);case`callout`:return e.c.map(K).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(K).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var we=new Map;function q(e,t){let n=`${e}/${t}`,r=we.get(n);return r||(r=Se(he[e][t]??``),we.set(n,r)),r}var Te=new Map;function Ee(e){let t=Te.get(e);if(t)return t;t=[];for(let n of H){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of q(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+Ce(i));t.push(r)}return Te.set(e,t),t}var J=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function De(e,t,n=20){let r=J(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Ee(e)){let e=J(t.heading),n=J(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),ee=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:ee})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var Y=re((()=>{let e=s(`lang`,``);return e===`de`||e===`en`?e:ye()})()),Oe=e=>{Y.value=e,c(`lang`,e),document.documentElement.lang=e};function X(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:H.some(t=>t.id===e?.[1])?e[1]:H[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=re(X());addEventListener(`popstate`,()=>Z.value=X());function Q(e){history.pushState(null,``,e),Z.value=X(),Z.value.anchor||window.scrollTo(0,0)}function ke(e,t){r(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return a(t,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return a(`code`,{children:e.v},t);case`strong`:return a(`strong`,{children:a($,{c:e.c})},t);case`em`:return a(`em`,{children:a($,{c:e.c})},t);case`link`:return a(Ae,{href:e.href,c:e.c},t)}})})}function Ae({href:e,c:t}){return/^https?:/.test(e)?a(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:a($,{c:t})}):a(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:a($,{c:t})})}function je({b:e}){let t=`h${e.level}`;return a(t,{id:e.id,class:`dh dh${e.level}`,children:[a($,{c:e.c}),e.level>1&&a(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":U[Y.value].copyLink,title:U[Y.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await f(n)&&u({level:`info`,title:U[Y.value].docs,text:U[Y.value].linkCopied},2500)},children:`#`})]})}function Me({r:e}){let t=Y.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return a(`figure`,{class:`recipe`,children:[a(`div`,{class:`recipe-main`,children:[a(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${W(e.result,t)}: ${r.map(e=>W(e,t)).join(`, `)}`,children:n.map((e,n)=>a(`span`,{class:`slot ${e?`full`:``}`,title:e?W(e,t):void 0,children:e&&a(m,{name:ve(e),displayName:W(e,t)})},n))}),a(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),a(`div`,{class:`craft-result`,children:[a(`span`,{class:`slot full result`,title:W(e.result,t),children:[a(m,{name:e.result,displayName:W(e.result,t)}),e.count&&e.count>1&&a(`span`,{class:`slot-count`,children:e.count})]}),a(`span`,{class:`craft-result-name`,children:W(e.result,t)})]})]}),a(`figcaption`,{children:[a(`ul`,{class:`recipe-legend`,children:r.map(e=>a(`li`,{children:[a(m,{name:ve(e),displayName:W(e,t)}),` `,W(e,t)]},e))}),e.shapeless&&a(`p`,{class:`muted small`,children:U[t].shapeless})]})]})}function Ne({b:e}){switch(e.t){case`h`:return a(je,{b:e});case`p`:return a(`p`,{children:a($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return a(t,{children:e.items.map((e,t)=>a(`li`,{children:a($,{c:e})},t))})}case`callout`:return a(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>a(`p`,{children:a($,{c:e})},t))});case`table`:return a(`div`,{class:`table-wrap`,children:a(`table`,{children:[a(`thead`,{children:a(`tr`,{children:e.head.map((e,t)=>a(`th`,{children:a($,{c:e})},t))})}),a(`tbody`,{children:e.rows.map((e,t)=>a(`tr`,{children:e.map((e,t)=>a(`td`,{children:a($,{c:e})},t))},t))})]})});case`code`:return a(h,{code:e.code,label:e.lang||`shell`});case`recipe`:return a(Me,{r:e.recipe})}}function Pe({onPick:t,autoFocus:n}){let[r,o]=e(``),s=Y.value,c=i(()=>r.trim().length>=2?De(s,r):[],[r,s]);return a(`div`,{class:`docs-search`,children:[a(`input`,{type:`search`,class:`input docs-search-input`,placeholder:U[s].search,value:r,autoFocus:n,"aria-label":U[s].search,onInput:e=>o(e.target.value)}),r.trim().length>=2&&a(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":U[s].results,children:c.length===0?a(`p`,{class:`muted small`,children:[U[s].noResults,` „`,r,`“`]}):c.map(e=>a(`a`,{class:`docs-hit`,href:`/docs/${e.page}${e.anchor?`#${e.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${e.page}${e.anchor?`#${e.anchor}`:``}`),o(``),t?.()},children:[a(`span`,{class:`docs-hit-title`,children:[e.heading,` `,a(`span`,{class:`muted`,children:[`· `,e.pageTitle]})]}),a(`span`,{class:`docs-hit-snippet`,children:e.snippet})]},`${e.page}#${e.anchor}`))})]})}function Fe({page:e,onPick:t}){let n=Y.value,r=q(n,e).filter(e=>e.t===`h`&&e.level===2);return a(`nav`,{class:`docs-nav`,"aria-label":U[n].docs,children:H.map(i=>a(`div`,{children:[a(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[a(p,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&a(`div`,{class:`docs-toc`,children:r.map(e=>a(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function Ie(){let e=Y.value;return a(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":U[e].language,children:[`de`,`en`].map(t=>a(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>Oe(t),children:t.toUpperCase()},t))})}function Le({page:e,onClose:t,children:n}){return a(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:a(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":U[Y.value].menu,children:[a(`header`,{class:`sheet-head`,children:[a(`h2`,{class:`px-title`,children:U[Y.value].docs}),a(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:a(d,{})})]}),a(`div`,{class:`sheet-body`,children:[a(Pe,{onPick:t}),a(Fe,{page:e,onPick:t}),n]})]})})}function Re(){let{page:t,anchor:i}=Z.value,s=Y.value,[c,u]=e(!1),re=q(s,t),d=H.findIndex(e=>e.id===t),f=H[d-1],p=H[d+1],m=n(null);ke(t,i),r(()=>{document.documentElement.lang=s,document.title=`${H[d].title[s]} – CC: Cloud ${U[s].docs}`},[t,s]),r(()=>{he[s][t]||Q(`/docs`)},[t,s]);let h=o.value;return a(`div`,{class:`docs`,children:[a(`header`,{class:`topbar docs-top`,children:[a(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[a(oe,{size:26}),a(`span`,{class:`brand-text`,children:[a(`span`,{class:`brand-cc`,children:`CC:`}),a(`span`,{class:`brand-cloud`,children:`Cloud`}),a(`span`,{class:`docs-badge`,children:U[s].docs})]})]}),a(`div`,{class:`docs-top-actions`,children:[a(Ie,{}),a(`button`,{type:`button`,class:`icon-btn`,onClick:ae,"aria-label":`Theme: ${h}`,children:a(h===`dark`?ne:h===`light`?l:te,{})}),a(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>u(!0),children:[`☰ `,U[s].menu]})]})]}),a(`div`,{class:`docs-layout`,children:[a(`aside`,{class:`docs-side`,children:[a(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[a(ie,{size:16}),` `,U[s].back]}),a(Pe,{}),a(Fe,{page:t})]}),a(`main`,{class:`docs-main`,ref:m,children:[a(`article`,{class:`docs-article`,lang:s,children:re.map((e,n)=>a(Ne,{b:e},`${t}-${s}-${n}`))}),a(`nav`,{class:`docs-pager`,children:[f?a(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[a(`span`,{class:`muted small`,children:[`← `,U[s].prev]}),a(`span`,{children:f.title[s]})]}):a(`span`,{}),p&&a(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[a(`span`,{class:`muted small`,children:[U[s].next,` →`]}),a(`span`,{children:p.title[s]})]})]})]})]}),c&&a(Le,{page:t,onClose:()=>u(!1)}),a(ee,{})]})}export{Re as default};

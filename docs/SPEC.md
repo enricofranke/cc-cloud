@@ -251,6 +251,33 @@ A card is one of:
 - Card span: `group.cols`, else 2 when the card contains an `item_search` or a `chart`, else 1. Card colour `gold` (or the widget's `opts.color`), icon from `opts.icon`.
 - Widget order: `opts.order`, else by type (gauge, indicator, chart, progress, label, item_search, watchlist, jobs, inputs, buttons group, buttons), then declaration order. Widget span: `opts.span`, else 1 for gauge/indicator/button, 2 for label/watchlist/jobs, otherwise full width. The card body has 2 columns (1-column cards, phones) or 4 columns (wider cards).
 
+### Layout schema v2 (WYSIWYG editor, 2026-10-23)
+The dashboard now writes `"v": 2` documents (it still reads v1 and migrates it on the first save). Cards sit on a **12-column page grid**, widgets on a **12-column grid inside their card**; both are placed with `x`/`y`/`w`/`h` in grid units (a row is 32 px including the gap; rows grow when content is taller). Widgets can be moved into other cards, including **custom cards** the user creates (`"c:<id>"`). Reference: `cloud/dev/protocol.ts` (`layoutDoc`, zod, accepts v1 and v2) and `cloud/web/src/lib/layout.ts` + `grid.ts`.
+```json
+{
+  "v": 2,
+  "pages": [{"id": "main", "title": "Overview", "icon": "home"}],
+  "cards": {
+    "<cardKey>":   {"page": "main", "x": 0, "y": 0, "w": 3, "h": 10, "title": "Reactor", "hidden": false, "color": "red", "icon": "flame", "style": "compact"},
+    "c:card1":     {"page": "main", "x": 3, "y": 0, "w": 6, "h": 4, "title": "My overview"}
+  },
+  "widgets": {
+    "<uplinkId>/<widgetId>": {"card": "c:card1", "x": 0, "y": 0, "w": 6, "h": 5, "label": "Core temp", "hidden": false, "color": "red", "icon": "flame", "display": "bar"}
+  }
+}
+```
+Validation (reject the whole document with `invalid_layout`; unknown keys are an error; sizes as in v1: ≤ 64 KB, ≤ 12 pages, ≤ 256 cards, ≤ 2048 widgets):
+- `v` = `1` (old rules above) or `2`.
+- `pages`: as in v1.
+- `cards` keys: a card key (1–160 chars) or a custom card `c:` + `[A-Za-z0-9_-]{1,24}`. Values (all optional): `page` ≤ 32, `x` int 0–11, `y` int 0–999, `w` int 1–12, `h` int 1–60, `x + w ≤ 12` when both are set, `title` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `style` ∈ `comfortable|compact`. v1's `order`/`span` are not allowed in v2.
+- `widgets` keys as in v1. Values (all optional): `card` (a card key or custom card key, 1–160 chars), `x` 0–11, `y` 0–999, `w` 1–12, `h` 1–40, `x + w ≤ 12`, `label` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `display` ∈ `dial|bar|number|row|big|line|sparkline|chip|lamp` (gauge: dial/bar/number, progress: bar/number, label: row/big, chart: line/sparkline, indicator: chip/lamp; others ignore it).
+- Overlaps are not an error (the dashboard resolves them by pushing items down); unknown card/widget keys are kept and skipped when rendering, as in v1. A `card` pointing at a card that does not exist (any more) puts the widget back into its own card.
+- Custom cards hold widgets of any uplink; actions still go to the widget's own uplink (`uplinkId` is part of the widget key). Share links may list custom card keys in `cards`.
+
+**Migration v1 → v2 (dashboard):** cards keep their page and reading order and get `w = span × 3`, packed left to right into rows; widgets get `w = span × 6` in 1-column cards and `span × 3` in wider ones, packed in their order; heights come from the widget types (gauge 5, chart 5, label 1, buttons 2, …) and the card height is header (2) + its widgets. The first save writes v2.
+
+**Responsive rendering:** ≥ 1100 px the page grid uses the exact positions; 720–1099 px six columns in reading order (y, then x) with `w ≤ 4 → half width, else full`; < 720 px two columns (`w ≤ 2 → half, else full`). Widget grids inside cards always use their exact positions.
+
 ### Uplink snapshot additions for Lua API v2
 - `uplink.pages`: `[{"id","title","icon"}]` from `cloud.page()`, `uplink.groups`: `[{"id","title","page","cols"}]` from `cloud.group()`.
 - `chart` widgets: the snapshot carries `"history":[numbers…]` (oldest first, ≤ `opts.points`, max 300). A `value` delta with a number appends one point; a `value` delta with an array replaces the history.
