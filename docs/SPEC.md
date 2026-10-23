@@ -802,6 +802,35 @@ Push Lua programs from the browser straight onto a CC computer through the mainf
 - Lua running on a CC computer is sandboxed by CC (no Java access, CC's HTTP rules unchanged), so this cannot execute code on the Minecraft server itself.
 - Also list/download/delete files of that computer (admin), as the base for the later full Lua editor.
 
+#### Script import – HTTP API (mod side, implemented)
+All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_allowed"}`; no role → `403 {"error":"no_access"}`). `<uplinkId>` is the card (section id) of a Cloud Uplink. Its computer is the CC computer the uplink is placed on. If the uplink is not on a computer, it is the one computer attached to the uplink over a modem. Errors are `{"error"}` with the status shown.
+- **Paths:** `name` or `folder/name`, each part `[A-Za-z0-9_.-]{1,64}`, not `.`/`..`.
+  - The first part must not be `rom`, `disk`, `disk2`… (other mounts) or `.cloud` (reserved).
+  - No leading `/`, no `\`.
+  - Bad path → `400 invalid_path`.
+- **Write PIN:** writes, deletes and run need the mainframe PIN if one is set, in the header `X-Cloud-Pin: 1234`. Errors:
+  - `403 pin_required`;
+  - `403 wrong_pin` + `attemptsLeft`;
+  - `403 pin_locked` + `retryAfter`.
+- **Write rate limit:** 10 writes/deletes/runs per minute per device → `429 rate_limited`.
+- **Card errors:** `404 unknown_computer` (the card is not an uplink on/with a computer, or not loaded), `409 offline` (the mainframe is offline).
+- `GET /api/mainframes/<id>/computers/<uplinkId>/files`
+  → `{"computer":{"id":0,"label":"Base","on":true,"advanced":true},"used":12345,"capacity":1000000,"files":[{"path":"startup.lua","size":120,"dir":false}]}`
+  - Two levels deep, at most 500 entries.
+- `GET …/files/<path>` → the raw file, `text/plain; charset=utf-8`, ≤ 256 KB.
+- `PUT …/files/<path>[?overwrite=true][&startup=true]` with the raw file as the body (UTF-8, ≤ 256 KB).
+  - Response: `{"ok":true,"path","size"}`.
+  - Errors: `409 exists` (without `overwrite=true`), `413 too_large`, `507 quota` (the computer's disk space, CC config `computerSpaceLimit`).
+  - The write is atomic: a temporary file, then a rename.
+  - `startup=true` also writes `startup.lua` containing `shell.run("<path>")`.
+- `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`.
+- `POST …/run` with `{"path":"control-room.lua","mode":"auto"|"event"|"reboot"}` → `{"ok":true,"started":"event"|"reboot"}`. Only an uploaded file name ever reaches the computer, never a command string. Modes:
+  - `event` queues the event `cloud_run` with the path. The ROM helper (`rom/autorun/cloud.lua`) starts a background "cloud" tab on advanced computers that have a Cloud Uplink. It runs the file in a new multishell tab (`cloud-run --listen`). Without multishell, a running `cloud.ui` dashboard runs it.
+  - `reboot` writes `.cloud/run_next` and restarts the computer. The autorun helper runs the file once after boot.
+  - `auto` = `event` on advanced computers, otherwise `409 needs_reboot` (the dashboard asks, then sends `reboot`).
+  - The ROM program `cloud-run <file>` runs a file by hand. Computers can switch the background tab off with `set cloud.runner false`.
+- **Audit:** every write, delete and run creates an audit log entry and a server log line. The owner, if online, gets a chat note: "<device> (<player>) uploaded control-room.lua to Computer #0".
+
 ## Website & Script Store (requested 2026-10-23)
 
 ### Project website
