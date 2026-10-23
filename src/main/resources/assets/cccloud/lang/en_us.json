@@ -254,5 +254,13 @@
   "cccloud.configuration.enderRelayFE": "Ender relay usage (FE/t)",
   "cccloud.configuration.relayBufferFE": "Relay buffer (FE)",
   "cccloud.configuration.advancedRelayBufferFE": "Advanced relay buffer (FE)",
-  "cccloud.configuration.enderRelayBufferFE": "Ender relay buffer (FE)"
+  "cccloud.configuration.enderRelayBufferFE": "Ender relay buffer (FE)",
+  "cccloud.configuration.cards": "Ready-made cards",
+  "cccloud.configuration.deviceCards": "Device cards on machines",
+  "cccloud.configuration.mffsRequirePin": "MFFS field toggle needs the PIN",
+  "cccloud.configuration.server": "Server & team",
+  "cccloud.configuration.serverCard": "Server card on mainframes",
+  "cccloud.configuration.ftbTeamsTrust": "FTB Teams: trust the owner's team",
+  "cccloud.configuration.ftbChunksClaims": "FTB Chunks: team claims card",
+  "cccloud.configuration.backupCard": "Simple Backups: backups card"
 }

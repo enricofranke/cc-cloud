@@ -254,5 +254,13 @@
   "cccloud.configuration.enderRelayFE": "Ender-Relais (FE/t)",
   "cccloud.configuration.relayBufferFE": "Relais-Puffer (FE)",
   "cccloud.configuration.advancedRelayBufferFE": "Puffer erweitertes Relais (FE)",
-  "cccloud.configuration.enderRelayBufferFE": "Ender-Relais-Puffer (FE)"
+  "cccloud.configuration.enderRelayBufferFE": "Ender-Relais-Puffer (FE)",
+  "cccloud.configuration.cards": "Fertige Karten",
+  "cccloud.configuration.deviceCards": "Gerätekarten an Maschinen",
+  "cccloud.configuration.mffsRequirePin": "MFFS-Feldschalter braucht die PIN",
+  "cccloud.configuration.server": "Server & Team",
+  "cccloud.configuration.serverCard": "Server-Karte an Mainframes",
+  "cccloud.configuration.ftbTeamsTrust": "FTB Teams: dem Team des Besitzers vertrauen",
+  "cccloud.configuration.ftbChunksClaims": "FTB Chunks: Karte mit Team-Claims",
+  "cccloud.configuration.backupCard": "Simple Backups: Backup-Karte"
 }
