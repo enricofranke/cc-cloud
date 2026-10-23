@@ -178,6 +178,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             int devices = store.devices(mainframeId).size();
             store.forgetMainframe(mainframeId);
             WebAuthData.access(serverLevel.getServer()).forget(mainframeId);
+            ai.ezfox.cccloud.rules.RuleService.forget(serverLevel.getServer(), mainframeId);
             CCCloud.LOGGER.info("[cccloud] {} was removed; its pairing code, PIN and {} device(s) were deleted", getDisplayName(), devices);
             WebHub.INSTANCE.removeMainframe(mainframeId);
             ai.ezfox.cccloud.layout.LayoutData.get(serverLevel.getServer()).remove(mainframeId);

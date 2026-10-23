@@ -141,6 +141,7 @@ class ShareSessionTest {
         samples.put(ClientMessages.Query.class, new String[]{"{\"t\":\"query\",\"reqId\":\"q1\",\"uplinkId\":\"" + uplink + "\",\"id\":\"search\",\"q\":\"iron\"}", "query_result"});
         samples.put(ClientMessages.LayoutSet.class, new String[]{"{\"t\":\"layout_set\",\"reqId\":\"l1\",\"layout\":{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{}}}", "layout_result"});
         samples.put(ClientMessages.NetUnlink.class, new String[]{"{\"t\":\"net_unlink\",\"reqId\":\"n1\",\"nodeId\":\"" + uplink + "\"}", "net_result"});
+        samples.put(ClientMessages.RuleCommand.class, new String[]{"{\"t\":\"rule_set\",\"reqId\":\"r1\",\"rule\":{}}", "rule_result"});
         samples.put(ClientMessages.Invalid.class, new String[]{"{\"t\":\"something_else\",\"reqId\":\"x1\"}", "error"});
         samples.put(ClientMessages.Pong.class, new String[]{"{\"t\":\"pong\"}", null});
         for (var type : ClientMessages.Message.class.getPermittedSubclasses()) {

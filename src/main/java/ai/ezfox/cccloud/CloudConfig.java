@@ -42,6 +42,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
+    public static final ModConfigSpec.BooleanValue RULES_ENABLED;
+    public static final ModConfigSpec.IntValue MAX_RULES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -163,6 +165,15 @@ public final class CloudConfig {
         MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
             .translation("cccloud.configuration.maxCraftAmount")
             .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
+        b.pop();
+
+        b.push("rules");
+        RULES_ENABLED = b.comment("Run the no-code automation rules of mainframes (dashboard: When → If → Then).")
+            .translation("cccloud.configuration.rulesEnabled")
+            .define("rulesEnabled", true);
+        MAX_RULES = b.comment("Maximum number of rules per mainframe.")
+            .translation("cccloud.configuration.maxRules")
+            .defineInRange("maxRulesPerMainframe", 32, 1, 128);
         b.pop();
 
         b.push("teams");

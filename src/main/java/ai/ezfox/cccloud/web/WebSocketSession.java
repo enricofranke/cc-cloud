@@ -142,6 +142,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.Query query -> query(current, query);
             case ClientMessages.LayoutSet layout -> layout(current, layout);
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
+            case ClientMessages.RuleCommand command -> rule(current, command);
         }
     }
 
@@ -394,6 +395,44 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         } catch (RejectedExecutionException e) {
             sendNetResult(unlink.reqId(), "offline");
         }
+    }
+
+    /** v0.5 rules: edit (admin) or operate (operator); answered with rule_result. */
+    private void rule(AuthStore.Device current, ClientMessages.RuleCommand command) {
+        String denied = AccessGate.check(role, command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
+        if (denied != null) {
+            sendRuleResult(command.reqId(), new GameBridge.RuleResult(denied, null, null));
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendRuleResult(command.reqId(), new GameBridge.RuleResult("rate_limited", null, null));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.RuleResult result;
+                try {
+                    result = instance.bridge.ruleCommand(current, mainframeId, command);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a rule command from {}", ip, e);
+                    result = new GameBridge.RuleResult("internal_error", null, null);
+                }
+                sendRuleResult(command.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendRuleResult(command.reqId(), new GameBridge.RuleResult("offline", null, null));
+        }
+    }
+
+    private void sendRuleResult(String reqId, GameBridge.RuleResult result) {
+        var json = new JsonObject();
+        json.addProperty("t", "rule_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", result.error() == null);
+        if (result.error() != null) json.addProperty("error", result.error());
+        if (result.detail() != null) json.addProperty("detail", result.detail());
+        if (result.id() != null) json.addProperty("id", result.id());
+        send(List.of(Json.GSON.toJson(json)));
     }
 
     private void sendNetResult(String reqId, @Nullable String error) {

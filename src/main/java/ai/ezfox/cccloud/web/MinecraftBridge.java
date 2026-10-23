@@ -196,6 +196,39 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
+        String error = AccessGate.check(role(device, mainframeId), command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
+        if (error != null) return new GameBridge.RuleResult(error, null, null);
+        String who = device.playerName() + " (" + device.name() + ")";
+        switch (command.op()) {
+            case "rule_set" -> {
+                var edit = ai.ezfox.cccloud.rules.RuleService.set(server, mainframeId, command.rule());
+                if (edit.error() != null) {
+                    String e = edit.error();
+                    int colon = e.indexOf(':');
+                    return colon < 0 ? new GameBridge.RuleResult(e, null, null) : new GameBridge.RuleResult(e.substring(0, colon), e.substring(colon + 1), null);
+                }
+                WebAuthData.access(server).audit(mainframeId, who + " saved rule " + edit.id());
+                return new GameBridge.RuleResult(null, null, edit.id());
+            }
+            case "rule_delete" -> {
+                String e = ai.ezfox.cccloud.rules.RuleService.delete(server, mainframeId, command.id());
+                if (e == null) WebAuthData.access(server).audit(mainframeId, who + " deleted rule " + command.id());
+                return new GameBridge.RuleResult(e, null, null);
+            }
+            case "rule_enable" -> {
+                return new GameBridge.RuleResult(ai.ezfox.cccloud.rules.RuleService.setEnabled(server, mainframeId, command.id(), command.enabled()), null, null);
+            }
+            case "rule_run" -> {
+                return new GameBridge.RuleResult(ai.ezfox.cccloud.rules.RuleService.runNow(server, mainframeId, command.id()), null, null);
+            }
+            default -> {
+                return new GameBridge.RuleResult("invalid_message", null, null);
+            }
+        }
+    }
+
+    @Override
     public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         String name = mainframeName(mainframeId);
         CloudLog.LOGGER.warn("[cccloud] Device '{}' ({}) locked for 5 minutes after {} wrong PINs on {}", device.name(), ip, AuthStore.PIN_MAX_FAILURES, name);

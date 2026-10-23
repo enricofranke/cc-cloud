@@ -63,6 +63,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
+        dispatched.add(command.op());
+        return new GameBridge.RuleResult(null, null, null);
+    }
+
+    @Override
     public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
     }
 

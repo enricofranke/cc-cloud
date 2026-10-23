@@ -53,6 +53,8 @@ public final class WebHub {
         @Nullable JsonObject networkStrippedJson;
         boolean networkDirty;
         long networkSentAt;
+        /** v0.5 rules of the mainframe ({rules, log, limit}), null = none yet; never sent to share sessions. */
+        @Nullable JsonObject rules;
         /** Shared dashboard layout (validated), null = never edited. */
         @Nullable JsonObject layout;
         /** 5 layout saves per 10 s per mainframe. */
@@ -306,13 +308,60 @@ public final class WebHub {
         }
     }
 
-    public void publishAlert(UUID mainframeId, String uplinkId, String text, String level) {
+    /** Rules document of a mainframe ({@code {rules:[…], log:[…], limit}}): snapshot field {@code rules}, delta {@code {"t":"rules",…}}. */
+    public void publishRules(UUID mainframeId, JsonObject rules) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            if (rules.equals(view.rules)) return;
+            view.rules = rules.deepCopy();
+            var message = rules.deepCopy();
+            message.addProperty("t", "rules");
+            put(view, "rules", message);
+        }
+    }
+
+    /** Current value of a widget as published to the browsers, or null. */
+    public @Nullable JsonElement widgetValue(UUID mainframeId, String uplinkId, String widgetId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var index = view.widgetIndex.get(uplinkId);
+            var widget = index == null ? null : index.get(widgetId);
+            return widget == null || !widget.has("value") ? null : widget.get("value").deepCopy();
+        }
+    }
+
+    /** Id of the first widget of a type in a published section (e.g. the item_search of a storage card), or null. */
+    public @Nullable String firstWidgetOfType(UUID mainframeId, String uplinkId, String type) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var uplink = view.uplinks.get(uplinkId);
+            if (uplink == null || !(uplink.get("widgets") instanceof JsonArray widgets)) return null;
+            for (var w : widgets) {
+                if (w instanceof JsonObject o && o.has("type") && type.equals(o.get("type").getAsString())) return o.get("id").getAsString();
+            }
+            return null;
+        }
+    }
+
+    /** True if the section is published and online. */
+    public boolean uplinkOnline(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return false;
+        synchronized (view) {
+            var uplink = view.uplinks.get(uplinkId);
+            return uplink != null && uplink.has("online") && uplink.get("online").getAsBoolean();
+        }
+    }
+
+    public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level) {
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
             var message = new JsonObject();
             message.addProperty("t", "alert");
-            message.addProperty("uplinkId", uplinkId);
+            if (uplinkId != null) message.addProperty("uplinkId", uplinkId);
             message.addProperty("text", text);
             message.addProperty("level", level);
             message.addProperty("ts", System.currentTimeMillis());
@@ -408,6 +457,7 @@ public final class WebHub {
         // Positions only for devices with canControl.
         var network = canControl ? view.networkFullJson : view.networkStrippedJson;
         if (network != null) json.add("network", network);
+        if (view.rules != null) json.add("rules", view.rules);
         return json;
     }
 

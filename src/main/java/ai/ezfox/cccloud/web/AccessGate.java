@@ -22,7 +22,11 @@ public final class AccessGate {
         /** Unlinking from the network map: admin. */
         NET_UNLINK,
         /** Access, shares and devices of a mainframe (HTTP): admin. */
-        MANAGE
+        MANAGE,
+        /** v0.5 rules: create, edit, delete – admin. */
+        RULE_EDIT,
+        /** v0.5 rules: enable/disable, run now – operator. */
+        RULE_OPERATE
     }
 
     private AccessGate() {
@@ -34,7 +38,8 @@ public final class AccessGate {
         return switch (kind) {
             case QUERY -> role.atLeast(Role.VIEWER) ? null : "forbidden";
             case ACTION -> role.canControl() ? null : "read_only";
-            case LAYOUT, NET_UNLINK -> !role.canControl() ? "read_only" : role.atLeast(Role.ADMIN) ? null : "not_allowed";
+            case LAYOUT, NET_UNLINK, RULE_EDIT -> !role.canControl() ? "read_only" : role.atLeast(Role.ADMIN) ? null : "not_allowed";
+            case RULE_OPERATE -> role.canControl() ? null : "read_only";
             case MANAGE -> role.atLeast(Role.ADMIN) ? null : "not_allowed";
         };
     }
@@ -54,6 +59,7 @@ public final class AccessGate {
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
             case "net_unlink" -> "net_result";
+            case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             default -> null;
         };
         var json = new JsonObject();

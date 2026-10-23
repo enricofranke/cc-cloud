@@ -107,4 +107,39 @@ public final class MainframePeripheral implements IPeripheral {
         }
         return result;
     }
+
+    /**
+     * The mainframe's rules (v0.5): {id, name, enabled, trigger, actions, lastRun, lastResult, runs}. Editing happens in
+     * the dashboard (admin); Lua can only list them and switch them on/off.
+     */
+    @LuaFunction(mainThread = true)
+    public final List<Map<String, Object>> getRules() {
+        var server = mainframe.getLevel() == null ? null : mainframe.getLevel().getServer();
+        var result = new ArrayList<Map<String, Object>>();
+        if (server == null) return result;
+        var doc = ai.ezfox.cccloud.rules.RuleService.document(server, mainframe.getMainframeId());
+        for (var e : doc.getAsJsonArray("rules")) {
+            var rule = e.getAsJsonObject();
+            var info = new HashMap<String, Object>();
+            info.put("id", rule.get("id").getAsString());
+            info.put("name", rule.get("name").getAsString());
+            info.put("enabled", rule.get("enabled").getAsBoolean());
+            info.put("trigger", rule.getAsJsonObject("when").get("type").getAsString());
+            info.put("actions", rule.getAsJsonArray("then").size());
+            if (!rule.get("lastRun").isJsonNull()) info.put("lastRun", rule.get("lastRun").getAsLong());
+            if (!rule.get("lastResult").isJsonNull()) info.put("lastResult", rule.get("lastResult").getAsString());
+            info.put("runs", rule.get("runs").getAsLong());
+            result.add(info);
+        }
+        return result;
+    }
+
+    /** Enables or disables a rule. Returns true, or false and an error ("unknown_rule"). */
+    @LuaFunction(mainThread = true)
+    public final Object[] setRuleEnabled(String id, boolean enabled) {
+        var server = mainframe.getLevel() == null ? null : mainframe.getLevel().getServer();
+        if (server == null) return new Object[]{false, "offline"};
+        String error = ai.ezfox.cccloud.rules.RuleService.setEnabled(server, mainframe.getMainframeId(), id, enabled);
+        return error == null ? new Object[]{true} : new Object[]{false, error};
+    }
 }

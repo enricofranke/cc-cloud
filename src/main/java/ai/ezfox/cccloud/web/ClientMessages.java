@@ -22,7 +22,19 @@ public final class ClientMessages {
 
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
-    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, Pong, Invalid {
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, Pong, Invalid {
+    }
+
+    /**
+     * v0.5 rules: {@code rule_set {reqId, rule}} (admin), {@code rule_delete {reqId, id}} (admin),
+     * {@code rule_enable {reqId, id, enabled}} and {@code rule_run {reqId, id}} (operator). Answered with
+     * {@code rule_result}. The rule itself is validated by {@link ai.ezfox.cccloud.rules.RuleCodec}.
+     */
+    public record RuleCommand(String reqId, String op, @Nullable String id, boolean enabled, @Nullable JsonElement rule) implements Message {
+        /** rule_set and rule_delete edit rules (admin); rule_enable and rule_run only operate them (operator). */
+        public boolean edits() {
+            return op.equals("rule_set") || op.equals("rule_delete");
+        }
     }
 
     /** {@code {"t":"auth","token","mainframeId?"}}: account tokens must name the mainframe (v0.6). */
@@ -117,6 +129,7 @@ public final class ClientMessages {
                 yield id == null || secret == null || id.length() > 32 || secret.isEmpty() || secret.length() > 64
                     ? new Invalid("invalid_message", null) : new AuthShare(id, secret);
             }
+            case "rule_set", "rule_delete", "rule_enable", "rule_run" -> parseRule(t, obj);
             case "net_unlink" -> {
                 String reqId = string(obj, "reqId");
                 if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
@@ -153,6 +166,24 @@ public final class ClientMessages {
         String pin = string(obj, "pin");
         if (pin != null && !AuthStore.isValidPin(pin)) return new Invalid("wrong_pin", reqId);
         return new Action(reqId, uplinkId, id, value, op, pin);
+    }
+
+    private static final Pattern RULE_ID = Pattern.compile("[0-9a-f]{8}");
+
+    private static Message parseRule(String t, JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        String id = string(obj, "id");
+        if (!t.equals("rule_set") && (id == null || !RULE_ID.matcher(id).matches())) return new Invalid("invalid_message", reqId);
+        boolean enabled = false;
+        if (t.equals("rule_enable")) {
+            var e = obj.get("enabled");
+            if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isBoolean()) return new Invalid("invalid_message", reqId);
+            enabled = e.getAsBoolean();
+        }
+        JsonElement rule = t.equals("rule_set") ? obj.get("rule") : null;
+        if (t.equals("rule_set") && (rule == null || !rule.isJsonObject())) return new Invalid("invalid_message", reqId);
+        return new RuleCommand(reqId, t, id, enabled, rule);
     }
 
     private static Message parseQuery(JsonObject obj) {

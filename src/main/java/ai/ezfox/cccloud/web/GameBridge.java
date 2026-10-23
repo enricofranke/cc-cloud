@@ -49,6 +49,13 @@ public interface GameBridge {
     /** Unlinks a device from the network map (admin). Returns null or {@code unknown_node|not_allowed|read_only}. */
     @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId);
 
+    /** v0.5 rules command (role already checked by the session, re-checked live here). */
+    RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command);
+
+    /** @param id the id of a created rule */
+    record RuleResult(@Nullable String error, @Nullable String detail, @Nullable String id) {
+    }
+
     /** Tells the owner that a device got locked because of wrong PINs. */
     void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip);
 

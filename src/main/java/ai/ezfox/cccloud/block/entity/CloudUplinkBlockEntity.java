@@ -345,6 +345,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return target.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
     }
 
+    /** The storage (bridge) of a direct-mode Storage card, or null (v0.5 rules: item triggers and craft actions). */
+    public @Nullable BridgeHost storageBridge() {
+        return template && level instanceof ServerLevel serverLevel ? attachedBridge(serverLevel) : null;
+    }
+
     /** Bridge serving a widget: the attached one in direct mode, otherwise the one the Lua widget was bound to. */
     private @Nullable BridgeHost bridgeFor(Widget widget) {
         if (template) return level instanceof ServerLevel serverLevel ? attachedBridge(serverLevel) : null;

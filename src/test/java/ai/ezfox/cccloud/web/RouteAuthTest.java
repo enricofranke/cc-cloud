@@ -69,6 +69,12 @@ class RouteAuthTest {
         }
 
         @Override
+        public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
+            fail("ruleCommand must not be reached without authentication");
+            return new GameBridge.RuleResult(null, null, null);
+        }
+
+        @Override
         public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         }
 
