@@ -352,7 +352,7 @@ async function setupRule(c) {
 const CSV_COLS = ["time", "minute", "phase", "tps_1m", "mspt_med_1m", "mspt_p95_1m", "mspt_max_1m", "nf_mean_ms", "nf_tps", "ow_mean_ms",
   "heap_used_mb", "heap_committed_mb", "heap_after_gc_min_mb", "gc_pauses", "gc_pause_ms", "threads", "fds", "rss_mb", "cpu_pct",
   "lua_ticks_per_min", "lua_errors", "lua_actions", "rule_runs", "rule_last", "clients", "reconnects", "msgs_in", "values_in", "alerts_in",
-  ...KINDS.flatMap((k) => [`${k}_n`, `${k}_err`, `${k}_429`, `${k}_p50`, `${k}_p95`]), "log_warn", "log_error"];
+  ...KINDS.flatMap((k) => [`${k}_n`, `${k}_err`, `${k}_429`, `${k}_p50`, `${k}_p95`]), "log_warn", "log_error", "gap_s"];
 
 let gcOffset = 0;
 function readGc(file) {
@@ -513,6 +513,8 @@ function summarize(dir) {
   if (msptFirst != null && msptLast != null && msptLast > msptFirst * 1.5 && msptLast - msptFirst > 2) findings.push(`MSPT drifts ${msptFirst} -> ${msptLast} ms`);
   const luaLow = warm.filter((r) => r.lua_ticks_per_min != null && r.lua_ticks_per_min < 1000).length;
   if (luaLow > warm.length * 0.1) findings.push(`the Lua computer missed ticks in ${luaLow} of ${warm.length} minutes`);
+  const gaps = rows.filter((r) => r.gap_s).map((r) => r.gap_s);
+  if (gaps.length) findings.push(`${gaps.length} sampling gap(s) (${gaps.join(", ")} s): the machine or the harness stalled`);
   const dead = rows.some((r) => r.phase === "dead");
   if (dead) findings.push("the server process died during the run");
   const totals = Object.fromEntries(KINDS.map((k) => [k, { n: load.reduce((a, r) => a + (r[`${k}_n`] ?? 0), 0), err: load.reduce((a, r) => a + (r[`${k}_err`] ?? 0), 0), limited: load.reduce((a, r) => a + (r[`${k}_429`] ?? 0), 0), p95_median: avg(load.map((r) => r[`${k}_p95`])) }]));
@@ -576,6 +578,11 @@ function summarize(dir) {
 
 // ---- main -----------------------------------------------------------------------------------------------------------
 async function main() {
+  // A Mac sleeps after a minute of idle time, which freezes the server and the clients: keep it awake while we run.
+  if (process.platform === "darwin") {
+    const { spawn } = await import("node:child_process");
+    spawn("caffeinate", ["-i", "-s", "-w", String(process.pid)], { stdio: "ignore", detached: true }).unref();
+  }
   if (serverPid()) throw new Error("the test server is already running; stop it first (tools/e2e/stop-server.sh)");
   const meta = { started: ts(), hours: HOURS, clients: CLIENTS, baselineMin: BASELINE_MIN, out: OUT };
   const jar = buildJar();
@@ -635,6 +642,8 @@ async function main() {
         continue;
       }
       const row = await sample(ctx, phase);
+      if (ctx.lastSampleAt && now() - ctx.lastSampleAt > 2 * SAMPLE_MS) { row.gap_s = Math.round((now() - ctx.lastSampleAt) / 1000); log(`clock gap of ${row.gap_s}s before this sample (sleep?)`); }
+      ctx.lastSampleAt = now();
       if (row.dead) { writeRow({ ...row, phase: "dead" }); log("server process is gone, ending"); break; }
       writeRow(row);
       if (row.minute % 15 === 0) log(`min ${row.minute} ${phase}: mspt med ${row.mspt_med_1m ?? "?"} heap ${row.heap_used_mb ?? "?"}/${row.heap_after_gc_min_mb ?? "-"} MB threads ${row.threads} fds ${row.fds} lua ${row.lua_ticks_per_min ?? "?"}/min rules ${row.rule_runs} clients ${row.clients}`);
