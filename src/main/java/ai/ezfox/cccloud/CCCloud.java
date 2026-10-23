@@ -30,6 +30,8 @@ public class CCCloud {
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
         if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);
+        // v0.5 integrations (device cards, server card, FTB Teams/Chunks, Simple Backups): compat/<modid> packages.
+        ai.ezfox.cccloud.compat.Integrations.init(modEventBus, modContainer);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

@@ -87,6 +87,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private boolean legacyLink;
     /** "no_route", "legacy_out_of_range" or null (for the screen). */
     private volatile @Nullable String routeState;
+    /** v0.5 device card (compat/card): direct mode on a supported machine. {@code deviceKind} is saved; both guarded by this. */
+    private ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard;
+    private String deviceKind = "";
+    private int deviceRevision;
     /** Last forwarded watchlist alert per bridge (key = bridge position). */
     private final Map<String, Integer> bridgeAlertSeq = new java.util.HashMap<>();
 
@@ -152,6 +156,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             template = input.getBooleanOr("template", false);
             auto = input.getBooleanOr("auto", false);
             templateKind = input.getStringOr("template_kind", "");
+            deviceKind = input.getStringOr("device_kind", "");
             readDeclarations(input.getStringOr("pages", "[]"), pages);
             readDeclarations(input.getStringOr("groups", "[]"), groups);
             widgets.clear();
@@ -180,6 +185,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             output.putBoolean("template", template);
             output.putBoolean("auto", auto);
             output.putString("template_kind", templateKind);
+            output.putString("device_kind", deviceKind);
             output.putString("pages", Json.GSON.toJson(declarations(pages)));
             output.putString("groups", Json.GSON.toJson(declarations(groups)));
             var array = new JsonArray();
@@ -266,6 +272,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (tickCounter % STATUS_INTERVAL == 0) updateStatus(level);
         if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
         if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
+        if (tickCounter % BRIDGE_INTERVAL == 15) updateDeviceCard(level);
         tickCounter++;
         sampleCharts(level.getGameTime());
         if (link == null || suppressed) {
@@ -409,6 +416,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private synchronized void enterTemplate(String kind) {
         template = true;
         auto = false;
+        deviceCard = null;
+        deviceKind = "";
         templateKind = kind;
         title = StorageTemplate.title(kind);
         widgets.clear();
@@ -441,10 +450,104 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return auto;
     }
 
-    /** "direct" (Storage template), "auto" (Computer card) or "lua". */
+    /** "direct" (Storage template or device card), "auto" (Computer card) or "lua". */
     public synchronized String mode() {
-        return template ? "direct" : auto ? "auto" : "lua";
+        return template || !deviceKind.isEmpty() ? "direct" : auto ? "auto" : "lua";
     }
+
+    // ---- device cards (v0.5, compat/card) ----------------------------------------------------------------------------
+
+    /** The device card's kind ("energy", "powah_reactor", ...) or "" (tests, in-game screen). */
+    public synchronized String deviceKind() {
+        return deviceKind;
+    }
+
+    /**
+     * Shows the ready-made card of the machine the uplink sticks to, once per second. Like the Computer card it only
+     * takes a free section: a Lua program's widgets replace it ({@link #beginLua}) and it comes back after clear().
+     */
+    private void updateDeviceCard(ServerLevel level) {
+        ai.ezfox.cccloud.compat.card.DeviceCard card;
+        boolean free;
+        synchronized (this) {
+            card = deviceCard;
+            free = !deviceKind.isEmpty() || (!template && !auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty());
+        }
+        if (card != null && !ai.ezfox.cccloud.compat.card.DeviceCards.isValid(card)) card = null;
+        if (card == null && free && ai.ezfox.cccloud.compat.Integrations.deviceCardsEnabled()) {
+            var facing = getBlockState().getValue(CloudUplinkBlock.FACING);
+            card = ai.ezfox.cccloud.compat.card.DeviceCards.detect(level, getBlockPos().relative(facing), facing.getOpposite());
+        }
+        synchronized (this) {
+            // Re-check under the lock: a Lua program may have taken the section in the meantime.
+            boolean stillFree = !deviceKind.isEmpty() || (!template && !auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty());
+            if (!stillFree) card = null;
+            else if (deviceCard != card || (card == null && !deviceKind.isEmpty())) showDeviceCard(card);
+        }
+        if (card == null) return;
+        int revision = ai.ezfox.cccloud.compat.card.DeviceCards.revision(card);
+        boolean ok = revision >= 0 && ai.ezfox.cccloud.compat.card.DeviceCards.refresh(card, deviceOutput);
+        synchronized (this) {
+            if (deviceCard != card) return;
+            if (!ok) showDeviceCard(null);
+            else if (revision != deviceRevision) {
+                showDeviceCard(card); // the machine's configuration changed the widget set
+                deviceRevision = revision;
+                ai.ezfox.cccloud.compat.card.DeviceCards.refresh(card, deviceOutput);
+            }
+        }
+    }
+
+    /** Replaces the section by the card (null: back to an empty section). Keeps the history of charts with the same id. */
+    private void showDeviceCard(ai.ezfox.cccloud.compat.card.@Nullable DeviceCard card) {
+        if (card == null) {
+            if (deviceKind.isEmpty() && deviceCard == null) return;
+            deviceCard = null;
+            deviceKind = "";
+            title = "";
+            widgets.clear();
+        } else {
+            var cardWidgets = ai.ezfox.cccloud.compat.card.DeviceCards.widgets(card);
+            if (cardWidgets == null) {
+                showDeviceCard(null);
+                return;
+            }
+            var old = new LinkedHashMap<>(widgets);
+            boolean restore = card.kind().equals(deviceKind);
+            deviceCard = card;
+            deviceKind = card.kind();
+            deviceRevision = ai.ezfox.cccloud.compat.card.DeviceCards.revision(card);
+            String t = ai.ezfox.cccloud.compat.card.DeviceCards.title(card);
+            title = t.length() > Limits.TITLE ? t.substring(0, Limits.TITLE) : t;
+            widgets.clear();
+            pages.clear();
+            groups.clear();
+            for (var widget : cardWidgets) {
+                var previous = restore ? old.get(widget.id()) : null;
+                if (previous != null && previous.type() == WidgetType.CHART && widget.type() == WidgetType.CHART) {
+                    var history = previous.toJson().get("history");
+                    if (history != null) for (var point : history.getAsJsonArray()) widget.push(point.getAsDouble());
+                }
+                widgets.put(widget.id(), widget);
+            }
+        }
+        structureDirty = true;
+        setChanged();
+    }
+
+    private final ai.ezfox.cccloud.compat.card.DeviceCard.CardOutput deviceOutput = new ai.ezfox.cccloud.compat.card.DeviceCard.CardOutput() {
+        @Override
+        public void value(String widgetId, JsonElement value) {
+            setValue(widgetId, value);
+        }
+
+        @Override
+        public void alert(String text, String level) {
+            synchronized (CloudUplinkBlockEntity.this) {
+                if (pendingAlerts.size() < 16) pendingAlerts.add(new String[]{text.length() > Limits.ALERT_TEXT ? text.substring(0, Limits.ALERT_TEXT) : text, level});
+            }
+        }
+    };
 
     // ---- auto mode (Computer card) -------------------------------------------------------------------------------
 
@@ -522,6 +625,13 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
      */
     public synchronized boolean beginLua() {
         if (template) return false;
+        if (!deviceKind.isEmpty()) {
+            deviceCard = null;
+            deviceKind = "";
+            widgets.clear();
+            title = "";
+            structureDirty = true;
+        }
         if (auto) {
             auto = false;
             widgets.clear();
@@ -704,10 +814,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         json.add("widgets", array);
         if (!pages.isEmpty()) json.add("pages", declarations(pages));
         if (!groups.isEmpty()) json.add("groups", declarations(groups));
-        json.addProperty("mode", template ? "direct" : auto ? "auto" : "lua");
+        json.addProperty("mode", template || !deviceKind.isEmpty() ? "direct" : auto ? "auto" : "lua");
         if (template) {
             json.addProperty("template", "storage");
             json.addProperty("bridge", templateKind);
+        } else if (!deviceKind.isEmpty()) {
+            json.addProperty("template", deviceKind);
         }
         return json;
     }
@@ -829,6 +941,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 dirtyValues.add(widgetId);
             }
         }
+        ai.ezfox.cccloud.compat.card.DeviceCard card;
+        synchronized (this) {
+            card = deviceCard;
+        }
+        if (card != null) return ActionResult.done(ai.ezfox.cccloud.compat.card.DeviceCards.action(card, widgetId, result.value(), user));
         if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), result.op(), user));
         if (result.op() != null) return handleOp(widget, result.op(), user);
         queueAction(widgetId, Json.toLua(result.value()), user);

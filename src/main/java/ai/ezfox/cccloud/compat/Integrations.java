@@ -1,0 +1,67 @@
+package ai.ezfox.cccloud.compat;
+
+import ai.ezfox.cccloud.CCCloud;
+import ai.ezfox.cccloud.compat.card.DeviceCards;
+import ai.ezfox.cccloud.compat.card.EnergyCard;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.config.ModConfig;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+/**
+ * Entry point of the v0.5 integrations (docs/SPEC.md v0.5 A + B), called once from {@link CCCloud}'s constructor.
+ * Every mod integration lives in its own {@code compat/<modid>} package and is only class-loaded when
+ * {@link ModList} reports the mod; a failure while setting one up disables just that integration (one log line).
+ */
+public final class Integrations {
+    private static final DeferredRegister<Consumer<GameTestHelper>> TESTS = DeferredRegister.create(Registries.TEST_FUNCTION, CCCloud.MODID);
+
+    private Integrations() {
+    }
+
+    public static void init(IEventBus bus, ModContainer container) {
+        container.registerConfig(ModConfig.Type.SERVER, IntegrationConfig.SPEC, "cccloud-integrations-server.toml");
+
+        // A. Ready-made cards. Mod-specific providers first, the generic FE card last.
+        DeviceCards.register("energy", DeviceCards.GENERIC, EnergyCard::detect);
+        test("energy_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericEnergy);
+        optional("powah", () -> ai.ezfox.cccloud.compat.powah.PowahCompat::init);
+        optional("enderio", () -> ai.ezfox.cccloud.compat.enderio.EnderIoCards::init);
+        optional("oritech", () -> ai.ezfox.cccloud.compat.oritech.OritechCards::init);
+        optional("energizedpower", () -> ai.ezfox.cccloud.compat.energizedpower.EnergizedPowerCards::init);
+        optional("generatorgalore", () -> ai.ezfox.cccloud.compat.generatorgalore.GeneratorGaloreCards::init);
+        optional("energymeter", () -> ai.ezfox.cccloud.compat.energymeter.EnergyMeterCards::init);
+        optional("hostilenetworks", () -> ai.ezfox.cccloud.compat.hostilenetworks.HostileNetworksCards::init);
+        optional("productivebees", () -> ai.ezfox.cccloud.compat.productivebees.ProductiveBeesCards::init);
+        optional("mffs", () -> ai.ezfox.cccloud.compat.mffs.MffsCards::init);
+        optional("merequester", () -> ai.ezfox.cccloud.compat.merequester.MeRequesterCards::init);
+
+        TESTS.register(bus);
+    }
+
+    /** Whether uplinks look for device cards (config {@code deviceCards}). */
+    public static boolean deviceCardsEnabled() {
+        return IntegrationConfig.get(IntegrationConfig.DEVICE_CARDS);
+    }
+
+    /** Registers a GameTest function {@code cccloud:<name>} (referenced by data/cccloud/test_instance/<name>.json). */
+    public static void test(String name, Supplier<Consumer<GameTestHelper>> function) {
+        TESTS.register(name, function);
+    }
+
+    /** Runs a mod's setup if the mod is loaded; a broken integration is skipped with one log line. */
+    private static void optional(String modId, Supplier<Runnable> setup) {
+        if (!ModList.get().isLoaded(modId)) return;
+        try {
+            setup.get().run();
+            CCCloud.LOGGER.info("[cccloud] Integration for '{}' enabled", modId);
+        } catch (LinkageError | RuntimeException e) {
+            CCCloud.LOGGER.warn("[cccloud] Integration for '{}' disabled: this version is not supported ({})", modId, e.toString());
+        }
+    }
+}
