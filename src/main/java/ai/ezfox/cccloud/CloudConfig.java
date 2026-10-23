@@ -15,6 +15,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> PUBLIC_URL;
     public static final ModConfigSpec.BooleanValue WEB_ALLOW_INTERNET;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_TRUSTED_PROXIES;
+    public static final ModConfigSpec.BooleanValue WEB_TRUST_CLOUDFLARE_HEADER;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
     // v0.4 network ranges (blocks, same dimension, spherical)
@@ -95,9 +96,13 @@ public final class CloudConfig {
             .translation("cccloud.configuration.webAllowInternet")
             .define("webAllowInternet", false);
         WEB_TRUSTED_PROXIES = b.comment("IPs/CIDRs of reverse proxies (e.g. 127.0.0.1 for Caddy/cloudflared on the same host). "
-                + "X-Forwarded-For / CF-Connecting-IP are only honoured when the direct peer is in this list.")
+                + "X-Forwarded-For is only honoured when the direct peer is in this list (the right-most address that is not a proxy counts).")
             .translation("cccloud.configuration.webTrustedProxies")
             .defineListAllowEmpty("webTrustedProxies", java.util.List.of(), () -> "127.0.0.1", o -> o instanceof String);
+        WEB_TRUST_CLOUDFLARE_HEADER = b.comment("Use CF-Connecting-IP from a trusted proxy as the client IP. Only enable this when the trusted proxy is",
+                "cloudflared (Cloudflare Tunnel), which sets the header itself; other proxies pass a client-supplied header through.")
+            .translation("cccloud.configuration.webTrustCloudflareHeader")
+            .define("webTrustCloudflareHeader", false);
         TLS_CERT_PATH = b.comment("Optional TLS: path to the certificate chain (PEM). Internet-facing servers should use TLS or a reverse proxy/tunnel.")
             .translation("cccloud.configuration.tlsCertPath")
             .define("tlsCertPath", "");

@@ -62,7 +62,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
     String clientIp(ChannelHandlerContext ctx, FullHttpRequest req) {
-        return IpUtil.clientIp(ConnectionLimiter.peerIp(ctx.channel()), instance.trustedProxies,
+        return IpUtil.clientIp(ConnectionLimiter.peerIp(ctx.channel()), instance.trustedProxies, instance.trustCloudflare,
             req.headers().get("CF-Connecting-IP"), req.headers().getAll("X-Forwarded-For"));
     }
 

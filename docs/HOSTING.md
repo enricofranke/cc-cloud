@@ -12,7 +12,8 @@ server in singleplayer/LAN). There is no external service. All settings live in 
 | `web.webBind` | `0.0.0.0` | Bind address. Use `127.0.0.1` behind a reverse proxy/tunnel on the same host. |
 | `web.webPort` | `8787` | TCP port. |
 | `web.webAllowInternet` | `false` | `false`: only loopback and private addresses (10/8, 172.16/12, 192.168/16, 100.64/10, fc00::/7, fe80::/10) may connect, everyone else gets `403 {"error":"lan_only"}`. |
-| `web.webTrustedProxies` | `[]` | IPs/CIDRs of reverse proxies. `X-Forwarded-For` / `CF-Connecting-IP` are only honoured when the direct peer is listed. |
+| `web.webTrustedProxies` | `[]` | IPs/CIDRs of reverse proxies. `X-Forwarded-For` is only honoured when the direct peer is listed (the right-most address that is not a listed proxy counts, so a client cannot spoof it). |
+| `web.webTrustCloudflareHeader` | `false` | Use `CF-Connecting-IP` from a listed proxy. Only for Cloudflare Tunnel (cloudflared sets the header); Caddy, nginx and others pass a client-supplied `CF-Connecting-IP` through unchanged, which would let anyone fake their IP (rate limits, bans, LAN-only check). |
 | `web.publicUrl` | `""` | URL shown in chat. Empty = `http://<server-ip>:<port>`. |
 | `web.tlsCertPath`, `web.tlsKeyPath` | `""` | Optional HTTPS directly in the mod (PEM certificate chain + PKCS#8 PEM key). |
 | `uplinks.uplinkRange` | `128` | Range of normal uplinks (advanced: unlimited, cross-dimension). |
@@ -86,8 +87,9 @@ ingress:
   - service: http_status:404
 ```
 
-Run `cloudflared tunnel run cccloud`. The real client IP arrives in `CF-Connecting-IP`, which the mod
-uses for rate limits because `127.0.0.1` is a trusted proxy.
+Run `cloudflared tunnel run cccloud`. The real client IP arrives in `CF-Connecting-IP`; set `webTrustedProxies = ["127.0.0.1"]`
+and `webTrustCloudflareHeader = true` so the mod uses it for rate limits and bans. Do **not** enable the Cloudflare
+header with Caddy or other proxies: they forward a client-supplied `CF-Connecting-IP` unchanged.
 
 ## 5. TLS directly in the mod
 

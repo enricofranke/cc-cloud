@@ -97,6 +97,7 @@ public final class CloudWebServer {
         var instance = new WebInstance(new MinecraftBridge(server, auth), auth, WebAuthData.access(server), ssl, proxies, allowInternet,
             computeUrl(server, bind, port, ssl != null), port);
         instance.bannedIps = bannedIps(server);
+        instance.trustCloudflare = CloudConfig.get(CloudConfig.WEB_TRUST_CLOUDFLARE_HEADER);
         var group = new MultiThreadIoEventLoopGroup(2, new DefaultThreadFactory("cccloud-web", true), NioIoHandler.newFactory());
         instance.group = group;
         try {

@@ -99,11 +99,13 @@ public final class IpUtil {
 
     /**
      * The client IP. Forwarding headers are only honoured when the direct peer is a trusted proxy. For
-     * X-Forwarded-For, the right-most address that is not itself a trusted proxy is used.
+     * X-Forwarded-For, the right-most address that is not itself a trusted proxy is used. {@code CF-Connecting-IP} only
+     * with {@code trustCloudflare} (config {@code webTrustCloudflareHeader}: the proxy is cloudflared, which sets it).
      */
-    public static String clientIp(String peer, List<Cidr> trustedProxies, @Nullable String cfConnectingIp, List<String> xForwardedFor) {
+    public static String clientIp(String peer, List<Cidr> trustedProxies, boolean trustCloudflare, @Nullable String cfConnectingIp,
+                                  List<String> xForwardedFor) {
         if (trustedProxies.isEmpty() || !matches(trustedProxies, peer)) return peer;
-        if (cfConnectingIp != null && literal(cfConnectingIp) != null) return cfConnectingIp.trim();
+        if (trustCloudflare && cfConnectingIp != null && literal(cfConnectingIp) != null) return cfConnectingIp.trim();
         var hops = new ArrayList<String>();
         for (String header : xForwardedFor) for (String part : header.split(",")) hops.add(part.trim());
         for (int i = hops.size() - 1; i >= 0; i--) {

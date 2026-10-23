@@ -24,6 +24,8 @@ final class WebInstance {
     final ai.ezfox.cccloud.access.AccessStore access;
     final @Nullable SslContext ssl;
     final List<IpUtil.Cidr> trustedProxies;
+    /** Config {@code webTrustCloudflareHeader}. */
+    volatile boolean trustCloudflare;
     final boolean allowInternet;
     final ConnectionLimiter limiter;
     /** /api/icon: 200 requests per minute per IP. */
