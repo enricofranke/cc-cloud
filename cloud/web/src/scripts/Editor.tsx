@@ -92,6 +92,7 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose 
       syntaxHighlighting(highlight),
       EditorState.tabSize.of(2),
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({ "aria-label": "Lua code" }),
       EditorState.readOnly.of(!canWrite),
       keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (save(false), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       EditorView.updateListener.of((u) => {
@@ -269,7 +270,7 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose 
           )}
           {error && <p class="form-error small">{error}</p>}
           {tree && (
-            <div class="files-usage" aria-label={`${fmtBytes(tree.used)} of ${fmtBytes(tree.capacity)} used`}>
+            <div class="files-usage" role="img" aria-label={`${fmtBytes(tree.used)} of ${fmtBytes(tree.capacity)} used`}>
               <span
                 ref={(el) => {
                   if (el) el.style.width = `${Math.min(100, Math.round((tree.used / Math.max(1, tree.capacity)) * 100))}%`;

@@ -1,5 +1,6 @@
 // Code examples shared by both languages (Lua is the same in DE and EN).
 import GEN from "./recipes.gen.json" with { type: "json" };
+import MODS_GEN from "./mods.gen.json" with { type: "json" };
 
 export const FENCE = "```";
 
@@ -238,3 +239,39 @@ export function recipeSection(groupId: string, lang: "en" | "de") {
 
 export const recipe = (r: object) => `${FENCE}recipe\n${JSON.stringify(r)}\n${FENCE}`;
 export const code = (lang: string, src: string) => `${FENCE}${lang}\n${src}\n${FENCE}`;
+
+// ------------------------------------------------------------ supported mods (generated from docs/COMPAT.md)
+type ModEntry = { group: string; mod: string; id: string; version: string; what: string; controls: string; tested: string; skipped: boolean };
+const GROUP_DE: Record<string, string> = {
+  v05: "Energie, Server und Teams",
+  "Storage controllers": "Lager-Controller",
+  "Applied Energistics add-ons": "Applied-Energistics-Erweiterungen",
+  Quarries: "Steinbrüche",
+  "Spawners and mob farms": "Spawner und Mobfarmen",
+  "Processing machines": "Verarbeitungsmaschinen",
+  Logistics: "Logistik",
+  "Integrated Dynamics": "Integrated Dynamics",
+  "World & progression": "Welt und Fortschritt",
+  "In-game handbook": "Handbuch im Spiel",
+  "KubeJS bindings": "KubeJS",
+  "Wave 3 – more ATM11 machines": "Weitere ATM11-Maschinen",
+};
+const GROUP_EN: Record<string, string> = { v05: "Energy, server and teams", "Wave 3 – more ATM11 machines": "More ATM11 machines" };
+const cell = (s: string) => (s || "–").replace(/\|/g, "/").replace(/\n/g, " ");
+/** Markdown tables of every supported mod, grouped like docs/COMPAT.md; skipped mods in a short list at the end. */
+export function modsSection(lang: "en" | "de") {
+  const mods = (MODS_GEN as { mods: ModEntry[] }).mods;
+  const groups = [...new Set(mods.map((m) => m.group))];
+  const head = lang === "de" ? "| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |" : "| Mod | Version | What the card shows | Controls | Tested |";
+  const parts = groups.map((g) => {
+    const rows = mods.filter((m) => m.group === g && !m.skipped);
+    if (!rows.length) return "";
+    const title = lang === "de" ? (GROUP_DE[g] ?? g) : (GROUP_EN[g] ?? g);
+    return `### ${title}\n\n${head}\n|---|---|---|---|---|\n${rows.map((m) => `| ${cell(m.mod)}${m.id ? ` (\`${m.id}\`)` : ""} | ${cell(m.version)} | ${cell(m.what)} | ${cell(m.controls)} | ${cell(m.tested)} |`).join("\n")}`;
+  });
+  const skipped = mods.filter((m) => m.skipped);
+  const skip = skipped.length
+    ? `### ${lang === "de" ? "Ohne eigene Karte" : "No card of their own"}\n\n${skipped.map((m) => `- **${m.mod}**${m.id ? ` (\`${m.id}\`)` : ""}: ${m.what.replace(/^(skipped|no own card[^:]*|no card):\s*/i, "")}`).join("\n")}`
+    : "";
+  return [...parts, skip].filter(Boolean).join("\n\n");
+}

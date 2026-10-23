@@ -1,0 +1,565 @@
+{
+ "source": "docs/COMPAT.md, docs/BUILD.md",
+ "mods": [
+  {
+   "group": "v05",
+   "mod": "Powah",
+   "id": "powah",
+   "version": "7.0.4-alpha",
+   "what": "Energy cells, generators and the reactor: stored FE, in/out, reactor temperature and fuel",
+   "controls": "reactor on/off where exposed",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Ender IO",
+   "id": "enderio",
+   "version": "9.0.6-alpha",
+   "what": "Capacitor banks and machines: stored FE, in/out, progress",
+   "controls": "redstone mode",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Oritech",
+   "id": "oritech",
+   "version": "2.0.0-exp11",
+   "what": "Energy storage and generators: stored FE, generation",
+   "controls": "–",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Energized Power",
+   "id": "energizedpower",
+   "version": "3.0.1",
+   "what": "Machines and batteries: stored FE, progress",
+   "controls": "redstone mode",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Energy Meter",
+   "id": "energymeter",
+   "version": "0.5.0",
+   "what": "Flow per tick, total transferred, a 60-minute chart",
+   "controls": "transfer mode",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Generator Galore",
+   "id": "generatorgalore",
+   "version": "1.7.0",
+   "what": "Generators: stored FE, generation, fuel",
+   "controls": "redstone mode",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Hostile Neural Networks",
+   "id": "hostilenetworks",
+   "version": "7.0.0",
+   "what": "Simulation chamber: running, data model, accuracy, output",
+   "controls": "–",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Productive Bees",
+   "id": "productivebees",
+   "version": "15.3.0",
+   "what": "Hives and centrifuges: honey level, bees inside, output",
+   "controls": "–",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "MFFS",
+   "id": "mffs",
+   "version": "5.8.39",
+   "what": "Force field projector: fortron, field blocks, status",
+   "controls": "field on/off (PIN)",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "ME Requester",
+   "id": "merequester",
+   "version": "1.5.1",
+   "what": "Kept-in-stock requests: amount, status",
+   "controls": "request on/off, amount",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "spark",
+   "id": "spark",
+   "version": "1.10.187",
+   "what": "Server card: TPS, MSPT, CPU",
+   "controls": "–",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "FTB Teams / FTB Chunks",
+   "id": "ftbteams",
+   "version": "26.1.2",
+   "what": "Team trust for roles, team claims on the network map",
+   "controls": "–",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "v05",
+   "mod": "Simple Backups",
+   "id": "simplebackups",
+   "version": "26.1.6",
+   "what": "Backups card: last backup, size, running",
+   "controls": "backup now",
+   "tested": "yes",
+   "skipped": false
+  },
+  {
+   "group": "Storage controllers",
+   "mod": "Functional Storage",
+   "id": "functionalstorage",
+   "version": "1.6.4",
+   "what": "Storage Controller, Framed Storage Controller, Controller Access Points: Storage card",
+   "controls": "",
+   "tested": "yes (bare controller; drawers are linked with the Linking Tool only)",
+   "skipped": false
+  },
+  {
+   "group": "Storage controllers",
+   "mod": "Sophisticated Storage",
+   "id": "sophisticatedstorage",
+   "version": "1.5.121",
+   "what": "Controller: Storage card",
+   "controls": "",
+   "tested": "yes (controller + chest)",
+   "skipped": false
+  },
+  {
+   "group": "Storage controllers",
+   "mod": "Occultism",
+   "id": "occultism",
+   "version": "1.256.1",
+   "what": "Dimensional Storage Actuator (all four variants): Storage card",
+   "controls": "",
+   "tested": "yes (wave 3: actuator alone, 100 iron ingots; runtime Modonomicon, Curios, GeckoLib)",
+   "skipped": false
+  },
+  {
+   "group": "Storage controllers",
+   "mod": "DimStorage",
+   "id": "dimstorage",
+   "version": "10.0.1",
+   "what": "Dimensional Chest / Dimensional Tank: Storage / Tank (fill %, fluid, mB) card",
+   "controls": "",
+   "tested": "yes (both)",
+   "skipped": false
+  },
+  {
+   "group": "Storage controllers",
+   "mod": "Integrated Terminals / Tunnels",
+   "id": "",
+   "version": "",
+   "what": "–: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card",
+   "controls": "",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Applied Energistics add-ons",
+   "mod": "Advanced AE",
+   "id": "advanced_ae",
+   "version": "26.1.7",
+   "what": "**Quantum Computer** card on any block of the multiblock: status (online + name / not formed / no power), free storage, co-processor threads, jobs running, up to 6 job rows (\"64× Iron Ingot – 42 %, 1 min 3 s\"); info alert when all jobs are done. Quantum CPU jobs also show in the ME Cloud Bridge's job list, because Advanced AE adds its CPUs to AE2's `getCpus()`.",
+   "controls": "\"Cancel all jobs\" (`act.buttons`, confirm)",
+   "tested": "partly: a single quantum unit block (\"Not formed\", cancel → `unavailable`); a formed quantum computer needs the full multiblock on a powered grid",
+   "skipped": false
+  },
+  {
+   "group": "Applied Energistics add-ons",
+   "mod": "ExtendedAE",
+   "id": "extendedae",
+   "version": "1.0.5",
+   "what": "skipped: no level maintainer or CPU-like block; its machines (assemblers, pattern providers) are covered by the ME bridge's job list",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Applied Energistics add-ons",
+   "mod": "AE2 Infinity Booster / Network Analyzer",
+   "id": "",
+   "version": "",
+   "what": "skipped: nothing to show (range card / client-side analyzer)",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Quarries",
+   "mod": "QuarryPlus, published as \"Additional Enchanted Miner\"",
+   "id": "quarryplus",
+   "version": "26.12.160",
+   "what": "**Quarry** / **Chunk Destroyer** cards: status (the machine's state from its public client-sync tag: building the frame, mining, removing fluids, finished, …), working indicator, energy %, area size and bottom Y (no coordinates), dig depth % (quarry: from the drill head), buffered items; warn alert once when 10 000+ mined items pile up in the internal buffer (nothing pulls them out), info alert when finished",
+   "controls": "none: QuarryPlus has no redstone or API pause",
+   "tested": "yes (quarry: no area → placed with its default area → working)",
+   "skipped": false
+  },
+  {
+   "group": "Spawners and mob farms",
+   "mod": "Apothic Spawners",
+   "id": "apothic_spawners",
+   "version": "2.0.1",
+   "what": "**Spawner** card on (upgraded) spawners: mob, spawning now (player in range or \"ignore players\"; with Redstone Control only while powered), \"needs redstone\" indicator, next spawn %, delay range, mobs per spawn, max nearby, player range, the boolean upgrades",
+   "controls": "none: Redstone Control is an upgrade item applied in-game; a dashboard switch would bypass the progression",
+   "tested": "yes (pig spawner, default stats)",
+   "skipped": false
+  },
+  {
+   "group": "Spawners and mob farms",
+   "mod": "Gateways to Eternity",
+   "id": "gateways",
+   "version": "6.0.2",
+   "what": "**Gateways** mainframe card (restricted, `view.positions`): gates open within 256 blocks of the mainframe – name, wave n / total, enemies alive, lives, distance; alerts when a gate opens, completes or closes. Gates are entities, so this is a mainframe card. Config `world.gatewaysCard`.",
+   "controls": "none",
+   "tested": "yes (Emerald Grove gate opened and removed)",
+   "skipped": false
+  },
+  {
+   "group": "Spawners and mob farms",
+   "mod": "Easy Villagers",
+   "id": "easy_villagers",
+   "version": "1.1.47",
+   "what": "**Villager Breeder** (villagers, breeding / needs food), **Iron Farm** (villager, golem cycle %), **Villager Farmer** (villager, crop) with output slots used, output full indicator and a warn alert once when the output is full",
+   "controls": "none",
+   "tested": "yes (empty iron farm)",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Iron Furnaces",
+   "id": "ironfurnaces",
+   "version": "4.4.2",
+   "what": "**Furnace** card on every tier: status (smelting X / idle / no fuel / output full), smelting %, fuel left, input, output, energy; warn alert once when the output slot is full",
+   "controls": "furnace redstone mode (Ignore / Run without signal / Run with signal), select with confirm, `act.redstone`",
+   "tested": "yes (smelts raw iron, mode switch)",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Cobblegen Galore",
+   "id": "cobblegengalore",
+   "version": "0.2.9",
+   "what": "**Block generator** card: what it makes, tier speed (×modifier per tick-rate), buffer n / 64; warn alert once when the buffer is full (nothing pulls the blocks out). The exact items/min depend on the recipe's private speed and are not shown.",
+   "controls": "none",
+   "tested": "yes (stone generator between water and lava)",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Productive Metalworks",
+   "id": "productivemetalworks",
+   "version": "1.17.1",
+   "what": "**Foundry** card on the controller: formed + coil type, fuel, power (energy coil), items melting, molten metals (up to 4)",
+   "controls": "none",
+   "tested": "yes (lone controller, \"Not formed\")",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Silent Gear Metalworks",
+   "id": "sgearmetalworks",
+   "version": "1.6.0",
+   "what": "skipped: adds only recipes to the Productive Metalworks foundry, no blocks of its own",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Agritech: Evolved",
+   "id": "agritechevolved",
+   "version": "2.2.0.5",
+   "what": "**Planter** / **Advanced Planter** cards: plant, soil, growth %, energy (advanced), output full indicator + warn alert",
+   "controls": "none",
+   "tested": "yes (empty basic planter)",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Productive Farming",
+   "id": "productivefarming",
+   "version": "0.13.0",
+   "what": "**Farm** card on the farm controller: formed, water, output slots used, output full + warn alert",
+   "controls": "none",
+   "tested": "yes (lone controller). Note: Productive Farming's own GameTest `agritech_compat_recipes_present` fails in a dev run without Agritech Two; ours passes.",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Mystical Agriculture",
+   "id": "mysticalagriculture",
+   "version": "9.0.10",
+   "what": "**Machine** card for Essence Furnace, Seed Reprocessor, Soul Extractor, Harvester, Ore Infuser, Soulium Spawner: status, progress, energy, fuel left, upgrade tier",
+   "controls": "none",
+   "tested": "untested (retried in wave 3): any dev server with Mystical Agriculture 9.0.10 + Cucumber 9.0.6 (also with Mystical Agradditions) crashes at start. CC: Tweaked rebuilds the creative tabs on server start (`CommonHooks.onServerStarted` → `CreativeModeTabs.tryRebuildTabContents`), and MA's own tab then adds \"Inferium Essence\" twice (`ModCreativeModeTabs` via Cucumber's `FeatureFlagDisplayItemGenerator`). ATM11 runs the same code with its crop/tag configuration (`config/mysticalcustomization`, `cucumber-tags.json`), so it is not our bug, but a minimal test world cannot be started; the card stays compile-checked against the exact jar.",
+   "skipped": false
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Mystical Automation",
+   "id": "mysticalautomation",
+   "version": "2.0.7",
+   "what": "no own card: its machines only expose energy, so the generic Energy card applies",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Processing machines",
+   "mod": "Railcraft Reborn",
+   "id": "railcraft",
+   "version": "1.4.5",
+   "what": "**Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode)",
+   "controls": "none",
+   "tested": "yes (lone firebox, \"Not formed\")",
+   "skipped": false
+  },
+  {
+   "group": "Logistics",
+   "mod": "Super Factory Manager",
+   "id": "sfm",
+   "version": "4.34.0",
+   "what": "**Factory Manager** card: state (running / no disk / no program / program has errors), program name, average tick time, errors, warnings, first error (SFM's translation key on dedicated servers), queued redstone pulses; warn alert when the program becomes invalid",
+   "controls": "none: SFM has no on/off – taking the disk out is its off switch",
+   "tested": "yes (manager without a disk)",
+   "skipped": false
+  },
+  {
+   "group": "Logistics",
+   "mod": "Modular Routers",
+   "id": "modularrouters",
+   "version": "26.1.2.2",
+   "what": "**Modular Router** card: status, modules, speed (tick rate, items, eco mode), buffer",
+   "controls": "redstone mode (Always / Redstone low / Redstone high / Never / Redstone pulse) – \"Never\" switches the router off; select with confirm, `act.redstone`",
+   "tested": "yes (empty router, switched to Never)",
+   "skipped": false
+  },
+  {
+   "group": "Logistics",
+   "mod": "LaserIO, Pipez",
+   "id": "",
+   "version": "",
+   "what": "skipped: pipes/nodes without state worth a card (no buffers, no machine status)",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Logistics",
+   "mod": "Logistics Networks",
+   "id": "logisticsnetworks",
+   "version": "1.13.0",
+   "what": "no card: it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Integrated Dynamics",
+   "mod": "Integrated Dynamics",
+   "id": "integrateddynamics",
+   "version": "1.36.1",
+   "what": "**Display Panels** card: an uplink next to a logic cable that carries Display/Light Panels shows each panel's current value with its type (one label per side; the card rebuilds when panels are added/removed). ID evaluates the variables on its own network; the card only reads the panel's display value. Variable Stores are not read (their variables are evaluated only by readers/panels).",
+   "controls": "none",
+   "tested": "untested: placing parts on a cable needs ID's part placement and a network; compiled against the exact jar and loaded in a dev server",
+   "skipped": false
+  },
+  {
+   "group": "World & progression",
+   "mod": "Waystones",
+   "id": "waystones",
+   "version": "26.1.2.16",
+   "what": "**Waystones** mainframe card (restricted, `view.positions`): waystones owned by the mainframe owner or a member of the owner's team (team providers, e.g. FTB Teams), plus global waystones – name, dimension, coordinates (8 rows) and the network-map overlay in the snapshot: `\"waystones\":{\"items\":[{\"name\",\"dim\",\"x\",\"y\",\"z\",\"kind\",\"global\"?}],\"truncated\"}` (max 512, re-read every 10 s). Config `world.waystonesCard`. The dashboard does not draw the overlay yet.",
+   "controls": "none",
+   "tested": "yes (own waystone listed, a stranger's private one hidden)",
+   "skipped": false
+  },
+  {
+   "group": "World & progression",
+   "mod": "FTB Quests",
+   "id": "ftbquests",
+   "version": "26.1.2.9",
+   "what": "**Quests** mainframe card (restricted, `view.positions`): the owner's FTB team – overall %, chapters done / total, quests done / total, the 5 most recent completions with chapter and age; info alert on a new completion. Config `world.questsCard`.",
+   "controls": "none",
+   "tested": "partly: card, restricted flag and quest file access; a mock player has no FTB team, so progress values are not covered",
+   "skipped": false
+  },
+  {
+   "group": "World & progression",
+   "mod": "JourneyMap",
+   "id": "journeymap",
+   "version": "6.0.10 (API 2.0.0)",
+   "what": "client plugin (`client/compat/journeymap`, found by JourneyMap's `@JourneyMapPlugin`): the mainframes, relays and devices of every network where the player has `view.positions` as temporary (non-persistent) waypoints named \"CC: Cloud – <mainframe>: <device>\", coloured by type. The client subscribes with the `map_nodes_subscribe` payload while the client config `journeyMapWaypoints` (default true) is on; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes.",
+   "controls": "client config toggle",
+   "tested": "server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit test `MapNodesTest`); the JourneyMap side needs a client and is untested",
+   "skipped": false
+  },
+  {
+   "group": "In-game handbook",
+   "mod": "GuideME",
+   "id": "guideme",
+   "version": "26.1.15-beta",
+   "what": "**CC: Cloud Handbook**: a data-driven GuideMe guide (`assets/cccloud/guideme_guides/handbook.json`, pages in `assets/cccloud/guides/cccloud/handbook/`, German in `_de_de/`), generated from the dashboard docs by `tools/gen_handbook.ts` (11 pages per language, recipes as `<RecipeFor>` with a fallback text). Item: GuideMe's guide item with `guideme:guide_id = cccloud:handbook`, crafted shapeless from a book + Cloud Core (recipe only when GuideMe is loaded). No code dependency.",
+   "controls": "",
+   "tested": "yes (`guideme_handbook` parses every page with GuideMe's parser; screenshots of the EN and DE guide in a dev client). The ME/RS bridge recipe boxes show GuideMe's \"missing item\" note when AE2 / RS are absent.",
+   "skipped": false
+  },
+  {
+   "group": "KubeJS bindings",
+   "mod": "KubeJS",
+   "id": "kubejs",
+   "version": "26.1.2-8.0.6 (Rhino 2101.2.8-build.91)",
+   "what": "Server scripts get **`CCCloudEvents.action`** (an accepted dashboard action: mainframeId, sectionId, section, widget, value, playerName, player, device), **`CCCloudEvents.deviceLinked`** (uplink/bridge bound with a Link Card: mainframeId, deviceId, type, dimension, pos, player) and **`CCCloudEvents.alert`** (mainframeId, sectionId, text, level), and the binding **`CCCloud`**: `mainframes()`, `mainframesOf(player)`, `has(player, mainframeId, \"act.buttons\")`, `section(mainframeId, key).title(..).gauge/toggle/button/slider/select/buttons/number/text/label/chart/progress/indicator(..).restricted(true).as(player).onAction(ctx => …).publish()`, `set`, `get`, `alert`, `remove`, `sections`. Widgets and values are validated like Lua; dashboard actions need the same per-widget permission (`act.buttons`) and validation, then `onAction` runs (`ctx.reject(\"code\")` refuses); `as(player)` needs `layout.edit`.",
+   "controls": "",
+   "tested": "yes (`script_sections` without KubeJS, `kubejs_bindings` with a real server script)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "any mod: plain fluid tanks",
+   "id": "",
+   "version": "",
+   "what": "generic **Tank** card (kind `tank`, lowest priority, below the Energy card): a block entity with a fluid capability, no energy capability and at most 2 item slots – fill %, fluid, mB (up to 8 tanks summed). Covers EvilCraft's Dark Tank, Stellaris fluid tanks and similar.",
+   "controls": "none",
+   "tested": "yes (EvilCraft Dark Tank with 1 bucket of water)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Witchery",
+   "id": "witchery",
+   "version": "0.5.17",
+   "what": "**Altar** card on the altar core: power gauge, current / max power, range, augment rate and boost; warn alert below 10 %",
+   "controls": "none",
+   "tested": "no: the altar is a multiblock; the mod loads in the dev server (Kotlin for Forge, Curios, Modonomicon, Lithostitched)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Forbidden & Arcanus",
+   "id": "forbidden_arcanus",
+   "version": "2.8.0-beta.2",
+   "what": "**Hephaestus Forge** card: tier, ritual running, main item, the four essences (aureal, ectoplasm, blood, experience) as gauges and amount / limit; info alert when a ritual finishes",
+   "controls": "none",
+   "tested": "yes (lone forge: tier 1, idle, empty)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Pylons",
+   "id": "pylons",
+   "version": "6.0.1",
+   "what": "**Pylon** card for all five pylons: on/off, owner, range",
+   "controls": "on/off toggle (the pylon's own switch), confirm, `act.buttons`",
+   "tested": "yes (expulsion pylon toggled off and on)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "EvilCraft",
+   "id": "evilcraft",
+   "version": "1.2.107",
+   "what": "Dark Tank via the generic Tank card; Blood Infuser / Spirit Furnace keep the generic Energy/tank cards",
+   "controls": "–",
+   "tested": "see Tank",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Stellaris",
+   "id": "stellaris",
+   "version": "2.0.7",
+   "what": "no own card: fluid tanks via the generic Tank card, generators via the Energy card where they expose the capabilities (not verified in a test); rockets are entities",
+   "controls": "–",
+   "tested": "no",
+   "skipped": true
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Theurgy",
+   "id": "theurgy",
+   "version": "1.116.0",
+   "what": "no own card in this pass: its machines (calcination oven, distiller, incubator, accumulators) were not examined in depth; tanks are covered by the Tank card, powered blocks by the Energy card",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Ars Magica Legacy",
+   "id": "arsmagicalegacy",
+   "version": "1.7.0",
+   "what": "**Etherium** card for every block of its public `EtheriumHandler` API (obelisk, celestial prism, black aurem, altar core): gauge + amount / max per etherium type; the widgets follow the block's types",
+   "controls": "none",
+   "tested": "yes (obelisk)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Reliquary",
+   "id": "reliquary",
+   "version": "2.0.92",
+   "what": "skipped: altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Interdimensional Wireless Transmitter",
+   "id": "",
+   "version": "1.0.1",
+   "what": "skipped: an RS2 network node; the RS Cloud Bridge already shows the network",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Trash Cans, Item Collectors",
+   "id": "",
+   "version": "1.1.1a / 1.1.12a",
+   "what": "skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range)",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 3 – more ATM11 machines",
+   "mod": "Just Dire Things",
+   "id": "",
+   "version": "1.6.11",
+   "what": "no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  }
+ ]
+}

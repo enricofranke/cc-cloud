@@ -312,7 +312,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
               <summary>
                 <span class="mono">{f.path}</span> <span class="muted small">{f.size} bytes · matches the store index</span>
               </summary>
-              <pre class="code src-code">{files[f.path]}</pre>
+              <pre class="code src-code" tabIndex={0}>{files[f.path]}</pre>
             </details>
           ))}
         {done ? (

@@ -594,6 +594,20 @@ In a computer's **</>** sheet, **Open the editor** shows all its files and folde
 
 If the file was changed on the computer since you opened it, saving asks before it overwrites. Files are limited to 256 KB, \`rom\` and disk drives are never touched, and the editor needs the same permissions as uploading scripts (plus the PIN if one is set).
 `,
+  mods: `# Supported mods
+
+CC: Cloud shows machines from many mods as ready-made cards – no Lua needed. Put a **Cloud Uplink** on the machine (or next to it), link it with the Link Card, and its card appears on the dashboard. Everything is optional: a card only exists when that mod is installed. All of this was checked against **All the Mods 11** (MC 26.1.2).
+
+Besides these, two generic cards work with almost any mod: the **Energy** card for every block that stores FE, and the **Tank** card for plain fluid tanks. Pack makers can turn single blocks off with the block tag \`#cccloud:no_generic_card\`. AE2 and Refined Storage have their own [bridges](/docs/bridges).
+
+Controls follow the [permissions](/docs/accounts#roles): buttons and switches need “Use controls”, a machine's redstone mode needs “Switch redstone”, and cards with coordinates (waystones, gates, quests) need “See coordinates”.
+
+## By category {#list}
+
+${C.modsSection("en")}
+
+This page is generated from the compatibility manifest (docs/COMPAT.md in the source), so it is always up to date with the mod.
+`,
   recipes: `# All recipes
 
 Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). JEI or EMI show the same in-game.

@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node dev/build-models.ts && node dev/build-recipes.ts && vite build",
+    "build": "node dev/build-models.ts && node dev/build-recipes.ts && node dev/build-mods.ts && vite build",
     "preview": "pnpm build && node dev/run.ts",
     "mock": "node dev/run.ts",
     "test": "vitest run --maxWorkers=3",
@@ -17,7 +17,9 @@
     "screenshots": "node dev/screenshots.ts",
     "models": "node dev/build-models.ts",
     "screenshots:editor": "node dev/editor-shots.ts",
-    "recipes": "node dev/build-recipes.ts"
+    "recipes": "node dev/build-recipes.ts",
+    "mods": "node dev/build-mods.ts",
+    "qa": "node dev/qa.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -37,6 +39,7 @@
     "@types/node": "^26.6.5",
     "@types/three": "0.186.0",
     "@types/ws": "^8.18.2",
+    "axe-core": "4.10.3",
     "playwright": "^1.64.1",
     "preact": "^10.29.8",
     "three": "0.186.1",

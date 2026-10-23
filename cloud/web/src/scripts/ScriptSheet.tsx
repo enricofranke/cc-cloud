@@ -326,7 +326,7 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
         {tab === "files" && (
           <div class="files">
             {list && (
-              <div class="files-usage" aria-label={`${fmtBytes(list.used)} of ${fmtBytes(list.capacity)} used`}>
+              <div class="files-usage" role="img" aria-label={`${fmtBytes(list.used)} of ${fmtBytes(list.capacity)} used`}>
                 <span
                   ref={(el) => {
                     if (el) el.style.width = `${Math.min(100, Math.round((list.used / Math.max(1, list.capacity)) * 100))}%`;

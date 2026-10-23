@@ -20,7 +20,7 @@ export function CodeBlock({ code, label = "Code" }: { code: string; label?: stri
           {state === "copied" ? "✓ Copied" : state === "failed" ? "Select & copy manually" : "Copy"}
         </button>
       </div>
-      <pre class="code">{code}</pre>
+      <pre class="code" tabIndex={0}>{code}</pre>
     </div>
   );
 }

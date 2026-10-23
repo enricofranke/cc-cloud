@@ -27,27 +27,40 @@ No external service, no account, no relay: the dashboard is served by the mod it
 
 | | |
 |---|---|
-| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card. |
-| 📦 **AE2 & Refined Storage** | ME / RS Cloud Bridges: search the whole network, watch stock levels with alerts, start crafting jobs from your browser. |
-| ⚡ **Energy & machines** | Cards for Powah, Ender IO, Oritech, Energized Power, Generator Galore, Energy Meter, Hostile Neural Networks, Productive Bees, MFFS, ME Requester – with history charts. |
-| 🧩 **Custom dashboards** | A Lua API (`cloud.button`, `cloud.gauge`, `cloud.chart`, pages, groups …) and the `cloud.ui` helper library. Rearrange everything in the browser's edit mode. |
-| 📡 **Real network** | Ranges, Cloud Relays, Ender Relays across dimensions, automatic re-routing, a power budget that grows with your network, and a live topology / map view. |
-| 🔐 **Secure by default** | LAN-only by default, in-game approval for every new browser, roles (viewer / operator / admin / owner), PINs for critical buttons, LuckPerms / FTB Ranks / FTB Teams support, read-only share links. |
-| 🎮 **In-game screens** | Mainframe and uplink screens in the CC: Tweaked look, JEI- and Jade-aware. |
+| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11, plus generic Energy and Tank cards for everything else. |
+| 📦 **AE2 & Refined Storage** | ME / RS Cloud Bridges: browse and search the whole network, item details with history, craft previews with missing items, CPUs and jobs, auto-stock rules that craft when stock runs low. |
+| 🧩 **Custom dashboards** | A Lua API (`cloud.button`, `cloud.gauge`, `cloud.chart`, pages, groups …) and the `cloud.ui` helper library. Arrange the live cards in the WYSIWYG layout editor – drag, resize, styles, undo. |
+| ⚙️ **Automation** | No-code rules (when → if → then) that run on the server, push notifications to Discord, ntfy or webhooks, long-term history charts with CSV export. |
+| ⌨️ **For scripters** | A browser terminal for any computer, a Lua editor with highlighting and a file tree, script upload and a community **Script Store** with signed, verified installs. |
+| 📡 **Real network** | Ranges, relays, Ender Relays across dimensions, CC cables and fiber, wireless redstone channels, mainframe upgrades up to the Quantum Core, and topology, 2D map and a 3D voxel view of your base. |
+| 🔐 **Secure by default** | LAN-only by default, in-game approval for every new browser, roles with fine-grained permissions, PINs for critical controls, LuckPerms / FTB Ranks / FTB Teams support, read-only share links. |
+| 🎮 **In-game** | Mainframe and uplink screens in the CC: Tweaked look, the Cloud Tablet and Cloud Display, the Cloud Analyzer overlay, a GuideME handbook, JEI, Jade and JourneyMap support. |
 | 🧭 **Docs built in** | Bilingual (EN/DE) documentation at `/docs` on your own dashboard – works offline. |
 
+<p align="center">
+  <img src="cloud/screenshots/hero-voxel-base.png" width="760" alt="3D voxel view of an underground base">
+</p>
 <p align="center">
   <img src="cloud/screenshots/desktop-01-dashboard.png" width="760" alt="Dashboard on desktop">
 </p>
 <p align="center">
-  <img src="cloud/screenshots/phone-s1-search-results.png" width="240" alt="ME search on a phone">
-  &nbsp;
-  <img src="cloud/screenshots/phone-c1-computer-card.png" width="240" alt="Auto computer card">
-  &nbsp;
-  <img src="cloud/screenshots/phone-n1-topology.png" width="240" alt="Network topology">
+  <img src="cloud/screenshots/desktop-e2-dragged-resized.png" width="760" alt="Layout editor: dragging and resizing live cards">
 </p>
 <p align="center">
-  <img src="cloud/screenshots/desktop-n1-topology.png" width="760" alt="Network topology on desktop">
+  <img src="cloud/screenshots/desktop-st1-browse.png" width="760" alt="Storage browser for an ME network">
+</p>
+<p align="center">
+  <img src="cloud/screenshots/phone-s3-item-detail.png" width="240" alt="Item details with history on a phone">
+  &nbsp;
+  <img src="cloud/screenshots/phone-t1-terminal.png" width="240" alt="Browser terminal on a phone">
+  &nbsp;
+  <img src="cloud/screenshots/phone-n1-topology.png" width="240" alt="Network topology on a phone">
+</p>
+<p align="center">
+  <img src="cloud/screenshots/desktop-c9b-mod-showcase-top.png" width="760" alt="Ready-made cards for many mods">
+</p>
+<p align="center">
+  <img src="cloud/screenshots/desktop-x6-editor.png" width="760" alt="Lua editor in the browser">
 </p>
 
 ## Blocks
@@ -126,13 +139,16 @@ cd cloud && npx pnpm@10 install && npx pnpm@10 dev   # dashboard with a mock ser
 ## Roadmap
 
 - [x] Mainframe, uplinks, Lua API, dashboard, in-game screens
-- [x] AE2 / Refined Storage bridges, item icons, power
-- [x] Network ranges, relays, topology & map
-- [x] Roles, accounts, permissions, teams, share links
-- [x] Mod integrations (energy, farms, MFFS, server card, backups)
-- [ ] No-code rules, push notifications (Discord / ntfy), browser terminal & Lua editor, long-term stats
-- [ ] Mainframe upgrades (Allthemodium → Unobtainium, Quantum Core), wired links, wireless redstone
-- [ ] Cloud Tablet, Cloud Display, 3D map
+- [x] AE2 / Refined Storage bridges, item icons, power, storage browser and auto-stock
+- [x] Network ranges, relays, topology, 2D map and 3D voxel view
+- [x] Roles, accounts, fine-grained permissions, teams, share links
+- [x] Mod integrations: energy, machines, farms, quarries, spawners, storage controllers, waystones, quests (40+ mods)
+- [x] No-code rules, push notifications (Discord / ntfy / webhooks), browser terminal & Lua editor, long-term history
+- [x] Mainframe upgrades (Allthemodium → Unobtainium, Quantum Core, Chunk Anchor), CC cables and fiber, wireless redstone
+- [x] Cloud Tablet, Cloud Display, Cloud Analyzer, GuideME handbook, KubeJS bindings
+- [x] Script Store with signed index (dashboard side)
+- [ ] Public Script Store website with community scripts
+- [ ] All the Mods pack submission (see [`docs/ATM_SUBMISSION.md`](docs/ATM_SUBMISSION.md))
 
 ## Credits & license
 

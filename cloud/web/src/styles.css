@@ -19,7 +19,7 @@
   --line-2: #344050;
   --text: #e7ecf1;
   --muted: #8d99a6;
-  --faint: #5c6773;
+  --faint: #7f8a96;
   --gold: #ddd771;
   --gold-hi: #ecec9c;
   --gold-dk: #8f8a3e;
@@ -30,6 +30,9 @@
   --green: #5fd35f;
   --yellow: #e8c547;
   --red: #d34f4f;
+  /* red for text on panels (AA) */
+  --red-text: #e57373;
+  --link: #6fcfe8;
   --gray: #7d8790;
   --logo-bg: #111;
   --purple: #a77bd9;
@@ -40,6 +43,15 @@
   --on-color: #0d1014;
 }
 
+:root[data-theme="light"] :is(.screen, .net-canvas, .search-bar, .wcell.t-gauge > .wcontent, .wcell.d-num, .hist-chart, .term-screen, .code, .codeblock, .src-code, .ex-code) {
+  /* dark "screen" tiles keep the bright state colours (the light theme darkens them for text on light panels) */
+  --cyan: #1f97ba;
+  --green: #2f9e3a;
+  --yellow: #b8900c;
+  --red: #c43c3c;
+  --orange: #c56f17;
+  --faint: #7f8a96;
+}
 :root[data-theme="light"] {
   color-scheme: light;
   --bg: #eceff3;
@@ -52,21 +64,23 @@
   --line-2: #c3ccd6;
   --text: #151a20;
   --muted: #586470;
-  --faint: #8a95a1;
+  --faint: #636d78;
   --gold: #ddd771;
   --gold-hi: #ecec9c;
   --gold-dk: #8f8a3e;
-  --gold-text: #7d7614;
-  --cyan: #1f97ba;
+  --gold-text: #6b6510;
+  --cyan: #0f5a6e;
   --cyan-hi: #5ec8e5;
   --cyan-dk: #1a6f88;
-  --green: #2f9e3a;
-  --yellow: #b8900c;
-  --red: #c43c3c;
+  --green: #1a5f22;
+  --yellow: #6b5200;
+  --red: #b03434;
+  --red-text: #b03434;
+  --link: #0f5a6e;
   --gray: #6b7680;
   --logo-bg: #111;
   --purple: #7c4fb8;
-  --orange: #c56f17;
+  --orange: #a35a10;
   --seg-off: #222a33;
   --shadow: 0 1px 2px rgba(16, 24, 32, 0.06), 0 8px 24px -14px rgba(16, 24, 32, 0.25);
   --backdrop: rgba(20, 26, 32, 0.45);
@@ -104,6 +118,18 @@ button:disabled {
   outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
+a {
+  color: var(--link);
+  text-underline-offset: 2px;
+}
+a:visited {
+  color: var(--link);
+}
+.mnode:focus-visible .mdot {
+  stroke: var(--cyan);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
 code,
 .mono,
 pre {
@@ -131,9 +157,14 @@ pre {
 }
 .page-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px 12px;
   margin: 4px 0 16px;
+}
+.page-head > div {
+  min-width: 0;
 }
 .px-heading,
 .px-title {
@@ -964,7 +995,7 @@ pre {
   transform: translateY(-50%);
   font-family: "Silkscreen", monospace;
   font-size: 10px;
-  color: var(--muted);
+  color: var(--text);
 }
 .switch.on {
   background: color-mix(in srgb, var(--green) 85%, #000);
@@ -2512,7 +2543,7 @@ pre {
 }
 .btn-danger-ghost {
   min-height: 48px;
-  color: var(--red);
+  color: var(--red-text);
   border-color: color-mix(in srgb, var(--red) 45%, transparent);
   background: transparent;
 }
@@ -6830,6 +6861,15 @@ body.rz-nwse * {
   flex: none;
   min-height: 34px;
 }
+/* the search bar is a dark "screen" in both themes: its button too */
+.search-bar .sb-browse {
+  background: #1c2229;
+  border-color: #2c343d;
+  color: #e7ecf1;
+}
+.search-bar .sb-browse:hover {
+  border-color: var(--cyan);
+}
 .sb {
   display: flex;
   flex-direction: column;
@@ -7800,14 +7840,6 @@ body.rz-nwse * {
   height: min(72vh, 760px);
   min-width: 0;
 }
-:root[data-theme="light"] .lua-editor {
-  --cm-kw: #7c3aed;
-  --cm-str: #2f7d32;
-  --cm-num: #c2410c;
-  --cm-com: #6b7280;
-  --cm-op: #0369a1;
-  --cm-builtin: #1d4ed8;
-}
 .ed-toolbar {
   grid-column: 1 / -1;
   display: flex;
@@ -7905,9 +7937,13 @@ body.rz-nwse * {
 }
 @media (max-width: 760px) {
   .lua-editor {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     height: 78vh;
+  }
+  .ed-main {
+    flex: 1 1 auto;
+    min-height: 280px;
   }
   .ed-tree-toggle {
     display: inline-flex;
@@ -7950,4 +7986,33 @@ body.rz-nwse * {
 }
 .store-sig {
   margin: 0;
+}
+
+/* light theme: AA contrast for coloured text and buttons */
+:root[data-theme="light"] .switch.on .switch-text {
+  color: #ffffff;
+}
+:root[data-theme="light"] .pxbtn-cyan {
+  --c: #1f97ba;
+}
+:root[data-theme="light"] .pt-discord {
+  color: #4c5bd4;
+}
+.fly-input {
+  color: #e7ecf1;
+}
+
+@media (max-width: 640px) {
+  /* phones: the status chips scroll sideways in one row, so the map keeps its height */
+  .net-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 100%;
+    min-width: 0;
+    padding-bottom: 2px;
+  }
+  .net-chips > * {
+    flex: none;
+  }
 }

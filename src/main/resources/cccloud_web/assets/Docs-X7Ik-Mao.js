@@ -1,4 +1,4 @@
-import{l as e}from"./scriptstore-L1h0OKAj.js";import{a as t,l as n,n as r,o as i,r as a,t as o}from"./jsxRuntime.module-BRbsxUMc.js";import{A as s,F as c,J as l,W as u,_ as ee,i as te,o as ne,p as re,s as ie,u as d,x as ae,y as oe,z as f}from"./Overlays-Bc1B3IIl.js";import{E as p,T as se,a as m,s as ce}from"./index-DkY1VhZM.js";var h={recipes:[{file:`advanced_cloud_relay`,result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},{file:`advanced_cloud_tablet`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GPG`,`GKG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,P:`computercraft:pocket_computer_advanced`,K:`cccloud:cloud_core`}},{file:`advanced_cloud_tablet_upgrade`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GTG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,T:`cccloud:cloud_tablet`}},{file:`advanced_cloud_uplink`,result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},{file:`cloud_analyzer`,result:`cccloud:cloud_analyzer`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`,`#c:dusts/redstone`,`#c:glass_panes`]},{file:`cloud_core`,result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},{file:`cloud_display`,result:`cccloud:cloud_display`,count:4,grid:[`GGG`,`GMG`,`GKG`],key:{G:`#c:ingots/gold`,M:`computercraft:monitor_advanced`,K:`cccloud:cloud_core`}},{file:`cloud_link_card`,result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},{file:`cloud_mainframe`,result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},{file:`cloud_relay`,result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},{file:`cloud_tablet`,result:`cccloud:cloud_tablet`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`]},{file:`cloud_uplink`,result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},{file:`ender_fiber_link`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`minecraft:netherite_ingot`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`!mod:allthemodium`]},{file:`ender_fiber_link_unobtainium`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`#c:ingots/unobtainium`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`mod:allthemodium`]},{file:`ender_relay`,result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},{file:`fiber_cable`,result:`cccloud:fiber_cable`,count:8,grid:[`SGS`,`PCP`,`SGS`],key:{S:`minecraft:string`,G:`#c:glass_panes`,P:`minecraft:prismarine_crystals`,C:`cccloud:cloud_core`}},{file:`fiber_junction`,result:`cccloud:fiber_junction`,count:4,grid:[`SFS`,`FRF`,`SFS`],key:{S:`minecraft:stone`,F:`cccloud:fiber_cable`,R:`minecraft:redstone`}},{file:`handbook`,result:`guideme:guide`,shapeless:!0,items:[`minecraft:book`,`cccloud:cloud_core`],requires:[`mod:guideme`]},{file:`me_cloud_bridge`,result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`},requires:[`mod:ae2`]},{file:`quantum_core`,result:`cccloud:quantum_core`,grid:[`UUU`,`UAU`,`UCU`],key:{U:`#c:ingots/unobtainium`,A:`allthetweaks:atm_star`,C:`cccloud:cloud_core`},requires:[`mod:allthetweaks`]},{file:`quantum_core_fallback`,result:`cccloud:quantum_core`,grid:[`NSN`,`SCS`,`NSN`],key:{N:`minecraft:netherite_block`,S:`minecraft:nether_star`,C:`cccloud:cloud_core`},requires:[`!mod:allthetweaks`]},{file:`rs_cloud_bridge`,result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`},requires:[`mod:refinedstorage`]},{file:`upgrade_bandwidth_allthemodium`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_allthemodium_fallback`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium_fallback`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium_fallback`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_allthemodium`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_allthemodium_fallback`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_unobtainium`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_unobtainium_fallback`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_vibranium`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_vibranium_fallback`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_chunk_anchor`,result:`cccloud:upgrade_chunk_anchor`,grid:[`OEO`,`EAE`,`OCO`],key:{O:`minecraft:obsidian`,E:`minecraft:ender_pearl`,A:`minecraft:lodestone`,C:`cccloud:cloud_core`}},{file:`upgrade_efficiency_allthemodium`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_allthemodium_fallback`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium_fallback`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_vibranium`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_vibranium_fallback`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_allthemodium`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_allthemodium_fallback`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_unobtainium`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_memory_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_unobtainium_fallback`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_memory_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_vibranium`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_vibranium_fallback`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_allthemodium`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_range_allthemodium_fallback`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_unobtainium`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_range_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_unobtainium_fallback`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_range_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_vibranium`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_range_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_vibranium_fallback`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_range_allthemodium`},requires:[`!mod:allthemodium`]}],names:{"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud-Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud-Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Erweiterter Cloud-Uplink`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud-Kern`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud-Verbindungskarte`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME-Cloud-Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS-Cloud-Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud-Relais`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Erweitertes Cloud-Relais`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender-Relais`},"cccloud:fiber_cable":{en:`Fiber Cable`,de:`Glasfaserkabel`},"cccloud:fiber_junction":{en:`Fiber Junction`,de:`Glasfaser-Verteiler`},"cccloud:ender_fiber_link":{en:`Ender Fiber Link`,de:`Ender-Glasfaserbrücke`},"cccloud:upgrade_capacity_allthemodium":{en:`Capacity Upgrade (Allthemodium)`,de:`Kapazität-Upgrade (Allthemodium)`},"cccloud:upgrade_capacity_vibranium":{en:`Capacity Upgrade (Vibranium)`,de:`Kapazität-Upgrade (Vibranium)`},"cccloud:upgrade_capacity_unobtainium":{en:`Capacity Upgrade (Unobtainium)`,de:`Kapazität-Upgrade (Unobtainium)`},"cccloud:upgrade_bandwidth_allthemodium":{en:`Bandwidth Upgrade (Allthemodium)`,de:`Bandbreite-Upgrade (Allthemodium)`},"cccloud:upgrade_bandwidth_vibranium":{en:`Bandwidth Upgrade (Vibranium)`,de:`Bandbreite-Upgrade (Vibranium)`},"cccloud:upgrade_bandwidth_unobtainium":{en:`Bandwidth Upgrade (Unobtainium)`,de:`Bandbreite-Upgrade (Unobtainium)`},"cccloud:upgrade_range_allthemodium":{en:`Range Upgrade (Allthemodium)`,de:`Reichweite-Upgrade (Allthemodium)`},"cccloud:upgrade_range_vibranium":{en:`Range Upgrade (Vibranium)`,de:`Reichweite-Upgrade (Vibranium)`},"cccloud:upgrade_range_unobtainium":{en:`Range Upgrade (Unobtainium)`,de:`Reichweite-Upgrade (Unobtainium)`},"cccloud:upgrade_efficiency_allthemodium":{en:`Efficiency Upgrade (Allthemodium)`,de:`Effizienz-Upgrade (Allthemodium)`},"cccloud:upgrade_efficiency_vibranium":{en:`Efficiency Upgrade (Vibranium)`,de:`Effizienz-Upgrade (Vibranium)`},"cccloud:upgrade_efficiency_unobtainium":{en:`Efficiency Upgrade (Unobtainium)`,de:`Effizienz-Upgrade (Unobtainium)`},"cccloud:upgrade_memory_allthemodium":{en:`Memory Upgrade (Allthemodium)`,de:`Speicher-Upgrade (Allthemodium)`},"cccloud:upgrade_memory_vibranium":{en:`Memory Upgrade (Vibranium)`,de:`Speicher-Upgrade (Vibranium)`},"cccloud:upgrade_memory_unobtainium":{en:`Memory Upgrade (Unobtainium)`,de:`Speicher-Upgrade (Unobtainium)`},"cccloud:quantum_core":{en:`Quantum Core`,de:`Quantenkern`},"cccloud:upgrade_chunk_anchor":{en:`Chunk Anchor Upgrade`,de:`Chunk-Anker-Upgrade`},"cccloud:cloud_tablet":{en:`Cloud Tablet`,de:`Cloud-Tablet`},"cccloud:advanced_cloud_tablet":{en:`Advanced Cloud Tablet`,de:`Erweitertes Cloud-Tablet`},"cccloud:cloud_display":{en:`Cloud Display`,de:`Cloud-Display`},"cccloud:cloud_analyzer":{en:`Cloud Analyzer`,de:`Cloud-Analysator`},"cccloud:handbook":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}}},le=e({ALL_RECIPES:()=>N,CADDYFILE:()=>D,CLOUDFLARED:()=>O,CLOUDFLARED_YML:()=>k,COMMANDS:()=>M,FENCE:()=>"```",LUA_BRIDGE:()=>_,LUA_BRIDGE_WIDGETS:()=>v,LUA_EVENT:()=>ue,LUA_FIRST:()=>g,LUA_LAYOUT:()=>de,LUA_MAINFRAME:()=>pe,LUA_SETMANY:()=>fe,PKCS8:()=>j,RECIPES:()=>me,RECIPE_GROUPS:()=>he,SHELL_EDIT:()=>S,SHELL_LUA:()=>w,SHELL_RUN:()=>C,TOML_CADDY:()=>E,TOML_LAN:()=>T,TOML_TLS:()=>A,UI_FARM:()=>b,UI_QUICK:()=>y,UI_REACTOR:()=>x,code:()=>ye,groupOf:()=>ge,recipe:()=>ve,recipeSection:()=>F}),g=`local cloud = peripheral.find("cloud_uplink")
+import{l as e}from"./scriptstore-L1h0OKAj.js";import{a as t,l as n,n as r,o as i,r as a,t as o}from"./jsxRuntime.module-BRbsxUMc.js";import{A as s,F as c,J as l,W as u,_ as ee,i as te,o as ne,p as re,s as ie,u as d,x as ae,y as oe,z as f}from"./Overlays-Bc1B3IIl.js";import{E as p,T as se,a as m,s as ce}from"./index-Dp73qzkj.js";var h={recipes:[{file:`advanced_cloud_relay`,result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},{file:`advanced_cloud_tablet`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GPG`,`GKG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,P:`computercraft:pocket_computer_advanced`,K:`cccloud:cloud_core`}},{file:`advanced_cloud_tablet_upgrade`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GTG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,T:`cccloud:cloud_tablet`}},{file:`advanced_cloud_uplink`,result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},{file:`cloud_analyzer`,result:`cccloud:cloud_analyzer`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`,`#c:dusts/redstone`,`#c:glass_panes`]},{file:`cloud_core`,result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},{file:`cloud_display`,result:`cccloud:cloud_display`,count:4,grid:[`GGG`,`GMG`,`GKG`],key:{G:`#c:ingots/gold`,M:`computercraft:monitor_advanced`,K:`cccloud:cloud_core`}},{file:`cloud_link_card`,result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},{file:`cloud_mainframe`,result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},{file:`cloud_relay`,result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},{file:`cloud_tablet`,result:`cccloud:cloud_tablet`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`]},{file:`cloud_uplink`,result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},{file:`ender_fiber_link`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`minecraft:netherite_ingot`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`!mod:allthemodium`]},{file:`ender_fiber_link_unobtainium`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`#c:ingots/unobtainium`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`mod:allthemodium`]},{file:`ender_relay`,result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},{file:`fiber_cable`,result:`cccloud:fiber_cable`,count:8,grid:[`SGS`,`PCP`,`SGS`],key:{S:`minecraft:string`,G:`#c:glass_panes`,P:`minecraft:prismarine_crystals`,C:`cccloud:cloud_core`}},{file:`fiber_junction`,result:`cccloud:fiber_junction`,count:4,grid:[`SFS`,`FRF`,`SFS`],key:{S:`minecraft:stone`,F:`cccloud:fiber_cable`,R:`minecraft:redstone`}},{file:`handbook`,result:`guideme:guide`,shapeless:!0,items:[`minecraft:book`,`cccloud:cloud_core`],requires:[`mod:guideme`]},{file:`me_cloud_bridge`,result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`},requires:[`mod:ae2`]},{file:`quantum_core`,result:`cccloud:quantum_core`,grid:[`UUU`,`UAU`,`UCU`],key:{U:`#c:ingots/unobtainium`,A:`allthetweaks:atm_star`,C:`cccloud:cloud_core`},requires:[`mod:allthetweaks`]},{file:`quantum_core_fallback`,result:`cccloud:quantum_core`,grid:[`NSN`,`SCS`,`NSN`],key:{N:`minecraft:netherite_block`,S:`minecraft:nether_star`,C:`cccloud:cloud_core`},requires:[`!mod:allthetweaks`]},{file:`rs_cloud_bridge`,result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`},requires:[`mod:refinedstorage`]},{file:`upgrade_bandwidth_allthemodium`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_allthemodium_fallback`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium_fallback`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium_fallback`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_allthemodium`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_allthemodium_fallback`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_unobtainium`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_unobtainium_fallback`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_vibranium`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_vibranium_fallback`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_chunk_anchor`,result:`cccloud:upgrade_chunk_anchor`,grid:[`OEO`,`EAE`,`OCO`],key:{O:`minecraft:obsidian`,E:`minecraft:ender_pearl`,A:`minecraft:lodestone`,C:`cccloud:cloud_core`}},{file:`upgrade_efficiency_allthemodium`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_allthemodium_fallback`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium_fallback`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_vibranium`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_vibranium_fallback`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_allthemodium`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_allthemodium_fallback`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_unobtainium`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_memory_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_unobtainium_fallback`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_memory_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_vibranium`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_vibranium_fallback`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_allthemodium`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_range_allthemodium_fallback`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_unobtainium`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_range_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_unobtainium_fallback`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_range_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_vibranium`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_range_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_vibranium_fallback`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_range_allthemodium`},requires:[`!mod:allthemodium`]}],names:{"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud-Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud-Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Erweiterter Cloud-Uplink`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud-Kern`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud-Verbindungskarte`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME-Cloud-Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS-Cloud-Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud-Relais`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Erweitertes Cloud-Relais`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender-Relais`},"cccloud:fiber_cable":{en:`Fiber Cable`,de:`Glasfaserkabel`},"cccloud:fiber_junction":{en:`Fiber Junction`,de:`Glasfaser-Verteiler`},"cccloud:ender_fiber_link":{en:`Ender Fiber Link`,de:`Ender-Glasfaserbrücke`},"cccloud:upgrade_capacity_allthemodium":{en:`Capacity Upgrade (Allthemodium)`,de:`Kapazität-Upgrade (Allthemodium)`},"cccloud:upgrade_capacity_vibranium":{en:`Capacity Upgrade (Vibranium)`,de:`Kapazität-Upgrade (Vibranium)`},"cccloud:upgrade_capacity_unobtainium":{en:`Capacity Upgrade (Unobtainium)`,de:`Kapazität-Upgrade (Unobtainium)`},"cccloud:upgrade_bandwidth_allthemodium":{en:`Bandwidth Upgrade (Allthemodium)`,de:`Bandbreite-Upgrade (Allthemodium)`},"cccloud:upgrade_bandwidth_vibranium":{en:`Bandwidth Upgrade (Vibranium)`,de:`Bandbreite-Upgrade (Vibranium)`},"cccloud:upgrade_bandwidth_unobtainium":{en:`Bandwidth Upgrade (Unobtainium)`,de:`Bandbreite-Upgrade (Unobtainium)`},"cccloud:upgrade_range_allthemodium":{en:`Range Upgrade (Allthemodium)`,de:`Reichweite-Upgrade (Allthemodium)`},"cccloud:upgrade_range_vibranium":{en:`Range Upgrade (Vibranium)`,de:`Reichweite-Upgrade (Vibranium)`},"cccloud:upgrade_range_unobtainium":{en:`Range Upgrade (Unobtainium)`,de:`Reichweite-Upgrade (Unobtainium)`},"cccloud:upgrade_efficiency_allthemodium":{en:`Efficiency Upgrade (Allthemodium)`,de:`Effizienz-Upgrade (Allthemodium)`},"cccloud:upgrade_efficiency_vibranium":{en:`Efficiency Upgrade (Vibranium)`,de:`Effizienz-Upgrade (Vibranium)`},"cccloud:upgrade_efficiency_unobtainium":{en:`Efficiency Upgrade (Unobtainium)`,de:`Effizienz-Upgrade (Unobtainium)`},"cccloud:upgrade_memory_allthemodium":{en:`Memory Upgrade (Allthemodium)`,de:`Speicher-Upgrade (Allthemodium)`},"cccloud:upgrade_memory_vibranium":{en:`Memory Upgrade (Vibranium)`,de:`Speicher-Upgrade (Vibranium)`},"cccloud:upgrade_memory_unobtainium":{en:`Memory Upgrade (Unobtainium)`,de:`Speicher-Upgrade (Unobtainium)`},"cccloud:quantum_core":{en:`Quantum Core`,de:`Quantenkern`},"cccloud:upgrade_chunk_anchor":{en:`Chunk Anchor Upgrade`,de:`Chunk-Anker-Upgrade`},"cccloud:cloud_tablet":{en:`Cloud Tablet`,de:`Cloud-Tablet`},"cccloud:advanced_cloud_tablet":{en:`Advanced Cloud Tablet`,de:`Erweitertes Cloud-Tablet`},"cccloud:cloud_display":{en:`Cloud Display`,de:`Cloud-Display`},"cccloud:cloud_analyzer":{en:`Cloud Analyzer`,de:`Cloud-Analysator`},"cccloud:handbook":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}}},le={source:`docs/COMPAT.md, docs/BUILD.md`,mods:[{group:`v05`,mod:`Powah`,id:`powah`,version:`7.0.4-alpha`,what:`Energy cells, generators and the reactor: stored FE, in/out, reactor temperature and fuel`,controls:`reactor on/off where exposed`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Ender IO`,id:`enderio`,version:`9.0.6-alpha`,what:`Capacitor banks and machines: stored FE, in/out, progress`,controls:`redstone mode`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Oritech`,id:`oritech`,version:`2.0.0-exp11`,what:`Energy storage and generators: stored FE, generation`,controls:`–`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Energized Power`,id:`energizedpower`,version:`3.0.1`,what:`Machines and batteries: stored FE, progress`,controls:`redstone mode`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Energy Meter`,id:`energymeter`,version:`0.5.0`,what:`Flow per tick, total transferred, a 60-minute chart`,controls:`transfer mode`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Generator Galore`,id:`generatorgalore`,version:`1.7.0`,what:`Generators: stored FE, generation, fuel`,controls:`redstone mode`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Hostile Neural Networks`,id:`hostilenetworks`,version:`7.0.0`,what:`Simulation chamber: running, data model, accuracy, output`,controls:`–`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Productive Bees`,id:`productivebees`,version:`15.3.0`,what:`Hives and centrifuges: honey level, bees inside, output`,controls:`–`,tested:`yes`,skipped:!1},{group:`v05`,mod:`MFFS`,id:`mffs`,version:`5.8.39`,what:`Force field projector: fortron, field blocks, status`,controls:`field on/off (PIN)`,tested:`yes`,skipped:!1},{group:`v05`,mod:`ME Requester`,id:`merequester`,version:`1.5.1`,what:`Kept-in-stock requests: amount, status`,controls:`request on/off, amount`,tested:`yes`,skipped:!1},{group:`v05`,mod:`spark`,id:`spark`,version:`1.10.187`,what:`Server card: TPS, MSPT, CPU`,controls:`–`,tested:`yes`,skipped:!1},{group:`v05`,mod:`FTB Teams / FTB Chunks`,id:`ftbteams`,version:`26.1.2`,what:`Team trust for roles, team claims on the network map`,controls:`–`,tested:`yes`,skipped:!1},{group:`v05`,mod:`Simple Backups`,id:`simplebackups`,version:`26.1.6`,what:`Backups card: last backup, size, running`,controls:`backup now`,tested:`yes`,skipped:!1},{group:`Storage controllers`,mod:`Functional Storage`,id:`functionalstorage`,version:`1.6.4`,what:`Storage Controller, Framed Storage Controller, Controller Access Points: Storage card`,controls:``,tested:`yes (bare controller; drawers are linked with the Linking Tool only)`,skipped:!1},{group:`Storage controllers`,mod:`Sophisticated Storage`,id:`sophisticatedstorage`,version:`1.5.121`,what:`Controller: Storage card`,controls:``,tested:`yes (controller + chest)`,skipped:!1},{group:`Storage controllers`,mod:`Occultism`,id:`occultism`,version:`1.256.1`,what:`Dimensional Storage Actuator (all four variants): Storage card`,controls:``,tested:`yes (wave 3: actuator alone, 100 iron ingots; runtime Modonomicon, Curios, GeckoLib)`,skipped:!1},{group:`Storage controllers`,mod:`DimStorage`,id:`dimstorage`,version:`10.0.1`,what:`Dimensional Chest / Dimensional Tank: Storage / Tank (fill %, fluid, mB) card`,controls:``,tested:`yes (both)`,skipped:!1},{group:`Storage controllers`,mod:`Integrated Terminals / Tunnels`,id:``,version:``,what:`–: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card`,controls:``,tested:`–`,skipped:!0},{group:`Applied Energistics add-ons`,mod:`Advanced AE`,id:`advanced_ae`,version:`26.1.7`,what:`**Quantum Computer** card on any block of the multiblock: status (online + name / not formed / no power), free storage, co-processor threads, jobs running, up to 6 job rows ("64× Iron Ingot – 42 %, 1 min 3 s"); info alert when all jobs are done. Quantum CPU jobs also show in the ME Cloud Bridge's job list, because Advanced AE adds its CPUs to AE2's \`getCpus()\`.`,controls:'"Cancel all jobs" (`act.buttons`, confirm)',tested:'partly: a single quantum unit block ("Not formed", cancel → `unavailable`); a formed quantum computer needs the full multiblock on a powered grid',skipped:!1},{group:`Applied Energistics add-ons`,mod:`ExtendedAE`,id:`extendedae`,version:`1.0.5`,what:`skipped: no level maintainer or CPU-like block; its machines (assemblers, pattern providers) are covered by the ME bridge's job list`,controls:`–`,tested:`–`,skipped:!0},{group:`Applied Energistics add-ons`,mod:`AE2 Infinity Booster / Network Analyzer`,id:``,version:``,what:`skipped: nothing to show (range card / client-side analyzer)`,controls:`–`,tested:`–`,skipped:!0},{group:`Quarries`,mod:`QuarryPlus, published as "Additional Enchanted Miner"`,id:`quarryplus`,version:`26.12.160`,what:`**Quarry** / **Chunk Destroyer** cards: status (the machine's state from its public client-sync tag: building the frame, mining, removing fluids, finished, …), working indicator, energy %, area size and bottom Y (no coordinates), dig depth % (quarry: from the drill head), buffered items; warn alert once when 10 000+ mined items pile up in the internal buffer (nothing pulls them out), info alert when finished`,controls:`none: QuarryPlus has no redstone or API pause`,tested:`yes (quarry: no area → placed with its default area → working)`,skipped:!1},{group:`Spawners and mob farms`,mod:`Apothic Spawners`,id:`apothic_spawners`,version:`2.0.1`,what:`**Spawner** card on (upgraded) spawners: mob, spawning now (player in range or "ignore players"; with Redstone Control only while powered), "needs redstone" indicator, next spawn %, delay range, mobs per spawn, max nearby, player range, the boolean upgrades`,controls:`none: Redstone Control is an upgrade item applied in-game; a dashboard switch would bypass the progression`,tested:`yes (pig spawner, default stats)`,skipped:!1},{group:`Spawners and mob farms`,mod:`Gateways to Eternity`,id:`gateways`,version:`6.0.2`,what:"**Gateways** mainframe card (restricted, `view.positions`): gates open within 256 blocks of the mainframe – name, wave n / total, enemies alive, lives, distance; alerts when a gate opens, completes or closes. Gates are entities, so this is a mainframe card. Config `world.gatewaysCard`.",controls:`none`,tested:`yes (Emerald Grove gate opened and removed)`,skipped:!1},{group:`Spawners and mob farms`,mod:`Easy Villagers`,id:`easy_villagers`,version:`1.1.47`,what:`**Villager Breeder** (villagers, breeding / needs food), **Iron Farm** (villager, golem cycle %), **Villager Farmer** (villager, crop) with output slots used, output full indicator and a warn alert once when the output is full`,controls:`none`,tested:`yes (empty iron farm)`,skipped:!1},{group:`Processing machines`,mod:`Iron Furnaces`,id:`ironfurnaces`,version:`4.4.2`,what:`**Furnace** card on every tier: status (smelting X / idle / no fuel / output full), smelting %, fuel left, input, output, energy; warn alert once when the output slot is full`,controls:"furnace redstone mode (Ignore / Run without signal / Run with signal), select with confirm, `act.redstone`",tested:`yes (smelts raw iron, mode switch)`,skipped:!1},{group:`Processing machines`,mod:`Cobblegen Galore`,id:`cobblegengalore`,version:`0.2.9`,what:`**Block generator** card: what it makes, tier speed (×modifier per tick-rate), buffer n / 64; warn alert once when the buffer is full (nothing pulls the blocks out). The exact items/min depend on the recipe's private speed and are not shown.`,controls:`none`,tested:`yes (stone generator between water and lava)`,skipped:!1},{group:`Processing machines`,mod:`Productive Metalworks`,id:`productivemetalworks`,version:`1.17.1`,what:`**Foundry** card on the controller: formed + coil type, fuel, power (energy coil), items melting, molten metals (up to 4)`,controls:`none`,tested:`yes (lone controller, "Not formed")`,skipped:!1},{group:`Processing machines`,mod:`Silent Gear Metalworks`,id:`sgearmetalworks`,version:`1.6.0`,what:`skipped: adds only recipes to the Productive Metalworks foundry, no blocks of its own`,controls:`–`,tested:`–`,skipped:!0},{group:`Processing machines`,mod:`Agritech: Evolved`,id:`agritechevolved`,version:`2.2.0.5`,what:`**Planter** / **Advanced Planter** cards: plant, soil, growth %, energy (advanced), output full indicator + warn alert`,controls:`none`,tested:`yes (empty basic planter)`,skipped:!1},{group:`Processing machines`,mod:`Productive Farming`,id:`productivefarming`,version:`0.13.0`,what:`**Farm** card on the farm controller: formed, water, output slots used, output full + warn alert`,controls:`none`,tested:"yes (lone controller). Note: Productive Farming's own GameTest `agritech_compat_recipes_present` fails in a dev run without Agritech Two; ours passes.",skipped:!1},{group:`Processing machines`,mod:`Mystical Agriculture`,id:`mysticalagriculture`,version:`9.0.10`,what:`**Machine** card for Essence Furnace, Seed Reprocessor, Soul Extractor, Harvester, Ore Infuser, Soulium Spawner: status, progress, energy, fuel left, upgrade tier`,controls:`none`,tested:"untested (retried in wave 3): any dev server with Mystical Agriculture 9.0.10 + Cucumber 9.0.6 (also with Mystical Agradditions) crashes at start. CC: Tweaked rebuilds the creative tabs on server start (`CommonHooks.onServerStarted` → `CreativeModeTabs.tryRebuildTabContents`), and MA's own tab then adds \"Inferium Essence\" twice (`ModCreativeModeTabs` via Cucumber's `FeatureFlagDisplayItemGenerator`). ATM11 runs the same code with its crop/tag configuration (`config/mysticalcustomization`, `cucumber-tags.json`), so it is not our bug, but a minimal test world cannot be started; the card stays compile-checked against the exact jar.",skipped:!1},{group:`Processing machines`,mod:`Mystical Automation`,id:`mysticalautomation`,version:`2.0.7`,what:`no own card: its machines only expose energy, so the generic Energy card applies`,controls:`–`,tested:`–`,skipped:!0},{group:`Processing machines`,mod:`Railcraft Reborn`,id:`railcraft`,version:`1.4.5`,what:`**Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode)`,controls:`none`,tested:`yes (lone firebox, "Not formed")`,skipped:!1},{group:`Logistics`,mod:`Super Factory Manager`,id:`sfm`,version:`4.34.0`,what:`**Factory Manager** card: state (running / no disk / no program / program has errors), program name, average tick time, errors, warnings, first error (SFM's translation key on dedicated servers), queued redstone pulses; warn alert when the program becomes invalid`,controls:`none: SFM has no on/off – taking the disk out is its off switch`,tested:`yes (manager without a disk)`,skipped:!1},{group:`Logistics`,mod:`Modular Routers`,id:`modularrouters`,version:`26.1.2.2`,what:`**Modular Router** card: status, modules, speed (tick rate, items, eco mode), buffer`,controls:'redstone mode (Always / Redstone low / Redstone high / Never / Redstone pulse) – "Never" switches the router off; select with confirm, `act.redstone`',tested:`yes (empty router, switched to Never)`,skipped:!1},{group:`Logistics`,mod:`LaserIO, Pipez`,id:``,version:``,what:`skipped: pipes/nodes without state worth a card (no buffers, no machine status)`,controls:`–`,tested:`–`,skipped:!0},{group:`Logistics`,mod:`Logistics Networks`,id:`logisticsnetworks`,version:`1.13.0`,what:`no card: it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it`,controls:`–`,tested:`–`,skipped:!0},{group:`Integrated Dynamics`,mod:`Integrated Dynamics`,id:`integrateddynamics`,version:`1.36.1`,what:`**Display Panels** card: an uplink next to a logic cable that carries Display/Light Panels shows each panel's current value with its type (one label per side; the card rebuilds when panels are added/removed). ID evaluates the variables on its own network; the card only reads the panel's display value. Variable Stores are not read (their variables are evaluated only by readers/panels).`,controls:`none`,tested:`untested: placing parts on a cable needs ID's part placement and a network; compiled against the exact jar and loaded in a dev server`,skipped:!1},{group:`World & progression`,mod:`Waystones`,id:`waystones`,version:`26.1.2.16`,what:'**Waystones** mainframe card (restricted, `view.positions`): waystones owned by the mainframe owner or a member of the owner\'s team (team providers, e.g. FTB Teams), plus global waystones – name, dimension, coordinates (8 rows) and the network-map overlay in the snapshot: `"waystones":{"items":[{"name","dim","x","y","z","kind","global"?}],"truncated"}` (max 512, re-read every 10 s). Config `world.waystonesCard`. The dashboard does not draw the overlay yet.',controls:`none`,tested:`yes (own waystone listed, a stranger's private one hidden)`,skipped:!1},{group:`World & progression`,mod:`FTB Quests`,id:`ftbquests`,version:`26.1.2.9`,what:"**Quests** mainframe card (restricted, `view.positions`): the owner's FTB team – overall %, chapters done / total, quests done / total, the 5 most recent completions with chapter and age; info alert on a new completion. Config `world.questsCard`.",controls:`none`,tested:`partly: card, restricted flag and quest file access; a mock player has no FTB team, so progress values are not covered`,skipped:!1},{group:`World & progression`,mod:`JourneyMap`,id:`journeymap`,version:`6.0.10 (API 2.0.0)`,what:'client plugin (`client/compat/journeymap`, found by JourneyMap\'s `@JourneyMapPlugin`): the mainframes, relays and devices of every network where the player has `view.positions` as temporary (non-persistent) waypoints named "CC: Cloud – <mainframe>: <device>", coloured by type. The client subscribes with the `map_nodes_subscribe` payload while the client config `journeyMapWaypoints` (default true) is on; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes.',controls:`client config toggle`,tested:"server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit test `MapNodesTest`); the JourneyMap side needs a client and is untested",skipped:!1},{group:`In-game handbook`,mod:`GuideME`,id:`guideme`,version:`26.1.15-beta`,what:"**CC: Cloud Handbook**: a data-driven GuideMe guide (`assets/cccloud/guideme_guides/handbook.json`, pages in `assets/cccloud/guides/cccloud/handbook/`, German in `_de_de/`), generated from the dashboard docs by `tools/gen_handbook.ts` (11 pages per language, recipes as `<RecipeFor>` with a fallback text). Item: GuideMe's guide item with `guideme:guide_id = cccloud:handbook`, crafted shapeless from a book + Cloud Core (recipe only when GuideMe is loaded). No code dependency.",controls:``,tested:`yes (\`guideme_handbook\` parses every page with GuideMe's parser; screenshots of the EN and DE guide in a dev client). The ME/RS bridge recipe boxes show GuideMe's "missing item" note when AE2 / RS are absent.`,skipped:!1},{group:`KubeJS bindings`,mod:`KubeJS`,id:`kubejs`,version:`26.1.2-8.0.6 (Rhino 2101.2.8-build.91)`,what:'Server scripts get **`CCCloudEvents.action`** (an accepted dashboard action: mainframeId, sectionId, section, widget, value, playerName, player, device), **`CCCloudEvents.deviceLinked`** (uplink/bridge bound with a Link Card: mainframeId, deviceId, type, dimension, pos, player) and **`CCCloudEvents.alert`** (mainframeId, sectionId, text, level), and the binding **`CCCloud`**: `mainframes()`, `mainframesOf(player)`, `has(player, mainframeId, "act.buttons")`, `section(mainframeId, key).title(..).gauge/toggle/button/slider/select/buttons/number/text/label/chart/progress/indicator(..).restricted(true).as(player).onAction(ctx => …).publish()`, `set`, `get`, `alert`, `remove`, `sections`. Widgets and values are validated like Lua; dashboard actions need the same per-widget permission (`act.buttons`) and validation, then `onAction` runs (`ctx.reject("code")` refuses); `as(player)` needs `layout.edit`.',controls:``,tested:"yes (`script_sections` without KubeJS, `kubejs_bindings` with a real server script)",skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`any mod: plain fluid tanks`,id:``,version:``,what:"generic **Tank** card (kind `tank`, lowest priority, below the Energy card): a block entity with a fluid capability, no energy capability and at most 2 item slots – fill %, fluid, mB (up to 8 tanks summed). Covers EvilCraft's Dark Tank, Stellaris fluid tanks and similar.",controls:`none`,tested:`yes (EvilCraft Dark Tank with 1 bucket of water)`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`Witchery`,id:`witchery`,version:`0.5.17`,what:`**Altar** card on the altar core: power gauge, current / max power, range, augment rate and boost; warn alert below 10 %`,controls:`none`,tested:`no: the altar is a multiblock; the mod loads in the dev server (Kotlin for Forge, Curios, Modonomicon, Lithostitched)`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`Forbidden & Arcanus`,id:`forbidden_arcanus`,version:`2.8.0-beta.2`,what:`**Hephaestus Forge** card: tier, ritual running, main item, the four essences (aureal, ectoplasm, blood, experience) as gauges and amount / limit; info alert when a ritual finishes`,controls:`none`,tested:`yes (lone forge: tier 1, idle, empty)`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`Pylons`,id:`pylons`,version:`6.0.1`,what:`**Pylon** card for all five pylons: on/off, owner, range`,controls:"on/off toggle (the pylon's own switch), confirm, `act.buttons`",tested:`yes (expulsion pylon toggled off and on)`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`EvilCraft`,id:`evilcraft`,version:`1.2.107`,what:`Dark Tank via the generic Tank card; Blood Infuser / Spirit Furnace keep the generic Energy/tank cards`,controls:`–`,tested:`see Tank`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`Stellaris`,id:`stellaris`,version:`2.0.7`,what:`no own card: fluid tanks via the generic Tank card, generators via the Energy card where they expose the capabilities (not verified in a test); rockets are entities`,controls:`–`,tested:`no`,skipped:!0},{group:`Wave 3 – more ATM11 machines`,mod:`Theurgy`,id:`theurgy`,version:`1.116.0`,what:`no own card in this pass: its machines (calcination oven, distiller, incubator, accumulators) were not examined in depth; tanks are covered by the Tank card, powered blocks by the Energy card`,controls:`–`,tested:`–`,skipped:!0},{group:`Wave 3 – more ATM11 machines`,mod:`Ars Magica Legacy`,id:`arsmagicalegacy`,version:`1.7.0`,what:"**Etherium** card for every block of its public `EtheriumHandler` API (obelisk, celestial prism, black aurem, altar core): gauge + amount / max per etherium type; the widgets follow the block's types",controls:`none`,tested:`yes (obelisk)`,skipped:!1},{group:`Wave 3 – more ATM11 machines`,mod:`Reliquary`,id:`reliquary`,version:`2.0.92`,what:`skipped: altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth`,controls:`–`,tested:`–`,skipped:!0},{group:`Wave 3 – more ATM11 machines`,mod:`Interdimensional Wireless Transmitter`,id:``,version:`1.0.1`,what:`skipped: an RS2 network node; the RS Cloud Bridge already shows the network`,controls:`–`,tested:`–`,skipped:!0},{group:`Wave 3 – more ATM11 machines`,mod:`Trash Cans, Item Collectors`,id:``,version:`1.1.1a / 1.1.12a`,what:`skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range)`,controls:`–`,tested:`–`,skipped:!0},{group:`Wave 3 – more ATM11 machines`,mod:`Just Dire Things`,id:``,version:`1.6.11`,what:`no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined`,controls:`–`,tested:`–`,skipped:!0}]},ue=e({ALL_RECIPES:()=>N,CADDYFILE:()=>k,CLOUDFLARED:()=>A,CLOUDFLARED_YML:()=>j,COMMANDS:()=>M,FENCE:()=>"```",LUA_BRIDGE:()=>x,LUA_BRIDGE_WIDGETS:()=>S,LUA_EVENT:()=>_,LUA_FIRST:()=>g,LUA_LAYOUT:()=>v,LUA_MAINFRAME:()=>b,LUA_SETMANY:()=>y,PKCS8:()=>me,RECIPES:()=>he,RECIPE_GROUPS:()=>ge,SHELL_EDIT:()=>w,SHELL_LUA:()=>E,SHELL_RUN:()=>T,TOML_CADDY:()=>O,TOML_LAN:()=>D,TOML_TLS:()=>pe,UI_FARM:()=>fe,UI_QUICK:()=>de,UI_REACTOR:()=>C,code:()=>be,groupOf:()=>_e,modsSection:()=>L,recipe:()=>ye,recipeSection:()=>F}),g=`local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("My Base")
 cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100})
 cloud.toggle("lights", "Lights", {value=false})
@@ -12,36 +12,36 @@ while true do
   elseif id == "alarm" then
     cloud.alert(user .. " pressed the alarm", "warn")
   end
-end`,ue=`while true do
+end`,_=`while true do
   local event, id, value, user, side = os.pullEvent("cloud_action")
   print(user .. " used " .. id .. " = " .. tostring(value))
-end`,de=`local cloud = peripheral.find("cloud_uplink")
+end`,v=`local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("Reactor")
 cloud.page("reactor", "Reactor", {icon="flame"})
 cloud.page("power", "Power", {icon="bolt"})
 cloud.group("core", "Core", {page="reactor", cols=2})
 cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100, group="core"})
 cloud.chart("load", "Load", {min=0, max=100, unit="%", points=120, group="core", span=2})
-cloud.indicator("running", "Running", {value=true, onColor="green", page="power"})`,fe=`cloud.setMany({temp = 812, load = 64, running = true})`,pe=`local mf = peripheral.find("cloud_mainframe")
+cloud.indicator("running", "Running", {value=true, onColor="green", page="power"})`,y=`cloud.setMany({temp = 812, load = 64, running = true})`,b=`local mf = peripheral.find("cloud_mainframe")
 print("Dashboard on: " .. tostring(mf.isEnabled()))
 print("Online: " .. tostring(mf.isOnline()))
 for _, u in ipairs(mf.getUplinks()) do
   print(u.title or u.id, u.x, u.y, u.z, u.online and "online" or "offline")
 end
-print(("Power: %d / %d FE, %d FE/t"):format(mf.getEnergy(), mf.getEnergyCapacity(), mf.getEnergyUsage()))`,_=`local bridge = peripheral.find("me_cloud_bridge") or peripheral.find("rs_cloud_bridge")
+print(("Power: %d / %d FE, %d FE/t"):format(mf.getEnergy(), mf.getEnergyCapacity(), mf.getEnergyUsage()))`,x=`local bridge = peripheral.find("me_cloud_bridge") or peripheral.find("rs_cloud_bridge")
 local s = bridge.getStorage()
 print(("Items: %d / %d"):format(s.itemsUsed, s.itemsTotal))
 for _, item in ipairs(bridge.findItems("iron", 5)) do
   print(item.displayName, item.count, item.craftable and "(craftable)" or "")
 end
 local result = bridge.craft("minecraft:iron_block", 4)
-if result.ok then print("Job " .. result.jobId) else print("Error: " .. result.error) end`,v=`local cloud = peripheral.find("cloud_uplink")
+if result.ok then print("Job " .. result.jobId) else print("Error: " .. result.error) end`,S=`local cloud = peripheral.find("cloud_uplink")
 local bridge = peripheral.find("me_cloud_bridge")
 local name = peripheral.getName(bridge)
 cloud.setTitle("Storage")
 cloud.itemSearch("search", "Search & craft", {bridge=name, max=1024})
 cloud.watchlist("watch", "Watchlist", {bridge=name})
-cloud.jobs("jobs", "Crafting jobs", {bridge=name})`,y=`local ui = require("cloud.ui")
+cloud.jobs("jobs", "Crafting jobs", {bridge=name})`,de=`local ui = require("cloud.ui")
 local dash = ui.connect()
 dash:title("Reactor")
 local temp = dash:gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100})
@@ -50,7 +50,7 @@ dash:button("scram", "SCRAM", {color="red", confirm=true, pin=true}, function(us
   dash:notify(user .. " pressed SCRAM", "crit")
 end)
 dash:every(1, function() temp:set(math.random(600, 1000)) end)
-dash:run()`,b=`-- startup.lua: a tree farm with lights, a counter and a harvest button
+dash:run()`,fe=`-- startup.lua: a tree farm with lights, a counter and a harvest button
 local ui = require("cloud.ui")
 local dash = ui.connect()
 dash:title("Tree Farm")
@@ -77,7 +77,7 @@ dash:every(5, function()
   logs:set(count)
 end)
 
-dash:run()`,x=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
+dash:run()`,C=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
 local ui = require("cloud.ui")
 local dash = ui.connect()
 local reactor = peripheral.find("fissionReactorLogicAdapter")
@@ -104,39 +104,43 @@ dash:every(2, function()
   if k > 1100 then reactor.scram(); dash:notify("Auto-SCRAM at " .. math.floor(k) .. " K", "crit") end
 end)
 
-dash:run()`,S=`edit startup.lua`,C=`startup`,w=`lua
+dash:run()`,w=`edit startup.lua`,T=`startup`,E=`lua
 lua> peripheral.find("cloud_uplink").getClients()
 1
-lua> exit()`,T=`[web]
-webAllowInternet = false   # default: only LAN addresses may connect`,E=`[web]
+lua> exit()`,D=`[web]
+webAllowInternet = false   # default: only LAN addresses may connect`,O=`[web]
 webBind = "127.0.0.1"
 webAllowInternet = true
 webTrustedProxies = ["127.0.0.1"]
-publicUrl = "https://dash.example.com"`,D=`dash.example.com {
+publicUrl = "https://dash.example.com"`,k=`dash.example.com {
     reverse_proxy 127.0.0.1:8787
-}`,O=`cloudflared tunnel login
+}`,A=`cloudflared tunnel login
 cloudflared tunnel create cccloud
 cloudflared tunnel route dns cccloud dash.example.com
-cloudflared tunnel run cccloud`,k=`tunnel: cccloud
+cloudflared tunnel run cccloud`,j=`tunnel: cccloud
 credentials-file: /root/.cloudflared/<tunnel-id>.json
 ingress:
   - hostname: dash.example.com
     service: http://127.0.0.1:8787
-  - service: http_status:404`,A=`[web]
+  - service: http_status:404`,pe=`[web]
 webAllowInternet = true
 tlsCertPath = "/etc/letsencrypt/live/mc.example.com/fullchain.pem"
 tlsKeyPath = "/srv/mc/privkey-pkcs8.pem"
-publicUrl = "https://mc.example.com:8787"`,j=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,M=`/cccloud status
+publicUrl = "https://mc.example.com:8787"`,me=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,M=`/cccloud status
 /cccloud devices
 /cccloud revoke <device name>
 /cccloud revoke all
 /cccloud trust <player>
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
-/cccloud pin clear`,N=h.recipes,P=e=>{let t=N.find(t=>t.file===e);if(!t)throw Error(`recipe ${e} missing`);return t},me={core:P(`cloud_core`),mainframe:P(`cloud_mainframe`),uplink:P(`cloud_uplink`),advancedUplink:P(`advanced_cloud_uplink`),linkCard:P(`cloud_link_card`),meBridge:P(`me_cloud_bridge`),relay:P(`cloud_relay`),advancedRelay:P(`advanced_cloud_relay`),enderRelay:P(`ender_relay`),rsBridge:P(`rs_cloud_bridge`)},he=[{id:`basics`,en:`Basics`,de:`Grundlagen`,match:e=>/cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(e.result)},{id:`network`,en:`Relays and cables`,de:`Relays und Kabel`,match:e=>/relay|fiber/.test(e.result)},{id:`bridges`,en:`Bridges`,de:`Bridges`,match:e=>/bridge/.test(e.result)},{id:`devices`,en:`Tablet, display, analyzer`,de:`Tablet, Display, Analyzer`,match:e=>/tablet|display|analyzer/.test(e.result)},{id:`upgrades`,en:`Mainframe upgrades`,de:`Mainframe-Upgrades`,match:e=>/upgrade_|quantum_core/.test(e.result)},{id:`misc`,en:`Other`,de:`Sonstiges`,match:()=>!0}];function ge(e){return he.find(t=>t.match(e))?.id??`misc`}var _e=h.names;function F(e,t){let n={"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}},r=e=>_e[e]?.[t]??n[e]?.[t]??e.replace(/^[a-z0-9_]+:/,``).replace(/_/g,` `),i=N.filter(t=>ge(t)===e);return[...new Set(i.map(e=>e.result))].map(e=>{let t=i.filter(t=>t.result===e);return`### ${r(e)}\n${t.map(e=>ve(e)).join(`
+/cccloud pin clear`,N=h.recipes,P=e=>{let t=N.find(t=>t.file===e);if(!t)throw Error(`recipe ${e} missing`);return t},he={core:P(`cloud_core`),mainframe:P(`cloud_mainframe`),uplink:P(`cloud_uplink`),advancedUplink:P(`advanced_cloud_uplink`),linkCard:P(`cloud_link_card`),meBridge:P(`me_cloud_bridge`),relay:P(`cloud_relay`),advancedRelay:P(`advanced_cloud_relay`),enderRelay:P(`ender_relay`),rsBridge:P(`rs_cloud_bridge`)},ge=[{id:`basics`,en:`Basics`,de:`Grundlagen`,match:e=>/cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(e.result)},{id:`network`,en:`Relays and cables`,de:`Relays und Kabel`,match:e=>/relay|fiber/.test(e.result)},{id:`bridges`,en:`Bridges`,de:`Bridges`,match:e=>/bridge/.test(e.result)},{id:`devices`,en:`Tablet, display, analyzer`,de:`Tablet, Display, Analyzer`,match:e=>/tablet|display|analyzer/.test(e.result)},{id:`upgrades`,en:`Mainframe upgrades`,de:`Mainframe-Upgrades`,match:e=>/upgrade_|quantum_core/.test(e.result)},{id:`misc`,en:`Other`,de:`Sonstiges`,match:()=>!0}];function _e(e){return ge.find(t=>t.match(e))?.id??`misc`}var ve=h.names;function F(e,t){let n={"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}},r=e=>ve[e]?.[t]??n[e]?.[t]??e.replace(/^[a-z0-9_]+:/,``).replace(/_/g,` `),i=N.filter(t=>_e(t)===e);return[...new Set(i.map(e=>e.result))].map(e=>{let t=i.filter(t=>t.result===e);return`### ${r(e)}\n${t.map(e=>ye(e)).join(`
 `)}`}).join(`
 
-`)}var ve=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,ye=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,{code:I,recipe:L,RECIPES:R}=le,be={start:`# Erste Schritte
+`)}var ye=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,be=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,xe={v05:`Energie, Server und Teams`,"Storage controllers":`Lager-Controller`,"Applied Energistics add-ons":`Applied-Energistics-Erweiterungen`,Quarries:`Steinbrüche`,"Spawners and mob farms":`Spawner und Mobfarmen`,"Processing machines":`Verarbeitungsmaschinen`,Logistics:`Logistik`,"Integrated Dynamics":`Integrated Dynamics`,"World & progression":`Welt und Fortschritt`,"In-game handbook":`Handbuch im Spiel`,"KubeJS bindings":`KubeJS`,"Wave 3 – more ATM11 machines":`Weitere ATM11-Maschinen`},Se={v05:`Energy, server and teams`,"Wave 3 – more ATM11 machines":`More ATM11 machines`},I=e=>(e||`–`).replace(/\|/g,`/`).replace(/\n/g,` `);function L(e){let t=le.mods,n=[...new Set(t.map(e=>e.group))],r=e===`de`?`| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |`:`| Mod | Version | What the card shows | Controls | Tested |`,i=n.map(n=>{let i=t.filter(e=>e.group===n&&!e.skipped);return i.length?`### ${e===`de`?xe[n]??n:Se[n]??n}\n\n${r}\n|---|---|---|---|---|\n${i.map(e=>`| ${I(e.mod)}${e.id?` (\`${e.id}\`)`:``} | ${I(e.version)} | ${I(e.what)} | ${I(e.controls)} | ${I(e.tested)} |`).join(`
+`)}`:``}),a=t.filter(e=>e.skipped),o=a.length?`### ${e===`de`?`Ohne eigene Karte`:`No card of their own`}\n\n${a.map(e=>`- **${e.mod}**${e.id?` (\`${e.id}\`)`:``}: ${e.what.replace(/^(skipped|no own card[^:]*|no card):\s*/i,``)}`).join(`
+`)}`:``;return[...i,o].filter(Boolean).join(`
+
+`)}var{code:R,recipe:z,RECIPES:B}=ue,Ce={start:`# Erste Schritte
 
 CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
 
@@ -158,23 +162,23 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 Zutaten mit „(beliebig)“ akzeptieren jede Variante aus dem Tag (z. B. jeden Goldbarren). JEI/EMI zeigen im Spiel dieselben Rezepte.
 
 ### Cloud Core
-${L(R.core)}
+${z(B.core)}
 
 ### Cloud Mainframe
-${L(R.mainframe)}
+${z(B.mainframe)}
 
 ### Cloud Uplink
-${L(R.uplink)}
+${z(B.uplink)}
 
 ### Advanced Cloud Uplink
-${L(R.advancedUplink)}
+${z(B.advancedUplink)}
 
 ### Cloud Link Card
-${L(R.linkCard)}
+${z(B.linkCard)}
 
 ### ME- und RS Cloud Bridge
-${L(R.meBridge)}
-${L(R.rsBridge)}
+${z(B.meBridge)}
+${z(B.rsBridge)}
 
 ## Mainframe aufstellen {#mainframe}
 
@@ -229,7 +233,7 @@ Ein Computer startet in der **Shell** – einer Kommandozeile wie im Terminal. D
 
 ## Ein Programm mit edit schreiben {#edit}
 
-${I(``,S)}
+${R(``,w)}
 
 1. \`edit startup.lua\` eingeben und Enter drücken. Ein Editor öffnet sich.
 2. Code eintippen oder einfügen. (Aus dem Dashboard: mit **Copy** kopieren, dann in Minecraft Strg+V.)
@@ -241,7 +245,7 @@ Eine Datei namens \`startup.lua\` startet automatisch, wenn der Computer hochfä
 
 Gib seinen Namen ohne \`.lua\` ein:
 
-${I(``,C)}
+${R(``,T)}
 
 Ein laufendes Programm stoppst du mit **Strg+T** (eine Sekunde gedrückt halten). Neustart mit **Strg+R**.
 
@@ -253,7 +257,7 @@ Schreib den Code am PC in einem beliebigen Editor, speichere ihn als \`startup.l
 
 \`lua\` öffnet eine interaktive Lua-Eingabe – praktisch, um einzelne Zeilen auszuprobieren:
 
-${I(``,w)}
+${R(``,E)}
 
 ## Nützliche Befehle {#commands}
 
@@ -328,13 +332,13 @@ Alles, was ein Programm mit CC: Cloud tun kann. Im Spiel zeigt \`help cloud\` ei
 
 ## Das Peripheral holen {#peripheral}
 
-${I(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${R(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 Der Uplink muss den Computer berühren oder im Netzwerk seines Wired Modems hängen. Mehrere Uplinks? Nimm \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## Ein erstes Programm {#first-program}
 
-${I(`lua`,g)}
+${R(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -370,13 +374,13 @@ Farben: cyan, green, yellow, red, gray. Eine Gauge gilt als „wenig ist schlech
 | \`cloud.remove(id)\` | ein Widget entfernen |
 | \`cloud.clear()\` | alles entfernen (die automatische Computer-Karte kommt zurück) |
 
-${I(`lua`,fe)}
+${R(`lua`,y)}
 
 ## Ereignisse {#events}
 
 Bedient jemand ein Widget, bekommt jeder Computer am Uplink ein \`cloud_action\`-Ereignis:
 
-${I(`lua`,ue)}
+${R(`lua`,_)}
 
 | Widget | value |
 |---|---|
@@ -391,7 +395,7 @@ ${I(`lua`,ue)}
 
 ## Layout: Seiten und Gruppen {#layout}
 
-${I(`lua`,de)}
+${R(`lua`,v)}
 
 - \`cloud.page(id, title, {icon=})\` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – eine Karte; Widgets kommen mit \`group=\` hinein.
@@ -421,7 +425,7 @@ Ein Computer neben dem Mainframe kann ihn auslesen:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | gespeicherte FE, Puffergröße, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – siehe [Netzwerk](/docs/network#map) |
 
-${I(`lua`,pe)}
+${R(`lua`,b)}
 
 Der Kopplungscode ist aus Lua nie lesbar.
 
@@ -443,7 +447,7 @@ Peripheral-Typen \`me_cloud_bridge\` und \`rs_cloud_bridge\`, gleiche Methoden:
 | \`cancelCraft(jobId)\` | wo unterstützt |
 | \`listFluids([limit])\` | Flüssigkeiten |
 
-${I(`lua`,_)}
+${R(`lua`,x)}
 
 ## Grenzen {#limits}
 
@@ -475,7 +479,7 @@ Auf der Projekt-Website öffnet **Install** dein Dashboard unter \`/store#instal
 
 ## Schnellstart {#quick-start}
 
-${I(`lua`,y)}
+${R(`lua`,de)}
 
 ## API {#api}
 
@@ -499,13 +503,13 @@ Fehler in Handlern werden ausgegeben und stoppen die Schleife nicht. Strg+T been
 
 ## Beispiel: Baumfarm {#example-farm}
 
-${I(`lua`,b)}
+${R(`lua`,fe)}
 
 ## Beispiel: Reaktor-Panel {#example-reactor}
 
 Peripheral-Name und Methoden an deinen Reaktor-Mod anpassen.
 
-${I(`lua`,x)}
+${R(`lua`,C)}
 
 ## Mitgelieferte Programme {#programs}
 
@@ -544,13 +548,13 @@ Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unte
 Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay.
 
 ### Cloud Relay
-${L(R.relay)}
+${z(B.relay)}
 
 ### Advanced Cloud Relay
-${L(R.advancedRelay)}
+${z(B.advancedRelay)}
 
 ### Ender Relay
-${L(R.enderRelay)}
+${z(B.enderRelay)}
 
 > **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
 
@@ -709,6 +713,21 @@ Braucht das Recht „Terminal“ (Admins) und die Mainframe-PIN, falls eine gese
 Im **</>**-Fenster eines Computers zeigt **Open the editor** alle Dateien und Ordner (bis 8 Ebenen) neben einem Code-Editor mit Lua-Hervorhebung, Zeilennummern, Suche (Strg/⌘ + F) und Rückgängig. **Save** (Strg/⌘ + S) speichert; **Save & run** startet die Datei zusätzlich in einem neuen Tab auf dem Computer. **+ File**, **+ Folder**, Umbenennen/Verschieben (✎) und Löschen (×) arbeiten im Dateibaum.
 
 Wurde die Datei seit dem Öffnen auf dem Computer geändert, fragt das Speichern vor dem Überschreiben. Dateien sind auf 256 KB begrenzt, \`rom\` und Disketten werden nie angefasst, und der Editor braucht dieselben Rechte wie das Hochladen von Skripten (plus die PIN, falls gesetzt).
+`,mods:`# Unterstützte Mods
+
+CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn die Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
+
+Daneben funktionieren zwei allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, und die **Tank**-Karte für einfache Flüssigkeitstanks. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag \`#cccloud:no_generic_card\` ausschließen. AE2 und Refined Storage haben eigene [Bridges](/docs/bridges).
+
+Bedienelemente folgen den [Rechten](/docs/accounts#roles): Buttons und Schalter brauchen „Use controls“, der Redstone-Modus einer Maschine „Switch redstone“, und Karten mit Koordinaten (Wegsteine, Tore, Quests) „See coordinates“.
+
+## Nach Bereich {#list}
+
+Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis und sind auf Englisch.
+
+${L(`de`)}
+
+Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
 `,recipes:`# Alle Rezepte
 
 Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie). JEI oder EMI zeigen dasselbe im Spiel.
@@ -773,11 +792,11 @@ Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). I
 
 ## Aus Lua {#lua}
 
-${I(`lua`,_)}
+${R(`lua`,x)}
 
 Eine eigene Lager-Karte mit denselben Widgets:
 
-${I(`lua`,v)}
+${R(`lua`,S)}
 
 Oder einfach \`cloud-storage\` starten. Alle Methoden: [Lua-Referenz → Bridges](/docs/lua#bridges).
 `,accounts:`# Konten, Rollen und Teilen
@@ -859,7 +878,7 @@ Tab springt durch alles, Enter oder Leertaste löst aus, Escape schließt Dialog
 
 Ab Werk können nur Geräte im lokalen Netzwerk des Servers (und der Host selbst) das Dashboard öffnen. Alle anderen bekommen „LAN only“.
 
-${I(`toml`,T)}
+${R(`toml`,D)}
 
 Die Konfigurationsdatei ist \`<welt>/serverconfig/cccloud-server.toml\`; Änderungen an \`[web]\` brauchen einen Server-Neustart.
 
@@ -879,7 +898,7 @@ Wer den Mainframe platziert hat, besitzt ihn. Besitzer, vertraute Spieler und OP
 
 Schau den Mainframe an und gib ein:
 
-${I(``,M)}
+${R(``,M)}
 
 ## PIN {#pin}
 
@@ -893,9 +912,9 @@ Setze \`webAllowInternet = true\` und wähle eine der folgenden Varianten. Läuf
 
 ### Caddy als Reverse Proxy (empfohlen) {#caddy}
 
-${I(`toml`,E)}
+${R(`toml`,O)}
 
-${I(``,D)}
+${R(``,k)}
 
 Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
@@ -903,15 +922,15 @@ Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
 Gleiche \`[web]\`-Einstellungen wie bei Caddy, dann:
 
-${I(`bash`,O)}
+${R(`bash`,A)}
 
-${I(`yaml`,k)}
+${R(`yaml`,j)}
 
 ### TLS direkt im Mod {#tls}
 
-${I(`toml`,A)}
+${R(`toml`,pe)}
 
-Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${j}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
+Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${me}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
 
 ### Port direkt freigeben {#open-port}
 
@@ -971,7 +990,7 @@ Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: 
 ## Falsche PIN / gesperrt {#pin-locked}
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit \`/cccloud pin set\` ändern.
-`},{code:z,recipe:B,RECIPES:V}=le,xe={start:`# Getting started
+`},{code:V,recipe:H,RECIPES:U}=ue,we={start:`# Getting started
 
 CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
 
@@ -993,23 +1012,23 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
 
 ### Cloud Core
-${B(V.core)}
+${H(U.core)}
 
 ### Cloud Mainframe
-${B(V.mainframe)}
+${H(U.mainframe)}
 
 ### Cloud Uplink
-${B(V.uplink)}
+${H(U.uplink)}
 
 ### Advanced Cloud Uplink
-${B(V.advancedUplink)}
+${H(U.advancedUplink)}
 
 ### Cloud Link Card
-${B(V.linkCard)}
+${H(U.linkCard)}
 
 ### ME and RS Cloud Bridge
-${B(V.meBridge)}
-${B(V.rsBridge)}
+${H(U.meBridge)}
+${H(U.rsBridge)}
 
 ## Place the mainframe {#mainframe}
 
@@ -1064,7 +1083,7 @@ A computer starts in the **shell** – a command line like a terminal. The shell
 
 ## Write a program with edit {#edit}
 
-${z(``,S)}
+${V(``,w)}
 
 1. Type \`edit startup.lua\` and press Enter. An editor opens.
 2. Type or paste your code. (Pasting from the dashboard: copy with the **Copy** button, then Ctrl+V in Minecraft.)
@@ -1076,7 +1095,7 @@ A file named \`startup.lua\` runs automatically whenever the computer boots – 
 
 Type its name without \`.lua\`:
 
-${z(``,C)}
+${V(``,T)}
 
 Stop a running program with **Ctrl+T** (hold it for a second). Reboot with **Ctrl+R**.
 
@@ -1088,7 +1107,7 @@ Write the code on your PC in any editor, save it as \`startup.lua\` and **drag t
 
 \`lua\` opens an interactive Lua prompt – handy to try one line at a time:
 
-${z(``,w)}
+${V(``,E)}
 
 ## Useful commands {#commands}
 
@@ -1163,13 +1182,13 @@ Everything a program can do with CC: Cloud. In-game, \`help cloud\` prints a sho
 
 ## Getting the peripheral {#peripheral}
 
-${z(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${V(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 The uplink must touch the computer or sit on its wired modem network. Several uplinks? Use \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## A first program {#first-program}
 
-${z(`lua`,g)}
+${V(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -1205,13 +1224,13 @@ Colours: cyan, green, yellow, red, gray. A gauge is "low is bad" when crit < war
 | \`cloud.remove(id)\` | remove a widget |
 | \`cloud.clear()\` | remove everything (the automatic Computer card returns) |
 
-${z(`lua`,fe)}
+${V(`lua`,y)}
 
 ## Events {#events}
 
 When someone uses a widget, every computer attached to the uplink gets a \`cloud_action\` event:
 
-${z(`lua`,ue)}
+${V(`lua`,_)}
 
 | Widget | value |
 |---|---|
@@ -1226,7 +1245,7 @@ ${z(`lua`,ue)}
 
 ## Layout: pages and groups {#layout}
 
-${z(`lua`,de)}
+${V(`lua`,v)}
 
 - \`cloud.page(id, title, {icon=})\` – a tab. With pages an uplink may hold 64 widgets instead of 32.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – a card; widgets join it with \`group=\`.
@@ -1256,7 +1275,7 @@ A computer next to the mainframe can read it:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | FE stored, buffer size, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – see [network](/docs/network#map) |
 
-${z(`lua`,pe)}
+${V(`lua`,b)}
 
 The pairing code is never readable from Lua.
 
@@ -1278,7 +1297,7 @@ Peripheral types \`me_cloud_bridge\` and \`rs_cloud_bridge\`, same methods:
 | \`cancelCraft(jobId)\` | where supported |
 | \`listFluids([limit])\` | fluids |
 
-${z(`lua`,_)}
+${V(`lua`,x)}
 
 ## Limits {#limits}
 
@@ -1310,7 +1329,7 @@ On the project website, **Install** opens your dashboard at \`/store#install=<sc
 
 ## Quick start {#quick-start}
 
-${z(`lua`,y)}
+${V(`lua`,de)}
 
 ## API {#api}
 
@@ -1334,13 +1353,13 @@ Errors inside handlers are printed and do not stop the loop. Ctrl+T ends it.
 
 ## Example: tree farm {#example-farm}
 
-${z(`lua`,b)}
+${V(`lua`,fe)}
 
 ## Example: reactor panel {#example-reactor}
 
 Adjust the peripheral name and methods to your reactor mod.
 
-${z(`lua`,x)}
+${V(`lua`,C)}
 
 ## Built-in programs {#programs}
 
@@ -1379,13 +1398,13 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
 
 ### Cloud Relay
-${B(V.relay)}
+${H(U.relay)}
 
 ### Advanced Cloud Relay
-${B(V.advancedRelay)}
+${H(U.advancedRelay)}
 
 ### Ender Relay
-${B(V.enderRelay)}
+${H(U.enderRelay)}
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 
@@ -1544,6 +1563,19 @@ It needs the “Terminal” permission (admins) and the mainframe PIN if one is 
 In a computer's **</>** sheet, **Open the editor** shows all its files and folders (up to 8 levels) next to a code editor with Lua highlighting, line numbers, search (Ctrl/⌘ + F) and undo. **Save** (Ctrl/⌘ + S) writes the file; **Save & run** also starts it in a new tab on the computer. **+ File**, **+ Folder**, rename/move (✎) and delete (×) work on the tree.
 
 If the file was changed on the computer since you opened it, saving asks before it overwrites. Files are limited to 256 KB, \`rom\` and disk drives are never touched, and the editor needs the same permissions as uploading scripts (plus the PIN if one is set).
+`,mods:`# Supported mods
+
+CC: Cloud shows machines from many mods as ready-made cards – no Lua needed. Put a **Cloud Uplink** on the machine (or next to it), link it with the Link Card, and its card appears on the dashboard. Everything is optional: a card only exists when that mod is installed. All of this was checked against **All the Mods 11** (MC 26.1.2).
+
+Besides these, two generic cards work with almost any mod: the **Energy** card for every block that stores FE, and the **Tank** card for plain fluid tanks. Pack makers can turn single blocks off with the block tag \`#cccloud:no_generic_card\`. AE2 and Refined Storage have their own [bridges](/docs/bridges).
+
+Controls follow the [permissions](/docs/accounts#roles): buttons and switches need “Use controls”, a machine's redstone mode needs “Switch redstone”, and cards with coordinates (waystones, gates, quests) need “See coordinates”.
+
+## By category {#list}
+
+${L(`en`)}
+
+This page is generated from the compatibility manifest (docs/COMPAT.md in the source), so it is always up to date with the mod.
 `,recipes:`# All recipes
 
 Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). JEI or EMI show the same in-game.
@@ -1608,11 +1640,11 @@ Add items with a minimum amount (from a search result or by id). Items below the
 
 ## From Lua {#lua}
 
-${z(`lua`,_)}
+${V(`lua`,x)}
 
 Your own storage card with the same widgets:
 
-${z(`lua`,v)}
+${V(`lua`,S)}
 
 Or just run \`cloud-storage\`. All methods: [Lua reference → Bridges](/docs/lua#bridges).
 `,accounts:`# Accounts, roles and sharing
@@ -1694,7 +1726,7 @@ The dashboard can control things in your world, so it is protected like a real w
 
 Out of the box only devices in the server's local network (and the host itself) can open the dashboard. Everyone else gets "LAN only".
 
-${z(`toml`,T)}
+${V(`toml`,D)}
 
 The config file is \`<world>/serverconfig/cccloud-server.toml\`; changes to \`[web]\` need a server restart.
 
@@ -1714,7 +1746,7 @@ The player who placed the mainframe owns it. Owner, trusted players and ops (lev
 
 Look at the mainframe and run:
 
-${z(``,M)}
+${V(``,M)}
 
 ## PIN {#pin}
 
@@ -1728,9 +1760,9 @@ Set \`webAllowInternet = true\` and pick one of the setups below. The dashboard 
 
 ### Caddy reverse proxy (recommended) {#caddy}
 
-${z(`toml`,E)}
+${V(`toml`,O)}
 
-${z(``,D)}
+${V(``,k)}
 
 Caddy gets a certificate automatically and forwards WebSockets.
 
@@ -1738,15 +1770,15 @@ Caddy gets a certificate automatically and forwards WebSockets.
 
 Same \`[web]\` settings as for Caddy, then:
 
-${z(`bash`,O)}
+${V(`bash`,A)}
 
-${z(`yaml`,k)}
+${V(`yaml`,j)}
 
 ### TLS in the mod {#tls}
 
-${z(`toml`,A)}
+${V(`toml`,pe)}
 
-Convert the Let's Encrypt key first: \`${j}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
+Convert the Let's Encrypt key first: \`${me}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
 
 ### Port opened directly {#open-port}
 
@@ -1806,7 +1838,7 @@ To keep a base running while you are away, keep its chunks loaded: **force-load*
 ## Wrong PIN / locked {#pin-locked}
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with \`/cccloud pin set\`.
-`},H=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`automation`,icon:`bolt`,title:{en:`Rules, notifications & history`,de:`Regeln, Benachrichtigungen & Verlauf`}},{id:`recipes`,icon:`pick`,title:{en:`All recipes`,de:`Alle Rezepte`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],Se={de:be,en:xe},U={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,requires:`Needs`,without:`Only without`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,requires:`Braucht`,without:`Nur ohne`,result:`Ergebnis`}},Ce={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`},"#c:glass_panes":{en:`Glass Pane`,de:`Glasscheibe`},"#c:ingots/allthemodium":{en:`Allthemodium Ingot`,de:`Allthemodiumbarren`},"#c:ingots/vibranium":{en:`Vibranium Ingot`,de:`Vibraniumbarren`},"#c:ingots/unobtainium":{en:`Unobtainium Ingot`,de:`Unobtainiumbarren`},"allthetweaks:atm_star":{en:`ATM Star`,de:`ATM-Stern`},"computercraft:monitor_advanced":{en:`Advanced Monitor`,de:`Advanced Monitor`},"computercraft:pocket_computer_normal":{en:`Pocket Computer`,de:`Pocket Computer`},"computercraft:pocket_computer_advanced":{en:`Advanced Pocket Computer`,de:`Advanced Pocket Computer`},"computercraft:wireless_modem_advanced":{en:`Ender Modem`,de:`Ender Modem`},"minecraft:chest":{en:`Chest`,de:`Truhe`},"minecraft:diamond":{en:`Diamond`,de:`Diamant`},"minecraft:ender_pearl":{en:`Ender Pearl`,de:`Enderperle`},"minecraft:lodestone":{en:`Lodestone`,de:`Leitstein`},"minecraft:nether_star":{en:`Nether Star`,de:`Netherstern`},"minecraft:netherite_block":{en:`Block of Netherite`,de:`Netheritblock`},"minecraft:netherite_ingot":{en:`Netherite Ingot`,de:`Netheritbarren`},"minecraft:obsidian":{en:`Obsidian`,de:`Obsidian`},"minecraft:redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:redstone_block":{en:`Block of Redstone`,de:`Redstoneblock`},"minecraft:string":{en:`String`,de:`Faden`},"minecraft:book":{en:`Book`,de:`Buch`},"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`},...h.names},we={guideme:`GuideME`,allthemodium:`AllTheModium`,allthetweaks:`All The Tweaks`,ae2:`Applied Energistics 2`,refinedstorage:`Refined Storage`},Te={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`,"#c:glass_panes":`minecraft:glass_pane`,"#c:ingots/allthemodium":`allthemodium:allthemodium_ingot`,"#c:ingots/vibranium":`allthemodium:vibranium_ingot`,"#c:ingots/unobtainium":`allthemodium:unobtainium_ingot`};function Ee(e){return Te[e]??e.replace(/^#/,``)}function W(e,t){let n=Ce[e]?.[t];return n?e.startsWith(`#`)?`${n} (${U[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function De(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function Oe(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function G(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:G(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:G(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(ke(o)){r(),t.push({t:`link`,href:o,c:G(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function ke(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function K(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:K(e.c)).join(``)}function Ae(e){let t=e.replace(/\r\n?/g,`
+`},W=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`automation`,icon:`bolt`,title:{en:`Rules, notifications & history`,de:`Regeln, Benachrichtigungen & Verlauf`}},{id:`recipes`,icon:`pick`,title:{en:`All recipes`,de:`Alle Rezepte`}},{id:`mods`,icon:`box`,title:{en:`Supported mods`,de:`Unterstützte Mods`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],Te={de:Ce,en:we},G={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,requires:`Needs`,without:`Only without`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,requires:`Braucht`,without:`Nur ohne`,result:`Ergebnis`}},Ee={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`},"#c:glass_panes":{en:`Glass Pane`,de:`Glasscheibe`},"#c:ingots/allthemodium":{en:`Allthemodium Ingot`,de:`Allthemodiumbarren`},"#c:ingots/vibranium":{en:`Vibranium Ingot`,de:`Vibraniumbarren`},"#c:ingots/unobtainium":{en:`Unobtainium Ingot`,de:`Unobtainiumbarren`},"allthetweaks:atm_star":{en:`ATM Star`,de:`ATM-Stern`},"computercraft:monitor_advanced":{en:`Advanced Monitor`,de:`Advanced Monitor`},"computercraft:pocket_computer_normal":{en:`Pocket Computer`,de:`Pocket Computer`},"computercraft:pocket_computer_advanced":{en:`Advanced Pocket Computer`,de:`Advanced Pocket Computer`},"computercraft:wireless_modem_advanced":{en:`Ender Modem`,de:`Ender Modem`},"minecraft:chest":{en:`Chest`,de:`Truhe`},"minecraft:diamond":{en:`Diamond`,de:`Diamant`},"minecraft:ender_pearl":{en:`Ender Pearl`,de:`Enderperle`},"minecraft:lodestone":{en:`Lodestone`,de:`Leitstein`},"minecraft:nether_star":{en:`Nether Star`,de:`Netherstern`},"minecraft:netherite_block":{en:`Block of Netherite`,de:`Netheritblock`},"minecraft:netherite_ingot":{en:`Netherite Ingot`,de:`Netheritbarren`},"minecraft:obsidian":{en:`Obsidian`,de:`Obsidian`},"minecraft:redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:redstone_block":{en:`Block of Redstone`,de:`Redstoneblock`},"minecraft:string":{en:`String`,de:`Faden`},"minecraft:book":{en:`Book`,de:`Buch`},"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`},...h.names},De={guideme:`GuideME`,allthemodium:`AllTheModium`,allthetweaks:`All The Tweaks`,ae2:`Applied Energistics 2`,refinedstorage:`Refined Storage`},Oe={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`,"#c:glass_panes":`minecraft:glass_pane`,"#c:ingots/allthemodium":`allthemodium:allthemodium_ingot`,"#c:ingots/vibranium":`allthemodium:vibranium_ingot`,"#c:ingots/unobtainium":`allthemodium:unobtainium_ingot`};function ke(e){return Oe[e]??e.replace(/^#/,``)}function K(e,t){let n=Ee[e]?.[t];return n?e.startsWith(`#`)?`${n} (${G[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function Ae(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function je(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function q(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:q(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:q(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(Me(o)){r(),t.push({t:`link`,href:o,c:q(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function Me(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function J(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:J(e.c)).join(``)}function Ne(e){let t=e.replace(/\r\n?/g,`
 `).split(`
 `),n=[],r=new Set,i=0,a=e=>{let t=e;for(let n=2;r.has(t);n++)t=`${e}-${n}`;return r.add(t),t};for(;i<t.length;){let e=t[i];if(!e.trim()){i++;continue}let r=/^```\s*([a-z0-9_-]*)\s*$/i.exec(e);if(r){let e=[];for(i++;i<t.length&&!/^```\s*$/.test(t[i]);)e.push(t[i++]);i++;let a=e.join(`
-`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=G(o[2]),t=K(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??Oe(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(G),rows:a.map(e=>e.map(G))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(G)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(G)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:G(l.join(` `))})}return n}function je(e){switch(e.t){case`h`:return e.text;case`p`:return K(e.c);case`ul`:case`ol`:return e.items.map(K).join(` `);case`callout`:return e.c.map(K).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(K).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var Me=new Map;function q(e,t){let n=`${e}/${t}`,r=Me.get(n);return r||(r=Ae(Se[e][t]??``),Me.set(n,r)),r}var Ne=new Map;function Pe(e){let t=Ne.get(e);if(t)return t;t=[];for(let n of H){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of q(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+je(i));t.push(r)}return Ne.set(e,t),t}var J=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function Fe(e,t,n=20){let r=J(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Pe(e)){let e=J(t.heading),n=J(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),u=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:u})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var Y=l((()=>{let e=f(`lang`,``);return e===`de`||e===`en`?e:De()})()),Ie=e=>{Y.value=e,u(`lang`,e),document.documentElement.lang=e};function X(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:H.some(t=>t.id===e?.[1])?e[1]:H[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=l(X());addEventListener(`popstate`,()=>Z.value=X());function Q(e){history.pushState(null,``,e),Z.value=X(),Z.value.anchor||window.scrollTo(0,0)}function Le(e,t){i(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return o(n,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return o(`code`,{children:e.v},t);case`strong`:return o(`strong`,{children:o($,{c:e.c})},t);case`em`:return o(`em`,{children:o($,{c:e.c})},t);case`link`:return o(Re,{href:e.href,c:e.c},t)}})})}function Re({href:e,c:t}){return/^https?:/.test(e)?o(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:o($,{c:t})}):o(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:o($,{c:t})})}function ze({b:e}){let t=`h${e.level}`;return o(t,{id:e.id,class:`dh dh${e.level}`,children:[o($,{c:e.c}),e.level>1&&o(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":U[Y.value].copyLink,title:U[Y.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await ce(n)&&s({level:`info`,title:U[Y.value].docs,text:U[Y.value].linkCopied},2500)},children:`#`})]})}function Be({r:e}){let t=Y.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return o(`figure`,{class:`recipe`,children:[o(`div`,{class:`recipe-main`,children:[o(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${W(e.result,t)}: ${r.map(e=>W(e,t)).join(`, `)}`,children:n.map((e,n)=>o(`span`,{class:`slot ${e?`full`:``}`,title:e?W(e,t):void 0,children:e&&o(p,{name:Ee(e),displayName:W(e,t)})},n))}),o(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),o(`div`,{class:`craft-result`,children:[o(`span`,{class:`slot full result`,title:W(e.result,t),children:[o(p,{name:e.result,displayName:W(e.result,t)}),e.count&&e.count>1&&o(`span`,{class:`slot-count`,children:e.count})]}),o(`span`,{class:`craft-result-name`,children:W(e.result,t)})]})]}),o(`figcaption`,{children:[o(`ul`,{class:`recipe-legend`,children:r.map(e=>o(`li`,{children:[o(p,{name:Ee(e),displayName:W(e,t)}),` `,W(e,t)]},e))}),e.shapeless&&o(`p`,{class:`muted small`,children:U[t].shapeless}),e.requires?.map(e=>o(`p`,{class:`recipe-req ${e.startsWith(`!`)?`without`:``}`,children:[e.startsWith(`!`)?U[t].without:U[t].requires,` `,we[e.replace(/^!?mod:/,``)]??e.replace(/^!?mod:/,``)]},e))]})]})}function Ve({b:e}){switch(e.t){case`h`:return o(ze,{b:e});case`p`:return o(`p`,{children:o($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return o(t,{children:e.items.map((e,t)=>o(`li`,{children:o($,{c:e})},t))})}case`callout`:return o(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>o(`p`,{children:o($,{c:e})},t))});case`table`:return o(`div`,{class:`table-wrap`,children:o(`table`,{children:[o(`thead`,{children:o(`tr`,{children:e.head.map((e,t)=>o(`th`,{children:o($,{c:e})},t))})}),o(`tbody`,{children:e.rows.map((e,t)=>o(`tr`,{children:e.map((e,t)=>o(`td`,{children:o($,{c:e})},t))},t))})]})});case`code`:return o(m,{code:e.code,label:e.lang||`shell`});case`recipe`:return o(Be,{r:e.recipe})}}function He({onPick:e,autoFocus:n}){let[r,i]=t(``),s=Y.value,c=a(()=>r.trim().length>=2?Fe(s,r):[],[r,s]);return o(`div`,{class:`docs-search`,children:[o(`input`,{type:`search`,class:`input docs-search-input`,placeholder:U[s].search,value:r,autoFocus:n,"aria-label":U[s].search,onInput:e=>i(e.target.value)}),r.trim().length>=2&&o(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":U[s].results,children:c.length===0?o(`p`,{class:`muted small`,children:[U[s].noResults,` „`,r,`“`]}):c.map(t=>o(`a`,{class:`docs-hit`,href:`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`),i(``),e?.()},children:[o(`span`,{class:`docs-hit-title`,children:[t.heading,` `,o(`span`,{class:`muted`,children:[`· `,t.pageTitle]})]}),o(`span`,{class:`docs-hit-snippet`,children:t.snippet})]},`${t.page}#${t.anchor}`))})]})}function Ue({page:e,onPick:t}){let n=Y.value,r=q(n,e).filter(e=>e.t===`h`&&e.level===2);return o(`nav`,{class:`docs-nav`,"aria-label":U[n].docs,children:H.map(i=>o(`div`,{children:[o(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[o(se,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&o(`div`,{class:`docs-toc`,children:r.map(e=>o(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function We(){let e=Y.value;return o(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":U[e].language,children:[`de`,`en`].map(t=>o(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>Ie(t),children:t.toUpperCase()},t))})}function Ge({page:e,onClose:t,children:n}){return o(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:o(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":U[Y.value].menu,children:[o(`header`,{class:`sheet-head`,children:[o(`h2`,{class:`px-title`,children:U[Y.value].docs}),o(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:o(d,{})})]}),o(`div`,{class:`sheet-body`,children:[o(He,{onPick:t}),o(Ue,{page:e,onPick:t}),n]})]})})}function Ke(){let{page:e,anchor:n}=Z.value,a=Y.value,[s,l]=t(!1),u=q(a,e),d=H.findIndex(t=>t.id===e),f=H[d-1],p=H[d+1],se=r(null);Le(e,n),i(()=>{document.documentElement.lang=a,document.title=`${H[d].title[a]} – CC: Cloud ${U[a].docs}`},[e,a]),i(()=>{Se[a][e]||Q(`/docs`)},[e,a]);let m=c.value;return o(`div`,{class:`docs`,children:[o(`header`,{class:`topbar docs-top`,children:[o(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[o(oe,{size:26}),o(`span`,{class:`brand-text`,children:[o(`span`,{class:`brand-cc`,children:`CC:`}),o(`span`,{class:`brand-cloud`,children:`Cloud`}),o(`span`,{class:`docs-badge`,children:U[a].docs})]})]}),o(`div`,{class:`docs-top-actions`,children:[o(We,{}),o(`button`,{type:`button`,class:`icon-btn`,onClick:ae,"aria-label":`Theme: ${m}`,children:o(m===`dark`?re:m===`light`?ee:ne,{})}),o(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>l(!0),children:[`☰ `,U[a].menu]})]})]}),o(`div`,{class:`docs-layout`,children:[o(`aside`,{class:`docs-side`,children:[o(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[o(ie,{size:16}),` `,U[a].back]}),o(He,{}),o(Ue,{page:e})]}),o(`main`,{class:`docs-main`,ref:se,children:[o(`article`,{class:`docs-article`,lang:a,children:u.map((t,n)=>o(Ve,{b:t},`${e}-${a}-${n}`))}),o(`nav`,{class:`docs-pager`,children:[f?o(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[o(`span`,{class:`muted small`,children:[`← `,U[a].prev]}),o(`span`,{children:f.title[a]})]}):o(`span`,{}),p&&o(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[o(`span`,{class:`muted small`,children:[U[a].next,` →`]}),o(`span`,{children:p.title[a]})]})]})]})]}),s&&o(Ge,{page:e,onClose:()=>l(!1)}),o(te,{})]})}export{Ke as default};
+`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=q(o[2]),t=J(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??je(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(q),rows:a.map(e=>e.map(q))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(q)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(q)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:q(l.join(` `))})}return n}function Pe(e){switch(e.t){case`h`:return e.text;case`p`:return J(e.c);case`ul`:case`ol`:return e.items.map(J).join(` `);case`callout`:return e.c.map(J).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(J).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var Fe=new Map;function Y(e,t){let n=`${e}/${t}`,r=Fe.get(n);return r||(r=Ne(Te[e][t]??``),Fe.set(n,r)),r}var Ie=new Map;function Le(e){let t=Ie.get(e);if(t)return t;t=[];for(let n of W){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of Y(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+Pe(i));t.push(r)}return Ie.set(e,t),t}var Re=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function ze(e,t,n=20){let r=Re(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Le(e)){let e=Re(t.heading),n=Re(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),u=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:u})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var X=l((()=>{let e=f(`lang`,``);return e===`de`||e===`en`?e:Ae()})()),Be=e=>{X.value=e,u(`lang`,e),document.documentElement.lang=e};function Ve(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:W.some(t=>t.id===e?.[1])?e[1]:W[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=l(Ve());addEventListener(`popstate`,()=>Z.value=Ve());function Q(e){history.pushState(null,``,e),Z.value=Ve(),Z.value.anchor||window.scrollTo(0,0)}function He(e,t){i(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return o(n,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return o(`code`,{children:e.v},t);case`strong`:return o(`strong`,{children:o($,{c:e.c})},t);case`em`:return o(`em`,{children:o($,{c:e.c})},t);case`link`:return o(Ue,{href:e.href,c:e.c},t)}})})}function Ue({href:e,c:t}){return/^https?:/.test(e)?o(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:o($,{c:t})}):o(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:o($,{c:t})})}function We({b:e}){let t=`h${e.level}`;return o(t,{id:e.id,class:`dh dh${e.level}`,children:[o($,{c:e.c}),e.level>1&&o(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":G[X.value].copyLink,title:G[X.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await ce(n)&&s({level:`info`,title:G[X.value].docs,text:G[X.value].linkCopied},2500)},children:`#`})]})}function Ge({r:e}){let t=X.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return o(`figure`,{class:`recipe`,children:[o(`div`,{class:`recipe-main`,children:[o(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${K(e.result,t)}: ${r.map(e=>K(e,t)).join(`, `)}`,children:n.map((e,n)=>o(`span`,{class:`slot ${e?`full`:``}`,title:e?K(e,t):void 0,children:e&&o(p,{name:ke(e),displayName:K(e,t)})},n))}),o(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),o(`div`,{class:`craft-result`,children:[o(`span`,{class:`slot full result`,title:K(e.result,t),children:[o(p,{name:e.result,displayName:K(e.result,t)}),e.count&&e.count>1&&o(`span`,{class:`slot-count`,children:e.count})]}),o(`span`,{class:`craft-result-name`,children:K(e.result,t)})]})]}),o(`figcaption`,{children:[o(`ul`,{class:`recipe-legend`,children:r.map(e=>o(`li`,{children:[o(p,{name:ke(e),displayName:K(e,t)}),` `,K(e,t)]},e))}),e.shapeless&&o(`p`,{class:`muted small`,children:G[t].shapeless}),e.requires?.map(e=>o(`p`,{class:`recipe-req ${e.startsWith(`!`)?`without`:``}`,children:[e.startsWith(`!`)?G[t].without:G[t].requires,` `,De[e.replace(/^!?mod:/,``)]??e.replace(/^!?mod:/,``)]},e))]})]})}function Ke({b:e}){switch(e.t){case`h`:return o(We,{b:e});case`p`:return o(`p`,{children:o($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return o(t,{children:e.items.map((e,t)=>o(`li`,{children:o($,{c:e})},t))})}case`callout`:return o(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>o(`p`,{children:o($,{c:e})},t))});case`table`:return o(`div`,{class:`table-wrap`,children:o(`table`,{children:[o(`thead`,{children:o(`tr`,{children:e.head.map((e,t)=>o(`th`,{children:o($,{c:e})},t))})}),o(`tbody`,{children:e.rows.map((e,t)=>o(`tr`,{children:e.map((e,t)=>o(`td`,{children:o($,{c:e})},t))},t))})]})});case`code`:return o(m,{code:e.code,label:e.lang||`shell`});case`recipe`:return o(Ge,{r:e.recipe})}}function qe({onPick:e,autoFocus:n}){let[r,i]=t(``),s=X.value,c=a(()=>r.trim().length>=2?ze(s,r):[],[r,s]);return o(`div`,{class:`docs-search`,children:[o(`input`,{type:`search`,class:`input docs-search-input`,placeholder:G[s].search,value:r,autoFocus:n,"aria-label":G[s].search,onInput:e=>i(e.target.value)}),r.trim().length>=2&&o(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":G[s].results,children:c.length===0?o(`p`,{class:`muted small`,children:[G[s].noResults,` „`,r,`“`]}):c.map(t=>o(`a`,{class:`docs-hit`,href:`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`),i(``),e?.()},children:[o(`span`,{class:`docs-hit-title`,children:[t.heading,` `,o(`span`,{class:`muted`,children:[`· `,t.pageTitle]})]}),o(`span`,{class:`docs-hit-snippet`,children:t.snippet})]},`${t.page}#${t.anchor}`))})]})}function Je({page:e,onPick:t}){let n=X.value,r=Y(n,e).filter(e=>e.t===`h`&&e.level===2);return o(`nav`,{class:`docs-nav`,"aria-label":G[n].docs,children:W.map(i=>o(`div`,{children:[o(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[o(se,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&o(`div`,{class:`docs-toc`,children:r.map(e=>o(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function Ye(){let e=X.value;return o(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":G[e].language,children:[`de`,`en`].map(t=>o(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>Be(t),children:t.toUpperCase()},t))})}function Xe({page:e,onClose:t,children:n}){return o(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:o(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":G[X.value].menu,children:[o(`header`,{class:`sheet-head`,children:[o(`h2`,{class:`px-title`,children:G[X.value].docs}),o(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:o(d,{})})]}),o(`div`,{class:`sheet-body`,children:[o(qe,{onPick:t}),o(Je,{page:e,onPick:t}),n]})]})})}function Ze(){let{page:e,anchor:n}=Z.value,a=X.value,[s,l]=t(!1),u=Y(a,e),d=W.findIndex(t=>t.id===e),f=W[d-1],p=W[d+1],se=r(null);He(e,n),i(()=>{document.documentElement.lang=a,document.title=`${W[d].title[a]} – CC: Cloud ${G[a].docs}`},[e,a]),i(()=>{Te[a][e]||Q(`/docs`)},[e,a]);let m=c.value;return o(`div`,{class:`docs`,children:[o(`header`,{class:`topbar docs-top`,children:[o(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[o(oe,{size:26}),o(`span`,{class:`brand-text`,children:[o(`span`,{class:`brand-cc`,children:`CC:`}),o(`span`,{class:`brand-cloud`,children:`Cloud`}),o(`span`,{class:`docs-badge`,children:G[a].docs})]})]}),o(`div`,{class:`docs-top-actions`,children:[o(Ye,{}),o(`button`,{type:`button`,class:`icon-btn`,onClick:ae,"aria-label":`Theme: ${m}`,children:o(m===`dark`?re:m===`light`?ee:ne,{})}),o(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>l(!0),children:[`☰ `,G[a].menu]})]})]}),o(`div`,{class:`docs-layout`,children:[o(`aside`,{class:`docs-side`,children:[o(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[o(ie,{size:16}),` `,G[a].back]}),o(qe,{}),o(Je,{page:e})]}),o(`main`,{class:`docs-main`,ref:se,children:[o(`article`,{class:`docs-article`,lang:a,children:u.map((t,n)=>o(Ke,{b:t},`${e}-${a}-${n}`))}),o(`nav`,{class:`docs-pager`,children:[f?o(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[o(`span`,{class:`muted small`,children:[`← `,G[a].prev]}),o(`span`,{children:f.title[a]})]}):o(`span`,{}),p&&o(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[o(`span`,{class:`muted small`,children:[G[a].next,` →`]}),o(`span`,{children:p.title[a]})]})]})]})]}),s&&o(Xe,{page:e,onClose:()=>l(!1)}),o(te,{})]})}export{Ze as default};

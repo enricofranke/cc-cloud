@@ -508,7 +508,12 @@ export function SharesScreen({ id }: { id: string }) {
         <DocsLink to="/docs/accounts#shares">About share links</DocsLink>
       </p>
       {error && <p class="form-error">{error}</p>}
-      {shares && shares.length === 0 && <div class="empty">No share links yet.</div>}
+      {shares && shares.length === 0 && (
+        <div class="rules-empty">
+          <b>No share links yet.</b>
+          <span class="muted small">Create one for a stream overlay, a friend or a wall display: pick pages or cards, how long it lasts and how many people may watch at once.</span>
+        </div>
+      )}
       {shares && shares.length > 0 && (
         <ul class="dev-list">
           {shares.map((s) => (

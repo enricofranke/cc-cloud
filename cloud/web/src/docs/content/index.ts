@@ -21,6 +21,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "upgrades", icon: "star", title: { en: "Upgrades, tablet & display", de: "Upgrades, Tablet & Display" } },
   { id: "automation", icon: "bolt", title: { en: "Rules, notifications & history", de: "Regeln, Benachrichtigungen & Verlauf" } },
   { id: "recipes", icon: "pick", title: { en: "All recipes", de: "Alle Rezepte" } },
+  { id: "mods", icon: "box", title: { en: "Supported mods", de: "Unterstützte Mods" } },
   { id: "bridges", icon: "box", title: { en: "Bridges (AE2 / RS)", de: "Bridges (AE2 / RS)" } },
   { id: "accounts", icon: "lock", title: { en: "Accounts, roles & sharing", de: "Konten, Rollen & Teilen" } },
   { id: "security", icon: "shield", title: { en: "Security & hosting", de: "Sicherheit & Hosting" } },

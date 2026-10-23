@@ -44,6 +44,9 @@ importers:
       '@types/ws':
         specifier: ^8.18.2
         version: 8.18.2
+      axe-core:
+        specifier: 4.10.3
+        version: 4.10.3
       playwright:
         specifier: ^1.64.1
         version: 1.64.1
@@ -525,6 +528,10 @@ packages:
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
+
+  axe-core@4.10.3:
+    resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
+    engines: {node: '>=4'}
 
   babel-plugin-transform-hook-names@1.0.2:
     resolution: {integrity: sha512-5gafyjyyBTTdX/tQQ0hRgu4AhNHG/hqWi0ZZmg2xvs2FgRkJXzDNKBZCyoYqgFkovfDrgM8OoKg8karoUvWeCw==}
@@ -1386,6 +1393,8 @@ snapshots:
   '@vitest/spy@5.0.5': {}
 
   assertion-error@2.0.1: {}
+
+  axe-core@4.10.3: {}
 
   babel-plugin-transform-hook-names@1.0.2(@babel/core@7.29.7):
     dependencies:

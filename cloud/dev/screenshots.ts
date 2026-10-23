@@ -1069,6 +1069,7 @@ try {
     await sp.waitForSelector(".card", { timeout: 40_000 });
     await sp.waitForTimeout(800);
     await clearToasts(sp);
+    if (name.startsWith("desktop")) await shot(sp, "desktop-c9b-mod-showcase-top");
     await shot(sp, name, name.startsWith("desktop"));
     await ctx.close();
   }

@@ -594,6 +594,22 @@ Im **</>**-Fenster eines Computers zeigt **Open the editor** alle Dateien und Or
 
 Wurde die Datei seit dem Öffnen auf dem Computer geändert, fragt das Speichern vor dem Überschreiben. Dateien sind auf 256 KB begrenzt, \`rom\` und Disketten werden nie angefasst, und der Editor braucht dieselben Rechte wie das Hochladen von Skripten (plus die PIN, falls gesetzt).
 `,
+  mods: `# Unterstützte Mods
+
+CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn die Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
+
+Daneben funktionieren zwei allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, und die **Tank**-Karte für einfache Flüssigkeitstanks. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag \`#cccloud:no_generic_card\` ausschließen. AE2 und Refined Storage haben eigene [Bridges](/docs/bridges).
+
+Bedienelemente folgen den [Rechten](/docs/accounts#roles): Buttons und Schalter brauchen „Use controls“, der Redstone-Modus einer Maschine „Switch redstone“, und Karten mit Koordinaten (Wegsteine, Tore, Quests) „See coordinates“.
+
+## Nach Bereich {#list}
+
+Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis und sind auf Englisch.
+
+${C.modsSection("de")}
+
+Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
+`,
   recipes: `# Alle Rezepte
 
 Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie). JEI oder EMI zeigen dasselbe im Spiel.

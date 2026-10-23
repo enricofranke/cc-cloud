@@ -640,7 +640,7 @@ export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: M
                   </button>
                 )}
               </div>
-              <div class="job-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
+              <div class="job-bar" role="progressbar" aria-label={`${j.displayName ?? j.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
                 <span class="job-fill" style={{ width: `${Math.round((j.status === "done" ? 1 : j.progress) * 100)}%` }} />
               </div>
             </li>
