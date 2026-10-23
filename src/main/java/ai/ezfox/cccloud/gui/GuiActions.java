@@ -47,9 +47,12 @@ public final class GuiActions {
         }
     }
 
-    /** Uplink screen actions. Unlinking needs rights on the linked mainframe. */
+    /**
+     * Uplink screen actions. Both need {@code network.link} on the linked mainframe: unlinking, and {@code redstone}
+     * (wireless redstone, arg {@code <off|transmit|receive>:<channel>}).
+     */
     public enum Uplink {
-        UNLINK;
+        UNLINK, REDSTONE;
 
         public String id() {
             return name().toLowerCase(Locale.ROOT);
@@ -92,6 +95,11 @@ public final class GuiActions {
 
     public interface UplinkOps {
         @Nullable String unlink();
+
+        /** Wireless redstone mode and channel (validated); null on success or {@code not_supported}. */
+        default @Nullable String redstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
+            return "not_supported";
+        }
     }
 
     private GuiActions() {
@@ -140,9 +148,20 @@ public final class GuiActions {
         var a = Uplink.byId(action);
         if (a == null) return "unknown_action";
         if (!screenOpen) return "no_screen";
-        if (!arg.isEmpty()) return "invalid_argument";
+        if (a == Uplink.UNLINK) {
+            if (!arg.isEmpty()) return "invalid_argument";
+            if (!canUnlink) return "not_owner";
+            return ops.unlink();
+        }
+        int colon = arg.indexOf(':');
+        var mode = colon < 0 ? null : ai.ezfox.cccloud.redstone.RedstoneMode.byId(arg.substring(0, colon));
+        String channel = colon < 0 ? "" : arg.substring(colon + 1);
+        if (mode == null || arg.length() > MAX_ARG) return "invalid_argument";
+        if (!(mode == ai.ezfox.cccloud.redstone.RedstoneMode.OFF && channel.isEmpty()) && !ai.ezfox.cccloud.redstone.RedstoneChannels.validName(channel)) {
+            return "invalid_channel";
+        }
         if (!canUnlink) return "not_owner";
-        return ops.unlink();
+        return ops.redstone(mode, channel);
     }
 
     private static @Nullable UUID parseUuid(String s) {

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "O": "minecraft:obsidian",
+    "E": "minecraft:ender_pearl",
+    "A": "minecraft:lodestone",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "OEO",
+    "EAE",
+    "OCO"
+  ],
+  "result": {
+    "id": "cccloud:upgrade_chunk_anchor"
+  }
+}

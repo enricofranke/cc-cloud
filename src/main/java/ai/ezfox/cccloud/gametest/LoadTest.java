@@ -81,6 +81,8 @@ public final class LoadTest {
 
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
+        // 50 browsers: beyond every Bandwidth card, so the mainframe gets a Quantum Core (unlimited browsers).
+        mainframe.upgrades().setItem(ai.ezfox.cccloud.upgrade.MainframeUpgrades.CORE_SLOT, new net.minecraft.world.item.ItemStack(ai.ezfox.cccloud.ModRegistry.QUANTUM_CORE.get()));
         CloudGameTests.keepPowered(helper, mainframe);
         var link = new MainframeLink(GlobalPos.of(helper.getLevel().dimension(), mainframe.getBlockPos()), mainframe.getMainframeId());
 

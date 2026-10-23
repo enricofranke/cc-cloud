@@ -84,6 +84,33 @@ public final class ModRegistry {
     public static final DeferredItem<?> FIBER_CABLE_ITEM = ITEMS.registerSimpleBlockItem(FIBER_CABLE);
     public static final DeferredItem<?> FIBER_JUNCTION_ITEM = ITEMS.registerSimpleBlockItem(FIBER_JUNCTION);
     public static final DeferredItem<?> ENDER_FIBER_LINK_ITEM = ITEMS.registerSimpleBlockItem(ENDER_FIBER_LINK, p -> p.rarity(Rarity.EPIC));
+    // v0.7 mainframe upgrades: 15 cards (type × tier), the Quantum Core and the optional Chunk Anchor card.
+    public static final java.util.Map<String, DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem>> UPGRADE_CARDS = new java.util.LinkedHashMap<>();
+
+    static {
+        for (var type : ai.ezfox.cccloud.upgrade.UpgradeType.values()) {
+            for (var tier : ai.ezfox.cccloud.upgrade.UpgradeTier.values()) {
+                String id = ai.ezfox.cccloud.upgrade.UpgradeItem.cardId(type, tier);
+                var rarity = switch (tier) {
+                    case ALLTHEMODIUM -> Rarity.UNCOMMON;
+                    case VIBRANIUM -> Rarity.RARE;
+                    case UNOBTAINIUM -> Rarity.EPIC;
+                };
+                UPGRADE_CARDS.put(id, ITEMS.registerItem(id, p -> new ai.ezfox.cccloud.upgrade.UpgradeItem(ai.ezfox.cccloud.upgrade.UpgradeItem.Kind.CARD,
+                    type, tier, p), p -> p.stacksTo(1).rarity(rarity)));
+            }
+        }
+    }
+
+    public static final DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem> QUANTUM_CORE = ITEMS.registerItem("quantum_core",
+        p -> new ai.ezfox.cccloud.upgrade.UpgradeItem(ai.ezfox.cccloud.upgrade.UpgradeItem.Kind.QUANTUM_CORE, null, null, p), p -> p.stacksTo(1).rarity(Rarity.EPIC));
+    public static final DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem> UPGRADE_CHUNK_ANCHOR = ITEMS.registerItem("upgrade_chunk_anchor",
+        p -> new ai.ezfox.cccloud.upgrade.UpgradeItem(ai.ezfox.cccloud.upgrade.UpgradeItem.Kind.CHUNK_ANCHOR, null, null, p), p -> p.stacksTo(1).rarity(Rarity.RARE));
+
+    public static DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem> card(ai.ezfox.cccloud.upgrade.UpgradeType type, ai.ezfox.cccloud.upgrade.UpgradeTier tier) {
+        return UPGRADE_CARDS.get(ai.ezfox.cccloud.upgrade.UpgradeItem.cardId(type, tier));
+    }
+
     public static final DeferredItem<Item> CLOUD_CORE = ITEMS.registerSimpleItem("cloud_core");
     public static final DeferredItem<CloudLinkCardItem> CLOUD_LINK_CARD = ITEMS.registerItem("cloud_link_card", CloudLinkCardItem::new, p -> p.stacksTo(1));
 
@@ -125,6 +152,9 @@ public final class ModRegistry {
             out.accept(ENDER_FIBER_LINK_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
+            for (var card : UPGRADE_CARDS.values()) out.accept(card.get());
+            out.accept(QUANTUM_CORE.get());
+            out.accept(UPGRADE_CHUNK_ANCHOR.get());
             for (var bridge : ai.ezfox.cccloud.bridge.BridgeRegistry.ITEMS) out.accept(bridge.get());
         })
         .build());
@@ -151,6 +181,9 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("cable_fiber_connections", () -> ai.ezfox.cccloud.gametest.CableTests::fiberConnections);
         TEST_FUNCTIONS.register("cable_fiber_capacity", () -> ai.ezfox.cccloud.gametest.CableTests::fiberCapacity);
         TEST_FUNCTIONS.register("cable_ender_fiber", () -> ai.ezfox.cccloud.gametest.CableTests::enderFiberAcrossDimensions);
+        TEST_FUNCTIONS.register("upgrades_effects_capacity", () -> ai.ezfox.cccloud.gametest.UpgradeTests::effectsAndCapacity);
+        TEST_FUNCTIONS.register("upgrades_chunk_anchor", () -> ai.ezfox.cccloud.gametest.UpgradeTests::chunkAnchor);
+        TEST_FUNCTIONS.register("wireless_redstone", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstone);
     }
 
     private ModRegistry() {

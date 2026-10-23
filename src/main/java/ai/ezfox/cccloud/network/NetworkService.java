@@ -48,6 +48,8 @@ public final class NetworkService {
     private static final Map<UUID, NetworkGraph.Route> ROUTES = new HashMap<>();
     /** Device counts per mainframe for the power formula (avoids iterating devices every tick). */
     private static final Map<UUID, NetworkPower.Counts> COUNTS = new HashMap<>();
+    /** Devices cut off because their mainframe is over its device capacity. */
+    private static final Set<UUID> OVER_CAPACITY = new HashSet<>();
     /** Element id → fiber network ids (last {@link FiberNetworks} pass). */
     private static Map<String, Set<String>> fibers = Map.of();
     private static final Set<UUID> SERVING = new HashSet<>();
@@ -76,6 +78,7 @@ public final class NetworkService {
         SERVING.clear();
         LAST_ONLINE.clear();
         LAST_TYPE.clear();
+        OVER_CAPACITY.clear();
         fibers = Map.of();
         CloudWired.clear();
         EnderFiberLinkBlockEntity.clearLoaded();
@@ -122,10 +125,12 @@ public final class NetworkService {
 
     private static NetworkGraph.Node mainframeNode(CloudMainframeBlockEntity m) {
         var p = m.getBlockPos();
-        int range = CloudConfig.get(CloudConfig.RANGE_MAINFRAME);
+        var effects = m.effects();
+        // Range upgrade multiplies the mainframe's node range; the Quantum Core makes it an Ender node of its own group.
+        double range = CloudConfig.get(CloudConfig.RANGE_MAINFRAME) * effects.rangeFactor();
         String id = m.getMainframeId().toString();
         return new NetworkGraph.Node(id, NetworkGraph.NodeType.MAINFRAME, dim(m.getLevel()), p.getX() + .5, p.getY() + 1, p.getZ() + .5,
-            range, range, m.isOnline(), null, m.wired().cableBuses(), fibers(id));
+            range, range, m.isOnline(), effects.enderNode() ? id : null, m.wired().cableBuses(), fibers(id));
     }
 
     private static NetworkGraph.Node relayNode(CloudRelayBlockEntity r, UUID mainframeId) {
@@ -183,6 +188,7 @@ public final class NetworkService {
         ROUTES.clear();
         COUNTS.clear();
         SERVING.clear();
+        OVER_CAPACITY.clear();
         boolean grace = CloudConfig.get(CloudConfig.LEGACY_RANGE_GRACE);
         var devicesByMainframe = new HashMap<UUID, List<NetworkGraph.Device>>();
         for (var uplink : CloudNetwork.uplinks()) {
@@ -209,7 +215,14 @@ public final class NetworkService {
             if (mainframe.getLevel() == null || mainframe.isRemoved()) continue;
             var id = mainframe.getMainframeId();
             var devices = devicesByMainframe.getOrDefault(id, List.of());
-            var result = NetworkGraph.compute(id.toString(), nodes(mainframe), devices, grace);
+            var computed = NetworkGraph.compute(id.toString(), nodes(mainframe), devices, grace);
+            // v0.7 capacity: devices beyond the mainframe's limit go over_capacity (most hops / most recent first).
+            var limit = mainframe.effects().devices();
+            var over = limit == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? Set.<String>of()
+                : ai.ezfox.cccloud.network.graph.Capacity.overCapacity(computed, id.toString(), limit, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
+                    linkOrder(mainframe));
+            for (var o : over) OVER_CAPACITY.add(UUID.fromString(o));
+            var result = ai.ezfox.cccloud.network.graph.Capacity.without(computed, over);
             RESULTS.put(id, result);
             for (var device : devices) ROUTES.put(UUID.fromString(device.id()), result.route(device.id()));
             COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT)));
@@ -218,6 +231,8 @@ public final class NetworkService {
             }
             WebHub.INSTANCE.publishNetwork(id, toJson(mainframe, result, true), toJson(mainframe, result, false));
         }
+        // Routes may have changed: wireless redstone follows on the same tick.
+        ai.ezfox.cccloud.redstone.RedstoneService.markDirty();
     }
 
     // ---- queries -----------------------------------------------------------------------------------------------------
@@ -225,6 +240,25 @@ public final class NetworkService {
     /** The device's route, or null while the network has not been computed yet. */
     public static NetworkGraph.@Nullable Route route(UUID deviceId) {
         return ROUTES.get(deviceId);
+    }
+
+    /** The device is linked and reachable, but its mainframe is over its device capacity. */
+    public static boolean overCapacity(UUID deviceId) {
+        return OVER_CAPACITY.contains(deviceId);
+    }
+
+    private static Map<String, Integer> linkOrder(CloudMainframeBlockEntity mainframe) {
+        var order = new HashMap<String, Integer>();
+        int i = 0;
+        for (var id : mainframe.getLinkedUplinks().keySet()) order.put(id.toString(), i++);
+        return order;
+    }
+
+    /** Capacity in use: relays on device routes + routed devices (fiber weighted). */
+    public static double capacityUsed(UUID mainframeId) {
+        var result = RESULTS.get(mainframeId);
+        int relays = result == null ? 0 : ai.ezfox.cccloud.network.graph.Capacity.relays(result, mainframeId.toString());
+        return relays + counts(mainframeId).capacityUsed();
     }
 
     public static boolean isServing(UUID relayId) {
@@ -260,6 +294,11 @@ public final class NetworkService {
             fiberDirty = false;
             fibers = FiberNetworks.compute(fiberElements(), EnderFiberLinkBlockEntity.loaded());
         }
+        // Capacity must count links made earlier in this tick (linking is a rare player action, so this is cheap).
+        if (dirty) {
+            dirty = false;
+            recompute();
+        }
         // Linking is a geometric check: nodes count even while they (or the mainframe) have no power right now.
         var nodes = new ArrayList<NetworkGraph.Node>();
         for (var n : nodes(mainframe)) {
@@ -269,7 +308,17 @@ public final class NetworkService {
             cables(wired), deviceId == null ? Set.of() : fibers(deviceId));
         var result = NetworkGraph.compute(mainframe.getMainframeId().toString(), nodes, List.of(device), false);
         var route = result.route("probe");
-        if (route != null && route.connected()) return null;
+        if (route != null && route.connected()) {
+            // v0.7 capacity: a new link must fit (re-linking a device that is already counted is fine).
+            int limit = mainframe.effects().devices();
+            boolean counted = deviceId != null && ROUTES.containsKey(UUID.fromString(deviceId)) && route(UUID.fromString(deviceId)) != null
+                && route(UUID.fromString(deviceId)).connected();
+            double weight = route.fiber() ? CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT) : 1;
+            if (limit != ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED && !counted && capacityUsed(mainframe.getMainframeId()) + weight > limit + 1e-9) {
+                return Component.translatable("cccloud.network.capacity_full", limit);
+            }
+            return null;
+        }
         var nearest = NetworkGraph.nearestNode(result, dim(level), pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
         if (nearest == null) return Component.translatable("cccloud.network.no_node_here");
         var node = nearest.getKey();
@@ -280,7 +329,9 @@ public final class NetworkService {
 
     /** Power breakdown of a mainframe's network ({@link NetworkPower}); clients are counted live. */
     public static Map<String, Long> power(UUID mainframeId, int clients) {
-        return NetworkPower.breakdown(rates(), counts(mainframeId), clients, CloudConfig.get(CloudConfig.FIBER_POWER_FACTOR));
+        var effects = ai.ezfox.cccloud.upgrade.Upgrades.effects(mainframeId);
+        return NetworkPower.breakdown(rates(), counts(mainframeId), clients, CloudConfig.get(CloudConfig.FIBER_POWER_FACTOR), effects.feFactor(),
+            ai.ezfox.cccloud.upgrade.ChunkAnchor.cost(ai.ezfox.cccloud.upgrade.ChunkAnchor.chunks(mainframeId)));
     }
 
     /** {@code [{key, count?, fe}]} for the dashboard (keys base, uplinks, advanced_uplinks, bridges, clients, hops; sums to usage). */
@@ -356,7 +407,12 @@ public final class NetworkService {
                 var counts = counts(mainframe.getMainframeId());
                 var capacity = new JsonObject();
                 capacity.addProperty("devices", counts.devices());
-                capacity.addProperty("used", Math.round(counts.capacityUsed() * 100) / 100.0);
+                capacity.addProperty("used", Math.round(capacityUsed(mainframe.getMainframeId()) * 100) / 100.0);
+                int limit = mainframe.effects().devices();
+                if (limit != ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED) capacity.addProperty("limit", limit);
+                else capacity.add("limit", com.google.gson.JsonNull.INSTANCE);
+                capacity.addProperty("over", OVER_CAPACITY.isEmpty() ? 0 : (int) result.devices().stream()
+                    .filter(d -> OVER_CAPACITY.contains(UUID.fromString(d.id()))).count());
                 capacity.addProperty("wired", counts.wired());
                 capacity.addProperty("fiber", counts.fiber());
                 n.add("capacity", capacity);
@@ -398,7 +454,8 @@ public final class NetworkService {
             LAST_TYPE.put(device.id(), type);
             n.addProperty("type", type);
             n.addProperty("name", section != null ? section.getTitle() : "");
-            String status = route == null || !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range"
+            String status = OVER_CAPACITY.contains(UUID.fromString(device.id())) ? "over_capacity"
+                : route == null || !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range"
                 : mainframe.isOnline() ? "online" : "offline";
             n.addProperty("status", status);
             n.addProperty("uplinkId", device.id());

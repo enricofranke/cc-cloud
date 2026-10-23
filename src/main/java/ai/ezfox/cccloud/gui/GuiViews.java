@@ -23,6 +23,24 @@ public final class GuiViews {
     private GuiViews() {
     }
 
+    /** Effective upgrade limits for the Upgrades tab. */
+    static JsonObject upgradesJson(CloudMainframeBlockEntity mainframe) {
+        var e = mainframe.effects();
+        var u = new JsonObject();
+        u.addProperty("devices", e.devices() == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? -1 : e.devices());
+        u.addProperty("used", Math.round(ai.ezfox.cccloud.network.NetworkService.capacityUsed(mainframe.getMainframeId()) * 10) / 10.0);
+        u.addProperty("browsers", e.browsers() == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? -1 : e.browsers());
+        u.addProperty("rules", ai.ezfox.cccloud.rules.RuleService.limit(mainframe.getMainframeId()));
+        u.addProperty("historyHours", e.historyHours());
+        u.addProperty("range", (int) Math.round(CloudConfig.get(CloudConfig.RANGE_MAINFRAME) * e.rangeFactor()));
+        u.addProperty("feFactor", e.feFactor());
+        u.addProperty("quantum", e.quantum());
+        u.addProperty("anchor", e.chunkAnchor());
+        u.addProperty("anchorAllowed", CloudConfig.get(CloudConfig.CHUNK_ANCHOR));
+        u.addProperty("anchorChunks", ai.ezfox.cccloud.upgrade.ChunkAnchor.chunks(mainframe.getMainframeId()));
+        return u;
+    }
+
     public static String mainframe(CloudMainframeBlockEntity mainframe, ServerPlayer player, @Nullable String notice) {
         var server = player.level().getServer();
         var resolution = ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId());
@@ -58,6 +76,7 @@ public final class GuiViews {
         var power = new JsonObject();
         for (var e : mainframe.powerBreakdown().entrySet()) power.addProperty(e.getKey(), e.getValue());
         json.add("powerBreakdown", power);
+        json.add("upgrades", upgradesJson(mainframe));
         var icons = ai.ezfox.cccloud.icons.IconService.current();
         if (icons != null) {
             var status = icons.status();
@@ -192,6 +211,17 @@ public final class GuiViews {
             canUnlink = GuiNetwork.canManageMainframe(player, link.id());
         }
         json.addProperty("canUnlink", canUnlink);
+        // v0.7 wireless redstone
+        var redstone = new JsonObject();
+        redstone.addProperty("mode", uplink.redstoneMode().id());
+        redstone.addProperty("channel", uplink.redstoneChannel());
+        redstone.addProperty("level", uplink.redstoneMode() == ai.ezfox.cccloud.redstone.RedstoneMode.TRANSMIT ? uplink.redstoneInput() : uplink.redstoneOutput());
+        if (link != null) {
+            var channel = ai.ezfox.cccloud.redstone.RedstoneService.channels(link.id()).get(uplink.redstoneChannel());
+            if (channel != null) redstone.addProperty("channelLevel", channel.level());
+        }
+        redstone.addProperty("canEdit", canUnlink);
+        json.add("redstone", redstone);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
     }

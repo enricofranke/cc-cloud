@@ -67,6 +67,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+        dispatched.add("rs_override:" + override.channel() + "=" + override.level());
+        return null;
+    }
+
+    @Override
     public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
         dispatched.add("unlink:" + nodeId);
         return null;

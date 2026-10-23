@@ -117,10 +117,76 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
 
     @Override
     protected List<Component> tabs() {
-        if (!manage()) return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.network"));
+        if (!manage()) return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.network"),
+            Component.translatable("cccloud.gui.tab.upgrades"));
         return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.devices"),
             Component.translatable("cccloud.gui.tab.trusted"), Component.translatable("cccloud.gui.tab.security"),
-            Component.translatable("cccloud.gui.tab.network"));
+            Component.translatable("cccloud.gui.tab.network"), Component.translatable("cccloud.gui.tab.upgrades"));
+    }
+
+    private int upgradesTab() {
+        return manage() ? 5 : 2;
+    }
+
+    /** Slots are positioned relative to leftPos/topPos: topPos follows the header height, slots are only active on the Upgrades tab. */
+    @Override
+    public void extractBackground(net.minecraft.client.gui.GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTicks) {
+        topPos = panelY + headerHeight();
+        menu.upgradesVisible = tab == upgradesTab();
+        super.extractBackground(g, mouseX, mouseY, partialTicks);
+    }
+
+    // ---- upgrades tab (v0.7) -----------------------------------------------------------------------------------------
+
+    private void upgrades() {
+        var u = view.has("upgrades") ? view.getAsJsonObject("upgrades") : new com.google.gson.JsonObject();
+        // One fixed block (no scrolling), so the real slots line up with what is drawn here.
+        rows.add(new Row(122, (c, x, y, w) -> {
+            var g = c.g();
+            c.text(Component.translatable("cccloud.gui.upgrades"), x + 2, y + 2, accent());
+            for (int i = 0; i < 4; i++) {
+                var slot = menu.slots.get(i);
+                CloudGui.slot(g, texture(), leftPos + slot.x - 1, topPos + slot.y - 1, slot.hasItem() ? 0 : 1);
+            }
+            var core = menu.slots.get(4);
+            CloudGui.slot(g, texture(), leftPos + core.x - 1, topPos + core.y - 1, 2);
+            for (int i = 5; i < menu.slots.size(); i++) {
+                var slot = menu.slots.get(i);
+                CloudGui.slot(g, texture(), leftPos + slot.x - 1, topPos + slot.y - 1, 0);
+            }
+            // Effective limits next to the slots.
+            int tx = leftPos + menu.slots.get(4).x + 22;
+            int maxW = x + w - tx - 2;
+            long devices = num(u, "devices"), browsers = num(u, "browsers");
+            String unlimited = Component.translatable("cccloud.gui.unlimited").getString();
+            String[] lines = {
+                Component.translatable("cccloud.gui.upgrade.devices", fmt(u, "used"), devices < 0 ? unlimited : String.valueOf(devices)).getString(),
+                Component.translatable("cccloud.gui.upgrade.browsers", browsers < 0 ? unlimited : String.valueOf(browsers)).getString(),
+                Component.translatable("cccloud.gui.upgrade.rules", num(u, "rules"), num(u, "historyHours")).getString(),
+                Component.translatable("cccloud.gui.upgrade.range_fe", num(u, "range"), Math.round(dbl(u, "feFactor") * 100)).getString()
+            };
+            int ly = y + 2;
+            for (var line : lines) {
+                if (maxW > 20) c.text(line, tx, ly, CloudGui.TEXT, maxW);
+                ly += 10;
+            }
+            if (bool(u, "anchor") && maxW > 20) {
+                String anchor = bool(u, "anchorAllowed") ? Component.translatable("cccloud.gui.upgrade.anchor", num(u, "anchorChunks")).getString()
+                    : Component.translatable("cccloud.gui.upgrade.anchor_disabled").getString();
+                c.text(anchor, tx, ly, bool(u, "anchorAllowed") ? CloudGui.GREEN : CloudGui.YELLOW, maxW);
+            }
+        }));
+        if (!manage()) textRow(Component.translatable("cccloud.gui.upgrade.read_only"), CloudGui.TEXT_DIM);
+    }
+
+    private static String fmt(com.google.gson.JsonObject o, String key) {
+        double v = dbl(o, key);
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
+    private static double dbl(com.google.gson.JsonObject o, String key) {
+        var e = o.get(key);
+        return e == null || !e.isJsonPrimitive() ? 0 : e.getAsDouble();
     }
 
     // ---- rows --------------------------------------------------------------------------------------------------------
@@ -128,9 +194,14 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
     @Override
     protected void buildRows() {
         if (!manage()) {
-            if (tab > 1) tab = 0;
+            if (tab > 2) tab = 0;
             if (tab == 1) network();
+            else if (tab == 2) upgrades();
             else overview();
+            return;
+        }
+        if (tab == 5) {
+            upgrades();
             return;
         }
         pendingRows();

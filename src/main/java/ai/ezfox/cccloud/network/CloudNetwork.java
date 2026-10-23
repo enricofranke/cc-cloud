@@ -139,6 +139,7 @@ public final class CloudNetwork {
 
     private static void onServerTick(ServerTickEvent.Post event) {
         NetworkService.tick(event.getServer());
+        ai.ezfox.cccloud.redstone.RedstoneService.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
     }
 
@@ -181,6 +182,9 @@ public final class CloudNetwork {
         BRIDGE_SECTIONS.clear();
         RELAYS.clear();
         NetworkService.clear();
+        ai.ezfox.cccloud.upgrade.Upgrades.clear();
+        ai.ezfox.cccloud.upgrade.ChunkAnchor.clear();
+        ai.ezfox.cccloud.redstone.RedstoneService.clear();
         WebHub.INSTANCE.clear();
         server = null;
         CCCloud.LOGGER.debug("CC: Cloud network state cleared");

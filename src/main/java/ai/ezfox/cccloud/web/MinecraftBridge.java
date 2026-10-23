@@ -181,6 +181,19 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+        String error = check(device, mainframeId, AccessGate.Kind.REDSTONE.perm);
+        if (error != null) return error;
+        error = ai.ezfox.cccloud.redstone.RedstoneService.override(mainframeId, override.channel(), override.level(), override.seconds());
+        if (error == null) {
+            WebAuthData.access(server).audit(mainframeId, device.playerName() + (override.level() == null ? " cleared the override of redstone channel "
+                : " set redstone channel ") + override.channel() + (override.level() == null ? "" : " to " + override.level()
+                + (override.seconds() == null ? " until reset" : " for " + override.seconds() + " s")));
+        }
+        return error;
+    }
+
+    @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         String error = check(device, mainframeId, (command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE).perm);
         if (error != null) return new GameBridge.RuleResult(error, null, null);

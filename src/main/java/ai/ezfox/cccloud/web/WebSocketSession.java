@@ -143,6 +143,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.Query query -> query(current, query);
             case ClientMessages.LayoutSet layout -> layout(current, layout);
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
+            case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RuleCommand command -> rule(current, command);
         }
     }
@@ -434,6 +435,42 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         if (result.error() != null) json.addProperty("error", result.error());
         if (result.detail() != null) json.addProperty("detail", result.detail());
         if (result.id() != null) json.addProperty("id", result.id());
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
+    /** Wireless redstone override (act.redstone): {@code rs_result}, then a {@code redstone} delta on success. */
+    private void redstoneOverride(AuthStore.Device current, ClientMessages.RedstoneOverride override) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.REDSTONE);
+        if (denied != null) {
+            sendTypedResult("rs_result", override.reqId(), denied);
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendTypedResult("rs_result", override.reqId(), "rate_limited");
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.redstoneOverride(current, mainframeId, override);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while overriding a redstone channel from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendTypedResult("rs_result", override.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendTypedResult("rs_result", override.reqId(), "offline");
+        }
+    }
+
+    private void sendTypedResult(String type, String reqId, @Nullable String error) {
+        var json = new JsonObject();
+        json.addProperty("t", type);
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", error == null);
+        if (error != null) json.addProperty("error", error);
         send(List.of(Json.GSON.toJson(json)));
     }
 

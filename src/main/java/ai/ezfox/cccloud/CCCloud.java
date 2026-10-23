@@ -27,6 +27,10 @@ public class CCCloud {
         ai.ezfox.cccloud.rules.RuleService.init();
         ai.ezfox.cccloud.access.TeamProviders.setDisabled(() -> java.util.Set.copyOf(CloudConfig.get(CloudConfig.DISABLED_TEAM_PROVIDERS)));
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
+        ai.ezfox.cccloud.upgrade.ChunkAnchor.init(modEventBus);
+        // Bandwidth upgrade: browsers per mainframe (only while a game server runs; the web unit tests have none).
+        ai.ezfox.cccloud.web.WebHub.browserLimit = id -> ai.ezfox.cccloud.network.CloudNetwork.server() == null ? Integer.MAX_VALUE
+            : ai.ezfox.cccloud.upgrade.Upgrades.effects(id).browsers();
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
         // Config changes (ranges, power) change the topology.
         modEventBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> ai.ezfox.cccloud.network.NetworkService.markDirty());

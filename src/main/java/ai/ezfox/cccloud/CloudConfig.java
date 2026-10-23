@@ -31,6 +31,14 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
     public static final ModConfigSpec.DoubleValue FIBER_CAPACITY_WEIGHT;
     public static final ModConfigSpec.DoubleValue FIBER_POWER_FACTOR;
+    // v0.7 mainframe upgrades (base limits without cards) and the optional Chunk Anchor card
+    public static final ModConfigSpec.IntValue BASE_DEVICES;
+    public static final ModConfigSpec.IntValue BASE_BROWSERS;
+    public static final ModConfigSpec.IntValue BASE_RULES;
+    public static final ModConfigSpec.IntValue BASE_HISTORY_HOURS;
+    public static final ModConfigSpec.BooleanValue CHUNK_ANCHOR;
+    public static final ModConfigSpec.IntValue ANCHOR_BASE_FE;
+    public static final ModConfigSpec.IntValue ANCHOR_PER_CHUNK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_BRIDGE_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_HOP_FE;
@@ -179,9 +187,33 @@ public final class CloudConfig {
         RULES_ENABLED = b.comment("Run the no-code automation rules of mainframes (dashboard: When → If → Then).")
             .translation("cccloud.configuration.rulesEnabled")
             .define("rulesEnabled", true);
-        MAX_RULES = b.comment("Maximum number of rules per mainframe.")
+        MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
-            .defineInRange("maxRulesPerMainframe", 32, 1, 128);
+            .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("upgrades");
+        BASE_DEVICES = b.comment("Devices (uplinks + bridges + relays) a mainframe serves without a Capacity upgrade.")
+            .translation("cccloud.configuration.baseDevices")
+            .defineInRange("baseDevices", 16, 1, 100_000);
+        BASE_BROWSERS = b.comment("Concurrent dashboard browsers per mainframe without a Bandwidth upgrade.")
+            .translation("cccloud.configuration.baseBrowsers")
+            .defineInRange("baseBrowsers", 4, 1, 10_000);
+        BASE_RULES = b.comment("Rules per mainframe without a Memory upgrade.")
+            .translation("cccloud.configuration.baseRules")
+            .defineInRange("baseRules", 8, 1, 128);
+        BASE_HISTORY_HOURS = b.comment("History retention (hours) without a Memory upgrade.")
+            .translation("cccloud.configuration.baseHistoryHours")
+            .defineInRange("baseHistoryHours", 1, 1, 24 * 365);
+        CHUNK_ANCHOR = b.comment("Allow the Chunk Anchor upgrade card: it keeps the mainframe's and its linked devices' chunks loaded. Off by default.")
+            .translation("cccloud.configuration.chunkAnchor")
+            .define("chunkAnchor", false);
+        ANCHOR_BASE_FE = b.comment("FE per tick of an active Chunk Anchor.")
+            .translation("cccloud.configuration.anchorBaseFE")
+            .defineInRange("anchorBaseFE", 200, 0, 1_000_000);
+        ANCHOR_PER_CHUNK_FE = b.comment("Additional FE per tick per anchored chunk.")
+            .translation("cccloud.configuration.anchorPerChunkFE")
+            .defineInRange("anchorPerChunkFE", 20, 0, 1_000_000);
         b.pop();
 
         b.push("teams");

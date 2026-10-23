@@ -73,6 +73,32 @@ public final class NetworkPower {
 
     /** Ordered breakdown (key → FE/t), plus "total". */
     public static Map<String, Long> breakdown(Rates rates, Counts counts, int clients, double fiberPowerFactor) {
+        return breakdown(rates, counts, clients, fiberPowerFactor, 1, 0);
+    }
+
+    /**
+     * With upgrades: {@code feFactor} (Efficiency card / Quantum Core) scales the network part (base … hops) and shows
+     * up as a negative {@code efficiency} item; {@code anchorFe} (Chunk Anchor card) is added as {@code anchor}.
+     */
+    public static Map<String, Long> breakdown(Rates rates, Counts counts, int clients, double fiberPowerFactor, double feFactor, long anchorFe) {
+        var map = breakdownRaw(rates, counts, clients, fiberPowerFactor);
+        long network = map.remove("total");
+        long total = network;
+        if (anchorFe > 0) {
+            map.put("anchor", anchorFe);
+            total += anchorFe;
+        }
+        double factor = Math.max(0, Math.min(1, feFactor));
+        if (factor < 1) {
+            long saved = Math.round(network * (1 - factor));
+            map.put("efficiency", -saved);
+            total -= saved;
+        }
+        map.put("total", total);
+        return map;
+    }
+
+    private static Map<String, Long> breakdownRaw(Rates rates, Counts counts, int clients, double fiberPowerFactor) {
         var map = new LinkedHashMap<String, Long>();
         map.put("base", Math.max(0, rates.base()));
         map.put("uplinks", share(rates.uplink(), counts.uplinks(), counts.fiberUplinks(), fiberPowerFactor));
