@@ -84,4 +84,19 @@ class BlockTextureTest {
         assertTrue(store.isCurrent("minecraft:poppy", "test@1"), "cannot render → remembered");
         assertEquals(0, service.accept(UUID.randomUUID(), upload), "other clients have no batch");
     }
+
+    @Test
+    void storedSpritesAreReplacedOnlyByTrustedPlayers() {
+        var store = new BlockTextureStore();
+        String stone = "minecraft:block/stone";
+        store.putSprite(stone, png(0xFF777777));
+        var client = UUID.randomUUID();
+        var service = BlockTextureService.forTest(store, client, List.of("minecraft:stone"));
+        var upload = new BlockTextureService.UploadPayload(List.of(
+            new BlockTextureService.BlockFaces("minecraft:stone", List.of(stone, stone, stone, stone, stone, stone), 0)),
+            List.of(new BlockTextureService.Sprite(stone, png(0xFFFF00FF))));
+        assertEquals(1, service.accept(client, upload));
+        var px = PngCodec.decode(store.atlas(), 16, 16);
+        assertEquals(0xFF777777, px[0], "an untrusted client cannot repaint a stored sprite");
+    }
 }

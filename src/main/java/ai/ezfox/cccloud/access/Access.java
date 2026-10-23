@@ -63,6 +63,16 @@ public final class Access {
         return resolver(server).resolve(player.getUUID(), oldMainframe).has(Perm.NETWORK_LINK);
     }
 
+    /** Whether a player owns or has a role on any mainframe (trusted to replace shared icons/textures, security review L10). */
+    public static boolean hasAnyRole(MinecraftServer server, UUID player) {
+        var store = WebAuthData.access(server);
+        for (var id : store.mainframes()) {
+            var a = store.access(id);
+            if (a != null && (player.equals(a.owner()) || a.grants().containsKey(player))) return true;
+        }
+        return false;
+    }
+
     /** Manage the mainframe's access (roles) – what "admin" meant before fine-grained permissions. */
     public static boolean canManage(ServerPlayer player, UUID mainframeId) {
         return has(player, mainframeId, Perm.ACCESS_MANAGE);

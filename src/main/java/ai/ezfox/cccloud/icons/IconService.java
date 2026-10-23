@@ -131,9 +131,12 @@ public final class IconService {
         return t;
     });
     private long accepted, rejected;
+    /** L10: 4096 icons per player and hour; replacing a current icon only by players with a role. */
+    final UploadGuard guard = new UploadGuard(4096, System::currentTimeMillis, uuid -> false);
 
     private IconService(MinecraftServer server, Path dir) {
         this.server = server;
+        guard.setTrusted(uuid -> ai.ezfox.cccloud.access.Access.hasAnyRole(server, uuid));
         this.store = new IconStore(dir);
         for (var item : BuiltInRegistries.ITEM) {
             if (item == Items.AIR) continue;
@@ -316,6 +319,10 @@ public final class IconService {
             }
             var version = wanted.get(icon.id());
             if (version == null) continue;
+            if (!guard.take(client) || (store.isCurrent(icon.id(), version) && store.hasIcon(icon.id()) && !guard.mayReplace(client))) {
+                rejected++;
+                continue;
+            }
             if (icon.png().length == 0) {
                 store.markFailed(icon.id(), version);
             } else if (PngCodec.isValid(icon.png(), PngCodec.ICON_SIZE, PngCodec.ICON_SIZE)) {

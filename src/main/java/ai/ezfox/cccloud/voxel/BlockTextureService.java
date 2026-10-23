@@ -99,11 +99,14 @@ public final class BlockTextureService {
     private final Map<UUID, Assignment> assignments = new HashMap<>();
     private final Map<UUID, Long> lastRequest = new HashMap<>();
     long accepted, rejected;
+    /** L10: 512 blocks per player and hour; replacing a stored sprite only by players with a role. */
+    final ai.ezfox.cccloud.icons.UploadGuard guard = new ai.ezfox.cccloud.icons.UploadGuard(512, System::currentTimeMillis, uuid -> false);
 
     private BlockTextureService(@Nullable MinecraftServer server, BlockTextureStore store, @Nullable Path file) {
         this.server = server;
         this.store = store;
         this.file = file;
+        if (server != null) guard.setTrusted(uuid -> ai.ezfox.cccloud.access.Access.hasAnyRole(server, uuid));
     }
 
     public static BlockTextureStore store() {
@@ -223,11 +226,13 @@ public final class BlockTextureService {
         var referenced = new java.util.HashSet<String>();
         for (var b : upload.blocks()) if (assignment.ids().contains(b.id())) referenced.addAll(b.faces());
         for (var s : upload.sprites()) {
-            if (referenced.contains(s.name()) && !store.putSprite(s.name(), s.png())) rejected++;
+            if (!referenced.contains(s.name())) continue;
+            if (store.hasSprite(s.name()) && !guard.mayReplace(client)) continue; // first writer wins (L10)
+            if (!store.putSprite(s.name(), s.png())) rejected++;
         }
         int ok = 0;
         for (var b : upload.blocks()) {
-            if (!assignment.ids().remove(b.id())) {
+            if (!assignment.ids().remove(b.id()) || !guard.take(client)) {
                 rejected++;
                 continue;
             }
