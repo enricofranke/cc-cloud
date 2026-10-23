@@ -319,5 +319,7 @@
   "cccloud.configuration.rulesEnabled": "Regeln ausführen",
   "cccloud.configuration.maxRules": "Regeln pro Mainframe",
   "cccloud.script.note": "[CC: Cloud] %s (%s): %s auf %s",
-  "cccloud.configuration.storageCards": "Speicher-Controller: Lager-Karte"
+  "cccloud.configuration.storageCards": "Speicher-Controller: Lager-Karte",
+  "cccloud.configuration.world": "Welt & Fortschritt",
+  "cccloud.configuration.gatewaysCard": "Gateways to Eternity: Gateway-Karte"
 }

@@ -210,6 +210,10 @@ def integrationMods = [
     // QuarryPlus is written in Scala and needs the kotori_scala language loader (Scalable Cat's Force) at runtime.
     quarryplus          : ["curse.maven:additionalenchantedminer-282837:${quarryplus_curse_file}",
                            "curse.maven:scalablecatsforce-320926:${scalablecatsforce_curse_file}"],
+    apothicspawners     : ["curse.maven:apothicspawners-986583:${apothicspawners_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}"],
+    gateways            : ["curse.maven:gatewaystoeternity-417802:${gateways_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}",
+                           "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
+    easyvillagers       : ["curse.maven:easyvillagers-400514:${easyvillagers_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
 ]
 

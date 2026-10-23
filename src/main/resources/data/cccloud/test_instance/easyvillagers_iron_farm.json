@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "easy_villagers"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:easyvillagers_iron_farm",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}

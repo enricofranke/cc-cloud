@@ -16,6 +16,7 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
     public static final ModConfigSpec.BooleanValue FTB_CHUNKS_CLAIMS;
     public static final ModConfigSpec.BooleanValue BACKUP_CARD;
+    public static final ModConfigSpec.BooleanValue GATEWAYS_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -44,6 +45,12 @@ public final class IntegrationConfig {
         BACKUP_CARD = b.comment("Simple Backups: a Backups card with the last backup time and a 'Backup now' button (canControl + confirm).")
             .translation("cccloud.configuration.backupCard")
             .define("backupCard", true);
+        b.pop();
+
+        b.push("world");
+        GATEWAYS_CARD = b.comment("Gateways to Eternity: a Gateways card with the gates open near the mainframe (needs view.positions).")
+            .translation("cccloud.configuration.gatewaysCard")
+            .define("gatewaysCard", true);
         b.pop();
         SPEC = b.build();
     }

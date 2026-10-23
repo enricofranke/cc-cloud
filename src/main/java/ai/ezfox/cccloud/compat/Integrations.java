@@ -56,6 +56,11 @@ public final class Integrations {
         // 3. Quarries.
         optional("quarryplus", () -> ai.ezfox.cccloud.compat.quarryplus.QuarryPlusCards::init);
 
+        // 4. Spawners and mob farms.
+        optional("apothic_spawners", () -> ai.ezfox.cccloud.compat.apothicspawners.ApothicSpawnerCards::init);
+        optional("gateways", () -> ai.ezfox.cccloud.compat.gateways.GatewaysCard::init);
+        optional("easy_villagers", () -> ai.ezfox.cccloud.compat.easyvillagers.EasyVillagersCards::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));
