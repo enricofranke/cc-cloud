@@ -27,6 +27,8 @@ import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createHash, randomBytes } from "node:crypto";
 import http from "node:http";
+import { loadavg } from "node:os";
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { Rcon } from "./rcon.mjs";
 import { readNbtFile, writeNbtFile, S, L, B, C } from "./nbt.mjs";
 
@@ -358,7 +360,7 @@ async function setupRule(c) {
 const CSV_COLS = ["time", "minute", "phase", "tps_1m", "mspt_med_1m", "mspt_p95_1m", "mspt_max_1m", "nf_mean_ms", "nf_tps", "ow_mean_ms",
   "heap_used_mb", "heap_committed_mb", "heap_after_gc_min_mb", "gc_pauses", "gc_pause_ms", "threads", "fds", "rss_mb", "cpu_pct",
   "lua_ticks_per_min", "lua_errors", "lua_actions", "rule_runs", "rule_last", "clients", "reconnects", "msgs_in", "values_in", "alerts_in",
-  ...KINDS.flatMap((k) => [`${k}_n`, `${k}_err`, `${k}_429`, `${k}_p50`, `${k}_p95`]), "log_warn", "log_error", "gap_s"];
+  ...KINDS.flatMap((k) => [`${k}_n`, `${k}_err`, `${k}_429`, `${k}_p50`, `${k}_p95`]), "log_warn", "log_error", "gap_s", "loadavg_1m", "harness_loop_p99_ms"];
 
 let gcOffset = 0;
 function readGc(file) {
@@ -457,6 +459,9 @@ async function sample(ctx, phase) {
     Object.assign(row, { [`${k}_n`]: s.n, [`${k}_err`]: s.err, [`${k}_429`]: s.limited, [`${k}_p50`]: pct(s.lat, 0.5), [`${k}_p95`]: pct(s.lat, 0.95) });
   }
   stats.minute = newWindow();
+  // to tell a slow server from a busy machine or a starved harness: machine load and the harness's own event-loop lag
+  row.loadavg_1m = loadavg()[0].toFixed(2);
+  if (ctx.loopDelay) { row.harness_loop_p99_ms = (ctx.loopDelay.percentile(99) / 1e6).toFixed(1); ctx.loopDelay.reset(); }
   const l = readServerLog();
   row.log_warn = l.warn; row.log_error = l.error;
   return row;
@@ -577,6 +582,7 @@ function summarize(dir) {
     `| value messages per minute (all clients) | ${f(s.clients.valuesPerMin)} |`,
     ...KINDS.map((k) => `| ${k}: requests / errors / 429 / p95 | ${totals[k].n} / ${totals[k].err} / ${totals[k].limited} / ${f(totals[k].p95_median)} ms |`),
     `| cccloud log WARN / ERROR lines | ${s.log.warn} / ${s.log.error} |`,
+    `| machine load avg (1 min) / harness event-loop p99 | ${f(avg(load.map((r) => r.loadavg_1m)))} / ${f(avg(load.map((r) => r.harness_loop_p99_ms)))} ms |`,
     "",
     `Data: ${join(dir, "samples.csv")}, ${gcFile}.`,
   ].join("\n");
@@ -608,7 +614,8 @@ async function main() {
   const gcLog = join(OUT, "gc.log");
   log("starting the server for the soak (GC log on)");
   startServer({ JAVA_TOOL_OPTIONS: `-Xlog:gc:file=${gcLog}:time,uptime:filecount=0` });
-  const ctx = { t0: now(), gcLog, rcon: await Rcon.connect(), ticks: [] };
+  const ctx = { t0: now(), gcLog, rcon: await Rcon.connect(), ticks: [], loopDelay: monitorEventLoopDelay({ resolution: 10 }) };
+  ctx.loopDelay.enable();
   // MSPT/TPS: /neoforge tps every 5 s (each answer is the mean of the last 100 ticks)
   const tpsTimer = setInterval(async () => {
     try { const r = parseNeoTps(await ctx.rcon.cmd("neoforge tps")); if (r) ctx.ticks.push(r); }
