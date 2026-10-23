@@ -85,12 +85,24 @@ public final class ScriptTests {
                 helper.assertTrue(read.raw() != null && new String(read.raw(), StandardCharsets.UTF_8).contains("setOutput"), "read back");
                 var run = call(server, Router.Id.SCRIPT_RUN, devices[0], mf, uplinkId[0], null, Map.of(),
                     "{\"path\":\"blink.lua\",\"mode\":\"auto\"}".getBytes(StandardCharsets.UTF_8));
-                helper.assertTrue(run.status() == 200 && "event".equals(run.body().get("started").getAsString()), "run: " + run.body());
+                // First run on this computer: no runner tab yet → restart and run (the runner starts on demand).
+                helper.assertTrue(run.status() == 200 && "reboot".equals(run.body().get("started").getAsString()), "first run: " + run.body());
             })
             .thenWaitUntil(() -> {
                 var handle = CcComputers.find(helper.getLevel(), computerPos);
-                helper.assertTrue(handle.output("top") == 15, "the uploaded script ran and set the top output");
+                helper.assertTrue(handle.output("top") == 15, "the uploaded script ran after the restart and set the top output");
             })
+            .thenIdle(20)
+            .thenExecute(() -> {
+                // Now the runner tab exists: the next run is an event, no restart. The script turns the output off.
+                var mf = mainframe.getMainframeId();
+                byte[] off = "redstone.setOutput(\"top\", false)\n".getBytes(StandardCharsets.UTF_8);
+                call(server, Router.Id.SCRIPT_PUT, devices[0], mf, uplinkId[0], "off.lua", Map.of(), off);
+                var run = call(server, Router.Id.SCRIPT_RUN, devices[0], mf, uplinkId[0], null, Map.of(),
+                    "{\"path\":\"off.lua\",\"mode\":\"auto\"}".getBytes(StandardCharsets.UTF_8));
+                helper.assertTrue(run.status() == 200 && "event".equals(run.body().get("started").getAsString()), "second run: " + run.body());
+            })
+            .thenWaitUntil(() -> helper.assertTrue(CcComputers.find(helper.getLevel(), computerPos).output("top") == 0, "the runner tab ran the second script"))
             .thenSucceed();
     }
 

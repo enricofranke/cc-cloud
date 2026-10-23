@@ -17,6 +17,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // the script gallery bundles ../examples/*.lua and the ROM's cloud-demo.lua from the repo
+    fs: { allow: ["../.."] },
     proxy: {
       "/api": target,
       "/ws": { target: target.replace(/^http/, "ws"), ws: true },

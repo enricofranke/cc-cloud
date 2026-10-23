@@ -246,7 +246,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
         // Chunk unload: keep the section on the dashboard but show it as offline.
-        if (!broken && !suppressed && link != null) WebHub.INSTANCE.publishUplink(link.id(), snapshot());
+        if (!broken && !suppressed && link != null) {
+            var cached = ai.ezfox.cccloud.network.SectionCache.unloaded(snapshot());
+            WebHub.INSTANCE.publishUplink(link.id(), cached);
+            if (level instanceof ServerLevel serverLevel) ai.ezfox.cccloud.network.SectionCache.get(serverLevel.getServer()).store(link.id(), cached);
+        }
     }
 
     @Override

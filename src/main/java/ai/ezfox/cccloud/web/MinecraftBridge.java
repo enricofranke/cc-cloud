@@ -128,12 +128,7 @@ final class MinecraftBridge implements GameBridge {
 
     /** Mainframe online + enabled, uplink loaded and linked to that mainframe. Null if all is fine. */
     private static @Nullable String checkUplink(UUID mainframeId, UUID uplinkId) {
-        var mainframe = CloudNetwork.mainframe(mainframeId);
-        if (mainframe == null || !mainframe.isOnline()) return mainframe != null && "no_power".equals(mainframe.reason()) ? "no_power" : "offline";
-        if (!mainframe.isEnabled()) return "disabled";
-        var uplink = CloudNetwork.section(uplinkId);
-        if (uplink == null || uplink.getLink() == null || !uplink.getLink().id().equals(mainframeId)) return "unknown_uplink";
-        return null;
+        return SectionChecks.check(mainframeId, uplinkId);
     }
 
     @Override

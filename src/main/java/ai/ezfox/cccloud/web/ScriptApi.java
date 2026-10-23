@@ -138,11 +138,17 @@ public final class ScriptApi {
         String mode = body.get("mode") != null && body.get("mode").isJsonPrimitive() ? body.get("mode").getAsString() : "auto";
         if (mode.equals("auto")) {
             if (!target.advanced()) return AccessApi.error(409, "needs_reboot");
-            mode = "event";
+            // The background runner tab only exists on computers that asked for it: the first run writes .cloud/runner
+            // and restarts the computer (the autorun helper then runs the file and starts the runner); later runs are events.
+            mode = store.exists(ScriptFiles.RESERVED + "/runner") ? "event" : "reboot";
         }
         switch (mode) {
             case "event" -> target.queueRun(path);
             case "reboot" -> {
+                if (target.advanced() && !store.exists(ScriptFiles.RESERVED + "/runner")) {
+                    var runner = ScriptFiles.write(store, ScriptFiles.RESERVED + "/runner", "on demand".getBytes(StandardCharsets.UTF_8), true);
+                    if (runner.error() != null) return AccessApi.error(runner.status(), runner.error());
+                }
                 // The ROM autorun helper runs .cloud/run_next once after boot.
                 var marker = ScriptFiles.write(store, ScriptFiles.RESERVED + "/run_next", path.getBytes(StandardCharsets.UTF_8), true);
                 if (marker.error() != null) return AccessApi.error(marker.status(), marker.error());

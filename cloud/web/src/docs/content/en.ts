@@ -325,6 +325,18 @@ ${code("lua", C.LUA_BRIDGE)}
 - 32 widgets per uplink, 64 with pages
 - titles and labels 48 characters, text values 256, alert text 200
 - alerts: 1 per second per uplink
+
+## Upload scripts from the browser {#upload}
+
+Admins can put Lua programs on a computer without typing them in-game: click **</>** in the header of a computer's card.
+
+- **Upload:** drop a \`.lua\` file or paste code, choose the file name (\`name.lua\` or \`folder/name.lua\`), then **Upload & run**. Existing files are only replaced after you confirm.
+- **Run it now** starts the program in a new tab on advanced computers. Basic computers have no tabs: the dashboard asks to restart the computer and run it once.
+- **Start it automatically** writes a \`startup.lua\` that runs your file at every boot.
+- **Examples:** ready-made programs (control room, test program, the widget demo) – pick one, adjust it, upload.
+- **Files:** see what is on the computer, open, download or delete files, and how much disk space is left.
+
+Only admins of the mainframe see this, and changes need the mainframe PIN if one is set. The code runs on that CC computer inside CC's sandbox – never on the Minecraft server itself. Every upload is logged and the owner gets a chat note. Limits: 256 KB per file, 10 changes per minute.
 `,
 
   // ---------------------------------------------------------- ui library

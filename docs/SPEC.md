@@ -806,6 +806,14 @@ Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
 8. Not in this step (security review first): exporting items out of the network into the world.
 
+### Cached sections of unloaded uplinks/bridges (mod side, implemented)
+- When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".
+- Live sections always carry `"loaded":true`.
+- The mod keeps these snapshots in SavedData (`data/cccloud/sections.dat`, ≤ 64 KB per section, ≤ 256 per mainframe). They are captured on chunk unload and at server stop, published at server start, and replaced by the live snapshot as soon as the chunk loads. No chunk is ever loaded for this.
+- Actions on an unloaded section get `action_result.error = "unloaded"`.
+- Unlinking or breaking a section, or breaking the mainframe, drops its cached snapshot.
+- The network map keeps such devices as `unloaded` with their last position.
+
 ### Script import (pulled forward from v0.5 E, requested 2026-10-23)
 Push Lua programs from the browser straight onto a CC computer through the mainframe → uplink path.
 - Dashboard: on every computer card (auto or Lua) an **"Upload script"** action: drop a `.lua` file, paste code, or pick from the **example gallery** (bundled: control-room, cloud-test, cloud-demo variants, storage dashboard; each with a short description and screenshot). Choose a file name, options: overwrite (with confirm), **run now** (in a new multishell tab if available, otherwise only when no program is running → ask), **set as startup** (writes `startup.lua` that runs the file).
@@ -838,9 +846,9 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
   - `startup=true` also writes `startup.lua` containing `shell.run("<path>")`.
 - `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`.
 - `POST …/run` with `{"path":"control-room.lua","mode":"auto"|"event"|"reboot"}` → `{"ok":true,"started":"event"|"reboot"}`. Only an uploaded file name ever reaches the computer, never a command string. Modes:
-  - `event` queues the event `cloud_run` with the path. The ROM helper (`rom/autorun/cloud.lua`) starts a background "cloud" tab on advanced computers that have a Cloud Uplink. It runs the file in a new multishell tab (`cloud-run --listen`). Without multishell, a running `cloud.ui` dashboard runs it.
+  - `event` queues the event `cloud_run` with the path. A background "cloud" tab (`cloud-run --listen`) runs the file in a new multishell tab. That tab only exists on advanced computers that asked for it: the ROM helper `rom/autorun/cloud.lua` starts it when `.cloud/runner` exists. Without multishell, a running `cloud.ui` dashboard runs it.
   - `reboot` writes `.cloud/run_next` and restarts the computer. The autorun helper runs the file once after boot.
-  - `auto` = `event` on advanced computers, otherwise `409 needs_reboot` (the dashboard asks, then sends `reboot`).
+  - `auto`, on advanced computers: the first run writes `.cloud/runner` and uses `reboot`; later runs use `event`. On other computers `auto` gives `409 needs_reboot` (the dashboard asks, then sends `reboot`).
   - The ROM program `cloud-run <file>` runs a file by hand. Computers can switch the background tab off with `set cloud.runner false`.
 - **Audit:** every write, delete and run creates an audit log entry and a server log line. The owner, if online, gets a chat note: "<device> (<player>) uploaded control-room.lua to Computer #0".
 
@@ -857,3 +865,26 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 - **Install flow** (no connection from the Minecraft server to the store needed): on the website, "Install" opens the user's own dashboard at `<dashboard>/store#install=<id>@<version>` (the dashboard URL is remembered in the website's localStorage after the first time, or entered). The dashboard fetches the script from the store index (CSP `connect-src` gets the configured store origin, config `scriptStoreUrl`, default the official site; can be disabled by server admins with `scriptStore=false`), verifies the SHA-256 against the index, **shows the full source and the manifest's "uses" list**, lets the admin pick the computer, then installs via the Script import API (admin role, PIN, audit log). Updates: the dashboard shows "update available" for installed store scripts (stored metadata per file).
 - The dashboard also gets a **Store tab** that browses the same index directly.
 - Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).
+
+### Fine-grained permissions per mainframe (requested 2026-10-23)
+Roles stay as presets, but every grant can be customized with individual permissions.
+- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
+- Presets: viewer = {view, storage.search}; operator = viewer + {act.*, storage.craft, rules.toggle}; admin = everything except ownership transfer; owner = all. A grant = preset + `allow`/`deny` lists (deny wins). Team-rank grants work the same way.
+- `AccessResolver` returns an effective permission set; every check uses `has(perm)` instead of role comparisons (keep the role for display). PIN-protected widgets additionally require the PIN as today.
+- Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.
+- Server-level NeoForge permission nodes stay as an outer gate (e.g. a server can forbid `cccloud.scripts` entirely: new node `cccloud.feature.scripts`, default true).
+- Migration: existing roles → presets without overrides. Tests for every permission check site (a test walks all actions/routes and asserts which permission each one needs).
+
+## v0.8 – ATM11 compatibility wave 2 (planned 2026-10-23)
+Soft dependencies in `compat/<modid>`, same rules as v0.5 A/B (zero-code cards via direct mode, existing widget types, fail soft, GameTests where headless-feasible, `-PintegrationMods` keys). Ordered by value for ATM11 players:
+1. **Storage controllers as storage cards** (direct mode on the controller, same Storage card + search as the bridges where an item-handler aggregate exists): Functional Storage (storage controller / drawers), Sophisticated Storage (controller), Occultism (storage controller / dimensional storage actuator), DimStorage (chest/tank), Integrated Terminals/Tunnels networks if exposed.
+2. **Advanced AE** (quantum computer: CPU listing in the jobs/CPU panel), **ExtendedAE** extras where API exists, **AE2 Infinity Booster/Network Analyzer** awareness (none needed – skip if nothing to show).
+3. **Quarries & miners**: QuarryPlus, Additional Enchanted Miner – status, progress/area, energy, pause/resume (redstone or API), output fullness alert.
+4. **Spawners & mob farms**: Apothic Spawners (stats, redstone control toggle), Gateways to Eternity (active gate, wave), Easy Villagers (breeder/farm status – only if trivial).
+5. **Processing**: Iron Furnaces (smelting progress, fuel, upgrades), Cobblegen Galore (rate), Productive Metalworks / Silent Gear Metalworks (foundry state), Agritech Evolved & Productive Farming planters, Mystical Agriculture / Mystical Automation machines (progress, power), Railcraft Reborn boilers/steam (pressure, temperature, water).
+6. **Logistics**: Super Factory Manager (manager on/off, program name, last error), Modular Routers (router on/off via redstone mode), LaserIO / Pipez (nothing to show – skip), Logistics Networks (native CC – document only).
+7. **Integrated Dynamics**: a variable-display card – an uplink on a Display Panel or a variable store shows the evaluated values; optional: ID "proxy" reading.
+8. **World & progression**: **Waystones** – waystones of the owner's team on the network map (name, position, dimension; operator+), **FTB Quests** – team quest progress card (chapters done / total, recent completions), **JourneyMap** (client) – optional waypoints for our network nodes via the JourneyMap API (client config), **FTB Chunks** already done.
+9. **Guides**: an in-game handbook for CC: Cloud using **GuideMe** (AE2's guide system, ships with ATM11) or Patchouli/Modonomicon – content from `docs-content/`.
+10. **KubeJS** bindings for pack makers: events (`CCCloudEvents.action`, `.deviceLinked`, `.alert`) and a server-side API to publish a section with widgets from KubeJS scripts (no Lua needed), guarded by the same permissions.
+Each integration: a manifest entry in `docs/COMPAT.md` (mod, version tested, what the card shows, controls, tested yes/no).

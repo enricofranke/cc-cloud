@@ -188,6 +188,8 @@ public final class WebHub {
         var view = view(mainframeId);
         String uplinkId = snapshot.get("uplinkId").getAsString();
         var copy = snapshot.deepCopy();
+        // Live sections are "loaded"; cached copies of unloaded ones carry loaded=false and lastSeen.
+        if (!copy.has("loaded")) copy.addProperty("loaded", true);
         Map<String, JsonObject> index = new ConcurrentHashMap<>();
         for (var w : copy.getAsJsonArray("widgets")) {
             var widget = w.getAsJsonObject();
@@ -293,7 +295,12 @@ public final class WebHub {
         return view == null ? 0 : view.sessions.size();
     }
 
+    /** Called when a section is removed for good (unlinked/broken), e.g. to drop its cached snapshot. */
+    public static volatile java.util.function.BiConsumer<UUID, String> onSectionRemoved = (m, u) -> {
+    };
+
     public void publishUplinkRemoved(UUID mainframeId, String uplinkId) {
+        onSectionRemoved.accept(mainframeId, uplinkId);
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
@@ -396,6 +403,16 @@ public final class WebHub {
         if (view == null) return null;
         synchronized (view) {
             return new MainframeInfo(view.id, view.name, view.online, view.enabled);
+        }
+    }
+
+    /** Test hook: the published snapshot of a section. */
+    public @Nullable JsonObject uplinkForTest(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var uplink = view.uplinks.get(uplinkId);
+            return uplink == null ? null : uplink.deepCopy();
         }
     }
 

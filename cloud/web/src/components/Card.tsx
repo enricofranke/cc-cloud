@@ -1,7 +1,7 @@
 // One dashboard card (an uplink, a Lua group, or an uplink's widgets on a page),
 // in view mode or in layout edit mode.
-import type { ComponentChildren } from "preact";
-import { useRef } from "preact/hooks";
+import type { ComponentChildren, ComponentType } from "preact";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
 import { captionOf } from "../lib/layout.ts";
@@ -104,10 +104,22 @@ function WidgetView({ rw, card, conn, locked, viewOnly }: { rw: ResolvedWidget; 
   }
 }
 
+// script import lives in its own lazy chunk (with the bundled examples)
+type ScriptSheetProps = { conn: MainframeConn; uplinkId: string; title: string; onClose: () => void };
+let ScriptSheetComp: ComponentType<ScriptSheetProps> | null = null;
+function ScriptsLoader(props: ScriptSheetProps) {
+  const [C, setC] = useState<ComponentType<ScriptSheetProps> | null>(() => ScriptSheetComp);
+  useEffect(() => {
+    if (!C) import("../scripts/ScriptSheet.tsx").then((m) => setC(() => (ScriptSheetComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
+}
+
 export function Card({ card: full, conn, locked, viewOnly, children }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren }) {
   const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
   const cardLocked = locked || !card.uplink.online || !!viewOnly;
   const cols = bodyCols(card.span);
+  const [scripts, setScripts] = useState(false);
   return (
     <article class={`card cs${card.span} accent-${card.color} ${card.uplink.online ? "" : "card-offline"}`} aria-label={card.title} data-card={card.key}>
       <header class="card-head">
@@ -119,7 +131,13 @@ export function Card({ card: full, conn, locked, viewOnly, children }: { card: R
           </span>
         )}
         {!card.uplink.online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
+        {!viewOnly && conn.isAdmin && card.uplink.online && card.uplink.mode !== "direct" && (
+          <button type="button" class="icon-btn card-scripts" title="Scripts on this computer" aria-label={`Upload script to ${card.title || "this computer"}`} onClick={() => setScripts(true)}>
+            <span aria-hidden="true">{"</>"}</span>
+          </button>
+        )}
       </header>
+      {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
       {card.widgets.length === 0 ? (
         <p class="card-empty">
           Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.{" "}
