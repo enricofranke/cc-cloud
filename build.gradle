@@ -77,6 +77,11 @@ repositories {
         forRepository { maven { url = "https://maven.theillusivec4.top" } }
         filter { includeGroup("top.theillusivec4.curios") }
     }
+    // KubeJS + Rhino (v0.8 bindings; SHA-1 of the jars equals ATM11's)
+    exclusiveContent {
+        forRepository { maven { url = "https://maven.latvian.dev/releases" } }
+        filter { includeGroup("dev.latvian.mods") }
+    }
 }
 
 base {
@@ -199,6 +204,9 @@ configurations {
 // keys below, e.g. -PintegrationMods=powah,mffs) into the dev runs. See docs/BUILD.md.
 def integrationMods = [
     guideme        : ["org.appliedenergistics:guideme:${guideme_version}"],
+    // KubeJS needs Better Advanced Tooltips at runtime (ATM11 ships it).
+    kubejs         : ["dev.latvian.mods:kubejs-neoforge:${kubejs_version}", "dev.latvian.mods:rhino:${rhino_version}",
+                      "dev.latvian.mods:better-advanced-tooltips:${bat_version}"],
     powah          : ["maven.modrinth:powah:${powah_modrinth_version}", "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}",
                       "org.appliedenergistics:guideme:${guideme_version}"],
     enderio        : ["maven.modrinth:enderio:${enderio_modrinth_version}"],
@@ -261,6 +269,16 @@ dependencies {
             runtime.addAll(integrationMods[key])
         }
         runtime.each { localRuntime(it) { transitive = false } }
+        if (keys.contains("kubejs")) {
+            // The kubejs_bindings GameTest talks to a real server script: put it into the dev run's kubejs folder.
+            def copyKubeJsScripts = tasks.register("copyKubeJsTestScripts", Copy) {
+                from "src/test/kubejs"
+                into "run/kubejs/server_scripts"
+            }
+            tasks.matching { it.name == "runGameTestServer" || it.name == "runServer" || it.name == "runClient" }.configureEach {
+                dependsOn copyKubeJsScripts
+            }
+        }
     }
     if (project.hasProperty("storageMods")) {
         localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"

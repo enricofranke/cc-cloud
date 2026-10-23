@@ -1,6 +1,6 @@
 {
   "type": "minecraft:crafting_shapeless",
-  "category": "tools",
+  "category": "equipment",
   "ingredients": [
     "computercraft:pocket_computer_normal",
     "cccloud:cloud_core",

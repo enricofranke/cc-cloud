@@ -230,6 +230,8 @@ public final class BridgeSection implements DashboardSection {
         CCCloud.LOGGER.info("[cccloud] {} bound the {} bridge at {} to {}", player.getGameProfile().name(), host.bridgeCore().kind(), be.getBlockPos(),
             mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.bridge.bound", newLink.describe()).withStyle(ChatFormatting.GREEN));
+        ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), sectionId, "bridge:" + host.bridgeCore().kind(),
+            level.dimension().identifier().toString(), be.getBlockPos(), player.getUUID(), player.getGameProfile().name()));
     }
 
     public void unlink(String by) {

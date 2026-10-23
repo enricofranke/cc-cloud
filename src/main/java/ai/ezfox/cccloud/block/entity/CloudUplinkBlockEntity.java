@@ -859,6 +859,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         updateStatus(serverLevel);
         CCCloud.LOGGER.info("[cccloud] {} bound uplink {} to {}", player.getGameProfile().name(), uplinkId, mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.uplink.bound", newLink.describe()).withStyle(ChatFormatting.GREEN));
+        ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), uplinkId, "uplink",
+            serverLevel.dimension().identifier().toString(), getBlockPos(), player.getUUID(), player.getGameProfile().name()));
     }
 
     public synchronized int widgetCount() {
