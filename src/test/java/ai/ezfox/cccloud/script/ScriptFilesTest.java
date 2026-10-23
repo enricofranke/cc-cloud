@@ -157,4 +157,27 @@ class ScriptFilesTest {
         assertNull(ScriptFiles.delete(store, "hello.lua").error());
         assertEquals("shell.run(\"x.lua\")", new String(ScriptFiles.startupFor("x.lua"), StandardCharsets.UTF_8).lines().toList().get(1));
     }
+
+    @Test
+    void storeRecordsFollowFiles() throws IOException {
+        var store = new MemoryStore(100_000);
+        assertArrayEquals(new String[]{"reactor-guard", "1.2.0"}, ScriptFiles.storeRef("reactor-guard@1.2.0"));
+        for (String bad : new String[]{"x", "@1", "Bad@1", "a@", "a@1 2", "a@" + "1".repeat(40)}) assertNull(ScriptFiles.storeRef(bad), bad);
+        byte[] lua = "print(1)".getBytes(StandardCharsets.UTF_8);
+        ScriptFiles.write(store, "guard/main.lua", lua, false);
+        var records = ScriptFiles.storeRecords(store);
+        records.put("guard/main.lua", new ScriptFiles.StoreRecord("reactor-guard", "1.2.0", ScriptFiles.sha256(lua)));
+        ScriptFiles.saveStoreRecords(store, records);
+        assertEquals(64, ScriptFiles.sha256(lua).length());
+        assertEquals(records, ScriptFiles.storeRecords(store), "round trip");
+        assertTrue(ScriptFiles.list(store, ScriptFiles.MAX_DEPTH).stream().noneMatch(e -> e.path().startsWith(".cloud")), "records stay hidden");
+        ScriptFiles.move(store, "guard", "apps/guard", false);
+        ScriptFiles.moveStoreRecords(store, "guard", "apps/guard");
+        assertTrue(ScriptFiles.storeRecords(store).containsKey("apps/guard/main.lua"), "moved with the folder");
+        ScriptFiles.moveStoreRecords(store, "apps", null);
+        assertTrue(ScriptFiles.storeRecords(store).isEmpty());
+        assertFalse(store.exists(ScriptFiles.STORE_FILE), "no empty records file");
+        store.files.put(ScriptFiles.STORE_FILE, "{broken".getBytes(StandardCharsets.UTF_8));
+        assertTrue(ScriptFiles.storeRecords(store).isEmpty(), "a broken file counts as none");
+    }
 }

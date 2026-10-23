@@ -1132,7 +1132,14 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 - Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).
 
 #### Script Store – dashboard side (web, defined 2026-10-23)
-**Config delivery (mod side, to do):** two server config keys, `scriptStore` (bool, default true) and `scriptStoreUrl` (default `https://cccloud.ezfox.ai/store/`, must be `https://`, ends with `/`). The `snapshot` gains `"store":{"url":"https://…/store/"}` when enabled and the player has `scripts.upload`, else `"store":null`. The web server adds the store's origin to the CSP `connect-src` (only when enabled). No other request goes from the mod to the store.
+**Config delivery (mod side, implemented):** server config `[store]` `scriptStore` (bool, default true) and `scriptStoreUrl` (must be `https://`, end with `/`, no user info/query/fragment; default the placeholder `https://cccloud.example/store/` – to be set to the official store URL once it is online). The `snapshot` has `"store":{"url":"https://…/store/"}` when the store is enabled and the session has `scripts.upload`, else `"store":null`. The web server adds the store's origin (`https://host[:port]`) to the CSP `connect-src` only when enabled. No other request goes from the mod to the store.
+
+**Public config:** `GET /api/config` (no token, no secrets) → `{"version":"0.9.0","store":{"enabled":bool,"url":"https://…/store/"|null},"features":{"terminal","voxels","push","rules","map"}}` (the server's switches; the session's permissions still decide what a user may do).
+
+**Installed store scripts (mod side, implemented):** the server remembers them on the computer itself, in `.cloud/store.json` (`{path: {id, version, sha256}}`, ≤ 200 entries; hidden from listings, survives browser changes and works for every admin).
+- Install: `PUT …/files/<path>?overwrite=…&store=<id>@<version>` (id `[a-z0-9][a-z0-9-]{0,63}`, version `[0-9A-Za-z][0-9A-Za-z.+-]{0,31}`, else `400 invalid_store_ref`) records the file with the SHA-256 of the uploaded content. Without `store=` a later overwrite keeps the record (the file then shows as changed).
+- `GET …/files` adds `"store":{"<path>":{"id","version","sha256","changed":bool,"missing":bool}}` – `changed` = the file on the computer no longer matches the installed content, `missing` = deleted. The dashboard compares `version` with the index for **Update available** and warns about `changed` before overwriting. (The browser-side `localStorage` record above is no longer needed; it may stay as a cache.)
+- Delete and move keep the records in step (folders included).
 
 **Index and files (static, CORS GET):** `<url>index.json` (`format: 1`, `scripts:[{id, version, name{en,de}, description{en,de}, author{name,github?,url?}, license, tags[], uses[], requires{cccloud, computer, peripherals[], mods?[]}, entry, files:[{path,size,sha256}], sha256, size, lines, reviewed, updated?}]`) and the files at `<url>files/<id>/<version>/<path>`.
 

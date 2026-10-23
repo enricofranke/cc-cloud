@@ -62,6 +62,11 @@ public final class CloudWebServer {
 
     public static synchronized void start(MinecraftServer server) {
         stop();
+        String version = net.neoforged.fml.ModList.get().getModContainerById(ai.ezfox.cccloud.CCCloud.MODID)
+            .map(c -> c.getModInfo().getVersion().toString()).orElse("dev");
+        PublicConfig.setSource(() -> new PublicConfig.Settings(version, CloudConfig.get(CloudConfig.SCRIPT_STORE), CloudConfig.get(CloudConfig.SCRIPT_STORE_URL),
+            CloudConfig.get(CloudConfig.TERMINAL_ENABLED), CloudConfig.get(CloudConfig.VOXEL_VIEW), CloudConfig.get(CloudConfig.PUSH_ENABLED),
+            CloudConfig.get(CloudConfig.RULES_ENABLED), true));
         if (!CloudConfig.get(CloudConfig.WEB_ENABLED)) {
             CloudLog.LOGGER.info("[cccloud] Dashboard web server disabled in config (webEnabled=false)");
             return;

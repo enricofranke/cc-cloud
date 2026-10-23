@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Repo tools (handbook generator, e2e scripts). ESM, so TypeScript and Node treat tools/*.ts as modules.",
+  "type": "module"
+}

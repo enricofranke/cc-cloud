@@ -58,6 +58,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.BooleanValue PUSH_ENABLED;
     public static final ModConfigSpec.BooleanValue TERMINAL_ENABLED;
+    public static final ModConfigSpec.BooleanValue SCRIPT_STORE;
+    public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_URL;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
@@ -208,6 +210,16 @@ public final class CloudConfig {
         MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
             .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("store");
+        SCRIPT_STORE = b.comment("Script Store in the dashboard: admins can browse and install community scripts from the store URL (the browser",
+                "fetches them; the server never connects to the store). false hides the store and keeps the URL out of the dashboard's CSP.")
+            .translation("cccloud.configuration.scriptStore")
+            .define("scriptStore", true);
+        SCRIPT_STORE_URL = b.comment("Base URL of the Script Store index (https, ending with /). Placeholder until the official store is online.")
+            .translation("cccloud.configuration.scriptStoreUrl")
+            .define("scriptStoreUrl", "https://cccloud.example/store/", o -> o instanceof String s && ai.ezfox.cccloud.web.PublicConfig.validStoreUrl(s) != null);
         b.pop();
 
         b.push("terminal");

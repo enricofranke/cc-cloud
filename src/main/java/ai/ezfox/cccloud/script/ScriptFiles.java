@@ -107,6 +107,88 @@ public final class ScriptFiles {
         }
     }
 
+    // ---- Script Store records (docs/SPEC.md "Script Store – server side") ----------------------------------------------
+
+    /** Installed store files of this computer: {@code {path: {id, version, sha256}}}. */
+    public static final String STORE_FILE = RESERVED + "/store.json";
+    public static final int MAX_STORE_RECORDS = 200;
+    private static final Pattern STORE_ID = Pattern.compile("[a-z0-9][a-z0-9-]{0,63}");
+    private static final Pattern STORE_VERSION = Pattern.compile("[0-9A-Za-z][0-9A-Za-z.+-]{0,31}");
+
+    public record StoreRecord(String id, String version, String sha256) {
+    }
+
+    /** {@code id@version} → {id, version}, or null. */
+    public static String @Nullable [] storeRef(@Nullable String ref) {
+        if (ref == null) return null;
+        int at = ref.indexOf('@');
+        if (at <= 0) return null;
+        String id = ref.substring(0, at), version = ref.substring(at + 1);
+        return STORE_ID.matcher(id).matches() && STORE_VERSION.matcher(version).matches() ? new String[]{id, version} : null;
+    }
+
+    public static java.util.Map<String, StoreRecord> storeRecords(Store store) throws IOException {
+        var map = new java.util.LinkedHashMap<String, StoreRecord>();
+        if (!store.exists(STORE_FILE) || store.isDirectory(STORE_FILE)) return map;
+        try {
+            var json = com.google.gson.JsonParser.parseString(new String(store.read(STORE_FILE, 64 * 1024), java.nio.charset.StandardCharsets.UTF_8));
+            if (!json.isJsonObject()) return map;
+            for (var e : json.getAsJsonObject().entrySet()) {
+                if (map.size() >= MAX_STORE_RECORDS || validate(e.getKey()) == null || !e.getValue().isJsonObject()) continue;
+                var o = e.getValue().getAsJsonObject();
+                String id = o.has("id") ? o.get("id").getAsString() : null, version = o.has("version") ? o.get("version").getAsString() : null;
+                String sha = o.has("sha256") ? o.get("sha256").getAsString() : null;
+                if (storeRef(id + "@" + version) == null || sha == null || !sha.matches("[0-9a-f]{64}")) continue;
+                map.put(e.getKey(), new StoreRecord(id, version, sha));
+            }
+        } catch (RuntimeException e) {
+            // a broken file (edited on the computer) counts as no records
+        }
+        return map;
+    }
+
+    public static void saveStoreRecords(Store store, java.util.Map<String, StoreRecord> records) throws IOException {
+        var json = new com.google.gson.JsonObject();
+        for (var e : records.entrySet()) {
+            var o = new com.google.gson.JsonObject();
+            o.addProperty("id", e.getValue().id());
+            o.addProperty("version", e.getValue().version());
+            o.addProperty("sha256", e.getValue().sha256());
+            json.add(e.getKey(), o);
+        }
+        if (records.isEmpty()) {
+            if (store.exists(STORE_FILE)) store.delete(STORE_FILE);
+            return;
+        }
+        write(store, STORE_FILE, json.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8), true);
+    }
+
+    /** Full SHA-256 (hex) like the store index. */
+    public static String sha256(byte[] data) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(data));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Records under {@code path} (the file itself or a folder's content) are removed or moved to {@code to} (null = removed). */
+    public static void moveStoreRecords(Store store, String path, @Nullable String to) throws IOException {
+        var records = storeRecords(store);
+        var out = new java.util.LinkedHashMap<String, StoreRecord>();
+        boolean changed = false;
+        for (var e : records.entrySet()) {
+            String p = e.getKey();
+            if (p.equals(path) || p.startsWith(path + "/")) {
+                changed = true;
+                if (to != null) out.put(to + p.substring(path.length()), e.getValue());
+            } else {
+                out.put(p, e.getValue());
+            }
+        }
+        if (changed) saveStoreRecords(store, out);
+    }
+
     /** Content hash for the editor's "changed meanwhile" check: the first 16 hex characters of SHA-256. */
     public static String hash(byte[] data) {
         try {

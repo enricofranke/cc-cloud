@@ -606,6 +606,15 @@ public final class WebHub {
         json.addProperty("canControl", canControl);
         json.addProperty("role", session.role().id);
         json.add("perms", permsJson(session.perms()));
+        // Script Store (docs/SPEC.md): the URL for sessions that may upload scripts, when the store is enabled
+        String storeUrl = session.perms().contains(ai.ezfox.cccloud.access.Perm.SCRIPTS_UPLOAD) ? PublicConfig.storeUrl() : null;
+        if (storeUrl != null) {
+            var store = new JsonObject();
+            store.addProperty("url", storeUrl);
+            json.add("store", store);
+        } else {
+            json.add("store", com.google.gson.JsonNull.INSTANCE);
+        }
         var device = session.device();
         if (device != null) {
             var account = new JsonObject();

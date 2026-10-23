@@ -76,6 +76,18 @@ public final class ScriptApi {
             files.add(f);
         }
         json.add("files", files);
+        var installed = new JsonObject();
+        for (var e : ScriptFiles.storeRecords(store).entrySet()) {
+            var o = new JsonObject();
+            o.addProperty("id", e.getValue().id());
+            o.addProperty("version", e.getValue().version());
+            o.addProperty("sha256", e.getValue().sha256());
+            byte[] current = ScriptFiles.read(store, e.getKey());
+            o.addProperty("missing", current == null);
+            o.addProperty("changed", current != null && !ScriptFiles.sha256(current).equals(e.getValue().sha256()));
+            installed.add(e.getKey(), o);
+        }
+        json.add("store", installed);
         return new AccessApi.Response(200, json);
     }
 
@@ -117,6 +129,16 @@ public final class ScriptApi {
         boolean overwrite = "true".equals(request.query().get("overwrite"));
         var result = ScriptFiles.write(store, path, request.body(), overwrite);
         if (result.error() != null) return AccessApi.error(result.status(), result.error());
+        // Script Store: remember which store script this file came from (for "update available" / "changed locally")
+        String storeParam = request.query().get("store");
+        if (storeParam != null) {
+            var ref = ScriptFiles.storeRef(storeParam);
+            if (ref == null) return AccessApi.error(400, "invalid_store_ref");
+            var records = ScriptFiles.storeRecords(store);
+            records.remove(path);
+            if (records.size() < ScriptFiles.MAX_STORE_RECORDS) records.put(path, new ScriptFiles.StoreRecord(ref[0], ref[1], ScriptFiles.sha256(request.body())));
+            ScriptFiles.saveStoreRecords(store, records);
+        }
         boolean startup = "true".equals(request.query().get("startup"));
         if (startup && !path.equals("startup.lua")) {
             var s = ScriptFiles.write(store, "startup.lua", ScriptFiles.startupFor(path), true);
@@ -136,6 +158,7 @@ public final class ScriptApi {
         if (path == null) return AccessApi.error(400, "invalid_path");
         var result = ScriptFiles.delete(store, path);
         if (result.error() != null) return AccessApi.error(result.status(), result.error());
+        ScriptFiles.moveStoreRecords(store, path, null);
         audit(server, request, target, "deleted " + path, null);
         var json = new JsonObject();
         json.addProperty("ok", true);
@@ -202,6 +225,8 @@ public final class ScriptApi {
         boolean overwrite = body.get("overwrite") instanceof com.google.gson.JsonPrimitive p && p.isBoolean() && p.getAsBoolean();
         var result = ScriptFiles.move(store, from, to, overwrite);
         if (result.error() != null) return AccessApi.error(result.status(), result.error());
+        ScriptFiles.moveStoreRecords(store, to, null); // an overwritten target is no longer that store file
+        ScriptFiles.moveStoreRecords(store, from, to);
         audit(server, request, target, "moved " + from + " to " + to, null);
         var json = new JsonObject();
         json.addProperty("ok", true);

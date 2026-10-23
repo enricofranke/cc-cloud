@@ -367,6 +367,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                  SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
+            case CONFIG -> sendJson(ctx, req, HttpResponseStatus.OK, PublicConfig.json());
             case WEBSOCKET -> upgrade(ctx, req, ip);
             case STATIC -> {
                 var file = StaticFiles.resolve(path);
@@ -651,6 +652,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     static void addSecurityHeaders(FullHttpResponse response, @Nullable String host, boolean tls) {
         String connect = "'self'";
         if (host != null && SAFE_HOST.matcher(host).matches()) connect += " ws://" + host + " wss://" + host;
+        String store = PublicConfig.storeOrigin();
+        if (store != null) connect += " " + store; // Script Store index and files (fetched by the dashboard)
         var h = response.headers();
         h.set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; "
             + "connect-src " + connect + "; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
