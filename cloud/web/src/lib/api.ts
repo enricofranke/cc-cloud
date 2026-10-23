@@ -178,3 +178,67 @@ export const createShare = (token: string, mf: string, input: { label: string; p
   authed<{ id: string; secret: string; url: string }>(`/api/mainframes/${encodeURIComponent(mf)}/shares`, token, { method: "POST", body: JSON.stringify(input) }, base);
 export const deleteShare = (token: string, mf: string, id: string, base = "") =>
   authed<{ ok: boolean }>(`/api/mainframes/${encodeURIComponent(mf)}/shares/${encodeURIComponent(id)}`, token, { method: "DELETE" }, base);
+
+// ---------------------------------------------------------------- v0.7 terrain
+export interface TerrainPatch {
+  x0: number;
+  z0: number;
+  w: number;
+  h: number;
+  /** decoded: world Y per cell, NaN = unknown */
+  heights: Float32Array;
+  /** decoded: RGB per cell */
+  colors: Uint8Array;
+}
+export interface Terrain {
+  dim: string;
+  step: number;
+  patches: TerrainPatch[];
+  truncated: boolean;
+}
+
+const b64 = (s: string) => {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+/** Validates and decodes a terrain document (docs/SPEC.md "v0.7 web protocol"). Bad patches are dropped. */
+export function decodeTerrain(raw: any, dim: string): Terrain {
+  const step = Number.isInteger(raw?.step) && raw.step >= 1 && raw.step <= 16 ? raw.step : 2;
+  const patches: TerrainPatch[] = [];
+  for (const p of Array.isArray(raw?.patches) ? raw.patches.slice(0, 64) : []) {
+    const w = p?.w;
+    const h = p?.h;
+    if (!Number.isInteger(w) || !Number.isInteger(h) || w < 2 || h < 2 || w * h > 262144) continue;
+    if (!Number.isFinite(p.x0) || !Number.isFinite(p.z0) || typeof p.heights !== "string" || typeof p.colors !== "string") continue;
+    let hb: Uint8Array;
+    let cb: Uint8Array;
+    try {
+      hb = b64(p.heights);
+      cb = b64(p.colors);
+    } catch {
+      continue;
+    }
+    if (hb.length !== w * h * 2 || cb.length !== w * h * 3) continue;
+    const dv = new DataView(hb.buffer);
+    const heights = new Float32Array(w * h);
+    for (let i = 0; i < w * h; i++) {
+      const v = dv.getInt16(i * 2, true);
+      heights[i] = v === -32768 ? NaN : v;
+    }
+    patches.push({ x0: p.x0, z0: p.z0, w, h, heights, colors: cb });
+  }
+  return { dim: typeof raw?.dim === "string" ? raw.dim : dim, step, patches, truncated: raw?.truncated === true };
+}
+
+/** null = the server has no terrain endpoint (older mod) or this device may not see it. */
+export async function fetchTerrain(token: string, mf: string, dim: string, base = ""): Promise<Terrain | null> {
+  const res = await request(`/api/mainframes/${encodeURIComponent(mf)}/terrain?dim=${encodeURIComponent(dim)}`, { headers: { authorization: `Bearer ${token}` } }, base);
+  if (res.status === 404 || res.status === 403 || res.status === 401) return null;
+  const b = await body(res);
+  if (res.status === 429) throw new ApiError("server", `rate_limited:${Number(b?.retryAfter) || 5}`);
+  if (!res.ok) throw new ApiError("server", `HTTP ${res.status}`);
+  return decodeTerrain(b, dim);
+}

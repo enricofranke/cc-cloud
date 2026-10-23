@@ -13,6 +13,7 @@ import { SAMPLE_ICONS } from "./icons.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
+import { terrain } from "./terrain-sim.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
 
 type Level = "info" | "warn" | "crit";
@@ -136,6 +137,8 @@ export interface MockOptions {
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
+  /** v0.7: min ms between terrain requests per token (default 5000) */
+  terrainRateMs?: number;
   /** How long a pending pairing waits for approval (spec: 2 minutes). */
   pairTtlMs?: number;
   /** webAllowInternet=false. All test traffic is loopback, so the mock decides by the Host header. */
@@ -1046,6 +1049,8 @@ export async function createMockServer(opts: MockOptions = {}) {
     }
     return JSON.parse(Buffer.concat(chunks).toString("utf8") || "null");
   }
+  const terrainCalls = new WeakMap<object, number>();
+  const terrainRateMs = opts.terrainRateMs ?? 5000;
   const bearer = (req: IncomingMessage) => {
     const m = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? "");
     return m && tokens.has(sha(m[1])) ? tokens.get(sha(m[1])) : undefined;
@@ -1179,6 +1184,24 @@ export async function createMockServer(opts: MockOptions = {}) {
           }
         });
       return json(res, 200, { ok: true });
+    }
+    // ---- v0.7 coarse terrain for the 3D view (operator+, rate-limited per token)
+    const tm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/terrain$/.exec(p);
+    if (tm && req.method === "GET") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const m = mainframes.get(tm[1]);
+      const role = m ? roleFor(t, m) : undefined;
+      if (!m || !role) return json(res, 403, { error: "no_access" });
+      if (rank(role) < 2) return json(res, 403, { error: "not_allowed" });
+      const now = Date.now();
+      const last = terrainCalls.get(t) ?? 0;
+      if (now - last < terrainRateMs) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((terrainRateMs - (now - last)) / 1000) });
+      terrainCalls.set(t, now);
+      const dim = url.searchParams.get("dim") ?? "minecraft:overworld";
+      const doc = m.net ? terrain(m.net.nodes, dim) : { dim, step: 2, patches: [], truncated: false };
+      res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "application/json", "cache-control": "private, max-age=60" });
+      return void res.end(JSON.stringify(doc));
     }
     // ---- v0.6 access + shares (admin+)
     const am = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(access|shares)(?:\/([A-Za-z0-9]{1,32}))?$/.exec(p);

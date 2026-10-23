@@ -1,6 +1,6 @@
 // v0.4 Network page: UniFi-style topology and a top-down map per dimension.
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
+import type { ComponentChildren, ComponentType } from "preact";
 
 /**
  * Re-uses the last rendered SVG layer while its inputs are unchanged, so
@@ -44,6 +44,108 @@ import { PanZoom } from "./PanZoom.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
+import { Card } from "../components/Card.tsx";
+import { resolveLayout } from "../lib/layout.ts";
+import { fetchTerrain, type Terrain } from "../lib/api.ts";
+import { hasWebGL, searchNodes } from "../lib/net3d.ts";
+import type { View3DProps } from "./Network3D.tsx";
+
+// ------------------------------------------------------------------- 3D view
+let View3DComp: ComponentType<View3DProps> | null = null;
+function View3DLoader(props: View3DProps) {
+  const [Comp, setComp] = useState<ComponentType<View3DProps> | null>(() => View3DComp);
+  useEffect(() => {
+    if (Comp) return;
+    import("./Network3D.tsx")
+      .then((m) => setComp(() => (View3DComp = m.default)))
+      .catch(() => props.onFail("load_failed"));
+  }, []);
+  return Comp ? <Comp {...props} /> : <div class="n3d n3d-loading">Loading 3D view…</div>;
+}
+
+/** Terrain per mainframe + dimension, kept for the session (the server caches 60 s and rate-limits). */
+const terrainCache = new Map<string, Terrain | null>();
+function useTerrain(conn: MainframeConn, dim: string, on: boolean) {
+  const mf = conn.info.value?.id ?? "";
+  const key = `${mf}|${dim}`;
+  const [t, setT] = useState<Terrain | null>(terrainCache.get(key) ?? null);
+  useEffect(() => {
+    if (!on || !mf || !conn.canControl.value) return setT(null);
+    if (terrainCache.has(key)) return setT(terrainCache.get(key)!);
+    setT(null);
+    let stop = false;
+    let timer = 0;
+    const load = (retry: boolean) =>
+      fetchTerrain(conn.token, mf, dim, conn.baseUrl)
+        .then((r) => {
+          terrainCache.set(key, r);
+          if (!stop) setT(r);
+        })
+        .catch((e: Error) => {
+          const m = /^rate_limited:(\d+)/.exec(e.message);
+          if (m && retry && !stop) timer = window.setTimeout(() => load(false), Number(m[1]) * 1000);
+        });
+    load(true);
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
+  }, [key, on]);
+  return t;
+}
+
+function FlySearch({ net, onPick }: { net: NetworkInfo; onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const hits = useMemo(() => searchNodes(net, q), [net, q]);
+  const pick = (n: NetNode) => {
+    onPick(n.id);
+    setQ("");
+    setOpen(false);
+  };
+  return (
+    <div class="fly-search">
+      <input
+        type="search"
+        class="fly-input"
+        placeholder="Fly to…"
+        aria-label="Fly to a block"
+        role="combobox"
+        aria-expanded={open && hits.length > 0}
+        aria-controls="fly-list"
+        value={q}
+        onInput={(e) => {
+          setQ((e.target as HTMLInputElement).value);
+          setOpen(true);
+          setActive(0);
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown") setActive((a) => Math.min(hits.length - 1, a + 1));
+          else if (e.key === "ArrowUp") setActive((a) => Math.max(0, a - 1));
+          else if (e.key === "Enter" && hits[active]) pick(hits[active]);
+          else if (e.key === "Escape") setOpen(false);
+          else return;
+          e.preventDefault();
+        }}
+      />
+      {open && hits.length > 0 && (
+        <ul class="fly-list" id="fly-list" role="listbox">
+          {hits.map((n, i) => (
+            <li key={n.id} role="option" aria-selected={i === active} class={i === active ? "on" : ""} onMouseDown={(e) => (e.preventDefault(), pick(n))}>
+              <span class={`sdot-s st-${n.status}`} />
+              <span class="fly-name">{n.name || "Device"}</span>
+              <span class="muted small">
+                {TYPE_LABEL[n.type].replace("Cloud ", "")} · {dimLabel(n.dim)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const ICON: Record<NodeType, string> = {
   mainframe: "mainframe",
@@ -124,11 +226,11 @@ function Topology({ net, selected, onSelect, lr }: { net: NetworkInfo; selected?
             const d = lr ? `M${a.x + 26},${a.y} H${a.x + 40} V${b.y} H${b.x - 26}`
               : `M${a.x},${a.y + 26} V${midY} H${b.x} V${b.y - 26}`;
             return (
-              <g key={`${e.from}-${e.to}`} class={`edge ${cls} ${offline ? "dim" : ""}`}>
+              <g key={`${e.from}-${e.to}`} class={`edge ${cls} k-${e.link?.kind ?? "radio"} ${offline ? "dim" : ""}`}>
                 <path d={d} vector-effect="non-scaling-stroke" />
                 {e.link && upp < 1.4 && (
                   <text x={lr ? Math.max(a.x + 6, midX - 10) : b.x + 6} y={lr ? b.y - 6 : midY + (b.y - midY) / 2 + 4} class="edge-label">
-                    {e.link.kind === "ender" ? "ender" : e.link.legacy ? "legacy" : `${Math.round(e.link.signal * 100)}%`}
+                    {e.link.kind === "ender" ? "ender" : e.link.kind === "wired" ? "cable" : e.link.legacy ? "legacy" : `${Math.round(e.link.signal * 100)}%`}
                   </text>
                 )}
               </g>
@@ -252,7 +354,7 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
             {cached(cache, [net, dim, selected, upp], () => (
               <>
             {net.links
-              .filter((l) => byId.get(l.a)?.dim === dim && byId.get(l.b)?.dim === dim && l.kind === "radio")
+              .filter((l) => byId.get(l.a)?.dim === dim && byId.get(l.b)?.dim === dim && l.kind !== "ender")
               .map((l) => {
                 const a = byId.get(l.a)!;
                 const b = byId.get(l.b)!;
@@ -265,7 +367,7 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
                     y1={a.pos.z}
                     x2={b.pos.x}
                     y2={b.pos.z}
-                    class={`mlink ${signalClass(l)} ${used ? "used" : "spare"}`}
+                    class={`mlink ${signalClass(l)} k-${l.kind} ${used ? "used" : "spare"}`}
                     vector-effect="non-scaling-stroke"
                   />
                 );
@@ -309,7 +411,19 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
 }
 
 // -------------------------------------------------------------- detail panel
-function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; node: NetNode; conn: MainframeConn; onOpenCard?: (uplinkId: string) => void; onClose: () => void }) {
+type DetailTab = "info" | "route" | "power" | "card";
+interface DetailProps {
+  net: NetworkInfo;
+  node: NetNode;
+  conn: MainframeConn;
+  onOpenCard?: (uplinkId: string) => void;
+  onClose: () => void;
+  tab: DetailTab;
+  onTab: (t: DetailTab) => void;
+  onFly?: () => void;
+}
+function Detail(props: DetailProps) {
+  const { net, node, conn, onOpenCard, onClose } = props;
   const link = uplinkOf(net, node.id);
   const hops = hopsOf(net, node.id);
   const route = pathOf(net, node.id);
@@ -331,6 +445,11 @@ function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; no
       setBusy(false);
     }
   };
+  const cards = uplink ? resolveLayout(conn.uplinks.value, conn.layout.value).flatMap((p) => p.cards).filter((c) => c.uplink.uplinkId === uplink.uplinkId) : [];
+  const tabs: [DetailTab, string][] = [["info", "Info"], ["route", "Route"]];
+  if (node.power || isRelay(node.type)) tabs.push(["power", "Power"]);
+  if (cards.length) tabs.push(["card", "Card"]);
+  const tab = tabs.some(([t]) => t === props.tab) ? props.tab : "info";
   return (
     <div class="ndetail">
       <div class="nd-head">
@@ -346,95 +465,169 @@ function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; no
         </span>
       </div>
       {STATUS_HINT[node.status] && <p class={`nd-hint st-${node.status}`}>{STATUS_HINT[node.status]}</p>}
-      <dl class="facts nd-facts">
-        <dt>Dimension</dt>
-        <dd>{dimLabel(node.dim)}</dd>
-        {node.pos && (
-          <>
-            <dt>Position</dt>
-            <dd class="mono">
-              {node.pos.x} {node.pos.y} {node.pos.z}
-            </dd>
-          </>
-        )}
-        {link && (
-          <>
-            <dt>Signal</dt>
-            <dd class="nd-signal">
-              <Bars signal={link.signal} kind={link.kind} />
-              {link.kind === "ender"
-                ? "Ender link"
-                : link.legacy
-                  ? "out of range (legacy)"
-                  : `${Math.round(link.signal * 100)} %${link.dist ? ` · ${Math.round(link.dist)} blocks` : ""}`}
-              {link.kind === "radio" && !link.legacy && (link.weak || link.signal < 0.15) && <span class="tag tag-weak">weak</span>}
-            </dd>
-          </>
-        )}
-        {hops !== undefined && node.type !== "mainframe" && (
-          <>
-            <dt>Route</dt>
-            <dd>
-              {hops} hop{hops === 1 ? "" : "s"}: {route!.map((id) => byId.get(id)?.name ?? id).join(" → ")}
-            </dd>
-          </>
-        )}
-        {isNodeType(node.type) && (
-          <>
-            <dt>Range</dt>
-            <dd>
-              {node.type === "ender_relay" ? "any distance to other Ender Relays · " : `${node.range} blocks to nodes · `}
-              {node.deviceRange ?? node.range} to devices
-            </dd>
-          </>
-        )}
-        {!isNodeType(node.type) && (
-          <>
-            <dt>Range</dt>
-            <dd>{node.range} blocks</dd>
-          </>
-        )}
-        {node.power && (
-          <>
-            <dt>Power</dt>
-            <dd>
-              {node.power.ok ? `${fmtFE(node.power.usage, true)} · ${fmtFE(node.power.stored)} / ${fmtFE(node.power.capacity)}` : "no FE"}
-            </dd>
-          </>
-        )}
-        {isRelay(node.type) && (
-          <>
-            <dt>Carries</dt>
-            <dd>{behind.length ? behind.map((n) => n.name).join(", ") : "nothing"}</dd>
-          </>
-        )}
-        {enderPeers.length > 0 && (
-          <>
-            <dt>Ender link</dt>
-            <dd>
-              {enderPeers
-                .map((l) => byId.get(l.a === node.id ? l.b : l.a))
-                .map((p) => `${p?.name} (${dimLabel(p?.dim ?? "")})`)
-                .join(", ")}
-            </dd>
-          </>
-        )}
-        {uplink && (
-          <>
-            <dt>Card</dt>
-            <dd>
-              {uplink.title || "Untitled"} · {uplink.widgets.length} widgets
-            </dd>
-          </>
-        )}
-        {node.lastSeen && node.status !== "online" && (
-          <>
-            <dt>Last seen</dt>
-            <dd>{timeAgo(node.lastSeen)}</dd>
-          </>
-        )}
-      </dl>
+      <div class="nd-tabs" role="tablist" aria-label="Details">
+        {tabs.map(([t, label]) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={t === tab}
+            class={`nd-tab ${t === tab ? "on" : ""}`}
+            onClick={() => props.onTab(t)}
+            onKeyDown={(e) => {
+              const i = tabs.findIndex(([x]) => x === t);
+              const n = e.key === "ArrowRight" ? tabs[(i + 1) % tabs.length] : e.key === "ArrowLeft" ? tabs[(i - 1 + tabs.length) % tabs.length] : null;
+              if (!n) return;
+              e.preventDefault();
+              props.onTab(n[0]);
+              ((e.currentTarget as HTMLElement).parentElement?.children[tabs.indexOf(n)] as HTMLElement | undefined)?.focus();
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === "info" && (
+        <dl class="facts nd-facts" role="tabpanel">
+          <dt>Dimension</dt>
+          <dd>{dimLabel(node.dim)}</dd>
+          {node.pos && (
+            <>
+              <dt>Position</dt>
+              <dd class="mono">
+                {node.pos.x} {node.pos.y} {node.pos.z}
+              </dd>
+            </>
+          )}
+          {link && (
+            <>
+              <dt>{link.kind === "wired" ? "Connection" : "Signal"}</dt>
+              <dd class="nd-signal">
+                <Bars signal={link.signal} kind={link.kind} />
+                {link.kind === "ender"
+                  ? "Ender link"
+                  : link.kind === "wired"
+                    ? "Cable (wired) · 100 %"
+                    : link.legacy
+                      ? "out of range (legacy)"
+                      : `Radio · ${Math.round(link.signal * 100)} %${link.dist ? ` · ${Math.round(link.dist)} blocks` : ""}`}
+                {link.kind === "radio" && !link.legacy && (link.weak || link.signal < 0.15) && <span class="tag tag-weak">weak</span>}
+              </dd>
+            </>
+          )}
+          {isNodeType(node.type) && (
+            <>
+              <dt>Range</dt>
+              <dd>
+                {node.type === "ender_relay" ? "any distance to other Ender Relays · " : `${node.range} blocks to nodes · `}
+                {node.deviceRange ?? node.range} to devices
+              </dd>
+            </>
+          )}
+          {!isNodeType(node.type) && (
+            <>
+              <dt>Range</dt>
+              <dd>{node.range} blocks (radio) · cables have no limit</dd>
+            </>
+          )}
+          {uplink && (
+            <>
+              <dt>Card</dt>
+              <dd>
+                {uplink.title || "Untitled"} · {uplink.widgets.length} widgets
+              </dd>
+            </>
+          )}
+          {node.lastSeen && node.status !== "online" && (
+            <>
+              <dt>Last seen</dt>
+              <dd>{timeAgo(node.lastSeen)}</dd>
+            </>
+          )}
+        </dl>
+      )}
+      {tab === "route" && (
+        <dl class="facts nd-facts" role="tabpanel">
+          <dt>Hops</dt>
+          <dd>{node.type === "mainframe" ? "this is the mainframe" : hops !== undefined ? `${hops} hop${hops === 1 ? "" : "s"}` : "no route"}</dd>
+          {route && node.type !== "mainframe" && (
+            <>
+              <dt>Path</dt>
+              <dd>
+                <ol class="nd-route">
+                  {route.map((id, i) => {
+                    const l = i > 0 ? findLink(net, route[i - 1], id) : undefined;
+                    return (
+                      <li key={id}>
+                        {i > 0 && <span class={`nd-hop ${l ? signalClass(l) : ""} k-${l?.kind ?? "radio"}`}>{l?.kind === "wired" ? "cable" : l?.kind === "ender" ? "ender" : l ? `${Math.round(l.signal * 100)} %` : ""}</span>}
+                        <span>{byId.get(id)?.name ?? id}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </dd>
+            </>
+          )}
+          {(isRelay(node.type) || node.type === "mainframe") && (
+            <>
+              <dt>Carries</dt>
+              <dd>{behind.length ? `${behind.length}: ${behind.map((n) => n.name || "Device").join(", ")}` : "nothing"}</dd>
+            </>
+          )}
+          {enderPeers.length > 0 && (
+            <>
+              <dt>Ender link</dt>
+              <dd>
+                {enderPeers
+                  .map((l) => byId.get(l.a === node.id ? l.b : l.a))
+                  .map((p) => `${p?.name} (${dimLabel(p?.dim ?? "")})`)
+                  .join(", ")}
+              </dd>
+            </>
+          )}
+        </dl>
+      )}
+      {tab === "power" && (
+        <dl class="facts nd-facts" role="tabpanel">
+          {node.power ? (
+            <>
+              <dt>Usage</dt>
+              <dd>{node.power.ok ? fmtFE(node.power.usage, true) : "no FE"}</dd>
+              <dt>Buffer</dt>
+              <dd>
+                {fmtFE(node.power.stored)} / {fmtFE(node.power.capacity)}
+                <span class="nd-bar" aria-hidden="true">
+                  <span
+                    ref={(el) => {
+                      if (el) el.style.width = `${Math.round((node.power!.stored / Math.max(1, node.power!.capacity)) * 100)}%`;
+                    }}
+                  />
+                </span>
+              </dd>
+            </>
+          ) : (
+            <>
+              <dt>Power</dt>
+              <dd>unknown</dd>
+            </>
+          )}
+          <dt>Note</dt>
+          <dd class="muted small">Relays need FE to forward traffic. Cabled devices cost no extra FE per hop.</dd>
+        </dl>
+      )}
+      {tab === "card" && (
+        <div class="nd-cards" role="tabpanel">
+          {cards.map((c) => (
+            <Card key={c.key} card={c} conn={conn} locked />
+          ))}
+        </div>
+      )}
       <div class="nd-actions">
+        {props.onFly && node.pos && (
+          <button type="button" class="btn" onClick={props.onFly}>
+            Fly to
+          </button>
+        )}
         {uplink && onOpenCard && (
           <button type="button" class="btn" onClick={() => onOpenCard(uplink.uplinkId)}>
             Open card
@@ -454,15 +647,43 @@ function Detail({ net, node, conn, onOpenCard, onClose }: { net: NetworkInfo; no
 }
 
 // ---------------------------------------------------------------------- page
+type Mode = "topology" | "map" | "3d";
+const MODE_KEY = "cccloud.netview";
+const readMode = (): Mode => {
+  try {
+    const m = localStorage.getItem(MODE_KEY);
+    return m === "map" || m === "3d" ? m : "topology";
+  } catch {
+    return "topology";
+  }
+};
+
 export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn; onOpenCard?: (uplinkId: string) => void }) {
   const net = conn.network.value;
   const isPhone = useIsPhone();
-  const [mode, setMode] = useState<"topology" | "map">("topology");
-  const [selected, setSelected] = useState<string | undefined>();
+  const [mode, setModeState] = useState<Mode>(readMode);
+  const setMode = (m: Mode) => {
+    setModeState(m);
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {}
+  };
+  const [selected, setSelectedState] = useState<string | undefined>();
+  const [tab, setTab] = useState<DetailTab>("info");
+  const setSelected = (id?: string) => {
+    if (id !== selected) setTab("info");
+    setSelectedState(id);
+  };
   const [ranges, setRanges] = useState(true);
+  const [terrainOn, setTerrainOn] = useState(true);
+  const [flyKey, setFlyKey] = useState(0);
+  const webgl = useMemo(() => hasWebGL(), []);
+  const [failed3d, setFailed3d] = useState<string | null>(null);
   const dims = net ? dimsOf(net) : [];
   const [dim, setDim] = useState<string>("minecraft:overworld");
   const activeDim = dims.includes(dim) ? dim : dims[0];
+  const use3d = mode === "3d" && webgl && !failed3d;
+  const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn);
   if (!net)
     return (
       <div class="empty">
@@ -474,18 +695,39 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const counts = statusCounts(net);
   const used = new Set(net.nodes.map((n) => [parentOf(net, n.id), n.id].sort().join("|")));
   const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && (l.weak || l.signal < 0.15) && used.has([l.a, l.b].sort().join("|")));
+  const cables = net.links.filter((l) => l.kind === "wired").length;
+  const hasPos = net.nodes.some((n) => n.pos);
+  const flyTo = (id: string) => {
+    const n = net.nodes.find((x) => x.id === id);
+    if (n && n.dim !== activeDim) setDim(n.dim);
+    setSelected(id);
+    setFlyKey((k) => k + 1);
+  };
+  const detail = node && (
+    <Detail
+      net={net}
+      node={node}
+      conn={conn}
+      onOpenCard={onOpenCard}
+      onClose={() => setSelected(undefined)}
+      tab={tab}
+      onTab={setTab}
+      onFly={use3d ? () => flyTo(node.id) : undefined}
+    />
+  );
   return (
     <section class="netpage">
       <div class="net-toolbar">
         <div class="seg-ctl" role="radiogroup" aria-label="View">
-          {(["topology", "map"] as const).map((m) => (
+          {(["topology", "map", "3d"] as const).map((m) => (
             <button key={m} type="button" role="radio" aria-checked={mode === m} class={mode === m ? "on" : ""} onClick={() => setMode(m)}>
-              {m === "topology" ? "Topology" : "Map"}
+              {m === "topology" ? "Topology" : m === "map" ? "Map" : "3D"}
             </button>
           ))}
         </div>
         <div class="net-chips">
           <span class="chip-s st-online">{counts.online ?? 0} online</span>
+          {cables > 0 && <span class="chip-s chip-cable">{cables} cabled</span>}
           {(counts.no_route ?? 0) > 0 && <span class="chip-s st-no_route">{counts.no_route} no route</span>}
           {(counts.no_power ?? 0) > 0 && <span class="chip-s st-no_power">{counts.no_power} no power</span>}
           {(counts.unloaded ?? 0) > 0 && <span class="chip-s st-unloaded">{counts.unloaded} unloaded</span>}
@@ -493,7 +735,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           {weak.length > 0 && <span class="chip-s sig-weak-chip">{weak.length} weak link{weak.length > 1 ? "s" : ""}</span>}
         </div>
       </div>
-      {mode === "map" && (
+      {mode !== "topology" && (
         <div class="net-toolbar sub">
           <div class="dim-tabs" role="tablist" aria-label="Dimension">
             {dims.map((d) => (
@@ -502,16 +744,42 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               </button>
             ))}
           </div>
-          <label class="check-row small">
-            <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
-            Range circles
-          </label>
+          <div class="net-opts">
+            {use3d && hasPos && <FlySearch net={net} onPick={flyTo} />}
+            <label class="check-row small">
+              <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
+              {use3d ? "Ranges" : "Range circles"}
+            </label>
+            {use3d && conn.canControl.value && (
+              <label class="check-row small">
+                <input type="checkbox" checked={terrainOn} onChange={(e) => setTerrainOn((e.target as HTMLInputElement).checked)} />
+                Terrain
+              </label>
+            )}
+          </div>
+        </div>
+      )}
+      {mode === "3d" && !use3d && (
+        <div class="banner banner-readonly n3d-fallback" role="status">
+          <div class="banner-text">
+            {failed3d === "context_lost" ? "The 3D view stopped (the graphics driver reset)." : "3D needs WebGL, which this browser has turned off or does not support."} Showing the 2D map instead.
+            {failed3d && (
+              <>
+                {" "}
+                <button type="button" class="link-btn" onClick={() => setFailed3d(null)}>
+                  Try again
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
       <div class={`net-body ${node && !isPhone ? "with-panel" : ""}`}>
         <div class="net-canvas">
           {mode === "topology" ? (
             <Topology net={net} selected={selected} onSelect={setSelected} lr={isPhone} />
+          ) : use3d && hasPos ? (
+            <View3DLoader net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} terrain={terrain} flyKey={flyKey} onFail={setFailed3d} />
           ) : (
             <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} />
           )}
@@ -522,33 +790,35 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
             <button type="button" class="icon-btn net-panel-close" aria-label="Close details" onClick={() => setSelected(undefined)}>
               ×
             </button>
-            <Detail net={net} node={node} conn={conn} onOpenCard={onOpenCard} onClose={() => setSelected(undefined)} />
+            {detail}
           </aside>
         )}
       </div>
       {node && isPhone && (
         <Sheet title={node.name} onClose={() => setSelected(undefined)}>
-          <Detail net={net} node={node} conn={conn} onOpenCard={onOpenCard} onClose={() => setSelected(undefined)} />
+          {detail}
         </Sheet>
       )}
     </section>
   );
 }
 
-function Legend() {
+export function Legend() {
   return (
     <div class="net-legend" aria-hidden="true">
       <span>
-        <i class="lg sig-good" /> strong
+        <i class="lg sig-wired k-wired" /> cable
       </span>
       <span>
-        <i class="lg sig-ok" /> ok
+        <span class="lg-group">
+          <i class="lg sig-good k-radio" />
+          <i class="lg sig-ok k-radio" />
+          <i class="lg sig-weak k-radio" />
+        </span>{" "}
+        radio strong · ok · weak
       </span>
       <span>
-        <i class="lg sig-weak" /> weak
-      </span>
-      <span>
-        <i class="lg sig-ender" /> ender
+        <i class="lg sig-ender k-ender" /> ender
       </span>
       <span>
         <i class="lg sig-legacy" /> legacy

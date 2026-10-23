@@ -20,6 +20,8 @@ export interface SimNode {
   legacy?: boolean;
   /** ender relays of the same group link to each other */
   enderGroup?: string;
+  /** v0.7: cabled (CC wired network) to this mainframe/relay – no range limit, preferred over radio */
+  wired?: string;
 }
 
 export interface Link {
@@ -27,7 +29,7 @@ export interface Link {
   b: string;
   signal: number;
   dist: number;
-  kind: "radio" | "ender";
+  kind: "radio" | "ender" | "wired";
   legacy?: boolean;
 }
 
@@ -60,6 +62,13 @@ export function computeNetwork(nodes: SimNode[]) {
       adj.get(x)!.push({ to: y, link: l });
     }
   };
+  // v0.7 wired links (CC networking cable): 100 % signal, no range limit, preferred over radio
+  const wiredPair = new Set<string>();
+  for (const n of nodes)
+    if (n.wired && nodes.some((m) => m.id === n.wired)) {
+      add({ a: n.wired, b: n.id, signal: 1, dist: 0, kind: "wired" });
+      wiredPair.add([n.wired, n.id].sort().join("|"));
+    }
   for (let i = 0; i < nodes.length; i++)
     for (let j = i + 1; j < nodes.length; j++) {
       const a = nodes[i];
@@ -70,6 +79,7 @@ export function computeNetwork(nodes: SimNode[]) {
         continue;
       }
       if (a.dim !== b.dim) continue;
+      if (wiredPair.has([a.id, b.id].sort().join("|"))) continue;
       const d = dist(a, b);
       // the mod's rule: a link exists when either side reaches the other (the larger range counts)
       let range: number | undefined;
@@ -128,7 +138,7 @@ export function computeNetwork(nodes: SimNode[]) {
   return { links, routes, status };
 }
 
-/** The example base of the dev mock: 4 radio relays, an ender relay pair to the Nether, 11 devices. */
+/** The example base of the dev mock: 4 radio relays, an ender relay pair to the Nether, 11 devices (2 cabled). */
 export function exampleNodes(ids: { reactor: string; me: string; storage: string; turbine: string; control: string; computer: string }): SimNode[] {
   const O = "minecraft:overworld";
   const N = "minecraft:the_nether";
@@ -144,8 +154,9 @@ export function exampleNodes(ids: { reactor: string; me: string; storage: string
     { id: "ender-nether", type: "ender_relay", name: "Nether Ender Relay", pos: { x: 2, y: 70, z: -5 }, dim: N, powered: true },
     // devices (device ids = uplink ids, like the mod)
     { id: ids.reactor, type: "uplink", name: "Fission Reactor", pos: { x: 20, y: 62, z: -10 }, dim: O, uplinkId: ids.reactor },
-    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 60, z: -50 }, dim: O, uplinkId: ids.me },
-    { id: ids.computer, type: "uplink", name: "Computer #7", pos: { x: 30, y: 64, z: -40 }, dim: O, uplinkId: ids.computer },
+    // v0.7: cabled to the mainframe over a CC wired network
+    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 60, z: -50 }, dim: O, uplinkId: ids.me, wired: "mf" },
+    { id: ids.computer, type: "uplink", name: "Computer #7", pos: { x: 30, y: 64, z: -40 }, dim: O, uplinkId: ids.computer, wired: "mf" },
     { id: ids.storage, type: "uplink", name: "Storage", pos: { x: 40, y: 64, z: -270 }, dim: O, uplinkId: ids.storage },
     { id: ids.control, type: "advanced_uplink", name: "Control Room", pos: { x: -160, y: 82, z: 120 }, dim: O, uplinkId: ids.control },
     { id: ids.turbine, type: "uplink", name: "Turbine Hall", pos: { x: -180, y: 85, z: 60 }, dim: O, uplinkId: ids.turbine, loaded: false },

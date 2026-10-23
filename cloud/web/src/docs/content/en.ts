@@ -388,7 +388,7 @@ Every uplink and bridge connects to the **nearest reachable node** – the mainf
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
 
-Distances are measured in blocks in a straight line (also up and down), within one dimension. A link works when both ends reach each other – the smaller range counts.
+Distances are measured in blocks in a straight line (also up and down), within one dimension. A link exists when one end reaches the other – the larger of the two ranges counts. Cables (below) have no range limit.
 
 ## Signal {#signal}
 
@@ -413,6 +413,14 @@ ${recipe(R.enderRelay)}
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 
+## Cables (wired links) {#cables}
+
+Devices can also join **by cable**, like AE2 cables: connect the uplink or bridge to the mainframe or a relay with CC: Tweaked **networking cable** and **wired modems** (right-click the modems so they turn on). Everything on the same CC wired network is a wired member.
+
+- Cables have **no range limit**, always **100 %** signal and cost **no extra FE per hop**.
+- A device can have both cable and radio; the cable is preferred, radio is the backup.
+- In the dashboard cables are **solid lines**, radio links **dashed** (coloured by signal), ender links **dotted**.
+
 ## When a relay fails {#reroute}
 
 If a relay is broken, unloaded or out of power, everything behind it **re-routes** over another path. If there is none, those devices show **No route**. Relays never force-load chunks; parts in unloaded chunks show **Unloaded**.
@@ -425,14 +433,76 @@ The network costs FE. The mainframe uses 40 FE/t + 4 per uplink + 8 per advanced
 
 ## The network map {#map}
 
-The **Network** tab shows everything that is connected:
+The **Network** tab shows everything that is connected, in three views:
 
-- **Topology** – the mainframe at the root, relays as branches, devices as leaves. Lines are coloured by signal (green strong, cyan ok, yellow weak, purple dashed ender, orange dashed legacy); the dot shows the status. Devices without a route are grouped under **Not connected**.
+- **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
 - **Map** – a top-down x/z map per dimension with a coordinate grid, range circles (toggle), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
+- **3D** – see below.
 
-Click or tap any node for details: type, position, dimension, status, signal, route and hops, range, power, what a relay carries, its card. **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (needs control rights). Positions are only shown to devices that may control the mainframe.
+Click or tap any node for details, with sub-menus: **Info** (type, position, dimension, status, signal or cable, range), **Route** (every hop to the mainframe and what a relay carries), **Power** (usage and buffer) and **Card** (the device's live card, controls as your role allows). **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (admins). Positions are only shown to browsers that may control the mainframe.
+
+## 3D view {#3d}
+
+The **3D** view shows your base with the real block models at their real coordinates: links as lines (cable solid, radio dashed, ender dotted), ranges as translucent spheres (toggle **Ranges**) and – if the server sends it – the coarse terrain around your blocks (toggle **Terrain**; only loaded chunks, black holes are unloaded areas).
+
+- **Mouse:** drag to rotate, right-drag or Shift-drag to pan, wheel to zoom. **Touch:** one finger rotates, two fingers pinch and pan. **Keyboard:** focus the view, arrow keys pan, + and − zoom, Esc clears the selection. ⤢ fits everything again.
+- Click a block for its details. Clicking a **relay** (or the mainframe) highlights everything routed through it and dims the rest.
+- **Fly to…** finds a block by name and flies the camera there; the dimension tabs switch between Overworld, Nether and others.
+- Far away, blocks are drawn larger so the base stays readable; the coloured dot above each block is its status.
+- 3D needs WebGL. Without it (switched off, very old graphics) the dashboard shows the 2D map instead. The 3D view is loaded only when you open it, so it does not slow down the rest of the dashboard.
 
 From Lua, \`cloud_mainframe.getNetwork()\` returns the same nodes, links and routes.
+`,
+  upgrades: `# Upgrades, tablet and display
+
+New in v0.7: mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
+
+## Mainframe upgrades {#upgrades}
+
+The mainframe has **4 upgrade slots** in its screen (hoppers cannot insert). Without upgrades it handles:
+
+| Limit | Without upgrades |
+|---|---|
+| Connected devices (uplinks, bridges, relays) | 16 |
+| Browsers at the same time | 4 |
+| Rules | 8 |
+| History | 1 h |
+| Node range of the mainframe | 96 |
+
+Upgrade cards come in three tiers. Only one card per type counts – the highest tier wins.
+
+| Card | Allthemodium | Vibranium | Unobtainium |
+|---|---|---|---|
+| Capacity (devices) | 48 | 128 | 512 |
+| Bandwidth (browsers, update rate) | 8 browsers | 16 | 64 |
+| Range (node range ×) | ×1.5 | ×2 | ×3 |
+| Efficiency (mainframe FE ×) | ×0.8 | ×0.65 | ×0.5 |
+| Memory (rules / history) | 24 / 24 h | 64 / 7 days | 128 / 30 days |
+
+- **Quantum Core** (ATM Star tier, one per mainframe): unlimited devices and browsers, the mainframe works as an Ender node (across dimensions) and uses only a quarter of the FE.
+- Recipes use the pack's metals (\`#c:ingots/allthemodium\` and so on). Without AllTheModium installed there are fallback recipes with diamond, netherite and nether stars. Look them up in JEI/EMI.
+- **Over the limit:** new links are refused with a clear message. If you remove a card, the extra devices show **Over capacity** and pause (the ones with the most hops or linked last first) until there is room again.
+
+## Cloud Tablet {#tablet}
+
+A handheld item that opens your dashboard **in-game** – a native screen with the same cards and widgets, no browser needed.
+
+- Works within network range of any node (mainframe or relay). The **Advanced Cloud Tablet** also works anywhere an Ender Relay reaches.
+- Uses **your role** on that mainframe: viewers watch, operators control, admins edit.
+- Optional key binding to open it (unbound by default; set it under Controls) while the tablet is in your inventory or a Curios slot.
+- Crafted from a CC pocket computer and a Cloud Core (advanced: plus gold and an ender pearl).
+
+## Cloud Display {#display}
+
+A display block that shows one dashboard card or page **in the world**, like a CC monitor.
+
+- Place several next to each other to form a larger screen (rectangles up to **8 × 6**).
+- Right-click to choose the card or page in its screen. It is read-only by default; operators can allow **clickable buttons** – then right-clicking a button on the display presses it.
+- Updates at most 4× per second and is not drawn further than 48 blocks away, so it stays cheap for the server and your FPS.
+
+## Wireless redstone {#redstone}
+
+Uplinks get a **redstone mode** in their screen: **transmitter** or **receiver** on a channel name. Receivers output the strongest signal of all transmitters on that channel (0–15). It works over relays, cables and – with Ender Relays – across dimensions, with the next tick as latency. Up to 64 channels per network; very fast clocks (faster than 2 ticks) are smoothed.
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage

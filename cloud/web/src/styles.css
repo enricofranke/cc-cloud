@@ -4365,9 +4365,23 @@ button.pwr:hover {
   height: 3px;
   background: var(--lc);
 }
-.lg.sig-ender,
+/* v0.7: cable = solid, radio = dashed, ender = dotted */
+.lg.k-radio,
 .lg.sig-legacy {
-  background: repeating-linear-gradient(90deg, var(--lc) 0 4px, transparent 4px 7px);
+  background: repeating-linear-gradient(90deg, var(--lc) 0 5px, transparent 5px 8px);
+}
+.lg.k-ender {
+  background: repeating-linear-gradient(90deg, var(--lc) 0 2px, transparent 2px 5px);
+}
+.lg.k-wired {
+  height: 4px;
+}
+.lg-group {
+  display: inline-flex;
+  gap: 3px;
+}
+.lg-group .lg {
+  width: 10px;
 }
 /* signal colours (links) */
 .sig-good {
@@ -4384,6 +4398,9 @@ button.pwr:hover {
 }
 .sig-legacy {
   --lc: #e8913a;
+}
+.sig-wired {
+  --lc: #cfd8e3;
 }
 /* status colours (nodes) */
 .st-online {
@@ -4408,9 +4425,18 @@ button.pwr:hover {
   stroke: var(--lc);
   stroke-width: 2.5;
 }
-.edge.sig-ender path,
+.edge.k-radio path {
+  stroke-dasharray: 7 4;
+}
+.edge.k-ender path {
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
 .edge.sig-legacy path {
-  stroke-dasharray: 6 5;
+  stroke-dasharray: 10 5;
+}
+.edge.k-wired path {
+  stroke-width: 3.5;
 }
 .edge.dim path {
   opacity: 0.45;
@@ -4504,13 +4530,19 @@ button.pwr:hover {
   stroke: var(--lc);
   stroke-width: 2.5;
 }
+.mlink.k-radio {
+  stroke-dasharray: 7 5;
+}
+.mlink.k-wired {
+  stroke-width: 3.5;
+}
 .mlink.spare {
   stroke-width: 1;
   opacity: 0.25;
   stroke-dasharray: 3 4;
 }
 .mlink.sig-legacy {
-  stroke-dasharray: 6 5;
+  stroke-dasharray: 10 5;
 }
 .mnode {
   cursor: pointer;
@@ -5030,4 +5062,221 @@ fieldset.field {
 .acc-table .btn,
 .dev-row .btn {
   min-height: 34px;
+}
+
+/* ---------------------------------------------------------------- v0.7 3D view */
+.chip-s.chip-cable {
+  --sc: #cfd8e3;
+}
+.net-opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.n3d {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+.n3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+}
+.n3d-canvas:active {
+  cursor: grabbing;
+}
+.n3d-canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--cyan);
+}
+.n3d-loading {
+  display: grid;
+  place-items: center;
+  color: #8d99a6;
+  font-size: 13px;
+}
+.n3d-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.n3d-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(13, 16, 20, 0.78);
+  color: #e7ecf1;
+  font: 600 11px system-ui, sans-serif;
+  white-space: nowrap;
+  will-change: transform;
+}
+.n3d-label.off {
+  color: #e39a9a;
+}
+.n3d-label.sel {
+  background: #2a7f99;
+  color: #fff;
+}
+.n3d-fallback {
+  margin: 0;
+}
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.fly-search {
+  position: relative;
+}
+.fly-input {
+  width: 180px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--screen);
+  color: var(--text);
+  font-size: 14px;
+}
+.fly-input:focus {
+  outline: none;
+  border-color: var(--cyan);
+}
+.fly-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 240px;
+  max-width: min(320px, calc(100vw - 32px));
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.fly-list li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.fly-list li .small {
+  grid-column: 2;
+}
+.fly-list li.on,
+.fly-list li:hover {
+  background: var(--panel-3);
+}
+.fly-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fly-list .sdot-s {
+  width: 8px;
+  height: 8px;
+  background: var(--sc);
+}
+/* detail sub-menus */
+.nd-tabs {
+  display: flex;
+  gap: 2px;
+  margin: 10px 0 8px;
+  border-bottom: 1px solid var(--line);
+}
+.nd-tab {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+}
+.nd-tab.on {
+  color: var(--text);
+  border-bottom-color: var(--gold);
+}
+.nd-tab:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+.nd-route {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.nd-route li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nd-hop {
+  align-self: flex-start;
+  margin: 2px 0 2px 6px;
+  padding-left: 10px;
+  border-left: 2px dashed var(--lc, var(--line-2));
+  color: var(--lc, var(--muted));
+  font: 600 11px ui-monospace, Menlo, monospace;
+}
+.nd-hop.k-wired {
+  border-left-style: solid;
+  border-left-width: 3px;
+}
+.nd-hop.k-ender {
+  border-left-style: dotted;
+}
+.nd-bar {
+  display: block;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 3px;
+  background: var(--panel-3);
+  overflow: hidden;
+}
+.nd-bar span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+.nd-cards {
+  display: grid;
+  gap: 10px;
+}
+@media (max-width: 719px) {
+  /* one row for dimensions + toggles, the search below */
+  .net-opts {
+    display: contents;
+  }
+  .fly-search {
+    order: 3;
+    flex: 1 1 100%;
+  }
+  .fly-input {
+    width: 100%;
+  }
+  .fly-list {
+    left: 0;
+    right: auto;
+  }
 }

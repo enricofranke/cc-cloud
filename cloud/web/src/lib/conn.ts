@@ -170,6 +170,10 @@ export class MainframeConn {
     return this.o.token;
   }
 
+  get baseUrl() {
+    return this.o.baseUrl;
+  }
+
   /** Admin features (layout editing, unlink, access, shares). Servers without roles: canControl. */
   /** Share-link sessions never send anything but pong. */
   get isShare() {
@@ -770,7 +774,7 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       b: l.b,
       signal: Math.max(0, Math.min(1, num(l.signal))),
       dist: Math.max(0, num(l.dist)),
-      kind: l.kind === "ender" ? "ender" : "radio",
+      kind: l.kind === "ender" || l.kind === "wired" ? l.kind : "radio",
       ...(l.legacy === true ? { legacy: true } : {}),
       ...(l.weak === true ? { weak: true } : {}),
     }));

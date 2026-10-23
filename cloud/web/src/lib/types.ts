@@ -163,7 +163,8 @@ export interface NetLink {
   /** 0..1 */
   signal: number;
   dist: number;
-  kind: "radio" | "ender";
+  /** v0.7: "wired" = CC networking cable (100 %, no range limit) */
+  kind: "radio" | "ender" | "wired";
   /** v0.3 device kept connected although out of range */
   legacy?: boolean;
   /** signal below 15 % (sent by the mod) */

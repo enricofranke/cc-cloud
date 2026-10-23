@@ -9,12 +9,13 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node dev/build-models.ts && vite build",
     "preview": "pnpm build && node dev/run.ts",
     "mock": "node dev/run.ts",
     "test": "vitest run --maxWorkers=3",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json",
-    "screenshots": "node dev/screenshots.ts"
+    "screenshots": "node dev/screenshots.ts",
+    "models": "node dev/build-models.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -25,9 +26,11 @@
     "@preact/preset-vite": "^2.10.6",
     "@preact/signals": "^2.11.3",
     "@types/node": "^26.6.5",
+    "@types/three": "0.186.0",
     "@types/ws": "^8.18.2",
     "playwright": "^1.64.1",
     "preact": "^10.29.8",
+    "three": "0.186.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.5",

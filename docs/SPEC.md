@@ -714,5 +714,68 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 - Optional coarse terrain: the server samples a heightmap with map colors (`MapColor`) around nodes (radius 96, 2-block grid, only loaded chunks, cached, ≤ 200 KB per request, canControl only, rate-limited) so the base is recognizable.
 - Interaction: orbit/zoom/pan (touch + mouse), click a device → its detail panel with sub-menus (card, widgets, power, routes, actions per role); click a relay → highlight everything routed through it; dimension switcher; "fly to" from search.
 
+### v0.7 web protocol (wired links, terrain, 3D view)
+Implemented by the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) and the dashboard.
+
+**Wired links** in the `network` payload: `{"a","b","kind":"wired","signal":1}` (no `dist`, never `weak`). `a` is the mainframe or relay that owns the CC wired network, `b` the cabled member; the member's `parent` points at `a` when the cable route is used (wired is preferred over radio). Wired hops cost no FE, so they are not in the power breakdown's `hops`. Radio links for a pair that is cabled are not sent. The dashboard draws cables solid, radio dashed (coloured by signal), ender links dotted – in the topology, the map and the 3D view.
+
+**Coarse terrain** (optional, for the 3D view):
+`GET /api/mainframes/<id>/terrain?dim=<dimension id>` (Bearer token, role ≥ operator, i.e. canControl; else 403 `{"error":"not_allowed"}`) →
+```json
+{"dim":"minecraft:overworld","step":2,
+ "patches":[{"x0":-84,"z0":-126,"w":97,"h":97,
+             "heights":"<base64: int16 LE per cell, row-major (z rows, x columns); -32768 = unknown/unloaded>",
+             "colors":"<base64: 3 bytes RGB per cell, the block's MapColor>"}],
+ "truncated":false}
+```
+- Cells are `step` blocks apart; cell `(i, j)` is at `x = x0 + i*step`, `z = z0 + j*step`; `heights` is the Y of the top non-air block (`Heightmap.Types.WORLD_SURFACE`), water's colour is the water MapColor.
+- The server builds one patch per cluster of nodes in that dimension (radius 96 around each mainframe/relay/device with a position; overlapping squares are merged into their bounding box), samples only **loaded chunks** (never loads or generates chunks), caches per chunk for 60 s and stops at **200 KB** of JSON – nodes nearest the mainframe first, then `"truncated":true`. When the budget is tight it may raise `step` to 4.
+- Rate limit: 1 request per 5 s per token → 429 `{"error":"rate_limited","retryAfter":s}`. Unknown dimension → `{"dim","step":2,"patches":[]}`. Servers without the endpoint (404) simply show no terrain; the dashboard falls back to a flat grid.
+- `Cache-Control: private, max-age=60`.
+
+**3D view (client only, no new messages):** three.js `0.186.1` bundled in a lazy chunk (`Network3D`), loaded only when the 3D tab opens. Block models are converted at build time from `src/main/resources/assets/cccloud/{blockstates,models,textures}` by `cloud/dev/build-models.ts` (same rules as `preview/build_viewer.py`) into `web/src/network/models.gen.json` – geometry per node type, status variants as texture swaps. Without WebGL the dashboard shows the 2D map with a notice.
+
 ### FTB Quests chapters
 - Two chapters for ATM11: **CC: Tweaked** (computers, turtles, monitors, modems, peripherals, first programs) and **CC: Cloud** (mainframe, power, uplinks, link card, pairing a browser, bridges, relays, upgrades, tablet, display, rules). Format: the pack's `config/ftbquests/quests/chapters/*.json5` + lang files; place them in a chapter group that fits ATM11's structure, rewards in ATM style (modest). Ship them in the repo under `integration/ftbquests/` with an install script; contribution to ATM via their process (see docs/ATM_SUBMISSION.md).
+
+### Map tiles for the 2D map (requested 2026-10-23, moved up before v0.5 C–F)
+The 2D network map gets a real top-down map of the world as background, like a Minecraft map / JourneyMap / Dynmap "flat":
+- Server renders tiles of 128×128 blocks at 1 px per block (PNG, map colors from `BlockState.getMapColor` with vanilla-map-style height shading; water depth tint). Only already-generated, **loaded or saved** chunks are read – never generate chunks, never force-load; read saved chunks off-thread via the region storage if feasible, otherwise only loaded chunks.
+- Two layers: **Surface** (top block, heightmap `WORLD_SURFACE`) and **Slice** (a horizontal cut at a chosen Y, e.g. around an underground base like the user's mainframe at y −60: first non-air block scanning down from Y over 16 blocks, darker shading = deeper; like JourneyMap cave mode). The slice Y defaults to the median Y of the visible nodes.
+- Endpoint `GET /api/map/<dim>/<layer>/<y?>/<tileX>/<tileZ>.png` – operator role (positions are sensitive), rate-limited (60 tiles/min per session), `Cache-Control: private, max-age=60` + ETag, 204 for tiles with no data. Only tiles within 512 blocks of a node of that mainframe's network may be requested (no free world scanning).
+- Rendering off the server thread on a small executor, results cached on disk per world (`cccloud/maptiles/`), invalidated when chunks in the tile change (chunk save/unload events, debounced 30 s). Budget: ≤ 2 ms main-thread per tick for chunk snapshotting, else defer.
+- Web: tiles as the map background with zoom levels (downsampled client-side for far zoom), a layer switch (Surface / Slice + Y slider), node labels with collision avoidance (labels must not overlap like "Computer #0" / "RS Network" did), and the 3D view reuses the same height data.
+
+### "Crazy 3D": voxel view of the base (requested 2026-10-23)
+On top of the 3D network view: render the actual blocks around the network as voxels.
+- Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
+- Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded or saved chunks only, never generate/force-load; 40 sections/s per session; server-side cache invalidated on block changes (debounced); config `voxelView` (default true).
+- Stage 1 (now): colored voxels with map colors, greedy meshing in a Web Worker, ambient occlusion, emissive blocks glow, water translucent, day/night toggle; our devices drawn with their real models on top; clickable as in the 3D view; clipping plane / Y-slider to cut through floors of a base.
+- Stage 2 (later): real block textures – the game client uploads a block texture atlas the same way it uploads item icons (validated PNG, size caps), and the web renders textured voxels.
+- Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
+
+### In-game network visualization: Cloud Analyzer (requested 2026-10-23)
+Players must be able to plan relays without opening the web dashboard.
+- New item **`cccloud:cloud_analyzer`** (handheld tool in CC style; recipe: CC pocket computer + cloud core + redstone + glass pane). Also: holding a **Link Card** or any **cloud device item** (relay/uplink/bridge/mainframe) shows the same overlay.
+- While held (client-side rendering; server sends the geometry of networks the player has at least viewer role on, within 128 blocks, on change + every 2 s):
+  - **Range bubbles** of nodes (mainframe/relays) as translucent CC-cyan wireframe spheres / ground rings (toggle with sneak + scroll or a keybind: rings ↔ spheres ↔ off), device ranges in a dimmer tone.
+  - **Links** as lines between devices through walls (depth-test off, thin), colored by signal (green ok / yellow weak / red broken), dashed for ender links, solid for cable.
+  - **Placement preview**: when holding a relay/uplink item and looking at a block, a ghost of the block plus its future range bubble, and a label "would connect to North Relay · 68 % · 2 hops" or "out of range – nearest node: Mainframe 143 blocks (range 96)".
+  - **HUD line** (top center, small): "Signal here: 72 % via North Relay" / "No coverage", and an arrow toward the nearest node when out of coverage.
+  - Right-click a device with the analyzer: chat/hover summary (status, signal, route, power, hops); sneak-right-click: highlight its whole route to the mainframe for 10 s.
+- Jade tooltip on every cloud device additionally shows: signal %, route ("→ North Relay → Mainframe"), hops, status reason (no_route/no_power/out of range).
+- Performance: only render within 128 blocks, max 256 lines/spheres, sphere LOD by distance, no allocation per frame; config `analyzerOverlay` (client).
+- Security: positions only for networks where the player has a role; the server never sends other players' networks.
+
+### Cables (decided 2026-10-23): A = CC cables first, B = our own Fiber Cable as an extra
+**A – CC: Tweaked cables (wired links, see v0.7 "Wired links")**
+- Mainframe, relays, uplinks and bridges join CC's wired network as `WiredElement`s (via CC's wired API: `WiredNode`, `WiredElement`, capability on the block faces), so CC Networking Cable + Wired Modems connect them. Devices on the same CC wired network as a node are wired members of that node's network.
+- Wired: unlimited length, 100 % signal, no per-hop FE, preferred over radio. The network graph treats a CC wired network as one "bus" node set; recompute on CC network change events only.
+- Side effect (documented): CC computers on the same cable also see our blocks as peripherals (`cloud_mainframe`, bridges) – intended.
+
+**B – Fiber Cable (`cccloud:fiber_cable`, ships with CC: Cloud)**
+- Thin cable like CC's (4×4 px core), CC-grey jacket with a glowing cyan core line (emissive), connects to our devices and to itself only (no CC peripheral traffic – a clean, separate network). Junction box block `cccloud:fiber_junction` for splits/wall pass-through.
+- Better than CC cable on purpose: wired members via fiber do **not** count against the mainframe's device capacity tiers at half weight (config `fiberCapacityWeight` 0.5) and reduce the device's FE share by 50 %.
+- **Ender Fiber Link** (`cccloud:ender_fiber_link`, endgame): a pair of blocks linked with the Link Card that bridges two fiber networks across any distance/dimension (expensive recipe: ender relay core + eyes of ender + unobtainium/netherite fallback).
+- Recipes: fiber cable ×8 from glass panes + prismarine crystals + cloud core + string/wool jacket; junction from fiber + stone + redstone.
+- Rendering: cable connections like CC cables (multipart blockstate with 6 directions), no BER; the cyan core is an emissive element.

@@ -12,6 +12,8 @@ export default defineConfig({
     emptyOutDir: true,
     target: "es2022",
     assetsInlineLimit: 0,
+    // the lazy 3D chunk (three.js + block models) is ~720 kB, loaded only on the 3D tab
+    chunkSizeWarningLimit: 800,
   },
   server: {
     port: 5173,

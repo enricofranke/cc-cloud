@@ -388,7 +388,7 @@ Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Kno
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
 
-Entfernungen werden in Blöcken in gerader Linie gemessen (auch nach oben und unten), innerhalb einer Dimension. Eine Verbindung steht, wenn beide Enden einander erreichen – die kleinere Reichweite zählt.
+Entfernungen werden in Blöcken in gerader Linie gemessen (auch nach oben und unten), innerhalb einer Dimension. Eine Verbindung steht, wenn ein Ende das andere erreicht – die größere der beiden Reichweiten zählt. Kabel (unten) haben keine Reichweitengrenze.
 
 ## Signal {#signal}
 
@@ -413,6 +413,14 @@ ${recipe(R.enderRelay)}
 
 > **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
 
+## Kabel (kabelgebundene Verbindungen) {#cables}
+
+Geräte können sich auch **per Kabel** verbinden, wie bei AE2: Uplink oder Bridge mit CC: Tweakeds **Networking Cable** und **Wired Modems** an den Mainframe oder ein Relay anschließen (Modems per Rechtsklick einschalten). Alles im selben CC-Kabelnetz ist verkabeltes Mitglied.
+
+- Kabel haben **keine Reichweitengrenze**, immer **100 %** Signal und kosten **kein zusätzliches FE pro Sprung**.
+- Ein Gerät kann Kabel und Funk gleichzeitig haben; das Kabel wird bevorzugt, Funk ist die Reserve.
+- Im Dashboard sind Kabel **durchgezogene Linien**, Funkverbindungen **gestrichelt** (nach Signal gefärbt), Ender-Verbindungen **gepunktet**.
+
 ## Wenn ein Relay ausfällt {#reroute}
 
 Ist ein Relay abgebaut, nicht geladen oder ohne Strom, wird alles dahinter **umgeleitet**, sofern es einen anderen Weg gibt. Sonst zeigen diese Geräte **No route**. Relays laden nie Chunks zwangsweise; Teile in nicht geladenen Chunks zeigen **Unloaded**.
@@ -425,14 +433,76 @@ Das Netzwerk kostet FE. Der Mainframe braucht 40 FE/t + 4 pro Uplink + 8 pro Adv
 
 ## Die Netzwerkkarte {#map}
 
-Der Tab **Network** zeigt alles, was verbunden ist:
+Der Tab **Network** zeigt alles, was verbunden ist, in drei Ansichten:
 
-- **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Die Linien sind nach Signal gefärbt (grün stark, cyan ok, gelb schwach, lila gestrichelt Ender, orange gestrichelt Legacy); der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
+- **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Kabel sind durchgezogen, Funkverbindungen gestrichelt und nach Signal gefärbt (grün stark, cyan ok, gelb schwach), Ender-Verbindungen lila gepunktet, Legacy orange; der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
 - **Map** – eine Draufsicht (x/z) pro Dimension mit Koordinatengitter, Reichweitenkreisen (umschaltbar), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
+- **3D** – siehe unten.
 
-Ein Klick auf einen Knoten zeigt Details: Typ, Position, Dimension, Status, Signal, Weg und Sprünge, Reichweite, Strom, was ein Relay weiterleitet, seine Karte. **Open card** springt zur Karte im Dashboard; **Unlink** entfernt ihn aus dem Netzwerk (braucht Steuerrechte). Positionen sehen nur Geräte, die den Mainframe steuern dürfen.
+Ein Klick auf einen Knoten zeigt Details mit Untermenüs: **Info** (Typ, Position, Dimension, Status, Signal oder Kabel, Reichweite), **Route** (jeder Sprung bis zum Mainframe und was ein Relay weiterleitet), **Power** (Verbrauch und Puffer) und **Card** (die Live-Karte des Geräts, Bedienung je nach Rolle). **Open card** springt zur Karte im Dashboard; **Unlink** entfernt ihn aus dem Netzwerk (Admins). Positionen sehen nur Browser, die den Mainframe steuern dürfen.
+
+## 3D-Ansicht {#3d}
+
+Die Ansicht **3D** zeigt deine Basis mit den echten Blockmodellen an ihren echten Koordinaten: Verbindungen als Linien (Kabel durchgezogen, Funk gestrichelt, Ender gepunktet), Reichweiten als durchscheinende Kugeln (Schalter **Ranges**) und – wenn der Server es schickt – das grobe Gelände um deine Blöcke (Schalter **Terrain**; nur geladene Chunks, schwarze Löcher sind nicht geladene Bereiche).
+
+- **Maus:** ziehen zum Drehen, Rechtsklick- oder Shift-Ziehen zum Verschieben, Mausrad zum Zoomen. **Touch:** ein Finger dreht, zwei Finger zoomen und verschieben. **Tastatur:** Ansicht fokussieren, Pfeiltasten verschieben, + und − zoomen, Esc hebt die Auswahl auf. ⤢ zeigt wieder alles.
+- Ein Klick auf einen Block zeigt seine Details. Ein Klick auf ein **Relay** (oder den Mainframe) hebt alles hervor, was darüber läuft, und blendet den Rest ab.
+- **Fly to…** findet einen Block über den Namen und fliegt die Kamera hin; die Dimensions-Tabs wechseln zwischen Overworld, Nether und weiteren.
+- Aus der Ferne werden Blöcke größer gezeichnet, damit die Basis lesbar bleibt; der farbige Punkt über jedem Block ist sein Status.
+- 3D braucht WebGL. Ohne WebGL (abgeschaltet, sehr alte Grafik) zeigt das Dashboard stattdessen die 2D-Karte. Die 3D-Ansicht wird erst geladen, wenn du sie öffnest – der Rest des Dashboards bleibt schnell.
 
 Aus Lua liefert \`cloud_mainframe.getNetwork()\` dieselben Knoten, Verbindungen und Wege.
+`,
+  upgrades: `# Upgrades, Tablet und Display
+
+Neu in v0.7: Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
+
+## Mainframe-Upgrades {#upgrades}
+
+Der Mainframe hat **4 Upgrade-Slots** in seinem Fenster (Trichter können nichts einfügen). Ohne Upgrades schafft er:
+
+| Grenze | Ohne Upgrades |
+|---|---|
+| Verbundene Geräte (Uplinks, Bridges, Relays) | 16 |
+| Browser gleichzeitig | 4 |
+| Regeln | 8 |
+| Verlauf | 1 h |
+| Knoten-Reichweite des Mainframes | 96 |
+
+Upgrade-Karten gibt es in drei Stufen. Pro Typ zählt nur eine Karte – die höchste Stufe gewinnt.
+
+| Karte | Allthemodium | Vibranium | Unobtainium |
+|---|---|---|---|
+| Capacity (Geräte) | 48 | 128 | 512 |
+| Bandwidth (Browser, Update-Rate) | 8 Browser | 16 | 64 |
+| Range (Knoten-Reichweite ×) | ×1,5 | ×2 | ×3 |
+| Efficiency (Mainframe-FE ×) | ×0,8 | ×0,65 | ×0,5 |
+| Memory (Regeln / Verlauf) | 24 / 24 h | 64 / 7 Tage | 128 / 30 Tage |
+
+- **Quantum Core** (ATM-Star-Stufe, einer pro Mainframe): unbegrenzt Geräte und Browser, der Mainframe arbeitet als Ender-Knoten (dimensionsübergreifend) und braucht nur ein Viertel des FE.
+- Die Rezepte nutzen die Metalle des Packs (\`#c:ingots/allthemodium\` usw.). Ohne AllTheModium gibt es Ersatzrezepte mit Diamant, Netherit und Netherstern. Nachschauen in JEI/EMI.
+- **Über der Grenze:** Neue Verbindungen werden mit einer klaren Meldung abgelehnt. Nimmst du eine Karte heraus, zeigen die überzähligen Geräte **Over capacity** und pausieren (die mit den meisten Sprüngen bzw. zuletzt verbundenen zuerst), bis wieder Platz ist.
+
+## Cloud Tablet {#tablet}
+
+Ein Handgerät, das dein Dashboard **im Spiel** öffnet – ein eigenes Fenster mit denselben Karten und Widgets, ganz ohne Browser.
+
+- Funktioniert in Netzwerk-Reichweite jedes Knotens (Mainframe oder Relay). Das **Advanced Cloud Tablet** funktioniert zusätzlich überall, wo ein Ender Relay hinreicht.
+- Nutzt **deine Rolle** auf diesem Mainframe: Viewer schauen zu, Operatoren steuern, Admins bearbeiten.
+- Optionale Taste zum Öffnen (standardmäßig nicht belegt; unter Steuerung einstellen), solange das Tablet im Inventar oder in einem Curios-Slot ist.
+- Hergestellt aus einem CC-Pocket-Computer und einem Cloud Core (Advanced: dazu Gold und eine Enderperle).
+
+## Cloud Display {#display}
+
+Ein Display-Block, der eine Dashboard-Karte oder -Seite **in der Welt** zeigt, wie ein CC-Monitor.
+
+- Mehrere nebeneinander ergeben einen größeren Bildschirm (Rechtecke bis **8 × 6**).
+- Per Rechtsklick in seinem Fenster Karte oder Seite wählen. Standardmäßig nur zum Ansehen; Operatoren können **klickbare Buttons** erlauben – dann drückt ein Rechtsklick auf einen Button im Display ihn.
+- Aktualisiert höchstens 4× pro Sekunde und wird ab 48 Blöcken Entfernung nicht mehr gezeichnet – schont Server und FPS.
+
+## Drahtloses Redstone {#redstone}
+
+Uplinks bekommen in ihrem Fenster einen **Redstone-Modus**: **Sender** oder **Empfänger** auf einem Kanalnamen. Empfänger geben das stärkste Signal aller Sender auf diesem Kanal aus (0–15). Das funktioniert über Relays, Kabel und – mit Ender Relays – dimensionsübergreifend, mit dem nächsten Tick als Verzögerung. Bis zu 64 Kanäle pro Netzwerk; sehr schnelle Takte (schneller als 2 Ticks) werden geglättet.
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 und Refined Storage

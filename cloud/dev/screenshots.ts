@@ -22,7 +22,8 @@ const outpost = [...mock.mainframes.values()].find((m) => m.name.startsWith("Out
 const browser = await chromium.launch({
   channel: process.env.PW_CHANNEL ?? "chrome",
   // lets us open the dashboard under a public-looking hostname (HTTP warning, LAN-only 403)
-  args: ["--host-resolver-rules=MAP mc.example.net 127.0.0.1"],
+  // swiftshader: WebGL for the 3D view in headless Chrome
+  args: ["--host-resolver-rules=MAP mc.example.net 127.0.0.1", "--enable-unsafe-swiftshader"],
 });
 const problems: string[] = [];
 const watch = (page: Page) => {
@@ -111,6 +112,25 @@ try {
   await p.waitForTimeout(400);
   await clearToasts(p);
   await shot(p, "phone-n5-map-nether");
+  // ---- v0.7 3D view
+  await p.click('.dim-tab:has-text("Overworld")');
+  await p.click('.seg-ctl button:has-text("3D")');
+  await p.waitForSelector(".n3d canvas");
+  await p.waitForTimeout(2500); // chunk, textures and terrain
+  await clearToasts(p);
+  await p.evaluate(() => document.querySelector(".net-canvas")!.scrollIntoView({ block: "end" }));
+  await shot(p, "phone-n6-3d");
+  await p.fill(".fly-input", "computer");
+  await p.keyboard.press("Enter");
+  await p.waitForSelector(".sheet .ndetail");
+  await p.click('.nd-tab:has-text("Route")');
+  await p.waitForTimeout(900);
+  await clearToasts(p);
+  await shot(p, "phone-n7-3d-detail-route");
+  await p.click('.nd-tab:has-text("Card")');
+  await p.waitForTimeout(300);
+  await shot(p, "phone-n8-3d-detail-card");
+  await p.keyboard.press("Escape");
   await p.click('.seg-ctl button:has-text("Topology")');
   await p.click('.tabbar .tab:has-text("Overview")');
   await p.waitForSelector(".search-input");
@@ -218,6 +238,7 @@ try {
   await shot(p, "phone-08-after-scram-toast");
 
   // toggle back on (optimistic) + crit alert + alert log
+  await clearToasts(p);
   await p.click('[role="switch"]');
   await control({ alert: { uplinkId: REACTOR, text: "Core temperature critical: 1104 K", level: "crit" } });
   await p.waitForSelector(".toast-crit");
@@ -465,6 +486,43 @@ try {
   await d.waitForTimeout(400);
   await clearToasts(d);
   await shot(d, "desktop-n2-map");
+  // ---- v0.7 3D: overview, then a relay highlights what it carries
+  await d.click('.seg-ctl button:has-text("3D")');
+  await d.waitForSelector(".n3d canvas");
+  await d.waitForTimeout(2500);
+  await d.click(".net-panel-close").catch(() => {});
+  await clearToasts(d);
+  await shot(d, "desktop-n4-3d");
+  await d.fill(".fly-input", "west");
+  await d.keyboard.press("Enter");
+  await d.waitForSelector(".net-panel .ndetail");
+  await d.click('.nd-tab:has-text("Route")');
+  await d.waitForTimeout(1200);
+  await clearToasts(d);
+  await shot(d, "desktop-n5-3d-relay-route");
+  await d.fill(".fly-input", "mainframe");
+  await d.keyboard.press("Enter");
+  await d.waitForTimeout(1200);
+  await d.click('.nd-tab:has-text("Power")');
+  await clearToasts(d);
+  await shot(d, "desktop-n6-3d-mainframe");
+  await d.click('.seg-ctl button:has-text("Topology")');
+  await d.click('.tnode[aria-label^="Computer #7"]');
+  await d.waitForSelector(".net-panel .ndetail");
+  await clearToasts(d);
+  await shot(d, "desktop-n7-topology-cable");
+  // without WebGL the 3D tab falls back to the 2D map
+  const noGl = await chromium.launch({ channel: process.env.PW_CHANNEL ?? "chrome", args: ["--disable-3d-apis"] });
+  const ng = await (await noGl.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  await ng.goto(origin);
+  await pairVia(ng, mock.code(), "Old laptop");
+  await ng.click(".toptabs .tab-network");
+  await ng.click('.seg-ctl button:has-text("3D")');
+  await ng.waitForSelector(".n3d-fallback");
+  await ng.waitForTimeout(500);
+  await clearToasts(ng);
+  await shot(ng, "desktop-n8-3d-no-webgl");
+  await noGl.close();
   await d.click("button.pwr");
   await d.waitForSelector(".power-pop");
   await shot(d, "desktop-n3-power-breakdown");

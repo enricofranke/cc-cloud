@@ -47,6 +47,7 @@ export const STATUS_HINT: Partial<Record<NodeStatus, string>> = {
 export function signalClass(l: Pick<NetLink, "signal" | "kind" | "legacy" | "weak">) {
   if (l.legacy) return "sig-legacy";
   if (l.kind === "ender") return "sig-ender";
+  if (l.kind === "wired") return "sig-wired";
   if (l.weak || l.signal < WEAK_SIGNAL) return "sig-weak";
   if (l.signal < 0.5) return "sig-ok";
   return "sig-good";
