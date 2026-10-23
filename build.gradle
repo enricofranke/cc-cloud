@@ -252,6 +252,13 @@ def integrationMods = [
     // Occultism jar-in-jars CodedDefinedGUI and MagicParticlesLib; it needs Modonomicon, Curios and GeckoLib at runtime.
     occultism           : ["curse.maven:occultism-361026:${occultism_curse_file}", "curse.maven:modonomicon-538392:${modonomicon_curse_file}",
                            "top.theillusivec4.curios:curios-neoforge:${curios_version}", "maven.modrinth:geckolib:${geckolib_modrinth_version}"],
+    // Wave 3.
+    witchery            : ["curse.maven:witchery-1125946:${witchery_curse_file}", "curse.maven:kotlinforforge-351264:${kotlinforforge_curse_file}",
+                           "top.theillusivec4.curios:curios-neoforge:${curios_version}", "curse.maven:modonomicon-538392:${modonomicon_curse_file}",
+                           "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
+    forbiddenarcanus    : ["curse.maven:forbiddenarcanus-309858:${forbiddenarcanus_curse_file}", "curse.maven:valhelsiacore-416935:${valhelsiacore_curse_file}"],
+    evilcraft           : ["curse.maven:evilcraft-74610:${evilcraft_curse_file}", "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}"],
+    pylons              : ["curse.maven:pylons-518211:${pylons_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
 ]

@@ -91,5 +91,22 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | JourneyMap (`journeymap`) | 6.0.10 (API 2.0.0) | client plugin (`client/compat/journeymap`, found by JourneyMap's `@JourneyMapPlugin`): the mainframes, relays and devices of every network where the player has `view.positions` as temporary (non-persistent) waypoints named "CC: Cloud – <mainframe>: <device>", coloured by type. The client subscribes with the `map_nodes_subscribe` payload while the client config `journeyMapWaypoints` (default true) is on; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes. | client config toggle | server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit test `MapNodesTest`); the JourneyMap side needs a client and is untested |
 | FTB Chunks | – | already done in v0.5 (Claims card + overlay) | – | – |
 
+## Wave 3 – more ATM11 machines (survey of the ATM11 0.12.0-beta mod list)
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| any mod: plain fluid tanks | – | generic **Tank** card (kind `tank`, lowest priority, below the Energy card): a block entity with a fluid capability, no energy capability and at most 2 item slots – fill %, fluid, mB (up to 8 tanks summed). Covers EvilCraft's Dark Tank, Stellaris fluid tanks and similar. | none | yes (EvilCraft Dark Tank with 1 bucket of water) |
+| Witchery (`witchery`) | 0.5.17 | **Altar** card on the altar core: power gauge, current / max power, range, augment rate and boost; warn alert below 10 % | none | no: the altar is a multiblock; the mod loads in the dev server (Kotlin for Forge, Curios, Modonomicon, Lithostitched) |
+| Forbidden & Arcanus (`forbidden_arcanus`) | 2.8.0-beta.2 | **Hephaestus Forge** card: tier, ritual running, main item, the four essences (aureal, ectoplasm, blood, experience) as gauges and amount / limit; info alert when a ritual finishes | none | yes (lone forge: tier 1, idle, empty) |
+| Pylons (`pylons`) | 6.0.1 | **Pylon** card for all five pylons: on/off, owner, range | on/off toggle (the pylon's own switch), confirm, `act.buttons` | yes (expulsion pylon toggled off and on) |
+| EvilCraft (`evilcraft`) | 1.2.107 | Dark Tank via the generic Tank card; Blood Infuser / Spirit Furnace keep the generic Energy/tank cards | – | see Tank |
+| Stellaris (`stellaris`) | 2.0.7 | fluid tanks via the generic Tank card, generators via the Energy card; rockets are entities (nothing on a block) | – | no |
+| Theurgy (`theurgy`) | 1.116.0 | skipped: its machines (liquefaction cauldron, distiller, incubator) have no state beyond their inventories; tanks via the Tank card | – | – |
+| Ars Magica Legacy (`arsmagicalegacy`) | 1.7.0 | skipped for now: etherium is stored in obelisks/the altar core as private fields without getters; a card would need reflection | – | – |
+| Reliquary (`reliquary`) | 2.0.92 | skipped: altar and cauldron are short brewing/transmutation steps with nothing to monitor | – | – |
+| Interdimensional Wireless Transmitter | 1.0.1 | skipped: an RS2 network node; the RS Cloud Bridge already shows the network | – | – |
+| Trash Cans, Item Collectors | 1.1.1a / 1.1.12a | skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range) | – | – |
+| Just Dire Things | 1.6.11 | skipped: its machines are generic FE machines (Energy card) | – | – |
+
 ## Not in this wave
 Items 9 (in-game handbook) and 10 (KubeJS bindings) of the v0.8 list are done on a separate branch.

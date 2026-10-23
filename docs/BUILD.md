@@ -77,6 +77,10 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `integrateddynamics` | Integrated Dynamics 1.36.1 | Cyclops Core 1.31.3, Common Capabilities 2.11.8 | `compat/integrateddynamics` (part container + panel state) |
 | `journeymap` | JourneyMap 6.0.10 (client; for `runClient`) | – | its API (`journeymap-api-neoforge-2.0.0-26.1`, only inside the JourneyMap jar) is extracted by `extractJourneyMapApi`; the extracted jar's SHA-1 equals the one in ATM11's jar (`51b77c19…`). JourneyMap's maven only has snapshots of it. |
 | `occultism` | Occultism 1.256.1 (jar-in-jars CodedDefinedGUI, MagicParticlesLib) | Modonomicon 2.17.1, Curios, GeckoLib | none (capabilities + block ids) |
+| `witchery` | Witchery 0.5.17 | Kotlin for Forge 6.4.0, Curios, Modonomicon, Lithostitched 1.8.1 | `compat/witchery` (altar getters) |
+| `forbiddenarcanus` | Forbidden & Arcanus 2.8.0-beta.2 | Valhelsia Core 1.1.6 | `compat/forbiddenarcanus` |
+| `pylons` | Pylons 6.0.1 | – | `compat/pylons` |
+| `evilcraft` | EvilCraft 1.2.107 | Cyclops Core | none (generic Tank card test) |
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 
 ```sh
