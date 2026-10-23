@@ -59,4 +59,31 @@ public final class SecurityTests {
             })
             .thenSucceed();
     }
+
+    /** M3: a Link Card cannot pull a device away from another mainframe without network.link there. */
+    public static void noLinkTakeover(GameTestHelper helper) {
+        var victim = InGameTestSupport.mainframe(helper, "sec_victim");
+        var attackerPlayer = InGameTestSupport.player(helper, "sec_attacker");
+        var other = CloudGameTests.placeMainframe(helper, attackerPlayer, new net.minecraft.core.BlockPos(1, 0, 0));
+        other.setOwner(attackerPlayer);
+        CloudGameTests.keepPowered(helper, other);
+        InGameTestSupport.placeUplink(helper);
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(ai.ezfox.cccloud.network.CloudNetwork.mainframe(victim.id()) != null
+                && ai.ezfox.cccloud.network.CloudNetwork.mainframe(other.getMainframeId()) != null, "both mainframes registered"))
+            .thenExecute(() -> {
+                var uplink = InGameTestSupport.uplink(helper);
+                uplink.bind(victim.link(), victim.owner());
+                helper.assertTrue(uplink.getLink() != null && uplink.getLink().id().equals(victim.id()), "the victim linked their uplink");
+                var attackerLink = new ai.ezfox.cccloud.item.MainframeLink(net.minecraft.core.GlobalPos.of(helper.getLevel().dimension(), other.getBlockPos()),
+                    other.getMainframeId());
+                uplink.bind(attackerLink, attackerPlayer);
+                helper.assertTrue(uplink.getLink().id().equals(victim.id()), "the attacker's Link Card does not take it over");
+                // control: someone with network.link on both may move it
+                InGameTestSupport.grant(helper, victim, attackerPlayer, Role.ADMIN);
+                uplink.bind(attackerLink, attackerPlayer);
+                helper.assertTrue(uplink.getLink().id().equals(other.getMainframeId()), "moved with rights on both");
+            })
+            .thenSucceed();
+    }
 }

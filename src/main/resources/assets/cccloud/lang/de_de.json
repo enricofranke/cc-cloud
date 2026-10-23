@@ -32,6 +32,7 @@
   "cccloud.uplink.other_dimension": "Der Mainframe ist in einer anderen Dimension. Benutze einen erweiterten Cloud-Uplink.",
   "cccloud.uplink.out_of_range": "Außer Reichweite: %s Blöcke (max. %s). Benutze einen erweiterten Cloud-Uplink.",
   "cccloud.link_card.stored": "Karte mit Mainframe @ %s verknüpft.",
+  "cccloud.link_card.linked_elsewhere": "Dieses Gerät gehört zu einem anderen Mainframe – du brauchst dort das Recht „Geräte verbinden“ (oder es muss zuerst getrennt werden).",
   "cccloud.link_card.empty": "Diese Karte ist noch mit keinem Mainframe verknüpft. Rechtsklicke zuerst einen Mainframe.",
   "cccloud.link_card.cleared": "Verbindungskarte geleert.",
   "cccloud.link_card.tooltip.empty": "Nicht verknüpft",

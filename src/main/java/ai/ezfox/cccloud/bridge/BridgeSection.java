@@ -212,6 +212,10 @@ public final class BridgeSection implements DashboardSection {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }
+        if (!ai.ezfox.cccloud.access.Access.mayRelink(player, link == null ? null : link.id(), newLink.id())) {
+            player.sendSystemMessage(Component.translatable("cccloud.link_card.linked_elsewhere").withStyle(ChatFormatting.RED));
+            return;
+        }
         var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, level, be.getBlockPos(),
             ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE, sectionId.toString(), host.cloudWired());
         if (error != null) {

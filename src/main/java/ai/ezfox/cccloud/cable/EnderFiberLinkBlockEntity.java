@@ -83,6 +83,10 @@ public class EnderFiberLinkBlockEntity extends BlockEntity {
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
             return;
         }
+        if (!ai.ezfox.cccloud.access.Access.mayRelink(player, group, link.id())) {
+            player.sendSystemMessage(Component.translatable("cccloud.link_card.linked_elsewhere").withStyle(ChatFormatting.RED));
+            return;
+        }
         group = link.id();
         setChanged();
         NetworkService.markFiberDirty();

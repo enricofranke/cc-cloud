@@ -50,6 +50,19 @@ public final class Access {
         return new AccessRules.Caller(r.role(), r.perms(), r.role() == Role.OWNER || has(player, ServerPermissions.Node.ADMIN_MANAGE));
     }
 
+    /**
+     * Link Card re-linking (security review M3): a device linked to another mainframe may only be moved by someone with
+     * {@code network.link} on that old mainframe too – unless the old mainframe no longer exists.
+     */
+    public static boolean mayRelink(net.minecraft.world.entity.player.Player player, @org.jspecify.annotations.Nullable UUID oldMainframe, UUID newMainframe) {
+        if (oldMainframe == null || oldMainframe.equals(newMainframe)) return true;
+        var server = player.level().getServer();
+        if (server == null) return false;
+        var store = WebAuthData.access(server);
+        if (store.access(oldMainframe) == null && ai.ezfox.cccloud.network.CloudNetwork.mainframe(oldMainframe) == null) return true; // gone
+        return resolver(server).resolve(player.getUUID(), oldMainframe).has(Perm.NETWORK_LINK);
+    }
+
     /** Manage the mainframe's access (roles) – what "admin" meant before fine-grained permissions. */
     public static boolean canManage(ServerPlayer player, UUID mainframeId) {
         return has(player, mainframeId, Perm.ACCESS_MANAGE);

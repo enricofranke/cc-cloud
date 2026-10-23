@@ -49,6 +49,10 @@ public final class DisplayService {
         }
         var origin = display.origin();
         if (origin == null) return;
+        if (!ai.ezfox.cccloud.access.Access.mayRelink(player, origin.mainframeId(), link.id())) {
+            player.sendSystemMessage(Component.translatable("cccloud.link_card.linked_elsewhere").withStyle(ChatFormatting.RED));
+            return;
+        }
         boolean same = link.id().equals(origin.mainframeId());
         origin.configure(link.id(), mainframeName(link.id(), link.describe()), same ? origin.sectionId() : "", same && origin.interactive(), player.getUUID());
         CCCloud.LOGGER.info("[cccloud] {} bound the Cloud Display at {} to {}", player.getGameProfile().name(), origin.getBlockPos().toShortString(), link.describe());

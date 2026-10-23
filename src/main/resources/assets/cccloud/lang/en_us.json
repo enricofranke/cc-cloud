@@ -32,6 +32,7 @@
   "cccloud.uplink.other_dimension": "The mainframe is in another dimension. Use an Advanced Cloud Uplink.",
   "cccloud.uplink.out_of_range": "Out of range: %s blocks (max. %s). Use an Advanced Cloud Uplink.",
   "cccloud.link_card.stored": "Card linked to Mainframe @ %s.",
+  "cccloud.link_card.linked_elsewhere": "This device belongs to another mainframe – you need the \"link devices\" right there too (or unlink it first).",
   "cccloud.link_card.empty": "This card is not linked to a mainframe yet. Right-click a mainframe first.",
   "cccloud.link_card.cleared": "Link card cleared.",
   "cccloud.link_card.tooltip.empty": "Not linked",
