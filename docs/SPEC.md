@@ -719,6 +719,8 @@ Implemented by the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) and t
 
 **"Pair in browser" chat link:** the mod links to `<dashboard-url>/pair#code=XXXX-XXXX` (account codes: `#code=XXXX-XXXX&account=1`). The web server must serve `index.html` for `/pair` (SPA route, like `/s/<id>`; `Referrer-Policy: no-referrer` recommended). The dashboard reads the code from the fragment at start-up, replaces the URL with `/#/pair` via `history.replaceState` before any request, prefills the form (device name defaults to e.g. "Enrico's Mac – Chrome") and sends the code only in the `POST /api/pair` body. Invalid codes are ignored (empty form).
 
+**Optimistic values (dashboard behaviour, 2026-10-23):** selecting the value a widget already has sends nothing. After `action_result ok` the dashboard waits up to 8 s for the widget's value; `action_result` may carry `"value"` (the widget's value after the handler ran – recommended: echo it even when `set()` did not change it), which confirms immediately. Without either, the control falls back to the server value with an info toast "No answer from the computer yet – is the program running?".
+
 **Wired links** in the `network` payload: `{"a","b","kind":"wired","signal":1}` (no `dist`, never `weak`). `a` is the mainframe or relay that owns the CC wired network, `b` the cabled member; the member's `parent` points at `a` when the cable route is used (wired is preferred over radio). Wired hops cost no FE, so they are not in the power breakdown's `hops`. Radio links for a pair that is cabled are not sent. The dashboard draws cables solid, radio dashed (coloured by signal), ender links dotted – in the topology, the map and the 3D view.
 
 **Coarse terrain** (optional, for the 3D view):

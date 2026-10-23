@@ -22,3 +22,23 @@ export function fmtCount(n: number) {
     }
   return String(n);
 }
+
+/** Button labels longer than this get tighter type (and may wrap to two lines) instead of being cut off. */
+export const LONG_LABEL = 11;
+export const labelFit = (label: string) => (label.length > LONG_LABEL ? "long" : "");
+
+/**
+ * Splits multi-entry label values like "overworld 12.4 ms · the_nether 3.1 ms"
+ * into name/value pairs (separators: " · ", ";", newlines). Entries with a
+ * tick time in ms also get the TPS that tick time allows (max 20).
+ */
+export function splitEntries(text: string): { name: string; value: string; tps?: string }[] {
+  const parts = text.split(/\s+·\s+|\s*;\s*|\n+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return [];
+  return parts.map((p) => {
+    const m = /^([^:]*\S):\s*(.+)$/.exec(p) ?? /^(.*\S)\s+(-?[\d.,]+\s*[a-zA-Z%/]*)$/.exec(p);
+    if (!m) return { name: p, value: "" };
+    const ms = /^([\d.]+)\s*ms$/.exec(m[2]);
+    return { name: m[1], value: m[2], ...(ms ? { tps: Math.min(20, 1000 / Math.max(0.001, Number(ms[1]))).toFixed(1) } : {}) };
+  });
+}

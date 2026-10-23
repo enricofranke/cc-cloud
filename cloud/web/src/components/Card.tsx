@@ -4,6 +4,7 @@ import type { ComponentChildren } from "preact";
 import { useRef } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
+import { captionOf } from "../lib/layout.ts";
 import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
@@ -50,7 +51,9 @@ function StaticValue({ w }: { w: ResolvedWidget["w"] }) {
 }
 
 function WidgetView({ rw, card, conn, locked, viewOnly }: { rw: ResolvedWidget; card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
-  const w = rw.label !== rw.w.label ? { ...rw.w, label: rw.label } : rw.w;
+  // a label set in the editor wins; without any caption (resolver fell back to the id) keep none
+  const caption = captionOf(rw);
+  const w = caption !== rw.w.label ? { ...rw.w, label: caption } : rw.w;
   if (viewOnly) {
     if (["toggle", "slider", "select", "number", "text", "buttons"].includes(w.type)) return <StaticValue w={w} />;
     if (w.type === "watchlist") return <Watchlist w={w} uplink={card.uplink} conn={conn} locked viewOnly />;

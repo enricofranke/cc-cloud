@@ -338,17 +338,43 @@ function MapView({ net, dim, selected, onSelect, ranges }: { net: NetworkInfo; d
           <>
             <g>{lines}</g>
             {ranges && (
-              <g class="ranges">
+              <g class={`ranges ${selected && nodes.some((n) => n.id === selected && isNodeType(n.type)) ? "has-sel" : ""}`}>
                 {nodes
                   .filter((n) => n.pos && isNodeType(n.type) && n.status === "online")
-                  .map((n) => (
-                    <g key={n.id}>
-                      <circle cx={n.pos!.x} cy={n.pos!.z} r={n.range} class={`range r-${n.type}`} vector-effect="non-scaling-stroke" />
-                      {n.deviceRange && n.deviceRange !== n.range && (
-                        <circle cx={n.pos!.x} cy={n.pos!.z} r={n.deviceRange} class="range dev" vector-effect="non-scaling-stroke" />
-                      )}
-                    </g>
-                  ))}
+                  .map((n) => {
+                    const dev = n.deviceRange ?? n.range;
+                    const same = dev === n.range;
+                    const sel = n.id === selected;
+                    // labels sit on the circle edge, up-right (45°)
+                    const at = (r: number) => ({ x: n.pos!.x + r * 0.7071, y: n.pos!.z - r * 0.7071 });
+                    return (
+                      <g key={n.id} class={sel ? "sel" : ""}>
+                        <circle cx={n.pos!.x} cy={n.pos!.z} r={n.range} class={`range r-${n.type}`} vector-effect="non-scaling-stroke" />
+                        {!same && n.type !== "ender_relay" && <circle cx={n.pos!.x} cy={n.pos!.z} r={dev} class="range dev" vector-effect="non-scaling-stroke" />}
+                        {/* wide invisible rings for the hover tooltips */}
+                        <circle cx={n.pos!.x} cy={n.pos!.z} r={n.range} class="range-hit" vector-effect="non-scaling-stroke">
+                          <title>{same ? `${n.name}: node and device range ${n.range} blocks` : `${n.name}: node range ${n.range} blocks – reach to other relays and the mainframe`}</title>
+                        </circle>
+                        {!same && n.type !== "ender_relay" && (
+                          <circle cx={n.pos!.x} cy={n.pos!.z} r={dev} class="range-hit" vector-effect="non-scaling-stroke">
+                            <title>{`${n.name}: device range ${dev} blocks – reach for uplinks and bridges`}</title>
+                          </circle>
+                        )}
+                        {sel && (
+                          <>
+                            <text {...at(n.range)} dx={4 * upp} class="range-label" font-size={11 * upp}>
+                              {same ? `node & device range ${n.range}` : `node range ${n.range}`}
+                            </text>
+                            {!same && n.type !== "ender_relay" && (
+                              <text {...at(dev)} dx={4 * upp} class="range-label dev" font-size={11 * upp}>
+                                device range {dev}
+                              </text>
+                            )}
+                          </>
+                        )}
+                      </g>
+                    );
+                  })}
               </g>
             )}
             {cached(cache, [net, dim, selected, upp], () => (
@@ -783,7 +809,8 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           ) : (
             <MapView net={net} dim={activeDim} selected={selected} onSelect={setSelected} ranges={ranges} />
           )}
-          <Legend />
+          <Legend ranges={mode === "map" && !use3d && ranges} />
+          {mode === "map" && !use3d && <MapHelp />}
         </div>
         {node && !isPhone && (
           <aside class="net-panel">
@@ -803,9 +830,43 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   );
 }
 
-export function Legend() {
+function MapHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div class="map-help">
+      <button type="button" class="pz-btn map-help-btn" aria-expanded={open} aria-controls="map-help" aria-label="How to read the range circles" onClick={() => setOpen(!open)}>
+        ?
+      </button>
+      {open && (
+        <div class="map-help-pop" id="map-help" role="note">
+          <b>Planning relays</b>
+          <p>
+            <span class="lg lg-range" /> The <b>solid circle</b> is a relay's or the mainframe's <b>node range</b>: how far it reaches other relays and the mainframe.
+          </p>
+          <p>
+            <span class="lg lg-range dev" /> The <b>dashed circle</b> is its <b>device range</b>: uplinks and bridges must be inside it (or reach it with their own range).
+          </p>
+          <p>Place each new relay inside the solid circle of a relay that is already connected, then put devices inside the dashed circles. Cables (wired modems) have no range limit. Click a relay to see its two circles labelled.</p>
+          <DocsLink to="/docs/network#ranges">More in the docs</DocsLink>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function Legend({ ranges }: { ranges?: boolean }) {
   return (
     <div class="net-legend" aria-hidden="true">
+      {ranges && (
+        <>
+          <span>
+            <i class="lg lg-range" /> solid circle = node range (reach to other relays / mainframe)
+          </span>
+          <span>
+            <i class="lg lg-range dev" /> dashed = device range (reach for uplinks & bridges)
+          </span>
+        </>
+      )}
       <span>
         <i class="lg sig-wired k-wired" /> cable
       </span>
