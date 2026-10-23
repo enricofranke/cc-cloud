@@ -91,6 +91,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public java.util.concurrent.CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+        dispatched.add("map:" + tx + "," + tz);
+        return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.MapResult(204, null, null, null));
+    }
+
+    @Override
     public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
     }
 

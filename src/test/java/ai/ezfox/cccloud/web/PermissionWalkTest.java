@@ -52,11 +52,12 @@ class PermissionWalkTest {
 
     @Test
     void everyRouteHasItsPermission() {
-        Map<Router.Id, Perm> expected = Map.of(
+        Map<Router.Id, Perm> expected = new java.util.HashMap<>(Map.of(
             Router.Id.ACCESS_GET, Perm.ACCESS_MANAGE, Router.Id.ACCESS_POST, Perm.ACCESS_MANAGE,
             Router.Id.SHARES_GET, Perm.SHARES_CREATE, Router.Id.SHARES_POST, Perm.SHARES_CREATE, Router.Id.SHARE_DELETE, Perm.SHARES_CREATE,
             Router.Id.SCRIPT_LIST, Perm.SCRIPTS_UPLOAD, Router.Id.SCRIPT_GET, Perm.SCRIPTS_UPLOAD, Router.Id.SCRIPT_PUT, Perm.SCRIPTS_UPLOAD,
-            Router.Id.SCRIPT_DELETE, Perm.SCRIPTS_DELETE, Router.Id.SCRIPT_RUN, Perm.SCRIPTS_RUN);
+            Router.Id.SCRIPT_DELETE, Perm.SCRIPTS_DELETE, Router.Id.SCRIPT_RUN, Perm.SCRIPTS_RUN));
+        expected.put(Router.Id.MAP_TILE, Perm.VIEW_POSITIONS);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
             Router.Id.ICON, Router.Id.WEBSOCKET, Router.Id.STATIC);

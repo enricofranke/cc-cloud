@@ -89,6 +89,7 @@ public final class AccessGate {
             case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT -> Perm.SCRIPTS_UPLOAD;
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;
+            case MAP_TILE -> Perm.VIEW_POSITIONS;
             default -> null;
         };
     }

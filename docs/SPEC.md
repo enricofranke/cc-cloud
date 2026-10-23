@@ -750,6 +750,28 @@ The 2D network map gets a real top-down map of the world as background, like a M
 - Rendering off the server thread on a small executor, results cached on disk per world (`cccloud/maptiles/`), invalidated when chunks in the tile change (chunk save/unload events, debounced 30 s). Budget: ≤ 2 ms main-thread per tick for chunk snapshotting, else defer.
 - Web: tiles as the map background with zoom levels (downsampled client-side for far zoom), a layer switch (Surface / Slice + Y slider), node labels with collision avoidance (labels must not overlap like "Computer #0" / "RS Network" did), and the 3D view reuses the same height data.
 
+#### Map tiles – HTTP API (mod side, implemented)
+- **Routes:**
+  - Surface: `GET /api/mainframes/<id>/map/<dim>/surface/<tileX>/<tileZ>.png`
+  - Slice: `GET /api/mainframes/<id>/map/<dim>/slice/<y>/<tileX>/<tileZ>.png`
+  - `<dim>` is the dimension id, e.g. `minecraft:overworld`. Ids that contain a `/` are not supported.
+  - Tile `(tx, tz)` covers blocks `x = tx·128 … tx·128+127`, `z = tz·128 … tz·128+127` (floor division). Pixel `(px, pz)` = block `(tx·128+px, tz·128+pz)`, north up.
+- **Access:**
+  - Bearer token, permission `view.positions` (else `403 {"error":"not_allowed"}`).
+  - Only tiles within 512 blocks of a node or device of that mainframe's network in that dimension (else `403 {"error":"out_of_range"}`).
+  - Unknown dimension → `404 {"error":"unknown_dimension"}`.
+  - 60 tiles per minute per device → `429`.
+- **Responses:**
+  - `200 image/png` (128×128 RGBA, transparent where unknown), `Cache-Control: private, max-age=60`, `ETag` (and `304` with `If-None-Match`).
+  - `204` when no data exists yet (no chunk of the tile was loaded since the server started and nothing is cached).
+- **Rendering:**
+  - Surface: vanilla map colors at 1:1, shaded by the height difference to the north, water by depth.
+  - Slice: the first non-air block from the cut downwards (≤ 16 blocks). Cave floors are bright near the cut and darker deeper; rock at the cut is darkest; nothing within 16 blocks is transparent.
+  - Only chunks that are loaded right now are sampled (never loaded or generated). Other pixels come from the last render, cached in memory and in `<world>/cccloud/maptiles/`.
+  - A tile is re-rendered on request when its chunks were saved or unloaded at least 30 s ago (debounced).
+  - Sampling uses ≤ 2 ms of the server thread per tick; PNG encoding runs in the background.
+  - Reading chunks that are only on disk is not done yet; those areas fill in as players load them.
+
 ### "Crazy 3D": voxel view of the base (requested 2026-10-23)
 On top of the 3D network view: render the actual blocks around the network as voxels.
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.

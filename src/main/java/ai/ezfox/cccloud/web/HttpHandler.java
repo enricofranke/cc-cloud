@@ -129,6 +129,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             script(ctx, req, route, ip, devices.getFirst());
             return;
         }
+        if (route.id().isMap()) {
+            mapTile(ctx, req, devices.getFirst());
+            return;
+        }
         String path = new QueryStringDecoder(req.uri()).path();
         String body = req.content().toString(StandardCharsets.UTF_8);
         CompletableFuture.supplyAsync(() -> instance.bridge.api(route.id(), devices, path, body, ip), instance.bridge.serverExecutor())
@@ -144,6 +148,64 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                 } catch (Exception e) {
                     CloudLog.LOGGER.warn("[cccloud] Error handling request", e);
                     sendJson(ctx, req, HttpResponseStatus.INTERNAL_SERVER_ERROR, error("internal_error"));
+                }
+            }));
+    }
+
+    // ---- map tiles ----------------------------------------------------------------------------------------------------
+
+    /** Map tiles per device per minute. */
+    static final int MAP_RATE = 60;
+
+    private void mapTile(ChannelHandlerContext ctx, FullHttpRequest req, AuthStore.Device device) {
+        String[] parts = new QueryStringDecoder(req.uri()).path().split("/");
+        // /api/mainframes/<mf>/map/<dim>/surface/<tx>/<tz>.png or …/slice/<y>/<tx>/<tz>.png
+        var mainframeId = ClientMessages.parseUuid(parts[3]);
+        String dim = parts[5];
+        boolean slice = parts[6].equals("slice");
+        int y, tx, tz;
+        try {
+            y = slice ? Integer.parseInt(parts[7]) : 0;
+            tx = Integer.parseInt(parts[slice ? 8 : 7]);
+            tz = Integer.parseInt(parts[slice ? 9 : 8].substring(0, parts[slice ? 9 : 8].length() - 4));
+        } catch (RuntimeException e) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
+            return;
+        }
+        if (instance.mapLimits.size() > 10_000) instance.mapLimits.clear();
+        if (!instance.mapLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(MAP_RATE, MAP_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        String ifNoneMatch = req.headers().get(HttpHeaderNames.IF_NONE_MATCH);
+        req.retain();
+        CompletableFuture.supplyAsync(() -> instance.bridge.mapTile(device, mainframeId, dim, slice, y, tx, tz), instance.bridge.serverExecutor())
+            .thenCompose(f -> f)
+            .orTimeout(15, TimeUnit.SECONDS)
+            .whenComplete((result, err) -> ctx.executor().execute(() -> {
+                try {
+                    if (err != null || result == null) {
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (result.error() != null) {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(result.status()), error(result.error()));
+                    } else if (result.png() == null) {
+                        var empty = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NO_CONTENT, Unpooled.EMPTY_BUFFER);
+                        empty.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=60");
+                        write(ctx, req, empty);
+                    } else if (result.etag() != null && result.etag().equals(ifNoneMatch)) {
+                        var notModified = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_MODIFIED, Unpooled.EMPTY_BUFFER);
+                        notModified.headers().set(HttpHeaderNames.ETAG, result.etag());
+                        notModified.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=60");
+                        write(ctx, req, notModified);
+                    } else {
+                        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(result.png()));
+                        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "image/png");
+                        response.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=60");
+                        if (result.etag() != null) response.headers().set(HttpHeaderNames.ETAG, result.etag());
+                        write(ctx, req, response);
+                    }
+                } finally {
+                    req.release();
                 }
             }));
     }
@@ -248,7 +310,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN ->
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);

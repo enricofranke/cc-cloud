@@ -26,7 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.Nullable;
 
 /** The real {@link GameBridge}. All methods except {@link #serverExecutor()} run on the server thread. */
-final class MinecraftBridge implements GameBridge {
+public final class MinecraftBridge implements GameBridge {
     private final MinecraftServer server;
     private final AuthStore auth;
 
@@ -235,6 +235,27 @@ final class MinecraftBridge implements GameBridge {
         }
         ai.ezfox.cccloud.bridge.StorageService.preview(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(),
             r -> done.accept(new GameBridge.StorageResult(r.error(), r.data())));
+    }
+
+    @Override
+    public CompletableFuture<GameBridge.MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz) {
+        return mapTile(server, access(device, mainframeId), mainframeId, dim, slice, y, tx, tz);
+    }
+
+    /** The map tile endpoint after authentication (public for the GameTests). */
+    public static CompletableFuture<GameBridge.MapResult> mapTile(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
+                                                                  boolean slice, int y, int tx, int tz) {
+        if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "no_access"));
+        String error = AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+        if (error != null) return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "not_allowed"));
+        if (ai.ezfox.cccloud.map.MapTileService.level(server, dim) == null) return CompletableFuture.completedFuture(new GameBridge.MapResult(404, null, null, "unknown_dimension"));
+        if (!ai.ezfox.cccloud.map.MapAccess.allowed(mainframeId, dim, tx, tz)) {
+            return CompletableFuture.completedFuture(new GameBridge.MapResult(403, null, null, "out_of_range"));
+        }
+        var key = new ai.ezfox.cccloud.map.MapTileService.Key(dim, slice ? ai.ezfox.cccloud.map.MapTileService.Layer.SLICE : ai.ezfox.cccloud.map.MapTileService.Layer.SURFACE,
+            slice ? y : 0, tx, tz);
+        return ai.ezfox.cccloud.map.MapTileService.tile(server, key)
+            .thenApply(tile -> new GameBridge.MapResult(tile.png() == null ? 204 : 200, tile.png(), tile.etag(), null));
     }
 
     @Override
