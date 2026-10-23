@@ -26,9 +26,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 OURS = os.path.join(ROOT, "src", "main", "resources", "assets", "cccloud")
 # AE2 / Refined Storage assets extracted read-only from the ATM11 jars, used only for comparison renders
-MODREF = "~/ref/modref"
-DEFAULT_CC = ("~/ref/"
-              "scratchpad/cct-26.1/projects/common/src")
+REF = os.environ.get("CCCLOUD_REF", os.path.join(ROOT, ".ref"))
+MODREF = os.path.join(REF, "modref")
+DEFAULT_CC = os.environ.get("CCT_SRC", os.path.join(REF, "cct-26.1")) + "/projects/common/src"
 
 
 # --------------------------------------------------------------------------- asset lookup

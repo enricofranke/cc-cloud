@@ -21,8 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 GUI = os.path.join(ROOT, "src", "main", "resources", "assets", "cccloud", "textures", "gui")
 FONT_SOURCES = [
-    "~/ref/"
-    "mcfont/assets/minecraft/textures/font/ascii.png",
+    os.path.join(os.environ.get("CCCLOUD_REF", os.path.join(ROOT, ".ref")), "mcfont/assets/minecraft/textures/font/ascii.png"),
     os.path.expanduser("~/.gradle/caches/neoformruntime/artifacts/minecraft_26.1.2_client.jar"),
 ]
 
