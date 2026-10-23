@@ -136,7 +136,9 @@ public record PushTarget(String id, Type type, String name, String url, String t
         if (url == null || url.length() > MAX_URL) return new Parsed(null, "invalid");
         String urlError = UrlPolicy.check(type, url, allowedHosts);
         if (urlError != null) return new Parsed(null, urlError);
-        String token = obj.has("token") ? str(obj.get("token")) : previous != null ? previous.token() : "";
+        // a stored token stays only while the host stays the same (L8: never send it to a new host)
+        boolean sameHost = previous != null && host(previous.url()).equals(host(url));
+        String token = obj.has("token") ? str(obj.get("token")) : previous != null && sameHost ? previous.token() : "";
         if (token == null || (!token.isEmpty() && (!TOKEN.matcher(token).matches() || type != Type.NTFY))) return new Parsed(null, "invalid");
         String minLevel = obj.has("minLevel") ? str(obj.get("minLevel")) : previous != null ? previous.minLevel() : "warn";
         if (minLevel == null || !Set.of("info", "warn", "error").contains(minLevel)) return new Parsed(null, "invalid");
@@ -161,6 +163,15 @@ public record PushTarget(String id, Type type, String name, String url, String t
             enabled = previous == null || previous.enabled();
         }
         return new Parsed(new PushTarget(id, type, name.strip(), url, token, minLevel, events, enabled), null);
+    }
+
+    private static String host(String url) {
+        try {
+            var h = new java.net.URI(url).getHost();
+            return h == null ? "" : h.toLowerCase(Locale.ROOT);
+        } catch (java.net.URISyntaxException e) {
+            return "";
+        }
     }
 
     private static @Nullable String str(@Nullable JsonElement e) {

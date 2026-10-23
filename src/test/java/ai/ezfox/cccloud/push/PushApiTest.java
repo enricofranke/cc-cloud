@@ -124,4 +124,14 @@ class PushApiTest {
         assertEquals("https://discord.com/…cret", PushTarget.mask(DISCORD));
         assertEquals("https://ntfy.sh/…", PushTarget.mask("https://ntfy.sh/abc"));
     }
+
+    @Test
+    void tokenIsDroppedWhenTheHostChanges() {
+        var doc = post(200, "{\"op\":\"add\",\"target\":{\"type\":\"ntfy\",\"url\":\"https://ntfy.sh/a\",\"token\":\"tk_secret\"}}");
+        String id = doc.getAsJsonArray("targets").get(0).getAsJsonObject().get("id").getAsString();
+        post(200, "{\"op\":\"update\",\"id\":\"" + id + "\",\"target\":{\"url\":\"https://ntfy.sh/b\"}}");
+        assertEquals("tk_secret", store.targets(mf).getFirst().token(), "same host keeps the token");
+        post(200, "{\"op\":\"update\",\"id\":\"" + id + "\",\"target\":{\"url\":\"https://ntfy.example.org/b\"}}");
+        assertEquals("", store.targets(mf).getFirst().token(), "a new host never gets the old token");
+    }
 }

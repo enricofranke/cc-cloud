@@ -57,7 +57,7 @@ public final class CloudCommand {
             .then(Commands.literal("help").executes(CloudCommand::help))
             .then(Commands.literal("status").executes(CloudCommand::status)
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
-            .then(Commands.literal("test-token").requires(src -> Boolean.getBoolean("cccloud.devCommands") && src.getEntity() == null)
+            .then(Commands.literal("test-token").requires(src -> Boolean.getBoolean("cccloud.devCommands") && src.getEntity() == null && src.source == src.getServer())
                 .then(Commands.argument("mainframe", StringArgumentType.word()).executes(CloudCommand::testToken)))
             .then(Commands.literal("select")
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))

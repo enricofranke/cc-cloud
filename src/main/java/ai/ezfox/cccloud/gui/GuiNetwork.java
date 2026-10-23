@@ -233,6 +233,9 @@ public final class GuiNetwork {
         return new Ops(player, mainframe);
     }
 
+    private static final java.util.concurrent.atomic.AtomicInteger LOOKUPS = new java.util.concurrent.atomic.AtomicInteger();
+    private static final int MAX_LOOKUPS = 4;
+
     /** The real mainframe operations (server thread, rights already checked). */
     private static final class Ops implements GuiActions.MainframeOps {
         private final ServerPlayer player;
@@ -270,7 +273,7 @@ public final class GuiNetwork {
 
         private @Nullable String decide(String id, boolean allow) {
             var pending = auth.pending(id);
-            if (pending == null || pending.state() != AuthStore.PendingState.PENDING || !pending.mainframeId().equals(mainframe.getMainframeId())) {
+            if (pending == null || pending.state() != AuthStore.PendingState.PENDING || !mainframe.getMainframeId().equals(pending.mainframeId())) { // account-code requests have no mainframe
                 return "unknown_request";
             }
             if (allow) {
@@ -318,8 +321,16 @@ public final class GuiNetwork {
             var online = server.getPlayerList().getPlayerByName(playerName);
             if (online != null) return applyTrust(new NameAndId(online.getUUID(), online.getGameProfile().name()));
             // Unknown players may need a (blocking) profile lookup: do it off-thread, apply on the server thread.
+            // At most one lookup per player and second, and a few at a time server-wide (L13).
+            if (!ai.ezfox.cccloud.ingame.PacketLimiter.IN_GAME.allow(player.getUUID(), "profile_lookup", System.currentTimeMillis())) return "rate_limited";
+            if (LOOKUPS.incrementAndGet() > MAX_LOOKUPS) {
+                LOOKUPS.decrementAndGet();
+                return "rate_limited";
+            }
             var id = mainframe.getMainframeId();
-            CompletableFuture.supplyAsync(() -> server.services().nameToIdCache().get(playerName)).thenAccept(result -> server.execute(() -> {
+            CompletableFuture.supplyAsync(() -> server.services().nameToIdCache().get(playerName))
+                .whenComplete((r, e) -> LOOKUPS.decrementAndGet())
+                .thenAccept(result -> server.execute(() -> {
                 var current = player.containerMenu instanceof MainframeMenu menu
                     && player.level().getBlockEntity(menu.pos()) instanceof CloudMainframeBlockEntity m && m.getMainframeId().equals(id) ? m : null;
                 if (current == null || !ai.ezfox.cccloud.access.Access.has(player, id, ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE)) return;

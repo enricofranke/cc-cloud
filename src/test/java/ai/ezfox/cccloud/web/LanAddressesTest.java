@@ -16,22 +16,22 @@ class LanAddressesTest {
         var hosts = LanAddresses.select(List.of(
             c("lo0", true, true, "127.0.0.1"),
             c("en0", true, false, "203.0.113.7"),      // public: listed, after the private ones
-            c("en0", true, false, "192.168.1.171"),
+            c("en0", true, false, "192.168.1.20"),
             c("en0", true, false, "fe80::1"),          // IPv6: skipped
             c("en5", true, false, "169.254.12.3"),     // link-local: skipped
             c("utun4", true, false, "100.101.102.103"),// Tailscale (100.64/10): private, listed
             c("en1", false, false, "10.0.0.5"),        // interface down: skipped
             c("bridge0", true, false, "172.16.4.1"),
-            c("en0", true, false, "192.168.1.171")     // duplicate
+            c("en0", true, false, "192.168.1.20")     // duplicate
         ));
-        assertEquals(List.of("192.168.1.171", "100.101.102.103", "172.16.4.1", "203.0.113.7"), hosts);
+        assertEquals(List.of("192.168.1.20", "100.101.102.103", "172.16.4.1", "203.0.113.7"), hosts);
     }
 
     @Test
     void buildsUrls() {
-        var hosts = List.of("192.168.1.171", "100.101.102.103");
-        assertEquals(List.of("http://192.168.1.171:8787", "http://100.101.102.103:8787"), LanAddresses.urls("", "0.0.0.0", 8787, false, hosts));
-        assertEquals(List.of("https://dash.example.com", "https://192.168.1.171:8443", "https://100.101.102.103:8443"),
+        var hosts = List.of("192.168.1.20", "100.101.102.103");
+        assertEquals(List.of("http://192.168.1.20:8787", "http://100.101.102.103:8787"), LanAddresses.urls("", "0.0.0.0", 8787, false, hosts));
+        assertEquals(List.of("https://dash.example.com", "https://192.168.1.20:8443", "https://100.101.102.103:8443"),
             LanAddresses.urls("https://dash.example.com/", "0.0.0.0", 8443, true, hosts));
         assertEquals(List.of("http://127.0.0.1:8787"), LanAddresses.urls(null, "127.0.0.1", 8787, false, hosts), "specific bind address only");
         assertEquals(List.of("http://[fd00::5]:8787"), LanAddresses.urls(null, "fd00::5", 8787, false, hosts));

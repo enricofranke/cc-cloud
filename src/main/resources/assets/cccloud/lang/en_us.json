@@ -175,6 +175,7 @@
   "cccloud.gui.notice.invalid_pin": "PIN must be 4–8 digits",
   "cccloud.gui.notice.no_screen": "Screen closed",
   "cccloud.gui.notice.no_permission": "Not allowed (only players below your role)",
+  "cccloud.gui.notice.rate_limited": "Too many requests – wait a moment",
   "cccloud.gui.notice.not_owner": "You need the admin role on this mainframe",
   "cccloud.gui.notice.not_trusted": "No role to change",
   "cccloud.gui.notice.unknown_action": "Unknown action",

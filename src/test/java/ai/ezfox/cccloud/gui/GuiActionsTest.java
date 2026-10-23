@@ -20,7 +20,7 @@ class GuiActionsTest {
         Map.entry(GuiActions.Mainframe.DENY, "AbC_123-xyz"),
         Map.entry(GuiActions.Mainframe.REVOKE, "0123456789abcdef"),
         Map.entry(GuiActions.Mainframe.REVOKE_ALL, ""),
-        Map.entry(GuiActions.Mainframe.TRUST, "Smokey_de"),
+        Map.entry(GuiActions.Mainframe.TRUST, "Steve"),
         Map.entry(GuiActions.Mainframe.UNTRUST, "112a047d-444c-4422-b20e-4f86afe7f0cb"),
         Map.entry(GuiActions.Mainframe.PIN_SET, "1234"),
         Map.entry(GuiActions.Mainframe.PIN_CLEAR, ""),
