@@ -23,7 +23,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, ICON, WEBSOCKET, STATIC;
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
         public boolean isScriptWrite() {
@@ -35,7 +35,7 @@ public final class Router {
         }
 
         public boolean isMap() {
-            return this == MAP_TILE;
+            return this == MAP_TILE || this == VOXELS;
         }
 
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
@@ -82,6 +82,9 @@ public final class Router {
         new Route(Id.MAP_TILE, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
             + "/map/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/(surface|slice/-?[0-9]{1,4})/-?[0-9]{1,6}/-?[0-9]{1,6}\\.png"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/map/minecraft:overworld/surface/0/0.png"),
+        new Route(Id.VOXELS, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
+            + "/voxels/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/-?[0-9]{1,7}/-?[0-9]{1,3}/-?[0-9]{1,7}"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/voxels/minecraft:overworld/0/4/0"),
         new Route(Id.SHARE_DELETE, HttpMethod.DELETE, Pattern.compile("/api/mainframes/" + UUID_RE + "/shares/[0-9a-f]{16}"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares/0123456789abcdef"),
         // Item icons are public (explicitly allow-listed): no secrets, rate limited per IP, still LAN-only by default.

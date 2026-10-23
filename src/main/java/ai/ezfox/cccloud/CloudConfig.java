@@ -42,6 +42,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
     public static final ModConfigSpec.IntValue AUTO_STOCK_BATCH;
+    public static final ModConfigSpec.BooleanValue VOXEL_VIEW;
+    public static final ModConfigSpec.IntValue VOXEL_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.IntValue MAX_RULES;
@@ -169,6 +171,15 @@ public final class CloudConfig {
         AUTO_STOCK_BATCH = b.comment("Auto-stock (level maintainer): the largest amount one automatic craft request may ask for.")
             .translation("cccloud.configuration.autoStockBatch")
             .defineInRange("autoStockBatch", 64, 1, 4096);
+        b.pop();
+
+        b.push("map");
+        VOXEL_VIEW = b.comment("The dashboard's 3D voxel view of the blocks around the network (exposed blocks only, no X-ray).")
+            .translation("cccloud.configuration.voxelView")
+            .define("voxelView", true);
+        VOXEL_RADIUS = b.comment("Voxel view: sections within this many blocks of a network node may be requested.")
+            .translation("cccloud.configuration.voxelRadius")
+            .defineInRange("voxelRadius", 64, 16, 128);
         b.pop();
 
         b.push("rules");

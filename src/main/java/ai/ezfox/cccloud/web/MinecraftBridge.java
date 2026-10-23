@@ -242,6 +242,28 @@ public final class MinecraftBridge implements GameBridge {
         return mapTile(server, access(device, mainframeId), mainframeId, dim, slice, y, tx, tz);
     }
 
+    @Override
+    public CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
+        return voxels(server, access(device, mainframeId), mainframeId, dim, cx, cy, cz);
+    }
+
+    /** The voxel endpoint after authentication (public for the GameTests). */
+    public static CompletableFuture<GameBridge.VoxelResult> voxels(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
+                                                                   int cx, int cy, int cz) {
+        if (!ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.VOXEL_VIEW)) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "disabled"));
+        if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "no_access"));
+        if (AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) != null) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "not_allowed"));
+        }
+        var level = ai.ezfox.cccloud.map.MapTileService.level(server, dim);
+        if (level == null) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "unknown_dimension"));
+        if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, cx, cy, cz)) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "out_of_range"));
+        }
+        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz)
+            .thenApply(json -> new GameBridge.VoxelResult(json == null ? 204 : 200, json, null));
+    }
+
     /** The map tile endpoint after authentication (public for the GameTests). */
     public static CompletableFuture<GameBridge.MapResult> mapTile(MinecraftServer server, AccessResolver.Resolution access, UUID mainframeId, String dim,
                                                                   boolean slice, int y, int tx, int tz) {

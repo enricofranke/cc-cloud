@@ -97,6 +97,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public java.util.concurrent.CompletableFuture<GameBridge.VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz) {
+        dispatched.add("voxels");
+        return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.VoxelResult(204, null, null));
+    }
+
+    @Override
     public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
     }
 

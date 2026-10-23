@@ -76,6 +76,13 @@ public interface GameBridge {
     /** 2D map tile (view.positions, within 512 blocks of the mainframe's network). Server thread; completes later. */
     CompletableFuture<MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz);
 
+    /** Voxel view section: status 200 (json), 204 (not loaded), 403/404 (error). */
+    record VoxelResult(int status, @Nullable JsonObject json, @Nullable String error) {
+    }
+
+    /** One 16³ section of exposed blocks (view.positions, within voxelRadius of the network). Server thread; completes later. */
+    CompletableFuture<VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz);
+
     /** Tells the owner that a device got locked because of wrong PINs. */
     void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip);
 

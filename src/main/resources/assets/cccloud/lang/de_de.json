@@ -319,5 +319,8 @@
   "cccloud.configuration.rulesEnabled": "Regeln ausführen",
   "cccloud.configuration.maxRules": "Regeln pro Mainframe",
   "cccloud.script.note": "[CC: Cloud] %s (%s): %s auf %s",
-  "cccloud.configuration.autoStockBatch": "Auto-Lager: Menge pro Auftrag"
+  "cccloud.configuration.autoStockBatch": "Auto-Lager: Menge pro Auftrag",
+  "cccloud.configuration.voxelView": "Voxel-Ansicht",
+  "cccloud.configuration.voxelRadius": "Radius der Voxel-Ansicht",
+  "cccloud.configuration.map": "Karte"
 }

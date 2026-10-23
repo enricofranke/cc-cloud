@@ -26,6 +26,7 @@ public class CCCloud {
         ai.ezfox.cccloud.access.Access.init();
         ai.ezfox.cccloud.rules.RuleService.init();
         ai.ezfox.cccloud.map.MapTileService.init();
+        ai.ezfox.cccloud.voxel.VoxelService.init();
         ai.ezfox.cccloud.access.TeamProviders.setDisabled(() -> java.util.Set.copyOf(CloudConfig.get(CloudConfig.DISABLED_TEAM_PROVIDERS)));
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);

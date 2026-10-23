@@ -780,6 +780,29 @@ On top of the 3D network view: render the actual blocks around the network as vo
 - Stage 2 (later): real block textures – the game client uploads a block texture atlas the same way it uploads item icons (validated PNG, size caps), and the web renders textured voxels.
 - Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
 
+#### Voxel view – HTTP API (mod side, stage 1, implemented)
+- **Route:** `GET /api/mainframes/<id>/voxels/<dim>/<cx>/<cy>/<cz>`. These are section coordinates: `cx = floor(x/16)`, `cy = floor(y/16)`, `cz = floor(z/16)`.
+- **Access:**
+  - Bearer token, permission `view.positions` (else `403 not_allowed`).
+  - Only sections within config `voxelRadius` blocks (default 64, 16–128) of a node or device of the network, measured box to point (else `403 out_of_range`).
+  - Config `voxelView=false` → `404 disabled`.
+  - 40 sections per second per device → `429`.
+- **Response:** `200` with
+  ```json
+  {"dim","cx","cy","cz",
+   "palette":[{"id":"minecraft:stone","color":ARGB int,"flags":1=transparent|2=fluid|4=emissive}],
+   "runs":"<base64>","exposed":n}
+  ```
+  - `runs` are unsigned LEB128 varint pairs `(runLength, paletteIndex)` covering all 4096 cells in the order `x + 16·z + 256·y`.
+  - Index 0 = nothing (air or hidden); index n = `palette[n-1]`.
+  - `204` when the section's chunk is not loaded.
+  - `Cache-Control: private, max-age=5`.
+- **Anti X-ray:** only exposed blocks are sent: at least one face touches air or a non-occluding block (glass, leaves, fluids…). Neighbors in chunks that are not loaded count as solid, so chunk borders do not leak either.
+- **Server cost and cache:**
+  - The block states (section + 1-block border) are copied on the server thread from loaded chunks only (no loading or generating).
+  - Filtering and encoding run on 2 background threads.
+  - Results are cached (1024 sections) and invalidated, debounced 2 s, when a block in or next to the section changes.
+
 ### In-game network visualization: Cloud Analyzer (requested 2026-10-23)
 Players must be able to plan relays without opening the web dashboard.
 - New item **`cccloud:cloud_analyzer`** (handheld tool in CC style; recipe: CC pocket computer + cloud core + redstone + glass pane). Also: holding a **Link Card** or any **cloud device item** (relay/uplink/bridge/mainframe) shows the same overlay.

@@ -129,8 +129,12 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             script(ctx, req, route, ip, devices.getFirst());
             return;
         }
-        if (route.id().isMap()) {
+        if (route.id() == Router.Id.MAP_TILE) {
             mapTile(ctx, req, devices.getFirst());
+            return;
+        }
+        if (route.id() == Router.Id.VOXELS) {
+            voxels(ctx, req, devices.getFirst());
             return;
         }
         String path = new QueryStringDecoder(req.uri()).path();
@@ -202,6 +206,53 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "image/png");
                         response.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=60");
                         if (result.etag() != null) response.headers().set(HttpHeaderNames.ETAG, result.etag());
+                        write(ctx, req, response);
+                    }
+                } finally {
+                    req.release();
+                }
+            }));
+    }
+
+    /** Voxel sections per device per second. */
+    static final int VOXEL_RATE = 40;
+
+    private void voxels(ChannelHandlerContext ctx, FullHttpRequest req, AuthStore.Device device) {
+        String[] parts = new QueryStringDecoder(req.uri()).path().split("/");
+        // /api/mainframes/<mf>/voxels/<dim>/<cx>/<cy>/<cz>
+        var mainframeId = ClientMessages.parseUuid(parts[3]);
+        String dim = parts[5];
+        int cx, cy, cz;
+        try {
+            cx = Integer.parseInt(parts[6]);
+            cy = Integer.parseInt(parts[7]);
+            cz = Integer.parseInt(parts[8]);
+        } catch (RuntimeException e) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
+            return;
+        }
+        if (instance.voxelLimits.size() > 10_000) instance.voxelLimits.clear();
+        if (!instance.voxelLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(VOXEL_RATE, VOXEL_RATE)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        req.retain();
+        CompletableFuture.supplyAsync(() -> instance.bridge.voxels(device, mainframeId, dim, cx, cy, cz), instance.bridge.serverExecutor())
+            .thenCompose(f -> f)
+            .orTimeout(10, TimeUnit.SECONDS)
+            .whenComplete((result, err) -> ctx.executor().execute(() -> {
+                try {
+                    if (err != null || result == null) {
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (result.error() != null) {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(result.status()), error(result.error()));
+                    } else if (result.json() == null) {
+                        var empty = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NO_CONTENT, Unpooled.EMPTY_BUFFER);
+                        empty.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-store");
+                        write(ctx, req, empty);
+                    } else {
+                        var response = json(HttpResponseStatus.OK, result.json());
+                        response.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=5");
                         write(ctx, req, response);
                     }
                 } finally {
@@ -310,7 +361,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE ->
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, VOXELS ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);

@@ -58,6 +58,7 @@ class PermissionWalkTest {
             Router.Id.SCRIPT_LIST, Perm.SCRIPTS_UPLOAD, Router.Id.SCRIPT_GET, Perm.SCRIPTS_UPLOAD, Router.Id.SCRIPT_PUT, Perm.SCRIPTS_UPLOAD,
             Router.Id.SCRIPT_DELETE, Perm.SCRIPTS_DELETE, Router.Id.SCRIPT_RUN, Perm.SCRIPTS_RUN));
         expected.put(Router.Id.MAP_TILE, Perm.VIEW_POSITIONS);
+        expected.put(Router.Id.VOXELS, Perm.VIEW_POSITIONS);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
             Router.Id.ICON, Router.Id.WEBSOCKET, Router.Id.STATIC);
