@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "#c:ingots/gold",
+    "E": "#c:ender_pearls",
+    "P": "computercraft:pocket_computer_advanced",
+    "K": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "GEG",
+    "GPG",
+    "GKG"
+  ],
+  "result": {
+    "id": "cccloud:advanced_cloud_tablet"
+  }
+}
