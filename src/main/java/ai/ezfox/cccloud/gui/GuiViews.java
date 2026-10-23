@@ -71,8 +71,11 @@ public final class GuiViews {
         for (var url : CloudWebServer.dashboardUrls()) urls.add(url);
         json.add("urls", urls);
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
+        // Node coordinates only with view.positions (security review M5), like the dashboard's network map.
         var network = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
-        if (network != null) json.add("network", ai.ezfox.cccloud.network.NetworkService.toJson(mainframe, network, true));
+        if (network != null && resolution.has(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS)) {
+            json.add("network", ai.ezfox.cccloud.network.NetworkService.toJson(mainframe, network, true));
+        }
         var power = new JsonObject();
         for (var e : mainframe.powerBreakdown().entrySet()) power.addProperty(e.getKey(), e.getValue());
         json.add("powerBreakdown", power);
@@ -97,6 +100,16 @@ public final class GuiViews {
         var auth = WebAuthData.get(server);
         var id = mainframe.getMainframeId();
         long now = System.currentTimeMillis();
+        // Each management section only with its own permission (security review L11).
+        boolean devicesOk = resolution.has(ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
+        boolean accessOk = resolution.has(ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE);
+        if (resolution.has(ai.ezfox.cccloud.access.Perm.PIN_MANAGE)) json.addProperty("pinSet", auth.hasPin(id));
+        if (devicesOk) devicesJson(json, auth, id, player, now);
+        if (accessOk) accessJson(json, mainframe, server, id, now);
+        return Json.GSON.toJson(json);
+    }
+
+    private static void devicesJson(JsonObject json, AuthStore auth, java.util.UUID id, ServerPlayer player, long now) {
         var code = auth.currentCode(id, player.getUUID());
         json.addProperty("code", AuthStore.formatCode(code.code()));
         json.addProperty("codeSeconds", Math.max(0, (code.expiresAt() - now) / 1000));
@@ -122,6 +135,9 @@ public final class GuiViews {
             devices.add(row);
         }
         json.add("devices", devices);
+    }
+
+    private static void accessJson(JsonObject json, CloudMainframeBlockEntity mainframe, net.minecraft.server.MinecraftServer server, java.util.UUID id, long now) {
         json.addProperty("owner", mainframe.getOwnerName());
         // Players with a direct role (v0.6); the web Access page also shows team members and server admins.
         var trusted = new JsonArray();
@@ -148,8 +164,6 @@ public final class GuiViews {
             audit.add(row);
         }
         json.add("audit", audit);
-        json.addProperty("pinSet", auth.hasPin(id));
-        return Json.GSON.toJson(json);
     }
 
     /** A Cloud Bridge in the uplink-style screen: network status, link (unlimited range), its Storage section. */
@@ -169,11 +183,13 @@ public final class GuiViews {
         boolean canUnlink = false;
         if (link != null) {
             var p = link.pos().pos();
-            json.addProperty("mainframePos", p.getX() + " " + p.getY() + " " + p.getZ());
+            // where the mainframe is: only for players with view.positions on it (security review L12)
+            boolean positions = ai.ezfox.cccloud.access.Access.has(player, link.id(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+            json.addProperty("mainframePos", positions ? p.getX() + " " + p.getY() + " " + p.getZ() : "");
             var mainframe = CloudNetwork.mainframe(link.id());
-            json.addProperty("mainframe", mainframe != null ? mainframe.getDisplayName() : "");
+            json.addProperty("mainframe", mainframe == null ? "" : positions ? mainframe.getDisplayName() : "Mainframe");
             boolean sameDim = bridge.asBlockEntity().getLevel() != null && link.pos().dimension().equals(bridge.asBlockEntity().getLevel().dimension());
-            json.addProperty("distance", sameDim ? (int) Math.sqrt(bridge.asBlockEntity().getBlockPos().distSqr(p)) : -1);
+            json.addProperty("distance", sameDim && positions ? (int) Math.sqrt(bridge.asBlockEntity().getBlockPos().distSqr(p)) : -1);
             json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE));
             json.addProperty("inRange", section.hasRoute());
             canUnlink = GuiNetwork.canManageMainframe(player, link.id());
@@ -196,13 +212,14 @@ public final class GuiViews {
         boolean canUnlink = false;
         if (link != null) {
             var p = link.pos().pos();
-            json.addProperty("mainframePos", p.getX() + " " + p.getY() + " " + p.getZ());
+            boolean positions = ai.ezfox.cccloud.access.Access.has(player, link.id(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+            json.addProperty("mainframePos", positions ? p.getX() + " " + p.getY() + " " + p.getZ() : "");
             json.addProperty("mainframeDim", link.pos().dimension().identifier().toString());
             var mainframe = CloudNetwork.mainframe(link.id());
-            json.addProperty("mainframe", mainframe != null ? mainframe.getDisplayName() : "");
+            json.addProperty("mainframe", mainframe == null ? "" : positions ? mainframe.getDisplayName() : "Mainframe");
             json.addProperty("mainframeLoaded", mainframe != null);
             boolean sameDim = uplink.getLevel() != null && link.pos().dimension().equals(uplink.getLevel().dimension());
-            json.addProperty("distance", sameDim ? (int) Math.sqrt(uplink.getBlockPos().distSqr(p)) : -1);
+            json.addProperty("distance", sameDim && positions ? (int) Math.sqrt(uplink.getBlockPos().distSqr(p)) : -1);
             json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)));
             json.addProperty("inRange", uplink.hasRoute());
             if (uplink.routeState() != null) json.addProperty("routeState", uplink.routeState());

@@ -114,8 +114,9 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             textRow(Component.translatable("cccloud.gui.not_linked"), CloudGui.TEXT_DIM);
         } else {
             String name = str(view, "mainframe");
+            String where = str(view, "mainframePos"); // empty without view.positions on that mainframe
             kv("cccloud.gui.mainframe", (name.isEmpty() ? Component.translatable("cccloud.gui.mainframe_unloaded").getString() : name)
-                + " @ " + str(view, "mainframePos"));
+                + (where.isEmpty() ? "" : " @ " + where));
             long distance = num(view, "distance");
             long range = num(view, "range");
             String rangeText = distance < 0 ? Component.translatable("cccloud.gui.other_dimension").getString()

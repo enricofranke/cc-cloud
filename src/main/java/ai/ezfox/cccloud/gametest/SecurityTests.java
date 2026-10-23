@@ -86,4 +86,29 @@ public final class SecurityTests {
             })
             .thenSucceed();
     }
+
+    /** M5/L11: the mainframe screen shows node positions only with view.positions, each management part with its own right. */
+    public static void screenShowsOnlyAllowedParts(GameTestHelper helper) {
+        var setup = InGameTestSupport.mainframe(helper, "sec_screen_owner");
+        var viewer = InGameTestSupport.player(helper, "sec_screen_viewer");
+        var deviceAdmin = InGameTestSupport.player(helper, "sec_screen_devices");
+        var store = WebAuthData.access(helper.getLevel().getServer());
+        InGameTestSupport.grant(helper, setup, viewer, Role.VIEWER);
+        InGameTestSupport.grant(helper, setup, deviceAdmin, Role.VIEWER);
+        store.setOverrides(setup.id(), deviceAdmin.getUUID(), new MainframeAccess.Overrides(Set.of(Perm.DEVICES_MANAGE, Perm.VIEW_POSITIONS), Set.of()));
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(ai.ezfox.cccloud.network.NetworkService.result(setup.id()) != null, "network computed"))
+            .thenExecute(() -> {
+                var v = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.mainframe(setup.mainframe(), viewer, null)).getAsJsonObject();
+                helper.assertTrue(!v.has("network"), "viewer: no node coordinates");
+                helper.assertTrue(!v.has("devices") && !v.has("trusted") && !v.has("code") && !v.has("audit"), "viewer: no management");
+                var d = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.mainframe(setup.mainframe(), deviceAdmin, null)).getAsJsonObject();
+                helper.assertTrue(d.has("network"), "with view.positions: the network");
+                helper.assertTrue(d.has("devices") && d.has("code"), "devices.manage: devices and code");
+                helper.assertTrue(!d.has("trusted") && !d.has("audit") && !d.has("pinSet"), "but not the access list, audit or PIN state");
+                var o = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.mainframe(setup.mainframe(), setup.owner(), null)).getAsJsonObject();
+                helper.assertTrue(o.has("trusted") && o.has("audit") && o.has("pinSet") && o.has("network"), "the owner sees everything");
+            })
+            .thenSucceed();
+    }
 }
