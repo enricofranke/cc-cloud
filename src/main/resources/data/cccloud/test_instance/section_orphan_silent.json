@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:section_orphan_silent",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

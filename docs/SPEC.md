@@ -1085,6 +1085,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 - When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".
 - Live sections always carry `"loaded":true`.
 - The mod keeps these snapshots in SavedData (`data/cccloud/sections.dat`, ≤ 64 KB per section, ≤ 256 per mainframe). They are captured on chunk unload and at server stop, published at server start, and replaced by the live snapshot as soon as the chunk loads. No chunk is ever loaded for this.
+- Removed sections: breaking an uplink drops its section at once. A section whose block disappeared without the break path (`/setblock`, `/fill`, explosions or block movers that skip block-entity side effects) is dropped by `OrphanSections` once its position is loaded but holds no uplink/bridge with that id for 5 minutes (checked every 10 s over the linked sections of loaded mainframes, and for removed block entities whose mainframe is not loaded). Unloaded positions never count.
 - Actions on an unloaded section get `action_result.error = "unloaded"`.
 - Unlinking or breaking a section, or breaking the mainframe, drops its cached snapshot.
 - The network map keeps such devices as `unloaded` with their last position.

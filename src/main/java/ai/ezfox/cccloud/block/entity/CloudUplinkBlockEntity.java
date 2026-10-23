@@ -237,6 +237,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     @Override
     public void onLoad() {
         super.onLoad();
+        chunkUnloading = false;
         if (level == null || level.isClientSide()) return;
         if (!CloudNetwork.registerUplink(this)) {
             uplinkId = UUID.randomUUID();
@@ -252,12 +253,27 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
+    /** Set by NeoForge before {@link #setRemoved()} when the chunk unloads (not when the block is removed). */
+    private boolean chunkUnloading;
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        chunkUnloading = true;
+    }
+
     @Override
     public void setRemoved() {
         super.setRemoved();
         wired.onRemoved();
         if (!registered) return;
         registered = false;
+        // Removed without the break path (/setblock, /fill, explosions without side effects, block movers): the
+        // section goes away once the block stays missing (OrphanSections).
+        if (!chunkUnloading && !broken && link != null && level instanceof ServerLevel serverLevel) {
+            ai.ezfox.cccloud.network.OrphanSections.removedInPlace(GlobalPos.of(serverLevel.dimension(), getBlockPos()), uplinkId, link.id(),
+                serverLevel.getServer().getTickCount());
+        }
         CloudNetwork.unregisterUplink(this);
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;

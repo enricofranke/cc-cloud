@@ -179,6 +179,8 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("security_no_link_takeover", () -> ai.ezfox.cccloud.gametest.SecurityTests::noLinkTakeover);
         TEST_FUNCTIONS.register("security_screen_parts", () -> ai.ezfox.cccloud.gametest.SecurityTests::screenShowsOnlyAllowedParts);
         TEST_FUNCTIONS.register("section_cache", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::unloadAndReload);
+        TEST_FUNCTIONS.register("section_orphan_broken", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::brokenUplinkDropsSection);
+        TEST_FUNCTIONS.register("section_orphan_silent", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::silentlyRemovedUplinkDropsSection);
         TEST_FUNCTIONS.register("map_tiles", () -> ai.ezfox.cccloud.gametest.MapTileTests::tiles);
         TEST_FUNCTIONS.register("voxel_exposed", () -> ai.ezfox.cccloud.gametest.VoxelTests::exposedOnly);
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);

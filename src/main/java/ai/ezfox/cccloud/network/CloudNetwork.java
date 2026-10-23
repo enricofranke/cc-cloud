@@ -148,6 +148,7 @@ public final class CloudNetwork {
         long cost = TickCost.start();
         NetworkService.tick(event.getServer());
         ai.ezfox.cccloud.redstone.RedstoneService.tick(event.getServer());
+        OrphanSections.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
         TickCost.end(TickCost.GLOBAL, cost);
         // GameTests only: the hub flush runs on the server tick (normally the web server's thread), not counted
@@ -196,6 +197,7 @@ public final class CloudNetwork {
         ai.ezfox.cccloud.upgrade.Upgrades.clear();
         ai.ezfox.cccloud.upgrade.ChunkAnchor.clear();
         ai.ezfox.cccloud.redstone.RedstoneService.clear();
+        OrphanSections.clear();
         WebHub.INSTANCE.clear();
         server = null;
         CCCloud.LOGGER.debug("CC: Cloud network state cleared");
