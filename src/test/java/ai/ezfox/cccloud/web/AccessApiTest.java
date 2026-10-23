@@ -203,13 +203,37 @@ class AccessApiTest {
         uplink.add("pages", pages);
         var share = new AccessStore.Share("0123456789abcdef", mf, "h", "x", "a", 0, 0, 1, List.of("power"), List.of(), false);
         assertEquals(Set.of("u1~power"), ShareFilter.cardKeys(List.of(uplink), null, share));
-        var filtered = ShareFilter.uplink(uplink, Set.of("u1~power"), false);
+        var filtered = ShareFilter.uplink(uplink, ShareFilter.Scope.of(Set.of("u1~power")), false);
         assertEquals(1, filtered.getAsJsonArray("widgets").size());
         var layout = com.google.gson.JsonParser.parseString("{\"v\":1,\"pages\":[{\"id\":\"main\",\"title\":\"M\"},{\"id\":\"power\",\"title\":\"P\"}],"
             + "\"cards\":{\"u1\":{\"page\":\"power\"}},\"widgets\":{}}").getAsJsonObject();
         assertEquals(Set.of("u1", "u1~power"), ShareFilter.cardKeys(List.of(uplink), layout, share), "the edited layout moves cards between pages");
         uplink.addProperty("restricted", true);
-        assertNull(ShareFilter.uplink(uplink, Set.of("u1", "u1~power"), false), "restricted sections are never shared");
+        assertNull(ShareFilter.uplink(uplink, ShareFilter.Scope.of(Set.of("u1", "u1~power")), false), "restricted sections are never shared");
+    }
+
+    @Test
+    void shareFilterFollowsV2CustomCards() {
+        var uplink = new JsonObject();
+        uplink.addProperty("uplinkId", "u1");
+        var widgets = new com.google.gson.JsonArray();
+        widgets.add(widget("a", "gauge", null));
+        widgets.add(widget("b", "gauge", null));
+        widgets.add(widget("c", "gauge", null));
+        uplink.add("widgets", widgets);
+        var layout = com.google.gson.JsonParser.parseString("{\"v\":2,\"pages\":[{\"id\":\"main\",\"title\":\"M\"},{\"id\":\"tv\",\"title\":\"TV\"}],"
+            + "\"cards\":{\"u1\":{\"page\":\"main\"},\"c:wall\":{\"page\":\"tv\",\"x\":0,\"y\":0,\"w\":6,\"h\":4}},"
+            + "\"widgets\":{\"u1/a\":{\"card\":\"c:wall\"},\"u1/c\":{\"card\":\"c:gone\"}}}").getAsJsonObject();
+        var byPage = new AccessStore.Share("0123456789abcdef", mf, "h", "x", "a", 0, 0, 1, List.of("tv"), List.of(), false);
+        var scope = ShareFilter.scope(List.of(uplink), layout, byPage);
+        assertEquals(Set.of("c:wall"), scope.cards(), "custom cards are shared by their page");
+        var filtered = ShareFilter.uplink(uplink, scope, false);
+        assertEquals(1, filtered.getAsJsonArray("widgets").size());
+        assertEquals("a", filtered.getAsJsonArray("widgets").get(0).getAsJsonObject().get("id").getAsString(), "only the widget moved into the shared card");
+        var byKey = new AccessStore.Share("0123456789abcdef", mf, "h", "x", "a", 0, 0, 1, List.of(), List.of("u1"), false);
+        var home = ShareFilter.uplink(uplink, ShareFilter.scope(List.of(uplink), layout, byKey), false);
+        assertEquals(List.of("b", "c"), home.getAsJsonArray("widgets").asList().stream().map(w -> w.getAsJsonObject().get("id").getAsString()).toList(),
+            "a moved out; c points at a missing card and stays home");
     }
 
     private static JsonObject widget(String id, String type, @Nullable String page) {

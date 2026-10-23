@@ -18,12 +18,15 @@ import org.jspecify.annotations.Nullable;
  * What a share-link viewer may see (docs/SPEC.md v0.6 "Share links"): only the shared cards (by card key, or every
  * card on a shared page, resolved like the dashboard's {@code resolveLayout}), never {@code item_search} widgets, and
  * with {@code hideNumbers} no {@code label}/{@code text}/{@code number} widgets. No network map, no positions.
+ * Layout v2: a widget counts for the card it was moved into ({@code widgets[key].card}, if that card exists), and custom
+ * cards ({@code c:<id>}) are shared by key or by their page.
  * Pure Java, unit tested.
  */
 public final class ShareFilter {
     public static final String DEFAULT_PAGE = "main";
     private static final Set<String> ALWAYS_HIDDEN = Set.of("item_search");
     private static final Set<String> NUMBERS = Set.of("label", "text", "number");
+    private static final String CUSTOM_PREFIX = "c:";
 
     private ShareFilter() {
     }
@@ -38,7 +41,47 @@ public final class ShareFilter {
         return uplinkId;
     }
 
-    /** Every card key the share includes: its explicit cards plus all cards placed on its pages. */
+    /**
+     * What a share shows: the shared card keys and the widgets that were moved into another (existing) card.
+     *
+     * @param moved widget key ({@code <uplinkId>/<widgetId>}) → the card it sits in now
+     */
+    public record Scope(Set<String> cards, Map<String, String> moved) {
+        public static Scope of(Set<String> cards) {
+            return new Scope(cards, Map.of());
+        }
+
+        public String cardOf(String uplinkId, JsonObject widget) {
+            String id = str(widget.get("id"));
+            String card = id == null ? null : moved.get(uplinkId + "/" + id);
+            return card != null ? card : cardKeyOf(uplinkId, widget);
+        }
+    }
+
+    public static Scope scope(Collection<JsonObject> uplinks, @Nullable JsonObject layout, AccessStore.Share share) {
+        var cards = cardKeys(uplinks, layout, share);
+        if (layout == null || !(layout.get("widgets") instanceof JsonObject widgetPatches)) return Scope.of(cards);
+        var existing = new HashSet<String>();
+        for (var uplink : uplinks) {
+            String uplinkId = str(uplink.get("uplinkId"));
+            if (uplinkId == null) continue;
+            existing.add(uplinkId);
+            if (uplink.get("widgets") instanceof JsonArray widgets) {
+                for (var e : widgets) if (e instanceof JsonObject w) existing.add(cardKeyOf(uplinkId, w));
+            }
+        }
+        if (layout.get("cards") instanceof JsonObject cardPatches) {
+            for (var key : cardPatches.keySet()) if (key.startsWith(CUSTOM_PREFIX)) existing.add(key);
+        }
+        var moved = new HashMap<String, String>();
+        for (var entry : widgetPatches.entrySet()) {
+            String card = entry.getValue() instanceof JsonObject patch ? str(patch.get("card")) : null;
+            if (card != null && existing.contains(card)) moved.put(entry.getKey(), card);
+        }
+        return new Scope(cards, moved);
+    }
+
+    /** Every card key the share includes: its explicit cards plus all cards placed on its pages (custom cards too). */
     public static Set<String> cardKeys(Collection<JsonObject> uplinks, @Nullable JsonObject layout, AccessStore.Share share) {
         var keys = new LinkedHashSet<>(share.cards());
         if (share.pages().isEmpty()) return keys;
@@ -70,6 +113,9 @@ public final class ShareFilter {
             }
             if (widgets.isEmpty() && share.pages().contains(pageOf(cardPatches, uplinkId, null, first, pageSet))) keys.add(uplinkId);
         }
+        for (var key : cardPatches.keySet()) {
+            if (key.startsWith(CUSTOM_PREFIX) && share.pages().contains(pageOf(cardPatches, key, null, first, pageSet))) keys.add(key);
+        }
         return keys;
     }
 
@@ -98,14 +144,14 @@ public final class ShareFilter {
         return ids;
     }
 
-    public static boolean widgetVisible(String uplinkId, JsonObject widget, Set<String> keys, boolean hideNumbers) {
+    public static boolean widgetVisible(String uplinkId, JsonObject widget, Scope scope, boolean hideNumbers) {
         String type = str(widget.get("type"));
         if (type == null || ALWAYS_HIDDEN.contains(type) || (hideNumbers && NUMBERS.contains(type))) return false;
-        return keys.contains(cardKeyOf(uplinkId, widget));
+        return scope.cards().contains(scope.cardOf(uplinkId, widget));
     }
 
     /** A copy of the uplink with only the visible widgets, or null if none is visible. */
-    public static @Nullable JsonObject uplink(JsonObject uplink, Set<String> keys, boolean hideNumbers) {
+    public static @Nullable JsonObject uplink(JsonObject uplink, Scope keys, boolean hideNumbers) {
         String uplinkId = str(uplink.get("uplinkId"));
         if (uplinkId == null || !(uplink.get("widgets") instanceof JsonArray widgets)) return null;
         // v0.5 restricted sections (server, claims, backups) are never shared.
@@ -133,7 +179,7 @@ public final class ShareFilter {
      *
      * @param uplinks the hub's current uplink snapshots by id
      */
-    public static @Nullable JsonObject message(JsonObject message, Map<String, JsonObject> uplinks, Set<String> keys, boolean hideNumbers) {
+    public static @Nullable JsonObject message(JsonObject message, Map<String, JsonObject> uplinks, Scope keys, boolean hideNumbers) {
         String t = str(message.get("t"));
         if (t == null) return null;
         switch (t) {

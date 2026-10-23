@@ -19,7 +19,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * World SavedData ({@code data/cccloud/layouts.dat}): the dashboard layout of each mainframe, as validated JSON
- * (max 64 KB each). Server thread only; the {@link WebHub} keeps a copy for the Netty threads.
+ * (max 64 KB each). v1 documents are migrated to v2 at server start when the mainframe's sections are known (cached
+ * sections are published before the layouts). Server thread only; the {@link WebHub} keeps a copy for the Netty threads.
  */
 public final class LayoutData extends SavedData {
     private static final Codec<LayoutData> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -60,7 +61,30 @@ public final class LayoutData extends SavedData {
                 setDirty();
                 continue;
             }
+            var migrated = migrate(layout, WebHub.INSTANCE.sectionSnapshots(entry.getKey()));
+            if (migrated != null) {
+                layout = migrated;
+                entry.setValue(Json.GSON.toJson(layout));
+                setDirty();
+                CCCloud.LOGGER.info("[cccloud] Migrated the dashboard layout of mainframe {} to v2", entry.getKey());
+            }
             WebHub.INSTANCE.setLayout(entry.getKey(), layout);
+        }
+    }
+
+    /**
+     * A v1 layout migrated to v2 (docs/SPEC.md "Layout schema v2") for the given section snapshots, or null when nothing
+     * is to be done: already v2, no sections known yet (the dashboard migrates on its first save then), or the result
+     * would not validate (the v1 document stays, it is still accepted).
+     */
+    static @Nullable JsonObject migrate(JsonObject layout, java.util.List<JsonObject> sections) {
+        if (layout.get("v").getAsInt() != 1 || sections.isEmpty()) return null;
+        try {
+            var result = LayoutValidator.validate(LayoutMigration.migrate(sections, layout));
+            return result.layout();
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.warn("[cccloud] Could not migrate a dashboard layout to v2", e);
+            return null;
         }
     }
 
