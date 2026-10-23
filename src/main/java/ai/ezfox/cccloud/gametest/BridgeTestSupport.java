@@ -141,7 +141,10 @@ public final class BridgeTestSupport {
 
         if (!once[0]) {
             once[0] = true;
+            int seq = core.alertSeq();
             helper.assertTrue(core.watchOp(new Op.WatchAdd(ITEM, 500)) == null, "watchlist add");
+            // Added while already below min (AMOUNT < 500): the crossing must alert right away.
+            helper.assertTrue(core.alertsSince(seq).stream().anyMatch(a -> a.text().contains("is low")), "watch add below min alerts: " + core.alertsSince(seq));
             helper.assertTrue("already_watched".equals(core.watchOp(new Op.WatchAdd(ITEM, 1))), "watchlist duplicate");
             helper.assertTrue("unknown_item".equals(core.watchOp(new Op.WatchAdd("nosuchmod:thing", 1))), "watchlist unknown item");
         }

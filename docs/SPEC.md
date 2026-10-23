@@ -801,3 +801,17 @@ Push Lua programs from the browser straight onto a CC computer through the mainf
 - Permissions: **admin** role (code runs on the computer), PIN if one is set, rate limit 10 uploads/min, audit log entry + in-game chat note to the owner ("<device> uploaded control-room.lua to Computer #0").
 - Lua running on a CC computer is sandboxed by CC (no Java access, CC's HTTP rules unchanged), so this cannot execute code on the Minecraft server itself.
 - Also list/download/delete files of that computer (admin), as the base for the later full Lua editor.
+
+## Website & Script Store (requested 2026-10-23)
+
+### Project website
+- Static site in `website/` (Astro, no client JS except islands), same visual identity as the dashboard and blocks (CC terminal look, pixel headings, gold/cyan, dark + light).
+- Pages: landing (hero with an interactive 3D view of our real block models – reuse the art pipeline's converted geometry; feature sections with real dashboard screenshots/short looping clips; how it works; compatibility; security), **Docs** (the same DE/EN content as the in-app `/docs`, single source: move the docs content into a shared folder `docs-content/` consumed by both the dashboard and the website), **Features**, **Download** (CurseForge/Modrinth/GitHub links, version matrix), **Script Store**, Changelog, FAQ. SEO meta, OpenGraph images, sitemap, i18n routes `/de/` and `/en/`.
+- Hosting: decided later (GitHub Pages needs a public repo; Cloudflare Pages works with private repos). Build output must be a plain static folder.
+
+### Script Store
+- **Registry** = a git repository (initially `store/` in this repo, later its own public repo `cc-cloud-scripts`): one folder per script with `manifest.json` (id, name, description DE/EN, author, license, version, tags, required peripherals/mods, uses: redstone/peripherals/http, entry file, screenshots) + Lua files. Submissions via pull request → CI validates (manifest schema, Lua syntax check with a Lua parser, size ≤ 256 KB, no obfuscation/minified blobs, license present) → human review → merge. Every release pinned by content SHA-256.
+- **Index**: CI builds `index.json` (+ per-script JSON with file hashes) published with the website (static, CORS enabled for GET).
+- **Install flow** (no connection from the Minecraft server to the store needed): on the website, "Install" opens the user's own dashboard at `<dashboard>/store#install=<id>@<version>` (the dashboard URL is remembered in the website's localStorage after the first time, or entered). The dashboard fetches the script from the store index (CSP `connect-src` gets the configured store origin, config `scriptStoreUrl`, default the official site; can be disabled by server admins with `scriptStore=false`), verifies the SHA-256 against the index, **shows the full source and the manifest's "uses" list**, lets the admin pick the computer, then installs via the Script import API (admin role, PIN, audit log). Updates: the dashboard shows "update available" for installed store scripts (stored metadata per file).
+- The dashboard also gets a **Store tab** that browses the same index directly.
+- Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).

@@ -57,6 +57,8 @@ public final class CloudCommand {
             .then(Commands.literal("help").executes(CloudCommand::help))
             .then(Commands.literal("status").executes(CloudCommand::status)
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
+            .then(Commands.literal("test-token").requires(src -> Boolean.getBoolean("cccloud.devCommands") && src.getEntity() == null)
+                .then(Commands.argument("mainframe", StringArgumentType.word()).executes(CloudCommand::testToken)))
             .then(Commands.literal("select")
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
             .then(Commands.literal("icons").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.COMMAND_ICONS))
@@ -228,7 +230,9 @@ public final class CloudCommand {
 
     private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestPending(
         CommandContext<CommandSourceStack> c, com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
-        if (!(c.getSource().getEntity() instanceof ServerPlayer player)) return b.buildFuture();
+        if (!(c.getSource().getEntity() instanceof ServerPlayer player)) {
+            return SharedSuggestionProvider.suggest(WebAuthData.get(c.getSource().getServer()).pendingRequests().stream().map(AuthStore.Pending::id), b);
+        }
         return SharedSuggestionProvider.suggest(pendingFor(player).stream().map(AuthStore.Pending::id), b);
     }
 
@@ -453,6 +457,7 @@ public final class CloudCommand {
     }
 
     private static int decide(CommandContext<CommandSourceStack> c, String id, boolean allow) throws CommandSyntaxException {
+        if (!(c.getSource().getEntity() instanceof ServerPlayer)) return decideFromConsole(c.getSource(), id, allow);
         ServerPlayer player = c.getSource().getPlayerOrException();
         var auth = WebAuthData.get(c.getSource().getServer());
         var pending = auth.pending(id);
@@ -470,6 +475,60 @@ public final class CloudCommand {
             CCCloud.LOGGER.info("[cccloud] {} denied device '{}' from {}", player.getGameProfile().name(), pending.deviceName(), pending.ip());
             c.getSource().sendSystemMessage(Component.translatable("cccloud.approval.denied", pending.deviceName()).withStyle(ChatFormatting.YELLOW));
         }
+        return 1;
+    }
+
+    /**
+     * Server console / RCON (a trusted operator): approve or deny any request. The browser acts with the role of the
+     * mainframe's owner (mainframe codes) or the code's player (account codes). Written to the audit log.
+     */
+    private static int decideFromConsole(CommandSourceStack source, String id, boolean allow) throws CommandSyntaxException {
+        if (!source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_OWNER)) throw NOT_OWNER.create();
+        var server = source.getServer();
+        var auth = WebAuthData.get(server);
+        var pending = auth.pending(id);
+        if (pending == null || pending.state() != AuthStore.PendingState.PENDING) throw UNKNOWN_REQUEST.create();
+        java.util.UUID player = pending.isAccount() ? pending.account() : null;
+        if (player == null) {
+            var access = WebAuthData.access(server).access(pending.mainframeId());
+            player = access == null ? null : access.owner();
+        }
+        if (player == null) throw NOT_OWNER.create();
+        String name = ai.ezfox.cccloud.access.CloudPermissions.nameOf(server, player);
+        if (allow) {
+            var approved = auth.approve(id, player, name, true);
+            if (approved == null) throw UNKNOWN_REQUEST.create();
+            source.sendSystemMessage(Component.translatable("cccloud.approval.approved", approved.deviceName()));
+        } else {
+            auth.deny(id);
+            source.sendSystemMessage(Component.translatable("cccloud.approval.denied", pending.deviceName()));
+        }
+        CCCloud.LOGGER.info("[cccloud] Console ({}) {} device '{}' from {}", source.getTextName(), allow ? "approved" : "denied", pending.deviceName(), pending.ip());
+        if (pending.mainframeId() != null) {
+            WebAuthData.access(server).audit(pending.mainframeId(), "Console " + (allow ? "approved" : "denied") + " browser '" + pending.deviceName() + "'");
+        }
+        return 1;
+    }
+
+    /** Dev/E2E only ({@code -Dcccloud.devCommands=true}): a device token for a mainframe, printed to the console. */
+    private static int testToken(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var source = c.getSource();
+        if (!Boolean.getBoolean("cccloud.devCommands") || source.getEntity() != null) throw NOT_OWNER.create();
+        java.util.UUID id;
+        try {
+            id = java.util.UUID.fromString(StringArgumentType.getString(c, "mainframe"));
+        } catch (IllegalArgumentException e) {
+            throw NO_MAINFRAME.create();
+        }
+        var access = WebAuthData.access(source.getServer()).access(id);
+        if (access == null || access.owner() == null) throw NO_MAINFRAME.create();
+        var auth = WebAuthData.get(source.getServer());
+        var pending = auth.pair(auth.currentCode(id, access.owner()).code(), "e2e", "127.0.0.1");
+        if (pending == null) throw UNKNOWN_REQUEST.create();
+        var approved = auth.approve(pending.id(), access.owner(), access.ownerName(), true);
+        if (approved == null) throw UNKNOWN_REQUEST.create();
+        WebAuthData.access(source.getServer()).audit(id, "Console issued a test token (dev)");
+        source.sendSystemMessage(Component.literal("token " + approved.token()));
         return 1;
     }
 }

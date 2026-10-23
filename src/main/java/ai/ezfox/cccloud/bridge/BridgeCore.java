@@ -136,16 +136,19 @@ public final class BridgeCore {
             job.status = state.status();
             job.progress = Math.max(0, Math.min(1, state.progress()));
         }
-        if (!watchlist.isEmpty() && isConnected()) {
-            var crossings = watchlist.check(name -> {
-                var item = ItemNames.byName(name);
-                return item == null ? 0 : adapter.itemCount(item);
-            });
-            for (var c : crossings) {
-                var item = ItemNames.byName(c.name());
-                String display = item == null ? c.name() : ItemNames.displayName(item);
-                addAlert(display + " is low: " + c.count() + " / " + c.min(), "warn");
-            }
+        if (!watchlist.isEmpty() && isConnected()) checkWatchlist();
+    }
+
+    /** Refreshes the watchlist counts and turns every new "below min" crossing into an alert. */
+    private void checkWatchlist() {
+        var crossings = watchlist.check(name -> {
+            var item = ItemNames.byName(name);
+            return item == null ? 0 : adapter.itemCount(item);
+        });
+        for (var c : crossings) {
+            var item = ItemNames.byName(c.name());
+            String display = item == null ? c.name() : ItemNames.displayName(item);
+            addAlert(display + " is low: " + c.count() + " / " + c.min(), "warn");
         }
     }
 
@@ -355,12 +358,8 @@ public final class BridgeCore {
         String error = watchlist.apply(op, name -> ItemNames.byName(name) != null);
         if (error == null) {
             // Refresh the counts right away so the dashboard shows the new row with its amount.
-            if (isConnected()) {
-                watchlist.check(name -> {
-                    var item = ItemNames.byName(name);
-                    return item == null ? 0 : adapter.itemCount(item);
-                });
-            }
+            // An entry added (or its min raised) while already below min alerts right away.
+            if (isConnected()) checkWatchlist();
             setChanged.run();
         }
         return error;
