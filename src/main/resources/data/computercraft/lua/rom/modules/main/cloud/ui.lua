@@ -287,6 +287,10 @@ function Dash:run()
             if side == self.side and widget then widget.value = value end
             local handler = side == self.side and self.handlers[id]
             if handler then start(handler, user, value) end
+        elseif name == "cloud_run" and not multishell and type(event[2]) == "string" and fs.exists(event[2]) then
+            -- Script import "Run now" on computers without multishell: run the uploaded file as a handler.
+            local file = event[2]
+            if file:match("^[%w_.-]+$") or file:match("^[%w_.-]+/[%w_.-]+$") then start(shell.run, file) end
         elseif name == "timer" and by_timer[event[2]] then
             local task = by_timer[event[2]]
             by_timer[event[2]] = nil

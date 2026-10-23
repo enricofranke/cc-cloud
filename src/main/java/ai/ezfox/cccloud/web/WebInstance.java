@@ -31,6 +31,8 @@ final class WebInstance {
     final FailureLimiter pairLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** v0.6 API: requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Script import writes per device (10 per minute). */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> scriptLimits = new java.util.concurrent.ConcurrentHashMap<>();
     /** Share links: wrong share id/secret attempts per IP (5 per minute, then blocked). */
     final FailureLimiter shareLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** Share links: logins per share link (30 per minute). */
@@ -71,7 +73,8 @@ final class WebInstance {
         if (ssl != null) p.addLast("ssl", ssl.newHandler(ch.alloc()));
         p.addLast("idle", new IdleStateHandler(CloudWebServer.HANDSHAKE_TIMEOUT_S, 0, 0));
         p.addLast("http", new HttpServerCodec(4096, 8192, 8192));
-        p.addLast("aggregator", new HttpObjectAggregator(ClientMessages.MAX_BODY));
+        // Script uploads may be 256 KB; every other route rejects bodies over 4 KB in HttpHandler.
+        p.addLast("aggregator", new HttpObjectAggregator(ai.ezfox.cccloud.script.ScriptFiles.MAX_FILE + 1024));
         p.addLast("handler", new HttpHandler(this));
     }
 

@@ -317,5 +317,6 @@
   "cccloud.help.devices_here": "browsers limited to this mainframe",
   "cccloud.configuration.rules": "Rules",
   "cccloud.configuration.rulesEnabled": "Run rules",
-  "cccloud.configuration.maxRules": "Rules per mainframe"
+  "cccloud.configuration.maxRules": "Rules per mainframe",
+  "cccloud.script.note": "[CC: Cloud] %s (%s) %s on %s"
 }

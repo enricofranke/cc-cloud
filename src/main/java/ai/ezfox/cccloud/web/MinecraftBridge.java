@@ -234,6 +234,12 @@ final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public AccessApi.Response script(GameBridge.ScriptRequest request) {
+        auth.touch(request.device().tokenHash(), request.ip());
+        return ScriptApi.handle(server, request);
+    }
+
+    @Override
     public AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip) {
         var permissions = CloudPermissions.of(server);
         // Banned players and players without cccloud.use cannot use any API.

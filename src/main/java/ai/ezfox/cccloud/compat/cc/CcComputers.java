@@ -110,6 +110,27 @@ public final class CcComputers {
             computer().reboot();
         }
 
+        /** Queues an event on the computer (it must be on). */
+        public void queueEvent(String name, Object... args) {
+            var computer = be.getServerComputer();
+            if (computer != null) computer.queueEvent(name, args);
+        }
+
+        /** Advanced and command computers have colour and multishell. */
+        public boolean advanced() {
+            return be.getFamily() != dan200.computercraft.shared.computer.core.ComputerFamily.NORMAL;
+        }
+
+        /** The computer's folder in the world save ({@code computer/<id>}), or null before it got an id. */
+        public @Nullable String saveDir() {
+            int id = be.getComputerID();
+            return id < 0 ? null : be.getFamily().getSaveFolder() + "/" + id;
+        }
+
+        public @Nullable String label() {
+            return be.getLabel();
+        }
+
         /** Redstone input on a computer-local side (works while the computer is off). */
         public int input(String side) {
             var computer = be.getServerComputer();

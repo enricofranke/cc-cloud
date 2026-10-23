@@ -62,6 +62,14 @@ public interface GameBridge {
     /** Display name of a mainframe. */
     String mainframeName(UUID mainframeId);
 
+    /** A script import request (docs/SPEC.md "Script import – HTTP API"); the PIN is already checked when needed. */
+    record ScriptRequest(Router.Id route, AuthStore.Device device, UUID mainframeId, UUID uplinkId, @Nullable String file,
+                         java.util.Map<String, String> query, byte[] body, String ip) {
+    }
+
+    /** Script import (files and run on the computer behind an uplink card). Server thread. */
+    AccessApi.Response script(ScriptRequest request);
+
     /** v0.6 HTTP API ({@code /api/mainframes}, devices, access, shares): runs on the server thread. */
     AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip);
 }
