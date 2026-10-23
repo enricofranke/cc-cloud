@@ -816,6 +816,22 @@ try {
     await ep.click('.sm-item:has-text("Access")');
     await ep.waitForSelector(".acc-table");
     await shot(ep, "desktop-a3-access");
+    // fine-grained: Lisa's "Custom" editor, take away script uploads, save
+    await ep.click('button[aria-label="Custom permissions for Lisa"]');
+    await ep.waitForSelector(".perm-editor");
+    await ep.locator('.perm-row:has-text("Upload scripts") input').uncheck();
+    await ep.locator('.perm-row:has-text("Terminal") input').uncheck();
+    await ep.waitForTimeout(200);
+    await shot(ep, "desktop-a3b-access-custom");
+    await ep.click('.perm-actions .pxbtn');
+    await ep.waitForSelector('.perm-btn.has-custom');
+    await ep.click('button[aria-label="Custom permissions for team rank member"]');
+    await ep.locator('.perm-row:has-text("Craft") input').first().uncheck();
+    await ep.click('.perm-actions .pxbtn');
+    await ep.waitForSelector(".role-badge.r-custom");
+    await ep.evaluate(() => window.scrollTo(0, 0));
+    await ep.waitForTimeout(200);
+    await shot(ep, "desktop-a3c-access-saved");
     await ep.goto(`${origin}/#/devices`);
     await ep.waitForSelector(".dev-row");
     await shot(ep, "desktop-a4-devices");
@@ -863,6 +879,17 @@ try {
     await vp.waitForSelector(".banner-readonly");
     await vp.waitForTimeout(400);
     await shot(vp, "phone-a1-viewer-role");
+    // the owner's Access page at 375 px with a custom editor open
+    const op = await (await phoneCtx()).newPage();
+    watch(op);
+    await op.addInitScript((a) => localStorage.setItem("cccloud.account.v1", JSON.stringify(a)), seed(await acct("Enrico"), "Enrico"));
+    await op.goto(`${origin}/#/m/${mock.base.id}/access`);
+    await op.waitForSelector(".acc-table");
+    await op.click('button[aria-label="Custom permissions for Lisa"]');
+    await op.waitForSelector(".perm-editor");
+    await op.waitForTimeout(200);
+    await shot(op, "phone-a2-access-custom");
+    await op.context().close();
     // keyboard: focus ring on the page tabs
     await vp.keyboard.press("Tab");
     await vp.keyboard.press("Tab");

@@ -175,7 +175,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
           </span>
         )}
         {cached ? <span class="tag tag-gray">Not loaded</span> : !online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
-        {!edit && !viewOnly && !card.custom && conn.isAdmin && online && card.uplink.mode !== "direct" && (
+        {!edit && !viewOnly && !card.custom && conn.can("scripts.upload") && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-scripts" title="Scripts on this computer" aria-label={`Upload script to ${card.title || "this computer"}`} onClick={() => setScripts(true)}>
             <span aria-hidden="true">{"</>"}</span>
           </button>

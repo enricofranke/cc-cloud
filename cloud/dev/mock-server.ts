@@ -13,7 +13,7 @@ import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { SAMPLE_ICONS } from "./icons.ts";
-import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
+import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
@@ -54,6 +54,8 @@ interface Client {
   canControl: boolean;
   /** v0.6 role on this mainframe ("share" for share-link viewers) */
   role: Role | "share";
+  /** effective fine-grained permissions (docs/SPEC.md "Fine-grained permissions") */
+  perms: string[];
   /** share-link sessions */
   share?: Share;
   uuid?: string;
@@ -246,6 +248,24 @@ export async function createMockServer(opts: MockOptions = {}) {
     return t.canControl ? "admin" : "viewer";
   }
   const rank = (r: string | undefined) => RANK[r ?? "none"] ?? 0;
+  /** Effective permissions of a token; read-only devices are capped at the viewer preset. */
+  function permsFor(t: Token, mf: Mainframe): string[] {
+    const role = roleFor(t, mf);
+    if (!role) return [];
+    const all = t.uuid && !t.fixedRole ? resolvePerms(mf.access, t.uuid) : presetPerms(role);
+    return t.canControl ? all : all.filter((x) => presetPerms("viewer").includes(x));
+  }
+  /** WebSocket: null when allowed; else not_allowed, or read_only for sessions without act.buttons. */
+  const denied = (c: Client, perm: string) => (c.perms.includes(perm) ? null : c.canControl ? "not_allowed" : "read_only");
+  /** HTTP gate: 403 no_access / not_allowed, else the mainframe, role and perms. */
+  const gate = (t: Token, mfId: string, perm: string) => {
+    const m = mainframes.get(mfId);
+    const role = m ? roleFor(t, m) : undefined;
+    const perms = m && role ? permsFor(t, m) : [];
+    if (!m || !role || !perms.includes("view")) return { error: "no_access" as const };
+    if (!perms.includes(perm)) return { error: "not_allowed" as const };
+    return { m, role, perms };
+  };
   function decide(id: string, approve: boolean) {
     const pp = pairings.get(id);
     if (!pp || pp.status !== "pending") return;
@@ -335,14 +355,6 @@ export async function createMockServer(opts: MockOptions = {}) {
     ...(mf.reason ? { reason: mf.reason } : {}),
     ...(mf.power ? { power: powerOf(mf) } : {}),
   });
-  /** docs/SPEC.md "Fine-grained permissions" presets */
-  const presetPerms = (role: string) => {
-    const viewer = ["view", "storage.search"];
-    const operator = [...viewer, "view.positions", "act.buttons", "act.redstone", "storage.craft", "rules.toggle"];
-    if (role === "viewer") return viewer;
-    if (role === "operator") return operator;
-    return [...operator, "storage.autostock", "scripts.upload", "scripts.run", "scripts.delete", "terminal", "layout.edit", "rules.edit", "push.manage", "devices.manage", "access.manage", "shares.create", "pin.manage", "power.toggle", "network.link"];
-  };
   const snapshot = (mf: Mainframe, c?: Client) =>
     c?.share
       ? {
@@ -365,8 +377,8 @@ export async function createMockServer(opts: MockOptions = {}) {
           mainframe: info(mf),
           canControl: c?.canControl ?? true,
           role: c?.role ?? "admin",
-          perms: presetPerms(c?.role ?? "admin"),
-          store: rank(c?.role ?? "admin") >= 3 && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/` } : null,
+          perms: c?.perms ?? presetPerms("admin"),
+          store: (c?.perms ?? presetPerms("admin")).includes("scripts.upload") && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/` } : null,
           account: c?.uuid ? { player: playerByUuid(c.uuid)?.player ?? "?" } : null,
           uplinks: [...mf.uplinks.values()],
           layout: mf.layout,
@@ -839,8 +851,8 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
 
   // v0.6: Enrico owns the base; Lisa is a direct admin; the "Builders" FTB team (Tom member, Sam ally) is assigned
-  base.access.direct.set(PLAYERS[1].uuid, "admin");
-  base.access.team = { provider: "ftbteams", id: "ftb-builders", mapping: { ...DEFAULT_MAPPING.ftbteams } };
+  base.access.direct.set(PLAYERS[1].uuid, grant("admin"));
+  base.access.team = { provider: "ftbteams", id: "ftb-builders", mapping: { ...DEFAULT_MAPPING.ftbteams }, overrides: {} };
 
   if (opts.network !== false)
     base.net = {
@@ -1010,7 +1022,7 @@ export async function createMockServer(opts: MockOptions = {}) {
             if ([...smf.clients].filter((x) => x.share?.id === sh.id).length >= sh.maxViewers) return deny("share_full", 4429);
             clearTimeout(authTimer);
             mf = smf;
-            client = { ws, tokenHash: `share:${sh.id}`, user: `share ${sh.label}`, canControl: false, role: "share", share: sh, alive: true, hits: [], queryHits: [] };
+            client = { ws, tokenHash: `share:${sh.id}`, user: `share ${sh.label}`, canControl: false, role: "share", perms: [], share: sh, alive: true, hits: [], queryHits: [] };
             mf.clients.add(client);
             sendTo(ws, snapshot(mf, client));
             return;
@@ -1025,11 +1037,12 @@ export async function createMockServer(opts: MockOptions = {}) {
           const target = mainframes.get(mfId);
           if (!target) return deny("no_access", 4403);
           const role = roleFor(t, target);
-          if (!role) return deny("no_access", 4403);
+          const perms = permsFor(t, target);
+          if (!role || !perms.includes("view")) return deny("no_access", 4403);
           clearTimeout(authTimer);
           mf = target;
           t.lastSeen = Date.now();
-          client = { ws, tokenHash: hash, user: t.name, canControl: rank(role) >= 2, role, uuid: t.uuid, alive: true, hits: [], queryHits: [] };
+          client = { ws, tokenHash: hash, user: t.name, canControl: perms.includes("act.buttons"), role, perms, uuid: t.uuid, alive: true, hits: [], queryHits: [] };
           t.pinFails = t.pinFails ?? 0;
           mf.clients.add(client);
           sendTo(ws, snapshot(mf, client));
@@ -1054,8 +1067,8 @@ export async function createMockServer(opts: MockOptions = {}) {
         const msg = parsed.data;
         if (msg.t === "net_unlink") {
           const nres = (ok: boolean, error?: string) => sendTo(ws, { t: "net_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
-          if (!c.canControl) return nres(false, "read_only");
-          if (rank(c.role) < 3) return nres(false, "not_allowed");
+          const nd = denied(c, "network.link");
+          if (nd) return nres(false, nd);
           const node = m.net?.nodes.find((n) => n.id === msg.nodeId);
           if (!node) return nres(false, "unknown_node");
           if (node.type === "mainframe") return nres(false, "not_allowed");
@@ -1067,8 +1080,8 @@ export async function createMockServer(opts: MockOptions = {}) {
         }
         if (msg.t === "layout_set") {
           const lres = (ok: boolean, error?: string) => sendTo(ws, { t: "layout_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
-          if (!c.canControl) return lres(false, "read_only");
-          if (rank(c.role) < 3) return lres(false, "not_allowed");
+          const ld = denied(c, "layout.edit");
+          if (ld) return lres(false, ld);
           const now = Date.now();
           m.layoutSaves = m.layoutSaves.filter((t) => now - t < 10_000);
           if (m.layoutSaves.length >= 5) return lres(false, "rate_limited");
@@ -1092,9 +1105,10 @@ export async function createMockServer(opts: MockOptions = {}) {
           const su = m.uplinks.get(msg.uplinkId);
           if (!su) return reply({ ok: false, error: "unavailable" });
           if (su.loaded === false || !su.online) return reply({ ok: false, error: "unavailable" });
-          const writeOps = ["cancel", "autostock", "favorite"];
-          const needsControl = t === "craft_preview" || writeOps.includes((msg as { op?: string }).op ?? "");
-          if (needsControl && !c.canControl) return reply({ ok: false, error: "read_only" });
+          const sop = (msg as { op?: string }).op ?? "";
+          const need = t === "craft_preview" || sop === "cancel" ? "storage.craft" : sop === "autostock" ? "storage.autostock" : sop === "favorite" ? "act.buttons" : "storage.search";
+          const sd = denied(c, need);
+          if (sd) return reply({ ok: false, error: sd });
           if (t === "craft_preview") {
             const r = m.onPreview?.(msg.uplinkId, msg.name, msg.count);
             return reply(r ?? { ok: false, error: "unavailable" });
@@ -1114,6 +1128,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           const qu = m.uplinks.get(msg.uplinkId);
           const qw = qu?.widgets.find((x) => x.id === msg.id);
           if (!qu || !qw || qw.type !== "item_search") return qres([], false, "unknown_widget");
+          if (!c.perms.includes("storage.search")) return qres([], false, "not_allowed");
           if (!qu.online) return qres([], false, "uplink_offline");
           const r = m.onQuery?.(msg.uplinkId, msg.id, msg.q);
           return r ? qres(r.rows, r.truncated) : qres([], false, "unavailable");
@@ -1133,6 +1148,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (!u.online) return result(msg.reqId, false, "uplink_offline");
         const w = u.widgets.find((x) => x.id === msg.id);
         if (!w) return result(msg.reqId, false, "unknown_widget");
+        if ((w.id === "redstone" || w.id.endsWith("_redstone") || w.type === "redstone_sides") && !c.perms.includes("act.redstone")) return result(msg.reqId, false, "not_allowed");
         if ((w.opts as { pin?: boolean } | undefined)?.pin) {
           const t = tokens.get(c.tokenHash);
           if (!t) return reject("revoked");
@@ -1387,10 +1403,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (fm) {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
-      const m = mainframes.get(fm[1]);
-      const role = m ? roleFor(t, m) : undefined;
-      if (!m || !role) return json(res, 403, { error: "no_access" });
-      if (rank(role) < 3) return json(res, 403, { error: "not_allowed" });
+      const g = gate(t, fm[1], fm[3] === "run" ? "scripts.run" : req.method === "DELETE" ? "scripts.delete" : "scripts.upload");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const m = g.m;
       if (!m.online) return json(res, 409, { error: "offline" });
       const fs = computerFor(m, fm[2]);
       if (!fs) return json(res, 404, { error: "unknown_computer" });
@@ -1414,10 +1429,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (mt && req.method === "GET") {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
-      const m = mainframes.get(mt[1]);
-      const role = m ? roleFor(t, m) : undefined;
-      if (!m || !role) return json(res, 403, { error: "no_access" });
-      if (rank(role) < 2) return json(res, 403, { error: "not_allowed" });
+      const g = gate(t, mt[1], "view.positions");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const m = g.m;
       const dim = decodeURIComponent(mt[3]);
       if (!["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"].includes(dim)) return json(res, 404, { error: "unknown_dimension" });
       const nodes = (m.net?.nodes ?? []).filter((n) => n.dim === dim);
@@ -1488,10 +1502,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (tm && req.method === "GET") {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
-      const m = mainframes.get(tm[1]);
-      const role = m ? roleFor(t, m) : undefined;
-      if (!m || !role) return json(res, 403, { error: "no_access" });
-      if (rank(role) < 2) return json(res, 403, { error: "not_allowed" });
+      const g = gate(t, tm[1], "view.positions");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const m = g.m;
       const now = Date.now();
       const last = terrainCalls.get(t) ?? 0;
       if (now - last < terrainRateMs) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((terrainRateMs - (now - last)) / 1000) });
@@ -1506,21 +1519,33 @@ export async function createMockServer(opts: MockOptions = {}) {
     if (am) {
       const t = bearer(req);
       if (!t) return json(res, 401, { error: "unauthorized" });
-      const m = mainframes.get(am[1]);
-      const role = m ? roleFor(t, m) : undefined;
-      if (!m || !role) return json(res, 403, { error: "no_access" });
-      const you = { player: (t.uuid && playerByUuid(t.uuid)?.player) || t.name, role };
-      if (rank(role) < 3) return json(res, 403, { error: "not_allowed" });
+      const g = gate(t, am[1], am[2] === "access" ? "access.manage" : "shares.create");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const { m, role } = g;
+      const you = { player: (t.uuid && playerByUuid(t.uuid)?.player) || t.name, role, perms: g.perms };
       if (am[2] === "access") {
         if (req.method === "GET") return json(res, 200, accessDoc(m.access, you));
         if (req.method !== "POST") return json(res, 405, { error: "method" });
         const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+        const list = (x: unknown) => (Array.isArray(x) ? x : null);
+        const allow = list(b.allow);
+        const denyL = list(b.deny);
+        if ((allow && !allow.every(isPerm)) || (denyL && !denyL.every(isPerm))) return json(res, 400, { error: "invalid" });
+        // escalation rule: nobody allows what they do not have (the owner has everything)
+        const mayAllow = (xs: string[] | null) => !xs || role === "owner" || xs.every((x) => g.perms.includes(x));
+        if (!mayAllow(allow)) return json(res, 403, { error: "not_allowed" });
         if (b.op === "set_role" && ["viewer", "operator", "admin"].includes(b.role)) {
           const pl = playerByName(String(b.player ?? ""));
           if (!pl) return json(res, 400, { error: "unknown_player" });
           if (pl.uuid === m.access.owner) return json(res, 400, { error: "invalid" });
-          if (b.role === "admin" && rank(role) < 3) return json(res, 403, { error: "not_allowed" });
-          m.access.direct.set(pl.uuid, b.role);
+          if (!mayAllow(presetPerms(b.role))) return json(res, 403, { error: "not_allowed" });
+          const cur = m.access.direct.get(pl.uuid);
+          m.access.direct.set(pl.uuid, grant(b.role, allow ?? cur?.allow ?? [], denyL ?? cur?.deny ?? []));
+        } else if (b.op === "set_perms") {
+          const pl = playerByName(String(b.player ?? ""));
+          const cur = pl && m.access.direct.get(pl.uuid);
+          if (!pl || !cur) return json(res, 400, { error: "invalid" });
+          m.access.direct.set(pl.uuid, grant(cur.role, allow ?? [], denyL ?? []));
         } else if (b.op === "remove") {
           const pl = playerByName(String(b.player ?? ""));
           if (!pl) return json(res, 400, { error: "unknown_player" });
@@ -1530,27 +1555,36 @@ export async function createMockServer(opts: MockOptions = {}) {
           else {
             const team = TEAMS.find((x) => x.provider === b.provider && x.id === b.teamId);
             if (!team) return json(res, 400, { error: "invalid" });
-            m.access.team = { provider: team.provider, id: team.id, mapping: { ...DEFAULT_MAPPING[team.provider] } };
+            m.access.team = { provider: team.provider, id: team.id, mapping: { ...DEFAULT_MAPPING[team.provider] }, overrides: {} };
           }
         } else if (b.op === "set_mapping" && m.access.team && ["viewer", "operator", "admin", "none"].includes(b.role)) {
-          if (!(String(b.rank) in m.access.team.mapping)) return json(res, 400, { error: "invalid" });
-          m.access.team.mapping[String(b.rank)] = b.role;
+          const rk = String(b.rank);
+          if (!(rk in m.access.team.mapping)) return json(res, 400, { error: "invalid" });
+          if (b.role !== "none" && !mayAllow(presetPerms(b.role))) return json(res, 403, { error: "not_allowed" });
+          m.access.team.mapping[rk] = b.role;
+          if (allow || denyL) {
+            const cur = m.access.team.overrides[rk] ?? { allow: [], deny: [] };
+            m.access.team.overrides[rk] = { allow: allow ?? cur.allow, deny: denyL ?? cur.deny };
+          }
         } else return json(res, 400, { error: "invalid" });
         // role changes apply live
         for (const c of m.clients) {
           if (!c.uuid || c.share) continue;
+          const tok = tokens.get(c.tokenHash);
           const nr = resolveRole(m.access, c.uuid);
-          if (!nr) {
+          const np = tok ? permsFor(tok, m) : resolvePerms(m.access, c.uuid);
+          if (!nr || !np.includes("view")) {
             sendTo(c.ws, { t: "error", error: "no_access" });
             c.ws.close(4403, "no_access");
-          } else if (nr !== c.role) {
+          } else if (nr !== c.role || np.join() !== c.perms.join()) {
             c.role = nr;
-            c.canControl = rank(nr) >= 2;
-            sendTo(c.ws, { t: "role", role: nr, canControl: c.canControl });
+            c.perms = np;
+            c.canControl = np.includes("act.buttons");
+            sendTo(c.ws, { t: "role", role: nr, canControl: c.canControl, perms: np });
           }
         }
         log(`${you.player} changed access: ${JSON.stringify(b)}`);
-        return json(res, 200, accessDoc(m.access, { ...you, role: roleFor(t, m)! }));
+        return json(res, 200, accessDoc(m.access, { ...you, role: roleFor(t, m)!, perms: permsFor(t, m) }));
       }
       // shares
       const list = () => ({

@@ -49,36 +49,86 @@ export const TEAMS: Team[] = [
   { provider: "scoreboard", id: "sb-red", name: "red", members: { [PLAYERS[4].uuid]: "member" } },
 ];
 
+/** docs/SPEC.md "Fine-grained permissions": the catalog in display order, with its group. */
+export const PERMS: { id: string; group: string }[] = [
+  ["view", "view"], ["view.positions", "view"],
+  ["act.buttons", "act"], ["act.redstone", "act"], ["power.toggle", "act"],
+  ["storage.search", "storage"], ["storage.craft", "storage"], ["storage.autostock", "storage"],
+  ["scripts.upload", "scripts"], ["scripts.run", "scripts"], ["scripts.delete", "scripts"], ["terminal", "scripts"],
+  ["layout.edit", "automation"], ["rules.edit", "automation"], ["rules.toggle", "automation"], ["push.manage", "automation"],
+  ["devices.manage", "manage"], ["network.link", "manage"], ["access.manage", "manage"], ["shares.create", "manage"], ["pin.manage", "manage"],
+].map(([id, group]) => ({ id, group }));
+const ALL = PERMS.map((x) => x.id);
+const VIEWER = ["view", "storage.search"];
+const OPERATOR = [...VIEWER, "view.positions", "act.buttons", "act.redstone", "storage.craft", "rules.toggle"];
+export function presetPerms(role: string | undefined): string[] {
+  if (role === "viewer") return VIEWER;
+  if (role === "operator") return OPERATOR;
+  if (role === "admin" || role === "owner") return ALL;
+  return [];
+}
+export const isPerm = (x: unknown): x is string => typeof x === "string" && ALL.includes(x);
+
+export interface Grant {
+  role: Role;
+  allow: string[];
+  deny: string[];
+}
 export interface Access {
   owner: string;
-  direct: Map<string, Role>;
-  team: { provider: Team["provider"]; id: string; mapping: Record<string, Role | "none"> } | null;
+  direct: Map<string, Grant>;
+  team: { provider: Team["provider"]; id: string; mapping: Record<string, Role | "none">; overrides: Record<string, { allow: string[]; deny: string[] }> } | null;
 }
 
 export function newAccess(ownerUuid: string): Access {
   return { owner: ownerUuid, direct: new Map(), team: null };
 }
+export const grant = (role: Role, allow: string[] = [], deny: string[] = []): Grant => ({ role, allow, deny });
+
+/** preset ∪ allow − deny (deny wins within a source) */
+const apply = (role: string | undefined, allow: string[] = [], deny: string[] = []) => {
+  const set = new Set([...presetPerms(role), ...allow]);
+  for (const d of deny) set.delete(d);
+  return set;
+};
+
+function teamRank(a: Access, uuid: string) {
+  if (!a.team) return undefined;
+  const team = TEAMS.find((t) => t.provider === a.team!.provider && t.id === a.team!.id);
+  return team?.members[uuid];
+}
 
 /** Highest role from every source (owner, direct grant, team rank). */
 export function resolveRole(a: Access, uuid: string): Role | undefined {
   let role: Role | undefined = a.owner === uuid ? "owner" : undefined;
-  role = higher(role, a.direct.get(uuid));
-  if (a.team) {
-    const team = TEAMS.find((t) => t.provider === a.team!.provider && t.id === a.team!.id);
-    const rank = team?.members[uuid];
-    const mapped = rank ? a.team.mapping[rank] : undefined;
-    if (mapped && mapped !== "none") role = higher(role, mapped);
-  }
+  role = higher(role, a.direct.get(uuid)?.role);
+  const rank = teamRank(a, uuid);
+  const mapped = rank ? a.team!.mapping[rank] : undefined;
+  if (mapped && mapped !== "none") role = higher(role, mapped);
   return role;
 }
 
-export function accessDoc(a: Access, you: { player: string; role: Role }) {
-  const players = new Map<string, { uuid: string; player: string; role: Role; source: string; teamRank?: string }>();
+/** Effective permissions: the union over all sources. Without `view` there is no access. */
+export function resolvePerms(a: Access, uuid: string): string[] {
+  const out = new Set<string>();
+  if (a.owner === uuid) presetPerms("owner").forEach((x) => out.add(x));
+  const g = a.direct.get(uuid);
+  if (g) apply(g.role, g.allow, g.deny).forEach((x) => out.add(x));
+  const rank = teamRank(a, uuid);
+  const mapped = rank ? a.team!.mapping[rank] : undefined;
+  if (rank && mapped && mapped !== "none") apply(mapped, a.team!.overrides[rank]?.allow, a.team!.overrides[rank]?.deny).forEach((x) => out.add(x));
+  return out.has("view") ? ALL.filter((x) => out.has(x)) : [];
+}
+
+type Row = { uuid: string; player: string; role: Role; preset: Role; source: string; teamRank?: string; allow: string[]; deny: string[]; perms: string[] };
+export function accessDoc(a: Access, you: { player: string; role: Role; perms: string[] }) {
+  const players = new Map<string, Row>();
   const ownerP = playerByUuid(a.owner);
-  if (ownerP) players.set(a.owner, { uuid: a.owner, player: ownerP.player, role: "owner", source: "owner" });
-  for (const [uuid, role] of a.direct) {
+  if (ownerP) players.set(a.owner, { uuid: a.owner, player: ownerP.player, role: "owner", preset: "owner", source: "owner", allow: [], deny: [], perms: ALL });
+  for (const [uuid, g] of a.direct) {
     const p = playerByUuid(uuid);
-    if (p && !players.has(uuid)) players.set(uuid, { uuid, player: p.player, role, source: "direct" });
+    if (p && !players.has(uuid))
+      players.set(uuid, { uuid, player: p.player, role: g.role, preset: g.role, source: "direct", allow: g.allow, deny: g.deny, perms: ALL.filter((x) => apply(g.role, g.allow, g.deny).has(x)) });
   }
   if (a.team) {
     const team = TEAMS.find((t) => t.provider === a.team!.provider && t.id === a.team!.id);
@@ -87,14 +137,17 @@ export function accessDoc(a: Access, you: { player: string; role: Role }) {
       const p = playerByUuid(uuid);
       if (!p || !mapped || mapped === "none") continue;
       const cur = players.get(uuid);
-      if (!cur || RANK[mapped] > RANK[cur.role]) players.set(uuid, { uuid, player: p.player, role: mapped, source: "team", teamRank: rank });
+      const o = a.team.overrides[rank] ?? { allow: [], deny: [] };
+      if (!cur || RANK[mapped] > RANK[cur.role])
+        players.set(uuid, { uuid, player: p.player, role: mapped, preset: mapped, source: "team", teamRank: rank, allow: o.allow, deny: o.deny, perms: ALL.filter((x) => apply(mapped, o.allow, o.deny).has(x)) });
     }
   }
   const team = a.team ? TEAMS.find((t) => t.provider === a.team!.provider && t.id === a.team!.id) : undefined;
   return {
     you,
+    catalog: PERMS.map((x) => ({ ...x, presets: (["viewer", "operator", "admin", "owner"] as const).filter((r) => presetPerms(r).includes(x.id)) })),
     players: [...players.values()].sort((x, y) => RANK[y.role] - RANK[x.role] || x.player.localeCompare(y.player)),
-    team: a.team && team ? { provider: a.team.provider, id: team.id, name: team.name, mapping: a.team.mapping } : null,
+    team: a.team && team ? { provider: a.team.provider, id: team.id, name: team.name, mapping: a.team.mapping, overrides: a.team.overrides } : null,
     teams: TEAMS.map((t) => ({ provider: t.provider, id: t.id, name: t.name, ranks: RANKS[t.provider] })),
     providers: ["ftbteams", "opac", "scoreboard"],
   };

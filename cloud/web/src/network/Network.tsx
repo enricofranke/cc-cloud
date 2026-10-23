@@ -72,7 +72,7 @@ function useTerrain(conn: MainframeConn, dim: string, on: boolean) {
   const key = `${mf}|${dim}`;
   const [t, setT] = useState<Terrain | null>(terrainCache.get(key) ?? null);
   useEffect(() => {
-    if (!on || !mf || !conn.canControl.value) return setT(null);
+    if (!on || !mf || !conn.can("view.positions")) return setT(null);
     if (terrainCache.has(key)) return setT(terrainCache.get(key)!);
     setT(null);
     let stop = false;
@@ -729,7 +729,7 @@ function Detail(props: DetailProps) {
             Open card
           </button>
         )}
-        {conn.isAdmin && node.type !== "mainframe" && (
+        {conn.can("network.link") && node.type !== "mainframe" && (
           <button type="button" class="btn btn-danger-ghost" disabled={busy} onClick={unlink}>
             Unlink
           </button>
@@ -793,7 +793,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
     return () => clearTimeout(t);
   }, [sliceDraft]);
   const mfId = conn.info.value?.id ?? "";
-  const tiles: MapTiles | null = layer !== "off" && conn.canControl.value && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
+  const tiles: MapTiles | null = layer !== "off" && conn.can("view.positions") && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
   // voxel blocks (WebGL2, operator+); day/night and a cut height
   const webgl2 = useMemo(() => {
     try {
@@ -807,7 +807,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const [clipOn, setClipOn] = useState(false);
   const [clipY, setClipY] = useState<number | null>(null);
   const [voxStatus, setVoxStatus] = useState<{ loaded: number; total: number; triangles: number; unavailable: boolean } | null>(null);
-  const voxelsOn = use3d && blocks && webgl2 && conn.canControl.value && !voxStatus?.unavailable;
+  const voxelsOn = use3d && blocks && webgl2 && conn.can("view.positions") && !voxStatus?.unavailable;
   const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn && !voxelsOn);
   if (!net)
     return (
@@ -887,7 +887,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           </div>
           <div class="net-opts">
             {use3d && hasPos && <FlySearch net={net} onPick={flyTo} />}
-            {!use3d && conn.canControl.value && !store.unavailable && (
+            {!use3d && conn.can("view.positions") && !store.unavailable && (
               <div class="map-layer">
                 <div class="seg-ctl seg-s" role="radiogroup" aria-label="Map background">
                   {(["surface", "slice", "off"] as const).map((l) => (
@@ -916,13 +916,13 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               <input type="checkbox" checked={ranges} onChange={(e) => setRanges((e.target as HTMLInputElement).checked)} />
               {use3d ? "Ranges" : "Range circles"}
             </label>
-            {use3d && conn.canControl.value && webgl2 && !voxStatus?.unavailable && (
+            {use3d && conn.can("view.positions") && webgl2 && !voxStatus?.unavailable && (
               <label class="check-row small">
                 <input type="checkbox" checked={blocks} onChange={(e) => setBlocks((e.target as HTMLInputElement).checked)} />
                 Blocks
               </label>
             )}
-            {use3d && conn.canControl.value && !voxelsOn && (
+            {use3d && conn.can("view.positions") && !voxelsOn && (
               <label class="check-row small">
                 <input type="checkbox" checked={terrainOn} onChange={(e) => setTerrainOn((e.target as HTMLInputElement).checked)} />
                 Terrain

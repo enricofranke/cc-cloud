@@ -23,11 +23,12 @@ import { IconBack, IconPlus } from "../components/Icons.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { CodeBlock } from "../components/CodeBlock.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
+import { GROUPS, PERMISSIONS, PERM_INFO, applyCustom, customLabel, customOf, presetHas, presetSet } from "../lib/permissions.ts";
 
 export const ROLE_INFO: Record<RoleName, string> = {
   viewer: "Watches values and alerts. No controls, no coordinates.",
-  operator: "Viewer + buttons, toggles, sliders, crafting, enabling rules.",
-  admin: "Operator + devices, roles, layout, share links, PIN, rules, terminal.",
+  operator: "Viewer + coordinates, buttons, toggles, sliders, redstone, crafting, enabling rules.",
+  admin: "Everything: scripts, terminal, layout, rules, devices, access, share links, PIN.",
   owner: "Placed the mainframe. Admin + transfer and delete.",
 };
 const ROLE_ORDER: RoleName[] = ["viewer", "operator", "admin", "owner"];
@@ -48,7 +49,7 @@ function PageHead({ title, back, children }: { title: string; back: () => void; 
 
 function errorText(e: unknown) {
   const m = e instanceof Error ? e.message : String(e);
-  if (m === "not_allowed") return "Only admins of this mainframe can do this.";
+  if (m === "not_allowed") return "You lack a permission for this (you can only give permissions you have yourself).";
   if (m === "no_access") return "Your player has no role on this mainframe.";
   return e instanceof ApiError ? e.message : "Something went wrong.";
 }
@@ -138,6 +139,8 @@ export function AccessScreen({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [newPlayer, setNewPlayer] = useState("");
   const [newRole, setNewRole] = useState<RoleName>("operator");
+  /** expanded "Custom" editor: "p:<uuid>" or "r:<rank>" */
+  const [custom, setCustom] = useState<string | null>(null);
   useEffect(() => {
     if (token) getAccess(token, id).then(setDoc).catch((e) => setError(errorText(e)));
   }, [token, id]);
@@ -155,6 +158,19 @@ export function AccessScreen({ id }: { id: string }) {
     }
   };
   const name = conn?.info.value?.name ?? saved.value.find((m) => m.mainframeId === id)?.name ?? "Mainframe";
+  const fine = !!doc?.catalog;
+  const youPerms = doc ? (doc.you.perms ? new Set(doc.you.perms) : presetSet(doc.you.role)) : new Set<string>();
+  /** escalation rule: only the owner may give permissions they do not have */
+  const mayAllow = (p: string) => doc?.you.role === "owner" || youPerms.has(p);
+  const mayPreset = (r: string) => PERMISSIONS.every((p) => !presetHas(r, p) || mayAllow(p));
+  const customBtn = (key: string, allow: string[] = [], deny: string[] = [], label: string) => {
+    const lbl = customLabel(allow, deny);
+    return (
+      <button type="button" class={`btn btn-small perm-btn ${lbl ? "has-custom" : ""}`} aria-expanded={custom === key} aria-label={`Custom permissions for ${label}`} onClick={() => setCustom(custom === key ? null : key)}>
+        Custom{lbl && <span class="perm-count">{lbl}</span>}
+      </button>
+    );
+  };
   return (
     <main class="page page-narrow-wide" id="main" tabIndex={-1}>
       <PageHead title="Access" back={() => navigate(`/m/${encodeURIComponent(id)}`)} />
@@ -186,27 +202,34 @@ export function AccessScreen({ id }: { id: string }) {
                 </thead>
                 <tbody>
                   {doc.players.map((p) => (
-                    <tr key={p.uuid}>
+                    <Fragment key={p.uuid}>
+                    <tr class={custom === `p:${p.uuid}` ? "row-open" : ""}>
                       <td>
                         <b>{p.player}</b> {p.player === doc.you.player && <span class="tag tag-auto">you</span>}
                       </td>
                       <td>
                         {p.source === "direct" ? (
-                          <select
-                            class="select select-sm"
-                            value={p.role}
-                            disabled={busy}
-                            aria-label={`Role of ${p.player}`}
-                            onChange={(e) => op({ op: "set_role", player: p.player, role: (e.target as HTMLSelectElement).value })}
-                          >
-                            {(["viewer", "operator", "admin"] as const).map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                          </select>
+                          <div class="role-cell">
+                            <select
+                              class="select select-sm"
+                              value={p.preset ?? p.role}
+                              disabled={busy}
+                              aria-label={`Role of ${p.player}`}
+                              onChange={(e) => op({ op: "set_role", player: p.player, role: (e.target as HTMLSelectElement).value })}
+                            >
+                              {(["viewer", "operator", "admin"] as const).map((r) => (
+                                <option key={r} value={r} disabled={!mayPreset(r)}>
+                                  {r}
+                                </option>
+                              ))}
+                            </select>
+                            {fine && customBtn(`p:${p.uuid}`, p.allow, p.deny, p.player)}
+                          </div>
                         ) : (
-                          <span class={`role-badge r-${p.role}`}>{p.role}</span>
+                          <span class="role-cell">
+                            <span class={`role-badge r-${p.role}`}>{p.role}</span>
+                            {customLabel(p.allow, p.deny) && <span class="role-badge r-custom">custom {customLabel(p.allow, p.deny)}</span>}
+                          </span>
                         )}
                       </td>
                       <td class="muted small">
@@ -220,6 +243,23 @@ export function AccessScreen({ id }: { id: string }) {
                         )}
                       </td>
                     </tr>
+                    {custom === `p:${p.uuid}` && p.source === "direct" && (
+                      <tr class="perm-tr">
+                        <td colSpan={4}>
+                          <PermEditor
+                            who={p.player}
+                            role={p.preset ?? p.role}
+                            allow={p.allow}
+                            deny={p.deny}
+                            mayAllow={mayAllow}
+                            busy={busy}
+                            onCancel={() => setCustom(null)}
+                            onSave={(allow, deny) => op({ op: "set_perms", player: p.player, allow, deny }).then(() => setCustom(null))}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -234,7 +274,7 @@ export function AccessScreen({ id }: { id: string }) {
               <input class="input" placeholder="Player name" value={newPlayer} maxLength={16} aria-label="Player name" onInput={(e) => setNewPlayer((e.target as HTMLInputElement).value)} />
               <select class="select" value={newRole} aria-label="Role" onChange={(e) => setNewRole((e.target as HTMLSelectElement).value as RoleName)}>
                 {(["viewer", "operator", "admin"] as const).map((r) => (
-                  <option key={r} value={r}>
+                  <option key={r} value={r} disabled={!mayPreset(r)}>
                     {r}
                   </option>
                 ))}
@@ -243,7 +283,10 @@ export function AccessScreen({ id }: { id: string }) {
                 <IconPlus size={16} /> Add
               </button>
             </form>
-            <p class="muted small">{ROLE_INFO[newRole]}</p>
+            <p class="muted small">
+              {ROLE_INFO[newRole]}
+              {fine && " Use “Custom” on a row to add or remove single permissions."}
+            </p>
           </section>
 
           <section class="acc-sec" aria-labelledby="acc-team">
@@ -283,20 +326,44 @@ export function AccessScreen({ id }: { id: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {Object.entries(doc.team.mapping).map(([rank, role]) => (
-                      <tr key={rank}>
-                        <td>{rank}</td>
-                        <td>
-                          <select class="select select-sm" disabled={busy} value={role} aria-label={`Role for team rank ${rank}`} onChange={(e) => op({ op: "set_mapping", rank, role: (e.target as HTMLSelectElement).value })}>
-                            {(["none", "viewer", "operator", "admin"] as const).map((r) => (
-                              <option key={r} value={r}>
-                                {r}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
+                    {Object.entries(doc.team.mapping).map(([rank, role]) => {
+                      const o = doc.team!.overrides?.[rank];
+                      return (
+                        <Fragment key={rank}>
+                          <tr class={custom === `r:${rank}` ? "row-open" : ""}>
+                            <td>{rank}</td>
+                            <td>
+                              <div class="role-cell">
+                                <select class="select select-sm" disabled={busy} value={role} aria-label={`Role for team rank ${rank}`} onChange={(e) => op({ op: "set_mapping", rank, role: (e.target as HTMLSelectElement).value })}>
+                                  {(["none", "viewer", "operator", "admin"] as const).map((r) => (
+                                    <option key={r} value={r} disabled={r !== "none" && !mayPreset(r)}>
+                                      {r}
+                                    </option>
+                                  ))}
+                                </select>
+                                {fine && role !== "none" && customBtn(`r:${rank}`, o?.allow, o?.deny, `team rank ${rank}`)}
+                              </div>
+                            </td>
+                          </tr>
+                          {custom === `r:${rank}` && role !== "none" && (
+                            <tr class="perm-tr">
+                              <td colSpan={2}>
+                                <PermEditor
+                                  who={`team rank “${rank}”`}
+                                  role={role}
+                                  allow={o?.allow}
+                                  deny={o?.deny}
+                                  mayAllow={mayAllow}
+                                  busy={busy}
+                                  onCancel={() => setCustom(null)}
+                                  onSave={(allow, deny) => op({ op: "set_mapping", rank, role, allow, deny }).then(() => setCustom(null))}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -322,6 +389,79 @@ export function AccessScreen({ id }: { id: string }) {
     </main>
   );
 }
+/** "Custom" for one grant: grouped toggles on top of the preset, changes marked. */
+function PermEditor(props: {
+  who: string;
+  role: string;
+  allow?: string[];
+  deny?: string[];
+  mayAllow: (p: string) => boolean;
+  busy: boolean;
+  onSave: (allow: string[], deny: string[]) => void;
+  onCancel: () => void;
+}) {
+  const { role } = props;
+  const [set, setSet] = useState(() => applyCustom(role, props.allow, props.deny));
+  useEffect(() => setSet(applyCustom(role, props.allow, props.deny)), [role, (props.allow ?? []).join(), (props.deny ?? []).join()]);
+  const diff = customOf(role, set);
+  const toggle = (p: string, on: boolean) => {
+    const next = new Set(set);
+    if (on) next.add(p);
+    else next.delete(p);
+    setSet(next);
+  };
+  return (
+    <div class="perm-editor" role="group" aria-label={`Permissions of ${props.who}`}>
+      <p class="muted small">
+        Starting from the <span class={`role-badge r-${role}`}>{role}</span> preset. Changes are marked; removing wins over adding.
+      </p>
+      <div class="perm-groups">
+        {GROUPS.map((g) => (
+          <fieldset key={g.id} class="perm-group">
+            <legend>{g.label}</legend>
+            {PERMISSIONS.filter((p) => PERM_INFO[p].group === g.id).map((p) => {
+              const info = PERM_INFO[p];
+              const on = set.has(p);
+              const changed = on !== presetHas(role, p);
+              const cannot = !on && !props.mayAllow(p);
+              return (
+                <label key={p} class={`perm-row ${changed ? (on ? "added" : "removed") : ""} ${cannot ? "cannot" : ""}`}>
+                  <input type="checkbox" checked={on} disabled={props.busy || cannot} onChange={(e) => toggle(p, (e.target as HTMLInputElement).checked)} />
+                  <span class="perm-text">
+                    <span class="perm-name">
+                      {info.label}
+                      {info.risky && <span class="mini-badge warn">powerful</span>}
+                      {changed && <span class={`perm-diff ${on ? "add" : "rem"}`}>{on ? "added" : "removed"}</span>}
+                    </span>
+                    <span class="muted small">{cannot ? "You do not have this permission yourself, so you cannot give it." : info.help}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
+        ))}
+      </div>
+      {!set.has("view") && (
+        <p class="form-error" role="alert">
+          Without “View the dashboard” {props.who} has no access at all.
+        </p>
+      )}
+      <div class="perm-actions">
+        <button type="button" class="btn btn-small" disabled={props.busy || (!diff.allow.length && !diff.deny.length)} onClick={() => setSet(presetSet(role))}>
+          Reset to preset
+        </button>
+        <span class="perm-spacer" />
+        <button type="button" class="btn" onClick={props.onCancel}>
+          Cancel
+        </button>
+        <button type="button" class="pxbtn pxbtn-gold" disabled={props.busy} onClick={() => props.onSave(diff.allow, diff.deny)}>
+          <span>Save</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 const PROVIDER: Record<string, string> = { ftbteams: "FTB Teams", opac: "Open Parties and Claims", scoreboard: "scoreboard team" };
 
 // ------------------------------------------------------------------- shares

@@ -92,7 +92,7 @@ export function AutoStockSheet(props: {
   const m = Math.floor(Number(min));
   const t = Math.floor(Number(target));
   const valid = min !== "" && target !== "" && m >= 0 && t >= m;
-  const readOnly = !conn.canControl.value;
+  const readOnly = !conn.can("storage.autostock");
   const save = async (off = false) => {
     setBusy(true);
     setError(null);
@@ -157,7 +157,7 @@ export function AutoStockSheet(props: {
           <span>{busy ? "Saving…" : "Save"}</span>
         </button>
       </div>
-      {readOnly && <p class="muted small">Viewers can look, operators can change this.</p>}
+      {readOnly && <p class="muted small">Changing stock rules needs the “Auto-stock” permission on this mainframe.</p>}
     </Sheet>
   );
 }
@@ -202,7 +202,7 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
     });
     if (!sent) setState({ kind: "error", text: "Not connected – try again in a moment." });
   };
-  const readOnly = !conn.canControl.value;
+  const readOnly = !conn.can("storage.craft");
   return (
     <Sheet title={`Craft ${item.displayName}`} onClose={props.onClose}>
       {state.kind === "ok" ? (
@@ -286,7 +286,7 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
           <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={readOnly || !valid || !plan || plan.missing || state.kind === "sending" || !props.craftWidget} onClick={start}>
             <span>{state.kind === "sending" ? "Starting…" : `Craft ${valid ? full(count) : ""}×`}</span>
           </button>
-          {readOnly && <p class="muted small">Viewers can preview, operators can craft.</p>}
+          {readOnly && <p class="muted small">You can preview; starting jobs needs the “Craft” permission.</p>}
         </>
       )}
     </Sheet>
@@ -327,7 +327,7 @@ export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; wi
   if (sub === "craft" && doc) return <CraftSheet conn={conn} uplink={uplink} craftWidget={craftW} widgetId={props.widgetId} item={doc} max={max} onClose={() => (setSub(null), load())} />;
   if (sub === "stock" && doc)
     return <AutoStockSheet conn={conn} uplink={uplink} widgetId={props.widgetId} item={doc} current={doc.watch} craftable={doc.craftable} onClose={() => (setSub(null), load())} />;
-  const readOnly = !conn.canControl.value;
+  const readOnly = !conn.can("act.buttons");
   return (
     <Sheet title={props.displayName} onClose={props.onClose}>
       <div class="item-head with-icon">
@@ -394,7 +394,7 @@ function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: Main
               {j.notify && <span class="mini-badge" title="You get a notice when it finishes">🔔</span>}
             </span>
             <span class={`job-status js-${j.status}`}>{JOB_TEXT[j.status]}</span>
-            {(j.status === "running" || j.status === "queued") && conn.canControl.value && (
+            {(j.status === "running" || j.status === "queued") && conn.can("storage.craft") && (
               <button
                 type="button"
                 class="btn btn-small btn-danger-ghost"
@@ -546,7 +546,7 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
                     <span class={`sb-count ${r.count === 0 ? "zero" : ""}`}>{fmtCount(r.count)}</span>
                     {r.craftable && <span class="sb-craft" title="Craftable" aria-label="craftable">⚒</span>}
                   </button>
-                  <button type="button" class={`sb-fav ${r.favorite ? "on" : ""}`} aria-pressed={!!r.favorite} aria-label={`${r.favorite ? "Unpin" : "Pin"} ${r.displayName}`} disabled={!conn.canControl.value} onClick={() => toggleFav(r)}>
+                  <button type="button" class={`sb-fav ${r.favorite ? "on" : ""}`} aria-pressed={!!r.favorite} aria-label={`${r.favorite ? "Unpin" : "Pin"} ${r.displayName}`} disabled={!conn.can("act.buttons")} onClick={() => toggleFav(r)}>
                     {r.favorite ? "★" : "☆"}
                   </button>
                 </li>

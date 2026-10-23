@@ -620,9 +620,11 @@ The browser is now linked to **your player**, not to a single mainframe: it show
 | Role | May |
 |---|---|
 | viewer | watch values and alerts – no controls, no coordinates |
-| operator | viewer + buttons, toggles, sliders, crafting, enabling rules |
-| admin | operator + devices, roles, layout editing, share links, PIN, rules, terminal |
+| operator | viewer + coordinates, buttons, toggles, sliders, redstone, crafting, enabling rules |
+| admin | everything: scripts, terminal, layout editing, rules, devices, access, share links, PIN |
 | owner | the player who placed the mainframe: admin + transfer and delete |
+
+Roles are **presets**. Each player or team rank can get single permissions added or removed on top (**Custom** on the Access page) – for example an operator who may also edit the layout, or an admin without script uploads. Removing wins over adding. Without “View the dashboard” a player has no access at all. You can only give permissions you have yourself (the owner can give all of them). A server can switch scripts and the terminal off for everyone with the permission node \`cccloud.feature.scripts\`.
 
 Roles come from several sources – the **highest one wins**: the owner, roles given to a player (\`/cccloud role <player> <role>\`, the mainframe screen or the **Access** page), team ranks and server permissions. Things you may not do are hidden or disabled, with the reason shown.
 
@@ -637,6 +639,9 @@ Admins open it from the mainframe menu in the header (**Access & roles**):
 - the list of players with their role and where it comes from
 - change or remove roles given directly, add a player by name
 - assign a team and choose the role for each team rank
+- **Custom** next to a role: add or remove single permissions, grouped (watching, controls, storage, scripts & terminal, layout & automation, management), each with a short explanation; the button shows how many differ from the preset (e.g. “−2”)
+
+Who may open it is a permission too (“Manage access”); share links need “Share links”.
 
 ## Devices {#devices}
 

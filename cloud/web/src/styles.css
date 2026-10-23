@@ -4939,6 +4939,9 @@ main:focus {
 .r-owner {
   color: var(--green);
 }
+.r-custom {
+  color: var(--purple);
+}
 .settings-links {
   display: flex;
   flex-wrap: wrap;
@@ -5093,6 +5096,178 @@ fieldset.field {
 .acc-table .btn,
 .dev-row .btn {
   min-height: 34px;
+}
+
+/* fine-grained permissions: "Custom" editor on the Access page */
+.role-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.perm-btn.has-custom {
+  border-color: var(--purple);
+  color: var(--purple);
+}
+.perm-btn[aria-expanded="true"] {
+  background: var(--panel-3);
+}
+.perm-count {
+  margin-left: 6px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+}
+.acc-table tr.row-open td {
+  border-bottom-color: transparent;
+  background: var(--panel-2);
+}
+.acc-table tr.perm-tr td {
+  padding: 0 10px 14px;
+  background: var(--panel-2);
+}
+.perm-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.perm-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+.perm-group {
+  margin: 0;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  min-width: 0;
+}
+.perm-group legend {
+  padding: 0 4px;
+  font-family: "Silkscreen", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.perm-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 6px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.perm-row input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--gold);
+}
+.perm-row.added {
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+}
+.perm-row.removed {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+}
+.perm-row.cannot {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.perm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  white-space: normal;
+}
+.perm-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.mini-badge.warn {
+  border: 1px solid var(--orange);
+  color: var(--orange);
+}
+.perm-diff {
+  font-size: 11px;
+  font-weight: 600;
+}
+.perm-diff.add {
+  color: var(--green);
+}
+.perm-diff.rem {
+  color: var(--red);
+}
+.perm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.perm-spacer {
+  flex: 1;
+}
+@media (max-width: 640px) {
+  /* Access tables become stacked rows so the "Custom" editor gets the full width */
+  .acc-table thead {
+    display: none;
+  }
+  .acc-table,
+  .acc-table tbody {
+    display: block;
+  }
+  .acc-table tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .acc-table td {
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  .acc-table td:nth-child(1) {
+    grid-area: 1 / 1;
+  }
+  .acc-table td:nth-child(2) {
+    grid-area: 2 / 1 / 3 / 3;
+  }
+  .acc-table td:nth-child(3) {
+    grid-area: 3 / 1 / 4 / 3;
+  }
+  .acc-table td:nth-child(4) {
+    grid-area: 1 / 2;
+  }
+  .acc-table tr.perm-tr {
+    display: block;
+    padding: 0 10px 12px;
+  }
+  .acc-table tr.perm-tr td {
+    padding: 0;
+  }
+  .acc-table td:empty {
+    display: none;
+  }
+  .acc-table tr.row-open,
+  .acc-table tr.perm-tr {
+    background: var(--panel-2);
+  }
+  .acc-table tr.row-open td,
+  .acc-table tr.perm-tr td {
+    background: transparent;
+  }
+  .perm-groups {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------------------------------------------------------------- v0.7 3D view */

@@ -5,7 +5,7 @@ import { getConn } from "../lib/conns.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate } from "../lib/ui.ts";
 
-export function MainframeSwitcher({ currentId, name, isAdmin }: { currentId: string; name: string; isAdmin: boolean }) {
+export function MainframeSwitcher({ currentId, name, canAccess, canShare }: { currentId: string; name: string; canAccess: boolean; canShare: boolean }) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -81,15 +81,15 @@ export function MainframeSwitcher({ currentId, name, isAdmin }: { currentId: str
           <button type="button" role="menuitem" class="sm-item" onClick={() => go("/devices")}>
             Devices
           </button>
-          {isAdmin && (
-            <>
-              <button type="button" role="menuitem" class="sm-item" onClick={() => go(`/m/${encodeURIComponent(currentId)}/access`)}>
-                Access &amp; roles
-              </button>
-              <button type="button" role="menuitem" class="sm-item" onClick={() => go(`/m/${encodeURIComponent(currentId)}/shares`)}>
-                Share links
-              </button>
-            </>
+          {canAccess && (
+            <button type="button" role="menuitem" class="sm-item" onClick={() => go(`/m/${encodeURIComponent(currentId)}/access`)}>
+              Access &amp; roles
+            </button>
+          )}
+          {canShare && (
+            <button type="button" role="menuitem" class="sm-item" onClick={() => go(`/m/${encodeURIComponent(currentId)}/shares`)}>
+              Share links
+            </button>
           )}
           {!acc && (
             <button type="button" role="menuitem" class="sm-item sm-link" onClick={() => go("/pair")}>

@@ -150,10 +150,23 @@ export const revokeDevice = (token: string, id: string, base = "") =>
   authed<{ ok: boolean }>(`/api/devices/${encodeURIComponent(id)}`, token, { method: "DELETE" }, base);
 
 export type RoleName = "viewer" | "operator" | "admin" | "owner";
+export interface AccessPlayer {
+  uuid: string;
+  player: string;
+  role: RoleName;
+  /** fine-grained permissions (absent on older mods: plain presets) */
+  preset?: RoleName;
+  allow?: string[];
+  deny?: string[];
+  perms?: string[];
+  source: "owner" | "direct" | "team" | "server_admin";
+  teamRank?: string;
+}
 export interface AccessDoc {
-  you: { player: string; role: RoleName };
-  players: { uuid: string; player: string; role: RoleName; source: "owner" | "direct" | "team" | "server_admin"; teamRank?: string }[];
-  team: { provider: string; id: string; name: string; mapping: Record<string, RoleName | "none"> } | null;
+  you: { player: string; role: RoleName; perms?: string[] };
+  catalog?: { id: string; group: string; presets: RoleName[] }[];
+  players: AccessPlayer[];
+  team: { provider: string; id: string; name: string; mapping: Record<string, RoleName | "none">; overrides?: Record<string, { allow: string[]; deny: string[] }> } | null;
   teams: { provider: string; id: string; name: string; ranks: string[] }[];
   providers: string[];
 }

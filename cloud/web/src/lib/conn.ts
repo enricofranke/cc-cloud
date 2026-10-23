@@ -3,6 +3,7 @@
 // Framework agnostic: state is exposed as signals so the UI and the tests can
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
+import { presetHas } from "./permissions.ts";
 import { signal, batch } from "@preact/signals";
 import { WIDGET_TYPES, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
@@ -240,17 +241,21 @@ export class MainframeConn {
     return !!this.o.share || this.role.value === "share";
   }
 
-  /** Does this session have a permission? Uses the server's set, else the role presets. */
+  /**
+   * Does this session have a permission? Uses the server's set (snapshot/role push),
+   * else the role presets; servers without roles: canControl = everything, else viewer.
+   * Every client-side check goes through this (docs/SPEC.md "Fine-grained permissions").
+   */
   can(perm: string): boolean {
     if (this.isShare) return false;
     const p = this.perms.value;
     if (p) return p.has(perm);
-    return presetHas(this.role.value, perm);
-  }
-
-  get isAdmin() {
     const r = this.role.value;
-    return r === "admin" || r === "owner" || (r === null && this.canControl.value);
+    return presetHas(r ?? (this.canControl.value ? "admin" : "viewer"), perm);
+  }
+  /** The error a refused write gets: not_allowed, or read_only for sessions without act.buttons. */
+  deniedCode(perm: string): "not_allowed" | "read_only" | null {
+    return this.can(perm) ? null : this.can("act.buttons") ? "not_allowed" : "read_only";
   }
 
   get actionable() {
@@ -634,7 +639,8 @@ export class MainframeConn {
   unlinkNode(nodeId: string, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
     return new Promise((resolve, reject) => {
-      if (!this.canControl.value) return reject(new Error("read_only"));
+      const no = this.deniedCode("network.link");
+      if (no) return reject(new Error(no));
       if (!this.send({ t: "net_unlink", reqId, nodeId })) return reject(new Error("disconnected"));
       const timer = setTimeout(() => {
         this.netReqs.delete(reqId);
@@ -648,7 +654,8 @@ export class MainframeConn {
   saveLayout(layout: LayoutDoc, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
     return new Promise((resolve, reject) => {
-      if (!this.canControl.value) return reject(new Error("read_only"));
+      const no = this.deniedCode("layout.edit");
+      if (no) return reject(new Error(no));
       if (!this.send({ t: "layout_set", reqId, layout })) return reject(new Error("disconnected"));
       const timer = setTimeout(() => {
         this.layoutReqs.delete(reqId);
@@ -954,20 +961,7 @@ function normalizeAlert(a: any): Alert | null {
 }
 
 // ------------------------------------------------------------- permissions
-export const PERMISSIONS = [
-  "view", "view.positions", "act.buttons", "act.redstone", "storage.search", "storage.craft", "storage.autostock",
-  "scripts.upload", "scripts.run", "scripts.delete", "terminal", "layout.edit", "rules.edit", "rules.toggle",
-  "push.manage", "devices.manage", "access.manage", "shares.create", "pin.manage", "power.toggle", "network.link",
-] as const;
-const VIEWER = new Set(["view", "storage.search"]);
-const OPERATOR = new Set([...VIEWER, "view.positions", "act.buttons", "act.redstone", "storage.craft", "rules.toggle"]);
-/** The presets of docs/SPEC.md (viewer ⊂ operator ⊂ admin = owner = all). */
-export function presetHas(role: string | null, perm: string) {
-  if (role === "admin" || role === "owner") return true;
-  if (role === "operator") return OPERATOR.has(perm);
-  if (role === "viewer") return VIEWER.has(perm);
-  return false;
-}
+export { PERMISSIONS, presetHas } from "./permissions.ts";
 function parsePerms(raw: unknown): Set<string> | null {
   if (!Array.isArray(raw)) return null;
   return new Set(raw.filter((p): p is string => typeof p === "string" && p.length <= 40).slice(0, 64));

@@ -1,4 +1,4 @@
-import{a as e,l as t,n,o as r,r as i,t as a}from"./jsxRuntime.module-BRbsxUMc.js";import{A as o,n as s,r as ee,t as c}from"./Overlays-B7LPnLom.js";import{u as l}from"./index-Bh9V38z-.js";import{a as u,c as d,i as f,l as p,n as m,o as h,r as g,s as _}from"./scripts-DXSmr5DI.js";var v=Object.assign({"../../../../examples/cloud-test.lua":`-- CC: Cloud test program: an uplink next to this computer, a redstone lamp on the back.
+import{a as e,l as t,n,o as r,r as i,t as a}from"./jsxRuntime.module-BRbsxUMc.js";import{A as o,n as s,r as ee,t as c}from"./Overlays-B7LPnLom.js";import{u as l}from"./index-asbIstIy.js";import{a as u,c as d,i as f,l as p,n as m,o as h,r as g,s as _}from"./scripts-DXSmr5DI.js";var v=Object.assign({"../../../../examples/cloud-test.lua":`-- CC: Cloud test program: an uplink next to this computer, a redstone lamp on the back.
 local cloud = peripheral.find("cloud_uplink")
 if not cloud then error("No Cloud Uplink found. Attach one to this computer.", 0) end
 

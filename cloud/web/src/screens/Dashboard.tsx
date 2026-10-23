@@ -12,7 +12,7 @@ import { DocsLink } from "../components/DocsLink.tsx";
 import { fmtFE } from "../lib/format.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import type { PowerInfo } from "../lib/types.ts";
-import type { MainframeConn } from "../lib/conn.ts";
+import { PERMISSIONS, presetHas, type MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
@@ -158,7 +158,7 @@ export function Dashboard({ id }: { id: string }) {
 
   const info = conn.info.value;
   const uplinks = conn.uplinks.value;
-  const readOnly = !conn.canControl.value;
+  const readOnly = !conn.can("act.buttons");
   const locked = st.kind !== "online" || readOnly;
   const unread = conn.unread.value;
   const secs = retryAt ? Math.max(0, Math.ceil((retryAt - now) / 1000)) : 0;
@@ -174,7 +174,7 @@ export function Dashboard({ id }: { id: string }) {
             <span class="overline">Mainframe</span>
             {info?.power && <PowerMeter p={info.power} onClick={() => setPowerOpen(!powerOpen)} />}
           </span>
-          <MainframeSwitcher currentId={id} name={info?.name ?? entry.name} isAdmin={conn.isAdmin} />
+          <MainframeSwitcher currentId={id} name={info?.name ?? entry.name} canAccess={conn.can("access.manage")} canShare={conn.can("shares.create")} />
         </div>
         <span class={`pill pill-${st.kind}`}>
           <span class="pill-dot" />
@@ -192,7 +192,7 @@ export function Dashboard({ id }: { id: string }) {
           <IconBell />
           {unread > 0 && <span class="badge badge-dot">{unread > 9 ? "9+" : unread}</span>}
         </button>
-        {conn.isAdmin && conn.status.value === "open" && uplinks.length > 0 && (
+        {conn.can("layout.edit") && conn.status.value === "open" && uplinks.length > 0 && (
           <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => (editing ? window.dispatchEvent(new Event("cccloud:edit-exit")) : setEditing(true))}>
             <IconPencil />
           </button>
@@ -261,7 +261,7 @@ export function Dashboard({ id }: { id: string }) {
         ) : uplinks.length === 0 ? (
           <SetupGuide />
         ) : (
-          <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.canControl.value} onExitEdit={() => setEditing(false)} />
+          <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.can("layout.edit")} onExitEdit={() => setEditing(false)} />
         )}
       </main>
 
@@ -318,7 +318,8 @@ export function Dashboard({ id }: { id: string }) {
               <>
                 <dt>Your role</dt>
                 <dd>
-                  <span class={`role-badge r-${conn.role.value}`}>{conn.role.value}</span> <span class="muted small">{ROLE_INFO[conn.role.value]}</span>
+                  <span class={`role-badge r-${conn.role.value}`}>{conn.role.value}</span>
+                  {isCustom(conn) && <span class="role-badge r-custom">custom</span>} <span class="muted small">{isCustom(conn) ? "Some permissions differ from the preset." : ROLE_INFO[conn.role.value]}</span>
                 </dd>
               </>
             )}
@@ -339,14 +340,14 @@ export function Dashboard({ id }: { id: string }) {
           </div>
           <div class="settings-links">
             <a href="#/devices">Devices</a>
-            {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
-            {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
+            {conn.can("access.manage") && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
+            {conn.can("shares.create") && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
             {conn.store.value && conn.can("scripts.upload") && (
               <button type="button" class="link-btn" onClick={() => (setSheet(null), setStore({}))}>
                 Script Store
               </button>
             )}
-            {!conn.isAdmin && conn.role.value && <span class="muted small">Access and share links need the admin role.</span>}
+            {!conn.can("access.manage") && !conn.can("shares.create") && conn.role.value && <span class="muted small">Access and share links need the matching permissions.</span>}
           </div>
           <p class="small">
             <DocsLink to="/docs">Help &amp; docs</DocsLink> · <DocsLink to="/docs/faq">Troubleshooting</DocsLink>
@@ -380,4 +381,11 @@ function StoreLoader(props: StoreProps) {
     if (!C) import("../scripts/StoreSheet.tsx").then((m) => setC(() => (StoreComp = m.default)));
   }, []);
   return C ? <C {...props} /> : null;
+}
+
+/** The session's permissions differ from its role preset (custom allow/deny). */
+function isCustom(conn: MainframeConn) {
+  const p = conn.perms.value;
+  const r = conn.role.value;
+  return !!p && !!r && r !== "share" && PERMISSIONS.some((x) => p.has(x) !== presetHas(r, x));
 }

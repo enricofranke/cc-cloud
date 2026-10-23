@@ -620,9 +620,11 @@ Der Browser ist jetzt mit **deinem Spieler** verknüpft, nicht mit einem einzeln
 | Rolle | Darf |
 |---|---|
 | viewer | Werte und Meldungen sehen – keine Bedienung, keine Koordinaten |
-| operator | viewer + Buttons, Schalter, Schieberegler, Craften, Regeln ein-/ausschalten |
-| admin | operator + Geräte, Rollen, Layout bearbeiten, Freigabe-Links, PIN, Regeln, Terminal |
+| operator | viewer + Koordinaten, Buttons, Schalter, Schieberegler, Redstone, Craften, Regeln ein-/ausschalten |
+| admin | alles: Skripte, Terminal, Layout bearbeiten, Regeln, Geräte, Zugriff, Freigabe-Links, PIN |
 | owner | der Spieler, der den Mainframe aufgestellt hat: admin + übertragen und löschen |
+
+Rollen sind **Vorlagen**. Jedem Spieler und jedem Team-Rang kannst du einzelne Rechte dazugeben oder wegnehmen (**Custom** auf der Seite Access) – etwa ein operator, der auch das Layout bearbeiten darf, oder ein admin ohne Skript-Upload. Wegnehmen gewinnt gegen Dazugeben. Ohne „View the dashboard“ hat ein Spieler gar keinen Zugriff. Du kannst nur Rechte vergeben, die du selbst hast (der Besitzer kann alle vergeben). Ein Server kann Skripte und Terminal mit dem Permission-Node \`cccloud.feature.scripts\` für alle abschalten.
 
 Rollen kommen aus mehreren Quellen – **die höchste gilt**: der Besitzer, einem Spieler gegebene Rollen (\`/cccloud role <spieler> <rolle>\`, Mainframe-Bildschirm oder Seite **Access**), Team-Ränge und Server-Rechte. Was du nicht darfst, ist ausgeblendet oder deaktiviert, mit Begründung.
 
@@ -637,6 +639,9 @@ Admins öffnen sie über das Mainframe-Menü in der Kopfzeile (**Access & roles*
 - die Liste der Spieler mit Rolle und Herkunft der Rolle
 - direkt vergebene Rollen ändern oder entfernen, Spieler per Name hinzufügen
 - ein Team zuordnen und die Rolle pro Team-Rang wählen
+- **Custom** neben einer Rolle: einzelne Rechte dazugeben oder wegnehmen, gruppiert (Ansehen, Bedienung, Lager, Skripte & Terminal, Layout & Automatisierung, Verwaltung), jeweils mit kurzer Erklärung; der Button zeigt, wie viele von der Vorlage abweichen (z. B. „−2“)
+
+Wer die Seite öffnen darf, ist ebenfalls ein Recht („Manage access“); Freigabe-Links brauchen „Share links“.
 
 ## Geräte {#devices}
 

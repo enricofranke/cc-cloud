@@ -229,7 +229,7 @@ function ItemSheet(props: {
   const [min, setMin] = useState(String(Math.max(1, Math.round(item.count / 2 / 64) * 64) || 64));
   const count = amount === "custom" ? Math.floor(Number(custom)) : amount;
   const countValid = Number.isInteger(count) && count >= 1 && count <= max;
-  const reason = !conn.canControl.value ? "This device is read-only." : locked ? "Controls are locked right now (see the banner above)." : null;
+  const reason = !conn.can("storage.craft") ? (conn.can("act.buttons") ? "You may not start crafting jobs on this mainframe." : "This device is read-only.") : locked ? "Controls are locked right now (see the banner above)." : null;
 
   const startCraft = () => {
     if (!countValid || reason) return;
@@ -360,7 +360,7 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
   const [stock, setStock] = useState<WatchRow | null>(null);
   const searchW = uplink.widgets.find((x) => x.type === "item_search");
   const below = rows.filter((r) => r.count < r.min).length;
-  const readOnly = locked || !conn.canControl.value;
+  const readOnly = locked || !conn.can("storage.autostock");
 
   return (
     <section class="store-sec store-half" aria-label={w.label ?? "Watchlist"}>
@@ -634,7 +634,7 @@ export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: M
                   )}
                 </span>
                 <span class={`job-status js-${j.status}`}>{STATUS_TEXT[j.status]}</span>
-                {conn && uplink && conn.canControl.value && (j.status === "running" || j.status === "queued") && (
+                {conn && uplink && conn.can("storage.craft") && (j.status === "running" || j.status === "queued") && (
                   <button type="button" class="icon-btn sm" aria-label={`Cancel ${j.displayName ?? j.name}`} title="Cancel" onClick={() => conn.storage(uplink.uplinkId, "cancel", { jobId: j.jobId }, searchW?.id).catch(() => {})}>
                     ×
                   </button>

@@ -98,7 +98,8 @@ describe("roles", () => {
     const mf = mock!.base.id;
     const owner = await accountToken("Enrico");
     const doc = await (await api(`/api/mainframes/${mf}/access`, owner)).json();
-    expect(doc.you).toEqual({ player: "Enrico", role: "owner" });
+    expect(doc.you).toMatchObject({ player: "Enrico", role: "owner" });
+    expect(doc.you.perms).toContain("access.manage");
     const byName = Object.fromEntries(doc.players.map((p: any) => [p.player, p]));
     expect(byName.Enrico).toMatchObject({ role: "owner", source: "owner" });
     expect(byName.Lisa).toMatchObject({ role: "admin", source: "direct" });
@@ -125,6 +126,58 @@ describe("roles", () => {
     await api(`/api/mainframes/${mf}/access`, owner, { method: "POST", body: JSON.stringify({ op: "set_team", teamId: null }) });
     expect(await sam.closed()).toBe(4403);
     expect((await api(`/api/mainframes/${mf}/access`, owner, { method: "POST", body: JSON.stringify({ op: "set_role", player: "Nobody", role: "viewer" }) })).status).toBe(400);
+  });
+});
+
+describe("fine-grained permissions", () => {
+  it("custom allow/deny change the effective set live and are enforced", async () => {
+    await start();
+    const mf = mock!.base.id;
+    const owner = await accountToken("Enrico");
+    const post = (b: object, t = owner) => api(`/api/mainframes/${mf}/access`, t, { method: "POST", body: JSON.stringify(b) });
+    const doc = await (await api(`/api/mainframes/${mf}/access`, owner)).json();
+    expect(doc.catalog.find((c: any) => c.id === "act.buttons")).toEqual({ id: "act.buttons", group: "act", presets: ["operator", "admin", "owner"] });
+    expect(doc.players.find((p: any) => p.player === "Tom")).toMatchObject({ preset: "operator", allow: [], deny: [] });
+
+    // Mia gets viewer + layout.edit; she can save a layout but not press buttons
+    expect((await post({ op: "set_role", player: "Mia", role: "viewer", allow: ["layout.edit"] })).status).toBe(200);
+    const mia = await ws({ t: "auth", token: await accountToken("Mia"), mainframeId: mf });
+    const snap = await mia.next("snapshot");
+    expect(snap.perms).toEqual(["view", "storage.search", "layout.edit"]);
+    expect(snap.canControl).toBe(false);
+    mia.send({ t: "layout_set", reqId: "l", layout: { v: 1, pages: [], cards: {}, widgets: {} } });
+    expect(await mia.next("layout_result")).toMatchObject({ ok: true });
+    mia.send({ t: "action", reqId: "a", uplinkId: REACTOR, id: "power", value: false });
+    expect(await mia.next("action_result")).toMatchObject({ ok: false, error: "read_only" });
+    mia.send({ t: "net_unlink", reqId: "n", nodeId: "x" });
+    expect(await mia.next("net_result")).toMatchObject({ ok: false, error: "read_only" });
+
+    // operator preset with act.redstone denied: buttons ok, redstone not
+    expect((await post({ op: "set_perms", player: "Mia", allow: ["act.buttons"], deny: ["storage.search"] })).status).toBe(200);
+    const push = await mia.next("role");
+    expect(push.perms).toEqual(["view", "act.buttons"]);
+    expect(push.canControl).toBe(true);
+
+    // unknown ids and escalation
+    expect((await post({ op: "set_perms", player: "Mia", allow: ["root"] })).status).toBe(400);
+    expect((await post({ op: "set_perms", player: "Nobody", allow: [] })).status).toBe(400);
+    const lisa = await accountToken("Lisa");
+    expect((await post({ op: "set_role", player: "Lisa", role: "admin", deny: ["scripts.upload"] })).status).toBe(200);
+    // Lisa (no scripts.upload) cannot give it to Tom, but can manage other things
+    expect((await post({ op: "set_role", player: "Sam", role: "viewer", allow: ["scripts.upload"] }, lisa)).status).toBe(403);
+    expect((await post({ op: "set_role", player: "Sam", role: "viewer", allow: ["act.buttons"] }, lisa)).status).toBe(200);
+    // and the script API refuses her
+    expect((await api(`/api/mainframes/${mf}/computers/x/files`, lisa)).status).toBe(403);
+
+    // team rank overrides
+    expect((await post({ op: "set_mapping", rank: "member", role: "operator", deny: ["act.redstone"] })).status).toBe(200);
+    const after = await (await api(`/api/mainframes/${mf}/access`, owner)).json();
+    expect(after.team.overrides.member).toEqual({ allow: [], deny: ["act.redstone"] });
+    expect(after.players.find((p: any) => p.player === "Tom").perms).not.toContain("act.redstone");
+
+    // dropping view removes access
+    expect((await post({ op: "set_perms", player: "Mia", deny: ["view"] })).status).toBe(200);
+    expect(await mia.closed()).toBe(4403);
   });
 });
 
