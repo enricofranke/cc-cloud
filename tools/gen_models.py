@@ -646,6 +646,32 @@ def ender_core():
     return m
 
 
+# --------------------------------------------------------------------------- v0.7: cloud display + items
+DISPLAY_ORIENT = {"north": 0, "down": 90, "up": 270}   # same property scheme as CC monitors
+
+
+def display_model(state):
+    """Full cube; front = north. Face tiles chosen by the connection state (see gen_textures.gen_display)."""
+    tiles = gt.display_tiles()
+    side = "".join(k for k in "ud" if k in state) or "none"
+    top = "".join(k for k in "lr" if k in state) or "none"
+    if state == "none":
+        side, top = "none", "none"
+
+    def reg(kind, st):
+        c, r = tiles[(kind, st)]
+        return Region("atlas", None, None, size=128, rect=(c * 16, r * 16, 16, 16))
+    m = Model(textures={"particle": f"{NS}:block/display", "atlas": f"{NS}:block/display"})
+    m.box([0, 0, 0], [16, 16, 16], {"north": reg("front", state), "south": reg("back", state),
+                                    "east": reg("side", side), "west": reg("side", side),
+                                    "up": reg("top", top), "down": reg("top", top)})
+    return m
+
+
+V07_ITEMS = [f"upgrade_{k}_{t}" for k in gt.UPGRADE_TYPES for t in gt.ATM_TIERS] + \
+    ["quantum_core", "cloud_tablet", "advanced_cloud_tablet"]
+
+
 # --------------------------------------------------------------------------- writing
 written = []
 
@@ -724,8 +750,25 @@ def main():
             {"type": "minecraft:model", "model": f"{NS}:block/{block}_online"},
             {"type": "minecraft:model", "model": f"{NS}:block/{part}"}]}})
 
+    # v0.7 cloud display (CC-monitor-like multiblock)
+    for st_ in gt.DISPLAY_STATES:
+        name = "cloud_display" if st_ == "none" else f"cloud_display_{st_}"
+        write(f"models/block/{name}.json", display_model(st_).json())
+    dv = {}
+    for f, r in HORIZONTAL.items():
+        for o, xr in DISPLAY_ORIENT.items():
+            for st_ in gt.DISPLAY_STATES:
+                name = "cloud_display" if st_ == "none" else f"cloud_display_{st_}"
+                v = {"model": f"{NS}:block/{name}"}
+                if xr:
+                    v["x"] = xr
+                v.update(r)
+                dv[f"facing={f},orientation={o},state={st_}"] = v
+    write("blockstates/cloud_display.json", {"variants": dv})
+    write("items/cloud_display.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/cloud_display"}})
+
     # flat items
-    for it in ("cloud_core", "cloud_link_card"):
+    for it in ("cloud_core", "cloud_link_card", *V07_ITEMS):
         write(f"models/item/{it}.json", {"parent": "minecraft:item/generated",
                                          "textures": {"layer0": f"{NS}:item/{it}"}})
         write(f"items/{it}.json", {"model": {"type": "minecraft:model", "model": f"{NS}:item/{it}"}})
@@ -879,6 +922,11 @@ def validate():
     ms = data.get("blockstates/cloud_mainframe.json", {}).get("variants", {})
     if len(ms) != 4 * 2 * 3:
         problems.append(f"cloud_mainframe: {len(ms)} variants, expected 24")
+    if len(data.get("blockstates/cloud_display.json", {}).get("variants", {})) != 4 * 3 * 16:
+        problems.append("cloud_display: expected 192 variants (facing x orientation x state)")
+    for it in V07_ITEMS:
+        if f"items/{it}.json" not in data:
+            problems.append(f"missing item definition {it}")
     for blk in ("cloud_relay", "advanced_cloud_relay", "ender_relay"):
         if len(data.get(f"blockstates/{blk}.json", {}).get("variants", {})) != 3:
             problems.append(f"{blk}: expected 3 status variants")
@@ -957,6 +1005,23 @@ Items: `items/{{me,rs}}_cloud_bridge.json` -> the `_online` block model (vanilla
 `no_power` status value, map it to the `_no_power` model. Moving parts (BER, not in blockstates):
 emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
 moving part (vanilla `block/block` display).
+
+## Cloud Display (v0.7)
+
+`block/cloud_display` (+ 15 `cloud_display_<state>` models), atlas `textures/block/display.png`.
+Same blockstate scheme as CC monitors: `facing` (n/e/s/w) x `orientation` (north / up / down, x-rotation
+0 / 270 / 90) x `state` (none, l, r, lr, u, d, ud, lu, ld, ru, rd, lud, rud, lru, lrd, lrud; letters =
+neighbour on the viewer's left/right/up/down seen from the front) = 192 variants. Front = north. The
+frame edge is open on every connected side, so a wall reads as one screen; east/west faces only use u/d,
+up/down faces only l/r (like CC). The screen area is plain CC black #111: the BER draws the card on
+top of the front face (screen inset 3 px on closed edges, 0 px on connected edges).
+
+## Upgrade cards, Quantum Core, tablets (v0.7)
+
+Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memory>_<allthemodium|vibranium|unobtainium>`,
+`quantum_core`, `cloud_tablet`, `advanced_cloud_tablet`. One shared card base in the ATM metal colour
+ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
+chip = memory).
 
 ## Render types / translucency (MC 26.1)
 

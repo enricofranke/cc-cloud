@@ -33,6 +33,9 @@ Same layout in both files; the mainframe uses the **gold** accent, the uplink th
 | Tab, active | `48, 30, 32 × 14` | 3-slice horizontal, caps **5** | Same shape, accent-coloured top edge, merges into the inset below (no bottom border). |
 | Status LED | `96, 0, 8 × 8` each, 4 frames in a row | none | offline (red) `96,0`, connecting (yellow) `104,0`, online (green) `112,0`, killed (dark red, crossed) `120,0`. |
 | Big status badge | `96, 8, 64 × 14` | 3-slice horizontal, caps **5** | Neutral pill behind the status word; the Java side tints nothing, it just draws text + LED on it. |
+| Upgrade slot (v0.7) | `0, 80, 18 × 18` | none | Vanilla-sized inventory slot (dark top/left, white bottom/right, `#8B8B8B` well). The item renders at +1,+1. |
+| Upgrade slot, empty hint | `18, 80, 18 × 18` | none | Same slot with a faint card silhouette; draw it while the slot is empty. |
+| Quantum Core slot | `36, 80, 18 × 18` | none | Same slot with a gold rim and a faint star silhouette (empty hint); draw the plain gold-rimmed look by covering the ghost with the item. |
 
 ## `textures/gui/widgets.png`
 Shared widgets for both screens.

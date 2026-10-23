@@ -1,0 +1,852 @@
+{
+  "variants": {
+    "facing=north,orientation=north,state=none": {
+      "model": "cccloud:block/cloud_display"
+    },
+    "facing=north,orientation=north,state=l": {
+      "model": "cccloud:block/cloud_display_l"
+    },
+    "facing=north,orientation=north,state=r": {
+      "model": "cccloud:block/cloud_display_r"
+    },
+    "facing=north,orientation=north,state=lr": {
+      "model": "cccloud:block/cloud_display_lr"
+    },
+    "facing=north,orientation=north,state=u": {
+      "model": "cccloud:block/cloud_display_u"
+    },
+    "facing=north,orientation=north,state=d": {
+      "model": "cccloud:block/cloud_display_d"
+    },
+    "facing=north,orientation=north,state=ud": {
+      "model": "cccloud:block/cloud_display_ud"
+    },
+    "facing=north,orientation=north,state=lu": {
+      "model": "cccloud:block/cloud_display_lu"
+    },
+    "facing=north,orientation=north,state=ld": {
+      "model": "cccloud:block/cloud_display_ld"
+    },
+    "facing=north,orientation=north,state=ru": {
+      "model": "cccloud:block/cloud_display_ru"
+    },
+    "facing=north,orientation=north,state=rd": {
+      "model": "cccloud:block/cloud_display_rd"
+    },
+    "facing=north,orientation=north,state=lud": {
+      "model": "cccloud:block/cloud_display_lud"
+    },
+    "facing=north,orientation=north,state=rud": {
+      "model": "cccloud:block/cloud_display_rud"
+    },
+    "facing=north,orientation=north,state=lru": {
+      "model": "cccloud:block/cloud_display_lru"
+    },
+    "facing=north,orientation=north,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd"
+    },
+    "facing=north,orientation=north,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud"
+    },
+    "facing=north,orientation=down,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 90
+    },
+    "facing=north,orientation=down,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 90
+    },
+    "facing=north,orientation=up,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 270
+    },
+    "facing=north,orientation=up,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 270
+    },
+    "facing=east,orientation=north,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "y": 90
+    },
+    "facing=east,orientation=north,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "y": 90
+    },
+    "facing=east,orientation=down,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=down,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 90,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 270,
+      "y": 90
+    },
+    "facing=east,orientation=up,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 270,
+      "y": 90
+    },
+    "facing=south,orientation=north,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "y": 180
+    },
+    "facing=south,orientation=north,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "y": 180
+    },
+    "facing=south,orientation=down,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=down,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 90,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 270,
+      "y": 180
+    },
+    "facing=south,orientation=up,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 270,
+      "y": 180
+    },
+    "facing=west,orientation=north,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "y": 270
+    },
+    "facing=west,orientation=north,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "y": 270
+    },
+    "facing=west,orientation=down,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=down,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 90,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=none": {
+      "model": "cccloud:block/cloud_display",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=l": {
+      "model": "cccloud:block/cloud_display_l",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=r": {
+      "model": "cccloud:block/cloud_display_r",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lr": {
+      "model": "cccloud:block/cloud_display_lr",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=u": {
+      "model": "cccloud:block/cloud_display_u",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=d": {
+      "model": "cccloud:block/cloud_display_d",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=ud": {
+      "model": "cccloud:block/cloud_display_ud",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lu": {
+      "model": "cccloud:block/cloud_display_lu",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=ld": {
+      "model": "cccloud:block/cloud_display_ld",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=ru": {
+      "model": "cccloud:block/cloud_display_ru",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=rd": {
+      "model": "cccloud:block/cloud_display_rd",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lud": {
+      "model": "cccloud:block/cloud_display_lud",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=rud": {
+      "model": "cccloud:block/cloud_display_rud",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lru": {
+      "model": "cccloud:block/cloud_display_lru",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lrd": {
+      "model": "cccloud:block/cloud_display_lrd",
+      "x": 270,
+      "y": 270
+    },
+    "facing=west,orientation=up,state=lrud": {
+      "model": "cccloud:block/cloud_display_lrud",
+      "x": 270,
+      "y": 270
+    }
+  }
+}

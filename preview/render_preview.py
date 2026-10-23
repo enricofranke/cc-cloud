@@ -602,3 +602,73 @@ def item_sheet(a):
 
 if __name__ == "__main__" and os.environ.get("ITEMS"):
     item_sheet(Assets(DEFAULT_CC))
+
+
+# --------------------------------------------------------------------------- v0.7 previews
+def display_state(cells, x, y, flip=False):
+    """Connection letters as CC computes them for a north-facing wall: viewer's left = +x."""
+    s = ""
+    s += "l" if (x + 1, y) in cells else ""
+    s += "r" if (x - 1, y) in cells else ""
+    s += "u" if (x, y + 1) in cells else ""
+    s += "d" if (x, y - 1) in cells else ""
+    return s or "none"
+
+
+def display_quads(a, cells, base=(0, 0, 0), orientation=0):
+    q = []
+    for (x, y) in cells:
+        st = display_state(cells, x, y)
+        name = "cloud_display" if st == "none" else f"cloud_display_{st}"
+        if orientation == 0:
+            pos = (base[0] + x, base[1] + y, base[2])
+        else:  # lying on the floor, facing up (orientation=up -> x 270): the screen's "up" points +z
+            pos = (base[0] + x, base[1], base[2] + y)
+        q += model_quads(a, f"cccloud:block/{name}", blockstate_transform(x=orientation, offset=pos))
+    return q
+
+
+def display_renders(a):
+    wall = {(x, y) for x in range(3) for y in range(2)}
+    shots = [label(render(display_quads(a, wall), 460, yaw=180, pitch=0), "3x2 wall, front"),
+             label(render(display_quads(a, wall), 460, yaw=205, pitch=20), "3x2 wall, 3/4"),
+             label(render(display_quads(a, wall), 460, yaw=20, pitch=20), "3x2 wall, back"),
+             label(render(display_quads(a, {(0, 0)}) + cc(a, "computercraft:block/computer_advanced_on", pos=(-1, 0, 0)),
+                          460, yaw=200, pitch=20), "single display + CC computer"),
+             label(render(display_quads(a, {(x, y) for x in range(2) for y in range(2)}, orientation=270), 460,
+                          yaw=200, pitch=45), "2x2 on the floor (orientation=up)"),
+             label(render(display_quads(a, wall), 460, yaw=205, pitch=20, night=True), "3x2 wall, night")]
+    grid(shots, 3).save(os.path.join(HERE, "renders", "display.png"))
+
+
+def _captioned(img, text):
+    out = Image.new("RGB", (img.width, img.height + 16), (40, 42, 44))
+    out.paste(img.convert("RGB"), (0, 0))
+    ImageDraw.Draw(out).text((4, img.height + 3), text, fill=(230, 230, 230))
+    return out
+
+
+def items_v07(a):
+    D = os.path.join(OURS, "textures", "item")
+    names = [f"upgrade_{k}_{t}" for t in ("allthemodium", "vibranium", "unobtainium")
+             for k in ("capacity", "bandwidth", "range", "efficiency", "memory")]
+    names += ["quantum_core", "cloud_tablet", "advanced_cloud_tablet"]
+    ims = []
+    for n in names:
+        im = Image.open(os.path.join(D, n + ".png")).convert("RGBA").resize((128, 128), Image.NEAREST)
+        bg = Image.new("RGBA", (128, 128), (139, 139, 139, 255))
+        bg.alpha_composite(im)
+        ims.append(_captioned(bg, n.replace("upgrade_", "")))
+    disp = item_render(a, ["cccloud:block/cloud_display"], size=128)
+    ims.append(_captioned(disp, "cloud_display"))
+    gui = Image.open(os.path.join(OURS, "textures", "gui", "mainframe.png")).convert("RGBA").crop((0, 80, 54, 98))
+    slot = Image.new("RGBA", (128, 128), (198, 198, 198, 255))
+    slot.alpha_composite(gui.resize((108, 36), Image.NEAREST), (10, 46))
+    ims.append(_captioned(slot, "gui upgrade slots"))
+    grid(ims, 5).save(os.path.join(HERE, "renders", "items_v07.png"))
+
+
+if __name__ == "__main__" and os.environ.get("V07"):
+    _a = Assets(DEFAULT_CC)
+    display_renders(_a)
+    items_v07(_a)

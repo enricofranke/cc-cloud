@@ -539,6 +539,218 @@ def gen_bridge_status(state):
     cv.save(os.path.join(TEX, "block", f"cloud_bridge_status_{state}.png"))
 
 
+# --------------------------------------------------------------------------- v0.7: upgrade cards, quantum core, tablets
+# ATM metal colour language (own ramps: outline, dark, mid, light, highlight)
+ATM_TIERS = {
+    "allthemodium": [hx("5a1d08"), hx("b0420f"), hx("e8800f"), hx("ffbf35"), hx("fff09a")],
+    "vibranium": [hx("0b3040"), hx("15606f"), hx("1fa886"), hx("47d993"), hx("b0f7d4")],
+    "unobtainium": [hx("1e1450"), hx("3d2a8e"), hx("7a2ad8"), hx("b44fe6"), hx("eaa6f6")],
+}
+UPGRADE_TYPES = ("capacity", "bandwidth", "range", "efficiency", "memory")
+# 8x6 symbols drawn in the card's window (S = symbol light, s = symbol mid)
+UPGRADE_SYMBOLS = {
+    "capacity": ["SS SS SS", "SS SS SS", "        ", "SS SS SS", "SS SS SS", "        "],
+    "bandwidth": ["   S    ", "  SSSSSS", "   S    ", "    s   ", "ssssss  ", "    s   "],
+    "range": [" SSSSSS ", "S      S", "  SSSS  ", " S    S ", "   SS   ", "   SS   "],
+    "efficiency": ["    SS  ", "   SS   ", "  SSSS  ", "   SS   ", "  SS    ", "  S     "],
+    "memory": [" S S S S", "SSSSSSSS", "SsSsSsSs", "SSSSSSSS", " S S S S", "        "],
+}
+
+
+def gen_upgrade_card(kind, tier):
+    """Shared card base (circuit card with gold contacts) in the ATM metal colour + type symbol."""
+    o, d, m, l, h = ATM_TIERS[tier]
+    rows = [
+        "                ",
+        " oooooooooooooo ",
+        " ollllllllllllo ",
+        " olmmmmmmmmmmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmwwwwwwwwmdo ",
+        " olmmmmmmmmmmdo ",
+        " ohmmmmmmmmmmdo ",
+        " oddddddddddddo ",
+        " ooGoGoGoGoGooo ",
+        "  oooooooooooo  ",
+        "                ",
+    ]
+    cv = Canvas(16, 16)
+    cv.ascii(0, 0, rows, {"o": o, "l": l, "m": m, "d": d, "h": h, "w": hx("141414"),
+                          "G": GOLD_L[0]})
+    # tiny status notch top-right (cloud cyan) and the symbol in the window
+    cv.set(12, 2, CYAN_L)
+    cv.ascii(4, 4, UPGRADE_SYMBOLS[kind], {"S": h, "s": l})
+    cv.save(os.path.join(TEX, "item", f"upgrade_{kind}_{tier}.png"))
+
+
+def gen_quantum_core():
+    """Quantum Core: cyan quantum orb inside a four-point gold star with violet sparks (ATM star vibe)."""
+    cv = Canvas(16, 16)
+    gold = [hx("7a3410"), hx("d7741a"), hx("f2b51d"), hx("ffe25a")]  # outline, dark, mid, light
+    # star arms (taper), drawn first
+    for k in range(1, 8):
+        w = 2 if k < 4 else 1
+        for t in range(-w + 1, w):
+            for (x, y) in ((7 + t, 7 - k), (8 + t, 8 + k), (7 - k, 8 + t), (8 + k, 7 + t)):
+                if 0 <= x < 16 and 0 <= y < 16:
+                    cv.set(x, y, gold[2] if k < 6 else gold[3])
+    # outline the star
+    snap = [[cv.get(x, y) for x in range(16)] for y in range(16)]
+    for y in range(16):
+        for x in range(16):
+            if snap[y][x][3] == 0 and any(0 <= x + dx < 16 and 0 <= y + dy < 16 and snap[y + dy][x + dx][3] > 0
+                                          for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                cv.set(x, y, gold[0])
+    # orb (radius ~3.4) with light from top-left
+    for y in range(16):
+        for x in range(16):
+            dx, dy = x - 7.5, y - 7.5
+            r = (dx * dx + dy * dy) ** 0.5
+            if r <= 3.6:
+                lightness = -(dx + dy) / 5.0
+                c = CYAN_L if lightness > 0.5 else CYAN if lightness > -0.4 else CYAN_D
+                cv.set(x, y, c)
+            elif r <= 4.3 and cv.get(x, y)[3] == 0 or (3.6 < r <= 4.3):
+                cv.set(x, y, hx("1f4e5c"))
+    cv.set(6, 6, hx("ffffff"))
+    # violet sparks on the diagonals (unobtainium accent)
+    for (x, y) in ((2, 2), (13, 2), (2, 13), (13, 13)):
+        cv.set(x, y, ATM_TIERS["unobtainium"][3])
+    for (x, y) in ((3, 3), (12, 3), (3, 12), (12, 12)):
+        cv.set(x, y, ATM_TIERS["unobtainium"][2])
+    cv.save(os.path.join(TEX, "item", "quantum_core.png"))
+
+
+def gen_tablet(advanced):
+    """Cloud Tablet: CC pocket-computer silhouette (portrait), dark screen with a cyan cloud."""
+    body, band = (GOLD, GOLD_L) if advanced else (GREY, GREY_L)
+    rows = [
+        "                ",
+        "  oooooooooooo  ",
+        " obbbbbbbbbbbbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " obkkkkkkkkkkbo ",
+        " oLLLLLLLLLLLLo ",
+        " oLLLLLLLLLLLLo ",
+        " oLLLLLLLSSLLLo ",
+        " oLLLLLLLLLLLLo ",
+        "  oooooooooooo  ",
+        "                ",
+    ]
+    cv = Canvas(16, 16)
+    cv.ascii(0, 0, rows, {"o": grey(0x24), "b": body, "L": band, "k": TERM, "S": grey(0x2b)})
+    # cloud on the screen + two widget bars (the dashboard look)
+    cv.ascii(4, 4, [" Cc  ", "CccCc", "ccccc"], {"C": CYAN_L, "c": CYAN})
+    cv.hline(4, 8, 4, [GREEN])
+    cv.hline(9, 8, 3, [CYAN_D])
+    if advanced:
+        cv.set(13, 12, CYAN)  # status light
+    cv.save(os.path.join(TEX, "item", "advanced_cloud_tablet.png" if advanced else "cloud_tablet.png"))
+
+
+# --------------------------------------------------------------------------- v0.7: cloud display (CC-monitor-like multiblock)
+DISPLAY_STATES = ("none", "l", "r", "lr", "u", "d", "ud", "lu", "ld", "ru", "rd", "lud", "rud", "lru", "lrd", "lrud")
+DISPLAY_SIDE = ("none", "u", "ud", "d")   # east/west faces: only vertical continuity matters
+DISPLAY_TOP = ("none", "l", "lr", "r")    # up/down faces: only horizontal continuity matters
+
+
+def display_tiles():
+    """Tile index per face kind in textures/block/display.png (8x8 tiles of 16)."""
+    t = {}
+    for i, st in enumerate(DISPLAY_STATES):
+        t[("front", st)] = (i % 8, i // 8)
+        t[("back", st)] = (i % 8, 2 + i // 8)
+    for i, st in enumerate(DISPLAY_SIDE):
+        t[("side", st)] = (i, 4)
+    for i, st in enumerate(DISPLAY_TOP):
+        t[("top", st)] = (4 + i, 4)
+    return t
+
+
+def gen_display():
+    """Cloud Display atlas. "l"/"r"/"u"/"d" = a neighbour on the viewer's left/right/up/down (seen
+    from the front) -> that edge of the frame is open so a wall of displays reads as one screen.
+    Front: 3 px frame (dark outline, gold, cyan line) around a CC-black screen. Back: gold CC casing.
+    Side textures (east/west) only care about u/d, top textures (up/down) only about l/r."""
+    cv = Canvas(128, 128, CLEAR)
+    tiles = display_tiles()
+
+    def has(st, k):
+        return st != "none" and k in st
+
+    for (kind, st), (c, r) in tiles.items():
+        ox, oy = c * 16, r * 16
+        if kind == "front":
+            cv.rect(ox, oy, 16, 16, TERM)
+            # image-left = viewer's left (l), image-top = up (u). Draw inner layer first (cyan line,
+            # then gold, then the dark outline) so outer layers win at the corners.
+            bands = {"l": ("v", 0, 1), "r": ("v", 15, -1), "u": ("h", 0, 1), "d": ("h", 15, -1)}
+            for depth, col in ((2, CYAN_D), (1, GOLD[0]), (0, None)):
+                for k, (axis, start, step) in bands.items():
+                    if has(st, k):
+                        continue
+                    pos = start + step * depth
+                    shades = EDGE if col is None else [col]
+                    if axis == "v":
+                        cv.vline(ox + pos, oy, 16, shades, 600 + depth)
+                    else:
+                        cv.hline(ox, oy + pos, 16, shades, 600 + depth)
+        else:
+            for y in range(16):
+                cv.hline(ox, oy + y, 16, GOLD_L if y >= 9 else GOLD, 610 + y)
+            if kind == "back":
+                # the back is seen mirrored: viewer's left (l) is image-right
+                if not has(st, "l"):
+                    cv.vline(ox + 15, oy, 16, EDGE, 611)
+                if not has(st, "r"):
+                    cv.vline(ox, oy, 16, EDGE, 612)
+                if not has(st, "u"):
+                    cv.hline(ox, oy, 16, EDGE, 613)
+                if not has(st, "d"):
+                    cv.hline(ox, oy + 15, 16, EDGE, 614)
+            elif kind == "side":
+                cv.vline(ox, oy, 16, EDGE, 615)
+                cv.vline(ox + 15, oy, 16, EDGE, 616)
+                if not has(st, "u"):
+                    cv.hline(ox, oy, 16, EDGE, 617)
+                if not has(st, "d"):
+                    cv.hline(ox, oy + 15, 16, EDGE, 618)
+            else:  # top / bottom face: u = x, so the viewer's left (+x) is image-right
+                cv.hline(ox, oy, 16, EDGE, 619)
+                cv.hline(ox, oy + 15, 16, EDGE, 620)
+                if not has(st, "l"):
+                    cv.vline(ox + 15, oy, 16, EDGE, 621)
+                if not has(st, "r"):
+                    cv.vline(ox, oy, 16, EDGE, 622)
+    cv.save(os.path.join(TEX, "block", "display.png"))
+
+
+def gui_slot(cv, x, y, ghost=None, gold=False):
+    """18x18 inventory slot in CC GUI colours (dark top-left, light bottom-right, #8b8b8b well)."""
+    cv.rect(x, y, 18, 18, GUI_GREY)
+    cv.rect(x, y, 17, 1, hx("373737")); cv.rect(x, y, 1, 17, hx("373737"))
+    cv.rect(x + 1, y + 17, 17, 1, hx("ffffff")); cv.rect(x + 17, y + 1, 1, 17, hx("ffffff"))
+    cv.rect(x + 1, y + 1, 16, 16, hx("8b8b8b"))
+    if gold:
+        cv.outline(x + 1, y + 1, 16, 16, [GOLD[0]])
+    if ghost == "card":
+        cv.ascii(x + 3, y + 4, ["oooooooooooo", "o..........o", "o.oooooo...o", "o.o....o...o", "o.oooooo...o",
+                                "o..........o", "oooooooooooo", " o o o o o  "],
+                 {"o": hx("7a7a7a"), ".": hx("8b8b8b")})
+    elif ghost == "star":
+        cv.ascii(x + 4, y + 4, ["    oo    "[:10], "    oo    ", "   oooo   ", "oooooooooo", "oooooooooo",
+                                "   oooo   ", "    oo    ", "    oo    "], {"o": hx("7a7a7a")})
+
+
 # --------------------------------------------------------------------------- relays (v0.4)
 RELAY_STATUS_REGIONS = {"strip": (0, 0, 6, 1), "tip": (0, 2, 1, 1)}
 
@@ -783,6 +995,11 @@ def gen_gui_screen(kind):
     # Big status badge 96,8 64x14, caps 5: neutral dark pill (terminal look, light text + LED on it)
     _rounded_rect(cv, 96, 8, 64, 14, GUI_OUT, hx("1c1c1c"), hx("2e2e2e"), hx("0c0c0c"), r=2)
 
+    # v0.7 upgrade slots (18x18, no slicing): plain, empty-card ghost, quantum-core slot (gold rim, star ghost)
+    gui_slot(cv, 0, 80)
+    gui_slot(cv, 18, 80, ghost="card")
+    gui_slot(cv, 36, 80, ghost="star", gold=True)
+
     cv.save(os.path.join(TEX, "gui", f"{kind}.png"))
 
 
@@ -923,6 +1140,13 @@ def main():
         gen_relay(tier)
     for st in ("online", "connecting", "offline", "no_power"):
         gen_relay_status(st)
+    for kind in UPGRADE_TYPES:
+        for tier in ATM_TIERS:
+            gen_upgrade_card(kind, tier)
+    gen_quantum_core()
+    gen_tablet(False)
+    gen_tablet(True)
+    gen_display()
     gen_gui_screen("mainframe")
     gen_gui_screen("uplink")
     gen_gui_widgets()

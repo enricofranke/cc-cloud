@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "cccloud:item/upgrade_capacity_allthemodium"
+  }
+}

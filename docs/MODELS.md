@@ -69,6 +69,23 @@ Items: `items/{me,rs}_cloud_bridge.json` -> the `_online` block model (vanilla `
 emitter rings and the ender core, pivots in the table above. Items: composite of the `_online` base + its
 moving part (vanilla `block/block` display).
 
+## Cloud Display (v0.7)
+
+`block/cloud_display` (+ 15 `cloud_display_<state>` models), atlas `textures/block/display.png`.
+Same blockstate scheme as CC monitors: `facing` (n/e/s/w) x `orientation` (north / up / down, x-rotation
+0 / 270 / 90) x `state` (none, l, r, lr, u, d, ud, lu, ld, ru, rd, lud, rud, lru, lrd, lrud; letters =
+neighbour on the viewer's left/right/up/down seen from the front) = 192 variants. Front = north. The
+frame edge is open on every connected side, so a wall reads as one screen; east/west faces only use u/d,
+up/down faces only l/r (like CC). The screen area is plain CC black #111: the BER draws the card on
+top of the front face (screen inset 3 px on closed edges, 0 px on connected edges).
+
+## Upgrade cards, Quantum Core, tablets (v0.7)
+
+Flat `item/generated` items: `upgrade_<capacity|bandwidth|range|efficiency|memory>_<allthemodium|vibranium|unobtainium>`,
+`quantum_core`, `cloud_tablet`, `advanced_cloud_tablet`. One shared card base in the ATM metal colour
+ramp, the symbol shows the type (grid = capacity, arrows = bandwidth, arcs = range, bolt = efficiency,
+chip = memory).
+
 ## Render types / translucency (MC 26.1)
 
 In 26.1 the chunk layer is chosen **per quad** from the texture: `FaceBakery` calls
