@@ -551,6 +551,24 @@ Lua (`cloud_mainframe`): `getRules()` and `setRuleEnabled(id, enabled)`.
 - Outgoing HTTP from the server: async, timeouts 5 s, retries with backoff, max 30 messages/minute per mainframe, URL allowlist by scheme (https only, except ntfy on LAN), never follow redirects to private IPs (SSRF protection), config `pushEnabled` and `pushAllowedHosts`.
 - A "Send test notification" button.
 
+### D. Push – web protocol and implementation notes (mod side)
+Implemented in `push/` (`PushTarget`, `UrlPolicy` = SSRF rules, `PushFormat`, `PushHttp` = the HTTP client, `PushService`, `PushStore`/`PushData` = SavedData `data/cccloud/push.dat`, `PushApi`). New permission **`push.manage`** (group `manage`, admin and owner presets).
+
+**API** (`/api/mainframes/<id>/push`, needs `push.manage`; 403 `forbidden`/`not_allowed` like the other mainframe APIs):
+- `GET` → the push document: `{"enabled": bool (config), "targets":[{"id","type":"discord|ntfy|webhook","name","url":"https://discord.com/…a1b2","hasToken","minLevel":"info|warn|error","events":["alerts","rules","approvals","power"],"enabled","lastSent": ms|null,"lastResult":"ok"|"http_404"|"timeout"|…|null}], "limit": 5, "perMinute": 30, "allowedHosts":[…]}`. The URL is masked (scheme + host + last 4 characters) and the ntfy token is never returned (`hasToken`).
+- `POST {"op":"add","target":{"type","name?","url","token?","minLevel?","events?","enabled?"}}` – defaults: name = type, `minLevel` `warn`, events alerts + rules + power, enabled. Max 5 targets per mainframe (`too_many`).
+- `POST {"op":"update","id","target":{…}}` – only the given fields change; without `url`/`token` the stored secret stays (`"token":""` removes it). Changing the type needs a new `url`.
+- `POST {"op":"delete","id"}`, `POST {"op":"test","id"}` (queues "Test notification"; the result shows up as `lastResult`; 409 `disabled`, 429 `rate_limited`).
+- Every answer is the new push document; errors 400 `invalid`, `invalid_url`, `https_only`, `host_not_allowed`, `too_many`, 404 `unknown_target`. Changes are written to the mainframe's audit log.
+
+**What is sent:** `alerts` – every alert of a script, card, craft job or rule alert action from `minLevel` up (Lua `crit` counts as `error`), titled with the section's title; `rules` – runs of rules with `notify` (result `ok` or the error); `approvals` – a browser waits for in-game approval on the mainframe (device name only); `power` – "No power" (`error`) / "Power restored" (`info`), at most once a minute per mainframe.
+
+**Formats:** Discord `{"content","username":"CC: Cloud","allowed_mentions":{"parse":[]}}` (markdown and mentions escaped, ≤ 1900 chars); ntfy plain-text body with `Title` (control characters removed, non-ASCII as RFC 2047), `Priority` 3/4/5, `Tags`, optional `Authorization: Bearer <token>`; webhook `{"source":"cccloud","event","mainframeId","mainframe","title","text","level","time"}`.
+
+**Safety:** https only (plain http only for an ntfy target whose host is in `pushAllowedHosts`); no user info or fragment; Discord only `https://discord.com|discordapp.com|canary.discord.com|ptb.discord.com/api/webhooks/…` on the default port; `localhost`, `*.local`, `*.internal`, IP literals that are not public and numeric host tricks are refused unless allow-listed. At send time the host is resolved once and **every** address must be public (loopback, RFC 1918, link-local incl. 169.254.169.254, CGNAT 100.64/10, multicast, reserved, unique-local fc00::/7, IPv4-mapped/NAT64/6to4 forms of those, documentation ranges); the connection then goes to that checked address (no second lookup, no DNS rebinding), TLS checks certificate and host name, redirects are never followed (a 3xx counts as failed). Timeouts 5 s (connect, answer), responses ≤ 64 KB. Async on 2 worker threads, 30 deliveries per minute per mainframe (token bucket), queue ≤ 200, 3 attempts with 2 s / 6 s backoff for network errors, 429 and 5xx. Targets that no longer pass the rules (e.g. after the allowlist changed) are dropped on load.
+
+**Config** (`[push]`): `pushEnabled` (default true), `pushAllowedHosts` (default empty = any public host; `host` or `*.domain`).
+
 ### E. Browser terminal + Lua editor (for scripters)
 - **Terminal**: live view of a CC computer's terminal (attached to an uplink) with keyboard input from the browser (canControl only), like standing in front of it. Server streams terminal changes (diffed, max 10 fps, colour palette), input events are rate-limited and go through CC's event queue (`char`, `key`, `key_up`, `paste`, `mouse_click` optional). Uses CC's server-side terminal state (check the CC API for reading a ServerComputer's terminal).
 - **Lua editor**: file tree of the computer's filesystem (only that computer's own drive, no disk drives, no rom writes), open/edit/save files with syntax highlighting (lightweight editor bundled, e.g. CodeMirror 6 core with the Lua mode, lazy-loaded chunk), "Save & run" (runs `shell.run(file)` via a queued event the cloud.ui/startup helper listens to, or via the terminal by typing the command). Limits: file size ≤ 256 KB, path validation, quota respected, audit log.
@@ -1089,7 +1107,7 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 
 ### Fine-grained permissions per mainframe (requested 2026-10-23)
 Roles stay as presets, but every grant can be customized with individual permissions.
-- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
+- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `push.manage` (push targets, v0.5 D), `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
 - Presets: viewer = {view, storage.search}; operator = viewer + {act.*, storage.craft, rules.toggle}; admin = everything except ownership transfer; owner = all. A grant = preset + `allow`/`deny` lists (deny wins). Team-rank grants work the same way.
 - `AccessResolver` returns an effective permission set; every check uses `has(perm)` instead of role comparisons (keep the role for display). PIN-protected widgets additionally require the PIN as today.
 - Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.
@@ -1110,6 +1128,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 - HTTP:
   - access: `access.manage`;
   - shares: `shares.create`;
+  - push targets: `push.manage`;
   - script list, read and write: `scripts.upload`; run: `scripts.run`; delete: `scripts.delete`.
 - In-game screen and commands:
   - dashboard switch: `power.toggle`;

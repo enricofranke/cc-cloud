@@ -97,6 +97,7 @@ public final class AccessGate {
         return switch (route) {
             case ACCESS_GET, ACCESS_POST -> Perm.ACCESS_MANAGE;
             case SHARES_GET, SHARES_POST, SHARE_DELETE -> Perm.SHARES_CREATE;
+            case PUSH_GET, PUSH_POST -> Perm.PUSH_MANAGE;
             case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT -> Perm.SCRIPTS_UPLOAD;
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;

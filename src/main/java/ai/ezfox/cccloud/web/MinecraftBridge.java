@@ -93,9 +93,11 @@ public final class MinecraftBridge implements GameBridge {
         String what = name != null ? name : "your account";
         if (targets.isEmpty()) {
             CloudLog.LOGGER.warn("[cccloud] Device '{}' ({}) waits for approval on {}, but nobody who may approve is online", pending.deviceName(), pending.ip(), what);
+            if (pending.mainframeId() != null) pushApproval(pending.mainframeId(), pending.deviceName());
             return;
         }
         CloudLog.LOGGER.info("[cccloud] Device '{}' from {} asks to connect to {} – waiting for in-game approval", pending.deviceName(), pending.ip(), what);
+        if (pending.mainframeId() != null) pushApproval(pending.mainframeId(), pending.deviceName());
         for (var player : targets) {
             // Always in chat (clickable, with the time left); an open mainframe screen shows it on top as well.
             ApprovalPrompt.send(player, pending, name);
@@ -103,6 +105,12 @@ public final class MinecraftBridge implements GameBridge {
                 ai.ezfox.cccloud.gui.GuiNetwork.push(player, "approval_request");
             }
         }
+    }
+
+    /** v0.5 D: push "approval needed" (server thread). */
+    private void pushApproval(UUID mainframeId, String deviceName) {
+        if (server.isSameThread()) ai.ezfox.cccloud.push.PushService.approvalPending(mainframeId, deviceName);
+        else server.execute(() -> ai.ezfox.cccloud.push.PushService.approvalPending(mainframeId, deviceName));
     }
 
     @Override
@@ -345,7 +353,39 @@ public final class MinecraftBridge implements GameBridge {
         }
         if (allowed.isEmpty()) return AccessApi.error(403, "forbidden");
         for (var d : allowed) auth.touch(d.tokenHash(), ip.isEmpty() ? null : ip);
-        return new AccessApi(auth, resolver(), players(), hooks()).handle(route, allowed, path, body);
+        var api = new AccessApi(auth, resolver(), players(), hooks());
+        if (route == Router.Id.PUSH_GET || route == Router.Id.PUSH_POST) api.withPush(pushApi());
+        return api.handle(route, allowed, path, body);
+    }
+
+    private ai.ezfox.cccloud.push.PushApi pushApi() {
+        return new ai.ezfox.cccloud.push.PushApi(ai.ezfox.cccloud.push.PushData.get(server).store(), new ai.ezfox.cccloud.push.PushApi.Hooks() {
+            @Override
+            public boolean enabled() {
+                return ai.ezfox.cccloud.push.PushService.enabled();
+            }
+
+            @Override
+            public java.util.Set<String> allowedHosts() {
+                return ai.ezfox.cccloud.push.PushService.allowedHosts();
+            }
+
+            @Override
+            public @Nullable String test(UUID mainframeId, ai.ezfox.cccloud.push.PushTarget target) {
+                return ai.ezfox.cccloud.push.PushService.test(mainframeId, target);
+            }
+
+            @Override
+            public com.google.gson.@Nullable JsonObject status(String targetId) {
+                return ai.ezfox.cccloud.push.PushService.status(targetId);
+            }
+
+            @Override
+            public void audit(UUID mainframeId, String message) {
+                WebAuthData.access(server).audit(mainframeId, message);
+                CloudLog.LOGGER.info("[cccloud] {}", message);
+            }
+        });
     }
 
     private AccessApi.Players players() {
