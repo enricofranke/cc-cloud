@@ -59,6 +59,7 @@ public final class TerminalTests {
     }
 
     public static void typeAndSee(GameTestHelper helper) {
+        CloudGameTests.throttleForComputers(helper);
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
         CloudGameTests.keepPowered(helper, mainframe);

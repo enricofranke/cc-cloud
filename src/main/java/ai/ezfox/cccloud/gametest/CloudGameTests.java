@@ -27,6 +27,21 @@ public final class CloudGameTests {
         return placeMainframe(helper, player, FLOOR);
     }
 
+    /**
+     * Tests that wait for a CC computer (boot, reboot, Lua): the GameTest server ticks as fast as it can, but CC runs
+     * computers on its own threads in wall-clock time. Sleeping a little each tick while such a test runs keeps the tick
+     * budget meaningful (at most ~200 ticks per second) instead of letting thousands of ticks pass in a second.
+     */
+    public static void throttleForComputers(GameTestHelper helper) {
+        helper.onEachTick(() -> {
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+
     /** Keeps the mainframe's FE buffer full for the whole test (tests that are not about power). */
     public static void keepPowered(GameTestHelper helper, CloudMainframeBlockEntity mainframe) {
         mainframe.energy().set(mainframe.energy().capacity());

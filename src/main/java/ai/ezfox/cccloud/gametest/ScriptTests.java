@@ -35,6 +35,7 @@ public final class ScriptTests {
     }
 
     public static void uploadAndRun(GameTestHelper helper) {
+        CloudGameTests.throttleForComputers(helper);
         var server = helper.getLevel().getServer();
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var viewer = UUID.randomUUID();

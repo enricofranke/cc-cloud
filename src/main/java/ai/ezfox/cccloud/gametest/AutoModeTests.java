@@ -23,6 +23,7 @@ public final class AutoModeTests {
     }
 
     public static void computerCard(GameTestHelper helper) {
+        CloudGameTests.throttleForComputers(helper);
         helper.setBlock(COMPUTER, BridgeTestSupport.block(helper, "computercraft:computer_normal"));
         // facing = direction from the uplink towards the block it sticks to (the computer is at -x).
         helper.setBlock(UPLINK, ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.WEST));

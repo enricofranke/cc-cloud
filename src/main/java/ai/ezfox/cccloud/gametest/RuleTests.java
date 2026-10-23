@@ -30,6 +30,7 @@ public final class RuleTests {
     }
 
     public static void widgetThresholdSetsRedstone(GameTestHelper helper) {
+        CloudGameTests.throttleForComputers(helper);
         var server = helper.getLevel().getServer();
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
