@@ -518,5 +518,7 @@
   "cccloud.configuration.world": "Welt & Fortschritt",
   "cccloud.configuration.gatewaysCard": "Gateways to Eternity: Gateway-Karte",
   "cccloud.configuration.waystonesCard": "Waystones: Wegstein-Karte und Kartenebene",
-  "cccloud.configuration.questsCard": "FTB Quests: Quest-Fortschritt-Karte"
+  "cccloud.configuration.questsCard": "FTB Quests: Quest-Fortschritt-Karte",
+  "item.cccloud.handbook": "CC: Cloud-Handbuch",
+  "item.cccloud.handbook.tooltip": "Mainframes, Uplinks, das Dashboard, Lua und mehr"
 }

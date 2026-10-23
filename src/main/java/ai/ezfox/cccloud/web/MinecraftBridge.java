@@ -131,8 +131,12 @@ public final class MinecraftBridge implements GameBridge {
         }
         String target = where;
         String value = Json.GSON.toJson(action.value());
+        var section = CloudNetwork.section(action.uplinkId());
+        String sectionTitle = section == null ? "" : section.getTitle();
         return result.whenComplete((r, ex) -> {
             if (r != null && r.ok()) {
+                ai.ezfox.cccloud.api.CloudEvents.action(new ai.ezfox.cccloud.api.CloudEvents.Action(mainframeId, action.uplinkId(), sectionTitle, action.id(),
+                    action.value(), device.player(), device.playerName(), device.name()));
                 CloudLog.LOGGER.info("[cccloud] {} ({}) pressed {} = {}{}", device.name(), device.playerName(), target, value, r.jobId() != null ? " (job " + r.jobId() + ")" : "");
             } else {
                 CloudLog.LOGGER.info("[cccloud] Rejected action of {} ({}) on {} = {}: {}", device.name(), ip, target, value, r == null ? ex : r.error());

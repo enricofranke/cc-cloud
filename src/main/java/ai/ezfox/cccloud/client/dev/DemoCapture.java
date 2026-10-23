@@ -24,8 +24,28 @@ public final class DemoCapture {
     }
 
     public static void init() {
+        if (System.getProperty("cccloud.guideShots") != null) NeoForge.EVENT_BUS.addListener(DemoCapture::guideTick);
         if (System.getProperty("cccloud.demo") == null) return;
         NeoForge.EVENT_BUS.addListener(DemoCapture::tick);
+    }
+
+    private static long guideSince;
+
+    /** Dev only ({@code -PguideShots}): once GuideMe's screen has been open for 5 s, saves a screenshot and quits. */
+    private static void guideTick(ClientTickEvent.Post event) {
+        var mc = Minecraft.getInstance();
+        boolean guide = mc.screen != null && mc.screen.getClass().getName().startsWith("guideme.");
+        if (!guide) {
+            guideSince = 0;
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (guideSince == 0) guideSince = now;
+        if (step >= 0 && now - guideSince > 5000) {
+            step = -1;
+            shot(mc, new File(System.getProperty("cccloud.guideShots")), "cccloud-handbook.png");
+            mc.stop();
+        }
     }
 
     private static boolean displayReady(Minecraft mc) {

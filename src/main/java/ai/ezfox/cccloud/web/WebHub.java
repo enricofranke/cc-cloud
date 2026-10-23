@@ -434,6 +434,7 @@ public final class WebHub {
     }
 
     public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level) {
+        ai.ezfox.cccloud.api.CloudEvents.alert(new ai.ezfox.cccloud.api.CloudEvents.Alert(mainframeId, uplinkId, text, level));
         var listener = onAlert;
         if (listener != null) {
             String source = null;
