@@ -795,6 +795,65 @@ Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
 7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
 8. Not in this step (security review first): exporting items out of the network into the world.
 
+#### Storage card v2 – protocol (mod side)
+The storage behind a card: a linked bridge section, an uplink in direct mode (Storage template), or – in Lua – the bridge bound to the widget `id`. Every request is answered once. Errors:
+- `unavailable` (no bridge / not loaded);
+- `offline`;
+- `unknown_item`;
+- `invalid`;
+- `rate_limited` (10 storage requests per second per socket);
+- the permission errors.
+
+**`{"t":"storage","reqId","uplinkId","id?","op",…}` → `{"t":"storage_result","reqId","ok","error?","data":{…}}`.** Operations and permissions:
+- `browse` (`storage.search`):
+  - Request: `{"sort":"count"|"name"|"mod","desc":true,"filter":"all"|"craftable"|"favorites","q":"","offset":0,"limit":100}`, with `limit` ≤ 200.
+  - Response: `{"rows":[{"name","displayName","count","craftable","favorite"}],"total","offset"}`.
+  - Favorites are pinned on top in every sort.
+- `craftables` (`storage.search`): `{"q","offset","limit"}` → the same rows, for every item with a pattern (count may be 0).
+- `fluids` (`storage.search`): `{"offset","limit"}` → `{"rows":[{"name","displayName","amount"}],"total"}`, amounts in mB.
+- `item` (`storage.search`): `{"name"}` → a detail document with these fields:
+  - `name`, `displayName`, `mod`, `count`, `craftable`, `favorite`;
+  - `watch: {"min","target","autoCraft","state","failures"}|null`;
+  - `jobs: [recent jobs of this item, see below]`;
+  - `history: [numbers]` (24 h, from the long-term statistics; empty until v0.5 F).
+- `cpus` (`storage.search`) → a document with two lists:
+  - `"cpus":[{"id","name","coProcessors","storage","busy","job":{"name","displayName","count","progress","elapsedMs"}|null}]` (AE2; empty for RS2);
+  - `"tasks":[{"id","name","displayName","count","progress","own":bool}]` (every running job of the network; `own` = started through this bridge).
+- `cancel` (`storage.craft`): `{"jobId"}` → `{}`. `jobId` is a bridge job id (from the jobs widget or `item`) or a network task/CPU id from `cpus`.
+- `favorite` (`act.buttons`): `{"name","on":bool}` → `{}`. Stored with the bridge, at most 64.
+- `autostock` (`storage.autostock`): `{"name","min","target","autoCraft":bool}` → `{}`.
+  - `target` ≥ `min`, both 0..2^31−1.
+  - The item is added to the watchlist if needed.
+  - `min:0` together with `autoCraft:false` turns it off.
+
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"planning"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+
+**Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
+- The plan has these fields:
+  - `name`, `count`;
+  - `missing` (bool), `bytes` (AE2 storage needed, else null);
+  - `entries:[{"name","displayName","stored","toCraft","missing"}]`, where `stored` = taken from storage;
+  - `cpu:{"available":n,"enough":bool}|null`;
+  - `timeMs: null` (no mod exposes it yet).
+- The preview starts nothing.
+- After confirmation, the dashboard sends the usual craft action: `{"op":"craft","name","count","notify":bool}` (`notify` is new and optional; it alerts when the job finishes or fails).
+
+**Auto-stock (level maintainer), server side**
+- Every second, each watchlist entry with `autoCraft` and a pattern is checked. When count < `min`, the bridge requests `min(target − count, batch)`:
+  - `batch` is config `autoStockBatch`, default 64, max 4096;
+  - at most one active job per item;
+  - a 30 s cooldown after each request.
+- States, shown in `watch.state` and the watchlist widget rows (`state`, `target`, `autoCraft`):
+  - `idle`;
+  - `crafting`;
+  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted);
+  - `missing` (missing resources: counted as a failure);
+  - `paused` (3 failures in a row; editing the entry resets it).
+- Jobs are started with the user `autostock`.
+- Lua: `bridge.setAutoStock(name, min, target, enabled)` → true | nil, error.
+
+**Notifications:** a job with `notify` raises `{"t":"alert"}` when done (`info`) or failed (`warn`): "Crafted 64× Iron Ingot" / "Crafting failed: …". Push targets (v0.5 D) get the same.
+
 ### Cached sections of unloaded uplinks/bridges (mod side, implemented)
 - When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".
 - Live sections always carry `"loaded":true`.
