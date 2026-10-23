@@ -280,6 +280,33 @@ public final class WebHub {
         }
     }
 
+    /** v0.7 in-game display: a copy of a section's published snapshot, or null. */
+    public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            var snapshot = view.uplinks.get(uplinkId);
+            return snapshot == null ? null : snapshot.deepCopy();
+        }
+    }
+
+    /** v0.7 display picker: [{uplinkId, title, restricted}] of the published sections. */
+    public JsonArray sectionList(UUID mainframeId) {
+        var list = new JsonArray();
+        var view = views.get(mainframeId);
+        if (view == null) return list;
+        synchronized (view) {
+            for (var entry : view.uplinks.entrySet()) {
+                var row = new JsonObject();
+                row.addProperty("uplinkId", entry.getKey());
+                row.addProperty("title", entry.getValue().has("title") ? entry.getValue().get("title").getAsString() : "");
+                row.addProperty("restricted", view.restricted.contains(entry.getKey()));
+                list.add(row);
+            }
+        }
+        return list;
+    }
+
     /** Type id of a widget as published to the browsers, or null. */
     public @Nullable String widgetType(UUID mainframeId, String uplinkId, String widgetId) {
         var view = views.get(mainframeId);

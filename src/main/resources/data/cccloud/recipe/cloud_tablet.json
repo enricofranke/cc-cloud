@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "redstone",
+  "ingredients": [
+    "computercraft:pocket_computer_normal",
+    "cccloud:cloud_core"
+  ],
+  "result": {
+    "id": "cccloud:cloud_tablet"
+  }
+}

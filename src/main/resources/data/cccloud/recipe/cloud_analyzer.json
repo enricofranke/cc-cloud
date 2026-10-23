@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "tools",
+  "ingredients": [
+    "computercraft:pocket_computer_normal",
+    "cccloud:cloud_core",
+    "#c:dusts/redstone",
+    "#c:glass_panes"
+  ],
+  "result": {
+    "id": "cccloud:cloud_analyzer"
+  }
+}

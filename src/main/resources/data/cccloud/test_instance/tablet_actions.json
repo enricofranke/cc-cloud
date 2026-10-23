@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:tablet_actions",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}
