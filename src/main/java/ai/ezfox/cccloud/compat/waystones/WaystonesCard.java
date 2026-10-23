@@ -30,6 +30,8 @@ public final class WaystonesCard extends MainframeCard {
     public static final String KIND = "waystones";
     public static final String COUNT = "count";
     public static final String ROW = "waystone";
+    /** Shown instead of the rows while there is no waystone. */
+    public static final String EMPTY = "empty";
     static final int ROWS = 8;
     /** Waystones in the overlay at most. */
     public static final int MAX_ITEMS = 512;
@@ -65,7 +67,9 @@ public final class WaystonesCard extends MainframeCard {
     @Override
     public List<Widget> widgets() {
         var w = new CardWidgets().label(COUNT, "Waystones", "icon", "home");
-        for (int i = 1; i <= ROWS; i++) w.label(ROW + i, "Waystone " + i, "span", 2);
+        int rows = Math.min(ROWS, items.size());
+        if (rows == 0) w.label(EMPTY, "Waystones", "span", 2);
+        for (int i = 1; i <= rows; i++) w.label(ROW + i, "Waystone " + i, "span", 2);
         return w.build();
     }
 
@@ -113,11 +117,8 @@ public final class WaystonesCard extends MainframeCard {
     public void refresh(CardOutput out) {
         if (refreshes++ % 10 == 0) reload();
         out.text(COUNT, items.size() + (truncated ? "+" : ""));
-        for (int i = 1; i <= ROWS; i++) {
-            if (i > items.size()) {
-                out.text(ROW + i, "–");
-                continue;
-            }
+        if (items.isEmpty()) out.text(EMPTY, "No waystones yet");
+        for (int i = 1; i <= Math.min(ROWS, items.size()); i++) {
             var it = items.get(i - 1);
             out.text(ROW + i, it.name() + (it.global() ? " (global)" : "") + " – " + it.dim().substring(it.dim().indexOf(':') + 1)
                 + " " + it.x() + ", " + it.y() + ", " + it.z());

@@ -49,7 +49,11 @@ public final class WaystonesGameTests {
                 }
                 helper.assertTrue(found, "our waystone in the overlay: " + items);
                 boolean row = false;
-                for (int i = 1; i <= WaystonesCard.ROWS; i++) if (section.values().get(WaystonesCard.ROW + i).getAsString().startsWith(name + " – ")) row = true;
+                for (int i = 1; i <= WaystonesCard.ROWS; i++) {
+                    var v = section.values().get(WaystonesCard.ROW + i);
+                    if (v != null && v.getAsString().startsWith(name + " – ")) row = true;
+                }
+                helper.assertTrue(section.values().get(WaystonesCard.EMPTY) == null, "no empty line while waystones exist");
                 helper.assertTrue(row, "card row");
             })
             .thenSucceed();

@@ -28,6 +28,8 @@ public final class GatewaysCard extends MainframeCard {
     public static final String ACTIVE = "active";
     public static final String COUNT = "count";
     public static final String GATE = "gate";
+    /** Shown instead of the gate rows while no gate is open. */
+    public static final String EMPTY = "empty";
     static final int ROWS = 6;
     static final int RANGE = 256;
 
@@ -37,6 +39,8 @@ public final class GatewaysCard extends MainframeCard {
     private final CloudMainframeBlockEntity mainframe;
     private Map<UUID, Seen> seen = new HashMap<>();
     private boolean first = true;
+    /** Gate rows currently in the widget set (0 = the "No active gates" line). */
+    private int rows;
 
     GatewaysCard(CloudMainframeBlockEntity mainframe) {
         this.mainframe = mainframe;
@@ -62,8 +66,15 @@ public final class GatewaysCard extends MainframeCard {
         var w = new CardWidgets()
             .indicator(ACTIVE, "Gate open", "onColor", "red", "offColor", "gray")
             .label(COUNT, "Open gates");
-        for (int i = 1; i <= ROWS; i++) w.label(GATE + i, "Gate " + i, "span", 2);
+        if (rows == 0) w.label(EMPTY, "Gates", "span", 2);
+        for (int i = 1; i <= rows; i++) w.label(GATE + i, "Gate " + i, "span", 2);
         return w.build();
+    }
+
+    /** The widget set follows the number of open gates (only rows with data). */
+    @Override
+    public int revision() {
+        return rows;
     }
 
     /** Readable gate name (dedicated servers have no translations of other mods). */
@@ -96,7 +107,8 @@ public final class GatewaysCard extends MainframeCard {
             if (!first && !seen.containsKey(gate.getUUID())) out.alert("Gateway opened: " + name(gate), "info");
             if (row <= ROWS) out.text(GATE + row++, describe(gate, Math.sqrt(gate.distanceToSqr(center))));
         }
-        for (; row <= ROWS; row++) out.text(GATE + row, "–");
+        rows = Math.min(ROWS, gates.size());
+        if (rows == 0) out.text(EMPTY, "No active gates");
         for (var e : seen.entrySet()) {
             if (now.containsKey(e.getKey())) continue;
             if (e.getValue().completed()) out.alert("Gateway completed: " + e.getValue().name(), "info");
