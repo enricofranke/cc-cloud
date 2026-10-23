@@ -1,4 +1,4 @@
-import{l as e}from"./scriptstore-DW_ONPYi.js";import{a as t,l as n,n as r,o as i,r as a,t as o}from"./jsxRuntime.module-BRbsxUMc.js";import{A as s,F as c,J as l,W as u,_ as ee,i as te,o as ne,p as re,s as ie,u as d,x as ae,y as oe,z as f}from"./Overlays-BWyN0ozV.js";import{C as p,a as se,s as m,w as h}from"./index-C9ebch9Q.js";var g={recipes:[{file:`advanced_cloud_relay`,result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},{file:`advanced_cloud_tablet`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GPG`,`GKG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,P:`computercraft:pocket_computer_advanced`,K:`cccloud:cloud_core`}},{file:`advanced_cloud_tablet_upgrade`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GTG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,T:`cccloud:cloud_tablet`}},{file:`advanced_cloud_uplink`,result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},{file:`cloud_analyzer`,result:`cccloud:cloud_analyzer`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`,`#c:dusts/redstone`,`#c:glass_panes`]},{file:`cloud_core`,result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},{file:`cloud_display`,result:`cccloud:cloud_display`,count:4,grid:[`GGG`,`GMG`,`GKG`],key:{G:`#c:ingots/gold`,M:`computercraft:monitor_advanced`,K:`cccloud:cloud_core`}},{file:`cloud_link_card`,result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},{file:`cloud_mainframe`,result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},{file:`cloud_relay`,result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},{file:`cloud_tablet`,result:`cccloud:cloud_tablet`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`]},{file:`cloud_uplink`,result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},{file:`ender_fiber_link`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`minecraft:netherite_ingot`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`!mod:allthemodium`]},{file:`ender_fiber_link_unobtainium`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`#c:ingots/unobtainium`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`mod:allthemodium`]},{file:`ender_relay`,result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},{file:`fiber_cable`,result:`cccloud:fiber_cable`,count:8,grid:[`SGS`,`PCP`,`SGS`],key:{S:`minecraft:string`,G:`#c:glass_panes`,P:`minecraft:prismarine_crystals`,C:`cccloud:cloud_core`}},{file:`fiber_junction`,result:`cccloud:fiber_junction`,count:4,grid:[`SFS`,`FRF`,`SFS`],key:{S:`minecraft:stone`,F:`cccloud:fiber_cable`,R:`minecraft:redstone`}},{file:`handbook`,result:`guideme:guide`,shapeless:!0,items:[`minecraft:book`,`cccloud:cloud_core`],requires:[`mod:guideme`]},{file:`me_cloud_bridge`,result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`},requires:[`mod:ae2`]},{file:`quantum_core`,result:`cccloud:quantum_core`,grid:[`UUU`,`UAU`,`UCU`],key:{U:`#c:ingots/unobtainium`,A:`allthetweaks:atm_star`,C:`cccloud:cloud_core`},requires:[`mod:allthetweaks`]},{file:`quantum_core_fallback`,result:`cccloud:quantum_core`,grid:[`NSN`,`SCS`,`NSN`],key:{N:`minecraft:netherite_block`,S:`minecraft:nether_star`,C:`cccloud:cloud_core`},requires:[`!mod:allthetweaks`]},{file:`rs_cloud_bridge`,result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`},requires:[`mod:refinedstorage`]},{file:`upgrade_bandwidth_allthemodium`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_allthemodium_fallback`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium_fallback`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium_fallback`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_allthemodium`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_allthemodium_fallback`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_unobtainium`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_unobtainium_fallback`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_vibranium`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_vibranium_fallback`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_chunk_anchor`,result:`cccloud:upgrade_chunk_anchor`,grid:[`OEO`,`EAE`,`OCO`],key:{O:`minecraft:obsidian`,E:`minecraft:ender_pearl`,A:`minecraft:lodestone`,C:`cccloud:cloud_core`}},{file:`upgrade_efficiency_allthemodium`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_allthemodium_fallback`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium_fallback`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_vibranium`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_vibranium_fallback`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_allthemodium`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_allthemodium_fallback`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_unobtainium`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_memory_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_unobtainium_fallback`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_memory_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_vibranium`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_vibranium_fallback`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_allthemodium`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_range_allthemodium_fallback`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_unobtainium`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_range_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_unobtainium_fallback`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_range_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_vibranium`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_range_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_vibranium_fallback`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_range_allthemodium`},requires:[`!mod:allthemodium`]}],names:{"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud-Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud-Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Erweiterter Cloud-Uplink`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud-Kern`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud-Verbindungskarte`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME-Cloud-Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS-Cloud-Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud-Relais`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Erweitertes Cloud-Relais`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender-Relais`},"cccloud:fiber_cable":{en:`Fiber Cable`,de:`Glasfaserkabel`},"cccloud:fiber_junction":{en:`Fiber Junction`,de:`Glasfaser-Verteiler`},"cccloud:ender_fiber_link":{en:`Ender Fiber Link`,de:`Ender-Glasfaserbrücke`},"cccloud:upgrade_capacity_allthemodium":{en:`Capacity Upgrade (Allthemodium)`,de:`Kapazität-Upgrade (Allthemodium)`},"cccloud:upgrade_capacity_vibranium":{en:`Capacity Upgrade (Vibranium)`,de:`Kapazität-Upgrade (Vibranium)`},"cccloud:upgrade_capacity_unobtainium":{en:`Capacity Upgrade (Unobtainium)`,de:`Kapazität-Upgrade (Unobtainium)`},"cccloud:upgrade_bandwidth_allthemodium":{en:`Bandwidth Upgrade (Allthemodium)`,de:`Bandbreite-Upgrade (Allthemodium)`},"cccloud:upgrade_bandwidth_vibranium":{en:`Bandwidth Upgrade (Vibranium)`,de:`Bandbreite-Upgrade (Vibranium)`},"cccloud:upgrade_bandwidth_unobtainium":{en:`Bandwidth Upgrade (Unobtainium)`,de:`Bandbreite-Upgrade (Unobtainium)`},"cccloud:upgrade_range_allthemodium":{en:`Range Upgrade (Allthemodium)`,de:`Reichweite-Upgrade (Allthemodium)`},"cccloud:upgrade_range_vibranium":{en:`Range Upgrade (Vibranium)`,de:`Reichweite-Upgrade (Vibranium)`},"cccloud:upgrade_range_unobtainium":{en:`Range Upgrade (Unobtainium)`,de:`Reichweite-Upgrade (Unobtainium)`},"cccloud:upgrade_efficiency_allthemodium":{en:`Efficiency Upgrade (Allthemodium)`,de:`Effizienz-Upgrade (Allthemodium)`},"cccloud:upgrade_efficiency_vibranium":{en:`Efficiency Upgrade (Vibranium)`,de:`Effizienz-Upgrade (Vibranium)`},"cccloud:upgrade_efficiency_unobtainium":{en:`Efficiency Upgrade (Unobtainium)`,de:`Effizienz-Upgrade (Unobtainium)`},"cccloud:upgrade_memory_allthemodium":{en:`Memory Upgrade (Allthemodium)`,de:`Speicher-Upgrade (Allthemodium)`},"cccloud:upgrade_memory_vibranium":{en:`Memory Upgrade (Vibranium)`,de:`Speicher-Upgrade (Vibranium)`},"cccloud:upgrade_memory_unobtainium":{en:`Memory Upgrade (Unobtainium)`,de:`Speicher-Upgrade (Unobtainium)`},"cccloud:quantum_core":{en:`Quantum Core`,de:`Quantenkern`},"cccloud:upgrade_chunk_anchor":{en:`Chunk Anchor Upgrade`,de:`Chunk-Anker-Upgrade`},"cccloud:cloud_tablet":{en:`Cloud Tablet`,de:`Cloud-Tablet`},"cccloud:advanced_cloud_tablet":{en:`Advanced Cloud Tablet`,de:`Erweitertes Cloud-Tablet`},"cccloud:cloud_display":{en:`Cloud Display`,de:`Cloud-Display`},"cccloud:cloud_analyzer":{en:`Cloud Analyzer`,de:`Cloud-Analysator`},"cccloud:handbook":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}}},ce=e({ALL_RECIPES:()=>P,CADDYFILE:()=>O,CLOUDFLARED:()=>k,CLOUDFLARED_YML:()=>A,COMMANDS:()=>N,FENCE:()=>"```",LUA_BRIDGE:()=>v,LUA_BRIDGE_WIDGETS:()=>y,LUA_EVENT:()=>_,LUA_FIRST:()=>le,LUA_LAYOUT:()=>ue,LUA_MAINFRAME:()=>fe,LUA_SETMANY:()=>de,PKCS8:()=>M,RECIPES:()=>pe,RECIPE_GROUPS:()=>me,SHELL_EDIT:()=>C,SHELL_LUA:()=>T,SHELL_RUN:()=>w,TOML_CADDY:()=>D,TOML_LAN:()=>E,TOML_TLS:()=>j,UI_FARM:()=>x,UI_QUICK:()=>b,UI_REACTOR:()=>S,code:()=>ve,groupOf:()=>he,recipe:()=>_e,recipeSection:()=>I}),le=`local cloud = peripheral.find("cloud_uplink")
+import{l as e}from"./scriptstore-L1h0OKAj.js";import{a as t,l as n,n as r,o as i,r as a,t as o}from"./jsxRuntime.module-BRbsxUMc.js";import{A as s,F as c,J as l,W as u,_ as ee,i as te,o as ne,p as re,s as ie,u as d,x as ae,y as oe,z as f}from"./Overlays-Bc1B3IIl.js";import{E as p,T as se,a as m,s as ce}from"./index-DkY1VhZM.js";var h={recipes:[{file:`advanced_cloud_relay`,result:`cccloud:advanced_cloud_relay`,grid:[`GEG`,`GXG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,X:`cccloud:cloud_relay`}},{file:`advanced_cloud_tablet`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GPG`,`GKG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,P:`computercraft:pocket_computer_advanced`,K:`cccloud:cloud_core`}},{file:`advanced_cloud_tablet_upgrade`,result:`cccloud:advanced_cloud_tablet`,grid:[`GEG`,`GTG`,`GGG`],key:{G:`#c:ingots/gold`,E:`#c:ender_pearls`,T:`cccloud:cloud_tablet`}},{file:`advanced_cloud_uplink`,result:`cccloud:advanced_cloud_uplink`,grid:[`GGG`,`GUG`,`GEG`],key:{G:`#c:ingots/gold`,U:`cccloud:cloud_uplink`,E:`#c:ender_pearls`}},{file:`cloud_analyzer`,result:`cccloud:cloud_analyzer`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`,`#c:dusts/redstone`,`#c:glass_panes`]},{file:`cloud_core`,result:`cccloud:cloud_core`,count:2,grid:[`nPn`,`PEP`,`nPn`],key:{n:`#c:nuggets/gold`,P:`minecraft:prismarine_crystals`,E:`#c:ender_pearls`}},{file:`cloud_display`,result:`cccloud:cloud_display`,count:4,grid:[`GGG`,`GMG`,`GKG`],key:{G:`#c:ingots/gold`,M:`computercraft:monitor_advanced`,K:`cccloud:cloud_core`}},{file:`cloud_link_card`,result:`cccloud:cloud_link_card`,shapeless:!0,items:[`minecraft:paper`,`#c:nuggets/gold`,`#c:dusts/redstone`,`minecraft:prismarine_crystals`]},{file:`cloud_mainframe`,result:`cccloud:cloud_mainframe`,grid:[`GKG`,`GAG`,`GDG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,A:`computercraft:computer_advanced`,D:`computercraft:disk_drive`}},{file:`cloud_relay`,result:`cccloud:cloud_relay`,grid:[`SMS`,`RKR`,`SSS`],key:{S:`minecraft:stone`,M:`computercraft:wired_modem`,K:`cccloud:cloud_core`,R:`#c:dusts/redstone`}},{file:`cloud_tablet`,result:`cccloud:cloud_tablet`,shapeless:!0,items:[`computercraft:pocket_computer_normal`,`cccloud:cloud_core`]},{file:`cloud_uplink`,result:`cccloud:cloud_uplink`,count:2,grid:[`SKS`,`SMS`],key:{S:`minecraft:stone`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`}},{file:`ender_fiber_link`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`minecraft:netherite_ingot`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`!mod:allthemodium`]},{file:`ender_fiber_link_unobtainium`,result:`cccloud:ender_fiber_link`,grid:[`YNY`,`FXF`,`YNY`],key:{Y:`minecraft:ender_eye`,N:`#c:ingots/unobtainium`,F:`cccloud:fiber_cable`,X:`cccloud:ender_relay`},requires:[`mod:allthemodium`]},{file:`ender_relay`,result:`cccloud:ender_relay`,grid:[` Y `,`YXY`,` B `],key:{Y:`minecraft:ender_eye`,B:`#c:storage_blocks/gold`,X:`cccloud:advanced_cloud_relay`}},{file:`fiber_cable`,result:`cccloud:fiber_cable`,count:8,grid:[`SGS`,`PCP`,`SGS`],key:{S:`minecraft:string`,G:`#c:glass_panes`,P:`minecraft:prismarine_crystals`,C:`cccloud:cloud_core`}},{file:`fiber_junction`,result:`cccloud:fiber_junction`,count:4,grid:[`SFS`,`FRF`,`SFS`],key:{S:`minecraft:stone`,F:`cccloud:fiber_cable`,R:`minecraft:redstone`}},{file:`handbook`,result:`guideme:guide`,shapeless:!0,items:[`minecraft:book`,`cccloud:cloud_core`],requires:[`mod:guideme`]},{file:`me_cloud_bridge`,result:`cccloud:me_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`ae2:interface`},requires:[`mod:ae2`]},{file:`quantum_core`,result:`cccloud:quantum_core`,grid:[`UUU`,`UAU`,`UCU`],key:{U:`#c:ingots/unobtainium`,A:`allthetweaks:atm_star`,C:`cccloud:cloud_core`},requires:[`mod:allthetweaks`]},{file:`quantum_core_fallback`,result:`cccloud:quantum_core`,grid:[`NSN`,`SCS`,`NSN`],key:{N:`minecraft:netherite_block`,S:`minecraft:nether_star`,C:`cccloud:cloud_core`},requires:[`!mod:allthetweaks`]},{file:`rs_cloud_bridge`,result:`cccloud:rs_cloud_bridge`,grid:[`GKG`,`MIM`,`GGG`],key:{G:`#c:ingots/gold`,K:`cccloud:cloud_core`,M:`computercraft:wired_modem`,I:`refinedstorage:interface`},requires:[`mod:refinedstorage`]},{file:`upgrade_bandwidth_allthemodium`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_allthemodium_fallback`,result:`cccloud:upgrade_bandwidth_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:wireless_modem_advanced`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_unobtainium_fallback`,result:`cccloud:upgrade_bandwidth_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_bandwidth_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_bandwidth_vibranium_fallback`,result:`cccloud:upgrade_bandwidth_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_bandwidth_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_allthemodium`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_allthemodium_fallback`,result:`cccloud:upgrade_capacity_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:chest`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_unobtainium`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_unobtainium_fallback`,result:`cccloud:upgrade_capacity_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_capacity_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_capacity_vibranium`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_capacity_vibranium_fallback`,result:`cccloud:upgrade_capacity_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_capacity_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_chunk_anchor`,result:`cccloud:upgrade_chunk_anchor`,grid:[`OEO`,`EAE`,`OCO`],key:{O:`minecraft:obsidian`,E:`minecraft:ender_pearl`,A:`minecraft:lodestone`,C:`cccloud:cloud_core`}},{file:`upgrade_efficiency_allthemodium`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_allthemodium_fallback`,result:`cccloud:upgrade_efficiency_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:redstone_block`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_unobtainium_fallback`,result:`cccloud:upgrade_efficiency_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_efficiency_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_efficiency_vibranium`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_efficiency_vibranium_fallback`,result:`cccloud:upgrade_efficiency_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_efficiency_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_allthemodium`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_allthemodium_fallback`,result:`cccloud:upgrade_memory_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`computercraft:disk_drive`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_unobtainium`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_memory_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_unobtainium_fallback`,result:`cccloud:upgrade_memory_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_memory_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_memory_vibranium`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_memory_vibranium_fallback`,result:`cccloud:upgrade_memory_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_memory_allthemodium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_allthemodium`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`#c:ingots/allthemodium`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`mod:allthemodium`]},{file:`upgrade_range_allthemodium_fallback`,result:`cccloud:upgrade_range_allthemodium`,grid:[` M `,`MTM`,` C `],key:{M:`minecraft:diamond`,T:`minecraft:ender_pearl`,C:`cccloud:cloud_core`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_unobtainium`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/unobtainium`,P:`cccloud:upgrade_range_vibranium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_unobtainium_fallback`,result:`cccloud:upgrade_range_unobtainium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:nether_star`,P:`cccloud:upgrade_range_vibranium`},requires:[`!mod:allthemodium`]},{file:`upgrade_range_vibranium`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`#c:ingots/vibranium`,P:`cccloud:upgrade_range_allthemodium`},requires:[`mod:allthemodium`]},{file:`upgrade_range_vibranium_fallback`,result:`cccloud:upgrade_range_vibranium`,grid:[` M `,`MPM`,` M `],key:{M:`minecraft:netherite_ingot`,P:`cccloud:upgrade_range_allthemodium`},requires:[`!mod:allthemodium`]}],names:{"cccloud:cloud_mainframe":{en:`Cloud Mainframe`,de:`Cloud-Mainframe`},"cccloud:cloud_uplink":{en:`Cloud Uplink`,de:`Cloud-Uplink`},"cccloud:advanced_cloud_uplink":{en:`Advanced Cloud Uplink`,de:`Erweiterter Cloud-Uplink`},"cccloud:cloud_core":{en:`Cloud Core`,de:`Cloud-Kern`},"cccloud:cloud_link_card":{en:`Cloud Link Card`,de:`Cloud-Verbindungskarte`},"cccloud:me_cloud_bridge":{en:`ME Cloud Bridge`,de:`ME-Cloud-Bridge`},"cccloud:rs_cloud_bridge":{en:`RS Cloud Bridge`,de:`RS-Cloud-Bridge`},"cccloud:cloud_relay":{en:`Cloud Relay`,de:`Cloud-Relais`},"cccloud:advanced_cloud_relay":{en:`Advanced Cloud Relay`,de:`Erweitertes Cloud-Relais`},"cccloud:ender_relay":{en:`Ender Relay`,de:`Ender-Relais`},"cccloud:fiber_cable":{en:`Fiber Cable`,de:`Glasfaserkabel`},"cccloud:fiber_junction":{en:`Fiber Junction`,de:`Glasfaser-Verteiler`},"cccloud:ender_fiber_link":{en:`Ender Fiber Link`,de:`Ender-Glasfaserbrücke`},"cccloud:upgrade_capacity_allthemodium":{en:`Capacity Upgrade (Allthemodium)`,de:`Kapazität-Upgrade (Allthemodium)`},"cccloud:upgrade_capacity_vibranium":{en:`Capacity Upgrade (Vibranium)`,de:`Kapazität-Upgrade (Vibranium)`},"cccloud:upgrade_capacity_unobtainium":{en:`Capacity Upgrade (Unobtainium)`,de:`Kapazität-Upgrade (Unobtainium)`},"cccloud:upgrade_bandwidth_allthemodium":{en:`Bandwidth Upgrade (Allthemodium)`,de:`Bandbreite-Upgrade (Allthemodium)`},"cccloud:upgrade_bandwidth_vibranium":{en:`Bandwidth Upgrade (Vibranium)`,de:`Bandbreite-Upgrade (Vibranium)`},"cccloud:upgrade_bandwidth_unobtainium":{en:`Bandwidth Upgrade (Unobtainium)`,de:`Bandbreite-Upgrade (Unobtainium)`},"cccloud:upgrade_range_allthemodium":{en:`Range Upgrade (Allthemodium)`,de:`Reichweite-Upgrade (Allthemodium)`},"cccloud:upgrade_range_vibranium":{en:`Range Upgrade (Vibranium)`,de:`Reichweite-Upgrade (Vibranium)`},"cccloud:upgrade_range_unobtainium":{en:`Range Upgrade (Unobtainium)`,de:`Reichweite-Upgrade (Unobtainium)`},"cccloud:upgrade_efficiency_allthemodium":{en:`Efficiency Upgrade (Allthemodium)`,de:`Effizienz-Upgrade (Allthemodium)`},"cccloud:upgrade_efficiency_vibranium":{en:`Efficiency Upgrade (Vibranium)`,de:`Effizienz-Upgrade (Vibranium)`},"cccloud:upgrade_efficiency_unobtainium":{en:`Efficiency Upgrade (Unobtainium)`,de:`Effizienz-Upgrade (Unobtainium)`},"cccloud:upgrade_memory_allthemodium":{en:`Memory Upgrade (Allthemodium)`,de:`Speicher-Upgrade (Allthemodium)`},"cccloud:upgrade_memory_vibranium":{en:`Memory Upgrade (Vibranium)`,de:`Speicher-Upgrade (Vibranium)`},"cccloud:upgrade_memory_unobtainium":{en:`Memory Upgrade (Unobtainium)`,de:`Speicher-Upgrade (Unobtainium)`},"cccloud:quantum_core":{en:`Quantum Core`,de:`Quantenkern`},"cccloud:upgrade_chunk_anchor":{en:`Chunk Anchor Upgrade`,de:`Chunk-Anker-Upgrade`},"cccloud:cloud_tablet":{en:`Cloud Tablet`,de:`Cloud-Tablet`},"cccloud:advanced_cloud_tablet":{en:`Advanced Cloud Tablet`,de:`Erweitertes Cloud-Tablet`},"cccloud:cloud_display":{en:`Cloud Display`,de:`Cloud-Display`},"cccloud:cloud_analyzer":{en:`Cloud Analyzer`,de:`Cloud-Analysator`},"cccloud:handbook":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}}},le=e({ALL_RECIPES:()=>N,CADDYFILE:()=>D,CLOUDFLARED:()=>O,CLOUDFLARED_YML:()=>k,COMMANDS:()=>M,FENCE:()=>"```",LUA_BRIDGE:()=>_,LUA_BRIDGE_WIDGETS:()=>v,LUA_EVENT:()=>ue,LUA_FIRST:()=>g,LUA_LAYOUT:()=>de,LUA_MAINFRAME:()=>pe,LUA_SETMANY:()=>fe,PKCS8:()=>j,RECIPES:()=>me,RECIPE_GROUPS:()=>he,SHELL_EDIT:()=>S,SHELL_LUA:()=>w,SHELL_RUN:()=>C,TOML_CADDY:()=>E,TOML_LAN:()=>T,TOML_TLS:()=>A,UI_FARM:()=>b,UI_QUICK:()=>y,UI_REACTOR:()=>x,code:()=>ye,groupOf:()=>ge,recipe:()=>ve,recipeSection:()=>F}),g=`local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("My Base")
 cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100})
 cloud.toggle("lights", "Lights", {value=false})
@@ -12,36 +12,36 @@ while true do
   elseif id == "alarm" then
     cloud.alert(user .. " pressed the alarm", "warn")
   end
-end`,_=`while true do
+end`,ue=`while true do
   local event, id, value, user, side = os.pullEvent("cloud_action")
   print(user .. " used " .. id .. " = " .. tostring(value))
-end`,ue=`local cloud = peripheral.find("cloud_uplink")
+end`,de=`local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("Reactor")
 cloud.page("reactor", "Reactor", {icon="flame"})
 cloud.page("power", "Power", {icon="bolt"})
 cloud.group("core", "Core", {page="reactor", cols=2})
 cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100, group="core"})
 cloud.chart("load", "Load", {min=0, max=100, unit="%", points=120, group="core", span=2})
-cloud.indicator("running", "Running", {value=true, onColor="green", page="power"})`,de=`cloud.setMany({temp = 812, load = 64, running = true})`,fe=`local mf = peripheral.find("cloud_mainframe")
+cloud.indicator("running", "Running", {value=true, onColor="green", page="power"})`,fe=`cloud.setMany({temp = 812, load = 64, running = true})`,pe=`local mf = peripheral.find("cloud_mainframe")
 print("Dashboard on: " .. tostring(mf.isEnabled()))
 print("Online: " .. tostring(mf.isOnline()))
 for _, u in ipairs(mf.getUplinks()) do
   print(u.title or u.id, u.x, u.y, u.z, u.online and "online" or "offline")
 end
-print(("Power: %d / %d FE, %d FE/t"):format(mf.getEnergy(), mf.getEnergyCapacity(), mf.getEnergyUsage()))`,v=`local bridge = peripheral.find("me_cloud_bridge") or peripheral.find("rs_cloud_bridge")
+print(("Power: %d / %d FE, %d FE/t"):format(mf.getEnergy(), mf.getEnergyCapacity(), mf.getEnergyUsage()))`,_=`local bridge = peripheral.find("me_cloud_bridge") or peripheral.find("rs_cloud_bridge")
 local s = bridge.getStorage()
 print(("Items: %d / %d"):format(s.itemsUsed, s.itemsTotal))
 for _, item in ipairs(bridge.findItems("iron", 5)) do
   print(item.displayName, item.count, item.craftable and "(craftable)" or "")
 end
 local result = bridge.craft("minecraft:iron_block", 4)
-if result.ok then print("Job " .. result.jobId) else print("Error: " .. result.error) end`,y=`local cloud = peripheral.find("cloud_uplink")
+if result.ok then print("Job " .. result.jobId) else print("Error: " .. result.error) end`,v=`local cloud = peripheral.find("cloud_uplink")
 local bridge = peripheral.find("me_cloud_bridge")
 local name = peripheral.getName(bridge)
 cloud.setTitle("Storage")
 cloud.itemSearch("search", "Search & craft", {bridge=name, max=1024})
 cloud.watchlist("watch", "Watchlist", {bridge=name})
-cloud.jobs("jobs", "Crafting jobs", {bridge=name})`,b=`local ui = require("cloud.ui")
+cloud.jobs("jobs", "Crafting jobs", {bridge=name})`,y=`local ui = require("cloud.ui")
 local dash = ui.connect()
 dash:title("Reactor")
 local temp = dash:gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100})
@@ -50,7 +50,7 @@ dash:button("scram", "SCRAM", {color="red", confirm=true, pin=true}, function(us
   dash:notify(user .. " pressed SCRAM", "crit")
 end)
 dash:every(1, function() temp:set(math.random(600, 1000)) end)
-dash:run()`,x=`-- startup.lua: a tree farm with lights, a counter and a harvest button
+dash:run()`,b=`-- startup.lua: a tree farm with lights, a counter and a harvest button
 local ui = require("cloud.ui")
 local dash = ui.connect()
 dash:title("Tree Farm")
@@ -77,7 +77,7 @@ dash:every(5, function()
   logs:set(count)
 end)
 
-dash:run()`,S=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
+dash:run()`,x=`-- A Mekanism-style reactor panel with pages, a chart and a PIN-protected SCRAM
 local ui = require("cloud.ui")
 local dash = ui.connect()
 local reactor = peripheral.find("fissionReactorLogicAdapter")
@@ -104,39 +104,39 @@ dash:every(2, function()
   if k > 1100 then reactor.scram(); dash:notify("Auto-SCRAM at " .. math.floor(k) .. " K", "crit") end
 end)
 
-dash:run()`,C=`edit startup.lua`,w=`startup`,T=`lua
+dash:run()`,S=`edit startup.lua`,C=`startup`,w=`lua
 lua> peripheral.find("cloud_uplink").getClients()
 1
-lua> exit()`,E=`[web]
-webAllowInternet = false   # default: only LAN addresses may connect`,D=`[web]
+lua> exit()`,T=`[web]
+webAllowInternet = false   # default: only LAN addresses may connect`,E=`[web]
 webBind = "127.0.0.1"
 webAllowInternet = true
 webTrustedProxies = ["127.0.0.1"]
-publicUrl = "https://dash.example.com"`,O=`dash.example.com {
+publicUrl = "https://dash.example.com"`,D=`dash.example.com {
     reverse_proxy 127.0.0.1:8787
-}`,k=`cloudflared tunnel login
+}`,O=`cloudflared tunnel login
 cloudflared tunnel create cccloud
 cloudflared tunnel route dns cccloud dash.example.com
-cloudflared tunnel run cccloud`,A=`tunnel: cccloud
+cloudflared tunnel run cccloud`,k=`tunnel: cccloud
 credentials-file: /root/.cloudflared/<tunnel-id>.json
 ingress:
   - hostname: dash.example.com
     service: http://127.0.0.1:8787
-  - service: http_status:404`,j=`[web]
+  - service: http_status:404`,A=`[web]
 webAllowInternet = true
 tlsCertPath = "/etc/letsencrypt/live/mc.example.com/fullchain.pem"
 tlsKeyPath = "/srv/mc/privkey-pkcs8.pem"
-publicUrl = "https://mc.example.com:8787"`,M=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,N=`/cccloud status
+publicUrl = "https://mc.example.com:8787"`,j=`openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`,M=`/cccloud status
 /cccloud devices
 /cccloud revoke <device name>
 /cccloud revoke all
 /cccloud trust <player>
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
-/cccloud pin clear`,P=g.recipes,F=e=>{let t=P.find(t=>t.file===e);if(!t)throw Error(`recipe ${e} missing`);return t},pe={core:F(`cloud_core`),mainframe:F(`cloud_mainframe`),uplink:F(`cloud_uplink`),advancedUplink:F(`advanced_cloud_uplink`),linkCard:F(`cloud_link_card`),meBridge:F(`me_cloud_bridge`),relay:F(`cloud_relay`),advancedRelay:F(`advanced_cloud_relay`),enderRelay:F(`ender_relay`),rsBridge:F(`rs_cloud_bridge`)},me=[{id:`basics`,en:`Basics`,de:`Grundlagen`,match:e=>/cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(e.result)},{id:`network`,en:`Relays and cables`,de:`Relays und Kabel`,match:e=>/relay|fiber/.test(e.result)},{id:`bridges`,en:`Bridges`,de:`Bridges`,match:e=>/bridge/.test(e.result)},{id:`devices`,en:`Tablet, display, analyzer`,de:`Tablet, Display, Analyzer`,match:e=>/tablet|display|analyzer/.test(e.result)},{id:`upgrades`,en:`Mainframe upgrades`,de:`Mainframe-Upgrades`,match:e=>/upgrade_|quantum_core/.test(e.result)},{id:`misc`,en:`Other`,de:`Sonstiges`,match:()=>!0}];function he(e){return me.find(t=>t.match(e))?.id??`misc`}var ge=g.names;function I(e,t){let n={"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}},r=e=>ge[e]?.[t]??n[e]?.[t]??e.replace(/^[a-z0-9_]+:/,``).replace(/_/g,` `),i=P.filter(t=>he(t)===e);return[...new Set(i.map(e=>e.result))].map(e=>{let t=i.filter(t=>t.result===e);return`### ${r(e)}\n${t.map(e=>_e(e)).join(`
+/cccloud pin clear`,N=h.recipes,P=e=>{let t=N.find(t=>t.file===e);if(!t)throw Error(`recipe ${e} missing`);return t},me={core:P(`cloud_core`),mainframe:P(`cloud_mainframe`),uplink:P(`cloud_uplink`),advancedUplink:P(`advanced_cloud_uplink`),linkCard:P(`cloud_link_card`),meBridge:P(`me_cloud_bridge`),relay:P(`cloud_relay`),advancedRelay:P(`advanced_cloud_relay`),enderRelay:P(`ender_relay`),rsBridge:P(`rs_cloud_bridge`)},he=[{id:`basics`,en:`Basics`,de:`Grundlagen`,match:e=>/cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(e.result)},{id:`network`,en:`Relays and cables`,de:`Relays und Kabel`,match:e=>/relay|fiber/.test(e.result)},{id:`bridges`,en:`Bridges`,de:`Bridges`,match:e=>/bridge/.test(e.result)},{id:`devices`,en:`Tablet, display, analyzer`,de:`Tablet, Display, Analyzer`,match:e=>/tablet|display|analyzer/.test(e.result)},{id:`upgrades`,en:`Mainframe upgrades`,de:`Mainframe-Upgrades`,match:e=>/upgrade_|quantum_core/.test(e.result)},{id:`misc`,en:`Other`,de:`Sonstiges`,match:()=>!0}];function ge(e){return he.find(t=>t.match(e))?.id??`misc`}var _e=h.names;function F(e,t){let n={"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`}},r=e=>_e[e]?.[t]??n[e]?.[t]??e.replace(/^[a-z0-9_]+:/,``).replace(/_/g,` `),i=N.filter(t=>ge(t)===e);return[...new Set(i.map(e=>e.result))].map(e=>{let t=i.filter(t=>t.result===e);return`### ${r(e)}\n${t.map(e=>ve(e)).join(`
 `)}`}).join(`
 
-`)}var _e=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,ve=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,{code:L,recipe:R,RECIPES:z}=ce,ye={start:`# Erste Schritte
+`)}var ve=e=>`\`\`\`recipe\n${JSON.stringify(e)}\n\`\`\``,ye=(e,t)=>`\`\`\`${e}\n${t}\n\`\`\``,{code:I,recipe:L,RECIPES:R}=le,be={start:`# Erste Schritte
 
 CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
 
@@ -158,23 +158,23 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 Zutaten mit „(beliebig)“ akzeptieren jede Variante aus dem Tag (z. B. jeden Goldbarren). JEI/EMI zeigen im Spiel dieselben Rezepte.
 
 ### Cloud Core
-${R(z.core)}
+${L(R.core)}
 
 ### Cloud Mainframe
-${R(z.mainframe)}
+${L(R.mainframe)}
 
 ### Cloud Uplink
-${R(z.uplink)}
+${L(R.uplink)}
 
 ### Advanced Cloud Uplink
-${R(z.advancedUplink)}
+${L(R.advancedUplink)}
 
 ### Cloud Link Card
-${R(z.linkCard)}
+${L(R.linkCard)}
 
 ### ME- und RS Cloud Bridge
-${R(z.meBridge)}
-${R(z.rsBridge)}
+${L(R.meBridge)}
+${L(R.rsBridge)}
 
 ## Mainframe aufstellen {#mainframe}
 
@@ -229,7 +229,7 @@ Ein Computer startet in der **Shell** – einer Kommandozeile wie im Terminal. D
 
 ## Ein Programm mit edit schreiben {#edit}
 
-${L(``,C)}
+${I(``,S)}
 
 1. \`edit startup.lua\` eingeben und Enter drücken. Ein Editor öffnet sich.
 2. Code eintippen oder einfügen. (Aus dem Dashboard: mit **Copy** kopieren, dann in Minecraft Strg+V.)
@@ -241,7 +241,7 @@ Eine Datei namens \`startup.lua\` startet automatisch, wenn der Computer hochfä
 
 Gib seinen Namen ohne \`.lua\` ein:
 
-${L(``,w)}
+${I(``,C)}
 
 Ein laufendes Programm stoppst du mit **Strg+T** (eine Sekunde gedrückt halten). Neustart mit **Strg+R**.
 
@@ -253,7 +253,7 @@ Schreib den Code am PC in einem beliebigen Editor, speichere ihn als \`startup.l
 
 \`lua\` öffnet eine interaktive Lua-Eingabe – praktisch, um einzelne Zeilen auszuprobieren:
 
-${L(``,T)}
+${I(``,w)}
 
 ## Nützliche Befehle {#commands}
 
@@ -328,13 +328,13 @@ Alles, was ein Programm mit CC: Cloud tun kann. Im Spiel zeigt \`help cloud\` ei
 
 ## Das Peripheral holen {#peripheral}
 
-${L(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${I(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 Der Uplink muss den Computer berühren oder im Netzwerk seines Wired Modems hängen. Mehrere Uplinks? Nimm \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## Ein erstes Programm {#first-program}
 
-${L(`lua`,le)}
+${I(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -370,13 +370,13 @@ Farben: cyan, green, yellow, red, gray. Eine Gauge gilt als „wenig ist schlech
 | \`cloud.remove(id)\` | ein Widget entfernen |
 | \`cloud.clear()\` | alles entfernen (die automatische Computer-Karte kommt zurück) |
 
-${L(`lua`,de)}
+${I(`lua`,fe)}
 
 ## Ereignisse {#events}
 
 Bedient jemand ein Widget, bekommt jeder Computer am Uplink ein \`cloud_action\`-Ereignis:
 
-${L(`lua`,_)}
+${I(`lua`,ue)}
 
 | Widget | value |
 |---|---|
@@ -391,7 +391,7 @@ ${L(`lua`,_)}
 
 ## Layout: Seiten und Gruppen {#layout}
 
-${L(`lua`,ue)}
+${I(`lua`,de)}
 
 - \`cloud.page(id, title, {icon=})\` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – eine Karte; Widgets kommen mit \`group=\` hinein.
@@ -421,7 +421,7 @@ Ein Computer neben dem Mainframe kann ihn auslesen:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | gespeicherte FE, Puffergröße, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – siehe [Netzwerk](/docs/network#map) |
 
-${L(`lua`,fe)}
+${I(`lua`,pe)}
 
 Der Kopplungscode ist aus Lua nie lesbar.
 
@@ -443,7 +443,7 @@ Peripheral-Typen \`me_cloud_bridge\` und \`rs_cloud_bridge\`, gleiche Methoden:
 | \`cancelCraft(jobId)\` | wo unterstützt |
 | \`listFluids([limit])\` | Flüssigkeiten |
 
-${L(`lua`,v)}
+${I(`lua`,_)}
 
 ## Grenzen {#limits}
 
@@ -466,7 +466,7 @@ Das sehen nur Admins des Mainframes, und Änderungen brauchen die Mainframe-PIN,
 
 ## Script Store {#store}
 
-Fertige Programme aus der Community: **Script Store** im Menü des Mainframes (Admins). Jedes Skript zeigt, was es tut, was es **nutzt** (Redstone, Peripherie, Internet …) und den vollständigen Quelltext – vor der Anzeige gegen den SHA-256 im Index des Stores geprüft. Das beweist nur, dass die Dateien zum Index passen (beides kommt vom Server des Stores) – **lies den Code, bevor du installierst**. Computer wählen und installieren; sofort starten oder automatisch beim Start. Installierte Store-Skripte zeigen **Update available**, wenn es eine neuere Version gibt, und du wirst gewarnt, bevor eine auf dem Computer geänderte Datei überschrieben wird.
+Fertige Programme aus der Community: **Script Store** im Menü des Mainframes (Admins). Jedes Skript zeigt, was es tut, was es **nutzt** (Redstone, Peripherie, Internet …) und den vollständigen Quelltext – vor der Anzeige gegen den SHA-256 im Index des Stores geprüft. Der Index ist vom Store signiert: Dein Browser prüft die Signatur, wo er kann (**signed ✓**), und der Minecraft-Server prüft sie noch einmal, bevor er eine Datei schreibt. Das beweist, dass die Dateien aus dem Store stammen – nicht, dass der Code sicher ist, also **lies den Code, bevor du installierst**. Computer wählen und installieren; sofort starten oder automatisch beim Start. Installierte Store-Skripte zeigen **Update available**, wenn es eine neuere Version gibt, und du wirst gewarnt, bevor eine auf dem Computer geänderte Datei überschrieben wird.
 
 Auf der Projekt-Website öffnet **Install** dein Dashboard unter \`/store#install=<skript>\` – dieselbe Ansicht, ohne deinen Klick wird nichts installiert. Server-Admins können den Store abschalten (\`scriptStore=false\`). Community-Skripte laufen auf deinem CC-Computer und können steuern, was er steuert – den Minecraft-Server selbst können sie nicht anfassen.
 `,"ui-library":`# cloud.ui-Bibliothek
@@ -475,7 +475,7 @@ Auf der Projekt-Website öffnet **Install** dein Dashboard unter \`/store#instal
 
 ## Schnellstart {#quick-start}
 
-${L(`lua`,b)}
+${I(`lua`,y)}
 
 ## API {#api}
 
@@ -499,13 +499,13 @@ Fehler in Handlern werden ausgegeben und stoppen die Schleife nicht. Strg+T been
 
 ## Beispiel: Baumfarm {#example-farm}
 
-${L(`lua`,x)}
+${I(`lua`,b)}
 
 ## Beispiel: Reaktor-Panel {#example-reactor}
 
 Peripheral-Name und Methoden an deinen Reaktor-Mod anpassen.
 
-${L(`lua`,S)}
+${I(`lua`,x)}
 
 ## Mitgelieferte Programme {#programs}
 
@@ -544,13 +544,13 @@ Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unte
 Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay.
 
 ### Cloud Relay
-${R(z.relay)}
+${L(R.relay)}
 
 ### Advanced Cloud Relay
-${R(z.advancedRelay)}
+${L(R.advancedRelay)}
 
 ### Ender Relay
-${R(z.enderRelay)}
+${L(R.enderRelay)}
 
 > **Tipp:** Klappt das Verbinden nicht, nennt die Meldung den nächsten Knoten und seine Entfernung. Setz ein Relay dazwischen.
 
@@ -715,27 +715,27 @@ Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbs
 
 ## Grundlagen {#basics}
 
-${I(`basics`,`de`)}
+${F(`basics`,`de`)}
 
 ## Relays und Kabel {#network}
 
-${I(`network`,`de`)}
+${F(`network`,`de`)}
 
 ## Bridges {#bridges}
 
-${I(`bridges`,`de`)}
+${F(`bridges`,`de`)}
 
 ## Tablet, Display, Analyzer {#devices}
 
-${I(`devices`,`de`)}
+${F(`devices`,`de`)}
 
 ## Mainframe-Upgrades {#upgrades}
 
-${I(`upgrades`,`de`)}
+${F(`upgrades`,`de`)}
 
 ## Sonstiges {#misc}
 
-${I(`misc`,`de`)}
+${F(`misc`,`de`)}
 `,bridges:`# Bridges: AE2 und Refined Storage
 
 Die **ME Cloud Bridge** (Applied Energistics 2) und die **RS Cloud Bridge** (Refined Storage) verbinden ein Lagernetzwerk mit dem Dashboard. Es gibt sie nur, wenn der jeweilige Mod installiert ist.
@@ -773,11 +773,11 @@ Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). I
 
 ## Aus Lua {#lua}
 
-${L(`lua`,v)}
+${I(`lua`,_)}
 
 Eine eigene Lager-Karte mit denselben Widgets:
 
-${L(`lua`,y)}
+${I(`lua`,v)}
 
 Oder einfach \`cloud-storage\` starten. Alle Methoden: [Lua-Referenz → Bridges](/docs/lua#bridges).
 `,accounts:`# Konten, Rollen und Teilen
@@ -859,7 +859,7 @@ Tab springt durch alles, Enter oder Leertaste löst aus, Escape schließt Dialog
 
 Ab Werk können nur Geräte im lokalen Netzwerk des Servers (und der Host selbst) das Dashboard öffnen. Alle anderen bekommen „LAN only“.
 
-${L(`toml`,E)}
+${I(`toml`,T)}
 
 Die Konfigurationsdatei ist \`<welt>/serverconfig/cccloud-server.toml\`; Änderungen an \`[web]\` brauchen einen Server-Neustart.
 
@@ -879,7 +879,7 @@ Wer den Mainframe platziert hat, besitzt ihn. Besitzer, vertraute Spieler und OP
 
 Schau den Mainframe an und gib ein:
 
-${L(``,N)}
+${I(``,M)}
 
 ## PIN {#pin}
 
@@ -893,9 +893,9 @@ Setze \`webAllowInternet = true\` und wähle eine der folgenden Varianten. Läuf
 
 ### Caddy als Reverse Proxy (empfohlen) {#caddy}
 
-${L(`toml`,D)}
+${I(`toml`,E)}
 
-${L(``,O)}
+${I(``,D)}
 
 Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
@@ -903,15 +903,15 @@ Caddy holt sich automatisch ein Zertifikat und leitet WebSockets weiter.
 
 Gleiche \`[web]\`-Einstellungen wie bei Caddy, dann:
 
-${L(`bash`,k)}
+${I(`bash`,O)}
 
-${L(`yaml`,A)}
+${I(`yaml`,k)}
 
 ### TLS direkt im Mod {#tls}
 
-${L(`toml`,j)}
+${I(`toml`,A)}
 
-Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${M}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
+Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${j}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
 
 ### Port direkt freigeben {#open-port}
 
@@ -971,7 +971,7 @@ Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: 
 ## Falsche PIN / gesperrt {#pin-locked}
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit \`/cccloud pin set\` ändern.
-`},{code:B,recipe:V,RECIPES:H}=ce,be={start:`# Getting started
+`},{code:z,recipe:B,RECIPES:V}=le,xe={start:`# Getting started
 
 CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
 
@@ -993,23 +993,23 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
 
 ### Cloud Core
-${V(H.core)}
+${B(V.core)}
 
 ### Cloud Mainframe
-${V(H.mainframe)}
+${B(V.mainframe)}
 
 ### Cloud Uplink
-${V(H.uplink)}
+${B(V.uplink)}
 
 ### Advanced Cloud Uplink
-${V(H.advancedUplink)}
+${B(V.advancedUplink)}
 
 ### Cloud Link Card
-${V(H.linkCard)}
+${B(V.linkCard)}
 
 ### ME and RS Cloud Bridge
-${V(H.meBridge)}
-${V(H.rsBridge)}
+${B(V.meBridge)}
+${B(V.rsBridge)}
 
 ## Place the mainframe {#mainframe}
 
@@ -1064,7 +1064,7 @@ A computer starts in the **shell** – a command line like a terminal. The shell
 
 ## Write a program with edit {#edit}
 
-${B(``,C)}
+${z(``,S)}
 
 1. Type \`edit startup.lua\` and press Enter. An editor opens.
 2. Type or paste your code. (Pasting from the dashboard: copy with the **Copy** button, then Ctrl+V in Minecraft.)
@@ -1076,7 +1076,7 @@ A file named \`startup.lua\` runs automatically whenever the computer boots – 
 
 Type its name without \`.lua\`:
 
-${B(``,w)}
+${z(``,C)}
 
 Stop a running program with **Ctrl+T** (hold it for a second). Reboot with **Ctrl+R**.
 
@@ -1088,7 +1088,7 @@ Write the code on your PC in any editor, save it as \`startup.lua\` and **drag t
 
 \`lua\` opens an interactive Lua prompt – handy to try one line at a time:
 
-${B(``,T)}
+${z(``,w)}
 
 ## Useful commands {#commands}
 
@@ -1163,13 +1163,13 @@ Everything a program can do with CC: Cloud. In-game, \`help cloud\` prints a sho
 
 ## Getting the peripheral {#peripheral}
 
-${B(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
+${z(`lua`,`local cloud = peripheral.find("cloud_uplink")`)}
 
 The uplink must touch the computer or sit on its wired modem network. Several uplinks? Use \`peripheral.wrap("cloud_uplink_0")\`.
 
 ## A first program {#first-program}
 
-${B(`lua`,le)}
+${z(`lua`,g)}
 
 ## Widgets {#widgets}
 
@@ -1205,13 +1205,13 @@ Colours: cyan, green, yellow, red, gray. A gauge is "low is bad" when crit < war
 | \`cloud.remove(id)\` | remove a widget |
 | \`cloud.clear()\` | remove everything (the automatic Computer card returns) |
 
-${B(`lua`,de)}
+${z(`lua`,fe)}
 
 ## Events {#events}
 
 When someone uses a widget, every computer attached to the uplink gets a \`cloud_action\` event:
 
-${B(`lua`,_)}
+${z(`lua`,ue)}
 
 | Widget | value |
 |---|---|
@@ -1226,7 +1226,7 @@ ${B(`lua`,_)}
 
 ## Layout: pages and groups {#layout}
 
-${B(`lua`,ue)}
+${z(`lua`,de)}
 
 - \`cloud.page(id, title, {icon=})\` – a tab. With pages an uplink may hold 64 widgets instead of 32.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – a card; widgets join it with \`group=\`.
@@ -1256,7 +1256,7 @@ A computer next to the mainframe can read it:
 | \`getEnergy()\`, \`getEnergyCapacity()\`, \`getEnergyUsage()\` | FE stored, buffer size, FE/t |
 | \`getNetwork()\` | {nodes, links, routes} – see [network](/docs/network#map) |
 
-${B(`lua`,fe)}
+${z(`lua`,pe)}
 
 The pairing code is never readable from Lua.
 
@@ -1278,7 +1278,7 @@ Peripheral types \`me_cloud_bridge\` and \`rs_cloud_bridge\`, same methods:
 | \`cancelCraft(jobId)\` | where supported |
 | \`listFluids([limit])\` | fluids |
 
-${B(`lua`,v)}
+${z(`lua`,_)}
 
 ## Limits {#limits}
 
@@ -1301,7 +1301,7 @@ Only admins of the mainframe see this, and changes need the mainframe PIN if one
 
 ## Script Store {#store}
 
-Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the SHA-256 in the store's index before you see it. That check only proves the files match the index (both come from the store's server), so **read the code before you install it**. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
+Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the SHA-256 in the store's index before you see it. The index is signed by the store: your browser checks the signature where it can (**signed ✓**), and the Minecraft server checks it again before it writes any file. That proves the files come from the store – not that the code is safe, so **read the code before you install it**. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
 
 On the project website, **Install** opens your dashboard at \`/store#install=<script>\` – the same view, nothing is installed without your click. Server admins can switch the store off (\`scriptStore=false\`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server.
 `,"ui-library":`# cloud.ui helper library
@@ -1310,7 +1310,7 @@ On the project website, **Install** opens your dashboard at \`/store#install=<sc
 
 ## Quick start {#quick-start}
 
-${B(`lua`,b)}
+${z(`lua`,y)}
 
 ## API {#api}
 
@@ -1334,13 +1334,13 @@ Errors inside handlers are printed and do not stop the loop. Ctrl+T ends it.
 
 ## Example: tree farm {#example-farm}
 
-${B(`lua`,x)}
+${z(`lua`,b)}
 
 ## Example: reactor panel {#example-reactor}
 
 Adjust the peripheral name and methods to your reactor mod.
 
-${B(`lua`,S)}
+${z(`lua`,x)}
 
 ## Built-in programs {#programs}
 
@@ -1379,13 +1379,13 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
 
 ### Cloud Relay
-${V(H.relay)}
+${B(V.relay)}
 
 ### Advanced Cloud Relay
-${V(H.advancedRelay)}
+${B(V.advancedRelay)}
 
 ### Ender Relay
-${V(H.enderRelay)}
+${B(V.enderRelay)}
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 
@@ -1550,27 +1550,27 @@ Every crafting recipe of CC: Cloud, generated from the mod's own recipe files �
 
 ## Basics {#basics}
 
-${I(`basics`,`en`)}
+${F(`basics`,`en`)}
 
 ## Relays and cables {#network}
 
-${I(`network`,`en`)}
+${F(`network`,`en`)}
 
 ## Bridges {#bridges}
 
-${I(`bridges`,`en`)}
+${F(`bridges`,`en`)}
 
 ## Tablet, display, analyzer {#devices}
 
-${I(`devices`,`en`)}
+${F(`devices`,`en`)}
 
 ## Mainframe upgrades {#upgrades}
 
-${I(`upgrades`,`en`)}
+${F(`upgrades`,`en`)}
 
 ## Other {#misc}
 
-${I(`misc`,`en`)}
+${F(`misc`,`en`)}
 `,bridges:`# Bridges: AE2 and Refined Storage
 
 The **ME Cloud Bridge** (Applied Energistics 2) and **RS Cloud Bridge** (Refined Storage) connect a storage network to the dashboard. They only exist when the mod is installed.
@@ -1608,11 +1608,11 @@ Add items with a minimum amount (from a search result or by id). Items below the
 
 ## From Lua {#lua}
 
-${B(`lua`,v)}
+${z(`lua`,_)}
 
 Your own storage card with the same widgets:
 
-${B(`lua`,y)}
+${z(`lua`,v)}
 
 Or just run \`cloud-storage\`. All methods: [Lua reference → Bridges](/docs/lua#bridges).
 `,accounts:`# Accounts, roles and sharing
@@ -1694,7 +1694,7 @@ The dashboard can control things in your world, so it is protected like a real w
 
 Out of the box only devices in the server's local network (and the host itself) can open the dashboard. Everyone else gets "LAN only".
 
-${B(`toml`,E)}
+${z(`toml`,T)}
 
 The config file is \`<world>/serverconfig/cccloud-server.toml\`; changes to \`[web]\` need a server restart.
 
@@ -1714,7 +1714,7 @@ The player who placed the mainframe owns it. Owner, trusted players and ops (lev
 
 Look at the mainframe and run:
 
-${B(``,N)}
+${z(``,M)}
 
 ## PIN {#pin}
 
@@ -1728,9 +1728,9 @@ Set \`webAllowInternet = true\` and pick one of the setups below. The dashboard 
 
 ### Caddy reverse proxy (recommended) {#caddy}
 
-${B(`toml`,D)}
+${z(`toml`,E)}
 
-${B(``,O)}
+${z(``,D)}
 
 Caddy gets a certificate automatically and forwards WebSockets.
 
@@ -1738,15 +1738,15 @@ Caddy gets a certificate automatically and forwards WebSockets.
 
 Same \`[web]\` settings as for Caddy, then:
 
-${B(`bash`,k)}
+${z(`bash`,O)}
 
-${B(`yaml`,A)}
+${z(`yaml`,k)}
 
 ### TLS in the mod {#tls}
 
-${B(`toml`,j)}
+${z(`toml`,A)}
 
-Convert the Let's Encrypt key first: \`${M}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
+Convert the Let's Encrypt key first: \`${j}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
 
 ### Port opened directly {#open-port}
 
@@ -1806,7 +1806,7 @@ To keep a base running while you are away, keep its chunks loaded: **force-load*
 ## Wrong PIN / locked {#pin-locked}
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with \`/cccloud pin set\`.
-`},U=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`automation`,icon:`bolt`,title:{en:`Rules, notifications & history`,de:`Regeln, Benachrichtigungen & Verlauf`}},{id:`recipes`,icon:`pick`,title:{en:`All recipes`,de:`Alle Rezepte`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],xe={de:ye,en:be},W={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,requires:`Needs`,without:`Only without`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,requires:`Braucht`,without:`Nur ohne`,result:`Ergebnis`}},Se={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`},"#c:glass_panes":{en:`Glass Pane`,de:`Glasscheibe`},"#c:ingots/allthemodium":{en:`Allthemodium Ingot`,de:`Allthemodiumbarren`},"#c:ingots/vibranium":{en:`Vibranium Ingot`,de:`Vibraniumbarren`},"#c:ingots/unobtainium":{en:`Unobtainium Ingot`,de:`Unobtainiumbarren`},"allthetweaks:atm_star":{en:`ATM Star`,de:`ATM-Stern`},"computercraft:monitor_advanced":{en:`Advanced Monitor`,de:`Advanced Monitor`},"computercraft:pocket_computer_normal":{en:`Pocket Computer`,de:`Pocket Computer`},"computercraft:pocket_computer_advanced":{en:`Advanced Pocket Computer`,de:`Advanced Pocket Computer`},"computercraft:wireless_modem_advanced":{en:`Ender Modem`,de:`Ender Modem`},"minecraft:chest":{en:`Chest`,de:`Truhe`},"minecraft:diamond":{en:`Diamond`,de:`Diamant`},"minecraft:ender_pearl":{en:`Ender Pearl`,de:`Enderperle`},"minecraft:lodestone":{en:`Lodestone`,de:`Leitstein`},"minecraft:nether_star":{en:`Nether Star`,de:`Netherstern`},"minecraft:netherite_block":{en:`Block of Netherite`,de:`Netheritblock`},"minecraft:netherite_ingot":{en:`Netherite Ingot`,de:`Netheritbarren`},"minecraft:obsidian":{en:`Obsidian`,de:`Obsidian`},"minecraft:redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:redstone_block":{en:`Block of Redstone`,de:`Redstoneblock`},"minecraft:string":{en:`String`,de:`Faden`},"minecraft:book":{en:`Book`,de:`Buch`},"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`},...g.names},Ce={guideme:`GuideME`,allthemodium:`AllTheModium`,allthetweaks:`All The Tweaks`,ae2:`Applied Energistics 2`,refinedstorage:`Refined Storage`},we={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`,"#c:glass_panes":`minecraft:glass_pane`,"#c:ingots/allthemodium":`allthemodium:allthemodium_ingot`,"#c:ingots/vibranium":`allthemodium:vibranium_ingot`,"#c:ingots/unobtainium":`allthemodium:unobtainium_ingot`};function Te(e){return we[e]??e.replace(/^#/,``)}function G(e,t){let n=Se[e]?.[t];return n?e.startsWith(`#`)?`${n} (${W[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function Ee(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function De(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function K(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:K(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:K(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(Oe(o)){r(),t.push({t:`link`,href:o,c:K(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function Oe(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function q(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:q(e.c)).join(``)}function ke(e){let t=e.replace(/\r\n?/g,`
+`},H=[{id:`start`,icon:`home`,title:{en:`Getting started`,de:`Erste Schritte`}},{id:`cc-basics`,icon:`cpu`,title:{en:`CC basics`,de:`CC-Grundlagen`}},{id:`dashboard`,icon:`chart`,title:{en:`The dashboard`,de:`Das Dashboard`}},{id:`lua`,icon:`gear`,title:{en:`Lua reference`,de:`Lua-Referenz`}},{id:`ui-library`,icon:`star`,title:{en:`cloud.ui library`,de:`cloud.ui-Bibliothek`}},{id:`network`,icon:`fan`,title:{en:`Network, relays & range`,de:`Netzwerk, Relays & Reichweite`}},{id:`upgrades`,icon:`star`,title:{en:`Upgrades, tablet & display`,de:`Upgrades, Tablet & Display`}},{id:`automation`,icon:`bolt`,title:{en:`Rules, notifications & history`,de:`Regeln, Benachrichtigungen & Verlauf`}},{id:`recipes`,icon:`pick`,title:{en:`All recipes`,de:`Alle Rezepte`}},{id:`bridges`,icon:`box`,title:{en:`Bridges (AE2 / RS)`,de:`Bridges (AE2 / RS)`}},{id:`accounts`,icon:`lock`,title:{en:`Accounts, roles & sharing`,de:`Konten, Rollen & Teilen`}},{id:`security`,icon:`shield`,title:{en:`Security & hosting`,de:`Sicherheit & Hosting`}},{id:`faq`,icon:`warning`,title:{en:`Troubleshooting`,de:`Fehlerbehebung`}}],Se={de:be,en:xe},U={en:{docs:`Docs`,search:`Search the docs…`,noResults:`Nothing found for`,results:`Results`,menu:`Menu`,back:`Dashboard`,onThisPage:`On this page`,prev:`Previous`,next:`Next`,copyLink:`Copy link to this section`,linkCopied:`Link copied`,language:`Language`,any:`any`,shapeless:`Shapeless – any arrangement`,requires:`Needs`,without:`Only without`,result:`Result`},de:{docs:`Doku`,search:`Doku durchsuchen…`,noResults:`Nichts gefunden für`,results:`Treffer`,menu:`Menü`,back:`Dashboard`,onThisPage:`Auf dieser Seite`,prev:`Zurück`,next:`Weiter`,copyLink:`Link zu diesem Abschnitt kopieren`,linkCopied:`Link kopiert`,language:`Sprache`,any:`beliebig`,shapeless:`Formlos – beliebige Anordnung`,requires:`Braucht`,without:`Nur ohne`,result:`Ergebnis`}},Ce={"#c:nuggets/gold":{en:`Gold Nugget`,de:`Goldklumpen`},"#c:ingots/gold":{en:`Gold Ingot`,de:`Goldbarren`},"#c:ender_pearls":{en:`Ender Pearl`,de:`Enderperle`},"#c:dusts/redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:prismarine_crystals":{en:`Prismarine Crystals`,de:`Prismarinkristalle`},"minecraft:stone":{en:`Stone`,de:`Stein`},"minecraft:paper":{en:`Paper`,de:`Papier`},"computercraft:computer_advanced":{en:`Advanced Computer`,de:`Advanced Computer`},"computercraft:disk_drive":{en:`Disk Drive`,de:`Disk Drive`},"computercraft:wired_modem":{en:`Wired Modem`,de:`Wired Modem`},"ae2:interface":{en:`ME Interface`,de:`ME Interface`},"refinedstorage:interface":{en:`RS Interface`,de:`RS Interface`},"minecraft:ender_eye":{en:`Eye of Ender`,de:`Enderauge`},"#c:storage_blocks/gold":{en:`Block of Gold`,de:`Goldblock`},"#c:glass_panes":{en:`Glass Pane`,de:`Glasscheibe`},"#c:ingots/allthemodium":{en:`Allthemodium Ingot`,de:`Allthemodiumbarren`},"#c:ingots/vibranium":{en:`Vibranium Ingot`,de:`Vibraniumbarren`},"#c:ingots/unobtainium":{en:`Unobtainium Ingot`,de:`Unobtainiumbarren`},"allthetweaks:atm_star":{en:`ATM Star`,de:`ATM-Stern`},"computercraft:monitor_advanced":{en:`Advanced Monitor`,de:`Advanced Monitor`},"computercraft:pocket_computer_normal":{en:`Pocket Computer`,de:`Pocket Computer`},"computercraft:pocket_computer_advanced":{en:`Advanced Pocket Computer`,de:`Advanced Pocket Computer`},"computercraft:wireless_modem_advanced":{en:`Ender Modem`,de:`Ender Modem`},"minecraft:chest":{en:`Chest`,de:`Truhe`},"minecraft:diamond":{en:`Diamond`,de:`Diamant`},"minecraft:ender_pearl":{en:`Ender Pearl`,de:`Enderperle`},"minecraft:lodestone":{en:`Lodestone`,de:`Leitstein`},"minecraft:nether_star":{en:`Nether Star`,de:`Netherstern`},"minecraft:netherite_block":{en:`Block of Netherite`,de:`Netheritblock`},"minecraft:netherite_ingot":{en:`Netherite Ingot`,de:`Netheritbarren`},"minecraft:obsidian":{en:`Obsidian`,de:`Obsidian`},"minecraft:redstone":{en:`Redstone Dust`,de:`Redstonestaub`},"minecraft:redstone_block":{en:`Block of Redstone`,de:`Redstoneblock`},"minecraft:string":{en:`String`,de:`Faden`},"minecraft:book":{en:`Book`,de:`Buch`},"guideme:guide":{en:`CC: Cloud Handbook`,de:`CC: Cloud-Handbuch`},...h.names},we={guideme:`GuideME`,allthemodium:`AllTheModium`,allthetweaks:`All The Tweaks`,ae2:`Applied Energistics 2`,refinedstorage:`Refined Storage`},Te={"#c:nuggets/gold":`minecraft:gold_nugget`,"#c:ingots/gold":`minecraft:gold_ingot`,"#c:ender_pearls":`minecraft:ender_pearl`,"#c:dusts/redstone":`minecraft:redstone`,"#c:storage_blocks/gold":`minecraft:gold_block`,"#c:glass_panes":`minecraft:glass_pane`,"#c:ingots/allthemodium":`allthemodium:allthemodium_ingot`,"#c:ingots/vibranium":`allthemodium:vibranium_ingot`,"#c:ingots/unobtainium":`allthemodium:unobtainium_ingot`};function Ee(e){return Te[e]??e.replace(/^#/,``)}function W(e,t){let n=Ce[e]?.[t];return n?e.startsWith(`#`)?`${n} (${U[t].any})`:n:e.replace(/^#?[a-z0-9_.-]+:/,``).replace(/[_/]/g,` `)}function De(e=typeof navigator>`u`?[]:navigator.languages??[navigator.language]){for(let t of e){let e=t.toLowerCase().slice(0,2);if(e===`de`)return`de`;if(e===`en`)return`en`}return`en`}function Oe(e){return e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``).replace(/ß/g,`ss`).replace(/[^a-z0-9]+/g,`-`).replace(/^-+|-+$/g,``).slice(0,64)||`section`}function G(e){let t=[],n=``,r=()=>{n&&t.push({t:`text`,v:n}),n=``},i=0;for(;i<e.length;){let a=e[i];if(a===`\\`&&i+1<e.length)n+=e[i+1],i+=2;else{if(a==="`"){let n=e.indexOf("`",i+1);if(n>i){r(),t.push({t:`code`,v:e.slice(i+1,n)}),i=n+1;continue}}if(a===`*`&&e[i+1]===`*`){let n=e.indexOf(`**`,i+2);if(n>i+2){r(),t.push({t:`strong`,c:G(e.slice(i+2,n))}),i=n+2;continue}}if(a===`*`&&e[i+1]!==` `){let n=e.indexOf(`*`,i+1);if(n>i+1&&e[n-1]!==` `){r(),t.push({t:`em`,c:G(e.slice(i+1,n))}),i=n+1;continue}}if(a===`[`){let n=e.indexOf(`](`,i),a=n>0?e.indexOf(`)`,n+2):-1;if(n>i&&a>n){let o=e.slice(n+2,a).trim();if(ke(o)){r(),t.push({t:`link`,href:o,c:G(e.slice(i+1,n))}),i=a+1;continue}}}n+=a,i++}}return r(),t}function ke(e){return/^(\/docs(\/[a-z0-9-]*)?(#[a-z0-9-]+)?|#[a-z0-9-]+|https?:\/\/[^\s"'<>]+|\/|\/#\/[a-z0-9/-]*)$/i.test(e)}function K(e){return e.map(e=>e.t===`text`||e.t===`code`?e.v:K(e.c)).join(``)}function Ae(e){let t=e.replace(/\r\n?/g,`
 `).split(`
 `),n=[],r=new Set,i=0,a=e=>{let t=e;for(let n=2;r.has(t);n++)t=`${e}-${n}`;return r.add(t),t};for(;i<t.length;){let e=t[i];if(!e.trim()){i++;continue}let r=/^```\s*([a-z0-9_-]*)\s*$/i.exec(e);if(r){let e=[];for(i++;i<t.length&&!/^```\s*$/.test(t[i]);)e.push(t[i++]);i++;let a=e.join(`
-`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=K(o[2]),t=q(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??De(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(K),rows:a.map(e=>e.map(K))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(K)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(K)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:K(l.join(` `))})}return n}function Ae(e){switch(e.t){case`h`:return e.text;case`p`:return q(e.c);case`ul`:case`ol`:return e.items.map(q).join(` `);case`callout`:return e.c.map(q).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(q).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var je=new Map;function J(e,t){let n=`${e}/${t}`,r=je.get(n);return r||(r=ke(xe[e][t]??``),je.set(n,r)),r}var Me=new Map;function Ne(e){let t=Me.get(e);if(t)return t;t=[];for(let n of U){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of J(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+Ae(i));t.push(r)}return Me.set(e,t),t}var Y=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function Pe(e,t,n=20){let r=Y(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Ne(e)){let e=Y(t.heading),n=Y(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),u=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:u})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var X=l((()=>{let e=f(`lang`,``);return e===`de`||e===`en`?e:Ee()})()),Fe=e=>{X.value=e,u(`lang`,e),document.documentElement.lang=e};function Ie(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:U.some(t=>t.id===e?.[1])?e[1]:U[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=l(Ie());addEventListener(`popstate`,()=>Z.value=Ie());function Q(e){history.pushState(null,``,e),Z.value=Ie(),Z.value.anchor||window.scrollTo(0,0)}function Le(e,t){i(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return o(n,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return o(`code`,{children:e.v},t);case`strong`:return o(`strong`,{children:o($,{c:e.c})},t);case`em`:return o(`em`,{children:o($,{c:e.c})},t);case`link`:return o(Re,{href:e.href,c:e.c},t)}})})}function Re({href:e,c:t}){return/^https?:/.test(e)?o(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:o($,{c:t})}):o(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:o($,{c:t})})}function ze({b:e}){let t=`h${e.level}`;return o(t,{id:e.id,class:`dh dh${e.level}`,children:[o($,{c:e.c}),e.level>1&&o(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":W[X.value].copyLink,title:W[X.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await m(n)&&s({level:`info`,title:W[X.value].docs,text:W[X.value].linkCopied},2500)},children:`#`})]})}function Be({r:e}){let t=X.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return o(`figure`,{class:`recipe`,children:[o(`div`,{class:`recipe-main`,children:[o(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${G(e.result,t)}: ${r.map(e=>G(e,t)).join(`, `)}`,children:n.map((e,n)=>o(`span`,{class:`slot ${e?`full`:``}`,title:e?G(e,t):void 0,children:e&&o(h,{name:Te(e),displayName:G(e,t)})},n))}),o(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),o(`div`,{class:`craft-result`,children:[o(`span`,{class:`slot full result`,title:G(e.result,t),children:[o(h,{name:e.result,displayName:G(e.result,t)}),e.count&&e.count>1&&o(`span`,{class:`slot-count`,children:e.count})]}),o(`span`,{class:`craft-result-name`,children:G(e.result,t)})]})]}),o(`figcaption`,{children:[o(`ul`,{class:`recipe-legend`,children:r.map(e=>o(`li`,{children:[o(h,{name:Te(e),displayName:G(e,t)}),` `,G(e,t)]},e))}),e.shapeless&&o(`p`,{class:`muted small`,children:W[t].shapeless}),e.requires?.map(e=>o(`p`,{class:`recipe-req ${e.startsWith(`!`)?`without`:``}`,children:[e.startsWith(`!`)?W[t].without:W[t].requires,` `,Ce[e.replace(/^!?mod:/,``)]??e.replace(/^!?mod:/,``)]},e))]})]})}function Ve({b:e}){switch(e.t){case`h`:return o(ze,{b:e});case`p`:return o(`p`,{children:o($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return o(t,{children:e.items.map((e,t)=>o(`li`,{children:o($,{c:e})},t))})}case`callout`:return o(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>o(`p`,{children:o($,{c:e})},t))});case`table`:return o(`div`,{class:`table-wrap`,children:o(`table`,{children:[o(`thead`,{children:o(`tr`,{children:e.head.map((e,t)=>o(`th`,{children:o($,{c:e})},t))})}),o(`tbody`,{children:e.rows.map((e,t)=>o(`tr`,{children:e.map((e,t)=>o(`td`,{children:o($,{c:e})},t))},t))})]})});case`code`:return o(se,{code:e.code,label:e.lang||`shell`});case`recipe`:return o(Be,{r:e.recipe})}}function He({onPick:e,autoFocus:n}){let[r,i]=t(``),s=X.value,c=a(()=>r.trim().length>=2?Pe(s,r):[],[r,s]);return o(`div`,{class:`docs-search`,children:[o(`input`,{type:`search`,class:`input docs-search-input`,placeholder:W[s].search,value:r,autoFocus:n,"aria-label":W[s].search,onInput:e=>i(e.target.value)}),r.trim().length>=2&&o(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":W[s].results,children:c.length===0?o(`p`,{class:`muted small`,children:[W[s].noResults,` „`,r,`“`]}):c.map(t=>o(`a`,{class:`docs-hit`,href:`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`),i(``),e?.()},children:[o(`span`,{class:`docs-hit-title`,children:[t.heading,` `,o(`span`,{class:`muted`,children:[`· `,t.pageTitle]})]}),o(`span`,{class:`docs-hit-snippet`,children:t.snippet})]},`${t.page}#${t.anchor}`))})]})}function Ue({page:e,onPick:t}){let n=X.value,r=J(n,e).filter(e=>e.t===`h`&&e.level===2);return o(`nav`,{class:`docs-nav`,"aria-label":W[n].docs,children:U.map(i=>o(`div`,{children:[o(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[o(p,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&o(`div`,{class:`docs-toc`,children:r.map(e=>o(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function We(){let e=X.value;return o(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":W[e].language,children:[`de`,`en`].map(t=>o(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>Fe(t),children:t.toUpperCase()},t))})}function Ge({page:e,onClose:t,children:n}){return o(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:o(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":W[X.value].menu,children:[o(`header`,{class:`sheet-head`,children:[o(`h2`,{class:`px-title`,children:W[X.value].docs}),o(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:o(d,{})})]}),o(`div`,{class:`sheet-body`,children:[o(He,{onPick:t}),o(Ue,{page:e,onPick:t}),n]})]})})}function Ke(){let{page:e,anchor:n}=Z.value,a=X.value,[s,l]=t(!1),u=J(a,e),d=U.findIndex(t=>t.id===e),f=U[d-1],p=U[d+1],se=r(null);Le(e,n),i(()=>{document.documentElement.lang=a,document.title=`${U[d].title[a]} – CC: Cloud ${W[a].docs}`},[e,a]),i(()=>{xe[a][e]||Q(`/docs`)},[e,a]);let m=c.value;return o(`div`,{class:`docs`,children:[o(`header`,{class:`topbar docs-top`,children:[o(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[o(oe,{size:26}),o(`span`,{class:`brand-text`,children:[o(`span`,{class:`brand-cc`,children:`CC:`}),o(`span`,{class:`brand-cloud`,children:`Cloud`}),o(`span`,{class:`docs-badge`,children:W[a].docs})]})]}),o(`div`,{class:`docs-top-actions`,children:[o(We,{}),o(`button`,{type:`button`,class:`icon-btn`,onClick:ae,"aria-label":`Theme: ${m}`,children:o(m===`dark`?re:m===`light`?ee:ne,{})}),o(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>l(!0),children:[`☰ `,W[a].menu]})]})]}),o(`div`,{class:`docs-layout`,children:[o(`aside`,{class:`docs-side`,children:[o(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[o(ie,{size:16}),` `,W[a].back]}),o(He,{}),o(Ue,{page:e})]}),o(`main`,{class:`docs-main`,ref:se,children:[o(`article`,{class:`docs-article`,lang:a,children:u.map((t,n)=>o(Ve,{b:t},`${e}-${a}-${n}`))}),o(`nav`,{class:`docs-pager`,children:[f?o(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[o(`span`,{class:`muted small`,children:[`← `,W[a].prev]}),o(`span`,{children:f.title[a]})]}):o(`span`,{}),p&&o(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[o(`span`,{class:`muted small`,children:[W[a].next,` →`]}),o(`span`,{children:p.title[a]})]})]})]})]}),s&&o(Ge,{page:e,onClose:()=>l(!1)}),o(te,{})]})}export{Ke as default};
+`);if(r[1]===`recipe`)try{n.push({t:`recipe`,recipe:JSON.parse(a)})}catch{n.push({t:`code`,lang:`json`,code:a})}else n.push({t:`code`,lang:r[1]||``,code:a});continue}let o=/^(#{1,3})\s+(.*?)(?:\s+\{#([a-z0-9-]+)\})?\s*$/.exec(e);if(o){let e=G(o[2]),t=K(e);n.push({t:`h`,level:o[1].length,id:a(o[3]??Oe(t)),c:e,text:t}),i++;continue}if(/^\|.*\|\s*$/.test(e)){let e=[];for(;i<t.length&&/^\|.*\|\s*$/.test(t[i]);){let n=t[i].trim().slice(1,-1).split(/(?<!\\)\|/).map(e=>e.trim().replace(/\\\|/g,`|`));n.every(e=>/^:?-{2,}:?$/.test(e))||e.push(n),i++}let[r,...a]=e;n.push({t:`table`,head:(r??[]).map(G),rows:a.map(e=>e.map(G))});continue}if(/^>\s?/.test(e)){let e=[],r=[];for(;i<t.length&&/^>\s?/.test(t[i]);){let n=t[i].replace(/^>\s?/,``);n.trim()?r.push(n.trim()):(r.length&&e.push(r.join(` `)),r=[]),i++}r.length&&e.push(r.join(` `));let a=e[0]??``,o=/^\*\*(warning|achtung|warnung)/i.test(a)?`warn`:/^\*\*(tip|tipp)/i.test(a)?`tip`:`note`;n.push({t:`callout`,kind:o,c:e.map(G)});continue}let s=/^\s*[-*]\s+/,c=/^\s*\d+[.)]\s+/;if(s.test(e)||c.test(e)){let r=c.test(e),a=r?c:s,o=[];for(;i<t.length&&(a.test(t[i])||/^\s{2,}\S/.test(t[i])&&o.length);)a.test(t[i])?o.push(t[i].replace(a,``)):o[o.length-1]+=` `+t[i].trim(),i++;n.push({t:r?`ol`:`ul`,items:o.map(G)});continue}let l=[];for(;i<t.length&&t[i].trim()&&!/^(#{1,3}\s|```|>|\|)/.test(t[i])&&!s.test(t[i])&&!c.test(t[i]);)l.push(t[i++].trim());n.push({t:`p`,c:G(l.join(` `))})}return n}function je(e){switch(e.t){case`h`:return e.text;case`p`:return K(e.c);case`ul`:case`ol`:return e.items.map(K).join(` `);case`callout`:return e.c.map(K).join(` `);case`table`:return[...e.head,...e.rows.flat()].map(K).join(` `);case`code`:return e.code;case`recipe`:return[e.recipe.result,...Object.values(e.recipe.key??{}),...e.recipe.items??[]].join(` `)}}var Me=new Map;function q(e,t){let n=`${e}/${t}`,r=Me.get(n);return r||(r=Ae(Se[e][t]??``),Me.set(n,r)),r}var Ne=new Map;function Pe(e){let t=Ne.get(e);if(t)return t;t=[];for(let n of H){let r={page:n.id,pageTitle:n.title[e],anchor:``,heading:n.title[e],text:``};for(let i of q(e,n.id))i.t===`h`&&i.level>1?((r.text||r.anchor)&&t.push(r),r={page:n.id,pageTitle:n.title[e],anchor:i.id,heading:i.text,text:``}):i.t!==`h`&&(r.text+=` `+je(i));t.push(r)}return Ne.set(e,t),t}var J=e=>e.toLowerCase().normalize(`NFKD`).replace(/[̀-ͯ]/g,``);function Fe(e,t,n=20){let r=J(t).split(/\s+/).filter(e=>e.length>=2);if(!r.length)return[];let i=[];for(let t of Pe(e)){let e=J(t.heading),n=J(t.text),a=0,o=!0;for(let t of r){let r=e.includes(t),i=n.includes(t);if(!r&&!i){o=!1;break}a+=(r?10:0)+(i?1+Math.min(4,n.split(t).length-2):0)}if(!o)continue;let s=n.indexOf(r[0]),c=Math.max(0,s-50),l=t.text.replace(/\s+/g,` `).trim(),u=(c>0?`…`:``)+l.slice(c,c+140).trim()+(l.length>c+140?`…`:``);i.push({...t,score:a,snippet:u})}return i.sort((e,t)=>t.score-e.score).slice(0,n)}var Y=l((()=>{let e=f(`lang`,``);return e===`de`||e===`en`?e:De()})()),Ie=e=>{Y.value=e,u(`lang`,e),document.documentElement.lang=e};function X(){let e=/^\/docs\/?([a-z0-9-]*)/.exec(location.pathname);return{page:H.some(t=>t.id===e?.[1])?e[1]:H[0].id,anchor:decodeURIComponent(location.hash.replace(/^#/,``))}}var Z=l(X());addEventListener(`popstate`,()=>Z.value=X());function Q(e){history.pushState(null,``,e),Z.value=X(),Z.value.anchor||window.scrollTo(0,0)}function Le(e,t){i(()=>{t&&requestAnimationFrame(()=>document.getElementById(t)?.scrollIntoView({block:`start`}))},[e,t])}function $({c:e}){return o(n,{children:e.map((e,t)=>{switch(e.t){case`text`:return e.v;case`code`:return o(`code`,{children:e.v},t);case`strong`:return o(`strong`,{children:o($,{c:e.c})},t);case`em`:return o(`em`,{children:o($,{c:e.c})},t);case`link`:return o(Re,{href:e.href,c:e.c},t)}})})}function Re({href:e,c:t}){return/^https?:/.test(e)?o(`a`,{href:e,target:`_blank`,rel:`noopener noreferrer`,children:o($,{c:t})}):o(`a`,{href:e,onClick:t=>{t.metaKey||t.ctrlKey||t.shiftKey||(t.preventDefault(),e.startsWith(`#`)?Q(`${location.pathname}${e}`):e.startsWith(`/docs`)?Q(e):location.assign(e))},children:o($,{c:t})})}function ze({b:e}){let t=`h${e.level}`;return o(t,{id:e.id,class:`dh dh${e.level}`,children:[o($,{c:e.c}),e.level>1&&o(`a`,{href:`#${e.id}`,class:`anchor`,"aria-label":U[Y.value].copyLink,title:U[Y.value].copyLink,onClick:async t=>{t.preventDefault();let n=`${location.origin}${location.pathname}#${e.id}`;history.replaceState(null,``,`#${e.id}`),await ce(n)&&s({level:`info`,title:U[Y.value].docs,text:U[Y.value].linkCopied},2500)},children:`#`})]})}function Be({r:e}){let t=Y.value,n=[];if(e.shapeless)for(let t=0;t<9;t++)n.push(e.items?.[t]??null);else{let t=e.grid??[];for(let r=0;r<3;r++)for(let i=0;i<3;i++){let a=t[r]?.[i];n.push(a&&a!==` `&&a!==`.`?e.key?.[a]??null:null)}}let r=[...new Set(n.filter(Boolean))];return o(`figure`,{class:`recipe`,children:[o(`div`,{class:`recipe-main`,children:[o(`div`,{class:`craft-grid`,role:`img`,"aria-label":`${W(e.result,t)}: ${r.map(e=>W(e,t)).join(`, `)}`,children:n.map((e,n)=>o(`span`,{class:`slot ${e?`full`:``}`,title:e?W(e,t):void 0,children:e&&o(p,{name:Ee(e),displayName:W(e,t)})},n))}),o(`span`,{class:`craft-arrow`,"aria-hidden":`true`,children:`→`}),o(`div`,{class:`craft-result`,children:[o(`span`,{class:`slot full result`,title:W(e.result,t),children:[o(p,{name:e.result,displayName:W(e.result,t)}),e.count&&e.count>1&&o(`span`,{class:`slot-count`,children:e.count})]}),o(`span`,{class:`craft-result-name`,children:W(e.result,t)})]})]}),o(`figcaption`,{children:[o(`ul`,{class:`recipe-legend`,children:r.map(e=>o(`li`,{children:[o(p,{name:Ee(e),displayName:W(e,t)}),` `,W(e,t)]},e))}),e.shapeless&&o(`p`,{class:`muted small`,children:U[t].shapeless}),e.requires?.map(e=>o(`p`,{class:`recipe-req ${e.startsWith(`!`)?`without`:``}`,children:[e.startsWith(`!`)?U[t].without:U[t].requires,` `,we[e.replace(/^!?mod:/,``)]??e.replace(/^!?mod:/,``)]},e))]})]})}function Ve({b:e}){switch(e.t){case`h`:return o(ze,{b:e});case`p`:return o(`p`,{children:o($,{c:e.c})});case`ul`:case`ol`:{let t=e.t;return o(t,{children:e.items.map((e,t)=>o(`li`,{children:o($,{c:e})},t))})}case`callout`:return o(`aside`,{class:`callout callout-${e.kind}`,children:e.c.map((e,t)=>o(`p`,{children:o($,{c:e})},t))});case`table`:return o(`div`,{class:`table-wrap`,children:o(`table`,{children:[o(`thead`,{children:o(`tr`,{children:e.head.map((e,t)=>o(`th`,{children:o($,{c:e})},t))})}),o(`tbody`,{children:e.rows.map((e,t)=>o(`tr`,{children:e.map((e,t)=>o(`td`,{children:o($,{c:e})},t))},t))})]})});case`code`:return o(m,{code:e.code,label:e.lang||`shell`});case`recipe`:return o(Be,{r:e.recipe})}}function He({onPick:e,autoFocus:n}){let[r,i]=t(``),s=Y.value,c=a(()=>r.trim().length>=2?Fe(s,r):[],[r,s]);return o(`div`,{class:`docs-search`,children:[o(`input`,{type:`search`,class:`input docs-search-input`,placeholder:U[s].search,value:r,autoFocus:n,"aria-label":U[s].search,onInput:e=>i(e.target.value)}),r.trim().length>=2&&o(`div`,{class:`docs-hits`,role:`listbox`,"aria-label":U[s].results,children:c.length===0?o(`p`,{class:`muted small`,children:[U[s].noResults,` „`,r,`“`]}):c.map(t=>o(`a`,{class:`docs-hit`,href:`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`,onClick:n=>{n.preventDefault(),Q(`/docs/${t.page}${t.anchor?`#${t.anchor}`:``}`),i(``),e?.()},children:[o(`span`,{class:`docs-hit-title`,children:[t.heading,` `,o(`span`,{class:`muted`,children:[`· `,t.pageTitle]})]}),o(`span`,{class:`docs-hit-snippet`,children:t.snippet})]},`${t.page}#${t.anchor}`))})]})}function Ue({page:e,onPick:t}){let n=Y.value,r=q(n,e).filter(e=>e.t===`h`&&e.level===2);return o(`nav`,{class:`docs-nav`,"aria-label":U[n].docs,children:H.map(i=>o(`div`,{children:[o(`a`,{href:`/docs/${i.id}`,class:`docs-nav-page ${i.id===e?`on`:``}`,"aria-current":i.id===e?`page`:void 0,onClick:e=>{e.preventDefault(),Q(`/docs/${i.id}`),t?.()},children:[o(se,{name:i.icon,size:14}),i.title[n]]}),i.id===e&&o(`div`,{class:`docs-toc`,children:r.map(e=>o(`a`,{href:`#${e.id}`,onClick:n=>{n.preventDefault(),Q(`/docs/${i.id}#${e.id}`),t?.()},children:e.text},e.id))})]},i.id))})}function We(){let e=Y.value;return o(`div`,{class:`seg-ctl lang-toggle`,role:`radiogroup`,"aria-label":U[e].language,children:[`de`,`en`].map(t=>o(`button`,{type:`button`,role:`radio`,"aria-checked":e===t,class:e===t?`on`:``,onClick:()=>Ie(t),children:t.toUpperCase()},t))})}function Ge({page:e,onClose:t,children:n}){return o(`div`,{class:`backdrop backdrop-sheet`,onClick:e=>e.target===e.currentTarget&&t(),children:o(`section`,{class:`sheet docs-sheet`,role:`dialog`,"aria-modal":`true`,"aria-label":U[Y.value].menu,children:[o(`header`,{class:`sheet-head`,children:[o(`h2`,{class:`px-title`,children:U[Y.value].docs}),o(`button`,{type:`button`,class:`icon-btn`,"aria-label":`Close`,onClick:t,children:o(d,{})})]}),o(`div`,{class:`sheet-body`,children:[o(He,{onPick:t}),o(Ue,{page:e,onPick:t}),n]})]})})}function Ke(){let{page:e,anchor:n}=Z.value,a=Y.value,[s,l]=t(!1),u=q(a,e),d=H.findIndex(t=>t.id===e),f=H[d-1],p=H[d+1],se=r(null);Le(e,n),i(()=>{document.documentElement.lang=a,document.title=`${H[d].title[a]} – CC: Cloud ${U[a].docs}`},[e,a]),i(()=>{Se[a][e]||Q(`/docs`)},[e,a]);let m=c.value;return o(`div`,{class:`docs`,children:[o(`header`,{class:`topbar docs-top`,children:[o(`a`,{href:`/`,class:`brand`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},"aria-label":`CC: Cloud dashboard`,children:[o(oe,{size:26}),o(`span`,{class:`brand-text`,children:[o(`span`,{class:`brand-cc`,children:`CC:`}),o(`span`,{class:`brand-cloud`,children:`Cloud`}),o(`span`,{class:`docs-badge`,children:U[a].docs})]})]}),o(`div`,{class:`docs-top-actions`,children:[o(We,{}),o(`button`,{type:`button`,class:`icon-btn`,onClick:ae,"aria-label":`Theme: ${m}`,children:o(m===`dark`?re:m===`light`?ee:ne,{})}),o(`button`,{type:`button`,class:`btn btn-small docs-menu-btn`,onClick:()=>l(!0),children:[`☰ `,U[a].menu]})]})]}),o(`div`,{class:`docs-layout`,children:[o(`aside`,{class:`docs-side`,children:[o(`a`,{class:`link-back`,href:`/`,onClick:e=>{e.preventDefault(),history.pushState(null,``,`/`),dispatchEvent(new PopStateEvent(`popstate`))},children:[o(ie,{size:16}),` `,U[a].back]}),o(He,{}),o(Ue,{page:e})]}),o(`main`,{class:`docs-main`,ref:se,children:[o(`article`,{class:`docs-article`,lang:a,children:u.map((t,n)=>o(Ve,{b:t},`${e}-${a}-${n}`))}),o(`nav`,{class:`docs-pager`,children:[f?o(`a`,{href:`/docs/${f.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${f.id}`)},children:[o(`span`,{class:`muted small`,children:[`← `,U[a].prev]}),o(`span`,{children:f.title[a]})]}):o(`span`,{}),p&&o(`a`,{class:`next`,href:`/docs/${p.id}`,onClick:e=>{e.preventDefault(),Q(`/docs/${p.id}`)},children:[o(`span`,{class:`muted small`,children:[U[a].next,` →`]}),o(`span`,{children:p.title[a]})]})]})]})]}),s&&o(Ge,{page:e,onClose:()=>l(!1)}),o(te,{})]})}export{Ke as default};

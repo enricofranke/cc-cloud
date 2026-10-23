@@ -15,6 +15,7 @@ import type { PowerInfo } from "../lib/types.ts";
 import { PERMISSIONS, presetHas, type MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
 import { CapacityLine } from "../components/Capacity.tsx";
+import { feature } from "../lib/config.ts";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
@@ -358,8 +359,8 @@ export function Dashboard({ id }: { id: string }) {
             <a href="#/devices">Devices</a>
             {conn.can("access.manage") && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
             {conn.can("shares.create") && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
-            {conn.rules.value && <a href={`#/m/${encodeURIComponent(id)}/rules`}>Rules</a>}
-            {conn.can("push.manage") && <a href={`#/m/${encodeURIComponent(id)}/push`}>Notifications</a>}
+            {conn.rules.value && feature("rules") && <a href={`#/m/${encodeURIComponent(id)}/rules`}>Rules</a>}
+            {conn.can("push.manage") && feature("push") && <a href={`#/m/${encodeURIComponent(id)}/push`}>Notifications</a>}
             {conn.store.value && conn.can("scripts.upload") && (
               <button type="button" class="link-btn" onClick={() => (setSheet(null), setStore({}))}>
                 Script Store

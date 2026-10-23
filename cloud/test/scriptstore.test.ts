@@ -88,3 +88,55 @@ describe("script store in the mock", () => {
     }
   });
 });
+
+describe("signed store (v0.9)", () => {
+  it("verifies Ed25519 signatures in the browser code", async () => {
+    const { generateKeyPairSync, sign } = await import("node:crypto");
+    const { verifyEd25519 } = await import("../web/src/lib/scriptstore.ts");
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    const key = Buffer.from(spki.subarray(spki.length - 32)).toString("base64");
+    const data = new TextEncoder().encode('{"format":1,"scripts":[]}');
+    const sig = sign(null, data, privateKey).toString("base64");
+    expect(await verifyEd25519(data, sig, key)).toBe(true);
+    expect(await verifyEd25519(new TextEncoder().encode('{"format":1,"scripts":[ ]}'), sig, key)).toBe(false);
+    expect(await verifyEd25519(data, "AAAA", key)).toBe(false);
+  });
+
+  it("signature states, store installs checked by the server, records with changed/missing, public config", async () => {
+    const { createMockServer, CONTROL } = await import("../dev/mock-server.ts");
+    const { fetchIndex } = await import("../web/src/lib/scriptstore.ts");
+    const { scriptApi } = await import("../web/src/lib/scripts.ts");
+    const { parseConfig } = await import("../web/src/lib/config.ts");
+    for (const [mode, want] of [["valid", "signed"], ["bad", "bad"], ["none", "unsigned"]] as const) {
+      const mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, storeSignature: mode, log: () => {} });
+      try {
+        const base = `http://127.0.0.1:${mock.port}`;
+        const cfg = parseConfig(await (await fetch(`${base}/api/config`)).json());
+        expect(cfg.features.terminal).toBe(true);
+        const url = `${base}/store/`;
+        const idx = await fetchIndex(url, cfg.store.key);
+        expect(idx.signature).toBe(want);
+        expect((await fetchIndex(url, null)).signature).toBe("no_key");
+        if (mode !== "valid") continue;
+        const tok = (await (await fetch(`${base}/dev/token`, { method: "POST", body: JSON.stringify({ name: "V" }) })).json()).token as string;
+        const api = scriptApi(base, tok, mock.base.id, CONTROL);
+        const sc = idx.scripts[0];
+        const f = sc.files[0];
+        const src = await (await fetch(`${url}files/${sc.id}/${sc.version}/${f.path}`)).text();
+        await api.write(f.path, src, { overwrite: true, pin: "1234", store: `${sc.id}@${sc.version}` });
+        let list = await api.list();
+        expect(list.store?.[f.path]).toMatchObject({ id: sc.id, version: sc.version, changed: false, missing: false });
+        await expect(api.write(f.path, src + "\n-- evil", { overwrite: true, pin: "1234", store: `${sc.id}@${sc.version}` })).rejects.toMatchObject({ code: "store_mismatch", status: 409 });
+        await expect(api.write(f.path, src, { overwrite: true, pin: "1234", store: "Bad Ref" })).rejects.toMatchObject({ code: "invalid_store_ref" });
+        await expect(api.write(f.path, src, { overwrite: true, pin: "1234", store: `${sc.id}@99.0.0` })).rejects.toMatchObject({ code: "store_unknown_script" });
+        // a plain overwrite keeps the record: the file shows as changed
+        await api.write(f.path, "print('mine')", { overwrite: true, pin: "1234" });
+        list = await api.list();
+        expect(list.store?.[f.path].changed).toBe(true);
+      } finally {
+        await mock.close();
+      }
+    }
+  });
+});

@@ -7928,3 +7928,26 @@ body.rz-nwse * {
     font-size: 10px;
   }
 }
+.sig-badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.sig-ok {
+  color: var(--green);
+}
+.sig-bad {
+  color: var(--red);
+}
+.sig-warn {
+  color: var(--orange);
+}
+.sig-muted {
+  color: var(--muted);
+}
+.store-sig {
+  margin: 0;
+}

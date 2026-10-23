@@ -192,7 +192,7 @@ export class MainframeConn {
   /** fine-grained permissions (docs/SPEC.md "Fine-grained permissions"); null = older mod (role presets apply) */
   readonly perms = signal<Set<string> | null>(null);
   /** Script Store (null = disabled or not allowed) */
-  readonly store = signal<{ url: string } | null>(null);
+  readonly store = signal<{ url: string; key?: string } | null>(null);
   /** v0.6: share-link sessions – what is shared and by whom */
   readonly shareInfo = signal<{ label: string; sharedBy: string; expires: number | null; hideNumbers: boolean } | null>(null);
   /** last error code sent by the server before closing (e.g. share_expired, no_access) */
@@ -1200,10 +1200,12 @@ function parsePerms(raw: unknown): Set<string> | null {
   if (!Array.isArray(raw)) return null;
   return new Set(raw.filter((p): p is string => typeof p === "string" && p.length <= 40).slice(0, 64));
 }
-function parseStore(raw: unknown): { url: string } | null {
+export function parseStore(raw: unknown): { url: string; key?: string } | null {
   const url = (raw as { url?: unknown } | null)?.url;
-  if (typeof url !== "string" || !/^https?:\/\/[^\s"'<>]+\/$/.test(url) || url.length > 200) return null;
+  const key = (raw as { key?: unknown } | null)?.key;
+  if (typeof url !== "string" || !/^https?:\/\/[^\s"'<>]+\/$/.test(url) || url.length > 256) return null;
   // https only, except a local dev store on the same origin
-  if (!url.startsWith("https://") && !(typeof location !== "undefined" && url.startsWith(location.origin))) return null;
-  return { url };
+  if (!url.startsWith("https://") && !(typeof location !== "undefined" && url.startsWith(location.origin)) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)) return null;
+  // the store's Ed25519 public key (base64 of 32 bytes), for the browser-side signature check
+  return { url, ...(typeof key === "string" && /^[A-Za-z0-9+/]{43}=$/.test(key) ? { key } : {}) };
 }

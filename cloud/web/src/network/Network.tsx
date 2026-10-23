@@ -18,6 +18,7 @@ import type { MainframeConn } from "../lib/conn.ts";
 import type { NetNode, NetworkInfo, NodeType } from "../lib/types.ts";
 import { CapacityLine, fmtCap } from "../components/Capacity.tsx";
 import { RedstonePanel } from "./Redstone.tsx";
+import { feature } from "../lib/config.ts";
 import {
   STATUS_HINT,
   STATUS_LABEL,
@@ -853,7 +854,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
     return () => clearTimeout(t);
   }, [sliceDraft]);
   const mfId = conn.info.value?.id ?? "";
-  const tiles: MapTiles | null = layer !== "off" && conn.can("view.positions") && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
+  const tiles: MapTiles | null = layer !== "off" && conn.can("view.positions") && feature("map") && !store.unavailable && mfId ? { store, mf: mfId, layer, y: yNow } : null;
   // voxel blocks (WebGL2, operator+); day/night and a cut height
   const webgl2 = useMemo(() => {
     try {
@@ -867,7 +868,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const [clipOn, setClipOn] = useState(false);
   const [clipY, setClipY] = useState<number | null>(null);
   const [voxStatus, setVoxStatus] = useState<{ loaded: number; total: number; triangles: number; unavailable: boolean } | null>(null);
-  const voxelsOn = use3d && blocks && webgl2 && conn.can("view.positions") && !voxStatus?.unavailable;
+  const voxelsOn = use3d && blocks && webgl2 && conn.can("view.positions") && feature("voxels") && !voxStatus?.unavailable;
   const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn && !voxelsOn);
   if (!net)
     return (
@@ -962,7 +963,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           </div>
           <div class="net-opts">
             {use3d && hasPos && <FlySearch net={net} onPick={flyTo} />}
-            {!use3d && conn.can("view.positions") && !store.unavailable && (
+            {!use3d && conn.can("view.positions") && feature("map") && !store.unavailable && (
               <div class="map-layer">
                 <div class="seg-ctl seg-s" role="radiogroup" aria-label="Map background">
                   {(["surface", "slice", "off"] as const).map((l) => (
@@ -1003,7 +1004,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
                 Waystones
               </label>
             )}
-            {use3d && conn.can("view.positions") && webgl2 && !voxStatus?.unavailable && (
+            {use3d && conn.can("view.positions") && feature("voxels") && webgl2 && !voxStatus?.unavailable && (
               <label class="check-row small">
                 <input type="checkbox" checked={blocks} onChange={(e) => setBlocks((e.target as HTMLInputElement).checked)} />
                 Blocks

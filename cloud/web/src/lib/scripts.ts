@@ -69,11 +69,20 @@ export interface FileEntry {
   size: number;
   dir: boolean;
 }
+/** Store scripts installed on that computer (server-side records, v0.9). */
+export interface StoreRecord {
+  id: string;
+  version: string;
+  sha256: string;
+  changed: boolean;
+  missing: boolean;
+}
 export interface FileList {
   computer: { id: number; label: string; on: boolean; advanced: boolean };
   used: number;
   capacity: number;
   files: FileEntry[];
+  store?: Record<string, StoreRecord>;
 }
 
 export class ScriptError extends Error {
@@ -106,6 +115,13 @@ export const SCRIPT_ERRORS: Record<string, string> = {
   wrong_pin: "Wrong PIN.",
   pin_locked: "Too many wrong PINs – locked for a few minutes.",
   changed: "The file changed on the computer since you opened it.",
+  store_not_configured: "The server has no Script Store key configured, so it cannot check store scripts (server admin: set scriptStoreKey).",
+  store_disabled: "The Script Store is switched off on this server.",
+  invalid_store_ref: "The store script reference is not valid.",
+  store_unreachable: "The server could not reach the Script Store to check the script – try again later.",
+  store_bad_signature: "The store index is not correctly signed – nothing was installed.",
+  store_unknown_script: "The server does not find this script version in the signed store index (maybe it was just updated – reload the store).",
+  store_mismatch: "The file does not match the signed store index – nothing was installed.",
   into_itself: "A folder cannot be moved into itself.",
   not_a_directory: "A file is in the way of that folder.",
   unreachable: "Server not reachable.",
@@ -122,7 +138,8 @@ export interface ScriptApi {
   mkdir(path: string, pin?: string): Promise<void>;
   move(from: string, to: string, pin?: string): Promise<void>;
   read(path: string): Promise<string>;
-  write(path: string, code: string, opts: { overwrite?: boolean; startup?: boolean; pin?: string }): Promise<{ path: string; size: number }>;
+  /** `store` = "<id>@<version>" for store installs (the server checks the signed index); `storeFile` when the path differs from the store's. */
+  write(path: string, code: string, opts: { overwrite?: boolean; startup?: boolean; pin?: string; store?: string; storeFile?: string }): Promise<{ path: string; size: number }>;
   remove(path: string, pin?: string): Promise<void>;
   run(path: string, mode: "auto" | "event" | "reboot", pin?: string): Promise<"event" | "reboot">;
 }
@@ -167,6 +184,8 @@ export function scriptApi(base: string, token: string, mainframeId: string, upli
       const q = new URLSearchParams();
       if (o.overwrite) q.set("overwrite", "true");
       if (o.startup) q.set("startup", "true");
+      if (o.store) q.set("store", o.store);
+      if (o.storeFile && o.storeFile !== path) q.set("storeFile", o.storeFile);
       const res = await call(`/files/${enc(path)}${q.size ? `?${q}` : ""}`, { method: "PUT", body: code, pin: o.pin, headers: { "content-type": "text/plain; charset=utf-8" } });
       return res.json();
     },

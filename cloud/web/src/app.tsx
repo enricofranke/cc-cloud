@@ -10,6 +10,7 @@ import type { ComponentType } from "preact";
 import { saved } from "./lib/store.ts";
 import { syncConns } from "./lib/conns.ts";
 import { insecureContext } from "./lib/security.ts";
+import { loadPublicConfig } from "./lib/config.ts";
 import { MainframeList } from "./screens/MainframeList.tsx";
 import { PairScreen } from "./screens/Pair.tsx";
 import { Dashboard } from "./screens/Dashboard.tsx";
@@ -31,6 +32,9 @@ effect(() => {
   // a share-link view never opens the browser's own (token) connections
   if (!inShare.value) syncConns();
 });
+
+// the server's feature switches (GET /api/config), once
+if (!inShare.value) loadPublicConfig();
 
 function TopBar() {
   const pref = themePref.value;

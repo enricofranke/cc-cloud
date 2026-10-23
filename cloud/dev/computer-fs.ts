@@ -31,6 +31,16 @@ export class ComputerFs {
   files = new Map<string, Buffer>();
   /** folders created with ?dir=true (others exist implicitly through their files) */
   dirs = new Set<string>();
+  /** installed store scripts, like the mod's .cloud/store.json: path → {id, version, sha256 of the installed content} */
+  storeRecords = new Map<string, { id: string; version: string; sha256: string }>();
+  storeView() {
+    const out: Record<string, { id: string; version: string; sha256: string; changed: boolean; missing: boolean }> = {};
+    for (const [p, r] of this.storeRecords) {
+      const f = this.files.get(p);
+      out[p] = { ...r, missing: !f, changed: !!f && createHash("sha256").update(f).digest("hex") !== r.sha256 };
+    }
+    return out;
+  }
   info: ComputerInfo;
   capacity: number;
   runs: { path: string; mode: string }[] = [];
@@ -74,6 +84,8 @@ export interface FsDeps {
   device: { pinFails: number; lockedUntil: number };
   pinLockMs: number;
   log: (s: string) => void;
+  /** store installs: null when the signed index lists this content, else the 409 error code */
+  storeCheck?: (ref: string, storeFile: string, content: Buffer) => string | null;
 }
 
 type Reply = { status: number; body: unknown; raw?: string };
@@ -110,7 +122,7 @@ export function handleFs(fs: ComputerFs, method: string, rest: string, query: UR
   }
   if (rest === "files" && method === "GET") {
     const l = fs.list(query.get("tree") === "true");
-    return { status: 200, body: { computer: fs.info, used: fs.used(), capacity: fs.capacity, files: l.files, ...(l.truncated ? { truncated: true } : {}) } };
+    return { status: 200, body: { computer: fs.info, used: fs.used(), capacity: fs.capacity, files: l.files, ...(l.truncated ? { truncated: true } : {}), ...(fs.storeRecords.size ? { store: fs.storeView() } : {}) } };
   }
   if (rest === "move" && method === "POST") {
     let b: { from?: unknown; to?: unknown; overwrite?: unknown } = {};
@@ -135,6 +147,9 @@ export function handleFs(fs: ComputerFs, method: string, rest: string, query: UR
       fs.files.set(to, fs.files.get(from)!);
       fs.files.delete(from);
     }
+    // store records follow the files
+    for (const [p, r] of [...fs.storeRecords])
+      if (p === from || p.startsWith(`${from}/`)) (fs.storeRecords.delete(p), fs.storeRecords.set(to + p.slice(from.length), r));
     deps.log(`moved ${from} to ${to} on computer #${fs.info.id}`);
     return { status: 200, body: { ok: true } };
   }
@@ -168,10 +183,12 @@ export function handleFs(fs: ComputerFs, method: string, rest: string, query: UR
     if (!fs.files.has(path) && fs.allDirs().has(path)) {
       for (const p of [...fs.files.keys()]) if (p.startsWith(`${path}/`)) fs.files.delete(p);
       for (const d of [...fs.dirs]) if (d === path || d.startsWith(`${path}/`)) fs.dirs.delete(d);
+      for (const p of [...fs.storeRecords.keys()]) if (p.startsWith(`${path}/`)) fs.storeRecords.delete(p);
       deps.log(`deleted folder ${path} on computer #${fs.info.id}`);
       return { status: 200, body: { ok: true } };
     }
     if (!fs.files.delete(path)) return err(404, "not_found");
+    fs.storeRecords.delete(path);
     deps.log(`deleted ${path} on computer #${fs.info.id}`);
     return { status: 200, body: { ok: true } };
   }
@@ -189,9 +206,18 @@ export function handleFs(fs: ComputerFs, method: string, rest: string, query: UR
       const cur = fs.files.get(path);
       if (!cur || contentHash(cur) !== ifMatch) return err(409, "changed");
     } else if (fs.files.has(path) && query.get("overwrite") !== "true") return err(409, "exists");
+    const storeRef = query.get("store");
+    if (storeRef !== null) {
+      const e = deps.storeCheck ? deps.storeCheck(storeRef, query.get("storeFile") ?? path, data) : "store_not_configured";
+      if (e) return err(e === "invalid_store_ref" ? 400 : 409, e);
+    }
     const old = fs.files.get(path)?.length ?? 0;
     if (fs.used() - old + data.length > fs.capacity) return err(507, "quota");
     fs.files.set(path, data);
+    if (storeRef !== null) {
+      const [id, version] = storeRef.split("@");
+      fs.storeRecords.set(path, { id, version, sha256: createHash("sha256").update(data).digest("hex") });
+    }
     if (query.get("startup") === "true") fs.files.set("startup.lua", Buffer.from(`shell.run("${path}")\n`));
     deps.log(`uploaded ${path} (${data.length} bytes) to computer #${fs.info.id}`);
     return { status: 200, body: { ok: true, path, size: data.length, hash: contentHash(data) } };

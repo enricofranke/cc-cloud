@@ -14,6 +14,7 @@ import { powerButtonState } from "../lib/redstone.ts";
 import { DocsLink } from "./DocsLink.tsx";
 import { timeAgo } from "../lib/ui.ts";
 import { historyOf } from "../lib/history.ts";
+import { feature } from "../lib/config.ts";
 import type { Uplink, Widget } from "../lib/types.ts";
 
 /** Widgets that only exist to act: left out entirely in read-only (share) views. */
@@ -199,7 +200,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
           </span>
         )}
         {cached ? <span class="tag tag-gray">Not loaded</span> : !online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
-        {!edit && !viewOnly && !card.custom && conn.can("terminal") && online && card.uplink.mode !== "direct" && (
+        {!edit && !viewOnly && !card.custom && conn.can("terminal") && feature("terminal") && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-term" title="Terminal" aria-label={`Terminal of ${card.title || "this computer"}`} onClick={() => setTerm(true)}>
             <span aria-hidden="true">{">_"}</span>
           </button>

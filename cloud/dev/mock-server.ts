@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
+import { createHash, generateKeyPairSync, randomBytes, randomInt, randomUUID, sign as cryptoSign } from "node:crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { CODE_ALPHABET, SECURITY_HEADERS, clientMessage, normalizeCode, pairRequest, parseJson, type Scalar } from "./protocol.ts";
 import { serveStatic } from "./static.ts";
@@ -179,6 +179,10 @@ export interface MockOptions {
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
   approveDelayMs?: number;
+  /** dev store signature: valid (default), bad (tampered) or none (no index.json.sig) */
+  storeSignature?: "valid" | "bad" | "none";
+  /** override the public config's feature switches */
+  features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map", boolean>>;
   /** v0.5 D config pushEnabled (default true) */
   pushEnabled?: boolean;
   /** serve ../store/dist at /store/ and announce it in the snapshot (default true) */
@@ -263,6 +267,29 @@ export async function createMockServer(opts: MockOptions = {}) {
     accountCodes.set(code, { uuid: p.uuid, code });
   }
   const shares = new Map<string, Share>();
+  // dev Script Store signing key (the mod verifies index.json.sig with [store] scriptStoreKey)
+  const storeKey = (() => {
+    const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+    const spki = publicKey.export({ type: "spki", format: "der" });
+    return { publicB64: Buffer.from(spki.subarray(spki.length - 32)).toString("base64"), sign: (b: Buffer) => cryptoSign(null, b, privateKey) };
+  })();
+  /** Like the mod: a store install is written only if the signed index lists exactly this content. */
+  const storeCheck = (ref: string, storeFile: string, content: Buffer): string | null => {
+    if (opts.scriptStore === false) return "store_disabled";
+    const m = /^([a-z0-9][a-z0-9-]{0,63})@([0-9A-Za-z][0-9A-Za-z.+-]{0,31})$/.exec(ref);
+    if (!m) return "invalid_store_ref";
+    if (opts.storeSignature === "bad" || opts.storeSignature === "none") return "store_bad_signature";
+    let index: { scripts?: { id: string; version: string; files: { path: string; sha256: string }[] }[] };
+    try {
+      index = JSON.parse(readFileSync(join(STORE_DIST, "index.json"), "utf8"));
+    } catch {
+      return "store_unreachable";
+    }
+    const sc = index.scripts?.find((x) => x.id === m[1] && x.version === m[2]);
+    const f = sc?.files.find((x) => x.path === storeFile);
+    if (!sc || !f) return "store_unknown_script";
+    return createHash("sha256").update(content).digest("hex") === f.sha256 ? null : "store_mismatch";
+  };
   /** Effective role of a token on a mainframe. */
   function roleFor(t: Token, mf: Mainframe): Role | undefined {
     if (t.kind === "device" && t.mainframeId !== mf.id) return undefined;
@@ -402,7 +429,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           canControl: c?.canControl ?? true,
           role: c?.role ?? "admin",
           perms: c?.perms ?? presetPerms("admin"),
-          store: (c?.perms ?? presetPerms("admin")).includes("scripts.upload") && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/` } : null,
+          store: (c?.perms ?? presetPerms("admin")).includes("scripts.upload") && opts.scriptStore !== false ? { url: `http://localhost:${port}/store/`, key: storeKey.publicB64 } : null,
           account: c?.uuid ? { player: playerByUuid(c.uuid)?.player ?? "?" } : null,
           uplinks: [...mf.uplinks.values()].filter((u) => !u.restricted || (c?.perms ?? presetPerms("admin")).includes("view.positions")),
           layout: mf.layout,
@@ -1616,7 +1643,23 @@ export async function createMockServer(opts: MockOptions = {}) {
       res.writeHead(403, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
       return void res.end(LAN_ONLY.message);
     }
-    // dev: the Script Store's static build (../store/dist) on the same origin
+    // public config (no token): version, store, feature switches
+    if (p === "/api/config" && req.method === "GET") {
+      const on = opts.scriptStore !== false;
+      return json(res, 200, {
+        version: "0.9.0-dev",
+        store: { enabled: on, url: on ? `http://localhost:${port}/store/` : null, ...(on ? { key: storeKey.publicB64 } : {}) },
+        features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, ...(opts.features ?? {}) },
+      });
+    }
+    // dev: the Script Store's static build (../store/dist) on the same origin, signed with a dev key
+    if (p === "/store/index.json.sig" && req.method === "GET" && opts.scriptStore !== false) {
+      if (opts.storeSignature === "none") return json(res, 404, { error: "not_found" });
+      const sig = storeKey.sign(readFileSync(join(STORE_DIST, "index.json")));
+      if (opts.storeSignature === "bad") sig[0] ^= 1;
+      res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "access-control-allow-origin": "*", "cache-control": "no-cache" });
+      return void res.end(sig.toString("base64"));
+    }
     if (p.startsWith("/store/") && req.method === "GET" && opts.scriptStore !== false) {
       const rel = decodeURIComponent(p.slice("/store/".length));
       if (!rel || rel.split("/").some((x) => x === ".." || x === "")) return json(res, 404, { error: "not_found" });
@@ -1763,7 +1806,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       const body = req.method === "PUT" || req.method === "POST" ? await rawBody(req, MAX_FILE) : null;
       if ((req.method === "PUT" || req.method === "POST") && !body) return json(res, 413, { error: "too_large" });
       if (!fsWrites.has(t)) fsWrites.set(t, []);
-      const r = handleFs(fs, req.method ?? "GET", fm[3], url.searchParams, req.headers, body, { pin, device: t, pinLockMs, log: (x) => log(`${t.name}: ${x}`) }, fsWrites.get(t)!);
+      const r = handleFs(fs, req.method ?? "GET", fm[3], url.searchParams, req.headers, body, { pin, device: t, pinLockMs, log: (x) => log(`${t.name}: ${x}`), storeCheck }, fsWrites.get(t)!);
       if (r.raw !== undefined) {
         res.writeHead(r.status, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
         return void res.end(r.raw);

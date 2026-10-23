@@ -70,7 +70,14 @@ export function parseIndex(raw: unknown): StoreIndex {
   return { name: s(r.name, 80) || "Script Store", scripts, tags: Array.isArray(r.tags) ? r.tags.filter((t: unknown) => typeof t === "string").slice(0, 40) : [] };
 }
 
-export async function fetchIndex(url: string): Promise<StoreIndex> {
+/**
+ * signed = Ed25519 signature over the exact index bytes checked in this browser; bad = it does not match;
+ * unsigned = the store has no index.json.sig; unsupported = this browser cannot check Ed25519;
+ * no_key = the server did not announce the store's public key. The server checks again on every install.
+ */
+export type SignatureState = "signed" | "bad" | "unsigned" | "unsupported" | "no_key";
+
+export async function fetchIndex(url: string, key?: string | null): Promise<StoreIndex & { signature: SignatureState }> {
   let res: Response;
   try {
     res = await fetch(`${url}index.json`, { cache: "no-cache", credentials: "omit" });
@@ -78,7 +85,49 @@ export async function fetchIndex(url: string): Promise<StoreIndex> {
     throw new Error("unreachable");
   }
   if (!res.ok) throw new Error(`http_${res.status}`);
-  return parseIndex(await res.json());
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const index = parseIndex(JSON.parse(new TextDecoder().decode(bytes)));
+  let signature: SignatureState = "no_key";
+  if (key) {
+    let sig: string | null = null;
+    try {
+      const r = await fetch(`${url}index.json.sig`, { cache: "no-cache", credentials: "omit" });
+      sig = r.ok ? (await r.text()).trim() : null;
+    } catch {}
+    if (!sig) signature = "unsigned";
+    else {
+      const ok = await verifyEd25519(bytes, sig, key);
+      signature = ok === null ? "unsupported" : ok ? "signed" : "bad";
+    }
+  }
+  return { ...index, signature };
+}
+
+const b64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+/** WebCrypto Ed25519: true/false, or null when this browser cannot check it (or the inputs are not base64). */
+export async function verifyEd25519(data: Uint8Array, sigB64: string, keyB64: string): Promise<boolean | null> {
+  const subtle = typeof crypto !== "undefined" ? crypto.subtle : undefined;
+  if (!subtle) return null;
+  let raw: Uint8Array;
+  let sig: Uint8Array;
+  try {
+    raw = b64(keyB64);
+    sig = b64(sigB64);
+  } catch {
+    return false;
+  }
+  if (raw.length !== 32 || sig.length !== 64) return false;
+  let key: CryptoKey;
+  try {
+    key = await subtle.importKey("raw", raw as Uint8Array<ArrayBuffer>, { name: "Ed25519" }, false, ["verify"]);
+  } catch {
+    return null; // Ed25519 not supported here
+  }
+  try {
+    return await subtle.verify({ name: "Ed25519" }, key, sig as Uint8Array<ArrayBuffer>, data as Uint8Array<ArrayBuffer>);
+  } catch {
+    return null;
+  }
 }
 
 /** Downloads one file and checks it against the index. Never returns unverified content. */

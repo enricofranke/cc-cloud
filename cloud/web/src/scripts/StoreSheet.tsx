@@ -3,8 +3,9 @@
 // Script import API. Admins with scripts.upload; PIN asked when set.
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
-import { ScriptError, scriptApi, scriptErrorText } from "../lib/scripts.ts";
-import { fetchIndex, fetchVerified, readInstalled, recordInstall, compareVersions, updatesFor, type StoreIndex, type StoreScript } from "../lib/scriptstore.ts";
+import { ScriptError, scriptApi, scriptErrorText, type StoreRecord } from "../lib/scripts.ts";
+import { fetchIndex, fetchVerified, readInstalled, recordInstall, compareVersions, updatesFor, type SignatureState, type StoreIndex, type StoreScript } from "../lib/scriptstore.ts";
+import { publicConfig } from "../lib/config.ts";
 import { pushToast } from "../lib/ui.ts";
 import { ConfirmDialog, PinDialog, Sheet, type PinState } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
@@ -22,6 +23,21 @@ const ERR: Record<string, string> = {
   hash_mismatch: "A file does not match the store index – nothing was installed.",
   too_large: "A file is too large.",
 };
+const SIG: Record<SignatureState, { text: string; cls: string; title: string }> = {
+  signed: { text: "signed ✓", cls: "ok", title: "This browser checked the store's Ed25519 signature over the index." },
+  bad: { text: "signature invalid", cls: "bad", title: "The index does not match the store's signature – installing is blocked." },
+  unsigned: { text: "not signed", cls: "warn", title: "The store publishes no signature; the server refuses store installs it cannot verify." },
+  unsupported: { text: "signature checked by the server", cls: "muted", title: "This browser cannot check Ed25519 signatures; the server verifies every install." },
+  no_key: { text: "signature checked by the server", cls: "muted", title: "The server checks the store's signature before every install." },
+};
+export function SignatureBadge({ s }: { s: SignatureState }) {
+  return (
+    <span class={`sig-badge sig-${SIG[s].cls}`} title={SIG[s].title}>
+      {SIG[s].text}
+    </span>
+  );
+}
+
 const errText = (e: unknown) => {
   const c = e instanceof Error ? e.message : String(e);
   return ERR[c] ?? (e instanceof ScriptError ? scriptErrorText(e) : `Error: ${c}`);
@@ -31,16 +47,19 @@ export default function StoreSheet({ conn, want, onClose }: { conn: MainframeCon
   const url = conn.store.value?.url ?? "";
   const mf = conn.info.value?.id ?? "";
   const lang = (document.documentElement.lang || navigator.language || "en").startsWith("de") ? "de" : "en";
+  const key = conn.store.value?.key ?? publicConfig.value.store.key ?? null;
   const [index, setIndex] = useState<StoreIndex | null>(null);
+  const [signature, setSignature] = useState<SignatureState>("no_key");
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [open, setOpen] = useState<StoreScript | null>(null);
   useEffect(() => {
     if (!url) return setError("The Script Store is switched off on this server.");
-    fetchIndex(url)
+    fetchIndex(url, key)
       .then((i) => {
         setIndex(i);
+        setSignature(i.signature);
         if (want) {
           const sc = i.scripts.find((s) => s.id === want.id);
           if (sc) setOpen(sc);
@@ -54,7 +73,7 @@ export default function StoreSheet({ conn, want, onClose }: { conn: MainframeCon
   const list = (index?.scripts ?? []).filter(
     (s) => (!tag || s.tags.includes(tag)) && (!q || `${s.id} ${s.name.en} ${s.name.de} ${s.description.en} ${s.description.de} ${s.tags.join(" ")}`.toLowerCase().includes(q.toLowerCase())),
   );
-  if (open) return <ScriptDetail conn={conn} url={url} sc={open} lang={lang} wantVersion={want?.id === open.id ? want.version : undefined} onBack={() => setOpen(null)} onClose={onClose} />;
+  if (open) return <ScriptDetail conn={conn} url={url} sc={open} lang={lang} signature={signature} wantVersion={want?.id === open.id ? want.version : undefined} onBack={() => setOpen(null)} onClose={onClose} />;
   return (
     <Sheet title="Script Store" onClose={onClose} wide>
       <div class="store">
@@ -62,6 +81,16 @@ export default function StoreSheet({ conn, want, onClose }: { conn: MainframeCon
           Community programs for your computers, reviewed before they are listed. They run on a CC computer and can control what that computer controls – never the Minecraft server itself.{" "}
           <DocsLink to="/docs/lua#store">More</DocsLink>
         </p>
+        {index && (
+          <p class="small store-sig">
+            Index: <SignatureBadge s={signature} />
+          </p>
+        )}
+        {signature === "bad" && (
+          <div class="banner banner-warn" role="alert">
+            <div class="banner-text">The store index does not match its signature. Something between you and the store changed it – installing is blocked.</div>
+          </div>
+        )}
         {updates.length > 0 && (
           <div class="banner banner-readonly" role="status">
             <div class="banner-text">
@@ -132,7 +161,7 @@ export default function StoreSheet({ conn, want, onClose }: { conn: MainframeCon
   );
 }
 
-function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript; lang: "en" | "de"; wantVersion?: string; onBack: () => void; onClose: () => void }) {
+function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript; lang: "en" | "de"; signature: SignatureState; wantVersion?: string; onBack: () => void; onClose: () => void }) {
   const { conn, sc, lang } = props;
   const mf = conn.info.value?.id ?? "";
   const [files, setFiles] = useState<Record<string, string> | null>(null);
@@ -146,7 +175,21 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
   const [confirm, setConfirm] = useState<{ title: string; text: string; resolve: (ok: boolean) => void } | null>(null);
   const [pinAsk, setPinAsk] = useState<{ state: PinState; resolve: (p: string | null) => void } | null>(null);
   const pin = useRef<string | undefined>(undefined);
-  const installedHere = readInstalled(mf)[target] ?? {};
+  // installed store scripts: the server's records on that computer (v0.9), the browser cache as fallback
+  const [records, setRecords] = useState<Record<string, StoreRecord> | null>(null);
+  useEffect(() => {
+    setRecords(null);
+    if (!target) return;
+    let stop = false;
+    scriptApi(conn.baseUrl.replace(/\/$/, ""), conn.token, mf, target)
+      .list()
+      .then((l) => !stop && setRecords(l.store ?? null))
+      .catch(() => {});
+    return () => {
+      stop = true;
+    };
+  }, [target]);
+  const installedHere: Record<string, { id: string; version: string; sha256: string; changed?: boolean }> = records ?? readInstalled(mf)[target] ?? {};
   useEffect(() => {
     let stop = false;
     Promise.all(sc.files.map(async (f) => [f.path, await fetchVerified(props.url, sc, f)] as const))
@@ -176,7 +219,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
     }
   }
   const install = async () => {
-    if (!files || !target) return;
+    if (!files || !target || props.signature === "bad") return;
     setBusy(true);
     setError(null);
     const api = scriptApi(conn.baseUrl.replace(/\/$/, ""), conn.token, mf, target);
@@ -185,9 +228,14 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
       const existing = new Set(list.files.map((f) => f.path));
       const clash = sc.files.filter((f) => existing.has(f.path));
       if (clash.length) {
-        // changed on the computer since we installed it?
+        // changed on the computer since it was installed from the store? (the server knows; older servers: compare here)
         const changed: string[] = [];
         for (const f of clash) {
+          const server = list.store?.[f.path];
+          if (server) {
+            if (server.changed) changed.push(f.path);
+            continue;
+          }
           const rec = installedHere[f.path];
           if (!rec) continue;
           const now = await api.read(f.path).catch(() => "");
@@ -202,7 +250,8 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
         );
         if (!ok) return;
       }
-      for (const f of sc.files) await withPin((p) => api.write(f.path, files[f.path], { overwrite: true, startup: startup && f.path === sc.entry, pin: p }));
+      // store=<id>@<version>: the server verifies the signed index and the file's SHA-256 before writing
+      for (const f of sc.files) await withPin((p) => api.write(f.path, files[f.path], { overwrite: true, startup: startup && f.path === sc.entry, pin: p, store: `${sc.id}@${sc.version}`, storeFile: f.path }));
       recordInstall(mf, target, sc);
       let msg = `${sc.name[lang]} ${sc.version} installed on ${computers.find((c) => c.uplinkId === target)?.title || "the computer"}.`;
       if (runNow) {
@@ -235,7 +284,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
         <p class="ex-text">{sc.description[lang]}</p>
         <p class="muted small">
           v{sc.version} · {sc.license} · by {sc.author.name}
-          {sc.reviewed ? " · reviewed" : " · not reviewed"}
+          {sc.reviewed ? " · reviewed" : " · not reviewed"} · <SignatureBadge s={props.signature} />
           {prev ? ` · installed here: v${prev.version}${compareVersions(sc.version, prev.version) > 0 ? " (update available)" : ""}` : ""}
         </p>
         {vNote && <p class="form-error">{vNote}</p>}
@@ -252,7 +301,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
         </div>
         <div class="banner banner-warn store-safety" role="note">
           <div class="banner-text">
-            <b>Read the code before you install it.</b> The check only proves the files are the ones the store lists – the list and the files come from the same server, so it is not a guarantee that the code is safe. “Reviewed” means a maintainer looked at this version.
+            <b>Read the code before you install it.</b> {props.signature === "signed" ? "This browser checked the store's signature, and the files match the signed index" : "The files match the store's index"}; the Minecraft server checks the signature again before it writes anything. That proves the files come from the store – not that the code is safe. “Reviewed” means a maintainer looked at this version.
           </div>
         </div>
         {error && <p class="form-error">{error}</p>}
@@ -288,7 +337,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
               <input type="checkbox" checked={startup} onChange={(e) => setStartup((e.target as HTMLInputElement).checked)} />
               Start it automatically (startup.lua)
             </label>
-            <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={!files || !target || busy || !conn.can("scripts.upload")} onClick={install}>
+            <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={!files || !target || busy || !conn.can("scripts.upload") || props.signature === "bad"} onClick={install}>
               <span>{busy ? "Installing…" : prev ? `Update to ${sc.version}` : "Install"}</span>
             </button>
             {!computers.length && <p class="muted small">No computer with a Cloud Uplink is online on this mainframe.</p>}
