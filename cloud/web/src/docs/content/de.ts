@@ -388,6 +388,8 @@ Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Kno
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
 
+**Knoten-Reichweite** = wie weit ein Relay oder der Mainframe **andere Relays und den Mainframe** erreicht. **Geräte-Reichweite** = wie weit er **Uplinks und Bridges** erreicht. Auf der Karte ist die Knoten-Reichweite der **durchgezogene Kreis**, die Geräte-Reichweite der **gestrichelte Kreis**; ein Klick auf ein Relay beschriftet beide, und das **?** auf der Karte erklärt, wie man Relays plant.
+
 Entfernungen werden in Blöcken in gerader Linie gemessen (auch nach oben und unten), innerhalb einer Dimension. Eine Verbindung steht, wenn ein Ende das andere erreicht – die größere der beiden Reichweiten zählt. Kabel (unten) haben keine Reichweitengrenze.
 
 ## Signal {#signal}
@@ -436,7 +438,7 @@ Das Netzwerk kostet FE. Der Mainframe braucht 40 FE/t + 4 pro Uplink + 8 pro Adv
 Der Tab **Network** zeigt alles, was verbunden ist, in drei Ansichten:
 
 - **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Kabel sind durchgezogen, Funkverbindungen gestrichelt und nach Signal gefärbt (grün stark, cyan ok, gelb schwach), Ender-Verbindungen lila gepunktet, Legacy orange; der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
-- **Map** – eine Draufsicht (x/z) pro Dimension mit Koordinatengitter, Reichweitenkreisen (umschaltbar), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
+- **Map** – eine Draufsicht (x/z) pro Dimension mit Koordinatengitter, Reichweitenkreisen (umschaltbar; durchgezogen = Knoten-Reichweite, gestrichelt = Geräte-Reichweite), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
 - **3D** – siehe unten.
 
 Ein Klick auf einen Knoten zeigt Details mit Untermenüs: **Info** (Typ, Position, Dimension, Status, Signal oder Kabel, Reichweite), **Route** (jeder Sprung bis zum Mainframe und was ein Relay weiterleitet), **Power** (Verbrauch und Puffer) und **Card** (die Live-Karte des Geräts, Bedienung je nach Rolle). **Open card** springt zur Karte im Dashboard; **Unlink** entfernt ihn aus dem Netzwerk (Admins). Positionen sehen nur Browser, die den Mainframe steuern dürfen.

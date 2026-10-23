@@ -3,6 +3,7 @@ import type { MainframeConn } from "../lib/conn.ts";
 import { formatDuration, keyOf, rejectText, type ActionOutcome } from "../lib/conn.ts";
 import type { Scalar, Uplink, Widget } from "../lib/types.ts";
 import { IconLock } from "./Icons.tsx";
+import { labelFit, splitEntries } from "../lib/format.ts";
 import { ConfirmDialog, PinDialog, type PinState } from "./Overlays.tsx";
 
 export interface WidgetProps {
@@ -165,6 +166,29 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
 export function LabelRow({ w, uplink, conn }: WidgetProps) {
   const { value } = useValue(conn, uplink.uplinkId, w);
   const text = value == null || value === "" ? undefined : typeof value === "number" ? fmtNumber(value) : String(value);
+  const entries = text ? splitEntries(text) : [];
+  // long or multi-entry values (e.g. tick time per dimension): caption above, then a compact list
+  if (w.label && text !== undefined && (entries.length > 1 || text.length > 32))
+    return (
+      <div class="kv kv-stack">
+        <span class="kv-key">{w.label}</span>
+        {entries.length > 1 ? (
+          <ul class="kv-list">
+            {entries.map((e, i) => (
+              <li key={i}>
+                <span class="kv-list-name">{e.name}</span>
+                <span class="kv-list-val">
+                  {e.value}
+                  {e.tps !== undefined && <span class="kv-list-sub"> · {e.tps} TPS</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span class="kv-val kv-val-long">{text}</span>
+        )}
+      </div>
+    );
   if (w.label && text !== undefined)
     return (
       <div class="kv">
@@ -272,7 +296,7 @@ export function ActionButton({ w, uplink, conn, locked }: WidgetProps) {
     <>
       <button
         type="button"
-        class={`pxbtn pxbtn-${color} ${busy ? "busy" : ""} ${flash ? "flash" : ""}`}
+        class={`pxbtn pxbtn-${color} ${labelFit(w.label ?? w.id)} ${busy ? "busy" : ""} ${flash ? "flash" : ""}`}
         disabled={locked}
         onClick={() => (w.opts?.confirm && !gate.needsPin ? setConfirming(true) : fire())}
       >

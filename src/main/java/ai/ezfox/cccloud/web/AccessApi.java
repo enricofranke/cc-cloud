@@ -29,7 +29,11 @@ import org.jspecify.annotations.Nullable;
  * wrong types and out-of-range values are rejected with {@code 400 invalid}.
  */
 public final class AccessApi {
-    public record Response(int status, JsonObject body) {
+    /** A JSON response, or (with {@code raw}) a plain-text file download. */
+    public record Response(int status, JsonObject body, byte @Nullable [] raw) {
+        public Response(int status, JsonObject body) {
+            this(status, body, null);
+        }
     }
 
     public record Known(UUID uuid, String name) {

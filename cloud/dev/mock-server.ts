@@ -100,6 +100,8 @@ interface Mainframe {
   reason?: string;
   /** Simulates a Lua script that never answers (for rollback tests). */
   ignoreActions: boolean;
+  /** action_result carries the widget value after the handler (like a mod that echoes set()) */
+  echoResultValue?: boolean;
   onAction?: (uplinkId: string, id: string, value: Scalar, user: string) => void;
   /** Structured operations (craft / watchlist). Synchronous so the result can carry a jobId. */
   onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string };
@@ -632,6 +634,10 @@ export async function createMockServer(opts: MockOptions = {}) {
         { id: "grid", title: "Power Grid", page: "power", cols: 2 },
         { id: "matrix", title: "Induction Matrix", page: "power", cols: 1 },
         { id: "trees", title: "Tree Farm", page: "farm", cols: 1 },
+        // like the user's "Kontrollraum" Lua program: long button labels, a caption-less label, a select
+        { id: "gate", title: "Kontrollraum", page: "farm", cols: 1 },
+        // like the mod's Server card: a long multi-entry value
+        { id: "server", title: "Server", page: "power", cols: 1 },
       ],
       widgets: [
         { id: "load", type: "chart", label: "Grid load", opts: { group: "grid", min: 0, max: 200, unit: "kFE/t", warn: 160, crit: 185, points: 60 }, value: loadHistory.at(-1)!, history: loadHistory },
@@ -646,6 +652,13 @@ export async function createMockServer(opts: MockOptions = {}) {
         { id: "saplings", type: "progress", label: "Saplings", opts: { group: "trees", min: 0, max: 64 }, value: 41 },
         { id: "sign", type: "text", label: "Sign text", opts: { group: "trees", maxLength: 32 }, value: "Tree farm – keep out" },
         { id: "harvest", type: "toggle", label: "Auto harvest", opts: { group: "trees" }, value: true },
+        { id: "types", type: "label", opts: { group: "gate" }, value: "Types: 3" },
+        { id: "tps", type: "label", label: "TPS", opts: { group: "server" }, value: "19.8" },
+        { id: "dimensions", type: "label", label: "Tick time per dimension", opts: { group: "server", span: 2 }, value: "overworld 12.4 ms · the_nether 3.1 ms · the_end 0.4 ms · mining_dimension 6.8 ms · the_other 1.2 ms" },
+        { id: "program", type: "select", label: "Programm", opts: { group: "gate", options: ["Tag", "Nacht", "Urlaub"] }, value: "Tag" },
+        { id: "door", type: "button", label: "Tuer 5 s oeffnen", opts: { group: "gate", color: "cyan" } },
+        { id: "start", type: "button", label: "Programm starten", opts: { group: "gate", color: "green" } },
+        { id: "stop", type: "button", label: "Notaus", opts: { group: "gate", color: "red" } },
       ],
     };
     base.uplinks.set(CONTROL, cr);
@@ -1016,7 +1029,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         const value = coerce(w, msg.value as Scalar | undefined);
         if (value === undefined) return result(msg.reqId, false, w.type === "gauge" || w.type === "label" ? "not_interactive" : "invalid_value");
         log(`${c.user} pressed ${u.title}/${w.id} = ${JSON.stringify(value)}`);
-        result(msg.reqId, true);
+        result(msg.reqId, true, undefined, m.echoResultValue ? { value } : {});
         if (!m.ignoreActions) setTimeout(() => m.onAction?.(msg.uplinkId, msg.id, value, c.user), actionDelayMs);
       } catch (e) {
         log(`ws error ${(e as Error).message}`);
@@ -1327,6 +1340,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (typeof b.online === "boolean" || typeof b.enabled === "boolean")
         setState(mf, { online: b.online ?? mf.online, enabled: b.enabled ?? mf.enabled });
       if (typeof b.ignoreActions === "boolean") mf.ignoreActions = b.ignoreActions;
+      if (typeof b.echoResultValue === "boolean") mf.echoResultValue = b.echoResultValue;
       if (b.uplinkOnline && mf.uplinks.has(b.uplinkOnline.uplinkId))
         putUplink(mf, { ...mf.uplinks.get(b.uplinkOnline.uplinkId)!, online: !!b.uplinkOnline.online });
       if (b.value) setValue(mf, b.value.uplinkId, b.value.id, b.value.value);

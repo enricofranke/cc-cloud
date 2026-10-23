@@ -168,6 +168,11 @@ class RomLuaTest {
     }
 
     @Test
+    void handlersThatSleepDoNotBlockOthers() throws Exception {
+        run("ui_sleep_test");
+    }
+
+    @Test
     void cloudDemoBuildsAValidDashboard() throws Exception {
         var fake = run("demo_test");
         for (var id : new String[]{"temp", "power", "fuel", "running", "status", "enabled", "rods", "mode", "target", "note", "preset", "scram"}) {

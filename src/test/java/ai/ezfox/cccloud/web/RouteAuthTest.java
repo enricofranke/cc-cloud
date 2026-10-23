@@ -84,6 +84,12 @@ class RouteAuthTest {
         }
 
         @Override
+        public AccessApi.Response script(GameBridge.ScriptRequest request) {
+            fail("script must not be reached without authentication");
+            return AccessApi.error(404, "not_found");
+        }
+
+        @Override
         public AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip) {
             fail("api must not be reached without authentication");
             return AccessApi.error(500, "x");

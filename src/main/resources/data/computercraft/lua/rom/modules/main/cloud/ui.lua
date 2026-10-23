@@ -221,33 +221,85 @@ function Dash:stop()
     os.queueEvent("cloud_ui_stop")
 end
 
---- The event loop: dispatches dashboard actions to the handlers and runs the timers. Errors inside handlers are
--- printed and do not stop the loop. Press Ctrl+T to terminate.
+--- Handlers run in their own coroutines (at most this many at once, the rest wait in a queue), so a handler that
+-- calls sleep() or waits for an event does not block other dashboard actions or the timers.
+ui.MAX_HANDLERS = 8
+local MAX_QUEUED = 64
+
+--- The event loop: dispatches dashboard actions to the handlers and runs the timers. Each handler runs in its own
+-- coroutine (up to ui.MAX_HANDLERS at once), so sleep() inside a handler only pauses that handler. Errors inside
+-- handlers are printed and do not stop the loop. Press Ctrl+T to terminate.
 function Dash:run()
     self.running = true
+    local tasks, queue = {}, {}
+
+    local function spawn(packed)
+        local co = coroutine.create(function() call(table.unpack(packed, 1, packed.n)) end)
+        local ok, filter = coroutine.resume(co)
+        if not ok then
+            printError(filter)
+        elseif coroutine.status(co) ~= "dead" then
+            tasks[#tasks + 1] = { co = co, filter = filter }
+        end
+    end
+
+    local function start(fn, ...)
+        local packed = table.pack(fn, ...)
+        if #tasks >= ui.MAX_HANDLERS then
+            if #queue < MAX_QUEUED then queue[#queue + 1] = packed else printError("cloud.ui: too many busy handlers, an action was dropped") end
+            return
+        end
+        spawn(packed)
+    end
+
+    local function resume_all(event)
+        local current = tasks
+        tasks = {}
+        for _, task in ipairs(current) do
+            if task.filter == nil or task.filter == event[1] or event[1] == "terminate" then
+                local ok, filter = coroutine.resume(task.co, table.unpack(event, 1, event.n))
+                if not ok then
+                    printError(filter)
+                elseif coroutine.status(task.co) ~= "dead" then
+                    task.filter = filter
+                    tasks[#tasks + 1] = task
+                end
+            else
+                tasks[#tasks + 1] = task
+            end
+        end
+        while #tasks < ui.MAX_HANDLERS and #queue > 0 do spawn(table.remove(queue, 1)) end
+    end
+
     local by_timer = {}
     for _, task in ipairs(self.timers) do
-        call(task.fn)
+        start(task.fn)
         by_timer[os.startTimer(task.interval)] = task
     end
     while self.running do
         local event = table.pack(os.pullEvent())
         local name = event[1]
+        -- Handlers that are waiting (sleep, pullEvent) get the event first; new handlers start afterwards.
+        resume_all(event)
         if name == "cloud_action" then
             local id, value, user, side = event[2], event[3], event[4], event[5]
             local widget = self.widgets[id]
             if side == self.side and widget then widget.value = value end
             local handler = side == self.side and self.handlers[id]
-            if handler then call(handler, user, value) end
+            if handler then start(handler, user, value) end
+        elseif name == "cloud_run" and not multishell and type(event[2]) == "string" and fs.exists(event[2]) then
+            -- Script import "Run now" on computers without multishell: run the uploaded file as a handler.
+            local file = event[2]
+            if file:match("^[%w_.-]+$") or file:match("^[%w_.-]+/[%w_.-]+$") then start(shell.run, file) end
         elseif name == "timer" and by_timer[event[2]] then
             local task = by_timer[event[2]]
             by_timer[event[2]] = nil
-            call(task.fn)
+            start(task.fn)
             by_timer[os.startTimer(task.interval)] = task
         end
         local listeners = self.events[name]
         if listeners then
-            for _, fn in ipairs(listeners) do call(fn, table.unpack(event, 2, event.n)) end
+            for _, fn in ipairs(listeners) do start(fn, table.unpack(event, 2, event.n)) end
         end
     end
 end

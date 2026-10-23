@@ -78,6 +78,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public AccessApi.Response script(GameBridge.ScriptRequest request) {
+        dispatched.add("script:" + request.route());
+        return AccessApi.error(404, "not_found");
+    }
+
+    @Override
     public AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip) {
         dispatched.add("api:" + route);
         return AccessApi.error(404, "not_found");

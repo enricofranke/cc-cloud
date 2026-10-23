@@ -388,6 +388,8 @@ Every uplink and bridge connects to the **nearest reachable node** – the mainf
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
 
+**Node range** = how far a relay or the mainframe reaches **other relays and the mainframe**. **Device range** = how far it reaches **uplinks and bridges**. On the map the node range is the **solid circle**, the device range the **dashed circle**; click a relay to see both labelled, and the **?** on the map explains how to plan relays.
+
 Distances are measured in blocks in a straight line (also up and down), within one dimension. A link exists when one end reaches the other – the larger of the two ranges counts. Cables (below) have no range limit.
 
 ## Signal {#signal}
@@ -436,7 +438,7 @@ The network costs FE. The mainframe uses 40 FE/t + 4 per uplink + 8 per advanced
 The **Network** tab shows everything that is connected, in three views:
 
 - **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
-- **Map** – a top-down x/z map per dimension with a coordinate grid, range circles (toggle), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
+- **Map** – a top-down x/z map per dimension with a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
 - **3D** – see below.
 
 Click or tap any node for details, with sub-menus: **Info** (type, position, dimension, status, signal or cable, range), **Route** (every hop to the mainframe and what a relay carries), **Power** (usage and buffer) and **Card** (the device's live card, controls as your role allows). **Open card** jumps to it on the dashboard; **Unlink** removes it from the network (admins). Positions are only shown to browsers that may control the mainframe.

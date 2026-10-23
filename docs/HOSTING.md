@@ -110,3 +110,14 @@ dashboard does not start (it never silently falls back to plain HTTP).
 - Every pairing, approval, revoke and dashboard action is logged as `[cccloud] …` in the server log.
 - Banned players' devices stop working; IP-banned addresses cannot connect. Devices unused for 30 days expire.
 - If the port is in use, the server logs an error and keeps running without the dashboard.
+
+## FAQ
+
+**I paired a browser but no approval request shows up.**
+The request appears in chat as `[Allow] [Deny]`, with the time left; you have about 2 minutes. If the mainframe screen is open, the request is also shown at the top of the screen. Type `/cccloud approve` to approve the newest request addressed to you; if several are waiting, it lists them so you can pick one. Type `/cccloud` on its own to see all commands.
+
+**In singleplayer, approvals and dashboard buttons hang while I am in the pause menu.**
+A singleplayer world pauses as soon as you open the ESC menu, and the dashboard server pauses with it: approvals, actions and live values wait until you return to the game. Use **Open to LAN** (ESC → Open to LAN) and the world no longer pauses in the menu. Dedicated servers never pause.
+
+**How do I get the pairing code into the browser quickly?**
+Click the code in chat to copy it. Or click **[Pair in browser]**, which opens `<dashboard>/pair#code=XXXX-XXXX` with the form already filled in. The code sits in the URL fragment, so it never reaches the server or its logs.

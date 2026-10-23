@@ -2,7 +2,7 @@
 // using Node's built-in WebSocket – the same API the browser uses.
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, REACTOR, STORAGE, type MockOptions, type MockServer } from "../dev/mock-server.ts";
-import { MainframeConn, keyOf, type ConnOptions, type Notice } from "../web/src/lib/conn.ts";
+import { MainframeConn, keyOf, sameValue, type ConnOptions, type Notice } from "../web/src/lib/conn.ts";
 import { isLanHost, insecureContext } from "../web/src/lib/security.ts";
 import { sleep } from "./helpers.ts";
 
@@ -46,6 +46,15 @@ function connect(tok: string, opts: Partial<ConnOptions> = {}) {
 
 const widget = (conn: MainframeConn, uplinkId: string, id: string) => conn.uplinks.value.find((u) => u.uplinkId === uplinkId)!.widgets.find((w) => w.id === id)!;
 
+describe("sameValue", () => {
+  it("compares scalars and structured values", () => {
+    expect(sameValue("a", "a")).toBe(true);
+    expect(sameValue(1, "1")).toBe(false);
+    expect(sameValue({ a: [1, 2] }, { a: [1, 2] })).toBe(true);
+    expect(sameValue({ a: 1 }, null)).toBe(false);
+  });
+});
+
 describe("MainframeConn", () => {
   it("authenticates via the first message and loads the snapshot", async () => {
     await start();
@@ -88,7 +97,35 @@ describe("MainframeConn", () => {
     expect(conn.pending.value[keyOf(STORAGE, "export")]).toBe(true);
     await waitFor(() => !(keyOf(STORAGE, "export") in conn.pending.value));
     expect(widget(conn, STORAGE, "export").value).toBe(false);
-    expect(notices.at(-1)?.title).toBe("Export to AE2: reverted");
+    expect(notices.at(-1)).toMatchObject({ level: "info", title: "Export to AE2: no answer", text: "No answer from the computer yet – is the program running?" });
+  });
+
+  it("does nothing when the picked value is already set (e.g. the current select option)", async () => {
+    await start();
+    const { conn, notices } = connect(await token(), { confirmTimeoutMs: 150 });
+    await waitFor(() => conn.status.value === "open");
+    await control({ ignoreActions: true });
+    const exp = widget(conn, STORAGE, "export");
+    expect(conn.action(STORAGE, exp, exp.value as boolean, true)).toBeUndefined();
+    expect(conn.pending.value).toEqual({});
+    await sleep(250);
+    expect(notices).toEqual([]);
+  });
+
+  it("treats an action_result carrying the new value as confirmation", async () => {
+    await start();
+    const { conn, notices } = connect(await token(), { confirmTimeoutMs: 150 });
+    await waitFor(() => conn.status.value === "open");
+    await control({ ignoreActions: true, echoResultValue: true });
+    conn.action(STORAGE, widget(conn, STORAGE, "export"), true, true);
+    await waitFor(() => !(keyOf(STORAGE, "export") in conn.pending.value));
+    await sleep(250);
+    expect(notices).toEqual([]);
+  });
+
+  it("waits 8 s by default before giving up on the computer", () => {
+    const conn = new MainframeConn({ baseUrl: "http://x", token: "t" });
+    expect((conn as unknown as { o: { confirmTimeoutMs: number } }).o.confirmTimeoutMs).toBe(8000);
   });
 
   it("tracks offline and disabled states and blocks actions locally", async () => {

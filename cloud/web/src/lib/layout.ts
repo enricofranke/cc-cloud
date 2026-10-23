@@ -343,3 +343,9 @@ export function movePage(pages: ResolvedPage[], id: string, dir: -1 | 1): Resolv
 export function layoutSize(doc: LayoutDoc) {
   return new TextEncoder().encode(JSON.stringify(doc)).length;
 }
+
+/** The caption to show: the editor's label, else the script's label; none when the script set none (no raw ids). */
+export function captionOf(rw: Pick<ResolvedWidget, "label" | "w">): string | undefined {
+  if (rw.w.label == null && rw.label === rw.w.id) return undefined;
+  return rw.label;
+}

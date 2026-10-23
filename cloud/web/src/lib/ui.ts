@@ -2,17 +2,31 @@
 import { signal, computed } from "@preact/signals";
 import { getPref, setPref } from "./store.ts";
 import type { AlertLevel } from "./types.ts";
+import { deviceNameFor, takePairLink, type PairLink } from "./pairlink.ts";
 
 // ---- routing (hash based, works from any static host) ----------------------
 export type Route =
   | { name: "list" }
-  | { name: "pair"; code?: string }
+  | { name: "pair"; code?: string; link?: PairLink }
   | { name: "mainframe"; id: string }
   | { name: "devices" }
   | { name: "access"; id: string }
   | { name: "shares"; id: string };
 
+// "Pair in browser" links (/pair#code=…): take the code and clear the fragment before anything else runs
+let pairLink: PairLink | null = null;
+{
+  const r = takePairLink(location);
+  if (r.scrub) history.replaceState(null, "", "/#/pair");
+  pairLink = r.link;
+}
+
 function parseRoute(): Route {
+  if (pairLink) {
+    const link = pairLink;
+    pairLink = null;
+    return { name: "pair", code: link.code, link };
+  }
   const h = location.hash.replace(/^#\/?/, "");
   const [path, query] = h.split("?");
   const parts = path.split("/").filter(Boolean);
@@ -125,11 +139,8 @@ export async function notifyCrit(title: string, body: string, tag: string) {
 }
 
 /** Best-effort guess for the default device name on the pairing screen. */
-export function guessDeviceName() {
-  const ua = navigator.userAgent;
-  const device = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows PC" : /Linux/.test(ua) ? "Linux PC" : "Browser";
-  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "";
-  return browser ? `${device} · ${browser}` : device;
+export function guessDeviceName(owner?: string) {
+  return deviceNameFor(navigator.userAgent, owner);
 }
 
 export function timeAgo(ts: number) {

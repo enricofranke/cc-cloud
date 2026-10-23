@@ -133,6 +133,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             else overview();
             return;
         }
+        pendingRows();
         switch (tab) {
             case 1 -> devices();
             case 2 -> trusted();
@@ -347,7 +348,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var newCode = Component.translatable("cccloud.gui.new_code");
             int bw = c.buttonWidth(newCode);
             int codeW = font.width(code) * 2;
-            boolean big = codeW + 50 + bw < w;
+            boolean big = codeW + 70 + bw < w;
             if (big) {
                 g.pose().pushMatrix();
                 g.pose().translate(x + 5, y + 4);
@@ -360,29 +361,39 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             long left = Math.max(0, codeSeconds - (System.currentTimeMillis() - viewTime) / 1000);
             String time = String.format("%d:%02d", left / 60, left % 60);
             int tx = x + 5 + (big ? codeW : font.width(code)) + 8;
-            if (tx + font.width(time) < x + w - bw - 6) g.text(font, time, tx, y + 8, CloudGui.TEXT_DIM, false);
+            if (tx + font.width(time) < x + w - bw - 26) g.text(font, time, tx, y + 8, CloudGui.TEXT_DIM, false);
+            // Copy the code (like the URL rows).
+            c.iconButton(x + w - bw - 22, y + 4, 0, () -> {
+                minecraft.keyboardHandler.setClipboard(code);
+                showLocalNotice("copied");
+            });
             c.button(x + w - bw - 3, y + 5, newCode, CloudGui.ButtonStyle.NORMAL, true, () -> send("new_code", ""));
         }));
         textRow(Component.translatable("cccloud.gui.pairing_hint"), CloudGui.TEXT_DIM);
 
-        heading("cccloud.gui.pending");
+    }
+
+    /** Browsers waiting for approval: on top of every tab, with Allow/Deny and the time left (updates live). */
+    private void pendingRows() {
         var pending = view.has("pending") ? view.getAsJsonArray("pending") : new com.google.gson.JsonArray();
-        if (pending.isEmpty()) textRow(Component.translatable("cccloud.gui.no_pending"), CloudGui.TEXT_DIM);
+        if (pending.isEmpty()) return;
+        heading("cccloud.gui.pending");
         for (var e : pending) {
             var p = e.getAsJsonObject();
             String id = str(p, "id");
-            rows.add(new Row(ROW, (c, x, y, w) -> {
-                CloudGui.row(c.g(), x, y, w, ROW, false);
+            long seconds = num(p, "seconds");
+            rows.add(new Row(24, (c, x, y, w) -> {
+                c.g().fill(x, y, x + w, y + 24, 0x40FFAA00);
+                CloudGui.row(c.g(), x, y, w, 24, false);
                 var allow = Component.translatable("cccloud.gui.allow");
                 var deny = Component.translatable("cccloud.gui.deny");
                 int buttons = c.buttonWidth(allow) + c.buttonWidth(deny) + 6;
-                String name = str(p, "name");
-                c.text(name, x + 4, y + 5, CloudGui.TEXT, w - buttons - 10);
-                int nameW = Math.min(font.width(name), w - buttons - 10);
-                c.text(str(p, "ip"), x + 8 + nameW, y + 5, CloudGui.TEXT_DIM, w - buttons - 14 - nameW);
+                long left = Math.max(0, seconds - (System.currentTimeMillis() - viewTime) / 1000);
+                c.text(str(p, "name"), x + 4, y + 3, CloudGui.GOLD, w - buttons - 10);
+                c.text(str(p, "ip") + "  ·  " + String.format("%d:%02d", left / 60, left % 60), x + 4, y + 13, CloudGui.TEXT_DIM, w - buttons - 10);
                 int bx = x + w - buttons;
-                bx += c.button(bx, y + 2, allow, CloudGui.ButtonStyle.ACCENT, true, () -> send("approve", id)) + 3;
-                c.button(bx, y + 2, deny, CloudGui.ButtonStyle.DANGER, true, () -> send("deny", id));
+                bx += c.button(bx, y + 5, allow, CloudGui.ButtonStyle.ACCENT, left > 0, () -> send("approve", id)) + 3;
+                c.button(bx, y + 5, deny, CloudGui.ButtonStyle.DANGER, true, () -> send("deny", id));
             }));
         }
     }
@@ -504,7 +515,13 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             return;
         }
         long seconds = num(view, "accountCodeSeconds");
-        rows.add(new Row(14, (c, x, y, w) -> c.text(Component.literal(code).withStyle(net.minecraft.ChatFormatting.BOLD), x + 4, y + 3, CloudGui.GOLD)));
+        rows.add(new Row(20, (c, x, y, w) -> {
+            c.text(Component.literal(code).withStyle(net.minecraft.ChatFormatting.BOLD), x + 4, y + 6, CloudGui.GOLD);
+            c.iconButton(x + 8 + font.width(code) + 4, y + 2, 0, () -> {
+                minecraft.keyboardHandler.setClipboard(code);
+                showLocalNotice("copied");
+            });
+        }));
         textRow(Component.translatable("cccloud.gui.link_browser_code", Math.max(1, (seconds + 59) / 60)), CloudGui.TEXT_DIM);
     }
 

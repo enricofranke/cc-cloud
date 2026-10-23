@@ -141,6 +141,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("access_permission_nodes", () -> ai.ezfox.cccloud.gametest.AccessTests::permissionNodes);
         TEST_FUNCTIONS.register("access_scoreboard_team", () -> ai.ezfox.cccloud.gametest.AccessTests::scoreboardTeam);
         TEST_FUNCTIONS.register("access_migration_v03", () -> ai.ezfox.cccloud.gametest.AccessTests::migrationV03);
+        TEST_FUNCTIONS.register("script_upload_run", () -> ai.ezfox.cccloud.gametest.ScriptTests::uploadAndRun);
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
         TEST_FUNCTIONS.register("network_routing", () -> ai.ezfox.cccloud.gametest.NetworkTests::routing);
         TEST_FUNCTIONS.register("network_ender", () -> ai.ezfox.cccloud.gametest.NetworkTests::enderAcrossDimensions);

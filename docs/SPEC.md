@@ -717,6 +717,10 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 ### v0.7 web protocol (wired links, terrain, 3D view)
 Implemented by the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) and the dashboard.
 
+**"Pair in browser" chat link:** the mod links to `<dashboard-url>/pair#code=XXXX-XXXX` (account codes: `#code=XXXX-XXXX&account=1`). The web server must serve `index.html` for `/pair` (SPA route, like `/s/<id>`; `Referrer-Policy: no-referrer` recommended). The dashboard reads the code from the fragment at start-up, replaces the URL with `/#/pair` via `history.replaceState` before any request, prefills the form (device name defaults to e.g. "Enrico's Mac – Chrome") and sends the code only in the `POST /api/pair` body. Invalid codes are ignored (empty form).
+
+**Optimistic values (dashboard behaviour, 2026-10-23):** selecting the value a widget already has sends nothing. After `action_result ok` the dashboard waits up to 8 s for the widget's value; `action_result` may carry `"value"` (the widget's value after the handler ran – recommended: echo it even when `set()` did not change it), which confirms immediately. Without either, the control falls back to the server value with an info toast "No answer from the computer yet – is the program running?".
+
 **Wired links** in the `network` payload: `{"a","b","kind":"wired","signal":1}` (no `dist`, never `weak`). `a` is the mainframe or relay that owns the CC wired network, `b` the cabled member; the member's `parent` points at `a` when the cable route is used (wired is preferred over radio). Wired hops cost no FE, so they are not in the power breakdown's `hops`. Radio links for a pair that is cabled are not sent. The dashboard draws cables solid, radio dashed (coloured by signal), ender links dotted – in the topology, the map and the 3D view.
 
 **Coarse terrain** (optional, for the 3D view):
@@ -790,3 +794,66 @@ Players must be able to plan relays without opening the web dashboard.
 - **Linking** with the Link Card accepts devices that only reach the network by cable (CC or fiber), whatever the distance.
 - **In-game Network tab**: cabled tree rows show a plug marker (grey = CC cable, cyan = fiber) instead of signal bars; the mini map draws cables as solid lines.
 - **Recipes**: fiber cable ×8 = `SGS/PCP/SGS` (string, `#c:glass_panes`, prismarine crystals, cloud core); junction ×4 = `SFS/FRF/SFS` (stone, fiber, redstone); ender fiber link = `YNY/FXF/YNY` (ender eyes, fiber, ender relay; N = netherite ingot, or `#c:ingots/unobtainium` when AllTheModium is loaded – two conditional recipes).
+
+### Storage card v2: auto-crafting & more (requested 2026-10-23)
+Applies to the ME and RS Cloud Bridges (direct mode card and Lua).
+1. **Auto-stock (level maintainer)**: each watchlist entry gets an optional `target` and `autoCraft` flag. When the count drops below `min` and the item is craftable, the bridge requests a craft of `min(target − count, batch)` (batch default 64, config max), at most one active job per item, cooldown 30 s, pauses when no CPU is free or a job fails 3× (state shown: idle / crafting / waiting for CPU / missing resources / paused). Operator role to edit. Server-side, works without a computer. Lua: `bridge.setAutoStock(name, min, target, enabled)`.
+2. **Craft preview**: before starting a craft the dashboard asks for a plan: required items, what will be crafted, what is missing (AE2 `CraftingPlan` / RS2 preview APIs), time estimate if available; confirm → start. New message `craft_preview` → `craft_plan` result.
+3. **Crafting CPUs / autocrafting status**: list CPUs (AE2: name, co-processors, storage, busy/idle, current job) and RS2 autocrafting monitor tasks; per job: progress, items done/total, elapsed, **cancel** (operator).
+4. **Browse**: an item grid with icons (sorted by count / name / mod, filter craftable-only, favorites ★ pinned on top), infinite scroll, compact numbers; fluids tab (and AE2 chemicals if present via addons – skip if not available).
+5. **Craftables list**: everything with a pattern, searchable, one-tap craft with preview.
+6. **Item details**: count history chart (uses long-term stats: 24 h sparkline), craftable yes/no, autostock config, watch, mod tag, recent jobs.
+7. **Notifications**: optional alert when a craft finishes or fails (per job "notify me" toggle), via the push targets of v0.5 D when available.
+8. Not in this step (security review first): exporting items out of the network into the world.
+
+### Script import (pulled forward from v0.5 E, requested 2026-10-23)
+Push Lua programs from the browser straight onto a CC computer through the mainframe → uplink path.
+- Dashboard: on every computer card (auto or Lua) an **"Upload script"** action: drop a `.lua` file, paste code, or pick from the **example gallery** (bundled: control-room, cloud-test, cloud-demo variants, storage dashboard; each with a short description and screenshot). Choose a file name, options: overwrite (with confirm), **run now** (in a new multishell tab if available, otherwise only when no program is running → ask), **set as startup** (writes `startup.lua` that runs the file).
+- Server: write into the computer's own filesystem via CC's server-side API (the computer's writable mount), only the computer behind that uplink (auto card / Lua section owner). Path validation: relative names `[A-Za-z0-9_.-]{1,64}` (+ optional one subfolder), no `..`, no `rom/`, no disk mounts; max 256 KB per file; respect the computer's quota; atomic write.
+- Run: queue the program via `shell.openTab`/`shell.run` through a small helper the mod adds to the ROM (`cloud-run <file>` listens for a `cloud_run` event) – no arbitrary command strings from the web, only the uploaded file name.
+- Permissions: **admin** role (code runs on the computer), PIN if one is set, rate limit 10 uploads/min, audit log entry + in-game chat note to the owner ("<device> uploaded control-room.lua to Computer #0").
+- Lua running on a CC computer is sandboxed by CC (no Java access, CC's HTTP rules unchanged), so this cannot execute code on the Minecraft server itself.
+- Also list/download/delete files of that computer (admin), as the base for the later full Lua editor.
+
+#### Script import – HTTP API (mod side, implemented)
+All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_allowed"}`; no role → `403 {"error":"no_access"}`). `<uplinkId>` is the card (section id) of a Cloud Uplink. Its computer is the CC computer the uplink is placed on. If the uplink is not on a computer, it is the one computer attached to the uplink over a modem. Errors are `{"error"}` with the status shown.
+- **Paths:** `name` or `folder/name`, each part `[A-Za-z0-9_.-]{1,64}`, not `.`/`..`.
+  - The first part must not be `rom`, `disk`, `disk2`… (other mounts) or `.cloud` (reserved).
+  - No leading `/`, no `\`.
+  - Bad path → `400 invalid_path`.
+- **Write PIN:** writes, deletes and run need the mainframe PIN if one is set, in the header `X-Cloud-Pin: 1234`. Errors:
+  - `403 pin_required`;
+  - `403 wrong_pin` + `attemptsLeft`;
+  - `403 pin_locked` + `retryAfter`.
+- **Write rate limit:** 10 writes/deletes/runs per minute per device → `429 rate_limited`.
+- **Card errors:** `404 unknown_computer` (the card is not an uplink on/with a computer, or not loaded), `409 offline` (the mainframe is offline).
+- `GET /api/mainframes/<id>/computers/<uplinkId>/files`
+  → `{"computer":{"id":0,"label":"Base","on":true,"advanced":true},"used":12345,"capacity":1000000,"files":[{"path":"startup.lua","size":120,"dir":false}]}`
+  - Two levels deep, at most 500 entries.
+- `GET …/files/<path>` → the raw file, `text/plain; charset=utf-8`, ≤ 256 KB.
+- `PUT …/files/<path>[?overwrite=true][&startup=true]` with the raw file as the body (UTF-8, ≤ 256 KB).
+  - Response: `{"ok":true,"path","size"}`.
+  - Errors: `409 exists` (without `overwrite=true`), `413 too_large`, `507 quota` (the computer's disk space, CC config `computerSpaceLimit`).
+  - The write is atomic: a temporary file, then a rename.
+  - `startup=true` also writes `startup.lua` containing `shell.run("<path>")`.
+- `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`.
+- `POST …/run` with `{"path":"control-room.lua","mode":"auto"|"event"|"reboot"}` → `{"ok":true,"started":"event"|"reboot"}`. Only an uploaded file name ever reaches the computer, never a command string. Modes:
+  - `event` queues the event `cloud_run` with the path. The ROM helper (`rom/autorun/cloud.lua`) starts a background "cloud" tab on advanced computers that have a Cloud Uplink. It runs the file in a new multishell tab (`cloud-run --listen`). Without multishell, a running `cloud.ui` dashboard runs it.
+  - `reboot` writes `.cloud/run_next` and restarts the computer. The autorun helper runs the file once after boot.
+  - `auto` = `event` on advanced computers, otherwise `409 needs_reboot` (the dashboard asks, then sends `reboot`).
+  - The ROM program `cloud-run <file>` runs a file by hand. Computers can switch the background tab off with `set cloud.runner false`.
+- **Audit:** every write, delete and run creates an audit log entry and a server log line. The owner, if online, gets a chat note: "<device> (<player>) uploaded control-room.lua to Computer #0".
+
+## Website & Script Store (requested 2026-10-23)
+
+### Project website
+- Static site in `website/` (Astro, no client JS except islands), same visual identity as the dashboard and blocks (CC terminal look, pixel headings, gold/cyan, dark + light).
+- Pages: landing (hero with an interactive 3D view of our real block models – reuse the art pipeline's converted geometry; feature sections with real dashboard screenshots/short looping clips; how it works; compatibility; security), **Docs** (the same DE/EN content as the in-app `/docs`, single source: move the docs content into a shared folder `docs-content/` consumed by both the dashboard and the website), **Features**, **Download** (CurseForge/Modrinth/GitHub links, version matrix), **Script Store**, Changelog, FAQ. SEO meta, OpenGraph images, sitemap, i18n routes `/de/` and `/en/`.
+- Hosting: decided later (GitHub Pages needs a public repo; Cloudflare Pages works with private repos). Build output must be a plain static folder.
+
+### Script Store
+- **Registry** = a git repository (initially `store/` in this repo, later its own public repo `cc-cloud-scripts`): one folder per script with `manifest.json` (id, name, description DE/EN, author, license, version, tags, required peripherals/mods, uses: redstone/peripherals/http, entry file, screenshots) + Lua files. Submissions via pull request → CI validates (manifest schema, Lua syntax check with a Lua parser, size ≤ 256 KB, no obfuscation/minified blobs, license present) → human review → merge. Every release pinned by content SHA-256.
+- **Index**: CI builds `index.json` (+ per-script JSON with file hashes) published with the website (static, CORS enabled for GET).
+- **Install flow** (no connection from the Minecraft server to the store needed): on the website, "Install" opens the user's own dashboard at `<dashboard>/store#install=<id>@<version>` (the dashboard URL is remembered in the website's localStorage after the first time, or entered). The dashboard fetches the script from the store index (CSP `connect-src` gets the configured store origin, config `scriptStoreUrl`, default the official site; can be disabled by server admins with `scriptStore=false`), verifies the SHA-256 against the index, **shows the full source and the manifest's "uses" list**, lets the admin pick the computer, then installs via the Script import API (admin role, PIN, audit log). Updates: the dashboard shows "update available" for installed store scripts (stored metadata per file).
+- The dashboard also gets a **Store tab** that browses the same index directly.
+- Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).

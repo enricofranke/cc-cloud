@@ -152,7 +152,9 @@ try {
   await shot(p, "phone-c1b-computer-off");
   await p.click('.card:has(.rs) .pxbtn:has-text("Turn on")');
   await p.waitForSelector('.card:has(.rs) .indicator.on');
+  await clearToasts(p);
   await p.click('.rs-side:has-text("front")');
+  await clearToasts(p);
   await p.click(".rs-adv-toggle");
   await p.waitForTimeout(500);
   await p.evaluate(() => {
@@ -486,6 +488,14 @@ try {
   await d.waitForTimeout(400);
   await clearToasts(d);
   await shot(d, "desktop-n2-map");
+  // range circles explained: a selected relay labels its node + device range, "?" explains planning
+  await d.locator('.mnode[aria-label^="West Relay"]').dispatchEvent("click");
+  await d.click(".map-help-btn");
+  await d.waitForSelector(".map-help-pop");
+  await d.waitForTimeout(300);
+  await clearToasts(d);
+  await shot(d, "desktop-n2b-map-ranges");
+  await d.click(".map-help-btn");
   // ---- v0.7 3D: overview, then a relay highlights what it carries
   await d.click('.seg-ctl button:has-text("3D")');
   await d.waitForSelector(".n3d canvas");
@@ -532,6 +542,21 @@ try {
   await d.waitForSelector(".chart-svg");
   await d.waitForTimeout(600);
   await shot(d, "desktop-01b-power-page");
+  // real-usage bugs: long button labels in a 3-button row, caption-less label, select
+  await d.click('.toptabs .tab:has-text("Farm")');
+  await d.waitForSelector('.card:has-text("Kontrollraum")');
+  await d.waitForTimeout(400);
+  const cut = await d.evaluate(() =>
+    [...document.querySelectorAll(".btn-row .pxbtn span")].filter((el) => el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent),
+  );
+  if (cut.length) problems.push(`truncated button labels: ${cut.join(", ")}`);
+  const perRow = await d.evaluate(() => {
+    const b = [...document.querySelectorAll('.card .btn-row')].find((x) => x.textContent?.includes("Notaus"))!;
+    return getComputedStyle(b).gridTemplateColumns.split(" ").length;
+  });
+  if (perRow < 3) problems.push(`only ${perRow} buttons per row at 1440 px`);
+  await clearToasts(d);
+  await shot(d, "desktop-01c-kontrollraum");
   await d.click('.toptabs .tab:has-text("Overview")');
   // edit mode: drag a card, resize one, then save
   await d.click('[aria-label="Edit layout"]');
@@ -665,6 +690,16 @@ try {
   }
 
   // server gone -> unreachable banner (phone, outpost still paired there)
+  // ---- "Pair in browser" chat link: code prefilled, fragment cleared, only the name left to confirm
+  for (const [ctx, name] of [[await phoneCtx(), "phone-p1-pair-link"], [await browser.newContext({ viewport: { width: 1440, height: 900 } }), "desktop-p1-pair-link"]] as const) {
+    const lp = await ctx.newPage();
+    watch(lp);
+    await lp.goto(`${origin}/pair#code=${mock.code()}`);
+    await lp.waitForSelector(".pair-from-link");
+    if (new URL(lp.url()).hash.includes("code")) problems.push("pair link: code still in the URL");
+    await shot(lp, name);
+    await ctx.close();
+  }
   await mock.close();
   await p.goto(`${origin}/#/m/${outpost.id}`).catch(() => {});
   await p.waitForTimeout(2500);

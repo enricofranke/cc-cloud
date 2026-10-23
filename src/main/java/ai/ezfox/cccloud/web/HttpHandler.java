@@ -90,6 +90,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             else sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
             return;
         }
+        // Bodies: 4 KB, except script uploads (256 KB, the aggregator's limit).
+        if (req.content().readableBytes() > ClientMessages.MAX_BODY && route.id() != Router.Id.SCRIPT_PUT) {
+            sendJson(ctx, req, HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, error("too_large"));
+            return;
+        }
 
         // Central access check (deny by default).
         switch (route.access()) {
@@ -120,6 +125,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
+        if (route.id().isScript()) {
+            script(ctx, req, route, ip, devices.getFirst());
+            return;
+        }
         String path = new QueryStringDecoder(req.uri()).path();
         String body = req.content().toString(StandardCharsets.UTF_8);
         CompletableFuture.supplyAsync(() -> instance.bridge.api(route.id(), devices, path, body, ip), instance.bridge.serverExecutor())
@@ -139,12 +148,107 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             }));
     }
 
+    // ---- script import ------------------------------------------------------------------------------------------------
+
+    /** Script writes: 10 per minute per device. */
+    static final int SCRIPT_RATE = 10;
+
+    /** Script import: rate limit and PIN (PBKDF2 on the PIN executor), then the computer on the server thread. */
+    private void script(ChannelHandlerContext ctx, FullHttpRequest req, Router.Route route, String ip, AuthStore.Device device) {
+        var decoder = new QueryStringDecoder(req.uri());
+        String[] parts = decoder.path().split("/");
+        // /api/mainframes/<mf>/computers/<uplink>/files[/<a>[/<b>]] or /run
+        var mainframeId = ClientMessages.parseUuid(parts[3]);
+        var uplinkId = ClientMessages.parseUuid(parts[5]);
+        String file = parts.length > 7 ? String.join("/", java.util.Arrays.copyOfRange(parts, 7, parts.length)) : null;
+        var query = new java.util.HashMap<String, String>();
+        for (var e : decoder.parameters().entrySet()) if (!e.getValue().isEmpty() && e.getKey().length() <= 16) query.put(e.getKey(), e.getValue().getFirst());
+        byte[] body = new byte[req.content().readableBytes()];
+        req.content().getBytes(req.content().readerIndex(), body);
+        var request = new GameBridge.ScriptRequest(route.id(), device, mainframeId, uplinkId, file, query, body, ip);
+        if (!route.id().isScriptWrite()) {
+            runScript(ctx, req, request);
+            return;
+        }
+        if (instance.scriptLimits.size() > 10_000) instance.scriptLimits.clear();
+        if (!instance.scriptLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(SCRIPT_RATE, SCRIPT_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        if (!instance.auth.hasPin(mainframeId)) {
+            runScript(ctx, req, request);
+            return;
+        }
+        String pin = req.headers().get("X-Cloud-Pin");
+        long locked = instance.auth.pinLockedFor(device.tokenHash());
+        if (locked > 0) {
+            var body2 = error("pin_locked");
+            body2.addProperty("retryAfter", locked);
+            sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, body2);
+            return;
+        }
+        if (pin == null || pin.isEmpty()) {
+            sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("pin_required"));
+            return;
+        }
+        req.retain();
+        try {
+            instance.pinExecutor.execute(() -> {
+                var check = instance.auth.checkPin(mainframeId, device.tokenHash(), pin);
+                ctx.executor().execute(() -> {
+                    try {
+                        switch (check.result()) {
+                            case OK, NOT_SET -> runScript(ctx, req, request);
+                            case WRONG -> {
+                                var e = error("wrong_pin");
+                                e.addProperty("attemptsLeft", check.attemptsLeft());
+                                sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, e);
+                            }
+                            case LOCKED -> {
+                                var e = error("pin_locked");
+                                e.addProperty("retryAfter", check.retryAfterSeconds());
+                                sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, e);
+                                instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(device, mainframeId, ip));
+                            }
+                        }
+                    } finally {
+                        req.release();
+                    }
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            req.release();
+            sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("busy"));
+        }
+    }
+
+    private void runScript(ChannelHandlerContext ctx, FullHttpRequest req, GameBridge.ScriptRequest request) {
+        req.retain();
+        CompletableFuture.supplyAsync(() -> instance.bridge.script(request), instance.bridge.serverExecutor())
+            .orTimeout(5, TimeUnit.SECONDS)
+            .whenComplete((response, err) -> ctx.executor().execute(() -> {
+                try {
+                    if (err != null || response == null) {
+                        if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) CloudLog.LOGGER.warn("[cccloud] Script import failed", err);
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (response.raw() != null) {
+                        send(ctx, req, HttpResponseStatus.valueOf(response.status()), "text/plain; charset=utf-8", response.raw(), "no-store");
+                    } else {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(response.status()), response.body());
+                    }
+                } finally {
+                    req.release();
+                }
+            }));
+    }
+
     private void dispatch(ChannelHandlerContext ctx, FullHttpRequest req, Router.Route route, String ip, List<AuthStore.Device> devices) {
         String path = new QueryStringDecoder(req.uri()).path();
         switch (route.id()) {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
-            case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE ->
+            case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE,
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
             case ICON -> icon(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
@@ -275,6 +379,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         switch (pending.state()) {
             case PENDING -> {
                 json.addProperty("status", "pending");
+                // Seconds left for the in-game approval (the browser shows a countdown).
+                json.addProperty("expiresIn", Math.max(0, (pending.expiresAt() - System.currentTimeMillis() + 999) / 1000));
                 sendJson(ctx, req, HttpResponseStatus.OK, json);
             }
             case DENIED -> {

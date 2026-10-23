@@ -292,6 +292,12 @@ public final class AuthStore {
         return p;
     }
 
+    /** Every request still waiting for approval (mainframe and account codes). */
+    public List<Pending> pendingRequests() {
+        long now = clock.getAsLong();
+        return pending.values().stream().filter(p -> p.state() == PendingState.PENDING && p.expiresAt() > now).toList();
+    }
+
     public List<Pending> pendingFor(UUID mainframeId) {
         return pending.values().stream().filter(p -> mainframeId.equals(p.mainframeId()) && p.state() == PendingState.PENDING).toList();
     }

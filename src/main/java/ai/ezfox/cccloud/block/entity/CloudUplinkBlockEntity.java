@@ -888,9 +888,21 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return widgets.get(id);
     }
 
+    /** Widget id → time of the last dashboard action on it (echo of identical values, see {@link #setValue}). */
+    private final java.util.Map<String, Long> lastActionAt = new java.util.HashMap<>();
+    static final long ECHO_WINDOW_MS = 2000;
+
     public synchronized void setValue(String id, JsonElement value) {
         var widget = widgets.get(id);
-        if (widget == null || widget.value().equals(value)) return;
+        if (widget == null) return;
+        if (widget.value().equals(value)) {
+            // Unchanged values are not re-sent, except right after a dashboard action: the browser waits for the
+            // script's confirmation of its optimistic value, so an identical set() still goes out as a delta.
+            Long at = lastActionAt.remove(id);
+            if (at != null && System.currentTimeMillis() - at <= ECHO_WINDOW_MS && widget.type() != WidgetType.CHART) dirtyValues.add(id);
+            return;
+        }
+        lastActionAt.remove(id);
         widget.setValue(value);
         // Charts are broadcast when a point is sampled (each value delta appends one point in the browser).
         if (widget.type() != WidgetType.CHART) dirtyValues.add(id);
@@ -952,6 +964,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             if (result.op() == null && type != WidgetType.BUTTON && type != WidgetType.BUTTONS) {
                 widget.setValue(result.value());
                 dirtyValues.add(widgetId);
+                lastActionAt.put(widgetId, System.currentTimeMillis());
             }
         }
         ai.ezfox.cccloud.compat.card.DeviceCard card;

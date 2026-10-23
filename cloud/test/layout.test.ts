@@ -264,6 +264,6 @@ describe("v0.2 Lua widgets", () => {
     expect(cr.pages.map((p: any) => p.id)).toEqual(["power", "farm"]);
     expect(cr.groups.find((g: any) => g.id === "grid")).toMatchObject({ page: "power", cols: 2 });
     const pages = resolveLayout(snap.uplinks, null);
-    expect(pages.find((p) => p.id === "power")!.cards.map((c) => c.title)).toEqual(["Power Grid", "Induction Matrix"]);
+    expect(pages.find((p) => p.id === "power")!.cards.map((c) => c.title)).toEqual(["Power Grid", "Induction Matrix", "Server"]);
   });
 });

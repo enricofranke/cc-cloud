@@ -351,6 +351,9 @@ public final class IconService {
      * vanilla only if {@code vanillaAssetsJar} points to a Minecraft client jar. Square PNGs ≤ 64 KB only.
      */
     public static byte @Nullable [] fallback(String namespace, String path) {
+        // Item definition → model → texture, read from the jar that provides each namespace.
+        byte[] resolved = IconFallback.resolve(namespace, path, IconService::readResource);
+        if (resolved != null) return resolved;
         for (var dir : new String[]{"item", "block"}) {
             String file = "assets/" + namespace + "/textures/" + dir + "/" + path + ".png";
             byte[] bytes = namespace.equals("minecraft") ? fromVanillaJar(file) : fromModJar(namespace, file);
@@ -359,6 +362,40 @@ public final class IconService {
             if (size != null && size[0] == size[1] && size[0] > 0 && size[0] <= 512) return bytes;
         }
         return null;
+    }
+
+    /** namespace → mod file that has {@code assets/<namespace>/} (namespaces need not match mod ids). */
+    private static final Map<String, java.util.Optional<net.neoforged.neoforgespi.locating.IModFile>> NAMESPACE_FILES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** A resource from the mods' jars (any namespace) or, for minecraft, the configured client jar. */
+    static byte @Nullable [] readResource(String file) {
+        String[] parts = file.split("/", 3);
+        if (parts.length < 3 || !parts[0].equals("assets")) return null;
+        String namespace = parts[1];
+        if (namespace.equals("minecraft")) return fromVanillaJar(file);
+        var modFile = NAMESPACE_FILES.computeIfAbsent(namespace, ns -> {
+            try {
+                for (var info : ModList.get().getModFiles()) {
+                    var contents = info.getFile().getContents();
+                    if (contents.findFile("assets/" + ns + "/").isPresent() || contents.findFile("assets/" + ns + "/lang/en_us.json").isPresent()
+                        || contents.findFile("assets/" + ns + "/models").isPresent() || contents.findFile("assets/" + ns + "/textures").isPresent()) {
+                        return java.util.Optional.of(info.getFile());
+                    }
+                }
+            } catch (RuntimeException ignored) {
+            }
+            return java.util.Optional.empty();
+        });
+        if (modFile.isEmpty()) return null;
+        try {
+            var contents = modFile.get().getContents();
+            if (contents.findFile(file).isEmpty()) return null;
+            try (InputStream in = contents.openFile(file)) {
+                return in == null ? null : in.readNBytes(256 * 1024 + 1);
+            }
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     private static byte @Nullable [] fromModJar(String namespace, String file) {

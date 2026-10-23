@@ -16,6 +16,19 @@ export interface ActionOutcome {
   retryAfter?: number;
   /** Set by successful craft actions. */
   jobId?: string;
+  /** Optional: the widget's value after the handler ran (confirms an optimistic change). */
+  value?: unknown;
+}
+
+/** Value equality for widget values (scalars, arrays, plain objects). */
+export function sameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
 }
 
 export interface QueryResult {
@@ -79,7 +92,7 @@ export const REJECT_TEXT: Record<string, string> = {
   invalid_value: "The value was not accepted.",
   invalid_message: "The server did not understand the request.",
   timeout: "No answer from the server.",
-  unconfirmed: "The computer did not confirm the change.",
+  unconfirmed: "No answer from the computer yet – is the program running?",
   disconnected: "Not connected to the server.",
   read_only: "This device is read-only.",
   no_power: "The mainframe has no power.",
@@ -160,7 +173,7 @@ export class MainframeConn {
       minBackoffMs: 1000,
       maxBackoffMs: 15_000,
       resultTimeoutMs: 5000,
-      confirmTimeoutMs: 4000,
+      confirmTimeoutMs: 8000,
       silenceTimeoutMs: 50_000,
       ...opts,
     };
@@ -422,6 +435,7 @@ export class MainframeConn {
           attemptsLeft: typeof msg.attemptsLeft === "number" ? msg.attemptsLeft : undefined,
           retryAfter: typeof msg.retryAfter === "number" ? msg.retryAfter : undefined,
           jobId: msg.jobId != null ? String(msg.jobId) : undefined,
+          ...("value" in msg ? { value: msg.value } : {}),
         });
         this.queryFailed(String(msg.reqId ?? ""), typeof msg.error === "string" ? msg.error : "rejected");
         break;
@@ -486,6 +500,8 @@ export class MainframeConn {
    */
   action(uplinkId: string, widget: Widget, value: ActionValue, optimistic = false, extra: ActionExtra = {}): string | undefined {
     const key = keyOf(uplinkId, widget.id);
+    // picking the value that is already set (e.g. the current select option): nothing to do
+    if (optimistic && !extra.pin && !(key in this.pending.value) && sameValue(this.widgetValue(key), value)) return undefined;
     const reqId = newReqId();
     const msg = { t: "action", reqId, uplinkId, id: widget.id, value, ...(extra.pin ? { pin: extra.pin } : {}) };
     if (!this.actionable || !this.send(msg)) {
@@ -536,13 +552,12 @@ export class MainframeConn {
     }
     if (p?.reqId === reqId) {
       // accepted and queued in-game: now wait for the computer to report the new value
-      const current = this.widgetValue(req.key);
-      if (current === p.value) return this.settle(req.key);
+      if (sameValue(this.widgetValue(req.key), p.value) || ("value" in outcome && sameValue(outcome.value, p.value))) return this.rollback(req.key);
       clearTimeout(p.timer);
       p.timer = setTimeout(() => {
         if (this.pendingMeta.get(req.key)?.reqId !== reqId) return;
         this.rollback(req.key);
-        this.notice("warn", `${req.label}: reverted`, REJECT_TEXT.unconfirmed);
+        this.notice("info", `${req.label}: no answer`, REJECT_TEXT.unconfirmed);
       }, this.o.confirmTimeoutMs);
     }
   }
@@ -613,7 +628,7 @@ export class MainframeConn {
     const p = this.pendingMeta.get(key);
     if (!p) return;
     // only settle once the action was accepted or the server already shows our value
-    if (this.requests.has(p.reqId) && this.widgetValue(key) !== p.value) return;
+    if (this.requests.has(p.reqId) && !sameValue(this.widgetValue(key), p.value)) return;
     this.rollback(key);
   }
 

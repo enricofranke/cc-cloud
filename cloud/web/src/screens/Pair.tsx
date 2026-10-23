@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, pair, pollPairing, type Paired, type AccountLinked } from "../lib/api.ts";
-import { addSaved, saved, setAccount, syncAccountMainframes } from "../lib/store.ts";
+import { account, addSaved, saved, setAccount, syncAccountMainframes } from "../lib/store.ts";
+import type { PairLink } from "../lib/pairlink.ts";
 import { syncConns } from "../lib/conns.ts";
 import { guessDeviceName, navigate, pushToast } from "../lib/ui.ts";
 import { IconBack } from "../components/Icons.tsx";
@@ -18,9 +19,14 @@ function formatCode(raw: string) {
 
 type Phase = { kind: "form" } | { kind: "waiting"; pairingId: string; since: number } | { kind: "denied" } | { kind: "expired" };
 
-export function PairScreen({ initialCode }: { initialCode?: string }) {
+export function PairScreen({ initialCode, link }: { initialCode?: string; link?: PairLink }) {
   const [code, setCode] = useState(formatCode(initialCode ?? ""));
-  const [name, setName] = useState(guessDeviceName());
+  const [name, setName] = useState(() => guessDeviceName(account.value?.player));
+  const nameRef = useRef<HTMLInputElement>(null);
+  // from a chat link: only the device name is left to confirm
+  useEffect(() => {
+    if (link) nameRef.current?.select();
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
@@ -112,7 +118,13 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
                 <span class="cursor">█</span>
               </pre>
             </div>
-            <h1 class="px-heading">Pair a mainframe</h1>
+            <h1 class="px-heading">{link ? (link.account ? "Link this browser" : "Pair this browser") : "Pair a mainframe"}</h1>
+            {link ? (
+              <p class="pair-from-link" role="status">
+                The code from your in-game link is filled in. Check the device name and confirm – then click <b>[Allow]</b> in the chat.
+                {link.account && " This links the browser to your player account, so it sees every mainframe you have a role on."}
+              </p>
+            ) : (
             <ol class="steps">
               <li>
                 <span>
@@ -131,6 +143,7 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
                 </span>
               </li>
             </ol>
+            )}
           </div>
 
           <form class="form" onSubmit={submit} novalidate>
@@ -148,13 +161,15 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
                 spellcheck={false}
                 maxLength={9}
                 aria-invalid={!!error}
-                autoFocus
+                autoFocus={!link}
               />
             </label>
             <label class="field">
               <span class="field-label">Device name</span>
               <input
                 class="input input-name"
+                ref={nameRef}
+                autoFocus={!!link}
                 value={name}
                 onInput={(e) => setName((e.target as HTMLInputElement).value)}
                 maxLength={40}
@@ -168,7 +183,7 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
               </p>
             )}
             <button type="submit" class="pxbtn pxbtn-gold pxbtn-wide" disabled={!complete || busy}>
-              <span>{busy ? "Checking code…" : "Pair device"}</span>
+              <span>{busy ? "Checking code…" : link ? (link.account ? "Link browser" : "Pair browser") : "Pair device"}</span>
             </button>
           </form>
           <p class="muted small pair-help">
