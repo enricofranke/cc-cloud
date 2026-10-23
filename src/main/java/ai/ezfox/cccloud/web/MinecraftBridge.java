@@ -7,6 +7,7 @@ import ai.ezfox.cccloud.access.CloudPermissions;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.access.ServerPermissions;
 import ai.ezfox.cccloud.layout.LayoutData;
+import ai.ezfox.cccloud.layout.LayoutValidator;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonObject;
@@ -154,9 +155,24 @@ public final class MinecraftBridge implements GameBridge {
     public @Nullable String setLayout(AuthStore.Device device, UUID mainframeId, @Nullable JsonObject layout) {
         String error = check(device, mainframeId, AccessGate.Kind.LAYOUT.perm);
         if (error != null) return error;
+        if (layout != null && LayoutValidator.widgetMinimums(layout, widgetTypes(mainframeId)::get) != null) return "invalid_layout";
         LayoutData.get(server).set(mainframeId, layout);
         CloudLog.LOGGER.info("[cccloud] {} ({}) saved the dashboard layout of {}", device.name(), device.playerName(), mainframeName(mainframeId));
         return null;
+    }
+
+    /** Widget key ({@code <uplinkId>/<widgetId>}) → type of every published widget of a mainframe. */
+    private static java.util.Map<String, String> widgetTypes(UUID mainframeId) {
+        var types = new java.util.HashMap<String, String>();
+        for (var section : WebHub.INSTANCE.sectionSnapshots(mainframeId)) {
+            if (!(section.get("uplinkId") instanceof com.google.gson.JsonPrimitive id) || !(section.get("widgets") instanceof com.google.gson.JsonArray widgets)) continue;
+            for (var w : widgets) {
+                if (w instanceof JsonObject wo && wo.get("id") instanceof com.google.gson.JsonPrimitive wid && wo.get("type") instanceof com.google.gson.JsonPrimitive type) {
+                    types.put(id.getAsString() + "/" + wid.getAsString(), type.getAsString());
+                }
+            }
+        }
+        return types;
     }
 
     @Override

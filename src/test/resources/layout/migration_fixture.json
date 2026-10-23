@@ -1,0 +1,1008 @@
+{
+  "comment": "Layout v1 -> v2 migration cross-check (docs/SPEC.md 'Layout schema v2'). v2 = migrateLayout() of cloud/web/src/lib/layout.ts; the Java port LayoutMigration must produce the same documents.",
+  "cases": [
+    {
+      "uplinks": [
+        {
+          "uplinkId": "reactor",
+          "title": "Reactor",
+          "online": true,
+          "pages": [
+            {
+              "id": "power",
+              "title": "Power",
+              "icon": "bolt"
+            }
+          ],
+          "groups": [
+            {
+              "id": "core",
+              "title": "Core",
+              "cols": 2
+            },
+            {
+              "id": "turbines",
+              "title": "Turbines",
+              "page": "power",
+              "cols": 4
+            }
+          ],
+          "widgets": [
+            {
+              "id": "temp",
+              "type": "gauge",
+              "label": "Temperature",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "fuel",
+              "type": "progress",
+              "label": "Fuel",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "scram",
+              "type": "button",
+              "label": "SCRAM",
+              "opts": {
+                "group": "core",
+                "color": "red"
+              }
+            },
+            {
+              "id": "status",
+              "type": "indicator",
+              "label": "Status",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "history",
+              "type": "chart",
+              "label": "History",
+              "opts": {
+                "group": "core",
+                "style": "sparkline",
+                "span": 2
+              }
+            },
+            {
+              "id": "t1",
+              "type": "gauge",
+              "label": "Turbine 1",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "t2",
+              "type": "gauge",
+              "label": "Turbine 2",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "t3",
+              "type": "gauge",
+              "opts": {
+                "group": "turbines",
+                "order": 1
+              }
+            },
+            {
+              "id": "flow",
+              "type": "slider",
+              "label": "Flow",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "power_total",
+              "type": "label",
+              "label": "Total",
+              "opts": {
+                "page": "power"
+              }
+            },
+            {
+              "id": "mode",
+              "type": "toggle",
+              "label": "Auto mode"
+            },
+            {
+              "id": "msg",
+              "type": "text",
+              "label": "Message"
+            }
+          ]
+        },
+        {
+          "uplinkId": "storage",
+          "title": "ME Storage",
+          "online": true,
+          "widgets": [
+            {
+              "id": "search",
+              "type": "item_search",
+              "label": "Items"
+            },
+            {
+              "id": "watch",
+              "type": "watchlist",
+              "label": "Watchlist"
+            },
+            {
+              "id": "jobs",
+              "type": "jobs",
+              "label": "Crafting"
+            },
+            {
+              "id": "bytes",
+              "type": "gauge",
+              "label": "Bytes",
+              "opts": {
+                "span": 1
+              }
+            }
+          ]
+        },
+        {
+          "uplinkId": "farm",
+          "title": "Tree farm",
+          "online": false,
+          "widgets": [
+            {
+              "id": "rs",
+              "type": "redstone_sides",
+              "label": "Outputs"
+            },
+            {
+              "id": "lamp",
+              "type": "indicator",
+              "label": "Running",
+              "opts": {
+                "span": 3
+              }
+            },
+            {
+              "id": "go",
+              "type": "buttons",
+              "label": "Go"
+            },
+            {
+              "id": "count",
+              "type": "number",
+              "label": "Count"
+            },
+            {
+              "id": "pick",
+              "type": "select",
+              "label": "Pick"
+            }
+          ]
+        },
+        {
+          "uplinkId": "empty",
+          "title": "",
+          "online": true,
+          "widgets": []
+        },
+        {
+          "uplinkId": "door",
+          "title": "Base door",
+          "online": true,
+          "widgets": [
+            {
+              "id": "open",
+              "type": "toggle",
+              "label": "Open"
+            },
+            {
+              "id": "note",
+              "type": "label"
+            }
+          ]
+        }
+      ],
+      "v1": {
+        "v": 1,
+        "pages": [],
+        "cards": {
+          "reactor/core": {
+            "order": 2,
+            "span": 2,
+            "color": "red"
+          },
+          "storage": {
+            "order": 0,
+            "title": "Storage!"
+          },
+          "farm": {
+            "order": 1,
+            "hidden": true
+          },
+          "door": {
+            "span": 1,
+            "icon": "shield"
+          },
+          "c:mine": {
+            "order": 5,
+            "title": "My card",
+            "page": "main"
+          }
+        },
+        "widgets": {
+          "reactor/temp": {
+            "order": 3,
+            "span": 2,
+            "label": "Core temp"
+          },
+          "reactor/fuel": {
+            "order": 1
+          },
+          "reactor/msg": {
+            "hidden": true
+          },
+          "storage/bytes": {
+            "span": 4
+          },
+          "farm/count": {
+            "order": 0
+          }
+        }
+      },
+      "v2": {
+        "v": 2,
+        "pages": [
+          {
+            "id": "main",
+            "title": "Overview",
+            "icon": "home"
+          },
+          {
+            "id": "power",
+            "title": "Power",
+            "icon": "bolt"
+          }
+        ],
+        "cards": {
+          "storage": {
+            "page": "main",
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 17,
+            "title": "Storage!",
+            "icon": "box"
+          },
+          "reactor/core": {
+            "page": "main",
+            "x": 6,
+            "y": 0,
+            "w": 6,
+            "h": 12,
+            "color": "red",
+            "icon": "flame"
+          },
+          "empty": {
+            "page": "main",
+            "x": 6,
+            "y": 12,
+            "w": 3,
+            "h": 3
+          },
+          "door": {
+            "page": "main",
+            "x": 9,
+            "y": 12,
+            "w": 3,
+            "h": 4,
+            "icon": "shield"
+          },
+          "c:mine": {
+            "page": "main",
+            "x": 0,
+            "y": 17,
+            "w": 3,
+            "h": 3,
+            "title": "My card"
+          },
+          "reactor": {
+            "page": "main",
+            "x": 3,
+            "y": 17,
+            "w": 3,
+            "h": 3,
+            "icon": "flame"
+          },
+          "farm": {
+            "page": "main",
+            "x": 0,
+            "y": 0,
+            "w": 3,
+            "h": 13,
+            "hidden": true,
+            "icon": "leaf"
+          },
+          "reactor/turbines": {
+            "page": "power",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 14,
+            "icon": "bolt"
+          },
+          "reactor~power": {
+            "page": "power",
+            "x": 0,
+            "y": 14,
+            "w": 3,
+            "h": 3,
+            "icon": "flame"
+          }
+        },
+        "widgets": {
+          "storage/bytes": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 5
+          },
+          "storage/search": {
+            "x": 0,
+            "y": 5,
+            "w": 12,
+            "h": 3
+          },
+          "storage/watch": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 4
+          },
+          "storage/jobs": {
+            "x": 0,
+            "y": 12,
+            "w": 12,
+            "h": 3
+          },
+          "reactor/fuel": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 2
+          },
+          "reactor/temp": {
+            "x": 0,
+            "y": 2,
+            "w": 6,
+            "h": 5,
+            "label": "Core temp"
+          },
+          "reactor/status": {
+            "x": 6,
+            "y": 2,
+            "w": 6,
+            "h": 2
+          },
+          "reactor/scram": {
+            "x": 6,
+            "y": 4,
+            "w": 4,
+            "h": 2
+          },
+          "reactor/history": {
+            "x": 0,
+            "y": 7,
+            "w": 6,
+            "h": 3,
+            "display": "sparkline"
+          },
+          "door/note": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "door/open": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 1
+          },
+          "reactor/mode": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "reactor/msg": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1,
+            "hidden": true
+          },
+          "farm/count": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "farm/lamp": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 2
+          },
+          "farm/pick": {
+            "x": 0,
+            "y": 3,
+            "w": 12,
+            "h": 1
+          },
+          "farm/go": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 1
+          },
+          "farm/rs": {
+            "x": 0,
+            "y": 5,
+            "w": 12,
+            "h": 6
+          },
+          "reactor/t3": {
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/t1": {
+            "x": 6,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/t2": {
+            "x": 0,
+            "y": 5,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/flow": {
+            "x": 0,
+            "y": 10,
+            "w": 12,
+            "h": 2
+          },
+          "reactor/power_total": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          }
+        }
+      }
+    },
+    {
+      "uplinks": [
+        {
+          "uplinkId": "reactor",
+          "title": "Reactor",
+          "online": true,
+          "pages": [
+            {
+              "id": "power",
+              "title": "Power",
+              "icon": "bolt"
+            }
+          ],
+          "groups": [
+            {
+              "id": "core",
+              "title": "Core",
+              "cols": 2
+            },
+            {
+              "id": "turbines",
+              "title": "Turbines",
+              "page": "power",
+              "cols": 4
+            }
+          ],
+          "widgets": [
+            {
+              "id": "temp",
+              "type": "gauge",
+              "label": "Temperature",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "fuel",
+              "type": "progress",
+              "label": "Fuel",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "scram",
+              "type": "button",
+              "label": "SCRAM",
+              "opts": {
+                "group": "core",
+                "color": "red"
+              }
+            },
+            {
+              "id": "status",
+              "type": "indicator",
+              "label": "Status",
+              "opts": {
+                "group": "core"
+              }
+            },
+            {
+              "id": "history",
+              "type": "chart",
+              "label": "History",
+              "opts": {
+                "group": "core",
+                "style": "sparkline",
+                "span": 2
+              }
+            },
+            {
+              "id": "t1",
+              "type": "gauge",
+              "label": "Turbine 1",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "t2",
+              "type": "gauge",
+              "label": "Turbine 2",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "t3",
+              "type": "gauge",
+              "opts": {
+                "group": "turbines",
+                "order": 1
+              }
+            },
+            {
+              "id": "flow",
+              "type": "slider",
+              "label": "Flow",
+              "opts": {
+                "group": "turbines"
+              }
+            },
+            {
+              "id": "power_total",
+              "type": "label",
+              "label": "Total",
+              "opts": {
+                "page": "power"
+              }
+            },
+            {
+              "id": "mode",
+              "type": "toggle",
+              "label": "Auto mode"
+            },
+            {
+              "id": "msg",
+              "type": "text",
+              "label": "Message"
+            }
+          ]
+        },
+        {
+          "uplinkId": "storage",
+          "title": "ME Storage",
+          "online": true,
+          "widgets": [
+            {
+              "id": "search",
+              "type": "item_search",
+              "label": "Items"
+            },
+            {
+              "id": "watch",
+              "type": "watchlist",
+              "label": "Watchlist"
+            },
+            {
+              "id": "jobs",
+              "type": "jobs",
+              "label": "Crafting"
+            },
+            {
+              "id": "bytes",
+              "type": "gauge",
+              "label": "Bytes",
+              "opts": {
+                "span": 1
+              }
+            }
+          ]
+        },
+        {
+          "uplinkId": "farm",
+          "title": "Tree farm",
+          "online": false,
+          "widgets": [
+            {
+              "id": "rs",
+              "type": "redstone_sides",
+              "label": "Outputs"
+            },
+            {
+              "id": "lamp",
+              "type": "indicator",
+              "label": "Running",
+              "opts": {
+                "span": 3
+              }
+            },
+            {
+              "id": "go",
+              "type": "buttons",
+              "label": "Go"
+            },
+            {
+              "id": "count",
+              "type": "number",
+              "label": "Count"
+            },
+            {
+              "id": "pick",
+              "type": "select",
+              "label": "Pick"
+            }
+          ]
+        },
+        {
+          "uplinkId": "empty",
+          "title": "",
+          "online": true,
+          "widgets": []
+        },
+        {
+          "uplinkId": "door",
+          "title": "Base door",
+          "online": true,
+          "widgets": [
+            {
+              "id": "open",
+              "type": "toggle",
+              "label": "Open"
+            },
+            {
+              "id": "note",
+              "type": "label"
+            }
+          ]
+        }
+      ],
+      "v1": {
+        "v": 1,
+        "pages": [
+          {
+            "id": "main",
+            "title": "Main"
+          },
+          {
+            "id": "power",
+            "title": "Power"
+          },
+          {
+            "id": "farm",
+            "title": "Farm",
+            "icon": "leaf"
+          }
+        ],
+        "cards": {
+          "reactor/core": {
+            "order": 2,
+            "span": 2,
+            "color": "red"
+          },
+          "storage": {
+            "order": 0,
+            "title": "Storage!"
+          },
+          "farm": {
+            "page": "farm"
+          },
+          "door": {
+            "span": 1,
+            "icon": "shield"
+          },
+          "c:mine": {
+            "order": 5,
+            "title": "My card",
+            "page": "main"
+          },
+          "reactor/turbines": {
+            "order": 0,
+            "page": "main"
+          }
+        },
+        "widgets": {
+          "reactor/temp": {
+            "order": 3,
+            "span": 2,
+            "label": "Core temp"
+          },
+          "reactor/fuel": {
+            "order": 1
+          },
+          "reactor/msg": {
+            "hidden": true
+          },
+          "storage/bytes": {
+            "span": 4
+          },
+          "farm/count": {
+            "order": 0
+          }
+        }
+      },
+      "v2": {
+        "v": 2,
+        "pages": [
+          {
+            "id": "main",
+            "title": "Main"
+          },
+          {
+            "id": "power",
+            "title": "Power"
+          },
+          {
+            "id": "farm",
+            "title": "Farm",
+            "icon": "leaf"
+          }
+        ],
+        "cards": {
+          "reactor/turbines": {
+            "page": "main",
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 14,
+            "icon": "bolt"
+          },
+          "storage": {
+            "page": "main",
+            "x": 0,
+            "y": 14,
+            "w": 6,
+            "h": 17,
+            "title": "Storage!",
+            "icon": "box"
+          },
+          "reactor/core": {
+            "page": "main",
+            "x": 6,
+            "y": 14,
+            "w": 6,
+            "h": 12,
+            "color": "red",
+            "icon": "flame"
+          },
+          "empty": {
+            "page": "main",
+            "x": 6,
+            "y": 26,
+            "w": 3,
+            "h": 3
+          },
+          "door": {
+            "page": "main",
+            "x": 9,
+            "y": 26,
+            "w": 3,
+            "h": 4,
+            "icon": "shield"
+          },
+          "c:mine": {
+            "page": "main",
+            "x": 0,
+            "y": 31,
+            "w": 3,
+            "h": 3,
+            "title": "My card"
+          },
+          "reactor": {
+            "page": "main",
+            "x": 3,
+            "y": 31,
+            "w": 3,
+            "h": 3,
+            "icon": "flame"
+          },
+          "reactor~power": {
+            "page": "power",
+            "x": 0,
+            "y": 0,
+            "w": 3,
+            "h": 3,
+            "icon": "flame"
+          },
+          "farm": {
+            "page": "farm",
+            "x": 0,
+            "y": 0,
+            "w": 3,
+            "h": 13,
+            "icon": "leaf"
+          }
+        },
+        "widgets": {
+          "reactor/t3": {
+            "x": 0,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/t1": {
+            "x": 6,
+            "y": 0,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/t2": {
+            "x": 0,
+            "y": 5,
+            "w": 6,
+            "h": 5
+          },
+          "reactor/flow": {
+            "x": 0,
+            "y": 10,
+            "w": 12,
+            "h": 2
+          },
+          "storage/bytes": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 5
+          },
+          "storage/search": {
+            "x": 0,
+            "y": 5,
+            "w": 12,
+            "h": 3
+          },
+          "storage/watch": {
+            "x": 0,
+            "y": 8,
+            "w": 12,
+            "h": 4
+          },
+          "storage/jobs": {
+            "x": 0,
+            "y": 12,
+            "w": 12,
+            "h": 3
+          },
+          "reactor/fuel": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 2
+          },
+          "reactor/temp": {
+            "x": 0,
+            "y": 2,
+            "w": 6,
+            "h": 5,
+            "label": "Core temp"
+          },
+          "reactor/status": {
+            "x": 6,
+            "y": 2,
+            "w": 6,
+            "h": 2
+          },
+          "reactor/scram": {
+            "x": 6,
+            "y": 4,
+            "w": 4,
+            "h": 2
+          },
+          "reactor/history": {
+            "x": 0,
+            "y": 7,
+            "w": 6,
+            "h": 3,
+            "display": "sparkline"
+          },
+          "door/note": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "door/open": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 1
+          },
+          "reactor/mode": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "reactor/msg": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1,
+            "hidden": true
+          },
+          "reactor/power_total": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "farm/count": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 1
+          },
+          "farm/lamp": {
+            "x": 0,
+            "y": 1,
+            "w": 12,
+            "h": 2
+          },
+          "farm/pick": {
+            "x": 0,
+            "y": 3,
+            "w": 12,
+            "h": 1
+          },
+          "farm/go": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 1
+          },
+          "farm/rs": {
+            "x": 0,
+            "y": 5,
+            "w": 12,
+            "h": 6
+          }
+        }
+      }
+    }
+  ]
+}
