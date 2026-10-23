@@ -428,6 +428,17 @@ The cloud network should feel like a real infrastructure (think UniFi): devices 
 ### Decision 2026-10-23: no particle effects
 The `data_packet` particle (packets flying between uplink and mainframe) is removed, and v0.4 adds no particles between relays/devices – they cost performance under heavy traffic. Block animations (fan, hologram, rings, cores) stay, are distance-culled (~32 blocks) and can be turned off with the client config `animations`.
 
+### v0.4 – Implementation notes (mod side)
+- **Routing core** `network/graph/NetworkGraph` (pure, unit tested): a radio link exists when either side reaches the other (distance ≤ the larger of the two ranges, same dimension); signal = 1 − distance / that range, weak < 15 %. Ender relays linked to the same mainframe are connected across any distance/dimension (kind `ender`, signal 1). Routes: fewest hops, then the strongest weakest link, max 8 hops (the device link included). Devices attach to the best reachable node. Unavailable nodes (unloaded, out of power, mainframe offline) carry no traffic.
+- **Relays** are shared infrastructure: any mainframe's network may route through any relay in range; no linking needed. **Ender Relays** join a mainframe's ender group with the Link Card (owner/trusted/op); they also work as normal radio nodes. Relay blockstate `status=offline|connecting|online|no_power`.
+- **NetworkService** recomputes only on topology events (blocks loaded/unloaded/placed/broken, power flips of relays and mainframes, links, ender links, config reload) plus a cheap safety pass every 10 s; devices only look up their route. The load test stays at ~0.25 ms/tick on a quiet machine.
+- **Linking** checks the whole network geometrically (power is ignored for the check). The error names the nearest node, its distance, the max range and its position. Devices linked before v0.4 load without the `net_v` marker → `legacy`; with `legacyRangeGrace` they stay connected directly to the mainframe when out of range (`flags:["legacy_out_of_range"]` on the map, the uplink screen says so) until re-linked. Re-linking clears the flag.
+- **Device status:** `offline` with reason `no_route` when there is no path; the uplink screen shows `routeState` and `hops`.
+- **Power:** mainframe usage = `mainframeBaseFE` + per connected uplink / advanced uplink / bridge + per dashboard client + per extra hop (`mainframePerUplinkFE`, `…PerAdvancedUplinkFE`, `…PerBridgeFE`, `…PerClientFE`, `…PerHopFE`). Relays: `relayFE`/`advancedRelayFE`/`enderRelayFE` with buffers `…BufferFE`; FE via `Capabilities.Energy.BLOCK` from every side; same brownout grace as the mainframe. Breakdown: in-game Network tab, view `powerBreakdown`, Lua `getPowerBreakdown()`.
+- **Protocol:** snapshot `network` and `{"t":"network","network":{…}}` deltas (only on change, at most 2/s). Nodes: mainframe, relays (`relay`, `advanced_relay`, `ender_relay`), devices (`uplink`, `advanced_uplink`, `bridge`, `device` for unloaded ones); fields `id,type,name,pos?,dim,status,power?,range,deviceRange?,parent?,hops?,flags?`; `status` ∈ `online|offline|no_power|no_route|unloaded|redstone|cloud_disabled`. Links `a,b,signal,dist?,kind,weak?`. `pos` and `dist` only for canControl devices. Relays near the network that cannot carry traffic (e.g. no power) are included so the map can show them.
+- **Lua** `cloud_mainframe.getNetwork()` (with positions) and `getPowerBreakdown()`.
+- **Recipes:** relay = stone + wired modem + cloud core + redstone (`SMS/RKR/SSS`); advanced = relay + gold ingots + ender pearl (`GEG/GXG/GGG`); ender = advanced relay + 3 ender eyes + gold block (` Y /YXY/ B `).
+
 ## v0.5 – Integrations, rules, push, browser terminal (approved 2026-10-23)
 Everything here follows the existing security model (deny-by-default, canControl, validation, rate limits) and is optional per server config. Mod integrations are soft dependencies in `compat/<modid>` packages, loaded only when the mod is present (ATM11 mod ids to verify from the jars: powah, enderio, oritech, energizedpower, energymeter, generatorgalore, mysticalagriculture, productivebees, hostilenetworks, mffs, merequester, extendedae, spark, ftbteams, ftbchunks, journeymap, simplebackups).
 
@@ -512,6 +523,43 @@ Every template is a normal set of widgets, so the user can rearrange it in edit 
 - All JSON parsed with size limits and strict schemas; unknown fields rejected; numbers bounded.
 - Dependencies: keep the web bundle dependency list short and audited (`pnpm audit` in CI); the mod uses only MC/NeoForge/Netty/Gson.
 - Add a `docs/SECURITY.md` threat model (assets, attackers: other players, internet scanners, share-link holders, malicious mod clients; mitigations) and run a dedicated security review before each release.
+
+### v0.6 web protocol (accounts, roles, access, devices, shares)
+Implemented by the dev mock (`cloud/dev/mock-server.ts`) and the dashboard; all bodies ≤ 4 KB, strict schemas, unknown fields rejected.
+
+**Account linking** – same two-step flow as pairing, on the same endpoints:
+- `POST /api/pair {"code","name"}` accepts both kinds of codes: a mainframe pairing code (as before) or an **account code** from `/cccloud link` / "Link this browser". → `202 {"status":"pending","pairingId"}`.
+- `GET /api/pair/<pairingId>` → when approved:
+  - mainframe code: `{"status":"approved","token","mainframeId","name","canControl","role"}` (as before + `role`)
+  - account code: `{"status":"approved","token","account":{"player","uuid"},"mainframes":[{"id","name","role"}]}`
+- `GET /api/mainframes` (Bearer token) → `{"mainframes":[{"id","name","online","enabled","role","canControl"}],"account":{"player","uuid"}|null}`. Account tokens list every mainframe where the player has a role; legacy device tokens list their one mainframe.
+- WebSocket auth gains an optional mainframe: `{"t":"auth","token","mainframeId?"}`. Account tokens **must** send `mainframeId` (else close 4401 `mainframe_required`); a mainframe the player has no role on → close 4403 `no_access`.
+- The `snapshot` gains `"role":"viewer|operator|admin|owner|share"` and `"account":{"player"}|null`. `canControl` stays (= role ≥ operator). Role changes are pushed as `{"t":"role","role","canControl"}`.
+
+**Role checks in the protocol** (central auth layer): actions, queries' crafting, toggles etc. need `operator` (`action_result.error = "read_only"` for viewers); `layout_set`, `net_unlink`, the access/shares/devices APIs need `admin` (`error = "not_allowed"`, HTTP 403 `{"error":"not_allowed"}`). Ownership transfer and delete need `owner`.
+
+**Devices** (all browsers of a player; Bearer = account token, or a device token for its own entry only):
+- `GET /api/devices` → `{"devices":[{"id","name","type":"desktop|phone|tablet|other","lastIp","lastSeen","created","current","mainframes":[ids]|null}]}`. `type` is derived from the User-Agent at pairing time and is informational only.
+- `DELETE /api/devices/<id>` → `{"ok":true}`; the device's sockets close with 4401 `revoked`.
+
+**Access** (per mainframe, admin+): `GET /api/mainframes/<id>/access` →
+```json
+{"you":{"player","role"},
+ "players":[{"uuid","player","role","source":"owner|direct|team|server_admin","teamRank?"}],
+ "team":{"provider":"ftbteams|opac|scoreboard","id","name","mapping":{"<rank>":"viewer|operator|admin|none"}}|null,
+ "teams":[{"provider","id","name","ranks":["owner","officer","member","ally"]}],
+ "providers":["ftbteams","opac","scoreboard"]}
+```
+`POST /api/mainframes/<id>/access` with one op:
+`{"op":"set_role","player","role"}` (role `viewer|operator|admin`; owner cannot be changed here) · `{"op":"remove","player"}` · `{"op":"set_team","provider","teamId"}` (`teamId:null` unassigns) · `{"op":"set_mapping","rank","role"}`. → the new access document, or 400/403 `{"error"}` (`unknown_player`, `not_allowed`, `invalid`). Role changes apply live (`role` push to that player's open sessions).
+
+**Share links** (admin+):
+- `GET /api/mainframes/<id>/shares` → `{"shares":[{"id","label","createdBy","created","expires"|null,"maxViewers","viewers","pages":[pageIds],"cards":[cardKeys],"hideNumbers"}]}` (never the secret).
+- `POST /api/mainframes/<id>/shares {"label","pages":[…],"cards":[…],"expiresIn":3600|86400|604800|null,"maxViewers":1..50,"hideNumbers":bool}` → `{"id","secret","url":"/s/<id>#<secret>"}` – the only time the secret is returned. `pages`/`cards` use the layout ids (card keys as in the Layout schema); at least one of them.
+- `DELETE /api/mainframes/<id>/shares/<shareId>` → `{"ok":true}`; open share sessions close with 4401 `share_revoked`.
+- Viewer: page `/s/<id>` (SPA route; headers `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex`). The browser takes the secret from `location.hash`, removes it with `history.replaceState`, and authenticates with `{"t":"auth_share","id","secret"}` (WebSocket, first message). Errors: close 4401 with `share_invalid | share_expired | share_revoked`, 4429 `share_full` (maxViewers reached).
+- Share snapshot: `{"t":"snapshot","role":"share","share":{"id","label","sharedBy","expires","hideNumbers"},"mainframe":{"id","name","online","enabled"},"uplinks":[only the shared cards' uplinks and widgets],"layout":{…}}` – no `network`, no positions, no `item_search` widgets, no history export. With `hideNumbers` the server drops `label`/`text`/`number` widgets and the dashboard hides gauge digits.
+- A share session may only send `pong`. Every other message gets a hard deny: requests with a `reqId` are answered with their result type and `"error":"forbidden"` (`action_result`, `query_result`, `layout_result`, `net_result`), everything else with `{"t":"error","error":"forbidden"}`.
 
 ### v0.4 network map – protocol details used by the dashboard
 (Additions to the v0.4 "Network map" section above; the dev mock in `cloud/dev/network-sim.ts` implements them.)
