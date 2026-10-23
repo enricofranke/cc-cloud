@@ -1,6 +1,9 @@
 import { useState } from "preact/hooks";
 import { effect } from "@preact/signals";
-import { route, navigate, theme, themePref, cycleTheme, applyTheme, inDocs } from "./lib/ui.ts";
+import { route, navigate, theme, themePref, cycleTheme, applyTheme, inDocs, inShare } from "./lib/ui.ts";
+import { ShareView } from "./screens/ShareView.tsx";
+import { DevicesScreen, AccessScreen, SharesScreen } from "./screens/Account.tsx";
+import { refreshAccount } from "./lib/conns.ts";
 import { DocsLink } from "./components/DocsLink.tsx";
 import { useEffect } from "preact/hooks";
 import type { ComponentType } from "preact";
@@ -18,11 +21,15 @@ effect(() => {
   applyTheme();
 });
 
+// v0.6: the linked account's mainframes may have changed (roles, new mainframes)
+if (!location.pathname.startsWith("/s/")) refreshAccount();
+
 // Open a connection per paired mainframe before the first render, and keep the
 // set in sync when mainframes are paired or removed.
 effect(() => {
   saved.value;
-  syncConns();
+  // a share-link view never opens the browser's own (token) connections
+  if (!inShare.value) syncConns();
 });
 
 function TopBar() {
@@ -93,6 +100,8 @@ function DocsLoader() {
 }
 
 export function App() {
+  if (inShare.value)
+    return <ShareView />;
   if (inDocs.value)
     return (
       <div class="app">
@@ -105,11 +114,20 @@ export function App() {
 
   return (
     <div class="app">
+      <a class="skip-link" href="#main" onClick={(e) => {
+        e.preventDefault();
+        (document.getElementById("main") as HTMLElement | null)?.focus();
+      }}>
+        Skip to content
+      </a>
       {effective.name !== "mainframe" && <TopBar />}
       <InsecureBanner />
       {effective.name === "pair" && <PairScreen initialCode={"code" in effective ? effective.code : undefined} />}
       {effective.name === "list" && <MainframeList />}
       {effective.name === "mainframe" && <Dashboard key={effective.id} id={effective.id} />}
+      {effective.name === "devices" && <DevicesScreen />}
+      {effective.name === "access" && <AccessScreen id={effective.id} />}
+      {effective.name === "shares" && <SharesScreen id={effective.id} />}
       <Toasts />
     </div>
   );

@@ -33,8 +33,29 @@ function blocks(widgets: ResolvedWidget[], cols: number): Block[] {
   return out;
 }
 
-function WidgetView({ rw, card, conn, locked }: { rw: ResolvedWidget; card: ResolvedCard; conn: MainframeConn; locked: boolean }) {
+/** Widgets that only exist to act: left out entirely in read-only (share) views. */
+const ACTION_ONLY = new Set(["button", "item_search"]);
+
+/** A read-only stand-in for an input widget (share links: no action UI at all). */
+function StaticValue({ w }: { w: ResolvedWidget["w"] }) {
+  const v = w.value ?? w.opts?.value;
+  const text =
+    typeof v === "boolean" ? (v ? "ON" : "OFF") : typeof v === "number" ? `${Number.isInteger(v) ? v : v.toFixed(1)}${w.opts?.unit ? ` ${w.opts.unit}` : ""}` : typeof v === "string" && v ? v : "—";
+  return (
+    <div class="kv static-value">
+      <span class="kv-key">{w.label ?? w.id}</span>
+      <span class={`kv-val ${typeof v === "boolean" ? (v ? "on" : "off") : ""}`}>{text}</span>
+    </div>
+  );
+}
+
+function WidgetView({ rw, card, conn, locked, viewOnly }: { rw: ResolvedWidget; card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
   const w = rw.label !== rw.w.label ? { ...rw.w, label: rw.label } : rw.w;
+  if (viewOnly) {
+    if (["toggle", "slider", "select", "number", "text", "buttons"].includes(w.type)) return <StaticValue w={w} />;
+    if (w.type === "watchlist") return <Watchlist w={w} uplink={card.uplink} conn={conn} locked viewOnly />;
+    if (w.type === "redstone_sides") return <RedstoneSides w={w} uplink={card.uplink} conn={conn} locked />;
+  }
   // auto Computer card: disable power buttons that make no sense right now (keeps the layout stable)
   const pb = w.type === "button" && card.uplink.mode === "auto" ? powerButtonState(card.uplink, w.id) : undefined;
   const p = { w, uplink: card.uplink, conn, locked: locked || !!pb?.disabled };
@@ -80,8 +101,9 @@ function WidgetView({ rw, card, conn, locked }: { rw: ResolvedWidget; card: Reso
   }
 }
 
-export function Card({ card, conn, locked, children }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; children?: ComponentChildren }) {
-  const cardLocked = locked || !card.uplink.online;
+export function Card({ card: full, conn, locked, viewOnly, children }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren }) {
+  const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
+  const cardLocked = locked || !card.uplink.online || !!viewOnly;
   const cols = bodyCols(card.span);
   return (
     <article class={`card cs${card.span} accent-${card.color} ${card.uplink.online ? "" : "card-offline"}`} aria-label={card.title} data-card={card.key}>
@@ -106,10 +128,10 @@ export function Card({ card, conn, locked, children }: { card: ResolvedCard; con
             if (b.kind === "one")
               return (
                 <div key={b.item.key} class={`wcell s${b.span} t-${b.item.w.type}`}>
-                  <WidgetView rw={b.item} card={card} conn={conn} locked={cardLocked} />
+                  <WidgetView rw={b.item} card={card} conn={conn} locked={cardLocked} viewOnly={viewOnly} />
                 </div>
               );
-            const inner = b.items.map((rw) => <WidgetView key={rw.key} rw={rw} card={card} conn={conn} locked={cardLocked} />);
+            const inner = b.items.map((rw) => <WidgetView key={rw.key} rw={rw} card={card} conn={conn} locked={cardLocked} viewOnly={viewOnly} />);
             if (b.kind === "buttons")
               return (
                 <div key={b.items[0].key} class={`btn-row s${b.span}`}>

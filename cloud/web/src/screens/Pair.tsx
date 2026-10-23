@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { ApiError, pair, pollPairing, type Paired } from "../lib/api.ts";
-import { addSaved, saved } from "../lib/store.ts";
+import { ApiError, pair, pollPairing, type Paired, type AccountLinked } from "../lib/api.ts";
+import { addSaved, saved, setAccount, syncAccountMainframes } from "../lib/store.ts";
 import { syncConns } from "../lib/conns.ts";
 import { guessDeviceName, navigate, pushToast } from "../lib/ui.ts";
 import { IconBack } from "../components/Icons.tsx";
@@ -25,6 +25,16 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
   const complete = code.replace("-", "").length === 8 && name.trim().length > 0;
+
+  function linked(res: AccountLinked) {
+    const a = { token: res.token, player: res.account.player, uuid: res.account.uuid, deviceName: name.trim(), linkedAt: Date.now() };
+    setAccount(a);
+    syncAccountMainframes(res.mainframes, a);
+    syncConns();
+    pushToast({ level: "info", title: "Account linked", text: `This browser is linked to ${res.account.player} – ${res.mainframes.length} mainframe${res.mainframes.length === 1 ? "" : "s"}.` });
+    if (res.mainframes.length === 1) navigate(`/m/${encodeURIComponent(res.mainframes[0].id)}`, true);
+    else navigate("/", true);
+  }
 
   function finish(res: Paired) {
     addSaved({ mainframeId: res.mainframeId, token: res.token, name: res.name, deviceName: name.trim(), pairedAt: Date.now(), canControl: res.canControl });
@@ -56,7 +66,7 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
   };
 
   return (
-    <main class="page page-narrow">
+    <main class="page page-narrow" id="main" tabIndex={-1}>
       {saved.value.length > 0 && phase.kind === "form" && (
         <button type="button" class="link-back" onClick={() => navigate("/")}>
           <IconBack size={18} /> Mainframes
@@ -68,6 +78,7 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
           since={phase.since}
           deviceName={name.trim()}
           onApproved={finish}
+          onLinked={linked}
           onDone={(k) => setPhase({ kind: k })}
           onCancel={restart}
         />
@@ -105,17 +116,18 @@ export function PairScreen({ initialCode }: { initialCode?: string }) {
             <ol class="steps">
               <li>
                 <span>
-                  In Minecraft, <b>right-click the Cloud Mainframe</b> with an empty hand.
+                  In Minecraft, type <code>/cccloud link</code> to link this browser to <b>your player</b> (all your mainframes) – or{" "}
+                  <b>right-click a Cloud Mainframe</b> for a code for just that one.
                 </span>
               </li>
               <li>
                 <span>
-                  The chat shows this dashboard's address and an <b>8-character pairing code</b> (valid 10 minutes, single use).
+                  You get an <b>8-character code</b> (valid 10 minutes, single use) and this dashboard's address.
                 </span>
               </li>
               <li>
                 <span>
-                  Enter it below, then <b>click [Allow]</b> in the chat to approve this device.
+                  Enter it below, then <b>click [Allow]</b> in the chat to approve this browser.
                 </span>
               </li>
             </ol>
@@ -174,6 +186,7 @@ function Waiting(props: {
   since: number;
   deviceName: string;
   onApproved: (p: Paired) => void;
+  onLinked: (p: AccountLinked) => void;
   onDone: (k: "denied" | "expired") => void;
   onCancel: () => void;
 }) {
@@ -193,6 +206,7 @@ function Waiting(props: {
         if (!alive) return;
         setNetError(null);
         if (r.status === "approved") return cb.current.onApproved(r);
+        if (r.status === "linked") return cb.current.onLinked(r);
         if (r.status === "denied" || r.status === "expired") return cb.current.onDone(r.status);
       } catch (e) {
         if (!alive) return;

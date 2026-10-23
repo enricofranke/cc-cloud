@@ -1395,6 +1395,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     base,
     code: (mf: Mainframe = base) => fmt(currentCode(mf)),
     pairings,
+    /** v0.6 share links (tests) */
+    shares,
+    accountCodes,
     tickPower: (mf: Mainframe = base) => tickPower(mf),
     /** The fake AE2 network (undefined with ae2:false). */
     get ae2() {

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "preact/hooks";
-import { getConn, syncConns } from "../lib/conns.ts";
+import { getConn, syncConns, accountLoading } from "../lib/conns.ts";
 import { formatDuration } from "../lib/conn.ts";
 import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
 import { navigate, notifyPermission, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
 import { Pages } from "./Pages.tsx";
+import { MainframeSwitcher } from "../components/MainframeSwitcher.tsx";
+import { ROLE_INFO } from "./Account.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
 import { fmtFE } from "../lib/format.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
@@ -139,8 +141,10 @@ export function Dashboard({ id }: { id: string }) {
   const now = useNow(retryAt != null || pinLock > Date.now());
 
   useEffect(() => {
-    if (!entry) navigate("/", true);
-  }, [entry]);
+    // a linked account's mainframes arrive a moment after start
+    // read the live values: this effect may run after a later render already changed them
+    if (!saved.value.some((m) => m.mainframeId === id) && !accountLoading.value) navigate("/", true);
+  }, [entry, accountLoading.value]);
   if (!entry || !conn) return null;
 
   const info = conn.info.value;
@@ -161,7 +165,7 @@ export function Dashboard({ id }: { id: string }) {
             <span class="overline">Mainframe</span>
             {info?.power && <PowerMeter p={info.power} onClick={() => setPowerOpen(!powerOpen)} />}
           </span>
-          <h1 class="dash-name">{info?.name ?? entry.name}</h1>
+          <MainframeSwitcher currentId={id} name={info?.name ?? entry.name} isAdmin={conn.isAdmin} />
         </div>
         <span class={`pill pill-${st.kind}`}>
           <span class="pill-dot" />
@@ -193,7 +197,7 @@ export function Dashboard({ id }: { id: string }) {
       </header>
 
       {powerOpen && info?.power && <PowerPopover p={info.power} conn={conn} onClose={() => setPowerOpen(false)} />}
-      <main class="page page-dash">
+      <main class="page page-dash" id="main" tabIndex={-1}>
         {st.text && (
           <div class={`banner banner-${st.kind}`} role="status">
             <span class="banner-icon">
@@ -227,7 +231,15 @@ export function Dashboard({ id }: { id: string }) {
             <span class="banner-icon">
               <IconLock size={18} />
             </span>
-            <div class="banner-text">Read-only device: you can watch values and alerts, but not press controls.</div>
+            <div class="banner-text">
+              {conn.role.value === "viewer" ? (
+                <>
+                  <b>Viewer:</b> you can watch values and alerts but not operate this mainframe. An admin can give your player the operator role.
+                </>
+              ) : (
+                "Read-only device: you can watch values and alerts, but not press controls."
+              )}
+            </div>
           </div>
         )}
 
@@ -281,11 +293,25 @@ export function Dashboard({ id }: { id: string }) {
           <dl class="facts">
             <dt>Name</dt>
             <dd>{info?.name ?? entry.name}</dd>
-            <dt>This device</dt>
+            <dt>This browser</dt>
             <dd>
               {entry.deviceName}
               {readOnly ? " (read-only)" : ""}
             </dd>
+            {conn.account.value && (
+              <>
+                <dt>Player</dt>
+                <dd>{conn.account.value.player}</dd>
+              </>
+            )}
+            {conn.role.value && conn.role.value !== "share" && (
+              <>
+                <dt>Your role</dt>
+                <dd>
+                  <span class={`role-badge r-${conn.role.value}`}>{conn.role.value}</span> <span class="muted small">{ROLE_INFO[conn.role.value]}</span>
+                </dd>
+              </>
+            )}
             <dt>Paired</dt>
             <dd>{new Date(entry.pairedAt).toLocaleString()}</dd>
             <dt>Mainframe ID</dt>
@@ -300,6 +326,12 @@ export function Dashboard({ id }: { id: string }) {
                 </button>
               ))}
             </div>
+          </div>
+          <div class="settings-links">
+            <a href="#/devices">Devices</a>
+            {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
+            {conn.isAdmin && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
+            {!conn.isAdmin && conn.role.value && <span class="muted small">Access and share links need the admin role.</span>}
           </div>
           <p class="small">
             <DocsLink to="/docs">Help &amp; docs</DocsLink> · <DocsLink to="/docs/faq">Troubleshooting</DocsLink>

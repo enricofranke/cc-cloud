@@ -59,6 +59,8 @@ export async function serveStatic(root: string, pathname: string, req: IncomingM
   const immutable = rel.startsWith("assets/");
   res.writeHead(200, {
     ...SECURITY_HEADERS,
+    // share-link pages: never indexed, never leak the URL
+    ...(pathname.startsWith("/s/") ? { "x-robots-tag": "noindex", "referrer-policy": "no-referrer" } : {}),
     "content-type": TYPES[ext] ?? "application/octet-stream",
     "content-length": s.size,
     "cache-control": immutable ? "public, max-age=31536000, immutable" : "no-cache",

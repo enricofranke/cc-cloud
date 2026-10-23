@@ -4,13 +4,22 @@ import { getPref, setPref } from "./store.ts";
 import type { AlertLevel } from "./types.ts";
 
 // ---- routing (hash based, works from any static host) ----------------------
-export type Route = { name: "list" } | { name: "pair"; code?: string } | { name: "mainframe"; id: string };
+export type Route =
+  | { name: "list" }
+  | { name: "pair"; code?: string }
+  | { name: "mainframe"; id: string }
+  | { name: "devices" }
+  | { name: "access"; id: string }
+  | { name: "shares"; id: string };
 
 function parseRoute(): Route {
   const h = location.hash.replace(/^#\/?/, "");
   const [path, query] = h.split("?");
   const parts = path.split("/").filter(Boolean);
   if (parts[0] === "pair") return { name: "pair", code: new URLSearchParams(query).get("code") ?? undefined };
+  if (parts[0] === "devices") return { name: "devices" };
+  if (parts[0] === "m" && parts[1] && parts[2] === "access") return { name: "access", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "shares") return { name: "shares", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1]) return { name: "mainframe", id: decodeURIComponent(parts[1]) };
   return { name: "list" };
 }
@@ -18,9 +27,12 @@ function parseRoute(): Route {
 export const route = signal<Route>(parseRoute());
 /** true while the /docs section is shown (path based; the app itself uses hash routes on "/"). */
 export const inDocs = signal(location.pathname.startsWith("/docs"));
+/** v0.6: /s/<id> – a read-only share-link view */
+export const inShare = signal(/^\/s\/[A-Za-z0-9]{1,64}\/?$/.test(location.pathname));
 const sync = () => {
   route.value = parseRoute();
   inDocs.value = location.pathname.startsWith("/docs");
+  inShare.value = /^\/s\/[A-Za-z0-9]{1,64}\/?$/.test(location.pathname);
 };
 addEventListener("hashchange", sync);
 addEventListener("popstate", sync);

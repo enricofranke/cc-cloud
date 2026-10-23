@@ -41,11 +41,43 @@ export function ConfirmDialog(props: {
   );
 }
 
+/** Keyboard: focus the dialog on open, keep Tab inside it, give focus back on close. */
+export function useFocusTrap(ref: { current: HTMLElement | null }) {
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    const el = ref.current;
+    const focusables = () =>
+      [...(el?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea, [tabindex]:not([tabindex="-1"])') ?? [])];
+    const first = focusables().find((x) => !x.closest(".sheet-head")) ?? focusables()[0];
+    if (el && !el.contains(document.activeElement)) (first ?? el).focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !el) return;
+      const list = focusables();
+      if (!list.length) return;
+      const i = list.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && (i <= 0 || i === -1)) {
+        e.preventDefault();
+        list[list.length - 1].focus();
+      } else if (!e.shiftKey && i === list.length - 1) {
+        e.preventDefault();
+        list[0].focus();
+      }
+    };
+    addEventListener("keydown", trap);
+    return () => {
+      removeEventListener("keydown", trap);
+      if (before && document.contains(before)) before.focus();
+    };
+  }, []);
+}
+
 export function Sheet(props: { title: string; onClose: () => void; children: ComponentChildren }) {
   useEscape(props.onClose);
+  const ref = useRef<HTMLElement>(null);
+  useFocusTrap(ref);
   return (
     <div class="backdrop backdrop-sheet" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
-      <section class="sheet" role="dialog" aria-modal="true" aria-label={props.title}>
+      <section ref={ref} class="sheet" role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1}>
         <header class="sheet-head">
           <h2 class="px-title">{props.title}</h2>
           <button type="button" class="icon-btn" aria-label="Close" onClick={props.onClose}>

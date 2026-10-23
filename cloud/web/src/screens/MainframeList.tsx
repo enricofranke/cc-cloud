@@ -7,7 +7,7 @@ import { IconChevron, IconPlus } from "../components/Icons.tsx";
 export function MainframeList() {
   const list = saved.value;
   return (
-    <main class="page">
+    <main class="page" id="main" tabIndex={-1}>
       <div class="page-head">
         <h1 class="px-heading">Mainframes</h1>
         <button type="button" class="btn btn-ghost" onClick={() => navigate("/pair")}>

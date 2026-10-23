@@ -10,6 +10,50 @@ export interface SavedMainframe {
   pairedAt: number;
   /** From the pairing answer; the snapshot may override it. */
   canControl?: boolean;
+  /** v0.6: entry comes from the linked player account (token = account token) */
+  viaAccount?: boolean;
+  role?: string;
+}
+
+/** v0.6: the player account this browser is linked to. */
+export interface Account {
+  token: string;
+  player: string;
+  uuid?: string;
+  deviceName: string;
+  linkedAt: number;
+}
+const ACCOUNT_KEY = "cccloud.account.v1";
+function loadAccount(): Account | null {
+  try {
+    const a = JSON.parse(localStorage.getItem(ACCOUNT_KEY) ?? "null");
+    return a && typeof a.token === "string" && typeof a.player === "string" ? a : null;
+  } catch {
+    return null;
+  }
+}
+export const account = signal<Account | null>(loadAccount());
+export function setAccount(a: Account | null) {
+  account.value = a;
+  try {
+    if (a) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(a));
+    else localStorage.removeItem(ACCOUNT_KEY);
+  } catch {}
+}
+
+/** Replaces the account-derived entries with the server's current list. */
+export function syncAccountMainframes(list: { id: string; name: string; role?: string }[], a: Account) {
+  const manual = saved.value.filter((m) => !m.viaAccount && !list.some((x) => x.id === m.mainframeId));
+  const fromAccount = list.map((x) => ({
+    mainframeId: x.id,
+    token: a.token,
+    name: x.name,
+    deviceName: a.deviceName,
+    pairedAt: a.linkedAt,
+    viaAccount: true,
+    role: x.role,
+  }));
+  persist([...manual, ...fromAccount]);
 }
 
 const KEY = "cccloud.mainframes.v1";

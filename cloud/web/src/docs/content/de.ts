@@ -6,9 +6,9 @@ export const de: Record<string, string> = {
   // ---------------------------------------------------------------- start
   start: `# Erste Schritte
 
-CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard im Browser deines Handys oder PCs. Der Minecraft-Server stellt das Dashboard selbst bereit – kein Konto, kein externer Dienst.
+CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
 
-> **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und das Handy koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
+> **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
 
 ## Die Blöcke {#blocks}
 
@@ -75,14 +75,14 @@ Ohne Strom geht der Mainframe offline (nach 5 Sekunden mit leerem Puffer) und da
 
 Schleichen + Rechtsklick in die Luft löscht die Karte. Nur Besitzer und vertraute Spieler dürfen verbinden.
 
-## Handy koppeln {#pairing}
+## Browser koppeln {#pairing}
 
 1. Rechtsklick auf den Mainframe und den **Kopplungscode** merken (8 Zeichen, 10 Minuten gültig, einmal verwendbar).
 2. Öffne die Dashboard-URL aus dem Mainframe-Bildschirm im Browser (z. B. \`http://192.168.1.20:8787\`). Im selben WLAN klappt das sofort.
-3. Code und einen Gerätenamen eingeben, **Pair device** tippen.
+3. Code und einen Namen für diesen Browser eingeben, **Pair device** anklicken.
 4. Klicke in Minecraft im Chat (oder im Mainframe-Bildschirm) auf **[Allow]**. Der Browser macht automatisch weiter.
 
-> **Tipp:** Auf dem Handy mit „Zum Home-Bildschirm“ wie eine App installieren. Ein Browser kann mehrere Mainframes speichern.
+> **Tipp:** Verknüpfe deinen Spieler einmal mit \`/cccloud link\`, dann sieht der Browser jeden Mainframe, auf dem du eine Rolle hast – siehe [Konten und Rollen](/docs/accounts). Als App installieren: „App installieren“ in Chrome/Edge am PC, „Zum Home-Bildschirm“ auf Tablet und Handy.
 
 Wie es weitergeht: [das Dashboard](/docs/dashboard). Eigene Widgets? Starte mit den [CC-Grundlagen](/docs/cc-basics) und der [Lua-Referenz](/docs/lua).
 `,
@@ -166,9 +166,9 @@ Jeder Uplink wird zu einer **Karte**. Ein Computer ohne eigenes Programm zeigt d
 
 ## Seiten und Layout-Editor {#edit-mode}
 
-Programme können Widgets auf **Seiten** (Tabs: unten auf dem Handy, oben am PC) und in **Gruppen** legen. Spieler mit Steuerrechten sehen einen **Stift**:
+Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Spieler mit Steuerrechten sehen einen **Stift**:
 
-- Karten und Widgets umsortieren (am PC ziehen, auf dem Handy ▲▼)
+- Karten und Widgets umsortieren (mit der Maus ziehen, oder ▲▼ auf schmalen Bildschirmen und per Touch)
 - Kartengröße ändern (rechten Rand ziehen, 1–4 Spalten) und Widget-Breite
 - umbenennen, umfärben, Icon wählen, ausblenden
 - Seiten anlegen, umbenennen, löschen, Karten zwischen Seiten verschieben
@@ -454,7 +454,7 @@ Die Bridge nutzt den Strom des Netzwerks, kein FE vom Mainframe.
 - **Suche**: Name oder ID eintippen, Anzahl, „craftable“-Abzeichen und Mod jedes Items sehen
 - **Merkliste** und **Crafting-Aufträge** (siehe unten)
 
-## Craften vom Handy {#crafting}
+## Craften im Dashboard {#crafting}
 
 Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, fehlende Zutaten, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
 
@@ -473,6 +473,73 @@ ${code("lua", C.LUA_BRIDGE_WIDGETS)}
 Oder einfach \`cloud-storage\` starten. Alle Methoden: [Lua-Referenz → Bridges](/docs/lua#bridges).
 `,
 
+  accounts: `# Konten, Rollen und Teilen
+
+Ein **Gerät** ist jeder Browser – auf PC, Tablet oder Handy. Jede Seite des Dashboards funktioniert überall gleich, mit Maus, Tastatur oder Touch.
+
+## Spieler verknüpfen {#link}
+
+1. Tippe in Minecraft \`/cccloud link\` (oder nutze „Link this browser“ im Mainframe-Bildschirm). Du bekommst einen Einmal-Code (10 Minuten).
+2. Dashboard öffnen, Code und einen Namen für diesen Browser eingeben, **Pair device** anklicken.
+3. Im Chat auf **[Allow]** klicken.
+
+Der Browser ist jetzt mit **deinem Spieler** verknüpft, nicht mit einem einzelnen Mainframe: Er zeigt jeden Mainframe, auf dem du eine Rolle hast, und du wechselst über den Mainframe-Namen oben in der Kopfzeile. Browser, die vorher mit einem Mainframe-Code gekoppelt wurden, funktionieren für diesen einen Mainframe weiter.
+
+## Rollen {#roles}
+
+| Rolle | Darf |
+|---|---|
+| viewer | Werte und Meldungen sehen – keine Bedienung, keine Koordinaten |
+| operator | viewer + Buttons, Schalter, Schieberegler, Craften, Regeln ein-/ausschalten |
+| admin | operator + Geräte, Rollen, Layout bearbeiten, Freigabe-Links, PIN, Regeln, Terminal |
+| owner | der Spieler, der den Mainframe aufgestellt hat: admin + übertragen und löschen |
+
+Rollen kommen aus mehreren Quellen – **die höchste gilt**: der Besitzer, einem Spieler gegebene Rollen (\`/cccloud role <spieler> <rolle>\`, Mainframe-Bildschirm oder Seite **Access**), Team-Ränge und Server-Rechte. Was du nicht darfst, ist ausgeblendet oder deaktiviert, mit Begründung.
+
+## Teams {#teams}
+
+Ein Mainframe kann einem Team aus **FTB Teams**, **Open Parties and Claims** oder einem Vanilla-Scoreboard-Team zugeordnet werden. Jeder Team-Rang bekommt eine Rolle auf diesem Mainframe (Standard: owner/officer/leader → admin, member → operator, ally → viewer). Tritt jemand ein oder aus, ändert sich sein Zugriff sofort.
+
+## Die Seite Access {#access}
+
+Admins öffnen sie über das Mainframe-Menü in der Kopfzeile (**Access & roles**):
+
+- die Liste der Spieler mit Rolle und Herkunft der Rolle
+- direkt vergebene Rollen ändern oder entfernen, Spieler per Name hinzufügen
+- ein Team zuordnen und die Rolle pro Team-Rang wählen
+
+## Geräte {#devices}
+
+**Devices** im Kopfzeilen-Menü listet jeden Browser, der mit deinem Spieler verknüpft ist – Name, Typ (Computer, Tablet, Handy), letzte Adresse und letzte Nutzung. Ein verlorenes oder altes Gerät dort entfernen, oder im Spiel mit \`/cccloud devices\` und \`/cccloud revoke\`.
+
+## Freigabe-Links {#shares}
+
+Admins können eine **schreibgeschützte** Ansicht teilen – für ein Stream-Overlay, einen Freund oder ein Wand-Display:
+
+1. Mainframe-Menü → **Share links** → **New link**.
+2. Ganze Seiten oder einzelne Karten wählen, die Laufzeit (1 Stunde, 24 Stunden, 7 Tage oder unbegrenzt), wie viele gleichzeitig zusehen dürfen, und optional **genaue Zahlen ausblenden** (nur Anzeigen).
+3. Link kopieren – er wird nur einmal angezeigt.
+
+Der geheime Teil hinter \`#\` landet nie in den Server-Logs und verschwindet aus der Adresszeile, sobald die Seite offen ist. Wer den Link hat, sieht **„Shared by …“** und kann nichts drücken: Es gibt gar keine Bedienelemente, und der Server lehnt jede Aktion über einen Freigabe-Link ab. Nie enthalten: Koordinaten, Item-Suche, Netzwerkkarte und Verlaufs-Export. Ein Widerruf trennt alle Zuschauer sofort.
+
+## Server-Rechte {#permissions}
+
+Server-Admins steuern CC: Cloud mit **LuckPerms** oder **FTB Ranks** (oder über das OP-Level, wenn kein Rechte-Mod installiert ist):
+
+| Node | Standard | Erlaubt |
+|---|---|---|
+| \`cccloud.use\` | alle | Blöcke aufstellen und nutzen, Browser verknüpfen |
+| \`cccloud.admin.view\` | OP | jeden Mainframe ansehen |
+| \`cccloud.admin.operate\` | OP | jeden Mainframe bedienen |
+| \`cccloud.admin.manage\` | OP | Geräte und Rollen jedes Mainframes verwalten |
+| \`cccloud.limit.mainframes\` | 3 | Mainframes pro Spieler |
+
+Schaut ein Admin auf einen fremden Mainframe, sieht der Besitzer das im Protokoll.
+
+## Tastatur {#keyboard}
+
+Tab springt durch alles, Enter oder Leertaste löst aus, Escape schließt Dialoge und Menüs, die Pfeiltasten wechseln zwischen Seiten-Tabs und Menüeinträgen, und „Skip to content“ springt an der Kopfzeile vorbei.
+`,
   // -------------------------------------------------------------- security
   security: `# Sicherheit und Hosting
 
@@ -567,7 +634,7 @@ Du hast Lua-Code in die **Shell** getippt. Die Shell startet nur Programme. Schr
 ## Das Dashboard ist nicht erreichbar {#not-reachable}
 
 - Nimm die URL aus dem Mainframe-Bildschirm. \`localhost\` funktioniert nur auf dem PC, auf dem Minecraft läuft.
-- Handy und PC müssen im selben Netzwerk sein (WLAN, nicht mobile Daten) – oder siehe [Zugriff aus dem Internet](/docs/security#internet).
+- Das Gerät mit dem Browser und der Minecraft-Server müssen im selben Netzwerk sein (z. B. im selben WLAN, nicht mobile Daten) – oder siehe [Zugriff aus dem Internet](/docs/security#internet).
 - Erlaube Java in der PC-Firewall für private Netzwerke.
 - Port 8787 muss frei sein; sonst steht es im Server-Log und ein Admin kann \`webPort\` ändern.
 - Auf einem gemieteten Server muss der Port freigegeben sein – oder Reverse Proxy / Tunnel nutzen.

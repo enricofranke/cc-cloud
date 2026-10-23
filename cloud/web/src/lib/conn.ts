@@ -45,6 +45,10 @@ export interface ConnOptions {
   /** http(s) origin of the mod's web server, e.g. location.origin */
   baseUrl: string;
   token: string;
+  /** v0.6: account tokens name the mainframe in the auth message */
+  mainframeId?: string;
+  /** v0.6: a read-only share-link session instead of a token */
+  share?: { id: string; secret: string };
   WebSocketImpl?: typeof WebSocket;
   minBackoffMs?: number;
   maxBackoffMs?: number;
@@ -128,6 +132,10 @@ export class MainframeConn {
   readonly layout = signal<LayoutDoc | null>(null);
   /** v0.6 role on this mainframe (null = server without roles: canControl decides) */
   readonly role = signal<"viewer" | "operator" | "admin" | "owner" | "share" | null>(null);
+  /** v0.6: share-link sessions – what is shared and by whom */
+  readonly shareInfo = signal<{ label: string; sharedBy: string; expires: number | null; hideNumbers: boolean } | null>(null);
+  /** last error code sent by the server before closing (e.g. share_expired, no_access) */
+  readonly lastError = signal<string | null>(null);
   /** v0.6 linked player account, if any */
   readonly account = signal<{ player: string } | null>(null);
   /** v0.4 network graph (null = server without network map) */
@@ -145,7 +153,7 @@ export class MainframeConn {
   private queries = new Map<string, { resolve: (r: QueryResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private pendingMeta = new Map<string, Pending>();
   private requests = new Map<string, { key: string; label: string; timer: ReturnType<typeof setTimeout>; onResult?: ActionExtra["onResult"] }>();
-  private readonly o: Required<Omit<ConnOptions, "onAlert" | "onNotice" | "WebSocketImpl">> & ConnOptions;
+  private readonly o: Required<Omit<ConnOptions, "onAlert" | "onNotice" | "WebSocketImpl" | "mainframeId" | "share">> & ConnOptions;
 
   constructor(opts: ConnOptions) {
     this.o = {
@@ -163,6 +171,11 @@ export class MainframeConn {
   }
 
   /** Admin features (layout editing, unlink, access, shares). Servers without roles: canControl. */
+  /** Share-link sessions never send anything but pong. */
+  get isShare() {
+    return !!this.o.share || this.role.value === "share";
+  }
+
   get isAdmin() {
     const r = this.role.value;
     return r === "admin" || r === "owner" || (r === null && this.canControl.value);
@@ -170,7 +183,7 @@ export class MainframeConn {
 
   get actionable() {
     const i = this.info.value;
-    return this.status.value === "open" && !!i?.online && !!i?.enabled && this.canControl.value;
+    return this.status.value === "open" && !!i?.online && !!i?.enabled && this.canControl.value && !this.isShare;
   }
 
   start() {
@@ -220,6 +233,7 @@ export class MainframeConn {
         return;
       }
       if (!msg || typeof msg !== "object") return;
+      if (msg.t === "error" && typeof msg.error === "string") this.lastError.value = msg.error.slice(0, 32);
       if (isAuthError(msg)) {
         this.authFailed = true;
         return;
@@ -231,7 +245,13 @@ export class MainframeConn {
     ws.onopen = () => {
       if (this.ws !== ws) return;
       this.armSilence();
-      ws.send(JSON.stringify({ t: "auth", token: this.o.token }));
+      ws.send(
+        JSON.stringify(
+          this.o.share
+            ? { t: "auth_share", id: this.o.share.id, secret: this.o.share.secret }
+            : { t: "auth", token: this.o.token, ...(this.o.mainframeId ? { mainframeId: this.o.mainframeId } : {}) },
+        ),
+      );
     };
     ws.onclose = (ev) => {
       if (this.ws !== ws) return;
@@ -285,6 +305,8 @@ export class MainframeConn {
 
   private send(msg: object) {
     if (this.ws?.readyState !== 1) return false;
+    // a share-link session is read-only by construction: nothing but pong ever leaves the browser
+    if (this.isShare && (msg as { t?: string }).t !== "pong") return false;
     this.ws.send(JSON.stringify(msg));
     return true;
   }
@@ -308,6 +330,13 @@ export class MainframeConn {
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
           this.role.value = ROLES.includes(msg.role) ? msg.role : null;
+          if (msg.share && typeof msg.share === "object")
+            this.shareInfo.value = {
+              label: typeof msg.share.label === "string" ? msg.share.label.slice(0, 48) : "Shared view",
+              sharedBy: typeof msg.share.sharedBy === "string" ? msg.share.sharedBy.slice(0, 32) : "?",
+              expires: typeof msg.share.expires === "number" ? msg.share.expires : null,
+              hideNumbers: msg.share.hideNumbers === true,
+            };
           this.account.value = msg.account && typeof msg.account.player === "string" ? { player: msg.account.player.slice(0, 32) } : null;
           const cc = msg.canControl ?? msg.device?.canControl ?? msg.mainframe?.canControl;
           if (typeof cc === "boolean") this.canControl.value = cc;
@@ -630,14 +659,15 @@ export class MainframeConn {
 
 // ------------------------------------------------------------- normalizers
 /** 4401 revoked/unauthorized, 4403 forbidden (player lost access), 4404 mainframe removed; 4001/4003 legacy. */
-const AUTH_CLOSE_CODES = new Set([4001, 4003, 4401, 4403, 4404]);
+/** 4429: share link full (v0.6) – also stops retrying, the viewer explains it. */
+const AUTH_CLOSE_CODES = new Set([4001, 4003, 4401, 4403, 4404, 4429]);
 
 function isAuthError(msg: any) {
   if (msg.t === "auth_failed" || msg.t === "unauthorized") return true;
   if (msg.t !== "error" && msg.t !== "auth_error") return false;
   if (msg.t === "auth_error") return true;
   const why = String(msg.error ?? msg.reason ?? msg.code ?? "").toLowerCase();
-  return /auth|token|revoked|forbidden/.test(why);
+  return /auth|token|revoked|forbidden|share_|no_access|mainframe_required/.test(why);
 }
 
 /** Scalars pass through; lists of plain objects (watchlist/jobs) are kept with scalar fields only. */

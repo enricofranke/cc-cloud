@@ -70,7 +70,17 @@ export async function pair(code: string, name: string, base = ""): Promise<PairS
   throw new ApiError("server", "Unexpected answer from the server.");
 }
 
-export type PairPoll = { status: "pending" } | { status: "denied" } | { status: "expired" } | ({ status: "approved" } & Paired);
+export interface AccountLinked {
+  token: string;
+  account: { player: string; uuid?: string };
+  mainframes: { id: string; name: string; role?: string }[];
+}
+export type PairPoll =
+  | { status: "pending" }
+  | { status: "denied" }
+  | { status: "expired" }
+  | ({ status: "approved" } & Paired)
+  | ({ status: "linked" } & AccountLinked);
 
 /** Step 2: GET /api/pair/<pairingId> until the player allowed or denied the device. */
 export async function pollPairing(pairingId: string, base = ""): Promise<PairPoll> {
@@ -78,6 +88,16 @@ export async function pollPairing(pairingId: string, base = ""): Promise<PairPol
   const b = await body(res);
   if (isLanOnly(res.status, b)) throw new ApiError("lan_only", LAN_ONLY_TEXT);
   if ((res.status === 404 || res.status === 410) && !b.status) return { status: "expired" };
+  // v0.6: an account code links the browser to the player account
+  if (b.status === "approved" && typeof b.token === "string" && b.account && typeof b.account.player === "string")
+    return {
+      status: "linked",
+      token: b.token,
+      account: { player: String(b.account.player).slice(0, 32), uuid: typeof b.account.uuid === "string" ? b.account.uuid : undefined },
+      mainframes: (Array.isArray(b.mainframes) ? b.mainframes : [])
+        .filter((m: any) => m && typeof m.id === "string")
+        .map((m: any) => ({ id: m.id, name: typeof m.name === "string" ? m.name : "Mainframe", role: typeof m.role === "string" ? m.role : undefined })),
+    };
   // check the status field first: the mod answers "denied" with 403 and "expired" with 404
   if (b.status === "approved" && typeof b.token === "string" && typeof b.mainframeId === "string")
     return {
@@ -101,5 +121,60 @@ export async function fetchMainframes(token: string, base = ""): Promise<Mainfra
   if (res.status === 401 || res.status === 403) throw new ApiError("unauthorized", "Access revoked");
   if (!res.ok) throw new ApiError("server", `HTTP ${res.status}`);
   const list = Array.isArray(b) ? b : Array.isArray(b?.mainframes) ? b.mainframes : b ? [b] : [];
-  return list.filter((m: any) => m && typeof m.id === "string");
+  return list.filter((m: any) => m && typeof m.id === "string") as (MainframeInfo & { role?: string })[];
 }
+
+// ---------------------------------------------------------------- v0.6 APIs
+async function authed<T>(path: string, token: string, init: RequestInit = {}, base = ""): Promise<T> {
+  const res = await request(path, { ...init, headers: { authorization: `Bearer ${token}`, ...(init.headers ?? {}) } }, base);
+  const b = await body(res);
+  if (isLanOnly(res.status, b)) throw new ApiError("lan_only", LAN_ONLY_TEXT);
+  if (res.status === 401) throw new ApiError("unauthorized", "This browser is not linked any more.");
+  if (res.status === 403) throw new ApiError("server", b?.error === "not_allowed" ? "not_allowed" : b?.error ?? "forbidden");
+  if (!res.ok) throw new ApiError("server", b?.error ?? `HTTP ${res.status}`);
+  return b as T;
+}
+
+export interface DeviceEntry {
+  id: string;
+  name: string;
+  type: "desktop" | "phone" | "tablet" | "other";
+  lastIp?: string;
+  lastSeen?: number;
+  created?: number;
+  current?: boolean;
+  mainframes?: string[] | null;
+}
+export const listDevices = (token: string, base = "") => authed<{ devices: DeviceEntry[] }>("/api/devices", token, {}, base);
+export const revokeDevice = (token: string, id: string, base = "") =>
+  authed<{ ok: boolean }>(`/api/devices/${encodeURIComponent(id)}`, token, { method: "DELETE" }, base);
+
+export type RoleName = "viewer" | "operator" | "admin" | "owner";
+export interface AccessDoc {
+  you: { player: string; role: RoleName };
+  players: { uuid: string; player: string; role: RoleName; source: "owner" | "direct" | "team" | "server_admin"; teamRank?: string }[];
+  team: { provider: string; id: string; name: string; mapping: Record<string, RoleName | "none"> } | null;
+  teams: { provider: string; id: string; name: string; ranks: string[] }[];
+  providers: string[];
+}
+export const getAccess = (token: string, mf: string, base = "") => authed<AccessDoc>(`/api/mainframes/${encodeURIComponent(mf)}/access`, token, {}, base);
+export const postAccess = (token: string, mf: string, op: Record<string, unknown>, base = "") =>
+  authed<AccessDoc>(`/api/mainframes/${encodeURIComponent(mf)}/access`, token, { method: "POST", body: JSON.stringify(op) }, base);
+
+export interface ShareEntry {
+  id: string;
+  label: string;
+  createdBy: string;
+  created: number;
+  expires: number | null;
+  maxViewers: number;
+  viewers: number;
+  pages: string[];
+  cards: string[];
+  hideNumbers: boolean;
+}
+export const listShares = (token: string, mf: string, base = "") => authed<{ shares: ShareEntry[] }>(`/api/mainframes/${encodeURIComponent(mf)}/shares`, token, {}, base);
+export const createShare = (token: string, mf: string, input: { label: string; pages: string[]; cards: string[]; expiresIn: number | null; maxViewers: number; hideNumbers: boolean }, base = "") =>
+  authed<{ id: string; secret: string; url: string }>(`/api/mainframes/${encodeURIComponent(mf)}/shares`, token, { method: "POST", body: JSON.stringify(input) }, base);
+export const deleteShare = (token: string, mf: string, id: string, base = "") =>
+  authed<{ ok: boolean }>(`/api/mainframes/${encodeURIComponent(mf)}/shares/${encodeURIComponent(id)}`, token, { method: "DELETE" }, base);

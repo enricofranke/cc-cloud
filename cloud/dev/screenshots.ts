@@ -518,6 +518,94 @@ try {
   await d.waitForSelector(".input-code");
   await shot(d, "desktop-04-access-revoked");
 
+  // ================================================================ v0.6 accounts, roles, shares
+  {
+    const acct = async (player: string) => (await (await fetch(`${origin}/dev/token`, { method: "POST", body: JSON.stringify({ account: player, name: `${player}'s PC` }) })).json()).token as string;
+    const seed = (token: string, player: string) => ({ token, player, deviceName: `${player}'s PC`, linkedAt: Date.now() });
+    const ectx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const ep = await ectx.newPage();
+    watch(ep);
+    await ep.addInitScript((a) => localStorage.setItem("cccloud.account.v1", JSON.stringify(a)), seed(await acct("Enrico"), "Enrico"));
+    await acct("Enrico"); // a second browser of the same player for the devices list
+    await ep.goto(`${origin}/`);
+    await ep.waitForSelector(".mf-card");
+    await ep.waitForTimeout(600);
+    await shot(ep, "desktop-a1-account-mainframes");
+    await ep.click(".mf-card");
+    await ep.waitForSelector(".card");
+    await ep.click(".switcher");
+    await ep.waitForSelector(".switch-menu");
+    await shot(ep, "desktop-a2-switcher-menu");
+    await ep.keyboard.press("Escape");
+    await ep.click(".switcher");
+    await ep.click('.sm-item:has-text("Access")');
+    await ep.waitForSelector(".acc-table");
+    await shot(ep, "desktop-a3-access");
+    await ep.goto(`${origin}/#/devices`);
+    await ep.waitForSelector(".dev-row");
+    await shot(ep, "desktop-a4-devices");
+    // share link: create
+    await ep.goto(`${origin}/#/m/${mock.base.id}/shares`);
+    await ep.waitForSelector(".acc-head");
+    await ep.click('button:has-text("New link")');
+    await ep.waitForSelector(".share-scope");
+    await ep.fill('.sheet .input[maxlength="48"]', "Reactor for the stream");
+    await ep.click('.scope-card:has-text("Reactor") input');
+    await ep.click('.scope-card:has-text("ME Network") input');
+    await ep.click('.sheet input[type="checkbox"] >> nth=-1');
+    await shot(ep, "desktop-a5-new-share");
+    await ep.click('.sheet .pxbtn-gold:has-text("Create link")');
+    await ep.waitForSelector(".sheet .codeblock");
+    const shareUrl = (await ep.locator(".sheet .codeblock pre").innerText()).trim();
+    await shot(ep, "desktop-a6-share-created");
+    await ep.keyboard.press("Escape");
+    await ep.waitForSelector(".dev-row");
+    await shot(ep, "desktop-a7-share-list");
+    await ectx.close();
+
+    // the share viewer: secret scrubbed from the URL, read-only, "Shared by"
+    for (const [w, h, name] of [[1440, 900, "desktop-s1-share-view"], [375, 812, "phone-s9-share-view"]] as const) {
+      const sctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: w < 500 ? 2 : 1 });
+      const sp = await sctx.newPage();
+      watch(sp);
+      await sp.goto(shareUrl.replace(/^https?:\/\/[^/]+/, origin));
+      await sp.waitForSelector(".banner-share");
+      await sp.waitForSelector(".card");
+      await sp.waitForTimeout(500);
+      if (sp.url().includes("#")) throw new Error("share secret still in the URL");
+      if (await sp.locator(".pxbtn, .switch, .range, .search-input").count()) throw new Error("share view shows controls");
+      await shot(sp, name);
+      await sctx.close();
+    }
+
+    // a viewer (team ally) at 375 px: controls disabled with the reason
+    const vctx = await phoneCtx();
+    const vp = await vctx.newPage();
+    watch(vp);
+    const samTok = await acct("Sam");
+    await vp.addInitScript((a) => localStorage.setItem("cccloud.account.v1", JSON.stringify(a)), seed(samTok, "Sam"));
+    await vp.goto(`${origin}/#/m/${mock.base.id}`);
+    await vp.waitForSelector(".banner-readonly");
+    await vp.waitForTimeout(400);
+    await shot(vp, "phone-a1-viewer-role");
+    // keyboard: focus ring on the page tabs
+    await vp.keyboard.press("Tab");
+    await vp.keyboard.press("Tab");
+    await vctx.close();
+
+    const kctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const kp = await kctx.newPage();
+    watch(kp);
+    await kp.addInitScript((a) => localStorage.setItem("cccloud.account.v1", JSON.stringify(a)), seed(await acct("Enrico"), "Enrico"));
+    await kp.goto(`${origin}/#/m/${mock.base.id}`);
+    await kp.waitForSelector(".toptabs .tab");
+    await kp.focus(".toptabs .tab");
+    await kp.keyboard.press("ArrowRight");
+    await kp.waitForTimeout(200);
+    await shot(kp, "desktop-k1-keyboard-focus");
+    await kctx.close();
+  }
+
   // server gone -> unreachable banner (phone, outpost still paired there)
   await mock.close();
   await p.goto(`${origin}/#/m/${outpost.id}`).catch(() => {});

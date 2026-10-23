@@ -186,7 +186,19 @@ function Tabs(props: {
   const [pageSheet, setPageSheet] = useState<ResolvedPage | "new" | null>(null);
   return (
     <>
-      <nav class={props.isPhone ? "tabbar" : "toptabs"} aria-label="Pages">
+      <nav
+        class={props.isPhone ? "tabbar" : "toptabs"}
+        aria-label="Pages"
+        onKeyDown={(e) => {
+          // arrow keys move between tabs
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
+          const tabs = [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(".tab")];
+          const i = tabs.indexOf(document.activeElement as HTMLElement);
+          const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[next]?.focus();
+          e.preventDefault();
+        }}
+      >
         {props.pages.map((p) => (
           <button
             key={p.id}

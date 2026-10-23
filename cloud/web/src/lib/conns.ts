@@ -1,7 +1,8 @@
 // Keeps one MainframeConn per paired mainframe, wired to toasts and notifications.
-import { effect } from "@preact/signals";
+import { effect, signal } from "@preact/signals";
 import { MainframeConn } from "./conn.ts";
-import { saved, renameSaved, removeSaved, type SavedMainframe } from "./store.ts";
+import { saved, renameSaved, removeSaved, account, setAccount, syncAccountMainframes, type SavedMainframe } from "./store.ts";
+import { fetchMainframes, ApiError } from "./api.ts";
 import { navigate, notifyCrit, pushToast, route } from "./ui.ts";
 
 const conns = new Map<string, MainframeConn>();
@@ -10,6 +11,7 @@ function create(m: SavedMainframe) {
   const conn = new MainframeConn({
     baseUrl: location.origin,
     token: m.token,
+    mainframeId: m.mainframeId,
     onAlert: (a, c) => {
       const mfName = c.info.value?.name ?? m.name;
       const viewing = route.value.name === "mainframe" && route.value.id === m.mainframeId;
@@ -30,9 +32,26 @@ function create(m: SavedMainframe) {
     if (conn.status.value !== "unauthorized") return;
     queueMicrotask(() => {
       const name = conn.info.value?.name ?? m.name;
-      removeSaved(m.mainframeId);
+      const why = conn.lastError.value;
+      // the whole account token was revoked: forget the account and its mainframes
+      if (m.viaAccount && why !== "no_access") {
+        setAccount(null);
+        for (const x of saved.value.filter((s) => s.viaAccount)) removeSaved(x.mainframeId);
+      } else removeSaved(m.mainframeId);
       syncConns();
-      pushToast({ level: "warn", title: "Access revoked", text: `This device is no longer paired with ${name}. Pair again with a new code.` }, 10_000);
+      pushToast(
+        {
+          level: "warn",
+          title: "Access revoked",
+          text:
+            why === "no_access"
+              ? `Your player no longer has a role on ${name}.`
+              : m.viaAccount
+                ? "This browser is no longer linked to your player account. Link it again with /cccloud link."
+                : `This browser is no longer paired with ${name}. Pair again with a new code.`,
+        },
+        10_000,
+      );
       const viewing = route.value.name === "mainframe" && route.value.id === m.mainframeId;
       if (viewing || saved.value.length === 0) navigate("/pair", true);
     });
@@ -72,3 +91,28 @@ addEventListener("online", retryAll);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) retryAll();
 });
+
+/** v0.6: refresh the mainframes of the linked account (roles may have changed). */
+/** true while the linked account's mainframe list is being loaded */
+export const accountLoading = signal(!!account.value);
+
+export async function refreshAccount() {
+  const a = account.value;
+  if (!a) {
+    accountLoading.value = false;
+    return;
+  }
+  try {
+    const list = await fetchMainframes(a.token);
+    syncAccountMainframes(list.map((m) => ({ id: m.id, name: m.name, role: (m as { role?: string }).role })), a);
+    syncConns();
+  } catch (e) {
+    if (e instanceof ApiError && e.kind === "unauthorized") {
+      setAccount(null);
+      for (const x of saved.value.filter((s) => s.viaAccount)) removeSaved(x.mainframeId);
+      syncConns();
+    }
+  } finally {
+    accountLoading.value = false;
+  }
+}

@@ -325,7 +325,7 @@ function ItemSheet(props: {
 }
 
 // ---------------------------------------------------------------- watchlist
-export function Watchlist({ w, uplink, conn, locked }: { w: Widget; uplink: Uplink; conn: MainframeConn; locked: boolean }) {
+export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; uplink: Uplink; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
   const rows = useMemo(() => {
     const list = watchRows(w);
     // items below their minimum first
@@ -343,9 +343,11 @@ export function Watchlist({ w, uplink, conn, locked }: { w: Widget; uplink: Upli
           {w.label ?? "Watchlist"}
           {below > 0 && <span class="mini-badge low">{below} low</span>}
         </h4>
-        <button type="button" class="btn btn-small" disabled={readOnly} onClick={() => setAdding(true)}>
-          <IconPlus size={14} /> Add
-        </button>
+        {!viewOnly && (
+          <button type="button" class="btn btn-small" disabled={readOnly} title={readOnly ? "Needs the operator role and a working connection" : undefined} onClick={() => setAdding(true)}>
+            <IconPlus size={14} /> Add
+          </button>
+        )}
       </header>
       {rows.length === 0 ? (
         <p class="store-note">Nothing watched yet. Add items to get a warning when they run low.</p>
@@ -356,7 +358,7 @@ export function Watchlist({ w, uplink, conn, locked }: { w: Widget; uplink: Upli
             const tone = r.count < r.min ? "low" : ratio < 1.1 ? "near" : "ok";
             return (
               <li key={r.name}>
-                <button type="button" class={`watch-row tone-${tone}`} onClick={() => setEdit(r)}>
+                <button type="button" class={`watch-row tone-${tone} ${viewOnly ? "static" : ""}`} disabled={viewOnly} onClick={() => !viewOnly && setEdit(r)}>
                   <ItemIcon name={r.name} displayName={r.displayName} />
                   <span class="item-main">
                     <span class="item-name">{r.displayName}</span>
