@@ -503,7 +503,7 @@
   "cccloud.analyzer.mode.rings": "Reichweiten: Ringe",
   "cccloud.analyzer.mode.spheres": "Reichweiten: Kugeln",
   "cccloud.analyzer.mode.off": "Reichweiten: aus",
-  "cccloud.analyzer.would_connect": "Würde sich mit %s verbinden · %s %% · %s Hops",
+  "cccloud.analyzer.would_connect": "Würde sich mit %s verbinden · %s %% · Hops: %s",
   "cccloud.analyzer.out_of_range": "Außer Reichweite – nächster Knoten: %s, %s Blöcke (Reichweite %s)",
   "cccloud.analyzer.no_network": "Keins deiner Netze ist in der Nähe",
   "cccloud.analyzer.hud_signal": "Signal hier: %s %% über %s",

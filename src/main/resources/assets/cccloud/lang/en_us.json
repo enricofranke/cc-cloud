@@ -503,7 +503,7 @@
   "cccloud.analyzer.mode.rings": "Ranges: rings",
   "cccloud.analyzer.mode.spheres": "Ranges: spheres",
   "cccloud.analyzer.mode.off": "Ranges: off",
-  "cccloud.analyzer.would_connect": "Would connect to %s · %s %% · %s hops",
+  "cccloud.analyzer.would_connect": "Would connect to %s · %s %% · hops: %s",
   "cccloud.analyzer.out_of_range": "Out of range – nearest node: %s, %s blocks (range %s)",
   "cccloud.analyzer.no_network": "None of your networks is near",
   "cccloud.analyzer.hud_signal": "Signal here: %s %% via %s",
