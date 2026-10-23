@@ -22,7 +22,7 @@ public final class ClientMessages {
 
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
-    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, Storage, CraftPreview, Pong, Invalid {
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, RedstoneOverride, Storage, CraftPreview, Pong, Invalid {
     }
 
     /** Storage operations that only read (browse, craftables, fluids, item, cpus). */
@@ -65,6 +65,14 @@ public final class ClientMessages {
 
     /** {@code {"t":"net_unlink","reqId","nodeId"}}: unlink a device from the network map (admin). */
     public record NetUnlink(String reqId, String nodeId) implements Message {
+    }
+
+    /**
+     * v0.7 wireless redstone: {@code {"t":"rs_override","reqId","channel","level":0-15|null,"seconds":1-86400|null}} – an
+     * operator forces a channel's level for {@code seconds} (null = until reset); {@code level:null} clears it.
+     * Answered with {@code rs_result}.
+     */
+    public record RedstoneOverride(String reqId, String channel, @Nullable Integer level, @Nullable Integer seconds) implements Message {
     }
 
     /** Only the type and request id of a message (for the hard deny of share sessions). */
@@ -152,6 +160,18 @@ public final class ClientMessages {
                 if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
                 String nodeId = string(obj, "nodeId");
                 yield nodeId == null || !NODE_ID.matcher(nodeId).matches() ? new Invalid("invalid_message", reqId) : new NetUnlink(reqId, nodeId);
+            }
+            case "rs_override" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                String channel = string(obj, "channel");
+                Integer level = smallInt(obj, "level");
+                Integer seconds = smallInt(obj, "seconds");
+                boolean levelOk = level != null || !obj.has("level") || obj.get("level").isJsonNull();
+                boolean secondsOk = seconds != null || !obj.has("seconds") || obj.get("seconds").isJsonNull();
+                yield channel == null || !ai.ezfox.cccloud.redstone.RedstoneChannels.validName(channel) || !levelOk || !secondsOk
+                    || (level != null && (level < 0 || level > 15)) || (seconds != null && (seconds < 1 || seconds > 86_400))
+                    ? new Invalid("invalid_message", reqId) : new RedstoneOverride(reqId, channel, level, seconds);
             }
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);
@@ -273,6 +293,15 @@ public final class ClientMessages {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    /** An integer field (null if missing, null or not a whole number). */
+    private static @Nullable Integer smallInt(JsonObject obj, String key) {
+        var e = obj.get(key);
+        if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) return null;
+        double d = e.getAsDouble();
+        if (d != Math.rint(d) || Math.abs(d) > 1_000_000) return null;
+        return (int) d;
     }
 
     private static @Nullable String string(JsonObject obj, String key) {

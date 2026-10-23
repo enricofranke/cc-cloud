@@ -213,7 +213,7 @@ public final class BridgeSection implements DashboardSection {
             return;
         }
         var error = ai.ezfox.cccloud.network.NetworkService.checkLink(mainframe, level, be.getBlockPos(),
-            ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE);
+            ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE, sectionId.toString(), host.cloudWired());
         if (error != null) {
             player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
             return;

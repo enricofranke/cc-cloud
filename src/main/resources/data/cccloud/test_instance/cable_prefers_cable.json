@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:cable_prefers_cable",
+  "max_ticks": 800,
+  "structure": "cccloud:test_floor"
+}

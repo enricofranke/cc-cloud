@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "S": "minecraft:string",
+    "G": "#c:glass_panes",
+    "P": "minecraft:prismarine_crystals",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "SGS",
+    "PCP",
+    "SGS"
+  ],
+  "result": {
+    "count": 8,
+    "id": "cccloud:fiber_cable"
+  }
+}

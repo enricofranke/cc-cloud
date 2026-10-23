@@ -13,6 +13,8 @@
     },
     "cccloud:cloud_relay",
     "cccloud:advanced_cloud_relay",
-    "cccloud:ender_relay"
+    "cccloud:ender_relay",
+    "cccloud:fiber_junction",
+    "cccloud:ender_fiber_link"
   ]
 }

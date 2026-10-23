@@ -1,0 +1,23 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "allthetweaks"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "U": "#c:ingots/unobtainium",
+    "A": "allthetweaks:atm_star",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "UUU",
+    "UAU",
+    "UCU"
+  ],
+  "result": {
+    "id": "cccloud:quantum_core"
+  }
+}

@@ -29,7 +29,9 @@ public final class AccessGate {
         /** Access page (roles, teams, permissions). */
         ACCESS(Perm.ACCESS_MANAGE),
         /** Share links. */
-        SHARES(Perm.SHARES_CREATE);
+        SHARES(Perm.SHARES_CREATE),
+        /** v0.7 wireless redstone channel overrides. */
+        REDSTONE(Perm.ACT_REDSTONE);
 
         public final Perm perm;
 
@@ -109,6 +111,7 @@ public final class AccessGate {
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
             case "net_unlink" -> "net_result";
+            case "rs_override" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             case "storage" -> "storage_result";
             case "craft_preview" -> "craft_plan";

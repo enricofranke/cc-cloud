@@ -49,6 +49,9 @@ public interface GameBridge {
     /** Unlinks a device from the network map (admin). Returns null or {@code unknown_node|not_allowed|read_only}. */
     @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId);
 
+    /** v0.7 wireless redstone override of a channel (act.redstone). Returns null or an error code. */
+    @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override);
+
     /** v0.5 rules command (role already checked by the session, re-checked live here). */
     RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command);
 

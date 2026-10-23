@@ -63,6 +63,12 @@ class RouteAuthTest {
         }
 
         @Override
+        public @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override) {
+            fail("redstoneOverride must not be reached without authentication");
+            return null;
+        }
+
+        @Override
         public @Nullable String unlinkNode(AuthStore.Device device, UUID mainframeId, String nodeId) {
             fail("unlinkNode must not be reached without authentication");
             return null;

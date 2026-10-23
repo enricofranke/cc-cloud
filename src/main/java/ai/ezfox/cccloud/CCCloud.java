@@ -29,6 +29,10 @@ public class CCCloud {
         ai.ezfox.cccloud.voxel.VoxelService.init();
         ai.ezfox.cccloud.access.TeamProviders.setDisabled(() -> java.util.Set.copyOf(CloudConfig.get(CloudConfig.DISABLED_TEAM_PROVIDERS)));
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
+        ai.ezfox.cccloud.upgrade.ChunkAnchor.init(modEventBus);
+        // Bandwidth upgrade: browsers per mainframe (only while a game server runs; the web unit tests have none).
+        ai.ezfox.cccloud.web.WebHub.browserLimit = id -> ai.ezfox.cccloud.network.CloudNetwork.server() == null ? Integer.MAX_VALUE
+            : ai.ezfox.cccloud.upgrade.Upgrades.effects(id).browsers();
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
         // Config changes (ranges, power) change the topology.
         modEventBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> ai.ezfox.cccloud.network.NetworkService.markDirty());
@@ -45,6 +49,14 @@ public class CCCloud {
         event.registerBlock(PeripheralCapability.get(), (level, pos, state, be, side) -> {
             var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
             return mainframe == null ? null : mainframe.peripheral();
+        }, ModRegistry.CLOUD_MAINFRAME.get());
+        // Cables: mainframe (both halves), relays and uplinks are CC wired elements; relays are peripherals too.
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.UPLINK_BE.get(), (uplink, side) -> uplink.wired());
+        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.wired());
+        event.registerBlockEntity(PeripheralCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.peripheral());
+        event.registerBlock(dan200.computercraft.api.network.wired.WiredElementCapability.get(), (level, pos, state, be, side) -> {
+            var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
+            return mainframe == null ? null : mainframe.wired();
         }, ModRegistry.CLOUD_MAINFRAME.get());
         // Relays: FE input from every side.
         event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.Energy.BLOCK, ModRegistry.RELAY_BE.get(), (relay, side) -> relay.energy());

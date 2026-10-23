@@ -117,10 +117,76 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
 
     @Override
     protected List<Component> tabs() {
-        if (!manage()) return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.network"));
+        if (!manage()) return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.network"),
+            Component.translatable("cccloud.gui.tab.upgrades"));
         return List.of(Component.translatable("cccloud.gui.tab.overview"), Component.translatable("cccloud.gui.tab.devices"),
             Component.translatable("cccloud.gui.tab.trusted"), Component.translatable("cccloud.gui.tab.security"),
-            Component.translatable("cccloud.gui.tab.network"));
+            Component.translatable("cccloud.gui.tab.network"), Component.translatable("cccloud.gui.tab.upgrades"));
+    }
+
+    private int upgradesTab() {
+        return manage() ? 5 : 2;
+    }
+
+    /** Slots are positioned relative to leftPos/topPos: topPos follows the header height, slots are only active on the Upgrades tab. */
+    @Override
+    public void extractBackground(net.minecraft.client.gui.GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTicks) {
+        topPos = panelY + headerHeight();
+        menu.upgradesVisible = tab == upgradesTab();
+        super.extractBackground(g, mouseX, mouseY, partialTicks);
+    }
+
+    // ---- upgrades tab (v0.7) -----------------------------------------------------------------------------------------
+
+    private void upgrades() {
+        var u = view.has("upgrades") ? view.getAsJsonObject("upgrades") : new com.google.gson.JsonObject();
+        // One fixed block (no scrolling), so the real slots line up with what is drawn here.
+        rows.add(new Row(122, (c, x, y, w) -> {
+            var g = c.g();
+            c.text(Component.translatable("cccloud.gui.upgrades"), x + 2, y + 2, accent());
+            for (int i = 0; i < 4; i++) {
+                var slot = menu.slots.get(i);
+                CloudGui.slot(g, texture(), leftPos + slot.x - 1, topPos + slot.y - 1, slot.hasItem() ? 0 : 1);
+            }
+            var core = menu.slots.get(4);
+            CloudGui.slot(g, texture(), leftPos + core.x - 1, topPos + core.y - 1, 2);
+            for (int i = 5; i < menu.slots.size(); i++) {
+                var slot = menu.slots.get(i);
+                CloudGui.slot(g, texture(), leftPos + slot.x - 1, topPos + slot.y - 1, 0);
+            }
+            // Effective limits next to the slots.
+            int tx = leftPos + menu.slots.get(4).x + 22;
+            int maxW = x + w - tx - 2;
+            long devices = num(u, "devices"), browsers = num(u, "browsers");
+            String unlimited = Component.translatable("cccloud.gui.unlimited").getString();
+            String[] lines = {
+                Component.translatable("cccloud.gui.upgrade.devices", fmt(u, "used"), devices < 0 ? unlimited : String.valueOf(devices)).getString(),
+                Component.translatable("cccloud.gui.upgrade.browsers", browsers < 0 ? unlimited : String.valueOf(browsers)).getString(),
+                Component.translatable("cccloud.gui.upgrade.rules", num(u, "rules"), num(u, "historyHours")).getString(),
+                Component.translatable("cccloud.gui.upgrade.range_fe", num(u, "range"), Math.round(dbl(u, "feFactor") * 100)).getString()
+            };
+            int ly = y + 2;
+            for (var line : lines) {
+                if (maxW > 20) c.text(line, tx, ly, CloudGui.TEXT, maxW);
+                ly += 10;
+            }
+            if (bool(u, "anchor") && maxW > 20) {
+                String anchor = bool(u, "anchorAllowed") ? Component.translatable("cccloud.gui.upgrade.anchor", num(u, "anchorChunks")).getString()
+                    : Component.translatable("cccloud.gui.upgrade.anchor_disabled").getString();
+                c.text(anchor, tx, ly, bool(u, "anchorAllowed") ? CloudGui.GREEN : CloudGui.YELLOW, maxW);
+            }
+        }));
+        if (!manage()) textRow(Component.translatable("cccloud.gui.upgrade.read_only"), CloudGui.TEXT_DIM);
+    }
+
+    private static String fmt(com.google.gson.JsonObject o, String key) {
+        double v = dbl(o, key);
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
+    private static double dbl(com.google.gson.JsonObject o, String key) {
+        var e = o.get(key);
+        return e == null || !e.isJsonPrimitive() ? 0 : e.getAsDouble();
     }
 
     // ---- rows --------------------------------------------------------------------------------------------------------
@@ -128,9 +194,14 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
     @Override
     protected void buildRows() {
         if (!manage()) {
-            if (tab > 1) tab = 0;
+            if (tab > 2) tab = 0;
             if (tab == 1) network();
+            else if (tab == 2) upgrades();
             else overview();
+            return;
+        }
+        if (tab == 5) {
+            upgrades();
             return;
         }
         pendingRows();
@@ -191,8 +262,10 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         var signals = new java.util.HashMap<String, Double>();
         for (var e : network.getAsJsonArray("links")) {
             var l = e.getAsJsonObject();
-            signals.put(str(l, "a") + ">" + str(l, "b"), l.get("signal").getAsDouble());
-            signals.put(str(l, "b") + ">" + str(l, "a"), l.get("signal").getAsDouble());
+            // Cables are stored as -1 (CC cable) / -2 (fiber): the tree shows a cable marker instead of signal bars.
+            double signal = "wired".equals(str(l, "kind")) ? ("fiber".equals(str(l, "medium")) ? -2 : -1) : l.get("signal").getAsDouble();
+            signals.put(str(l, "a") + ">" + str(l, "b"), signal);
+            signals.put(str(l, "b") + ">" + str(l, "a"), signal);
         }
         var orphans = new java.util.ArrayList<com.google.gson.JsonObject>();
         for (var e : nodes) {
@@ -224,7 +297,14 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var g = c.g();
             g.fill(ix, y + 4, ix + 5, y + 9, legacy ? CloudGui.YELLOW : statusColor(status));
             int right = x + w - 2;
-            if (signal != null) {
+            if (signal != null && signal < 0) {
+                // Cable marker: a short plug line (grey = CC cable, cyan = fiber) instead of signal bars.
+                int color = signal < -1.5 ? 0xFF4FE3F0 : 0xFFA0A8AC;
+                g.fill(right - 15, y + 6, right - 3, y + 8, color);
+                g.fill(right - 17, y + 4, right - 15, y + 10, color);
+                g.fill(right - 3, y + 4, right - 1, y + 10, color);
+                right -= 19;
+            } else if (signal != null) {
                 // Signal bars (4)
                 int bars = signal >= 0.75 ? 4 : signal >= 0.5 ? 3 : signal >= 0.15 ? 2 : 1;
                 int color = signal < 0.15 ? CloudGui.YELLOW : CloudGui.CYAN;
@@ -280,9 +360,12 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var a = points.get(str(l, "a"));
             var b = points.get(str(l, "b"));
             if (a == null || b == null) continue;
-            int color = "ender".equals(str(l, "kind")) ? 0xFF9C5BD6 : l.get("signal").getAsDouble() < 0.15 ? 0xFF8A7A20 : 0xFF2C6E7A;
+            boolean cable = "wired".equals(str(l, "kind"));
+            int color = cable ? ("fiber".equals(str(l, "medium")) ? 0xFF4FE3F0 : 0xFFA0A8AC)
+                : "ender".equals(str(l, "kind")) ? 0xFF9C5BD6 : l.get("signal").getAsDouble() < 0.15 ? 0xFF8A7A20 : 0xFF2C6E7A;
             int steps = Math.max(Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1]));
-            for (int i = 0; i <= steps; i += 2) {
+            // Cables solid, radio/ender dotted.
+            for (int i = 0; i <= steps; i += cable ? 1 : 2) {
                 int px = a[0] + (b[0] - a[0]) * i / Math.max(1, steps);
                 int pz = a[1] + (b[1] - a[1]) * i / Math.max(1, steps);
                 g.fill(px, pz, px + 1, pz + 1, color);

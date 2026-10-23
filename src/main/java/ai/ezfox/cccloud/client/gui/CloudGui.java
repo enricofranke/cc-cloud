@@ -55,6 +55,17 @@ public final class CloudGui {
         g.blit(RenderPipelines.GUI_TEXTURED, tex, x, y, u, v, w, h, uw, vh, TEX, TEX);
     }
 
+    /** An 18×18 inventory slot (v0.7 upgrades): 0 = plain, 1 = empty card hint, 2 = Quantum Core slot. */
+    public static void slot(GuiGraphicsExtractor g, Identifier tex, int x, int y, int kind) {
+        if (has(tex)) {
+            region(g, tex, x, y, 18, 18, kind * 18, 80, 18, 18);
+            return;
+        }
+        g.fill(x, y, x + 18, y + 18, 0xFFFFFFFF);
+        g.fill(x, y, x + 17, y + 17, 0xFF373737);
+        g.fill(x + 1, y + 1, x + 17, y + 17, kind == 2 ? 0xFF7A6A30 : 0xFF8B8B8B);
+    }
+
     /** 9-slice: corners 1:1, edges and center stretched. */
     public static void nine(GuiGraphicsExtractor g, Identifier tex, int x, int y, int w, int h, int u, int v, int uw, int vh, int b) {
         int bw = Math.min(b, w / 2), bh = Math.min(b, h / 2);

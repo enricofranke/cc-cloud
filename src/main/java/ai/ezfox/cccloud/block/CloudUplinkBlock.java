@@ -121,6 +121,24 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         return !(path.contains("computer") || path.contains("turtle") || path.contains("modem") || path.equals("cable"));
     }
 
+    // v0.7 wireless redstone: receivers emit their channel's level on every side, transmitters read their neighbours.
+    @Override
+    protected boolean isSignalSource(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        return level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity uplink ? uplink.redstoneOutput() : 0;
+    }
+
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block block, net.minecraft.world.level.redstone.@Nullable Orientation orientation,
+                                   boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, block, orientation, movedByPiston);
+        if (!level.isClientSide() && level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity uplink) uplink.onNeighborChanged();
+    }
+
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
