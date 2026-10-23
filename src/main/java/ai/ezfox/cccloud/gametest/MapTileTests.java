@@ -71,6 +71,15 @@ public final class MapTileTests {
                 var golds = java.util.Set.of(MapColor.GOLD.calculateARGBColor(MapColor.Brightness.LOW), MapColor.GOLD.calculateARGBColor(MapColor.Brightness.NORMAL),
                     MapColor.GOLD.calculateARGBColor(MapColor.Brightness.HIGH));
                 helper.assertTrue(pixels != null && golds.contains(pixels[i]), "gold platform pixel " + Integer.toHexString(pixels == null ? 0 : pixels[i]));
+                if (pixels[i] != MapColor.GOLD.calculateARGBColor(MapColor.Brightness.NORMAL)) {
+                    var key = new MapTileService.Key(dim, MapTileService.Layer.SURFACE, 0, tx, tz);
+                    var level = helper.getLevel();
+                    ai.ezfox.cccloud.CCCloud.LOGGER.warn("[cccloud] map_tiles shade diagnostic: pixel {} at {} – sampled height {} / north {}; world WORLD_SURFACE {} / north {}",
+                        Integer.toHexString(pixels[i]), goldAbs, MapTileService.heightForTest(key, goldAbs.getX(), goldAbs.getZ()),
+                        MapTileService.heightForTest(key, goldAbs.getX(), goldAbs.getZ() - 1),
+                        level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, goldAbs.getX(), goldAbs.getZ()),
+                        level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, goldAbs.getX(), goldAbs.getZ() - 1));
+                }
                 var c = slice[0].join();
                 helper.assertTrue(c.status() == 200, "slice tile: " + c.status());
                 var cut = MapTileService.argbForTest(new MapTileService.Key(dim, MapTileService.Layer.SLICE, caveAbs.getY() + 2, ctx, ctz));

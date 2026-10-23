@@ -254,6 +254,7 @@ public final class MapTileService {
                 byte[] png = any ? PngCodec.encode(MapTileRenderer.SIZE, MapTileRenderer.SIZE, argb) : null;
                 var entry = new Entry(argb, png, etag(png), System.currentTimeMillis());
                 CACHE.put(job.key, entry);
+                if (Boolean.getBoolean("cccloud.gametest")) SAMPLES_FOR_TEST.put(job.key, samples);
                 if (png != null) save(server, job.key, png);
                 finish(server, job, new Tile(png, entry.etag()));
             } catch (RuntimeException e) {
@@ -313,8 +314,17 @@ public final class MapTileService {
         return entry == null ? null : entry.argb();
     }
 
+    private static final Map<Key, MapTileRenderer.Samples> SAMPLES_FOR_TEST = new ConcurrentHashMap<>();
+
+    /** Test hook (GameTest server only): the column heights a tile was rendered from, or MIN_VALUE. */
+    public static int heightForTest(Key key, int x, int z) {
+        var s = SAMPLES_FOR_TEST.get(key);
+        return s == null ? Integer.MIN_VALUE : s.height[Math.floorMod(z, MapTileRenderer.SIZE) * MapTileRenderer.SIZE + Math.floorMod(x, MapTileRenderer.SIZE)];
+    }
+
     /** Test hook. */
     public static void clearForTest() {
+        SAMPLES_FOR_TEST.clear();
         CACHE.clear();
         DIRTY.clear();
     }
