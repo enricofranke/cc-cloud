@@ -42,6 +42,22 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private final TokenBucket actionLimit = new TokenBucket(10, 10);
     /** Item searches: 5 per second (docs/SPEC.md). */
     private final TokenBucket queryLimit = new TokenBucket(5, 5);
+    /** Terminal input: 20 messages per second (each up to 32 events). */
+    private final TokenBucket terminalLimit = new TokenBucket(20, 20);
+    /** This session as a viewer of browser terminals (v0.5 E). */
+    private final ai.ezfox.cccloud.terminal.TerminalService.Viewer terminalViewer = new ai.ezfox.cccloud.terminal.TerminalService.Viewer() {
+        @Override
+        public void send(List<String> messages) {
+            WebSocketSession.this.send(messages);
+        }
+
+        @Override
+        public boolean allowed() {
+            var d = device;
+            return !closed && share == null && d != null && instance.auth.isValid(d.tokenHash())
+                && AccessGate.check(role, perms, AccessGate.Kind.TERMINAL) == null;
+        }
+    };
     private @Nullable Channel channel;
     private volatile State state = State.NEW;
     private volatile AuthStore.@Nullable Device device;
@@ -148,6 +164,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.Storage storage -> storage(current, storage);
             case ClientMessages.CraftPreview preview -> craftPreview(current, preview);
+            case ClientMessages.Terminal terminal -> terminal(current, terminal);
         }
     }
 
@@ -568,6 +585,96 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         send(List.of(Json.GSON.toJson(json)));
     }
 
+    /**
+     * v0.5 E browser terminal: open (permission {@code terminal}, the mainframe PIN when one is set), input (rate
+     * limited, validated against the terminal), close. Results as {@code term_result}; frames come from the
+     * TerminalService as {@code term} / {@code term_closed}.
+     */
+    private void terminal(AuthStore.Device current, ClientMessages.Terminal terminal) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.TERMINAL);
+        if (denied != null) {
+            if (terminal.reqId() != null) sendTermResult(terminal.reqId(), denied, null, null);
+            return;
+        }
+        UUID mainframe = mainframeId;
+        switch (terminal.op()) {
+            case "term_close" -> onServer(terminal.reqId(), () -> {
+                instance.bridge.terminalClose(mainframe, terminal.uplinkId(), terminalViewer);
+                return null;
+            });
+            case "term_input" -> {
+                if (!terminalLimit.tryAcquire()) {
+                    if (terminal.reqId() != null) sendTermResult(terminal.reqId(), "rate_limited", null, null);
+                    return;
+                }
+                onServer(terminal.reqId(), () -> instance.bridge.terminalInput(current, mainframe, terminal.uplinkId(), terminalViewer, terminal.events()));
+            }
+            default -> {
+                if (!actionLimit.tryAcquire()) {
+                    sendTermResult(terminal.reqId(), "rate_limited", null, null);
+                    return;
+                }
+                if (!instance.auth.hasPin(mainframe)) {
+                    onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                    return;
+                }
+                long lockedFor = instance.auth.pinLockedFor(current.tokenHash());
+                if (lockedFor > 0) {
+                    sendTermResult(terminal.reqId(), "pin_locked", "retryAfter", lockedFor);
+                    return;
+                }
+                if (terminal.pin() == null) {
+                    sendTermResult(terminal.reqId(), "pin_required", null, null);
+                    return;
+                }
+                try {
+                    instance.pinExecutor.execute(() -> {
+                        var check = instance.auth.checkPin(mainframe, current.tokenHash(), terminal.pin());
+                        switch (check.result()) {
+                            case OK -> onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                            case NOT_SET -> onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                            case WRONG -> sendTermResult(terminal.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                            case LOCKED -> {
+                                sendTermResult(terminal.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
+                                instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));
+                            }
+                        }
+                    });
+                } catch (RejectedExecutionException e) {
+                    sendTermResult(terminal.reqId(), "busy", null, null);
+                }
+            }
+        }
+    }
+
+    /** Runs a terminal operation on the server thread and answers with {@code term_result} when there is a reqId. */
+    private void onServer(@Nullable String reqId, java.util.function.Supplier<@Nullable String> operation) {
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = operation.get();
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error in a browser terminal of {}", ip, e);
+                    error = "internal_error";
+                }
+                if (reqId != null) sendTermResult(reqId, error, null, null);
+            });
+        } catch (RejectedExecutionException e) {
+            if (reqId != null) sendTermResult(reqId, "offline", null, null);
+        }
+    }
+
+    private void sendTermResult(@Nullable String reqId, @Nullable String error, @Nullable String extraKey, @Nullable Number extraValue) {
+        var json = new JsonObject();
+        json.addProperty("t", "term_result");
+        if (reqId != null) json.addProperty("reqId", reqId);
+        json.addProperty("ok", error == null);
+        if (error != null) json.addProperty("error", error);
+        if (extraKey != null && extraValue != null) json.addProperty(extraKey, extraValue);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
     private void sendResult(@Nullable String reqId, @Nullable String error) {
         sendResult(reqId, error, null, null);
     }
@@ -661,7 +768,15 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         closed = true;
         if (authDeadline != null) authDeadline.cancel(false);
         if (pingTask != null) pingTask.cancel(false);
-        if (state == State.READY) WebHub.INSTANCE.removeSession(this);
+        if (state == State.READY) {
+            WebHub.INSTANCE.removeSession(this);
+            try {
+                UUID mf = mainframeId;
+                instance.bridge.serverExecutor().execute(() -> instance.bridge.terminalClose(mf, null, terminalViewer));
+            } catch (RejectedExecutionException ignored) {
+                // server stopping
+            }
+        }
         super.channelInactive(ctx);
     }
 

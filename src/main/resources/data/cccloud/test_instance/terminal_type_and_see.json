@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:terminal_type_and_see",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

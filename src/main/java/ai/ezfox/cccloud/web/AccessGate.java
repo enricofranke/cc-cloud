@@ -30,6 +30,8 @@ public final class AccessGate {
         ACCESS(Perm.ACCESS_MANAGE),
         /** Share links. */
         SHARES(Perm.SHARES_CREATE),
+        /** v0.5 E browser terminal. */
+        TERMINAL(Perm.TERMINAL),
         /** v0.7 wireless redstone channel overrides. */
         REDSTONE(Perm.ACT_REDSTONE);
 
@@ -98,7 +100,7 @@ public final class AccessGate {
             case ACCESS_GET, ACCESS_POST -> Perm.ACCESS_MANAGE;
             case SHARES_GET, SHARES_POST, SHARE_DELETE -> Perm.SHARES_CREATE;
             case PUSH_GET, PUSH_POST -> Perm.PUSH_MANAGE;
-            case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT -> Perm.SCRIPTS_UPLOAD;
+            case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_MOVE -> Perm.SCRIPTS_UPLOAD;
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;
             case MAP_TILE, VOXELS -> Perm.VIEW_POSITIONS;
@@ -125,6 +127,7 @@ public final class AccessGate {
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             case "storage" -> "storage_result";
             case "craft_preview" -> "craft_plan";
+            case "term_open", "term_input" -> "term_result";
             default -> null;
         };
         var json = new JsonObject();

@@ -574,6 +574,16 @@ Implemented in `push/` (`PushTarget`, `UrlPolicy` = SSRF rules, `PushFormat`, `P
 - **Lua editor**: file tree of the computer's filesystem (only that computer's own drive, no disk drives, no rom writes), open/edit/save files with syntax highlighting (lightweight editor bundled, e.g. CodeMirror 6 core with the Lua mode, lazy-loaded chunk), "Save & run" (runs `shell.run(file)` via a queued event the cloud.ui/startup helper listens to, or via the terminal by typing the command). Limits: file size ≤ 256 KB, path validation, quota respected, audit log.
 - Both are behind a per-mainframe setting `allowRemoteTerminal` (default true for owner/trusted, PIN-protected if a PIN is set).
 
+### E. Browser terminal + Lua editor – web protocol and implementation notes (mod side)
+**Editor:** uses the script import API (section "Script import – HTTP API"): `?tree=true` listing, 8-level paths, folders (`?dir=true`), `POST …/move`, save with `?ifMatch=<hash>` (conflict check), "Save & run" = `PUT` then `POST …/run`. Permissions `scripts.upload` / `scripts.delete` / `scripts.run`, PIN, rate limit and audit as there.
+
+**Terminal** (`terminal/`: `TerminalFrame` = picture + diff, `TerminalInput` = strict input, `TerminalService` = streaming on the server thread; config `[terminal] terminalEnabled`, default true). Permission **`terminal`** (admin/owner presets; removed by `cccloud.feature.scripts=false`); the mainframe PIN when one is set. The computer is the one behind a Cloud Uplink (`uplinkId`), like the script import. The picture comes from CC's public `ServerComputer.getTerminalState()` (a copy), so CC internals are not touched.
+- `{"t":"term_open","reqId","uplinkId","pin?"}` → `{"t":"term_result","reqId","ok","error?"}`. Errors: `forbidden`/`not_allowed`/`read_only` (permission), `pin_required`, `wrong_pin` (+ `attemptsLeft`), `pin_locked` (+ `retryAfter`), `unknown_computer`, `disabled`, `too_many` (2 open terminals per session, 8 viewers per computer), `rate_limited`. Opening is written to the audit log. Sending `term_open` again re-sends the full picture.
+- Server → client, up to 10 per second, only when something changed: `{"t":"term","uplinkId","on":true,"full":bool,"w","h","colour" (full only),"cursor":{"x","y","blink"},"palette":["#rrggbb"×16] (full or changed; indexed by blit digit, "0" = white by default),"rows":[{"y","text","fg","bg"}]}` – `full:true` replaces everything, otherwise only the listed rows changed. `text` is CC's 8-bit charset (control characters as spaces), `fg`/`bg` are blit strings (`0`-`f`). While the computer is off: `{"t":"term","uplinkId","on":false}`.
+- `{"t":"term_closed","uplinkId","reason"}`: `forbidden` (rights lost – checked every frame), `unknown_computer` (uplink/computer gone), `disabled`, `unsupported`.
+- `{"t":"term_input","uplinkId","events":[…],"reqId?"}` (20 messages/s, ≤ 32 events each; answered with `term_result` only when a `reqId` is given): `{"type":"char","c":"a"}` (one printable character), `{"type":"key","key":257,"held":false}` / `{"type":"key_up","key":257}` (GLFW key codes like CC's `keys` API, 1–348), `{"type":"paste","text"}` (≤ 512, first line only), `{"type":"terminate"}`, `{"type":"mouse_click|mouse_up|mouse_drag","button":1-3,"x","y"}` and `{"type":"mouse_scroll","dir":-1|1,"x","y"}` (advanced computers, 1-based inside the terminal), and the power controls `turn_on`, `reboot`, `shutdown`. Errors: `invalid_input` (the whole message is refused), `not_open`, `computer_off` (only `turn_on` works while off).
+- `{"t":"term_close","uplinkId"}`; closing the socket closes every terminal of the session. Share sessions are always refused.
+
 ### F. HTTPS via Tailscale + statistics
 - Docs page: "Install as an app with HTTPS via Tailscale" (`tailscale serve --https=443 http://localhost:8787`, or `tailscale cert`) – the mod only needs `publicUrl` set and trusted proxy 127.0.0.1. Detect `Tailscale-User-Login` headers? No – keep auth as is.
 - **Long-term stats**: any numeric widget can opt in (`opts.history="1h"|"24h"|"7d"`); the mod downsamples (1 min / 5 min / 30 min buckets) and stores compactly per mainframe (cap 2 MB). Charts in the dashboard with range switcher; CSV export (canControl).
@@ -1064,7 +1074,7 @@ Push Lua programs from the browser straight onto a CC computer through the mainf
 
 #### Script import – HTTP API (mod side, implemented)
 All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_allowed"}`; no role → `403 {"error":"no_access"}`). `<uplinkId>` is the card (section id) of a Cloud Uplink. Its computer is the CC computer the uplink is placed on. If the uplink is not on a computer, it is the one computer attached to the uplink over a modem. Errors are `{"error"}` with the status shown.
-- **Paths:** `name` or `folder/name`, each part `[A-Za-z0-9_.-]{1,64}`, not `.`/`..`.
+- **Paths:** up to 8 levels (`a/b/c.lua`, v0.5 E editor; ≤ 255 characters), each part `[A-Za-z0-9_.-]{1,64}`, not `.`/`..`.
   - The first part must not be `rom`, `disk`, `disk2`… (other mounts) or `.cloud` (reserved).
   - No leading `/`, no `\`.
   - Bad path → `400 invalid_path`.
@@ -1072,18 +1082,22 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
   - `403 pin_required`;
   - `403 wrong_pin` + `attemptsLeft`;
   - `403 pin_locked` + `retryAfter`.
-- **Write rate limit:** 10 writes/deletes/runs per minute per device → `429 rate_limited`.
+- **Write rate limit:** 10 writes/deletes/runs/moves per minute per device → `429 rate_limited`.
 - **Card errors:** `404 unknown_computer` (the card is not an uplink on/with a computer, or not loaded), `409 offline` (the mainframe is offline).
 - `GET /api/mainframes/<id>/computers/<uplinkId>/files`
   → `{"computer":{"id":0,"label":"Base","on":true,"advanced":true},"used":12345,"capacity":1000000,"files":[{"path":"startup.lua","size":120,"dir":false}]}`
-  - Two levels deep, at most 500 entries.
+  - Two levels deep, at most 500 entries. `?tree=true` (editor): the whole tree up to 8 levels, depth first, sorted; `"truncated":true` when the 500 entries were reached. `rom`, disk mounts and `.cloud` are never listed.
 - `GET …/files/<path>` → the raw file, `text/plain; charset=utf-8`, ≤ 256 KB.
 - `PUT …/files/<path>[?overwrite=true][&startup=true]` with the raw file as the body (UTF-8, ≤ 256 KB).
-  - Response: `{"ok":true,"path","size"}`.
+  - Response: `{"ok":true,"path","size","hash"}` (`hash` = the first 16 hex characters of SHA-256 of the content).
+  - Missing parent folders are created.
+  - `?ifMatch=<hash>` (editor saves): `409 changed` when the file on the computer no longer has that hash (or was deleted) – the editor then offers reload/overwrite. The browser computes the hash of what it loaded with the same rule.
+  - `?dir=true` with an empty body creates a folder (and its parents) → `{"ok":true,"path"}`; `409 exists` when a file is in the way.
   - Errors: `409 exists` (without `overwrite=true`), `413 too_large`, `507 quota` (the computer's disk space, CC config `computerSpaceLimit`).
   - The write is atomic: a temporary file, then a rename.
   - `startup=true` also writes `startup.lua` containing `shell.run("<path>")`.
-- `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`.
+- `DELETE …/files/<path>` → `{"ok":true}`, or `404 not_found`. Folders are deleted with their content.
+- `POST …/move` with `{"from","to","overwrite?"}` (editor rename/move of files and folders; permission `scripts.upload`, PIN, rate limit) → `{"ok":true}`; `404 not_found`, `409 exists` (target exists; files only overwrite with `overwrite:true`), `409 into_itself`, `409 not_a_directory`. Parents of `to` are created.
 - `POST …/run` with `{"path":"control-room.lua","mode":"auto"|"event"|"reboot"}` → `{"ok":true,"started":"event"|"reboot"}`. Only an uploaded file name ever reaches the computer, never a command string. Modes:
   - `event` queues the event `cloud_run` with the path. A background "cloud" tab (`cloud-run --listen`) runs the file in a new multishell tab. That tab only exists on advanced computers that asked for it: the ROM helper `rom/autorun/cloud.lua` starts it when `.cloud/runner` exists. Without multishell, a running `cloud.ui` dashboard runs it.
   - `reboot` writes `.cloud/run_next` and restarts the computer. The autorun helper runs the file once after boot.
@@ -1105,9 +1119,20 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 - The dashboard also gets a **Store tab** that browses the same index directly.
 - Safety messaging: community scripts run on your CC computer and can control what that computer controls (e.g. your reactor) – they cannot touch the Minecraft server itself. Reviewed badge for merged scripts; report button (opens a GitHub issue template).
 
+#### Script Store – dashboard side (web, defined 2026-10-23)
+**Config delivery (mod side, to do):** two server config keys, `scriptStore` (bool, default true) and `scriptStoreUrl` (default `https://cccloud.ezfox.ai/store/`, must be `https://`, ends with `/`). The `snapshot` gains `"store":{"url":"https://…/store/"}` when enabled and the player has `scripts.upload`, else `"store":null`. The web server adds the store's origin to the CSP `connect-src` (only when enabled). No other request goes from the mod to the store.
+
+**Index and files (static, CORS GET):** `<url>index.json` (`format: 1`, `scripts:[{id, version, name{en,de}, description{en,de}, author{name,github?,url?}, license, tags[], uses[], requires{cccloud, computer, peripherals[], mods?[]}, entry, files:[{path,size,sha256}], sha256, size, lines, reviewed, updated?}]`) and the files at `<url>files/<id>/<version>/<path>`.
+
+**Dashboard flow:**
+- A **Store** entry in the mainframe menu (admins with `scripts.upload`): browse/search the index (cards with name, description, tags, "uses", reviewed badge), open a script → full source of every file (fetched and SHA-256-verified against the index before display) + the "uses" list + the safety note → pick a computer (any card with a computer) → install via the Script import API (`PUT …/files/<path>?overwrite=…`, PIN, then optional run/startup).
+- `/store#install=<id>@<version>`: same view for that script, opened from the website; the fragment is cleared with `history.replaceState`; a version mismatch with the index is shown ("the store has 1.2.0 now").
+- Installed store scripts are remembered per computer in the browser (`localStorage`, key `cccloud.store.<mainframeId>`: `{uplinkId: {path: {id, version, sha256}}}`) and show **Update available** when the index has a newer version. Files changed on the computer since install (different content) are flagged "changed locally" before overwriting.
+- A failed hash check never installs anything ("the file does not match the store index – not installed").
+
 ### Fine-grained permissions per mainframe (requested 2026-10-23)
 Roles stay as presets, but every grant can be customized with individual permissions.
-- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (later), `layout.edit`, `rules.edit`, `rules.toggle`, `push.manage` (push targets, v0.5 D), `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
+- Permissions (capabilities): `view`, `view.positions`, `act.buttons` (buttons/toggles/sliders/inputs), `act.redstone` (auto card redstone/power), `storage.search`, `storage.craft`, `storage.autostock`, `scripts.upload`, `scripts.run`, `scripts.delete`, `terminal` (browser terminal, v0.5 E), `layout.edit`, `rules.edit`, `rules.toggle`, `push.manage` (push targets, v0.5 D), `devices.manage`, `access.manage`, `shares.create`, `pin.manage`, `power.toggle` (dashboard on/off), `network.link` (link/unlink devices with the Link Card).
 - Presets: viewer = {view, storage.search}; operator = viewer + {act.*, storage.craft, rules.toggle}; admin = everything except ownership transfer; owner = all. A grant = preset + `allow`/`deny` lists (deny wins). Team-rank grants work the same way.
 - `AccessResolver` returns an effective permission set; every check uses `has(perm)` instead of role comparisons (keep the role for display). PIN-protected widgets additionally require the PIN as today.
 - Web "Access" page: per player/team row a preset dropdown + "Custom" expanding to grouped toggles with short explanations ("Upload scripts – code runs on your computers and can control everything attached"). In-game Players tab: same presets, custom via the web.

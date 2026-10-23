@@ -128,4 +128,18 @@ class TestBridge implements GameBridge {
         dispatched.add("api:" + route);
         return AccessApi.error(404, "not_found");
     }
+
+    @Override
+    public @org.jspecify.annotations.Nullable String terminalOpen(AuthStore.Device device, UUID mainframeId, UUID uplinkId,
+                                                                  ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
+        dispatched.add("term_open");
+        return null;
+    }
+
+    @Override
+    public @org.jspecify.annotations.Nullable String terminalInput(AuthStore.Device device, UUID mainframeId, UUID uplinkId,
+                                                                   ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer, com.google.gson.JsonElement events) {
+        dispatched.add("term_input");
+        return null;
+    }
 }

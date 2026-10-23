@@ -15,6 +15,9 @@ public final class ScriptFiles {
     public static final int MAX_FILE = 256 * 1024;
     public static final int MAX_LIST = 500;
     public static final String RESERVED = ".cloud";
+    /** Folder levels of a path (editor file tree). */
+    public static final int MAX_DEPTH = 8;
+    public static final int MAX_PATH = 255;
     private static final Pattern PART = Pattern.compile("[A-Za-z0-9_.-]{1,64}");
     private static final Pattern DISK = Pattern.compile("disk[0-9]*");
 
@@ -62,40 +65,94 @@ public final class ScriptFiles {
     }
 
     /**
-     * Normalizes a user path: {@code name} or {@code folder/name}; no {@code ..}, no absolute paths, no {@code rom/},
-     * disk mounts or the reserved {@code .cloud} folder. Null if invalid.
+     * Normalizes a user path: up to {@link #MAX_DEPTH} levels ({@code a/b/c.lua}); no {@code ..}, no absolute paths, no
+     * {@code rom/}, disk mounts or the reserved {@code .cloud} folder. Null if invalid.
      */
     public static @Nullable String validate(@Nullable String path) {
-        if (path == null || path.isEmpty() || path.length() > 130 || path.startsWith("/") || path.contains("\\") || path.endsWith("/")) return null;
+        if (path == null || path.isEmpty() || path.length() > MAX_PATH || path.startsWith("/") || path.contains("\\") || path.endsWith("/")) return null;
         String[] parts = path.split("/", -1);
-        if (parts.length > 2) return null;
+        if (parts.length > MAX_DEPTH) return null;
         for (String part : parts) {
             if (!PART.matcher(part).matches() || part.equals(".") || part.equals("..")) return null;
         }
         String first = parts[0].toLowerCase(java.util.Locale.ROOT);
-        if (parts.length == 2 || parts.length == 1) {
-            if (first.equals("rom") || DISK.matcher(first).matches() || first.equals(RESERVED)) return null;
-        }
+        if (first.equals("rom") || DISK.matcher(first).matches() || first.equals(RESERVED)) return null;
         return path;
     }
 
     /** Files and folders two levels deep (at most {@link #MAX_LIST}), the reserved folder hidden. */
     public static List<Entry> list(Store store) throws IOException {
+        return list(store, 2);
+    }
+
+    /**
+     * Files and folders up to {@code depth} levels (editor tree: {@link #MAX_DEPTH}), depth first and sorted, at most
+     * {@link #MAX_LIST} entries; the reserved folder, {@code rom} and disk mounts are hidden.
+     */
+    public static List<Entry> list(Store store, int depth) throws IOException {
         var result = new ArrayList<Entry>();
-        for (String name : sorted(store.list(""))) {
-            if (result.size() >= MAX_LIST) break;
-            if (name.equals(RESERVED)) continue;
-            boolean dir = store.isDirectory(name);
-            result.add(new Entry(name, dir ? 0 : store.size(name), dir));
-            if (!dir) continue;
-            for (String child : sorted(store.list(name))) {
-                if (result.size() >= MAX_LIST) break;
-                String path = name + "/" + child;
-                boolean childDir = store.isDirectory(path);
-                result.add(new Entry(path, childDir ? 0 : store.size(path), childDir));
-            }
-        }
+        walk(store, "", 1, Math.max(1, Math.min(MAX_DEPTH, depth)), result);
         return result;
+    }
+
+    private static void walk(Store store, String dir, int level, int depth, List<Entry> result) throws IOException {
+        for (String name : sorted(store.list(dir))) {
+            if (result.size() >= MAX_LIST) return;
+            String path = dir.isEmpty() ? name : dir + "/" + name;
+            String lower = name.toLowerCase(java.util.Locale.ROOT);
+            if (dir.isEmpty() && (lower.equals(RESERVED) || lower.equals("rom") || DISK.matcher(lower).matches())) continue;
+            boolean isDir = store.isDirectory(path);
+            result.add(new Entry(path, isDir ? 0 : store.size(path), isDir));
+            if (isDir && level < depth) walk(store, path, level + 1, depth, result);
+        }
+    }
+
+    /** Content hash for the editor's "changed meanwhile" check: the first 16 hex characters of SHA-256. */
+    public static String hash(byte[] data) {
+        try {
+            byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(data);
+            return java.util.HexFormat.of().formatHex(digest).substring(0, 16);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Creates a folder (and its parents). */
+    public static Result makeDirectory(Store store, String path) throws IOException {
+        if (store.exists(path)) return store.isDirectory(path) ? Result.ok(0) : Result.fail(409, "exists");
+        String error = parents(store, path);
+        if (error != null) return Result.fail(409, error);
+        store.makeDirectory(path);
+        return Result.ok(0);
+    }
+
+    /** Creates the missing parent folders of a path; an error if one of them is a file. */
+    private static @Nullable String parents(Store store, String path) throws IOException {
+        String[] parts = path.split("/");
+        var dir = new StringBuilder();
+        for (int i = 0; i < parts.length - 1; i++) {
+            if (i > 0) dir.append('/');
+            dir.append(parts[i]);
+            String d = dir.toString();
+            if (store.exists(d) && !store.isDirectory(d)) return "not_a_directory";
+            if (!store.exists(d)) store.makeDirectory(d);
+        }
+        return null;
+    }
+
+    /** Renames/moves a file or folder; refuses to overwrite unless asked, and moving a folder into itself. */
+    public static Result move(Store store, String from, String to, boolean overwrite) throws IOException {
+        if (!store.exists(from)) return Result.fail(404, "not_found");
+        if (from.equals(to)) return Result.ok(0);
+        if (to.startsWith(from + "/")) return Result.fail(409, "into_itself");
+        if (store.exists(to)) {
+            if (!overwrite || store.isDirectory(to) || store.isDirectory(from)) return Result.fail(409, "exists");
+            store.delete(to);
+        }
+        String error = parents(store, to);
+        if (error != null) return Result.fail(409, error);
+        store.rename(from, to);
+        return Result.ok(0);
     }
 
     private static List<String> sorted(List<String> names) {
@@ -123,12 +180,8 @@ public final class ScriptFiles {
         // Each file costs at least a little space in CC's accounting; keep a margin for the temporary copy.
         if (store.remaining() + old < data.length + 512L) return Result.fail(507, "quota");
         if (!store.exists(RESERVED)) store.makeDirectory(RESERVED);
-        int slash = path.indexOf('/');
-        if (slash > 0) {
-            String dir = path.substring(0, slash);
-            if (store.exists(dir) && !store.isDirectory(dir)) return Result.fail(409, "not_a_directory");
-            if (!store.exists(dir)) store.makeDirectory(dir);
-        }
+        String parentError = parents(store, path);
+        if (parentError != null) return Result.fail(409, parentError);
         String temp = RESERVED + "/upload.tmp";
         if (store.exists(temp)) store.delete(temp);
         store.writeNew(temp, data);

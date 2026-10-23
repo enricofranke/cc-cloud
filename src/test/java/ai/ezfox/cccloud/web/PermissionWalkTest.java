@@ -61,6 +61,7 @@ class PermissionWalkTest {
         expected.put(Router.Id.MAP_TILE, Perm.VIEW_POSITIONS);
         expected.put(Router.Id.VOXELS, Perm.VIEW_POSITIONS);
         expected.put(Router.Id.PUSH_GET, Perm.PUSH_MANAGE);
+        expected.put(Router.Id.SCRIPT_MOVE, Perm.SCRIPTS_UPLOAD);
         expected.put(Router.Id.PUSH_POST, Perm.PUSH_MANAGE);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
@@ -176,6 +177,8 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"cancel\",\"jobId\":\"abc\"}", Perm.STORAGE_CRAFT);
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"favorite\",\"name\":\"minecraft:stick\",\"on\":true}", Perm.ACT_BUTTONS);
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"autostock\",\"name\":\"minecraft:stick\",\"min\":5,\"target\":10,\"autoCraft\":true}", Perm.STORAGE_AUTOSTOCK);
+        cases.put("{\"t\":\"term_open\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\"}", Perm.TERMINAL);
+        cases.put("{\"t\":\"term_input\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"events\":[{\"type\":\"char\",\"c\":\"a\"}]}", Perm.TERMINAL);
         cases.put("{\"t\":\"craft_preview\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:stick\",\"count\":4}", Perm.STORAGE_CRAFT);
         // Message types that need no mainframe permission beyond the login itself.
         var free = Set.of(ClientMessages.Auth.class, ClientMessages.AuthShare.class, ClientMessages.Pong.class, ClientMessages.Invalid.class);

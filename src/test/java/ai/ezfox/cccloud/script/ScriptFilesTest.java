@@ -69,6 +69,14 @@ class ScriptFilesTest {
         @Override
         public void rename(String from, String to) {
             ops.add("rename " + from + " " + to);
+            if (dirs.contains(from)) {
+                for (var d : new ArrayList<>(dirs)) if (d.equals(from) || d.startsWith(from + "/")) {
+                    dirs.remove(d);
+                    dirs.add(to + d.substring(from.length()));
+                }
+                for (var f : new ArrayList<>(files.keySet())) if (f.startsWith(from + "/")) files.put(to + f.substring(from.length()), files.remove(f));
+                return;
+            }
             files.put(to, files.remove(from));
         }
 
@@ -93,11 +101,38 @@ class ScriptFilesTest {
     @Test
     void traversalAndMountsAreRefused() {
         for (String bad : new String[]{"..", "../x.lua", "a/../b", "/startup.lua", "rom/programs/x.lua", "rom", "disk/x.lua", "disk2/x.lua",
-            "DISK/x.lua", ".cloud/run_next", "a/b/c.lua", "a\\b.lua", "", "x/", "./x", "with space.lua", "ümlaut.lua", "a".repeat(65)}) {
+            "DISK/x.lua", ".cloud/run_next", "a/b/c/d/e/f/g/h/i.lua", "a\\b.lua", "", "x/", "./x", "with space.lua", "ümlaut.lua", "a".repeat(65)}) {
             assertNull(ScriptFiles.validate(bad), bad);
         }
         assertEquals("startup.lua", ScriptFiles.validate("startup.lua"));
         assertEquals("programs/reactor.lua", ScriptFiles.validate("programs/reactor.lua"));
+        assertEquals("a/b/c/d/e/f/g/h.lua", ScriptFiles.validate("a/b/c/d/e/f/g/h.lua"), "editor: 8 levels");
+        assertNull(ScriptFiles.validate("x/rom/../y"));
+    }
+
+    @Test
+    void editorTreeFoldersMoveAndHash() throws IOException {
+        var store = new MemoryStore(100_000);
+        assertNull(ScriptFiles.write(store, "lib/net/http.lua", "a".getBytes(StandardCharsets.UTF_8), false).error(), "parents are created");
+        assertTrue(store.isDirectory("lib") && store.isDirectory("lib/net"));
+        assertNull(ScriptFiles.makeDirectory(store, "data/logs").error());
+        assertEquals(409, ScriptFiles.makeDirectory(store, "lib/net/http.lua").status(), "a file is in the way");
+        store.makeDirectory("rom");
+        store.makeDirectory("disk");
+        var tree = ScriptFiles.list(store, ScriptFiles.MAX_DEPTH).stream().map(ScriptFiles.Entry::path).toList();
+        assertEquals(List.of("data", "data/logs", "lib", "lib/net", "lib/net/http.lua"), tree, "rom, disk and .cloud are hidden");
+        assertEquals(List.of("data", "data/logs", "lib", "lib/net"), ScriptFiles.list(store).stream().map(ScriptFiles.Entry::path).toList(), "two levels");
+        assertNull(ScriptFiles.move(store, "lib/net/http.lua", "lib/http.lua", false).error());
+        assertTrue(store.exists("lib/http.lua") && !store.exists("lib/net/http.lua"));
+        assertEquals("into_itself", ScriptFiles.move(store, "lib", "lib/sub/lib", false).error());
+        ScriptFiles.write(store, "x.lua", "x".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals("exists", ScriptFiles.move(store, "x.lua", "lib/http.lua", false).error());
+        assertNull(ScriptFiles.move(store, "x.lua", "lib/http.lua", true).error(), "overwrite on request");
+        assertNull(ScriptFiles.move(store, "lib", "src/lib", false).error(), "folders move with their files");
+        assertTrue(store.exists("src/lib/http.lua"));
+        assertEquals(404, ScriptFiles.move(store, "nope", "a", false).status());
+        assertEquals(16, ScriptFiles.hash(new byte[0]).length());
+        assertEquals("e3b0c44298fc1c14", ScriptFiles.hash(new byte[0]), "SHA-256 prefix, same as the browser computes");
     }
 
     @Test

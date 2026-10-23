@@ -57,6 +57,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.BooleanValue PUSH_ENABLED;
+    public static final ModConfigSpec.BooleanValue TERMINAL_ENABLED;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
@@ -207,6 +208,13 @@ public final class CloudConfig {
         MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
             .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("terminal");
+        TERMINAL_ENABLED = b.comment("Browser terminal: players with the 'terminal' permission (admins by default) see and type into the terminal of a",
+                "computer behind an uplink. Needs the mainframe PIN when one is set.")
+            .translation("cccloud.configuration.terminalEnabled")
+            .define("terminalEnabled", true);
         b.pop();
 
         b.push("push");

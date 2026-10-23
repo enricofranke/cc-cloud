@@ -41,11 +41,12 @@ public final class ScriptApi {
         var store = target.store(server);
         try {
             return switch (request.route()) {
-                case SCRIPT_LIST -> list(target, store);
+                case SCRIPT_LIST -> list(target, store, "true".equals(request.query().get("tree")));
                 case SCRIPT_GET -> read(store, request.file());
                 case SCRIPT_PUT -> write(server, request, target, store, mainframe.getDisplayName());
                 case SCRIPT_DELETE -> delete(server, request, target, store);
                 case SCRIPT_RUN -> run(server, request, target, store);
+                case SCRIPT_MOVE -> move(server, request, target, store);
                 default -> AccessApi.error(404, "not_found");
             };
         } catch (IOException e) {
@@ -54,7 +55,7 @@ public final class ScriptApi {
         }
     }
 
-    private static AccessApi.Response list(ComputerTarget target, ScriptFiles.Store store) throws IOException {
+    private static AccessApi.Response list(ComputerTarget target, ScriptFiles.Store store, boolean tree) throws IOException {
         var json = new JsonObject();
         var computer = new JsonObject();
         computer.addProperty("id", target.id());
@@ -65,7 +66,9 @@ public final class ScriptApi {
         json.addProperty("capacity", store.capacity());
         json.addProperty("used", Math.max(0, store.capacity() - store.remaining()));
         var files = new JsonArray();
-        for (var e : ScriptFiles.list(store)) {
+        var entries = tree ? ScriptFiles.list(store, ScriptFiles.MAX_DEPTH) : ScriptFiles.list(store);
+        json.addProperty("truncated", entries.size() >= ScriptFiles.MAX_LIST);
+        for (var e : entries) {
             var f = new JsonObject();
             f.addProperty("path", e.path());
             f.addProperty("size", e.size());
@@ -88,6 +91,22 @@ public final class ScriptApi {
                                             String mainframeName) throws IOException {
         String path = ScriptFiles.validate(request.file());
         if (path == null) return AccessApi.error(400, "invalid_path");
+        if ("true".equals(request.query().get("dir"))) {
+            if (request.body().length > 0) return AccessApi.error(400, "invalid");
+            var made = ScriptFiles.makeDirectory(store, path);
+            if (made.error() != null) return AccessApi.error(made.status(), made.error());
+            audit(server, request, target, "created folder " + path, null);
+            var json = new JsonObject();
+            json.addProperty("ok", true);
+            json.addProperty("path", path);
+            return new AccessApi.Response(200, json);
+        }
+        // Editor saves: refuse when the file changed since it was opened (hash of the content the editor loaded).
+        String ifMatch = request.query().get("ifMatch");
+        if (ifMatch != null) {
+            byte[] current = store.exists(path) && !store.isDirectory(path) ? ScriptFiles.read(store, path) : null;
+            if (current == null || !ScriptFiles.hash(current).equals(ifMatch)) return AccessApi.error(409, "changed");
+        }
         // Text only: the body must be valid UTF-8 (Lua sources); binary uploads are refused.
         var decoder = StandardCharsets.UTF_8.newDecoder();
         try {
@@ -108,6 +127,7 @@ public final class ScriptApi {
         json.addProperty("ok", true);
         json.addProperty("path", path);
         json.addProperty("size", result.size());
+        json.addProperty("hash", ScriptFiles.hash(request.body()));
         return new AccessApi.Response(200, json);
     }
 
@@ -162,6 +182,29 @@ public final class ScriptApi {
         var json = new JsonObject();
         json.addProperty("ok", true);
         json.addProperty("started", mode);
+        return new AccessApi.Response(200, json);
+    }
+
+    /** Editor: {@code {"from","to","overwrite?"}} renames or moves a file or folder. */
+    private static AccessApi.Response move(MinecraftServer server, GameBridge.ScriptRequest request, ComputerTarget target, ScriptFiles.Store store) throws IOException {
+        JsonObject body;
+        try {
+            var e = JsonParser.parseString(new String(request.body(), StandardCharsets.UTF_8));
+            body = e.isJsonObject() ? e.getAsJsonObject() : null;
+        } catch (RuntimeException e) {
+            body = null;
+        }
+        if (body == null || request.body().length > ClientMessages.MAX_BODY) return AccessApi.error(400, "invalid");
+        for (String key : body.keySet()) if (!key.equals("from") && !key.equals("to") && !key.equals("overwrite")) return AccessApi.error(400, "invalid");
+        String from = body.get("from") instanceof com.google.gson.JsonPrimitive p && p.isString() ? ScriptFiles.validate(p.getAsString()) : null;
+        String to = body.get("to") instanceof com.google.gson.JsonPrimitive p && p.isString() ? ScriptFiles.validate(p.getAsString()) : null;
+        if (from == null || to == null) return AccessApi.error(400, "invalid_path");
+        boolean overwrite = body.get("overwrite") instanceof com.google.gson.JsonPrimitive p && p.isBoolean() && p.getAsBoolean();
+        var result = ScriptFiles.move(store, from, to, overwrite);
+        if (result.error() != null) return AccessApi.error(result.status(), result.error());
+        audit(server, request, target, "moved " + from + " to " + to, null);
+        var json = new JsonObject();
+        json.addProperty("ok", true);
         return new AccessApi.Response(200, json);
     }
 

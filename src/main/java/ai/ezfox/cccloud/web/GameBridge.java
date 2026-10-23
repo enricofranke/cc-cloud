@@ -102,4 +102,18 @@ public interface GameBridge {
 
     /** v0.6 HTTP API ({@code /api/mainframes}, devices, access, shares): runs on the server thread. */
     AccessApi.Response api(Router.Id route, List<AuthStore.Device> devices, String path, String body, String ip);
+
+    /** v0.5 E: opens the terminal of the computer behind an uplink for a session (server thread); null or an error code. */
+    default @Nullable String terminalOpen(AuthStore.Device device, UUID mainframeId, UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
+        return "disabled";
+    }
+
+    /** v0.5 E: input for an open terminal (server thread); null or an error code. */
+    default @Nullable String terminalInput(AuthStore.Device device, UUID mainframeId, UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer,
+                                           com.google.gson.JsonElement events) {
+        return "disabled";
+    }
+
+    default void terminalClose(UUID mainframeId, @Nullable UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
+    }
 }

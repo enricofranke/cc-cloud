@@ -23,11 +23,11 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
         public boolean isScriptWrite() {
-            return this == SCRIPT_PUT || this == SCRIPT_DELETE || this == SCRIPT_RUN;
+            return this == SCRIPT_PUT || this == SCRIPT_DELETE || this == SCRIPT_RUN || this == SCRIPT_MOVE;
         }
 
         public boolean isScript() {
@@ -47,8 +47,8 @@ public final class Router {
 
     private static final String UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
     private static final String COMPUTER = "/api/mainframes/" + UUID_RE + "/computers/" + UUID_RE;
-    /** Script import file path in the URL: name or folder/name (validated again by ScriptFiles). */
-    private static final String FILE = "/files/[A-Za-z0-9_.-]{1,64}(/[A-Za-z0-9_.-]{1,64})?";
+    /** Script import / editor file path in the URL: up to 8 levels (validated again by ScriptFiles). */
+    private static final String FILE = "/files/[A-Za-z0-9_.-]{1,64}(/[A-Za-z0-9_.-]{1,64}){0,7}";
     private static final String EXAMPLE_COMPUTER = "/api/mainframes/00000000-0000-0000-0000-000000000000/computers/00000000-0000-0000-0000-000000000001";
 
     public record Route(Id id, HttpMethod method, Pattern path, Access access, String example) {
@@ -83,6 +83,7 @@ public final class Router {
         new Route(Id.SCRIPT_PUT, HttpMethod.PUT, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_DELETE, HttpMethod.DELETE, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_RUN, HttpMethod.POST, Pattern.compile(COMPUTER + "/run"), Access.DEVICE, EXAMPLE_COMPUTER + "/run"),
+        new Route(Id.SCRIPT_MOVE, HttpMethod.POST, Pattern.compile(COMPUTER + "/move"), Access.DEVICE, EXAMPLE_COMPUTER + "/move"),
         new Route(Id.MAP_TILE, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
             + "/map/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/(surface|slice/-?[0-9]{1,4})/-?[0-9]{1,6}/-?[0-9]{1,6}\\.png"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/map/minecraft:overworld/surface/0/0.png"),

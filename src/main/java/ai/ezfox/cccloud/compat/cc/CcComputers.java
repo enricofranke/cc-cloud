@@ -116,6 +116,33 @@ public final class CcComputers {
             if (computer != null) computer.queueEvent(name, args);
         }
 
+        /**
+         * A copy of the computer's terminal (v0.5 E browser terminal) through CC's public {@code TerminalState}, or null
+         * while the computer is off.
+         */
+        public ai.ezfox.cccloud.terminal.@Nullable TerminalFrame frame() {
+            var computer = be.getServerComputer();
+            if (computer == null || !computer.isOn()) return null;
+            var t = computer.getTerminalState().create();
+            int w = Math.min(t.getWidth(), ai.ezfox.cccloud.terminal.TerminalFrame.MAX_W), h = Math.min(t.getHeight(), ai.ezfox.cccloud.terminal.TerminalFrame.MAX_H);
+            var text = new String[h];
+            var fg = new String[h];
+            var bg = new String[h];
+            for (int y = 0; y < h; y++) {
+                text[y] = ai.ezfox.cccloud.terminal.TerminalFrame.clean(cut(t.getLine(y).toString(), w));
+                fg[y] = cut(t.getTextColourLine(y).toString(), w);
+                bg[y] = cut(t.getBackgroundColourLine(y).toString(), w);
+            }
+            var palette = new int[16];
+            // by blit digit: "0" (white) is CC palette slot 15, "f" (black) slot 0
+            for (int d = 0; d < 16; d++) palette[d] = dan200.computercraft.core.terminal.Palette.encodeRGB8(t.getPalette().getColour(15 - d));
+            return new ai.ezfox.cccloud.terminal.TerminalFrame(w, h, t.isColour(), text, fg, bg, t.getCursorX(), t.getCursorY(), t.getCursorBlink(), palette);
+        }
+
+        private static String cut(String s, int w) {
+            return s.length() > w ? s.substring(0, w) : s;
+        }
+
         /** Advanced and command computers have colour and multishell. */
         public boolean advanced() {
             return be.getFamily() != dan200.computercraft.shared.computer.core.ComputerFamily.NORMAL;

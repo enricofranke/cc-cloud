@@ -107,6 +107,39 @@ public final class MinecraftBridge implements GameBridge {
         }
     }
 
+    @Override
+    public @Nullable String terminalOpen(AuthStore.Device device, UUID mainframeId, UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
+        String error = check(device, mainframeId, ai.ezfox.cccloud.access.Perm.TERMINAL);
+        if (error != null) return error;
+        boolean already = ai.ezfox.cccloud.terminal.TerminalService.isOpen(mainframeId, uplinkId, viewer);
+        error = ai.ezfox.cccloud.terminal.TerminalService.open(mainframeId, uplinkId, viewer);
+        if (error == null && !already) {
+            var section = ai.ezfox.cccloud.network.CloudNetwork.section(uplinkId);
+            String text = device.name() + " (" + device.playerName() + ") opened the terminal behind " + (section != null ? section.getTitle() : uplinkId);
+            WebAuthData.access(server).audit(mainframeId, text);
+            CloudLog.LOGGER.info("[cccloud] {} on {}", text, mainframeName(mainframeId));
+        }
+        return error;
+    }
+
+    @Override
+    public @Nullable String terminalInput(AuthStore.Device device, UUID mainframeId, UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer,
+                                          com.google.gson.JsonElement events) {
+        String error = check(device, mainframeId, ai.ezfox.cccloud.access.Perm.TERMINAL);
+        if (error != null) return error;
+        var frame = ai.ezfox.cccloud.terminal.TerminalService.lastFrame(mainframeId, uplinkId);
+        var parsed = ai.ezfox.cccloud.terminal.TerminalInput.parse(events, frame != null && frame.colour(), frame != null ? frame.width() : 51,
+            frame != null ? frame.height() : 19);
+        if (parsed.events() == null) return parsed.error();
+        return ai.ezfox.cccloud.terminal.TerminalService.input(mainframeId, uplinkId, viewer, parsed.events());
+    }
+
+    @Override
+    public void terminalClose(UUID mainframeId, @Nullable UUID uplinkId, ai.ezfox.cccloud.terminal.TerminalService.Viewer viewer) {
+        if (uplinkId == null) ai.ezfox.cccloud.terminal.TerminalService.closeAll(viewer);
+        else ai.ezfox.cccloud.terminal.TerminalService.close(mainframeId, uplinkId, viewer);
+    }
+
     /** v0.5 D: push "approval needed" (server thread). */
     private void pushApproval(UUID mainframeId, String deviceName) {
         if (server.isSameThread()) ai.ezfox.cccloud.push.PushService.approvalPending(mainframeId, deviceName);

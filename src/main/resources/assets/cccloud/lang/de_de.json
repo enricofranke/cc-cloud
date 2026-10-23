@@ -318,6 +318,8 @@
   "cccloud.configuration.rules": "Regeln",
   "cccloud.configuration.rulesEnabled": "Regeln ausführen",
   "cccloud.configuration.maxRules": "Regeln pro Mainframe",
+  "cccloud.configuration.terminal": "Terminal",
+  "cccloud.configuration.terminalEnabled": "Browser-Terminal erlauben",
   "cccloud.configuration.push": "Push-Benachrichtigungen",
   "cccloud.configuration.pushEnabled": "Push-Benachrichtigungen senden",
   "cccloud.configuration.pushAllowedHosts": "Erlaubte Push-Hosts",

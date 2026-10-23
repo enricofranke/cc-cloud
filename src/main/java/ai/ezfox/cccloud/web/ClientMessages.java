@@ -22,7 +22,7 @@ public final class ClientMessages {
 
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
-    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, RedstoneOverride, Storage, CraftPreview, Pong, Invalid {
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, RedstoneOverride, Storage, CraftPreview, Terminal, Pong, Invalid {
     }
 
     /** Storage operations that only read (browse, craftables, fluids, item, cpus). */
@@ -34,6 +34,14 @@ public final class ClientMessages {
      * own fields stay in {@code args} (validated per op by the bridge side).
      */
     public record Storage(String reqId, UUID uplinkId, @Nullable String widgetId, String op, JsonObject args) implements Message {
+    }
+
+    /**
+     * v0.5 E browser terminal: {@code term_open {reqId, uplinkId, pin?}} → {@code term_result}, {@code term_input
+     * {uplinkId, events:[…], reqId?}} (validated by {@link ai.ezfox.cccloud.terminal.TerminalInput} against the terminal
+     * size), {@code term_close {uplinkId}}.
+     */
+    public record Terminal(String op, @Nullable String reqId, UUID uplinkId, @Nullable String pin, @Nullable JsonElement events) implements Message {
     }
 
     /** {@code {"t":"craft_preview","reqId","uplinkId","id?","name","count"}} → {@code craft_plan}. */
@@ -154,6 +162,7 @@ public final class ClientMessages {
             }
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> parseRule(t, obj);
             case "storage" -> parseStorage(obj);
+            case "term_open", "term_input", "term_close" -> parseTerminal(t, obj);
             case "craft_preview" -> parseCraftPreview(obj);
             case "net_unlink" -> {
                 String reqId = string(obj, "reqId");
@@ -256,6 +265,19 @@ public final class ClientMessages {
         String q = string(obj, "q");
         if (uplinkId == null || !Json.isValidId(id) || q == null || q.length() > Limits.QUERY) return new Invalid("invalid_message", reqId);
         return new Query(reqId, uplinkId, id, q.strip());
+    }
+
+    private static Message parseTerminal(String t, JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId != null && !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        if (t.equals("term_open") && reqId == null) return new Invalid("invalid_message", null);
+        UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+        if (uplinkId == null) return new Invalid("invalid_message", reqId);
+        String pin = t.equals("term_open") ? string(obj, "pin") : null;
+        if (pin != null && pin.length() > 32) return new Invalid("invalid_message", reqId);
+        JsonElement events = t.equals("term_input") ? obj.get("events") : null;
+        if (t.equals("term_input") && (events == null || !events.isJsonArray())) return new Invalid("invalid_message", reqId);
+        return new Terminal(t, reqId, uplinkId, pin, events);
     }
 
     private static Message parseLayoutSet(JsonObject obj) {
