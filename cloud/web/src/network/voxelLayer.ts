@@ -235,9 +235,9 @@ export class VoxelLayer {
         return;
       }
       if (res.status === 401 || res.status === 403 || res.status === 404) {
-        // no access (any more), voxels off, or a server without voxels: drop what this browser kept
+        // no access (any more), voxels off, or a server without voxels: drop what this browser kept (every dimension)
         this.unavailable = true;
-        if (res.status !== 404) void clearVoxelCache(scope);
+        if (res.status !== 404) void clearVoxelCache(src.mf);
         this.onChange();
         return;
       }

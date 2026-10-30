@@ -84,6 +84,12 @@ export async function writeSections(put: CachedSection[], del: string[] = []): P
   });
 }
 
+/**
+ * The cached blocks of a mainframe must go when this browser may no longer see positions there: the role lost
+ * "See coordinates" (view.positions). Null = an older server that sends no permissions: nothing to decide.
+ */
+export const voxelsForbidden = (perms: ReadonlySet<string> | null) => perms !== null && !perms.has("view.positions");
+
 /** Drops everything cached for a mainframe (all dimensions), or for one scope. */
 export async function clearVoxelCache(prefix: string): Promise<void> {
   const db = await open();
