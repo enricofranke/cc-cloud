@@ -412,9 +412,10 @@ public final class MinecraftBridge implements GameBridge {
         var status = new ai.ezfox.cccloud.voxel.VoxelBatch.Status[sections.size()];
         var build = new java.util.ArrayList<int[]>();
         var claims = new java.util.HashMap<Long, Boolean>();
+        var points = ai.ezfox.cccloud.voxel.VoxelService.viewPoints(mainframeId, dim);
         for (int i = 0; i < sections.size(); i++) {
             int[] s = sections.get(i);
-            if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, s[0], s[1], s[2])) {
+            if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(points, s[0], s[1], s[2])) {
                 status[i] = ai.ezfox.cccloud.voxel.VoxelBatch.Status.OUT_OF_RANGE;
             } else if (claims.computeIfAbsent(net.minecraft.world.level.ChunkPos.pack(s[0], s[2]),
                 k -> ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, s[0], s[2], player))) {
@@ -436,7 +437,6 @@ public final class MinecraftBridge implements GameBridge {
                     if (data == null) st = ai.ezfox.cccloud.voxel.VoxelBatch.Status.EMPTY;
                     else st = data.hashHex().equals(have.get(i)) ? ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME : ai.ezfox.cccloud.voxel.VoxelBatch.Status.OK;
                 }
-                if (st == ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME) ai.ezfox.cccloud.map.MapStats.VOXELS.hits.increment();
                 out.add(new ai.ezfox.cccloud.voxel.VoxelBatch.Section(s[0], s[1], s[2], st, data));
             }
             byte[] body = ai.ezfox.cccloud.voxel.VoxelBatch.write(dim, out, ai.ezfox.cccloud.voxel.BlockTextureService::decorate);

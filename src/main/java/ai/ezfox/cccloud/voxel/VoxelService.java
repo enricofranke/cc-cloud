@@ -99,15 +99,30 @@ public final class VoxelService {
 
     /** Only sections within voxelRadius of a node or device of the mainframe's network (same dimension). */
     public static boolean allowed(UUID mainframeId, String dim, int cx, int cy, int cz) {
+        return allowed(viewPoints(mainframeId, dim), cx, cy, cz);
+    }
+
+    /**
+     * Positions of the reachable nodes and the devices of the mainframe's network in this dimension, whose voxelRadius
+     * opens the view (computed once per request). Server thread.
+     */
+    public static double[][] viewPoints(UUID mainframeId, String dim) {
         var result = NetworkService.result(mainframeId);
-        if (result == null) return false;
-        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
+        if (result == null) return new double[0][];
+        var list = new ArrayList<double[]>();
         for (var node : result.nodes()) {
-            if (node.dim().equals(dim) && result.reachable(node.id()) && distance(cx, cy, cz, node.x(), node.y(), node.z()) <= radius) return true;
+            if (node.dim().equals(dim) && result.reachable(node.id())) list.add(new double[]{node.x(), node.y(), node.z()});
         }
         for (var device : result.devices()) {
-            if (device.dim().equals(dim) && distance(cx, cy, cz, device.x(), device.y(), device.z()) <= radius) return true;
+            if (device.dim().equals(dim)) list.add(new double[]{device.x(), device.y(), device.z()});
         }
+        return list.toArray(new double[0][]);
+    }
+
+    /** A section within voxelRadius (box to point) of one of the points. */
+    public static boolean allowed(double[][] points, int cx, int cy, int cz) {
+        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
+        for (var p : points) if (distance(cx, cy, cz, p[0], p[1], p[2]) <= radius) return true;
         return false;
     }
 
