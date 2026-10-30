@@ -111,6 +111,9 @@ It is reviewed before every release.
   - 8 KB per message after authentication, 256 KB only for `layout_set` (64 KB until 0.10; raised for big bases, see
     docs/SPEC.md "Scaling": a page of 500 cards; saves stay limited to 5 per 10 s per mainframe and need `layout.edit`);
   - 4 KB HTTP bodies.
+  - Layout placement in the dashboard is bounded for any saved document: overlapping boxes beyond 64 per grid are
+    resolved in one pass and cards without a box beyond a work budget are packed below (2048 cards saved on one spot
+    took minutes in every viewer's browser before this was fixed).
 - Parsing:
   - Strict JSON schemas; unknown fields are rejected in the v0.6 APIs.
   - Bounded numbers and lengths.
@@ -126,6 +129,7 @@ It is reviewed before every release.
     loading a base take minutes and starved the map tiles afterwards);
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP;
+  - map tiles: 60 per minute per device, at most 256 tiles waiting for the server thread (more get 503);
   - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread.
 - Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit: a
   browser may fall behind by at most 4 MB beyond the 1 MB write buffer, or for at most 10 seconds (a big base's snapshot
@@ -140,7 +144,8 @@ It is reviewed before every release.
     limit is closed at once, as before. So a flood still holds at most 8 extra sockets per IP for at most 2 seconds.
 - WebSocket compression (permessage-deflate, `webCompression`, on by default) only when the browser offers it. Incoming
   compressed frames are size-checked before they are inflated (the raw-frame guard sees the compressed size) and inflate to
-  at most the 257 KB frame limit, so a small frame cannot expand into a large message. Memory: about 300 KB of deflate
+  at most the 257 KB frame limit, so a small frame cannot expand into a large message. Before authentication the inflated
+  message is limited to 2 KB as well (the raw-frame guard only sees the compressed size). Memory: about 300 KB of deflate
   state per open browser.
 - No CSRF surface:
   - authentication uses bearer tokens in headers or the first WebSocket message, never cookies;
@@ -182,7 +187,7 @@ It is reviewed before every release.
 
 ### Public API (v0.10)
 - **Off by default** (`[api] apiEnabled=false`): the `/api/v1` routes do not exist (404); key management answers `disabled`.
-- **Keys:** `cck_` + 32 random bytes; only the SHA-256 is stored, compared in constant time; the key is shown exactly once and never logged. A key belongs to one player and one mainframe, has scopes, an optional expiry and an optional IP/CIDR allow-list (checked against the client IP after the trusted-proxy rules). At most `apiKeysPerPlayer` per player. Revocable by its player and by players with `access.manage` on that mainframe; deleted with the mainframe. Creating keys needs `api.keys` (admin and owner presets) and the base permission of every scope; the server node `cccloud.api.keys` (default true) switches keys off for a player, existing ones included.
+- **Keys:** `cck_` + 32 random bytes; only the SHA-256 is stored, compared in constant time; the key is shown exactly once and never logged. A key belongs to one player and one mainframe, has scopes, an optional expiry and an optional IP/CIDR allow-list (checked against the client IP after the trusted-proxy rules). At most `apiKeysPerPlayer` per player. Revocable by its player and by players with `access.manage` on that mainframe; deleted with the mainframe. Creating keys needs `api.keys` (admin and owner presets) and the base permission of every scope; the server node `cccloud.api.keys` (default true) switches keys off for a player, existing ones included. A key ends with the browser that created it: revoking that browser (in game, `/cccloud devices revoke`, the Account page) revokes its keys too and writes an audit line, so a stolen phone cannot keep control through a key it minted before it was revoked (a browser's 30-day expiry is not a revocation and keeps the keys). Moderators see other players' keys without their last IP and allow-list.
 - **Scope ∩ live rights:** every request re-resolves the key owner's rights (bans, `cccloud.use`, roles, team ranks) like a device token and allows only what both the scope and the rights allow. Scopes never include management, access, devices, pairing, key management, terminal, files, scripts, layout, rules, push, map or voxels.
 - **No PIN through the API:** PIN-protected widgets and scenes that need the PIN are refused (`pin_required`), so a leaked key never reaches the second factor. Structured operations (crafting, watchlists, redstone sides) are not available.
 - **Transport:** `Authorization: Bearer` only; a key in the URL is refused (`key_in_query`) before it is looked up, so keys do not end up in logs or browser history. Device tokens are not accepted on `/api/v1` and API keys nowhere else. Per-key and per-IP rate limits with `Retry-After`, bodies ≤ `apiMaxBody`, strict JSON. The same LAN-only rule, IP bans, Host allow-list, connection limits and security headers as the dashboard.
@@ -191,9 +196,14 @@ It is reviewed before every release.
 - **Audit:** every write (widget value, scene run), key creation and revocation is written to the mainframe's audit log and the server log with the key's name and player.
 - Residual: anyone holding a key can do what its scopes and its owner's rights allow until it is revoked or expires. Prefer short expiries, narrow scopes and an IP allow-list; serve the API over HTTPS when it leaves the LAN.
 
+### Cloud Probe and Cloud Redstone devices (v0.10)
+- **Cloud Probe** (reads and controls one machine up to `probeRange` blocks away, default 8, at most 16 by the config's range): picking the machine is a real block interaction (claim mods cancel it, spawn protection, adventure mode); a pick is valid for 10 minutes and only for the picking player. Linking needs `network.link` on the probe's mainframe and checks spawn protection and FTB Chunks claims of other teams again. Every read and action checks the target again: the current `probeRange`, loaded, not a CC: Cloud block, not in a chunk claimed by another team for the player who set it, and the probe still standing where (and in the dimension where) it was set; a probe moved with its data forgets the target. Nothing is force-loaded.
+- **Cloud Redstone devices**: dashboard controls need `act.redstone` (every control of a Redstone card, "All on/off" included) and are limited to 4 changes per second per device (dashboard, rules, scenes and API alike); PIN and confirmation per device, "All on/off" asks for the PIN when any device of the card has one. Cards and groups belong to one mainframe (groups never merge across mainframes); linking needs `network.link` and the relink rule; rename and regroup from the dashboard check that the device belongs to that mainframe. The device screen needs the menu open and the player near the device; its settings need `network.link`, switching it by hand is like a lever.
+- Residual: claim mods other than FTB Chunks are only asked when the machine is picked; a sensor reads the redstone signal at its own position, which its placer could read anyway.
+
 ### Map, voxels and X-ray
 - The surface map shows what is visible from above. Cave **slices** are configurable (`mapSlices`: auto = on in singleplayer and for LAN-only dashboards, off when `webAllowInternet` is set) and limited to ±32 blocks (Y) around the mainframe's own nodes.
-- Slices and **voxels** never include chunks claimed by another team (FTB Chunks; members and allies count as the same team).
+- Slices and **voxels** never include chunks claimed by another team (FTB Chunks; members and allies count as the same team). A slice tile with such a chunk is never served from the memory or disk cache: it is drawn again with that chunk empty, so a claim also hides what was cached before it.
 - Ores (`#c:ores`) show as stone in slices and voxels unless they touch air within 16 blocks of the requesting mainframe's own nodes. Voxels only contain blocks with a face to air or a see-through block.
 - Residual: within `voxelRadius` of the network, caves and structures are visible to everyone with `view.positions`. Turn `voxelView` off on servers where that is too much.
 - The voxel batch route (2026-10-30) applies every rule above per section (radius, claims, ore rule, `view.positions`) and only changes how many sections travel per request. Its body is strict JSON (≤ 64 distinct sections, optional 16-hex-digit hashes, nothing else); the hashes only let the server answer "same" and never select other data.
@@ -201,6 +211,8 @@ It is reviewed before every release.
 
 ### Rate limits and resources (in-game)
 - Map waypoint subscriptions rebuild only on a change and at most once a second per player; opening the tablet at most once a second per player.
+- Screen actions (mainframe, uplink and redstone device screens): 20 at once, then 10 per second per player; a rejected action without an open screen is logged at debug level only.
+- Block entity data of CC: Cloud blocks (creative pick-block with data, items with `block_entity_data`) is only applied for operators (`onlyOpCanSetNbt`), so a creative player cannot place a probe, uplink, redstone device or mainframe with a made-up target, link or id.
 - Player-name lookups from the mainframe screen: one per player and second, four at a time.
 - Item icons and block textures rendered by clients: a quota per player and hour; something already stored for the current version is only replaced by a player who owns or has a role on a mainframe (first writer wins otherwise).
 
@@ -215,6 +227,18 @@ An independent review found 1 high, 6 medium and about 18 low issues. Fixed with
 Known items:
 - **Store index signing (L9): done.** The store index is signed with Ed25519 (`index.json.sig`); the server verifies the signature with `scriptStoreKey` and the file's SHA-256 against the signed index before writing a store install (the dashboard's own check is a convenience, the server is the authority). The private key lives only in the store's CI secret. Residual: a leaked signing key – rotate it as described in store/CONTRIBUTING.md.
 - **Supply chain (L16):** Actions are pinned; dependency updates are still manual reviews (no automated provenance checks).
+
+## Security review 2026-10-30 (main@4a8f2de, branch security-v010)
+Scope: what was added since 0.9.0 (public API, scenes and schedules, production statistics, Cloud Probe, Cloud Redstone devices, live recipes, voxel batch, map tile sampling, WebSocket compression, layout limits, big-screen views, the Discord bot). Fixed with tests:
+- **Medium – API keys outlived a revoked browser:** a stolen browser could create a key and keep control after the owner revoked it. Keys now end with the browser that created them (`ApiKeysTest`).
+- **Medium – Cloud Probe rules only checked when linking:** a lowered `probeRange` was not applied to probes already linked (the card was rebuilt for the old target, the Computer and Storage cards ignored the range); a probe moved with its data read the same coordinates at its new place (in another dimension, too); claims were only checked when picking, so a pick made as a team member (or a card made in creative) kept reading and controlling a machine in a foreign claim. Now one check on every read, origin and dimension stored, claims checked when linking and reading, picks expire after 10 minutes (`ProbeReadCheckTest`, GameTest `probe_guards`).
+- **Medium – a saved layout could freeze every dashboard:** placing overlapping boxes item by item was cubic in the browser (2048 cards on one spot: minutes, the editor included). Now bounded (`layout-limits.test.ts`).
+- **Medium – Discord bot:** a crafted log made the log check run for seconds per log (quadratic patterns); version texts from a log went into the public reply unchanged (masked links, phishing). Patterns bounded, versions only as version text in inline code (`mclogs.test.ts`).
+- **Low:** block entity data of CC: Cloud blocks from creative non-operators (made-up probe targets, links, device ids); map slices kept pixels of chunks claimed later (memory and disk cache) and the tile queue had no limit (GameTest `map_tiles`, `MapTileQueueTest`); the 2 KB pre-auth limit only applied to the compressed WebSocket frame (`PreAuthSizeTest`); screen action packets had no rate limit and logged every rejection (`PacketLimiterTest`); the voxel cache stayed in the browser after the role lost `view.positions`, and a refusal cleared only the current dimension; moderators saw other players' key IPs; bot log downloads followed redirects and had no global limit, and the bot namespace did not enforce the restricted Pod Security Standard.
+
+Checked and found sound: scope ∩ live rights on every API route and in the event stream (per-session filtering of restricted sections, no other mainframes), CORS only for exact origins, key hashing and constant-time compare, the API switched off (404, streams end within 5 s); scenes (rights of the presser or the scene owner per step at run time, PIN re-checked in every action path, no scene in a scene, run limits); production statistics (same mainframe, `storage.search`, `view.positions` for restricted sections, memory bounded per storage); live recipes (built once per reload off the server thread, one shared build, only our items); voxel batch (every rule per section, strict bounded body, bounded output); map tile copies (deep copies on the server thread, the background never touches live chunks); permessage-deflate inflate bounds; big-screen view decoding (vanilla string bounds, no reassembly).
+
+Open (low, recommendations): `hideNumbers` share links still send the values of charts and gauges (the dashboard hides gauge digits; consider dropping chart values too); slice tiles on disk are never deleted (delete a mainframe's slice folders on purge, cap by age); a large stock change builds a tracked entry for every changed item before trimming to the tracked maximum (pick the top items with a bounded heap first); production statistics map a storage to its mainframe from a cache refreshed every second; every per-IP limiter map is cleared once it holds 10 000 IPs (an attacker with that many addresses resets them); in a scene, the PIN flag of a step on a redstone device that moved to another card is decided by its old card (the step then fails with `pin_required` instead of asking first; no bypass, the action re-checks); the Discord bot's image tag is mutable (pin a digest) and its pod has no NetworkPolicy.
 
 ## Residual risks and operator advice
 - Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md).

@@ -4,6 +4,21 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Security review before the release
+- API keys end with the browser that created them: revoking a browser (in game, `/cccloud devices revoke`, the Account
+  page) also revokes the API keys made with it, so a lost phone cannot keep control through a key. The key list no longer
+  shows other players' IP addresses to moderators.
+- Cloud Probe: the target is checked on every read and action, not only when linking – a lower `probeRange` applies to
+  probes linked before, a chunk another team claims stops the reading, and a probe moved with its data (contraptions,
+  block movers) forgets its target. Linking checks claims and spawn protection again; a picked machine must be handed to
+  a probe within 10 minutes.
+- Creative players without op can no longer place CC: Cloud blocks with copied block data (made-up targets, links or ids).
+- Map slices: a chunk claimed by another team is also removed from tiles that were cached before the claim.
+- Dashboard: a saved layout with overlapping cards can no longer make the dashboard hang (big layouts are placed in one
+  pass); the 3D view's cached blocks are deleted as soon as the role loses "See coordinates".
+- Smaller limits: at most 256 map tiles wait for the server, screen actions are limited per player, and before login a
+  compressed WebSocket message may not inflate beyond 2 KB.
+
 ### Live recipes in the dashboard docs – right grids on modpack servers
 - The dashboard's recipes now come from the server: packs that change CC: Cloud recipes with datapacks, KubeJS or
   CraftTweaker (All the Mods, …) no longer get the mod's default grids in `/docs`. A changed recipe carries the badge
