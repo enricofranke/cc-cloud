@@ -1224,6 +1224,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             structureDirty = chartsDirty = true;
         }
         ai.ezfox.cccloud.network.NetworkService.markDirty();
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
     }
 
     /** Test hook: behave like a device linked before v0.4. */

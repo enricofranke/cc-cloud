@@ -44,7 +44,8 @@ import org.jspecify.annotations.Nullable;
  * team changed (joined, left, allies; {@link #teamChanged}), and in a safety pass that checks every device once per
  * {@value #PASS_TICKS} ticks, spread over the ticks. Claim lookups are cached per chunk for {@value #CACHE_TICKS} ticks
  * (a claim event clears its chunk), and the work per tick is capped at {@value #MAX_CHECKS_PER_TICK} checks and
- * {@value #MAX_NANOS_PER_TICK} ns. Each transition writes one audit line (server log and the mainframe's audit log).
+ * {@value #MAX_NANOS_PER_TICK} ns. Each transition of a linked device writes one audit line (server log and the
+ * mainframe's audit log).
  * <p>
  * Server thread, except {@link #claimsChanged}, {@link #teamChanged} and {@link #claimedByOther} (any thread).
  */
@@ -112,6 +113,8 @@ public final class ClaimGuard {
     private static final LinkedHashSet<Guarded> URGENT = new LinkedHashSet<>();
     /** Blocked devices (re-checked on every team change; their count is the cheap "anything to undo" test). */
     private static final Set<Guarded> BLOCKED = Collections.newSetFromMap(new IdentityHashMap<>());
+    /** Blocked devices whose blocking was audited (their unblocking is audited too). */
+    private static final Set<Guarded> AUDITED = Collections.newSetFromMap(new IdentityHashMap<>());
     private static List<Guarded> pass = List.of();
     private static int cursor;
     private static boolean listening;
@@ -230,6 +233,17 @@ public final class ClaimGuard {
         else BLOCKED.remove(device);
         // the same team under a new name is no transition
         if (old != null && verdict != null && old.teamId().equals(verdict.teamId())) return;
+        // One audit line per transition of a linked device (an unlinked one shows nothing anywhere); its unblocking is
+        // logged when its blocking was, so linking a device that was blocked while unlinked writes no line.
+        if (verdict != null) {
+            if (device.guardMainframe() == null) {
+                AUDITED.remove(device);
+                return;
+            }
+            AUDITED.add(device);
+        } else if (!AUDITED.remove(device)) {
+            return;
+        }
         audit(device, old, verdict);
     }
 
@@ -305,6 +319,7 @@ public final class ClaimGuard {
     /** A device went away (removed, unloaded): forget it. */
     public static void forget(Guarded device) {
         BLOCKED.remove(device);
+        AUDITED.remove(device);
         URGENT.remove(device);
     }
 
@@ -401,6 +416,7 @@ public final class ClaimGuard {
         var live = Collections.newSetFromMap(new IdentityHashMap<Guarded, Boolean>());
         live.addAll(pass);
         BLOCKED.removeIf(d -> !live.contains(d));
+        AUDITED.removeIf(d -> !live.contains(d));
     }
 
     /** Every loaded device the guard watches: uplinks, probes, bridges, wired machine cards and redstone devices. */
@@ -480,6 +496,7 @@ public final class ClaimGuard {
         EVENTS.clear();
         URGENT.clear();
         BLOCKED.clear();
+        AUDITED.clear();
         pass = List.of();
         cursor = 0;
         providerReady = false;

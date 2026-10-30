@@ -779,6 +779,7 @@ public class RsDeviceBlockEntity extends BlockEntity implements ai.ezfox.cccloud
         var mainframe = CloudNetwork.mainframe(newLink.id());
         if (mainframe != null && level != null) mainframe.linkUplink(deviceId, GlobalPos.of(level.dimension(), getBlockPos()));
         NetworkService.markDirty();
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         RsDevices.changed(this);
         if (sensor() != null) sensor.attach();
     }
