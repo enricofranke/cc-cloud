@@ -132,7 +132,8 @@ describe("3D scene helpers", () => {
     const statuses = ["online", "offline", "connecting", "no_power", "no_route", "unloaded"] as const;
     const big = Array.from({ length: 500 }, (_, i) => ({ ...net.nodes[0], id: `n${i}`, type: types[i % types.length], status: statuses[i % statuses.length], pos: { x: i, y: 64, z: i } }));
     const groups = instanceGroups(big, g.models);
-    expect(groups.length).toBeLessThanOrEqual(50);
+    // bounded by the models and their status textures (13 block models with the Advanced Cloud Sensor), not by the nodes
+    expect(groups.length).toBeLessThanOrEqual(64);
     expect(groups.reduce((n, x) => n + x.nodes.length, 0)).toBeGreaterThan(500);
     expect(small.length).toBeLessThanOrEqual(groups.length);
   });

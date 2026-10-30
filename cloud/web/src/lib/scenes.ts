@@ -1,6 +1,7 @@
 // v0.10 scenes (docs/SPEC.md "Scenes (mod side)"): one button that runs several steps in order.
 // The scene document, validation that mirrors the server's SceneCodec, the permission each step needs
 // (AccessGate.actionPerm) and plain-language summaries in both languages.
+import { sensorWidgetPerm } from "./sensor.ts";
 import type { Uplink } from "./types.ts";
 import type { Lang } from "./lang.ts";
 import { ICON_NAMES, type IconName } from "./layout.ts";
@@ -156,6 +157,8 @@ export function stepPerm(step: SceneStep, uplinks: Uplink[]): string | null {
     case "widget": {
       const u = uplinks.find((x) => x.uplinkId === step.uplinkId);
       const w = u?.widgets.find((x) => x.id === step.widgetId);
+      // the Advanced Cloud Sensor's card: arming act.redstone, every setting network.link
+      if (u?.template === "sensor" && u.mode === "direct") return sensorWidgetPerm(step.widgetId);
       if (step.widgetId === "redstone" || step.widgetId.endsWith("_redstone") || w?.type === "redstone_sides") return "act.redstone";
       if (u?.mode === "auto" && POWER_IDS.has(step.widgetId)) return "act.redstone";
       return "act.buttons";

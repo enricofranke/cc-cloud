@@ -35,6 +35,7 @@ import { tr } from "../lib/i18n.ts";
 import { IconBack, IconPlus } from "../components/Icons.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
+import { TRIGGER_KINDS, TRIGGER_KIND_TEXT, sensorUplinks, type TriggerKind } from "../lib/sensor.ts";
 
 const ERR: Record<string, string> = {
   invalid_rule: "The server refused the rule",
@@ -305,6 +306,8 @@ function freshCheck(type: string, uplinks: Uplink[]): Trigger {
       return { type: "time", time: 12000 };
     case "schedule":
       return { type: "schedule", days: ["mon", "tue", "wed", "thu", "fri"], at: "07:00" };
+    case "sensor":
+      return { type: "sensor", uplinkId: sensorUplinks(uplinks)[0]?.uplinkId ?? "", kind: "any" };
     default:
       return { type: "widget", uplinkId: nu?.uplinkId ?? "", widgetId: nu ? numericWidgets(nu)[0].id : "", op: ">", value: 0 };
   }
@@ -315,6 +318,7 @@ const TRIGGERS: [string, string][] = [
   ["items", "an item count"],
   ["power", "mainframe power"],
   ["offline", "a card goes offline"],
+  ["sensor", "an Advanced Sensor detects …"],
   ["interval", "every … minutes"],
   ["schedule", "on days at a time"],
   ["time", "an in-game time of day"],
@@ -389,6 +393,40 @@ function RuleEditor(props: { conn: MainframeConn; initial: Rule; before: Rule | 
               <UplinkSelect value={when.uplinkId} list={uplinks} onChange={(uplinkId) => set({ when: { ...when, uplinkId } })} />
             </div>
           )}
+          {when.type === "sensor" && (
+            <div class="rule-fields">
+              <UplinkSelect value={when.uplinkId} list={sensorUplinks(uplinks)} label="Advanced Cloud Sensor" onChange={(uplinkId) => set({ when: { ...when, uplinkId } })} />
+              <span>detects</span>
+              <select
+                class="select"
+                aria-label="What it detects"
+                value={when.kind ?? "any"}
+                onChange={(e) => {
+                  const kind = (e.target as HTMLSelectElement).value as TriggerKind;
+                  set({ when: { ...when, kind, ...(kind === "any" || kind === "player" ? {} : { player: undefined }) } });
+                }}
+              >
+                {TRIGGER_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {TRIGGER_KIND_TEXT[k]}
+                  </option>
+                ))}
+              </select>
+              {(when.kind ?? "any") === "any" || when.kind === "player" ? (
+                <input
+                  class="input"
+                  maxLength={16}
+                  placeholder="any player"
+                  aria-label="Only this player (optional)"
+                  value={when.player ?? ""}
+                  onInput={(e) => {
+                    const player = (e.target as HTMLInputElement).value.trim();
+                    set({ when: { ...when, player: player || undefined, ...(player ? { kind: "player" as const } : {}) } });
+                  }}
+                />
+              ) : null}
+            </div>
+          )}
           {when.type === "interval" && (
             <div class="rule-fields">
               <span>every</span>
@@ -427,6 +465,12 @@ function RuleEditor(props: { conn: MainframeConn; initial: Rule; before: Rule | 
                 ? "In-game time only passes while the server runs – there is no catch-up after a restart."
                 : "After a restart one missed run is made up (within 24 h by default). While the mainframe is unloaded or offline, runs are skipped and logged."}{" "}
               <DocsLink to="/docs/automation#schedules">Schedules</DocsLink>
+            </p>
+          ) : when.type === "sensor" ? (
+            <p class="muted small">
+              Fires when something new comes in (not for who is already inside, and not while the sensor is disarmed). Write <code>{"{who}"}</code> in an
+              alert to name it – the player, or the mobs (“2 Zombies”); viewers and share links see “a player”.{" "}
+              <DocsLink to="/docs/redstone#advanced-sensor">Advanced Cloud Sensor</DocsLink>
             </p>
           ) : (
             <p class="muted small">Value triggers fire once when the check becomes true, not again while it stays true.</p>

@@ -10,6 +10,7 @@ import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
 import { RedstoneSides } from "./Redstone.tsx";
+import { SensorLog } from "./Sensor.tsx";
 import { powerButtonState } from "../lib/redstone.ts";
 import { DocsLink } from "./DocsLink.tsx";
 import { timeAgo } from "../lib/ui.ts";
@@ -91,6 +92,8 @@ export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget;
       return <ButtonGroup {...p} />;
     case "redstone_sides":
       return <RedstoneSides {...p} />;
+    case "sensor_log":
+      return <SensorLog w={w} />;
   }
 }
 

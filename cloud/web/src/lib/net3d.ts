@@ -20,6 +20,7 @@ export const MODEL_OF: Record<NodeType, string> = {
   cloud_button: "cloud_button",
   cloud_lamp: "cloud_lamp",
   cloud_sensor: "cloud_sensor",
+  advanced_cloud_sensor: "advanced_cloud_sensor",
 };
 
 /** Block textures only know online/connecting/offline (+ no_power on relays). */

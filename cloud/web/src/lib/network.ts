@@ -23,9 +23,11 @@ export const TYPE_LABEL: Record<NodeType, string> = {
   cloud_button: "Cloud Button",
   cloud_lamp: "Cloud Lamp",
   cloud_sensor: "Cloud Sensor",
+  advanced_cloud_sensor: "Advanced Cloud Sensor",
 };
 
-export const isRedstoneDevice = (t: NodeType) => t === "cloud_switch" || t === "cloud_button" || t === "cloud_lamp" || t === "cloud_sensor";
+export const isRedstoneDevice = (t: NodeType) =>
+  t === "cloud_switch" || t === "cloud_button" || t === "cloud_lamp" || t === "cloud_sensor" || t === "advanced_cloud_sensor";
 
 /** Widget id of a Cloud Redstone device on its card: d_ + the first 12 hex digits of its id. */
 export const redstoneWidgetId = (deviceId: string) => `d_${deviceId.replace(/-/g, "").slice(0, 12).toLowerCase()}`;
