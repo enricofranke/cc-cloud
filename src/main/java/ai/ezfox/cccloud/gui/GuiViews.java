@@ -11,6 +11,7 @@ import ai.ezfox.cccloud.web.WebAuthData;
 import ai.ezfox.cccloud.web.WebHub;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import org.jspecify.annotations.Nullable;
@@ -71,6 +72,17 @@ public final class GuiViews {
         for (var url : CloudWebServer.dashboardUrls()) urls.add(url);
         json.add("urls", urls);
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
+        // Plain counts for the overview: devices that reach the mainframe, relays that carry the network.
+        var counted = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
+        if (counted != null) {
+            int connected = 0, relays = 0;
+            for (var route : counted.routes().values()) if (route != null && route.connected()) connected++;
+            for (var node : counted.nodes()) {
+                if (node.type() != ai.ezfox.cccloud.network.graph.NetworkGraph.NodeType.MAINFRAME && counted.reachable(node.id())) relays++;
+            }
+            json.addProperty("devicesConnected", connected);
+            json.addProperty("relays", relays);
+        }
         // Node coordinates only with view.positions (security review M5), like the dashboard's network map.
         var network = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
         if (network != null && resolution.has(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS)) {
@@ -166,68 +178,50 @@ public final class GuiViews {
         json.add("audit", audit);
     }
 
-    /** A Cloud Bridge in the uplink-style screen: network status, link (unlimited range), its Storage section. */
+    /** A Cloud Bridge in the uplink-style screen: what it reads, its Storage card, the connection and the actions. */
     public static String bridge(ai.ezfox.cccloud.bridge.BridgeHost bridge, ServerPlayer player, @Nullable String notice) {
         var section = bridge.bridgeSection();
         var core = bridge.bridgeCore();
+        var be = bridge.asBlockEntity();
         var json = new JsonObject();
         json.addProperty("kind", "bridge");
         json.addProperty("advanced", true);
         json.addProperty("status", section.isLinked() ? section.status().getSerializedName() : core.status().getSerializedName());
         json.addProperty("network", core.status().getSerializedName());
-        json.addProperty("title", section.getTitle());
+        json.addProperty("storage", core.kind());
+        json.addProperty("block", BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock()).toString());
+        json.addProperty("pos", pos(be.getBlockPos()));
         json.addProperty("mode", "direct");
+        json.addProperty("cardKind", "storage");
         json.addProperty("widgets", section.widgetCount());
+        json.addProperty("sectionId", section.sectionId().toString());
         var link = section.getLink();
-        json.addProperty("linked", link != null);
-        boolean canUnlink = false;
-        if (link != null) {
-            var p = link.pos().pos();
-            // where the mainframe is: only for players with view.positions on it (security review L12)
-            boolean positions = ai.ezfox.cccloud.access.Access.has(player, link.id(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
-            json.addProperty("mainframePos", positions ? p.getX() + " " + p.getY() + " " + p.getZ() : "");
-            var mainframe = CloudNetwork.mainframe(link.id());
-            json.addProperty("mainframe", mainframe == null ? "" : positions ? mainframe.getDisplayName() : "Mainframe");
-            boolean sameDim = bridge.asBlockEntity().getLevel() != null && link.pos().dimension().equals(bridge.asBlockEntity().getLevel().dimension());
-            json.addProperty("distance", sameDim && positions ? (int) Math.sqrt(bridge.asBlockEntity().getBlockPos().distSqr(p)) : -1);
-            json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE));
-            json.addProperty("inRange", section.hasRoute());
-            canUnlink = GuiNetwork.canManageMainframe(player, link.id());
-        }
-        json.addProperty("canUnlink", canUnlink);
+        card(json, section.snapshot(), section.sectionId(), link);
+        link(json, player, link, be.getLevel(), be.getBlockPos(), section.sectionId(),
+            ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE), null);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
     }
 
     public static String uplink(CloudUplinkBlockEntity uplink, ServerPlayer player, @Nullable String notice) {
         var json = new JsonObject();
+        json.addProperty("kind", "uplink");
         json.addProperty("advanced", uplink.isAdvanced());
         json.addProperty("status", uplink.status().getSerializedName());
-        json.addProperty("title", uplink.getTitle());
         json.addProperty("mode", uplink.mode());
+        json.addProperty("cardKind", uplink.isTemplate() ? "storage" : !uplink.deviceKind().isEmpty() ? "device"
+            : uplink.isAuto() ? "auto" : uplink.widgetCount() > 0 ? "lua" : "none");
+        if (!uplink.deviceKind().isEmpty()) json.addProperty("template", uplink.deviceKind());
         json.addProperty("widgets", uplink.widgetCount());
         json.addProperty("computers", uplink.computerCount());
+        json.addProperty("sectionId", uplink.getUplinkId().toString());
+        json.addProperty("pos", pos(uplink.getBlockPos()));
+        attached(json, uplink);
         var link = uplink.getLink();
-        json.addProperty("linked", link != null);
-        boolean canUnlink = false;
-        if (link != null) {
-            var p = link.pos().pos();
-            boolean positions = ai.ezfox.cccloud.access.Access.has(player, link.id(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
-            json.addProperty("mainframePos", positions ? p.getX() + " " + p.getY() + " " + p.getZ() : "");
-            json.addProperty("mainframeDim", link.pos().dimension().identifier().toString());
-            var mainframe = CloudNetwork.mainframe(link.id());
-            json.addProperty("mainframe", mainframe == null ? "" : positions ? mainframe.getDisplayName() : "Mainframe");
-            json.addProperty("mainframeLoaded", mainframe != null);
-            boolean sameDim = uplink.getLevel() != null && link.pos().dimension().equals(uplink.getLevel().dimension());
-            json.addProperty("distance", sameDim && positions ? (int) Math.sqrt(uplink.getBlockPos().distSqr(p)) : -1);
-            json.addProperty("range", ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)));
-            json.addProperty("inRange", uplink.hasRoute());
-            if (uplink.routeState() != null) json.addProperty("routeState", uplink.routeState());
-            var route = ai.ezfox.cccloud.network.NetworkService.route(uplink.getUplinkId());
-            if (route != null && route.connected()) json.addProperty("hops", route.hops());
-            canUnlink = GuiNetwork.canManageMainframe(player, link.id());
-        }
-        json.addProperty("canUnlink", canUnlink);
+        card(json, uplink.snapshot(), uplink.getUplinkId(), link);
+        link(json, player, link, uplink.getLevel(), uplink.getBlockPos(), uplink.getUplinkId(),
+            ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)), uplink.routeState());
+        boolean canEdit = bool(json, "canUnlink");
         // v0.7 wireless redstone
         var redstone = new JsonObject();
         redstone.addProperty("mode", uplink.redstoneMode().id());
@@ -237,8 +231,168 @@ public final class GuiViews {
             var channel = ai.ezfox.cccloud.redstone.RedstoneService.channels(link.id()).get(uplink.redstoneChannel());
             if (channel != null) redstone.addProperty("channelLevel", channel.level());
         }
-        redstone.addProperty("canEdit", canUnlink);
+        redstone.addProperty("canEdit", canEdit);
         json.add("redstone", redstone);
+        if (notice != null) json.addProperty("notice", notice);
+        return Json.GSON.toJson(json);
+    }
+
+    private static String pos(net.minecraft.core.BlockPos p) {
+        return p.getX() + " " + p.getY() + " " + p.getZ();
+    }
+
+    private static boolean bool(JsonObject json, String key) {
+        return json.has(key) && json.get(key).getAsBoolean();
+    }
+
+    /** What the uplink sticks to: the block (id), and for a CC computer its id, label and power. */
+    private static void attached(JsonObject json, CloudUplinkBlockEntity uplink) {
+        if (!(uplink.getLevel() instanceof ServerLevel level)) return;
+        var facing = uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING);
+        var at = uplink.getBlockPos().relative(facing);
+        if (!level.isLoaded(at)) return;
+        var state = level.getBlockState(at);
+        if (state.isAir()) return;
+        var attached = new JsonObject();
+        attached.addProperty("block", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        var computer = ai.ezfox.cccloud.compat.cc.CcComputers.find(level, at);
+        if (computer != null) {
+            attached.addProperty("computer", computer.id());
+            String label = computer.label();
+            if (label != null && !label.isBlank()) attached.addProperty("label", label);
+            attached.addProperty("on", computer.isOn());
+        } else if (level.getBlockEntity(at) instanceof ai.ezfox.cccloud.bridge.BridgeHost host) {
+            attached.addProperty("bridge", host.bridgeCore().kind());
+        }
+        json.add("attached", attached);
+    }
+
+    /**
+     * The card as it appears on the dashboard: the title (the layout's custom title first), the default title, and a
+     * compact live preview of the widgets ({@link CardPreview}).
+     */
+    private static void card(JsonObject json, JsonObject snapshot, java.util.UUID sectionId, ai.ezfox.cccloud.item.@Nullable MainframeLink link) {
+        var layout = link == null ? null : WebHub.INSTANCE.layout(link.id());
+        String defaultTitle = snapshot.has("title") ? snapshot.get("title").getAsString() : "";
+        String custom = customTitle(layout, sectionId.toString());
+        json.addProperty("title", custom != null ? custom : defaultTitle);
+        json.addProperty("defaultTitle", defaultTitle);
+        json.addProperty("customTitle", custom != null);
+        json.add("preview", CardPreview.of(snapshot, layout, sectionId.toString()));
+    }
+
+    /** The card's title in the dashboard layout, or null if it has none. */
+    static @Nullable String customTitle(@Nullable JsonObject layout, String cardKey) {
+        if (layout == null || !(layout.get("cards") instanceof JsonObject cards) || !(cards.get(cardKey) instanceof JsonObject card)) return null;
+        var title = card.get("title");
+        return title != null && title.isJsonPrimitive() && !title.getAsString().isEmpty() ? title.getAsString() : null;
+    }
+
+    /**
+     * The link to the mainframe in plain terms: its name (positions only with {@code view.positions}), whether it is up
+     * (power, redstone, dashboard switch), the route (signal, relays, cable) and what the player may do here.
+     */
+    private static void link(JsonObject json, ServerPlayer player, ai.ezfox.cccloud.item.@Nullable MainframeLink link, net.minecraft.world.level.@Nullable Level level,
+                             net.minecraft.core.BlockPos here, java.util.UUID deviceId, int deviceRange, @Nullable String routeState) {
+        json.addProperty("linked", link != null);
+        json.addProperty("range", deviceRange);
+        if (link == null) {
+            json.addProperty("canUnlink", false);
+            return;
+        }
+        var resolution = ai.ezfox.cccloud.access.Access.resolve(player, link.id());
+        var p = link.pos().pos();
+        // where the mainframe is: only for players with view.positions on it (security review L12)
+        boolean positions = resolution.has(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+        json.addProperty("mainframePos", positions ? pos(p) : "");
+        json.addProperty("mainframeDim", link.pos().dimension().identifier().toString());
+        var mainframe = CloudNetwork.mainframe(link.id());
+        // The default name already ends in "@ x y z": never append the position again.
+        json.addProperty("mainframe", mainframe == null ? "" : positions ? mainframe.getDisplayName() : "Mainframe");
+        json.addProperty("mainframeLoaded", mainframe != null);
+        json.addProperty("mainframeState", mainframe == null ? "unloaded" : mainframe.isPowered() ? "killed" : !mainframe.hasPower() ? "no_power"
+            : !CloudConfig.get(CloudConfig.ALLOW_CLOUD) ? "cloud_disabled" : !mainframe.isEnabled() ? "dashboard_off" : "ok");
+        if (mainframe != null) {
+            json.addProperty("mainframeRange", (int) Math.round(CloudConfig.get(CloudConfig.RANGE_MAINFRAME) * mainframe.effects().rangeFactor()));
+        }
+        boolean sameDim = level != null && link.pos().dimension().equals(level.dimension());
+        json.addProperty("distance", sameDim && positions ? (int) Math.sqrt(here.distSqr(p)) : -1);
+        var route = ai.ezfox.cccloud.network.NetworkService.route(deviceId);
+        boolean connected = route != null && route.connected();
+        json.addProperty("inRange", connected);
+        if (routeState == null && route != null && !connected) {
+            routeState = ai.ezfox.cccloud.network.NetworkService.overCapacity(deviceId) ? "over_capacity" : "no_route";
+        }
+        if (routeState != null) json.addProperty("routeState", routeState);
+        if (connected) {
+            json.addProperty("hops", route.hops());
+            json.addProperty("relays", Math.max(0, route.hops() - 1));
+            json.addProperty("signal", Math.round(route.signal() * 100) / 100.0);
+            if (route.wired()) json.addProperty("cable", route.fiber() ? "fiber" : "cable");
+            if (route.legacyOutOfRange()) json.addProperty("signal", 0);
+        }
+        json.addProperty("canUnlink", resolution.has(ai.ezfox.cccloud.access.Perm.NETWORK_LINK));
+        json.addProperty("canRename", resolution.has(ai.ezfox.cccloud.access.Perm.LAYOUT_EDIT));
+        json.addProperty("canDashboard", resolution.has(ai.ezfox.cccloud.access.Perm.VIEW) && CloudWebServer.isRunning());
+    }
+
+    /**
+     * A Cloud Relay: what it does (ranges), the networks it carries (only those where the player has {@code view},
+     * names with positions only with {@code view.positions}; the rest are counted), devices routed through it, its own
+     * link to the mainframe, and its power.
+     */
+    public static String relay(ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay, ServerPlayer player, @Nullable String notice) {
+        var json = new JsonObject();
+        var type = relay.type();
+        json.addProperty("kind", "relay");
+        json.addProperty("advanced", type != ai.ezfox.cccloud.relay.RelayType.RELAY);
+        json.addProperty("relayType", switch (type) {
+            case RELAY -> "relay";
+            case ADVANCED -> "advanced";
+            case ENDER -> "ender";
+        });
+        json.addProperty("block", BuiltInRegistries.BLOCK.getKey(relay.getBlockState().getBlock()).toString());
+        json.addProperty("pos", pos(relay.getBlockPos()));
+        json.addProperty("relayId", relay.relayId().toString());
+        json.addProperty("powered", relay.hasPower());
+        json.addProperty("energy", relay.energy().energy());
+        json.addProperty("capacity", relay.energy().capacity());
+        json.addProperty("usage", type.usage());
+        json.addProperty("nodeRange", type.nodeRange());
+        json.addProperty("deviceRange", type.deviceRange());
+        if (type == ai.ezfox.cccloud.relay.RelayType.ENDER) json.addProperty("enderLinked", relay.enderGroup() != null);
+        String id = relay.relayId().toString();
+        var networks = new JsonArray();
+        int others = 0;
+        for (var mainframe : CloudNetwork.mainframes()) {
+            var result = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
+            if (result == null || !result.reachable(id)) continue;
+            var resolution = ai.ezfox.cccloud.access.Access.resolve(player, mainframe.getMainframeId());
+            if (!resolution.has(ai.ezfox.cccloud.access.Perm.VIEW) || networks.size() >= 8) {
+                others++;
+                continue;
+            }
+            var row = new JsonObject();
+            row.addProperty("name", resolution.has(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) ? mainframe.getDisplayName() : "Mainframe");
+            var path = result.nodePaths().get(id);
+            row.addProperty("relays", Math.max(0, path.size() - 2));
+            if (path.size() >= 2) {
+                String parent = path.get(path.size() - 2);
+                for (var link : result.links()) {
+                    if ((link.a().equals(parent) && link.b().equals(id)) || (link.b().equals(parent) && link.a().equals(id))) {
+                        if (link.kind().cable()) row.addProperty("cable", link.kind() == ai.ezfox.cccloud.network.graph.NetworkGraph.LinkKind.FIBER ? "fiber" : "cable");
+                        else row.addProperty("signal", Math.round(link.signal() * 100) / 100.0);
+                        break;
+                    }
+                }
+            }
+            int devices = 0;
+            for (var route : result.routes().values()) if (route != null && route.path().contains(id)) devices++;
+            row.addProperty("devices", devices);
+            networks.add(row);
+        }
+        json.add("networks", networks);
+        json.addProperty("otherNetworks", others);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
     }
