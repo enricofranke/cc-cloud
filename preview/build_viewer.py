@@ -67,6 +67,7 @@ TEMPLATE = r"""<!doctype html>
     <button data-g="show" data-v="mainframe">Mainframe</button>
     <button data-g="show" data-v="uplink">Uplink</button>
     <button data-g="show" data-v="advanced">Adv. Uplink</button>
+    <button data-g="show" data-v="mounts">Mounts</button>
     <button data-g="show" data-v="bridges">Bridges</button>
     <button data-g="show" data-v="relays">Relays</button>
     <button data-g="show" data-v="cables">Cables</button>
@@ -227,6 +228,32 @@ function placed(modelId, bx, by, bz, facing, override, pivot) {
   return outer;
 }
 
+// low dummy block (slab / solar panel / carpet height) standing on the floor of its cell
+function dummyBox(bx, by, bz, h, color) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(16, h, 16), new THREE.MeshBasicMaterial({ color }));
+  m.material.userData.dimmable = true; m.material.userData.base = new THREE.Color(color);
+  m.position.set(bx * 16 + 8, by * 16 + h / 2, bz * 16 + 8); world.add(m);
+  m.add(new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: 0x2d2d2d })));
+}
+
+// an uplink with the blockstate's mount: full = plate + spinning ring/core, otherwise the compact puck (no moving part)
+function uplinkAt(adv, s, mount, bx, by, bz, facing, direct) {
+  if (mount !== "full") {
+    placed(`cccloud:block/${adv ? "uplink_advanced_compact" : "uplink_compact"}_${mount}_${s}`, bx, by, bz, facing);
+    if (direct) placed(`cccloud:block/uplink_compact_ring_${mount}`, bx, by, bz, facing);
+    return;
+  }
+  placed(`cccloud:block/${adv ? "uplink_advanced" : "uplink"}_${s}`, bx, by, bz, facing);
+  const spd = s === "offline" ? 0 : s === "connecting" ? (adv ? 4 : 12) : (adv ? 1.6 : 3.1);
+  placed(adv ? "cccloud:block/uplink_advanced_core" : "cccloud:block/uplink_ring", bx, by, bz, facing, null,
+    { at: [8, 8, 1.375], axis: "z", speed: spd });
+  if (direct) placed("cccloud:block/uplink_direct_ring", bx, by, bz, facing);
+}
+
+// attached block height, mount on its side, mount on its top (what UplinkMount.compute picks), dummy colour
+const MOUNT_DEMO = [[16, "full", "full", 0x7f7f7f], [8, "low", "post8", 0xb4b4b4], [4, "bottom", "post12", 0x26326b],
+                    [1, "bottom", "post16", 0xe6e6e6]];
+
 function dummyBlock(bx, by, bz, color) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(16, 16, 16), new THREE.MeshBasicMaterial({ color }));
   m.material.userData.dimmable = true; m.material.userData.base = new THREE.Color(color);
@@ -285,13 +312,18 @@ function rebuild() {
   if (show === "all" || show === "advanced") ups.push([true, show === "all" ? -2 : 0]);
   for (const [adv, x] of ups) {
     dummyBlock(x, 0, 0, adv ? 0xddd973 : 0x7f7f7f);
-    const base = adv ? "uplink_advanced" : "uplink";
     // uplink in front of the dummy block (attached to its south face => facing north)
-    placed(`cccloud:block/${base}_${s}`, x, 0, 1, "north");
-    const spd = s === "offline" ? 0 : s === "connecting" ? (adv ? 4 : 12) : (adv ? 1.6 : 3.1);
-    placed(adv ? "cccloud:block/uplink_advanced_core" : "cccloud:block/uplink_ring", x, 0, 1, "north", null,
-      { at: [8, 8, 1.375], axis: "z", speed: spd });
-    if (direct) placed("cccloud:block/uplink_direct_ring", x, 0, 1, "north");
+    uplinkAt(adv, s, "full", x, 0, 1, "north", direct);
+  }
+  if (show === "mounts") {
+    // front row normal, back row advanced: side uplinks on the south faces, top uplinks above (facing down)
+    for (const [adv, z] of [[false, 0], [true, -3]])
+      MOUNT_DEMO.forEach(([h, side, top, col], i) => {
+        const x = 3 - 2 * i;
+        if (h === 16) dummyBlock(x, 0, z, col); else dummyBox(x, 0, z, h, col);
+        uplinkAt(adv, s, side, x, 0, z + 1, "north", direct);
+        uplinkAt(adv, s, top, x, 1, z, "down", direct);
+      });
   }
   if (show === "all" || show === "bridges") {
     const all = show === "all";
