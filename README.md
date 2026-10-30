@@ -78,6 +78,14 @@ is served by the mod itself.
 
 ## Quick start
 
+**Download: which file?** Every [release](https://github.com/enricofranke/cc-cloud/releases) has three:
+
+| File | Take it when |
+|---|---|
+| `cccloud-<version>.jar` | you **play on your own server** or in singleplayer. With FTB Quests, its quest chapters are added by themselves. |
+| `cccloud-<version>-modpack.jar` | you **make a modpack**: the same mod (same id and version), but it never touches the quest book. |
+| `cccloud-quests-atm11-<version>.zip` | you make a modpack (or install the quests by hand): the quest chapters for your quest book. |
+
 1. Install **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked)** and **CC: Cloud** (client and server) – from
    [the download page](https://cccloud.dev/en/download/) or the [releases](https://github.com/enricofranke/cc-cloud/releases).
 2. Place a **Cloud Mainframe** and give it power (any FE source).
@@ -107,16 +115,17 @@ Full reference: [cccloud.dev/en/docs](https://cccloud.dev/en/docs/), `/docs` on 
 ### Quests (FTB Quests)
 
 Two quest chapters for FTB Quests, made for All the Mods 11: **CC: Tweaked** (24 quests) and **CC: Cloud** (39 quests),
-in English and German. They are **not inside the mod jar**: quests belong to the pack's quest book
-(`config/ftbquests/quests`), so adding the mod alone adds no quests.
+in English and German.
 
-1. Download `cccloud-quests-atm11-<version>.zip` from the [releases](https://github.com/enricofranke/cc-cloud/releases).
-2. Unpack it and run `./install.sh <server-folder>` once on the server (backs up the quest book first, never overwrites
-   other quests), then restart the server or run `/ftbquests reload`. Players receive the quests automatically.
-
-The chapters appear in the Tech group, after Ender IO and XyCraft. Hosts with only a file manager: `README.txt` in the
-zip has the manual steps. Pack makers can ship the chapters as they are or adapt them – see
-[`integration/ftbquests`](integration/ftbquests/README.md).
+- **Own server or singleplayer (`cccloud-<version>.jar`):** nothing to do. On the first start with FTB Quests, before
+  FTB Quests reads its quests, the mod adds both chapters to the quest book (`config/ftbquests/quests`; ATM11's Tech
+  group, otherwise a new "CC: Cloud" group), and players receive them from the server. It makes a backup first, never
+  replaces other quests or texts, leaves out its CC: Tweaked chapter when the pack has one, and acts only once: a
+  chapter you delete stays deleted, and newer versions only update chapters nobody changed. The server log says what it
+  did; `installQuests = false` in `cccloud-server.toml` turns it off.
+- **Modpacks:** use `cccloud-<version>-modpack.jar` and ship the chapters from `cccloud-quests-atm11-<version>.zip` in
+  your quest book, as they are or adapted (see [`integration/ftbquests`](integration/ftbquests/README.md)). With the
+  standard jar, set `installQuests = false` in `defaultconfigs/cccloud-server.toml`.
 
 ## Hosting & security
 

@@ -14,19 +14,26 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 
 ## Install {#install}
 
-Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the \`mods\` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need.
+Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the \`mods\` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need. Every release has three downloads:
+
+| File | Take it when |
+|---|---|
+| \`cccloud-<version>.jar\` | you play on your own server or in singleplayer. It brings the quests along (below). |
+| \`cccloud-<version>-modpack.jar\` | you make a modpack: the same mod, but it never touches the quest book. |
+| \`cccloud-quests-atm11-<version>.zip\` | you make a modpack or install the quests by hand: the quest chapters. |
 
 ### Quests (FTB Quests) {#quests}
 
-There are two quest chapters for **FTB Quests**: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German. They are **not inside the mod jar**: FTB Quests keeps every quest in the quest book of the server (\`config/ftbquests/quests\`), so adding the mod alone adds no quests.
+With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German.
 
-1. Download \`cccloud-quests-atm11-<version>.zip\` from the [releases](https://github.com/enricofranke/cc-cloud/releases), next to the mod jar.
-2. Unpack it and run \`./install.sh <server folder>\` – the folder that contains \`config/ftbquests/quests\` (in singleplayer: the instance folder). It backs up the quest book first and never overwrites other quests.
-3. Restart the server or run \`/ftbquests reload\`.
+With \`cccloud-<version>.jar\` they come by themselves: on the first start, before FTB Quests reads its quests, CC: Cloud adds them to the quest book (\`config/ftbquests/quests\`) – in ATM11's **Tech** group after Ender IO and XyCraft, otherwise in a new **CC: Cloud** group. Players get them from the server; in singleplayer the same happens in your game folder.
 
-Install them **once on the server**; players get the quests from the server automatically. The chapters appear in the **Tech** group, after Ender IO and XyCraft. Only a file manager at your host? \`README.txt\` in the zip has the manual steps.
+- A backup comes first (\`config/ftbquests/quests.backup-<time>\`). Other chapters and texts are never replaced.
+- If the quest book already has a CC: Tweaked chapter, only the CC: Cloud chapter is added.
+- Only once: a chapter you delete is not added again. Newer versions update a chapter only if nobody changed it; your edits stay.
+- The server log has one line about it (\`FTB Quests: …\`). Turn it off with \`installQuests = false\` in \`config/cccloud-server.toml\` on the server (in singleplayer: in your game folder).
 
-> **Pack makers:** the chapters are made for All the Mods 11 and are plain FTB Quests files. Ship them in your pack's quest book as they are or adapt them (layout, rewards, chapter group); the milestone rewards use ATM11's reward tables. CC: Cloud itself never writes into the quest book. Generator and validator: \`integration/ftbquests\` in the repository.
+> **Pack makers:** use \`cccloud-<version>-modpack.jar\` – the same mod with the same id and version, so it can replace the standard jar, but it never touches the quest book (\`installQuests\` is off and the quest files are not inside). Ship the chapters from \`cccloud-quests-atm11-<version>.zip\` in your quest book, as they are or adapted (layout, rewards, chapter group; the milestone rewards use ATM11's reward tables). Using the standard jar instead? Put \`installQuests = false\` into \`defaultconfigs/cccloud-server.toml\`. The zip's \`install.sh\` and \`README.txt\` also cover installing by hand.
 
 ## The blocks {#blocks}
 
@@ -814,7 +821,7 @@ The recipes are made to be changed by modpacks:
 - **Stable recipe ids.** Every recipe is \`cccloud:<name>\` ([list below](/docs/recipes#recipe-ids)) and keeps its id across versions. Override one with a datapack file \`data/cccloud/recipe/<name>.json\`, remove it with a file that only holds a \`neoforge:never\` condition (below), or use KubeJS / CraftTweaker.
 - **Tags instead of items.** Ingredients use the common \`c:\` tags (\`#c:ingots/gold\`, \`#c:nuggets/gold\`, \`#c:ender_pearls\`, \`#c:dusts/redstone\`, \`#c:glass_panes\`, \`#c:gems/diamond\`, \`#c:storage_blocks/gold\`, \`#c:ingots/vibranium\` …), so unification mods such as AlmostUnified swap the material without touching these recipes.
 - **Conditional AllTheModium recipes.** The mainframe upgrades and the Cloud Probe use AllTheModium metals when AllTheModium is installed (\`neoforge:mod_loaded\`); without it their \`*_fallback\` variant (diamond, netherite, nether star) loads instead (\`neoforge:not\`). Likewise the Ender Fiber Link (\`ender_fiber_link_unobtainium\` with AllTheModium, \`ender_fiber_link\` without) and the Quantum Core (the ATM Star of All The Tweaks, \`quantum_core_fallback\` without it). When you change one of them, change both ids – the table below says which one loads when.
-- **FTB Quests:** the CC: Cloud chapters use item tasks (have or craft the item), never recipe ids – they keep working whatever you change. They are not inside the mod jar: ship them in your pack's quest book ([Quests](/docs/start#quests)).
+- **FTB Quests:** the CC: Cloud chapters use item tasks (have or craft the item), never recipe ids – they keep working whatever you change. For a modpack, use the modpack jar and ship them in your quest book ([Quests](/docs/start#quests)).
 - **What players see:** JEI/EMI, the in-game handbook and the server's dashboard show the live recipes; the dashboard marks changed, added and removed ones. The website shows the defaults.
 
 Remove a recipe with a datapack (\`data/cccloud/recipe/cloud_core.json\` in your pack):
@@ -1175,6 +1182,8 @@ After 5 wrong PINs the device is locked for 5 minutes. The owner can change the 
 
 ## No quests after installing the mod {#no-quests}
 
-The FTB Quests chapters are not inside the mod jar – quests live in the server's quest book. Install the quest zip once on the server, then restart it or run \`/ftbquests reload\`. See [Quests](/docs/start#quests).
+- The server needs **FTB Quests** and the standard jar \`cccloud-<version>.jar\` – the modpack edition never adds quests.
+- The server log says what happened: look for \`FTB Quests:\` (for example \`installQuests = false\`, an id that is already used in the quest book, or a chapter that was deleted earlier).
+- The quests are added once; a deleted chapter does not come back. To start over, delete \`config/cccloud/quests-installed.json\` and restart. See [Quests](/docs/start#quests).
 `,
 };

@@ -4,13 +4,22 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
-- FTB Quests: every release now carries the two quest chapters (CC: Tweaked, CC: Cloud; English and German) as a
-  ready-to-use quest pack, `cccloud-quests-atm11-<version>.zip`, next to the jar: the chapter and lang files,
-  `install.sh` and a `README.txt` (EN/DE) with the steps for the script and for hosts with only a file manager. The
-  quests are not inside the mod jar – they belong to the pack's quest book, so adding the mod alone shows no quests.
-  Install the zip once on the server; players get the quests from the server. Explained in the README, in Getting
-  started (new "Install" section with "Quests"), in Troubleshooting and in the in-game handbook (EN/DE), with a note
-  for pack makers.
+- **FTB Quests: the quests come with the mod.** A beta tester added CC: Cloud to his server and saw no quests: the
+  chapters were separate files to install by hand. Now every release has two jars and a quest zip:
+  - `cccloud-<version>.jar` – **playing on your own server or in singleplayer?** Take this one. With FTB Quests it adds
+    the two chapters (CC: Tweaked, 24 quests; CC: Cloud, 39 quests; English and German) to the quest book on the first
+    start, before FTB Quests reads it: backup first, never replaces other chapters or texts, ATM11's Tech group or a new
+    "CC: Cloud" group, nothing at all if one of its ids is already taken, and its CC: Tweaked chapter only when the pack
+    has none. Only once (`config/cccloud/quests-installed.json`): a chapter you delete stays deleted, and newer versions
+    only update chapters and texts nobody changed. One log line says what happened; `installQuests = false` in
+    `cccloud-server.toml` turns it off. Players get the quests from the server, as with any FTB Quests book.
+  - `cccloud-<version>-modpack.jar` – **making a modpack?** The same mod (same id and version), but it never touches the
+    quest book (`installQuests` is off and the quest files are not inside). Ship the chapters from
+    `cccloud-quests-atm11-<version>.zip` (chapter and lang files, `install.sh`, `README.txt` EN/DE) in your quest book.
+  - The release notes start with "Which download?". README, Getting started (new "Install" section with "Quests"),
+    Troubleshooting and the in-game handbook (EN/DE) explain it, with a note for pack makers.
+- The CC: Tweaked chapter writes its turtle-upgrade components as FTB Quests writes them back, so an FTB Quests re-save
+  no longer counts as a change.
 
 ## 1.0.0-beta.1 – 2026-10-30
 

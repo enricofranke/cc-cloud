@@ -60,5 +60,7 @@ Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PI
 
 ## Keine Quests nach der Installation
 
-Die FTB-Quests-Kapitel stecken nicht in der Mod-Jar – Quests liegen im Questbuch des Servers. Das Quest-Zip einmal auf dem Server installieren, dann den Server neu starten oder `/ftbquests reload` ausführen. Siehe [Quests](index.md).
+- Der Server braucht **FTB Quests** und die normale Jar `cccloud-<version>.jar` – die Modpack-Edition fügt nie Quests hinzu.
+- Im Server-Log steht, was passiert ist: Suche nach `FTB Quests:` (zum Beispiel `installQuests = false`, eine ID, die im Questbuch schon vergeben ist, oder ein Kapitel, das früher gelöscht wurde).
+- Die Quests kommen nur einmal; ein gelöschtes Kapitel kommt nicht wieder. Für einen Neuanfang `config/cccloud/quests-installed.json` löschen und neu starten. Siehe [Quests](index.md).
 

@@ -16,19 +16,26 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 
 ## Installation
 
-Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den `mods`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client.
+Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den `mods`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client. Jedes Release hat drei Downloads:
+
+| Datei | Nimm sie, wenn |
+|---|---|
+| `cccloud-<version>.jar` | du auf deinem eigenen Server oder im Einzelspieler spielst. Sie bringt die Quests mit (unten). |
+| `cccloud-<version>-modpack.jar` | du ein Modpack baust: dieselbe Mod, aber sie fasst das Questbuch nie an. |
+| `cccloud-quests-atm11-<version>.zip` | du ein Modpack baust oder die Quests von Hand installierst: die Quest-Kapitel. |
 
 ### Quests (FTB Quests)
 
-Es gibt zwei Quest-Kapitel für **FTB Quests**: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch. Sie stecken **nicht in der Mod-Jar**: FTB Quests hält alle Quests im Questbuch des Servers (`config/ftbquests/quests`), die Mod allein bringt also keine Quests mit.
+Mit **FTB Quests** bekommst du zwei Quest-Kapitel: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch.
 
-1. `cccloud-quests-atm11-<version>.zip` von den [Releases](https://github.com/enricofranke/cc-cloud/releases) herunterladen, neben der Mod-Jar.
-2. Entpacken und `./install.sh <Server-Ordner>` ausführen – der Ordner, in dem `config/ftbquests/quests` liegt (im Einzelspieler: der Instanz-Ordner). Das Skript sichert das Questbuch vorher und überschreibt nie fremde Quests.
-3. Server neu starten oder `/ftbquests reload` ausführen.
+Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB Quests seine Quests liest, trägt CC: Cloud sie ins Questbuch ein (`config/ftbquests/quests`) – in die Gruppe **Tech** von ATM11 nach Ender IO und XyCraft, sonst in eine neue Gruppe **CC: Cloud**. Die Spieler bekommen sie vom Server; im Einzelspieler passiert dasselbe in deinem Spielordner.
 
-Einmal **auf dem Server** installieren; die Spieler bekommen die Quests automatisch vom Server. Die Kapitel stehen in der Gruppe **Tech**, nach Ender IO und XyCraft. Nur ein Dateimanager beim Hoster? Die `README.txt` im Zip beschreibt die Schritte von Hand.
+- Zuerst kommt ein Backup (`config/ftbquests/quests.backup-<Zeit>`). Andere Kapitel und Texte werden nie ersetzt.
+- Hat das Questbuch schon ein CC: Tweaked-Kapitel, kommt nur das CC: Cloud-Kapitel dazu.
+- Nur einmal: Ein gelöschtes Kapitel kommt nicht wieder. Neue Versionen aktualisieren ein Kapitel nur, wenn es niemand geändert hat; deine Änderungen bleiben.
+- Im Server-Log steht eine Zeile dazu (`FTB Quests: …`). Abschalten mit `installQuests = false` in `config/cccloud-server.toml` auf dem Server (im Einzelspieler: in deinem Spielordner).
 
-> **Modpack-Ersteller:** Die Kapitel sind für All the Mods 11 gemacht und ganz normale FTB-Quests-Dateien. Liefere sie unverändert in deinem Questbuch mit oder passe sie an (Layout, Belohnungen, Kapitelgruppe); die Meilenstein-Belohnungen nutzen die Belohnungstabellen von ATM11. CC: Cloud selbst schreibt nie ins Questbuch. Generator und Validator: `integration/ftbquests` im Repository.
+> **Modpack-Ersteller:** Nimm `cccloud-<version>-modpack.jar` – dieselbe Mod mit derselben ID und Version, sie kann also die normale Jar ersetzen, fasst aber das Questbuch nie an (`installQuests` ist aus und die Quest-Dateien sind nicht drin). Liefere die Kapitel aus `cccloud-quests-atm11-<version>.zip` in deinem Questbuch mit, unverändert oder angepasst (Layout, Belohnungen, Kapitelgruppe; die Meilenstein-Belohnungen nutzen die Belohnungstabellen von ATM11). Du nimmst doch die normale Jar? Dann `installQuests = false` in `defaultconfigs/cccloud-server.toml` eintragen. `install.sh` und `README.txt` im Zip beschreiben auch die Installation von Hand.
 
 ## Die Blöcke
 
