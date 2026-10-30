@@ -185,10 +185,15 @@ public final class ClaimGuard {
 
     /** Whether reading {@code pos} is blocked for these owners right now (cached lookup; e.g. a bridge a Lua widget names). */
     public static boolean blockedAt(ServerLevel level, BlockPos pos, List<UUID> owners) {
+        return blockedInChunk(level, pos.getX() >> 4, pos.getZ() >> 4, owners);
+    }
+
+    /** As {@link #blockedAt} for a whole chunk (the Advanced Cloud Sensor's zone). */
+    public static boolean blockedInChunk(ServerLevel level, int chunkX, int chunkZ, List<UUID> owners) {
         var p = provider;
         if (p == null) return false;
         try {
-            return rule(cachedClaim(p, level, pos.getX() >> 4, pos.getZ() >> 4), owners, p::trusted) != null;
+            return rule(cachedClaim(p, level, chunkX, chunkZ), owners, p::trusted) != null;
         } catch (RuntimeException | LinkageError e) {
             warnOnce(e);
             return true;

@@ -292,11 +292,13 @@ A device placed in unclaimed land (or next to a claim, touching a machine inside
 controlling its machine after another team claimed the chunk; only the Cloud Probe re-checked claims. Now one guard
 (`claims/ClaimGuard`) covers every device that reads or controls a block:
 - **What is checked:** an uplink – the block it sticks to (on a computer: the computer); a Cloud Probe – its target; a
-  Cloud Bridge – its own block; a Cloud Redstone device – its own block (where it reads or writes redstone); the card of
-  a wired machine behind a computer's modem – that machine.
+  Cloud Bridge – its own block; a Cloud Redstone device, the Advanced Cloud Sensor included – its own block (where it
+  reads or writes redstone); the card of a wired machine behind a computer's modem – that machine. The sensor's zone
+  has its own check (below) through the same provider and rule.
 - **Rule:** a device is *blocked* while that block is in a chunk claimed by a team that none of its owners belongs to or
   is allied with (members and allies count as the same team). The owners are the player who linked it (a probe: who set
-  its target; an unlinked uplink: who placed it) and the owner of its mainframe. Unclaimed land and claims of the owners'
+  its target; an unlinked uplink: who placed it; an Advanced Cloud Sensor also who placed it) and the owner of its
+  mainframe. Unclaimed land and claims of the owners'
   own or allied teams are fine. Operators and `cccloud.admin.*` get no bypass, as for the probe's pick and the map. A
   claim mod that throws fails closed (blocked, logged once). No owner known (an unlinked uplink placed by a command)
   and a claim: blocked.
@@ -307,9 +309,12 @@ controlling its machine after another team claimed the chunk; only the Cloud Pro
   import refuse a computer in such a claim. Every action and query is refused with `claim_blocked` – from the dashboard,
   rules, scenes, the public API (409) and the storage operations. The card shows "Blocked – this machine is in
   <team>'s claim" instead of values (`"blocked":{"reason":"claim","team"}` in the section; a redstone device's widgets are
-  listed in `"blockedWidgets"`, keep their last value and record no history). The team's name only reaches dashboard
-  sessions with `view.positions`; other sessions, share links, Cloud Displays, the public API and in-game screens of
-  players without it get "another team's claim". The uplink, bridge and redstone device screens show the same. It
+  listed in `"blockedWidgets"`, keep their last value and record no history). A blocked Advanced Cloud Sensor does not
+  scan (who was inside is forgotten, its redstone output goes off, pending alerts are dropped) and its card shows the
+  claim instead of its widgets. The team's name is a private part of the section like the sensor's player names
+  (`WebHub.seesNames`, i.e. `view.positions`): dashboard sessions and API keys with it get the name; viewers, share
+  links, Cloud Displays, the Cloud Tablet and in-game screens of players without it get "another team's claim". The
+  uplink, bridge and redstone device screens, the Cloud Tablet and the Cloud Display show the same. It
   unblocks by itself when the claim goes or the teams become allies. Each transition of a linked device writes one
   audit line (server log and the mainframe's audit log).
 - **When:** when a device is linked, placed (uplinks), loaded, gets a probe target or a wired machine card; before every
@@ -323,8 +328,8 @@ controlling its machine after another team claimed the chunk; only the Cloud Pro
   placing blocks and picking a probe target, but claims made later are not seen by CC: Cloud.
 - Tests: `ClaimRuleTest` (own team, ally, foreign team, unclaimed, no owner, no operator bypass, pass budget, team names),
   `WebHubClaimTeamTest` (team name only with `view.positions`), GameTests `claim_guard` (uplink, wired machine card and
-  redstone device with a test claim mod), `probe_guards`, and with `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard`
-  (real FTB Chunks claims and FTB Teams allies).
+  redstone device with a test claim mod), `probe_guards`, `sensor_claims` (zone and the sensor's own block), and with
+  `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard` (real FTB Chunks claims and FTB Teams allies).
 
 ### Advanced Cloud Sensor: player names and zones
 The Advanced Cloud Sensor reports who enters a zone – on a shared server, player names and where and when they were seen
@@ -343,12 +348,14 @@ are personal data. Rules:
 - **Server switch.** `advancedSensorPlayerNames = false` turns names off for the whole server: nothing reports or stores
   a name (the log keeps "a player"), push included; rules for one player by name never fire. The allow/deny lists still
   work: they are matched at scan time against the live player and never reported.
-- **Where it may look.** The zone must lie in the owner's claim or unclaimed land: every chunk it touches is checked
-  against FTB Chunks claims of other teams (members and allies count as the own team, as for the Cloud Probe), when the
+- **Where it may look.** The zone must lie in the owners' claims or unclaimed land: every chunk it touches is checked
+  with the claim guard's provider and rule (FTB Chunks; members and allies count as the own team, see "Claims"), when the
   zone is set (with the player who sets it; from the dashboard, rules and scenes with the sensor's owner) and again every
-  5 seconds while it scans, so a zone claimed later stops being watched. Spawn protection and the world border are
-  checked when the zone is set. Claim mods other than FTB Chunks are only asked through the normal block placement. The
-  zone size is bounded by the server (`advancedSensorMaxZoneX/Y/Z`, hard caps 32/16/32).
+  5 seconds while it scans (with the sensor's owners: who placed it, who linked it and the mainframe's owner, and the
+  guard's per-chunk cache that claim events clear), so a zone claimed later stops being watched. The sensor's own block
+  goes through the claim guard like every redstone device. Spawn protection and the world border are checked when the
+  zone is set. Claim mods other than FTB Chunks are only asked through the normal block placement. The zone size is
+  bounded by the server (`advancedSensorMaxZoneX/Y/Z`, hard caps 32/16/32).
 - **Who may change it.** Arming and disarming need `act.redstone` (dashboard, rules, scenes, the screen – an intruder
   cannot walk up and disarm a linked sensor; PIN/confirmation possible); every other setting needs `network.link`; at most
   `redstoneDeviceChangesPerSecond` changes per second from the dashboard, rules, scenes and the API.

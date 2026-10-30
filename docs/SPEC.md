@@ -1606,12 +1606,14 @@ player, or which kind of mob – and reports it to the dashboard, to rules and t
   9/5/9, hard caps 32/16/32; larger saved sizes are clamped). Placement **in front** (starts at the sensor's block and
   reaches `size` blocks out of the face it looks out of, i.e. away from the block it sits on; centred on the other two
   axes, the extra block of an even size on the positive side) or **around** (centred on the sensor). `SensorZone`.
-- **Claims:** the zone must lie in the owner's claim or unclaimed land – every chunk it touches is checked with
-  `XrayGuard.claimedByOther` (FTB Chunks; members and allies count as the own team, like the Cloud Probe). Not in spawn
+- **Claims:** the zone must lie in the owners' claims or unclaimed land – every chunk it touches is checked through the
+  claim guard's provider and rule (`ClaimGuard`, section "Claim guard": FTB Chunks; members and allies count as the own
+  team, like the Cloud Probe). The sensor's own block goes through the claim guard like every redstone device. Not in spawn
   protection (`Level.mayInteract` at the zone point closest to the spawn; with the owner offline: the dedicated server's
   rule, the owner counted as no operator unless listed) and inside the world border (all eight corners). Checked when the
   zone is set: in game with the player who sets it, from the dashboard, rules and scenes with the owner; refused with
-  `zone_claimed` / `zone_protected` (screen notice, action result). Claims are checked again every 5 s while it scans: a
+  `zone_claimed` / `zone_protected` (screen notice, action result). Claims are checked again every 5 s while it scans
+  (with the sensor's owners – who placed it, who linked it, the mainframe's owner – and the guard's per-chunk cache): a
   zone that another team claims later is not watched (`problem: zone_claimed` on the card, grey outline) until that
   changes. Claim mods other than FTB Chunks are not asked (as for the probe).
 - **Outline:** the block entity sends its zone (min/max, watching or not) in its update tag; the client draws it with the
@@ -1809,7 +1811,7 @@ tick; memory is bounded per device and per series.
   real 20 TPS (sleeping after each tick, outside the measurement) and the hub flushes on its own 100 ms timer, as on a real
   server. 10 s idle (`-PscaleTestBaseline`), 30 s load (`-PscaleTestSeconds`).
 - Measured: cccloud's server-thread time per tick by part (`TickCost`: uplinks, mainframes, redstone devices, network,
-  rules, history, production, scenes, mainframe cards, redstone cards, screens, web housekeeping, claim guard) as avg/p50/p95/p99/max,
+  rules, history, production, scenes, mainframe cards, redstone cards, screens, web housekeeping, advanced sensors, claim guard) as avg/p50/p95/p99/max,
   the whole tick in wall and CPU time, and `cccloudCpuEstMs` (cccloud's wall time scaled by the tick's CPU/wall ratio: on
   a busy machine the server thread is preempted, which inflates wall times); snapshot size and time per browser; bytes,
   messages and values per second per browser; the view of every in-game screen (mainframe, uplink with a Lua or machine
@@ -2070,10 +2072,12 @@ the Cloud Probe re-checked claims). One shared guard (`claims/ClaimGuard`) now c
 
 ### Rule
 - **The block a device reads or controls:** uplink – the block it sticks to (on a computer: the computer); Cloud Probe –
-  its target; Cloud Bridge – its own block; Cloud Redstone device – its own block; wired machine card – the machine.
+  its target; Cloud Bridge – its own block; Cloud Redstone device – its own block (the Advanced Cloud Sensor too; its
+  zone has its own check through the same provider and rule, see below); wired machine card – the machine.
 - **Owners:** the player who linked the device (stored as `linked_by` when the Link Card binds it; a probe: `remote_by`,
   who set its target; an unlinked uplink: `placed_by`) and the owner of its mainframe (the access store's record, so also
-  while the mainframe is unloaded). A wired machine card has the owners of the uplink whose computer reaches it.
+  while the mainframe is unloaded). A wired machine card has the owners of the uplink whose computer reaches it; an
+  Advanced Cloud Sensor also counts who placed it.
 - **Blocked** while that block is in a chunk claimed by a team none of the owners is a member or ally of. Unclaimed land
   and the owners' own or allied claims are fine. No bypass for operators (as for the probe's pick and the map). A claim
   mod that throws fails closed; no owner known and a claim: blocked. Pure function `ClaimGuard.rule`.
@@ -2109,15 +2113,24 @@ the Cloud Probe re-checked claims). One shared guard (`claims/ClaimGuard`) now c
 - Wired machine card: kept, not refreshed.
 - Redstone device: `apply` refuses; its dashboard copy keeps the level it had (no new reads); its widgets are listed in
   the card's `blockedWidgets` and record no history; "All on/off" skips it.
+- Advanced Cloud Sensor: does not scan (the tracker forgets who was inside, the redstone output goes off, pending alerts
+  are dropped); its own card (`SensorSection`) shows the claim instead of its widgets and refuses actions. Its zone check
+  (`AdvancedSensor.claimProblem`, every 5 s while scanning) uses `ClaimGuard.blockedInChunk` with the sensor's owners
+  (the guard's rule and per-chunk cache); setting a zone checks the player who sets it with
+  `ClaimGuard.claimedByOther`. The sensor's own GameTest claim hook is gone: `sensor_claims` uses `TestClaims`.
 - Section snapshot: `"blocked":{"reason":"claim","team":"<name>"}` and no widgets (uplink, probe, bridge, wired machine
-  card); redstone cards: `"blockedWidgets":{"<widget id>":{"reason":"claim","team":"<name>"}}`. `WebHub` keeps a public
-  version of such a section without `team`; only sessions with `view.positions` get the full one (snapshot and deltas),
-  share links, Cloud Displays, the public API and the in-game pickers get the public one.
+  card, Advanced Cloud Sensor card); redstone cards: `"blockedWidgets":{"<widget id>":{"reason":"claim","team":"<name>"}}`.
+  In `WebHub` the team is a private part of the section, like the sensor's player names: `Section.hasPrivate()` is also
+  true for a head that names a team, and the public form (`text(false)`/`json(false)`) has the head without `team`.
+  Sessions and API keys with `WebHub.seesNames` (`view.positions`) get the full form, everything else the public one
+  (viewers, share links, Cloud Displays, the Cloud Tablet's pickers).
 - Error `claim_blocked` for every refused action and query (public API: 409). The dashboard shows "Blocked – this
   machine is in <team>'s claim" (or "another team's claim") with a hint and a link to the FAQ (`/docs/faq#claims`), a
   red "Blocked" tag, no terminal or script buttons; a blocked redstone device shows "Blocked – in <team>'s claim" in its
   row. English and German (`claim.*` in `lib/i18n.ts`). In-game: the uplink and bridge screen state "Blocked by a claim"
-  with the same text (team only with `view.positions`), the redstone device screen likewise.
+  with the same text (team only with `view.positions`), the redstone device screen likewise; the Cloud Tablet shows the
+  text under the card's title and in a blocked device's row, the Cloud Display under the title ("another team's claim":
+  a display only gets the public form) and "Blocked by a claim" in a blocked device's box.
 - Audit: one line per transition of a linked device, server log and the mainframe's audit log ("Claim guard: uplink
   1a2b3c4d blocked: its machine is in Rivals's claim"); an unlinked device shows nothing anywhere, so its blocking (and
   the unblocking when it is linked) writes none.
@@ -2131,7 +2144,9 @@ implementation and `ClaimGuard.setProvider` are all it takes (events are optiona
 ### Tests
 Unit: `ClaimRuleTest`, `WebHubClaimTeamTest`; dashboard: `claims.test.ts`. GameTests: `claim_guard` (uplink on a machine,
 wired machine card, Cloud Switch; claim, ally, end of the alliance, unclaim; with the GameTest claim mod `TestClaims`,
-which only distrusts the test's own player so neighbouring tests are unaffected), `probe_guards`, `map_tiles`; with
+which only distrusts the test's own player so neighbouring tests are unaffected), `probe_guards`, `map_tiles`,
+`sensor_claims` (a zone in a claim is refused and stops the scan; when the sensor's own chunk is claimed the sensor is
+blocked, its card shows the claim and refuses actions, and it comes back after the unclaim); with
 `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard` (the same scenario with real FTB Chunks claims and FTB Teams
 allies, own test environment `cccloud:claims`; the claims overlay test `ftbchunks_claims` moved to `cccloud:claims_card`
 and unclaims at the end, because a real claim affects the tests around it).

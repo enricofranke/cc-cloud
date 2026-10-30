@@ -730,9 +730,15 @@ public class RsDeviceBlockEntity extends BlockEntity implements ai.ezfox.cccloud
         return link == null || isRemoved() ? null : getBlockPos();
     }
 
+    /** Who linked it and the mainframe's owner; an Advanced Cloud Sensor also its owner (who placed it). */
     @Override
     public java.util.List<UUID> guardOwners() {
-        return ai.ezfox.cccloud.claims.ClaimGuard.owners(linkedBy, link);
+        var owners = ai.ezfox.cccloud.claims.ClaimGuard.owners(linkedBy, link);
+        var placer = sensor == null ? null : sensor.owner();
+        if (placer == null || owners.contains(placer)) return owners;
+        var all = new java.util.ArrayList<UUID>(owners);
+        all.add(placer);
+        return all;
     }
 
     @Override
@@ -755,6 +761,7 @@ public class RsDeviceBlockEntity extends BlockEntity implements ai.ezfox.cccloud
         }
         claimBlock = block;
         RsDevices.claimChanged(this);
+        if (sensor != null) sensor.claimChanged(block != null);
     }
 
     @Override

@@ -63,13 +63,18 @@ public final class SensorSection implements DashboardSection {
         return device.status() == CloudStatus.ONLINE;
     }
 
-    /** The card as published: widgets with their values, private ones with a {@code publicValue}. */
+    /**
+     * The card as published: widgets with their values, private ones with a {@code publicValue}. While the claim guard
+     * blocks the sensor's block: no widgets, the claim instead (docs/SECURITY.md "Claims").
+     */
     public JsonObject snapshot() {
         var card = SensorCards.build(sensor.cardState());
         widgets.clear();
         var array = new JsonArray();
+        var block = device.claimBlock();
         for (var w : card.widgets()) {
             widgets.put(w.id(), w);
+            if (block != null) continue;
             var json = w.toJson();
             var pub = card.publicValues().get(w.id());
             if (pub != null) json.add("publicValue", pub);
@@ -83,6 +88,7 @@ public final class SensorSection implements DashboardSection {
         json.addProperty("mode", "direct");
         json.addProperty("template", SensorCards.TEMPLATE);
         json.addProperty("source", "sensor");
+        if (block != null) json.add("blocked", ai.ezfox.cccloud.claims.ClaimGuard.json(block));
         return json;
     }
 
@@ -120,6 +126,7 @@ public final class SensorSection implements DashboardSection {
 
     @Override
     public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement value, @Nullable Op op, String user, boolean pinVerified) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(device) != null) return ActionResult.done(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (!isOnline()) return ActionResult.done("uplink_offline");
         if (widgets.isEmpty()) snapshot();
         var result = ActionValidator.validate(widgets.get(widgetId), value, op, pinVerified);
