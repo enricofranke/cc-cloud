@@ -26,6 +26,11 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Docs (EN/DE): scenes, schedules, production statistics and a Public API page with curl, Home Assistant and a
   Discord bot example; handbook regenerated.
 
+### Fixes
+- Script Store: `door-controller` 1.0.1 no longer passes `icon` to `cloud.group()` (groups take `page` and `cols`; the
+  card shows its first widget's icon), which the mod refused at start. A unit test now runs every store script on CC's
+  Lua VM against the mod's real widget validation, with one dashboard action per control.
+
 ## 0.9.0 – first public release candidate
 
 Minecraft 26.1.2, NeoForge 26.1.2.109+, CC: Tweaked 1.120.0+. This release bundles everything built in the

@@ -478,6 +478,9 @@ publishing {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     maxParallelForks = 1
+    // StoreScriptsTest runs every store/scripts program (the tests run in build/minecraft-junit).
+    systemProperty 'cccloud.storeScripts', file('store/scripts').absolutePath
+    inputs.dir('store/scripts').withPropertyName('storeScripts').withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events "failed"
         exceptionFormat "full"
