@@ -1,7 +1,7 @@
 // One dashboard card (an uplink, a Lua group, or an uplink's widgets on a page),
 // in view mode or in layout edit mode.
 import type { ComponentChildren, ComponentType } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Box, ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
 import { DISPLAYS_FOR, captionOf } from "../lib/layout.ts";
@@ -167,8 +167,43 @@ function Resizers({ onDown, label }: { onDown: (e: PointerEvent, edge: Edge) => 
   );
 }
 
-export function Card({ card: full, conn, locked, viewOnly, children, edit }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren; edit?: CardEdit }) {
+// ---- lazy card bodies (docs/SPEC.md "Scaling") ----------------------------------------------------------------------
+// On pages with many cards only the cards near the viewport render their widgets; the others keep their grid box (the
+// layout does not move) and render their body once they come within LAZY_MARGIN of the screen. One shared observer.
+const LAZY_MARGIN = "800px 0px";
+const lazyCallbacks = new WeakMap<Element, () => void>();
+let lazyObserver: IntersectionObserver | null = null;
+function observeNear(el: Element, onNear: () => void) {
+  if (typeof IntersectionObserver === "undefined") return onNear();
+  lazyObserver ??= new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        lazyObserver!.unobserve(e.target);
+        lazyCallbacks.get(e.target)?.();
+        lazyCallbacks.delete(e.target);
+      }
+    },
+    { rootMargin: LAZY_MARGIN },
+  );
+  lazyCallbacks.set(el, onNear);
+  lazyObserver.observe(el);
+}
+function unobserve(el: Element) {
+  lazyCallbacks.delete(el);
+  lazyObserver?.unobserve(el);
+}
+
+export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren; edit?: CardEdit; lazy?: boolean }) {
   const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
+  const ref = useRef<HTMLElement>(null);
+  const [near, setNear] = useState(!lazy || !!edit);
+  useEffect(() => {
+    if (near || !ref.current) return;
+    const el = ref.current;
+    observeNear(el, () => setNear(true));
+    return () => unobserve(el);
+  }, [near]);
   const online = card.custom ? card.widgets.every((w) => w.uplink.online) : card.uplink.online;
   // the chunk is unloaded: the mod sends the cached last snapshot
   const cached = !card.custom && card.uplink.loaded === false;
@@ -178,6 +213,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
   const shown = card.widgets.filter((w) => !w.hidden);
   return (
     <article
+      ref={ref}
       class={`card accent-${card.color} style-${card.style} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
       aria-label={card.title}
       data-card={card.key}
@@ -230,7 +266,9 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit }: { c
       {term && <TermLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setTerm(false)} />}
       {hist && <HistoryLoader conn={conn} uplink={hist.uplink} w={hist.w} onClose={() => setHist(null)} />}
       {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
-      {shown.length === 0 && !edit ? (
+      {!near ? (
+        <div class="card-body card-lazy" aria-busy="true" />
+      ) : shown.length === 0 && !edit ? (
         <p class="card-empty">
           Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.{" "}
           <DocsLink to="/docs/faq#no-widgets">Why?</DocsLink>

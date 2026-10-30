@@ -45,6 +45,15 @@ public interface HubSession {
         return share() == null;
     }
 
+    /**
+     * In-game sessions (Cloud Tablet): their payloads are limited ({@code InGamePayloads.MAX_DATA}), so the snapshot
+     * comes as a snapshot without sections followed by one {@code uplink} message per section, and it is serialised off
+     * the server thread (docs/SPEC.md "Scaling").
+     */
+    default boolean inGame() {
+        return false;
+    }
+
     /** Queues messages for sending. Must not block. */
     void send(List<String> messages);
 

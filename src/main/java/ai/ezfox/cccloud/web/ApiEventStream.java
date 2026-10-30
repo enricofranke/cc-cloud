@@ -201,6 +201,22 @@ final class ApiEventStream implements HubSession {
                 continue;
             }
             String t = message.get("t") instanceof JsonElement e && e.isJsonPrimitive() ? e.getAsString() : "";
+            if (t.equals("values")) {
+                // The hub batches the values of a flush; the API keeps one value event per widget.
+                if (message.get("s") instanceof JsonObject sections) {
+                    for (var section : sections.entrySet()) {
+                        if (!(section.getValue() instanceof JsonObject values)) continue;
+                        for (var value : values.entrySet()) {
+                            var json = new JsonObject();
+                            json.addProperty("sectionId", section.getKey());
+                            json.addProperty("id", value.getKey());
+                            json.add("value", value.getValue());
+                            out.append("event: value\n").append("data: ").append(Json.GSON.toJson(json)).append("\n\n");
+                        }
+                    }
+                }
+                continue;
+            }
             var data = switch (t) {
                 case "snapshot" -> {
                     var sections = new JsonArray();

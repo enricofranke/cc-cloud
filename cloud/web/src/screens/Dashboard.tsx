@@ -177,7 +177,8 @@ export function Dashboard({ id }: { id: string }) {
   if (!entry || !conn) return null;
 
   const info = conn.info.value;
-  const uplinks = conn.uplinks.value;
+  // only the number of sections: value deltas must not render the whole dashboard again (docs/SPEC.md "Scaling")
+  const sectionCount = conn.sectionCount.value;
   const readOnly = !conn.can("act.buttons");
   const locked = st.kind !== "online" || readOnly;
   const unread = conn.unread.value;
@@ -212,7 +213,7 @@ export function Dashboard({ id }: { id: string }) {
           <IconBell />
           {unread > 0 && <span class="badge badge-dot">{unread > 9 ? "9+" : unread}</span>}
         </button>
-        {conn.can("layout.edit") && conn.status.value === "open" && uplinks.length > 0 && (
+        {conn.can("layout.edit") && conn.status.value === "open" && sectionCount > 0 && (
           <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => (editing ? window.dispatchEvent(new Event("cccloud:edit-exit")) : setEditing(true))}>
             <IconPencil />
           </button>
@@ -272,13 +273,13 @@ export function Dashboard({ id }: { id: string }) {
           </div>
         )}
 
-        {st.kind === "connecting" && uplinks.length === 0 ? (
+        {st.kind === "connecting" && sectionCount === 0 ? (
           <div class="grid">
             {[0, 1].map((i) => (
               <div key={i} class="card skeleton" />
             ))}
           </div>
-        ) : uplinks.length === 0 ? (
+        ) : sectionCount === 0 ? (
           <SetupGuide />
         ) : (
           <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.can("layout.edit")} onExitEdit={() => setEditing(false)} />

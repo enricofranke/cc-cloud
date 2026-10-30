@@ -1,12 +1,13 @@
 // Pages/tabs + the card grid (12-column page grid, layout v2). Edit mode is the
 // WYSIWYG editor in its own lazy chunk (edit/Editor.tsx).
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { ComponentType } from "preact";
+import { Component, type ComponentType } from "preact";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Uplink } from "../lib/types.ts";
-import { resolveLayout } from "../lib/layout.ts";
+import { resolveLayout, type ResolvedCard } from "../lib/layout.ts";
 import { adaptComputerCard } from "../lib/redstone.ts";
 import { Card } from "../components/Card.tsx";
+import { Hydrator } from "../lib/hydrate.ts";
 import { NETWORK_PAGE, PRODUCTION_PAGE, Tabs } from "../components/PageTabs.tsx";
 import { feature } from "../lib/config.ts";
 import { t } from "../lib/i18n.ts";
@@ -44,13 +45,31 @@ function useMedia(q: string) {
 }
 
 const pageKey = (id: string) => `cccloud.page.${id}`;
+/** Pages with more cards than this render card bodies only near the viewport (components/Card.tsx). */
+const LAZY_CARDS = 24;
+
+/** A card is rendered again only when its own widgets changed (see lib/hydrate.ts). */
+type CardProps = { card: ResolvedCard; conn: MainframeConn; locked: boolean; lazy: boolean };
+class MemoCard extends Component<CardProps> {
+  shouldComponentUpdate(next: CardProps) {
+    return next.card !== this.props.card || next.locked !== this.props.locked || next.conn !== this.props.conn || next.lazy !== this.props.lazy;
+  }
+  render(p: CardProps) {
+    return <Card card={p.card} conn={p.conn} locked={p.locked} lazy={p.lazy} />;
+  }
+}
 
 export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolean; editing: boolean; onExitEdit: () => void }) {
   const { conn } = props;
   const isPhone = useMedia("(max-width: 719px)");
   const narrow = useMedia("(max-width: 1099px)");
-  const uplinks = conn.uplinks.value.map(adaptComputerCard);
-  const pages = resolveLayout(uplinks, conn.layout.value);
+  // The layout is resolved when the structure changes, not on every value delta (docs/SPEC.md "Scaling").
+  const hydrator = useMemo(() => new Hydrator(adaptComputerCard), [conn]);
+  const structure = conn.structure.value;
+  const layoutDoc = conn.layout.value;
+  const raw = conn.uplinks.value;
+  const pages = useMemo(() => resolveLayout(conn.uplinks.peek().map((u) => hydrator.adapted(u)), layoutDoc), [structure, layoutDoc, hydrator]);
+  const byUplink = useMemo(() => new Map(raw.map((u) => [u.uplinkId, u])), [raw]);
   const [current, setCurrent] = useState<string>(() => {
     try {
       return sessionStorage.getItem(pageKey(conn.info.value?.id ?? "")) ?? "";
@@ -104,7 +123,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   }, [wantCard, cardThere]);
 
   if (props.editing)
-    return <EditorLoader conn={conn} uplinks={uplinks} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
+    return <EditorLoader conn={conn} uplinks={raw.map((u) => hydrator.adapted(u))} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
 
   return (
     <>
@@ -133,7 +152,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
       ) : (
         <div class={`pgrid ${narrow ? "narrow" : ""} ${props.dim ? "grid-dim" : ""}`}>
           {page.cards.map((c) => (
-            <Card key={c.key} card={c} conn={conn} locked={props.locked} />
+            <MemoCard key={c.key} card={hydrator.card(c, byUplink)} conn={conn} locked={props.locked} lazy={page.cards.length > LAZY_CARDS} />
           ))}
         </div>
       )}

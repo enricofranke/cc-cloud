@@ -279,6 +279,29 @@ public final class ShareFilter {
         }
     }
 
+    /**
+     * The batched values of a flush ({@code uplinkId → {widgetId: value}}) reduced to the shared, visible widgets, or
+     * null if none of them is shared.
+     */
+    public static java.util.@Nullable Map<String, JsonObject> values(Map<String, JsonObject> sections, Map<String, JsonObject> uplinks, Scope keys,
+                                                                    boolean hideNumbers) {
+        var out = new java.util.LinkedHashMap<String, JsonObject>();
+        for (var entry : sections.entrySet()) {
+            var uplink = uplinks.get(entry.getKey());
+            if (uplink == null || !(uplink.get("widgets") instanceof JsonArray widgets)) continue;
+            if (uplink.get("restricted") != null && uplink.get("restricted").isJsonPrimitive() && uplink.get("restricted").getAsBoolean()) continue;
+            var byId = new java.util.HashMap<String, JsonObject>();
+            for (var e : widgets) if (e instanceof JsonObject w && str(w.get("id")) != null) byId.put(str(w.get("id")), w);
+            var visible = new JsonObject();
+            for (var v : entry.getValue().entrySet()) {
+                var w = byId.get(v.getKey());
+                if (w != null && widgetVisible(entry.getKey(), w, keys, hideNumbers)) visible.add(v.getKey(), v.getValue());
+            }
+            if (visible.size() > 0) out.put(entry.getKey(), visible);
+        }
+        return out.isEmpty() ? null : out;
+    }
+
     private static @Nullable String str(@Nullable JsonElement e) {
         return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isString() && !e.getAsString().isEmpty() ? e.getAsString() : null;
     }

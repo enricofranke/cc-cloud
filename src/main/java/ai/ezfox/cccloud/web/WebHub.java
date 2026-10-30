@@ -7,7 +7,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,9 +21,14 @@ import org.jspecify.annotations.Nullable;
  * Thread-safe bridge between the server thread and the web clients.
  * <p>
  * The server thread calls the {@code publish*} methods. They only update an in-memory model and put the change into a
- * per-mainframe outbox (coalesced by key, so a widget that changes every tick produces one message per flush). They
- * never block and never touch the network. {@link #flush()} runs on a Netty thread every 100 ms, serialises the outbox
- * and hands the messages to the sessions, so every uplink is broadcast at most 10 times per second.
+ * per-mainframe outbox (values are coalesced per widget, so a widget that changes every tick produces one entry per
+ * flush). They never block on the network and never serialise big documents. {@link #flush()} runs on a Netty thread
+ * every 100 ms, serialises the outbox once and hands the messages to the sessions: structural messages in order, then
+ * one {@code {"t":"values","s":{uplinkId:{widgetId:value}}}} with the latest value of every changed widget.
+ * <p>
+ * Scaling (docs/SPEC.md "Scaling"): published sections and widgets are copy-on-write, so a snapshot only collects
+ * references under the lock and is serialised outside it (cached per section), and a session that is waiting for its
+ * snapshot buffers the deltas of later flushes, so it never sees a delta before its snapshot.
  */
 public final class WebHub {
     public static final WebHub INSTANCE = new WebHub();
@@ -30,18 +37,205 @@ public final class WebHub {
     public record MainframeInfo(UUID id, String name, boolean online, boolean enabled) {
     }
 
+    /**
+     * A published widget: its definition (never mutated, serialised once), its current value and a chart's history.
+     * Immutable: a new value is a new {@code W} (no JSON tree is copied or changed), so snapshots can be serialised on
+     * another thread while the server thread keeps publishing.
+     */
+    static final class W {
+        final String id;
+        final JsonObject base;
+        private final String baseText;
+        final @Nullable JsonElement value;
+        final @Nullable JsonArray history;
+        final int points;
+        private @Nullable String historyText;
+
+        private W(String id, JsonObject base, String baseText, @Nullable JsonElement value, @Nullable JsonArray history, int points) {
+            this.id = id;
+            this.base = base;
+            this.baseText = baseText;
+            this.value = value;
+            this.history = history;
+            this.points = points;
+        }
+
+        /** From a published widget object (taken over: it must not change any more). */
+        static W of(JsonObject widget) {
+            var base = new JsonObject();
+            JsonElement value = null;
+            JsonArray history = null;
+            for (var e : widget.entrySet()) {
+                switch (e.getKey()) {
+                    case "value" -> value = e.getValue();
+                    case "history" -> {
+                        if (e.getValue() instanceof JsonArray a) history = a;
+                        else base.add(e.getKey(), e.getValue());
+                    }
+                    default -> base.add(e.getKey(), e.getValue());
+                }
+            }
+            int points = 60;
+            if (base.get("opts") instanceof JsonObject o && o.get("points") instanceof com.google.gson.JsonPrimitive p && p.isNumber()) points = p.getAsInt();
+            String text = Json.GSON.toJson(base);
+            return new W(base.get("id").getAsString(), base, text.substring(0, text.length() - 1), value, history, points);
+        }
+
+        @Nullable String type() {
+            return base.get("type") instanceof com.google.gson.JsonPrimitive p ? p.getAsString() : null;
+        }
+
+        /** With a new value: a number appends one point to a chart's history (trimmed to opts.points), an array replaces it. */
+        W with(JsonElement newValue) {
+            var h = history;
+            if (h != null) {
+                if (newValue.isJsonArray()) {
+                    h = newValue.getAsJsonArray().deepCopy();
+                } else if (newValue.isJsonPrimitive() && newValue.getAsJsonPrimitive().isNumber()) {
+                    int from = Math.max(0, h.size() + 1 - points);
+                    var array = new JsonArray(Math.max(1, Math.min(points, h.size() + 1)));
+                    for (int i = from; i < h.size(); i++) array.add(h.get(i));
+                    array.add(newValue);
+                    h = array;
+                }
+            }
+            return new W(id, base, baseText, newValue, h, points);
+        }
+
+        void write(StringBuilder sb) {
+            sb.append(baseText);
+            if (value != null) sb.append(",\"value\":").append(Json.GSON.toJson(value));
+            if (history != null) {
+                var text = historyText;
+                if (text == null) historyText = text = Json.GSON.toJson(history);
+                sb.append(",\"history\":").append(text);
+            }
+            sb.append('}');
+        }
+
+        /** As a widget object (shares the immutable parts; callers that hand it out copy it). */
+        JsonObject json() {
+            var o = new JsonObject();
+            for (var e : base.entrySet()) o.add(e.getKey(), e.getValue());
+            if (value != null) o.add("value", value);
+            if (history != null) o.add("history", history);
+            return o;
+        }
+    }
+
+    /** A published section: head (everything but the widgets, never mutated) and its widgets. Immutable, see {@link W}. */
+    static final class Section {
+        final JsonObject head;
+        private final String headText;
+        final W[] widgets;
+        /** widget id → index; shared by every version of the same structure. */
+        final Map<String, Integer> pos;
+        /** widget id → {@code opts.history} range of the widgets with long-term statistics (shared, never changed). */
+        final Map<String, String> history;
+        private volatile @Nullable String text;
+        private volatile @Nullable JsonObject json;
+
+        private Section(JsonObject head, String headText, W[] widgets, Map<String, Integer> pos, Map<String, String> history) {
+            this.head = head;
+            this.headText = headText;
+            this.widgets = widgets;
+            this.pos = pos;
+            this.history = history;
+        }
+
+        private static String open(JsonObject head) {
+            String text = Json.GSON.toJson(head);
+            return text.substring(0, text.length() - 1);
+        }
+
+        /** From a published section snapshot (taken over: it must not change any more). */
+        static Section of(JsonObject snapshot) {
+            var head = new JsonObject();
+            for (var e : snapshot.entrySet()) if (!e.getKey().equals("widgets")) head.add(e.getKey(), e.getValue());
+            var list = snapshot.get("widgets") instanceof JsonArray a ? a : new JsonArray();
+            var widgets = new W[list.size()];
+            var pos = new HashMap<String, Integer>();
+            var history = new LinkedHashMap<String, String>();
+            for (int i = 0; i < widgets.length; i++) {
+                var w = W.of(list.get(i).getAsJsonObject());
+                widgets[i] = w;
+                pos.put(w.id, i);
+                if (w.base.get("opts") instanceof JsonObject opts && opts.get("history") instanceof com.google.gson.JsonPrimitive h && h.isString()) {
+                    history.put(w.id, h.getAsString());
+                }
+            }
+            return new Section(head, open(head), widgets, Map.copyOf(pos), history.isEmpty() ? Map.of() : java.util.Collections.unmodifiableMap(history));
+        }
+
+        Section withWidgets(W[] widgets) {
+            return new Section(head, headText, widgets, pos, history);
+        }
+
+        Section withHead(JsonObject head) {
+            return new Section(head, open(head), widgets, pos, history);
+        }
+
+        @Nullable W widget(String id) {
+            var i = pos.get(id);
+            return i == null ? null : widgets[i];
+        }
+
+        boolean flag(String key) {
+            return head.get(key) instanceof com.google.gson.JsonPrimitive p && p.isBoolean() && p.getAsBoolean();
+        }
+
+        @Nullable String str(String key) {
+            return head.get(key) instanceof com.google.gson.JsonPrimitive p ? p.getAsString() : null;
+        }
+
+        /** The section as JSON text, built once per version and shared by every snapshot. */
+        String text() {
+            var t = text;
+            if (t == null) {
+                var sb = new StringBuilder(headText.length() + widgets.length * 160);
+                sb.append(headText).append(head.size() > 0 ? "," : "").append("\"widgets\":[");
+                for (int i = 0; i < widgets.length; i++) {
+                    if (i > 0) sb.append(',');
+                    widgets[i].write(sb);
+                }
+                text = t = sb.append("]}").toString();
+            }
+            return t;
+        }
+
+        /** The section as a JSON object, built once per version (shared: never change it, copy it to hand it out). */
+        JsonObject json() {
+            var j = json;
+            if (j == null) {
+                j = new JsonObject();
+                for (var e : head.entrySet()) j.add(e.getKey(), e.getValue());
+                var array = new JsonArray(widgets.length);
+                for (var w : widgets) array.add(w.json());
+                j.add("widgets", array);
+                json = j;
+            }
+            return j;
+        }
+    }
+
     private static final class View {
         final UUID id;
         String name = "";
         boolean online;
         boolean enabled;
-        /** uplinkId → snapshot ({uplinkId,title,online,widgets[]}) */
-        final Map<String, JsonObject> uplinks = new LinkedHashMap<>();
-        /** uplinkId → widget id → widget json (points into the snapshot above) */
-        final Map<String, Map<String, JsonObject>> widgetIndex = new ConcurrentHashMap<>();
+        /** uplinkId → published section (immutable; replaced on every change). */
+        final Map<String, Section> uplinks = new LinkedHashMap<>();
+        /** Ids of the published sections; read without the lock by hasUplink. */
+        final Set<String> sectionIds = ConcurrentHashMap.newKeySet();
+        /** uplinkIds of the sections with long-term statistics (their widgets are in {@link Section#history}). */
+        final Set<String> historySections = new LinkedHashSet<>();
         /** v0.5: sections only sent to devices with canControl (snapshot {@code "restricted":true}, e.g. the Server card). */
         final Set<String> restricted = new java.util.HashSet<>();
+        /** Structural messages (sections, state, layout, alerts …), coalesced by key, in order. */
         Map<String, JsonObject> outbox = new LinkedHashMap<>();
+        /** uplinkId → ids of widgets whose value changed since the last flush. */
+        Map<String, Set<String>> values = new LinkedHashMap<>();
+        int pendingAlerts;
         int alertSeq;
         /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
         @Nullable JsonObject power;
@@ -49,10 +243,11 @@ public final class WebHub {
         /** Removed mainframe (block broken, data kept): millis when its data is deleted, 0 = not removed. */
         long removedUntil;
         /** v0.4 network map: full (with positions, canControl) and without positions; sent at most 2x per second. */
-        @Nullable String networkFull;
-        @Nullable String networkStripped;
         @Nullable JsonObject networkFullJson;
         @Nullable JsonObject networkStrippedJson;
+        /** Serialised network messages of the objects above (built lazily on a Netty thread). */
+        volatile @Nullable String networkFull;
+        volatile @Nullable String networkStripped;
         boolean networkDirty;
         long networkSentAt;
         /** v0.5 rules of the mainframe ({rules, log, limit}), null = none yet; never sent to share sessions. */
@@ -68,6 +263,10 @@ public final class WebHub {
         /** Millis when the last client left, 0 = never had a client. */
         volatile long lastClientSeen;
         final Set<HubSession> sessions = ConcurrentHashMap.newKeySet();
+        /** Sessions whose snapshot is being serialised: deltas of later flushes wait here (guarded by {@link #sendLock}). */
+        final Map<HubSession, List<String>> awaiting = new ConcurrentHashMap<>();
+        /** Orders the sends to this mainframe's sessions (snapshot before the deltas that follow it). Never held with the view lock. */
+        final Object sendLock = new Object();
 
         View(UUID id) {
             this.id = id;
@@ -84,12 +283,49 @@ public final class WebHub {
             if (removedUntil > 0) json.addProperty("removedUntil", removedUntil);
             return json;
         }
+
+        /** Drops a section's pending value deltas (a fresh section snapshot or its removal replaces them). */
+        void dropValues(String uplinkId) {
+            values.remove(uplinkId);
+        }
     }
 
     private final Map<UUID, View> views = new ConcurrentHashMap<>();
 
     private View view(UUID id) {
         return views.computeIfAbsent(id, View::new);
+    }
+
+    // ---- copy on write -------------------------------------------------------------------------------------------------
+
+    private static JsonObject shallowCopy(JsonObject source) {
+        var copy = new JsonObject();
+        for (var e : source.entrySet()) copy.add(e.getKey(), e.getValue());
+        return copy;
+    }
+
+    /**
+     * Sets values of one section: a new section version with new widget states (snapshots being serialised on another
+     * thread keep the old version). No JSON is copied. Under the view's lock.
+     */
+    private static boolean setValues(View view, String uplinkId, String[] widgetIds, JsonElement[] values, int count, boolean queue) {
+        var section = view.uplinks.get(uplinkId);
+        if (section == null) return false;
+        W[] copy = null;
+        Set<String> pending = null;
+        for (int i = 0; i < count; i++) {
+            var pos = section.pos.get(widgetIds[i]);
+            if (pos == null || values[i] == null) continue;
+            if (copy == null) copy = section.widgets.clone();
+            copy[pos] = copy[pos].with(values[i]);
+            if (queue) {
+                if (pending == null) pending = view.values.computeIfAbsent(uplinkId, k -> new LinkedHashSet<>());
+                pending.add(widgetIds[i]);
+            }
+        }
+        if (copy == null) return false;
+        view.uplinks.put(uplinkId, section.withWidgets(copy));
+        return true;
     }
 
     // ---- server thread ---------------------------------------------------------------------------------------------
@@ -110,14 +346,15 @@ public final class WebHub {
             put(view, "state", state);
             if (!online || !enabled) {
                 // Uplinks cannot be online without their mainframe (also covers uplinks in unloaded chunks).
-                for (var entry : view.uplinks.entrySet()) {
+                for (var entry : new ArrayList<>(view.uplinks.entrySet())) {
                     var uplink = entry.getValue();
-                    if (!uplink.has("online") || !uplink.get("online").getAsBoolean()) continue;
-                    uplink.addProperty("online", false);
-                    var message = uplink.deepCopy();
-                    message.addProperty("t", "uplink");
-                    view.outbox.keySet().removeIf(k -> k.startsWith("v:" + entry.getKey() + ":"));
-                    put(view, "u:" + entry.getKey(), message);
+                    if (!uplink.flag("online")) continue;
+                    var head = shallowCopy(uplink.head);
+                    head.addProperty("online", false);
+                    var offline = uplink.withHead(head);
+                    view.uplinks.put(entry.getKey(), offline);
+                    view.dropValues(entry.getKey());
+                    put(view, "u:" + entry.getKey(), SECTION_PENDING);
                 }
             }
         }
@@ -137,16 +374,11 @@ public final class WebHub {
         var view = view(mainframeId);
         synchronized (view) {
             if (full.equals(view.networkFullJson)) return;
+            // The objects are owned by the hub from now on (never mutated); the messages are serialised at flush time.
             view.networkFullJson = full;
             view.networkStrippedJson = stripped;
-            var a = new JsonObject();
-            a.addProperty("t", "network");
-            a.add("network", full);
-            var b = new JsonObject();
-            b.addProperty("t", "network");
-            b.add("network", stripped);
-            view.networkFull = Json.GSON.toJson(a);
-            view.networkStripped = Json.GSON.toJson(b);
+            view.networkFull = null;
+            view.networkStripped = null;
             view.networkDirty = true;
         }
     }
@@ -223,21 +455,17 @@ public final class WebHub {
         var copy = snapshot.deepCopy();
         // Live sections are "loaded"; cached copies of unloaded ones carry loaded=false and lastSeen.
         if (!copy.has("loaded")) copy.addProperty("loaded", true);
-        Map<String, JsonObject> index = new ConcurrentHashMap<>();
-        for (var w : copy.getAsJsonArray("widgets")) {
-            var widget = w.getAsJsonObject();
-            index.put(widget.get("id").getAsString(), widget);
-        }
+        var section = Section.of(copy);
         synchronized (view) {
-            view.uplinks.put(uplinkId, copy);
-            view.widgetIndex.put(uplinkId, index);
+            view.uplinks.put(uplinkId, section);
+            view.sectionIds.add(uplinkId);
+            if (section.history.isEmpty()) view.historySections.remove(uplinkId);
+            else view.historySections.add(uplinkId);
             if (copy.has("restricted") && copy.get("restricted").getAsBoolean()) view.restricted.add(uplinkId);
             else view.restricted.remove(uplinkId);
-            // The snapshot already contains the latest values.
-            view.outbox.keySet().removeIf(k -> k.startsWith("v:" + uplinkId + ":"));
-            var message = copy.deepCopy();
-            message.addProperty("t", "uplink");
-            put(view, "u:" + uplinkId, message);
+            // The section message (built at flush time from the then current version) has the latest values.
+            view.dropValues(uplinkId);
+            put(view, "u:" + uplinkId, SECTION_PENDING);
         }
     }
 
@@ -246,16 +474,7 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            if (index == null) return;
-            boolean queue = !view.sessions.isEmpty();
-            for (int i = 0; i < count; i++) {
-                var widget = index.get(widgetIds[i]);
-                if (widget == null) continue;
-                widget.add("value", values[i]);
-                appendHistory(widget, values[i]);
-                if (queue) view.outbox.put("v:" + uplinkId + ":" + widgetIds[i], VALUE_PENDING);
-            }
+            setValues(view, uplinkId, widgetIds, values, count, !view.sessions.isEmpty());
         }
     }
 
@@ -263,35 +482,9 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            if (widget == null) return;
-            widget.add("value", value);
-            appendHistory(widget, value);
             // Nobody subscribed: new sessions get the value with their snapshot, nothing to queue.
-            if (view.sessions.isEmpty()) return;
-            // The message itself is built at flush time (off the server thread) from the latest value; only a marker here.
-            view.outbox.put("v:" + uplinkId + ":" + widgetId, VALUE_PENDING);
+            setValues(view, uplinkId, new String[]{widgetId}, new JsonElement[]{value}, 1, !view.sessions.isEmpty());
         }
-    }
-
-    /**
-     * Charts: a number appends one point to the snapshot history (trimmed to opts.points), an array replaces it.
-     */
-    static void appendHistory(JsonObject widget, JsonElement value) {
-        var history = widget.get("history");
-        if (history == null || !history.isJsonArray()) return;
-        if (value.isJsonArray()) {
-            widget.add("history", value.deepCopy());
-            return;
-        }
-        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return;
-        var array = history.getAsJsonArray();
-        array.add(value);
-        int points = 60;
-        var opts = widget.get("opts");
-        if (opts != null && opts.isJsonObject() && opts.getAsJsonObject().has("points")) points = opts.getAsJsonObject().get("points").getAsInt();
-        while (array.size() > points) array.remove(0);
     }
 
     /** Loads a stored layout without broadcasting it (server start). */
@@ -309,7 +502,7 @@ public final class WebHub {
             view.layout = layout == null ? null : layout.deepCopy();
             var message = new JsonObject();
             message.addProperty("t", "layout");
-            message.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout.deepCopy());
+            message.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
             put(view, "layout", message);
         }
     }
@@ -332,9 +525,11 @@ public final class WebHub {
         var list = new ArrayList<JsonObject>();
         var view = views.get(mainframeId);
         if (view == null) return list;
+        List<Section> refs;
         synchronized (view) {
-            for (var snapshot : view.uplinks.values()) list.add(snapshot.deepCopy());
+            refs = new ArrayList<>(view.uplinks.values());
         }
+        for (var section : refs) list.add(section.json().deepCopy());
         return list;
     }
 
@@ -348,13 +543,15 @@ public final class WebHub {
         for (var entry : views.entrySet()) {
             var view = entry.getValue();
             synchronized (view) {
-                for (var uplink : view.widgetIndex.entrySet()) {
-                    for (var widget : uplink.getValue().entrySet()) {
-                        var w = widget.getValue();
-                        if (!(w.get("opts") instanceof JsonObject opts) || !(opts.get("history") instanceof com.google.gson.JsonPrimitive h) || !h.isString()) continue;
-                        if (!(w.get("value") instanceof com.google.gson.JsonPrimitive v)) continue;
+                // Only the sections with widgets that asked for statistics (indexed on publish), not every widget.
+                for (var uplinkId : view.historySections) {
+                    var section = view.uplinks.get(uplinkId);
+                    if (section == null) continue;
+                    for (var widget : section.history.entrySet()) {
+                        var w = section.widget(widget.getKey());
+                        if (w == null || !(w.value instanceof com.google.gson.JsonPrimitive v)) continue;
                         double d = v.isNumber() ? v.getAsDouble() : v.isBoolean() ? (v.getAsBoolean() ? 1 : 0) : Double.NaN;
-                        if (Double.isFinite(d)) out.add(new HistorySample(entry.getKey(), uplink.getKey(), widget.getKey(), h.getAsString(), d));
+                        if (Double.isFinite(d)) out.add(new HistorySample(entry.getKey(), uplinkId, widget.getKey(), widget.getValue(), d));
                     }
                 }
             }
@@ -367,10 +564,8 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return null;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            var w = index == null ? null : index.get(widgetId);
-            return w != null && w.get("opts") instanceof JsonObject opts && opts.get("history") instanceof com.google.gson.JsonPrimitive h && h.isString()
-                ? h.getAsString() : null;
+            var section = view.uplinks.get(uplinkId);
+            return section == null ? null : section.history.get(widgetId);
         }
     }
 
@@ -387,10 +582,11 @@ public final class WebHub {
     public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
         if (view == null) return null;
+        Section section;
         synchronized (view) {
-            var snapshot = view.uplinks.get(uplinkId);
-            return snapshot == null ? null : snapshot.deepCopy();
+            section = view.uplinks.get(uplinkId);
         }
+        return section == null ? null : section.json().deepCopy();
     }
 
     /** v0.7 display picker: [{uplinkId, title, restricted}] of the published sections. */
@@ -402,7 +598,8 @@ public final class WebHub {
             for (var entry : view.uplinks.entrySet()) {
                 var row = new JsonObject();
                 row.addProperty("uplinkId", entry.getKey());
-                row.addProperty("title", entry.getValue().has("title") ? entry.getValue().get("title").getAsString() : "");
+                var title = entry.getValue().str("title");
+                row.addProperty("title", title == null ? "" : title);
                 row.addProperty("restricted", view.restricted.contains(entry.getKey()));
                 list.add(row);
             }
@@ -410,14 +607,23 @@ public final class WebHub {
         return list;
     }
 
+    /** Number of published sections of a mainframe. */
+    public int sectionCount(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return 0;
+        synchronized (view) {
+            return view.uplinks.size();
+        }
+    }
+
     /** Type id of a widget as published to the browsers, or null. */
     public @Nullable String widgetType(UUID mainframeId, String uplinkId, String widgetId) {
         var view = views.get(mainframeId);
         if (view == null) return null;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            return widget == null || !widget.has("type") ? null : widget.get("type").getAsString();
+            var section = view.uplinks.get(uplinkId);
+            var widget = section == null ? null : section.widget(widgetId);
+            return widget == null ? null : widget.type();
         }
     }
 
@@ -437,9 +643,10 @@ public final class WebHub {
         if (view == null) return;
         synchronized (view) {
             if (view.uplinks.remove(uplinkId) == null) return;
-            view.widgetIndex.remove(uplinkId);
+            view.sectionIds.remove(uplinkId);
+            view.historySections.remove(uplinkId);
             view.restricted.remove(uplinkId);
-            view.outbox.keySet().removeIf(k -> k.startsWith("v:" + uplinkId + ":"));
+            view.dropValues(uplinkId);
             var message = new JsonObject();
             message.addProperty("t", "uplink_removed");
             message.addProperty("uplinkId", uplinkId);
@@ -453,7 +660,7 @@ public final class WebHub {
         synchronized (view) {
             if (rules.equals(view.rules)) return;
             view.rules = rules.deepCopy();
-            var message = rules.deepCopy();
+            var message = shallowCopy(view.rules);
             message.addProperty("t", "rules");
             put(view, "rules", message);
         }
@@ -465,7 +672,7 @@ public final class WebHub {
         synchronized (view) {
             if (scenes.equals(view.scenes)) return;
             view.scenes = scenes.deepCopy();
-            var message = scenes.deepCopy();
+            var message = shallowCopy(view.scenes);
             message.addProperty("t", "scenes");
             put(view, "scenes", message);
         }
@@ -489,7 +696,7 @@ public final class WebHub {
         synchronized (view) {
             if (redstone.equals(view.redstone)) return;
             view.redstone = redstone.deepCopy();
-            var message = redstone.deepCopy();
+            var message = shallowCopy(view.redstone);
             message.addProperty("t", "redstone");
             put(view, "redstone", message);
         }
@@ -509,9 +716,9 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return null;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            return widget == null || !widget.has("value") ? null : widget.get("value").deepCopy();
+            var section = view.uplinks.get(uplinkId);
+            var widget = section == null ? null : section.widget(widgetId);
+            return widget == null || widget.value == null ? null : widget.value.deepCopy();
         }
     }
 
@@ -521,10 +728,8 @@ public final class WebHub {
         if (view == null) return null;
         synchronized (view) {
             var uplink = view.uplinks.get(uplinkId);
-            if (uplink == null || !(uplink.get("widgets") instanceof JsonArray widgets)) return null;
-            for (var w : widgets) {
-                if (w instanceof JsonObject o && o.has("type") && type.equals(o.get("type").getAsString())) return o.get("id").getAsString();
-            }
+            if (uplink == null) return null;
+            for (var w : uplink.widgets) if (type.equals(w.type())) return w.id;
             return null;
         }
     }
@@ -542,7 +747,7 @@ public final class WebHub {
         if (view == null) return false;
         synchronized (view) {
             var uplink = view.uplinks.get(uplinkId);
-            return uplink != null && uplink.has("online") && uplink.get("online").getAsBoolean();
+            return uplink != null && uplink.flag("online");
         }
     }
 
@@ -555,7 +760,7 @@ public final class WebHub {
             if (v != null && uplinkId != null) {
                 synchronized (v) {
                     var snapshot = v.uplinks.get(uplinkId);
-                    if (snapshot != null && snapshot.get("title") instanceof com.google.gson.JsonPrimitive p && p.isString()) source = p.getAsString();
+                    if (snapshot != null) source = snapshot.str("title");
                 }
             }
             try {
@@ -567,14 +772,14 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
+            if (view.pendingAlerts >= MAX_PENDING_ALERTS) return;
             var message = new JsonObject();
             message.addProperty("t", "alert");
             if (uplinkId != null) message.addProperty("uplinkId", uplinkId);
             message.addProperty("text", text);
             message.addProperty("level", level);
             message.addProperty("ts", System.currentTimeMillis());
-            long alerts = view.outbox.keySet().stream().filter(k -> k.startsWith("a:")).count();
-            if (alerts >= MAX_PENDING_ALERTS) return;
+            view.pendingAlerts++;
             view.outbox.put("a:" + (view.alertSeq++), message);
         }
     }
@@ -609,17 +814,12 @@ public final class WebHub {
 
     /** Test hook: the published snapshot of a section. */
     public @Nullable JsonObject uplinkForTest(UUID mainframeId, String uplinkId) {
-        var view = views.get(mainframeId);
-        if (view == null) return null;
-        synchronized (view) {
-            var uplink = view.uplinks.get(uplinkId);
-            return uplink == null ? null : uplink.deepCopy();
-        }
+        return sectionSnapshot(mainframeId, uplinkId);
     }
 
     public boolean hasUplink(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
-        return view != null && view.widgetIndex.containsKey(uplinkId);
+        return view != null && view.sectionIds.contains(uplinkId);
     }
 
     /** v0.7 Bandwidth upgrade: concurrent browsers per mainframe (set by the game side; share viewers do not count). */
@@ -643,28 +843,83 @@ public final class WebHub {
         return browsers >= browserLimit.applyAsInt(mainframeId);
     }
 
+    /** What a snapshot is built from: references collected under the view's lock (all immutable), serialised outside it. */
+    private record SnapshotParts(JsonObject head, List<Section> sections, @Nullable JsonObject layout, @Nullable JsonObject network,
+                                 @Nullable JsonObject rules, @Nullable JsonObject redstone, @Nullable JsonObject scenes) {
+    }
+
     /**
      * Registers a session and sends it the snapshot (role-dependent; filtered for share sessions). Returns false (and
      * does not register) if the session's share link already has {@code maxViewers} viewers.
+     * <p>
+     * The session is registered and the references for its snapshot are taken under the view's lock (so every later
+     * change reaches it as a delta); the snapshot is serialised outside the lock, and deltas of flushes in between wait
+     * until the snapshot is sent.
      */
     public boolean tryAddSession(HubSession session) {
         var view = view(session.mainframeId());
-        String snapshot;
+        var share = session.share();
+        SnapshotParts parts = null;
+        JsonObject shareSnapshot = null;
         synchronized (view) {
-            var share = session.share();
             if (share != null) {
                 int viewers = 0;
                 for (var s : view.sessions) if (s.share() != null && s.share().id().equals(share.id())) viewers++;
                 if (viewers >= share.maxViewers()) return false;
+                // Share snapshots are filtered copies (small: only the shared cards); built under the lock as before.
+                shareSnapshot = shareSnapshot(view, share);
+            } else {
+                parts = snapshotParts(view, session);
             }
+            view.awaiting.put(session, new ArrayList<>());
             view.sessions.add(session);
-            snapshot = Json.GSON.toJson(share != null ? shareSnapshot(view, share) : snapshot(view, session));
         }
-        session.send(List.of(snapshot));
+        var share0 = shareSnapshot;
+        var parts0 = parts;
+        Runnable finish = () -> {
+            List<String> snapshot = share0 != null ? List.of(Json.GSON.toJson(share0)) : session.inGame() ? serializeSplit(view, parts0) : List.of(serialize(view, parts0));
+            synchronized (view.sendLock) {
+                var later = view.awaiting.remove(session);
+                if (later == null && !view.sessions.contains(session)) return; // closed meanwhile
+                var messages = new ArrayList<String>(snapshot.size() + (later == null ? 0 : later.size()));
+                messages.addAll(snapshot);
+                if (later != null) messages.addAll(later);
+                session.send(messages);
+            }
+        };
+        if (session.inGame()) {
+            // Opened on the server thread (tablet): a big base's snapshot is serialised on the snapshot thread instead.
+            try {
+                SNAPSHOTS.execute(finish);
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                finish.run();
+            }
+        } else {
+            finish.run();
+        }
         return true;
     }
 
-    private static JsonObject snapshot(View view, HubSession session) {
+    /** Serialises the snapshots of in-game sessions (they are opened on the server thread). */
+    private static final java.util.concurrent.ExecutorService SNAPSHOTS = new java.util.concurrent.ThreadPoolExecutor(1, 1, 30, java.util.concurrent.TimeUnit.SECONDS,
+        new java.util.concurrent.ArrayBlockingQueue<>(64), r -> {
+            var t = new Thread(r, "cccloud-snapshots");
+            t.setDaemon(true);
+            return t;
+        });
+
+    /** The snapshot without sections, then one {@code uplink} message per section (each fits an in-game payload). */
+    private static List<String> serializeSplit(View view, SnapshotParts parts) {
+        var out = new ArrayList<String>(parts.sections().size() + 1);
+        out.add(serialize(view, new SnapshotParts(parts.head(), List.of(), parts.layout(), parts.network(), parts.rules(), parts.redstone(), parts.scenes())));
+        for (var section : parts.sections()) {
+            String text = section.text();
+            out.add("{\"t\":\"uplink\"," + text.substring(1));
+        }
+        return out;
+    }
+
+    private static SnapshotParts snapshotParts(View view, HubSession session) {
         var json = new JsonObject();
         json.addProperty("t", "snapshot");
         var mainframe = view.mainframeJson();
@@ -694,21 +949,35 @@ public final class WebHub {
         } else {
             json.add("account", com.google.gson.JsonNull.INSTANCE);
         }
-        var uplinks = new JsonArray();
+        var sections = new ArrayList<Section>(view.uplinks.size());
         boolean restricted = seesRestricted(session.perms());
         for (var entry : view.uplinks.entrySet()) {
-            if (restricted || !view.restricted.contains(entry.getKey())) uplinks.add(entry.getValue());
+            if (restricted || !view.restricted.contains(entry.getKey())) sections.add(entry.getValue());
         }
-        json.add("uplinks", uplinks);
-        json.add("layout", view.layout == null ? com.google.gson.JsonNull.INSTANCE : view.layout);
         // Positions only with view.positions.
         var network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
-        if (network != null) json.add("network", network);
-        if (view.rules != null) json.add("rules", view.rules);
-        if (view.redstone != null) json.add("redstone", view.redstone);
-        if (view.scenes != null) json.add("scenes", view.scenes);
-        return json;
+        return new SnapshotParts(json, sections, view.layout, network, view.rules, view.redstone, view.scenes);
     }
+
+    /** The snapshot text: the head, then the sections (each serialised once per change and shared), then the rest. */
+    private static String serialize(View view, SnapshotParts parts) {
+        var sb = new StringBuilder(64 * 1024);
+        String head = Json.GSON.toJson(parts.head());
+        sb.append(head, 0, head.length() - 1).append(",\"uplinks\":[");
+        boolean first = true;
+        for (var section : parts.sections()) {
+            if (!first) sb.append(',');
+            first = false;
+            sb.append(section.text());
+        }
+        sb.append("],\"layout\":").append(parts.layout() == null ? "null" : Json.GSON.toJson(parts.layout()));
+        if (parts.network() != null) sb.append(",\"network\":").append(Json.GSON.toJson(parts.network()));
+        if (parts.rules() != null) sb.append(",\"rules\":").append(Json.GSON.toJson(parts.rules()));
+        if (parts.redstone() != null) sb.append(",\"redstone\":").append(Json.GSON.toJson(parts.redstone()));
+        if (parts.scenes() != null) sb.append(",\"scenes\":").append(Json.GSON.toJson(parts.scenes()));
+        return sb.append('}').toString();
+    }
+
 
     /** v0.6 share snapshot: only the shared cards, no network, no positions, no item search. */
     private static JsonObject shareSnapshot(View view, AccessStore.Share share) {
@@ -730,16 +999,24 @@ public final class WebHub {
         mainframe.addProperty("enabled", view.enabled);
         json.add("mainframe", mainframe);
         json.addProperty("canControl", false);
-        var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
+        var sections = jsonSections(view).values();
+        var keys = ShareFilter.scope(sections, view.layout, share);
         var uplinks = new JsonArray();
-        for (var uplink : view.uplinks.values()) {
+        for (var uplink : sections) {
             var filtered = ShareFilter.uplink(uplink, keys, share.hideNumbers());
             if (filtered != null) uplinks.add(filtered);
         }
         json.add("uplinks", uplinks);
-        var layout = ShareFilter.layout(view.layout, view.uplinks.values(), keys);
+        var layout = ShareFilter.layout(view.layout, sections, keys);
         json.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout);
         return json;
+    }
+
+    /** The sections as JSON objects (cached per section version; shared, never change them). Under the view's lock. */
+    private static Map<String, JsonObject> jsonSections(View view) {
+        var map = new LinkedHashMap<String, JsonObject>(view.uplinks.size() * 2);
+        for (var e : view.uplinks.entrySet()) map.put(e.getKey(), e.getValue().json());
+        return map;
     }
 
     /**
@@ -762,11 +1039,10 @@ public final class WebHub {
         if (view == null) return ai.ezfox.cccloud.access.Perm.ACT_BUTTONS;
         synchronized (view) {
             var uplink = view.uplinks.get(uplinkId);
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            String type = widget == null || !widget.has("type") ? null : widget.get("type").getAsString();
-            String mode = uplink == null || !uplink.has("mode") ? null : uplink.get("mode").getAsString();
-            String template = uplink == null || !uplink.has("template") ? null : uplink.get("template").getAsString();
+            var widget = uplink == null ? null : uplink.widget(widgetId);
+            String type = widget == null ? null : widget.type();
+            String mode = uplink == null ? null : uplink.str("mode");
+            String template = uplink == null ? null : uplink.str("template");
             return AccessGate.actionPerm(type, mode, widgetId, template);
         }
     }
@@ -783,15 +1059,34 @@ public final class WebHub {
         json.add("perms", permsJson(perms));
         var messages = new ArrayList<String>();
         messages.add(Json.GSON.toJson(json));
-        if (view != null) {
-            synchronized (view) {
-                String network = session.seesPositions() ? view.networkFull : view.networkStripped;
-                if (network != null) messages.add(network);
-                // Restricted sections appear or disappear: resend the snapshot for the new role.
-                if (restrictedChanged) messages.add(Json.GSON.toJson(snapshot(view, session)));
+        if (view == null) {
+            session.send(messages);
+            return;
+        }
+        JsonObject network;
+        SnapshotParts parts = null;
+        synchronized (view) {
+            network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
+            // Restricted sections appear or disappear: resend the snapshot for the new role.
+            if (restrictedChanged && view.sessions.contains(session)) {
+                parts = snapshotParts(view, session);
+                view.awaiting.putIfAbsent(session, new ArrayList<>());
             }
         }
-        session.send(messages);
+        if (network != null) messages.add(networkMessage(network));
+        if (parts != null) messages.add(serialize(view, parts));
+        synchronized (view.sendLock) {
+            var later = parts == null ? null : view.awaiting.remove(session);
+            if (later != null) messages.addAll(later);
+            session.send(messages);
+        }
+    }
+
+    private static String networkMessage(JsonObject network) {
+        var message = new JsonObject();
+        message.addProperty("t", "network");
+        message.add("network", network);
+        return Json.GSON.toJson(message);
     }
 
     /** Number of open sessions of a share link. */
@@ -839,7 +1134,9 @@ public final class WebHub {
 
     public void removeSession(HubSession session) {
         var view = views.get(session.mainframeId());
-        if (view != null && view.sessions.remove(session)) view.lastClientSeen = System.currentTimeMillis();
+        if (view == null) return;
+        view.awaiting.remove(session);
+        if (view.sessions.remove(session)) view.lastClientSeen = System.currentTimeMillis();
     }
 
     /** All connected sessions (for periodic rights checks). */
@@ -866,10 +1163,10 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return false;
         synchronized (view) {
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            if (widget == null || !widget.has("opts")) return false;
-            var pin = widget.getAsJsonObject("opts").get("pin");
+            var section = view.uplinks.get(uplinkId);
+            var widget = section == null ? null : section.widget(widgetId);
+            if (widget == null || !(widget.base.get("opts") instanceof JsonObject opts)) return false;
+            var pin = opts.get("pin");
             return pin != null && pin.isJsonPrimitive() && pin.getAsJsonPrimitive().isBoolean() && pin.getAsBoolean();
         }
     }
@@ -880,76 +1177,162 @@ public final class WebHub {
         return count;
     }
 
-    /** Sends all pending changes. Called periodically from a Netty thread. */
     /** Serialises flushes (the web server's 100 ms timer, the server tick in GameTests, the tablet without web server): messages keep their order. */
     private final Object flushLock = new Object();
 
     /** GameTests ({@code -Dcccloud.gametest=true}): flush on every server tick, so delivery does not depend on wall-clock timers. */
     public static volatile boolean FLUSH_EVERY_TICK = Boolean.getBoolean("cccloud.gametest");
 
+    /** Sends all pending changes. Called periodically from a Netty thread. */
     public void flush() {
         synchronized (flushLock) {
             long now = System.currentTimeMillis();
-            for (var view : views.values()) {
-                Map<String, JsonObject> pending;
-                String networkFull = null, networkStripped = null;
-                Set<String> restricted;
-                synchronized (view) {
-                    if (view.networkDirty && now - view.networkSentAt >= 500) {
-                        view.networkDirty = false;
-                        view.networkSentAt = now;
-                        networkFull = view.networkFull;
-                        networkStripped = view.networkStripped;
-                    }
-                    if (view.outbox.isEmpty() && networkFull == null) continue;
-                    pending = view.outbox;
-                    view.outbox = new LinkedHashMap<>();
-                    buildValueMessages(view, pending);
-                    restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
-                }
-                if (networkFull != null && !view.sessions.isEmpty()) {
-                    for (var session : view.sessions) {
-                        if (session.share() != null) continue; // share viewers never get the network map
-                        session.send(List.of(session.seesPositions() ? networkFull : networkStripped));
-                    }
-                }
-                if (pending.isEmpty()) continue;
-                if (view.sessions.isEmpty()) continue;
-                List<String> messages = null;
-                List<String> readOnly = null;
-                Map<String, List<String>> shareMessages = null;
-                for (var session : view.sessions) {
-                    var share = session.share();
-                    if (share == null) {
-                        if (messages == null) {
-                            messages = new ArrayList<>(pending.size());
-                            readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size());
-                            for (var message : pending.values()) {
-                                String json = Json.GSON.toJson(message);
-                                messages.add(json);
-                                if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
-                            }
-                        }
-                        session.send(seesRestricted(session.perms()) ? messages : readOnly);
-                        continue;
-                    }
-                    if (shareMessages == null) shareMessages = new java.util.HashMap<>();
-                    var filtered = shareMessages.get(share.id());
-                    if (filtered == null) {
-                        filtered = new ArrayList<>();
-                        synchronized (view) {
-                            var keys = ShareFilter.scope(view.uplinks.values(), view.layout, share);
-                            for (var message : pending.values()) {
-                                var m = ShareFilter.message(message, view.uplinks, keys, share.hideNumbers());
-                                if (m != null) filtered.add(Json.GSON.toJson(m));
-                            }
-                        }
-                        shareMessages.put(share.id(), filtered);
-                    }
-                    if (!filtered.isEmpty()) session.send(filtered);
+            for (var view : views.values()) flush(view, now);
+        }
+    }
+
+    private void flush(View view, long now) {
+        Map<String, JsonObject> pending;
+        Map<String, JsonObject> valueSections;
+        JsonObject networkFull = null, networkStripped = null;
+        Set<String> restricted;
+        List<HubSession> targets;
+        Map<String, JsonObject> uplinks = null;
+        @Nullable JsonObject layout = null;
+        synchronized (view) {
+            if (view.networkDirty && now - view.networkSentAt >= 500) {
+                view.networkDirty = false;
+                view.networkSentAt = now;
+                networkFull = view.networkFullJson;
+                networkStripped = view.networkStrippedJson;
+            }
+            if (view.outbox.isEmpty() && view.values.isEmpty() && networkFull == null) return;
+            pending = view.outbox;
+            view.outbox = new LinkedHashMap<>();
+            view.pendingAlerts = 0;
+            resolveSections(view, pending);
+            valueSections = takeValues(view);
+            restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
+            // Only the sessions registered now: a session added later has these changes in its snapshot already.
+            targets = List.copyOf(view.sessions);
+            for (var s : targets) {
+                if (s.share() != null) {
+                    // Share filtering needs the sections and the layout (immutable objects; the map is copied).
+                    uplinks = jsonSections(view);
+                    layout = view.layout;
+                    break;
                 }
             }
         }
+        if (targets.isEmpty()) return;
+        String fullNet = null, strippedNet = null;
+        if (networkFull != null) {
+            // Serialised once per change, outside the view's lock and off the server thread.
+            fullNet = view.networkFull;
+            if (fullNet == null) view.networkFull = fullNet = networkMessage(networkFull);
+            strippedNet = view.networkStripped;
+            if (strippedNet == null) view.networkStripped = strippedNet = networkMessage(networkStripped);
+        }
+        List<String> messages = null;
+        List<String> readOnly = null;
+        Map<String, List<String>> shareMessages = null;
+        for (var session : targets) {
+            var share = session.share();
+            List<String> out = new ArrayList<>();
+            if (share == null) {
+                if (fullNet != null) out.add(session.seesPositions() ? fullNet : strippedNet);
+                if (messages == null) {
+                    messages = new ArrayList<>(pending.size() + 1);
+                    readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size() + 1);
+                    for (var message : pending.values()) {
+                        String json = Json.GSON.toJson(message);
+                        messages.add(json);
+                        if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
+                    }
+                    if (!valueSections.isEmpty()) {
+                        messages.add(valuesMessage(valueSections, null));
+                        if (readOnly != messages) {
+                            var visible = valuesMessage(valueSections, restricted);
+                            if (visible != null) readOnly.add(visible);
+                        }
+                    }
+                }
+                out.addAll(seesRestricted(session.perms()) ? messages : readOnly);
+            } else {
+                if (shareMessages == null) shareMessages = new HashMap<>();
+                var filtered = shareMessages.get(share.id());
+                if (filtered == null) {
+                    filtered = new ArrayList<>();
+                    var keys = ShareFilter.scope(uplinks.values(), layout, share);
+                    for (var message : pending.values()) {
+                        var m = ShareFilter.message(message, uplinks, keys, share.hideNumbers());
+                        if (m != null) filtered.add(Json.GSON.toJson(m));
+                    }
+                    var values = ShareFilter.values(valueSections, uplinks, keys, share.hideNumbers());
+                    if (values != null) filtered.add(valuesMessage(values, null));
+                    shareMessages.put(share.id(), filtered);
+                }
+                out.addAll(filtered);
+            }
+            if (out.isEmpty()) continue;
+            synchronized (view.sendLock) {
+                var waiting = view.awaiting.get(session);
+                if (waiting != null) waiting.addAll(out); // its snapshot is being serialised: these follow it
+                else session.send(out);
+            }
+        }
+    }
+
+    /** Marker in the outbox for "send this section as it is at flush time" ({@code u:<uplinkId>}); never serialised. */
+    private static final JsonObject SECTION_PENDING = new JsonObject();
+
+    /** Replaces section markers by {@code {"t":"uplink",…}} with the section's current version. Under the view's lock. */
+    private static void resolveSections(View view, Map<String, JsonObject> pending) {
+        for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
+            var entry = it.next();
+            if (entry.getValue() != SECTION_PENDING) continue;
+            var section = view.uplinks.get(entry.getKey().substring(2));
+            if (section == null) {
+                it.remove();
+                continue;
+            }
+            var message = shallowCopy(section.json());
+            message.addProperty("t", "uplink");
+            entry.setValue(message);
+        }
+    }
+
+    /** uplinkId → {widgetId: latest value} of the changed widgets, and clears the pending set. Under the view's lock. */
+    private static Map<String, JsonObject> takeValues(View view) {
+        if (view.values.isEmpty()) return Map.of();
+        var out = new LinkedHashMap<String, JsonObject>();
+        for (var entry : view.values.entrySet()) {
+            var section = view.uplinks.get(entry.getKey());
+            if (section == null) continue;
+            var changed = new JsonObject();
+            for (var widgetId : entry.getValue()) {
+                var widget = section.widget(widgetId);
+                if (widget == null || widget.value == null) continue;
+                changed.add(widgetId, widget.value);
+            }
+            if (changed.size() > 0) out.put(entry.getKey(), changed);
+        }
+        view.values = new LinkedHashMap<>();
+        return out;
+    }
+
+    /** {@code {"t":"values","s":{uplinkId:{widgetId:value}}}} without the sections in {@code skip}, or null if nothing is left. */
+    static @Nullable String valuesMessage(Map<String, JsonObject> sections, @Nullable Set<String> skip) {
+        var s = new JsonObject();
+        for (var entry : sections.entrySet()) {
+            if (skip != null && skip.contains(entry.getKey())) continue;
+            s.add(entry.getKey(), entry.getValue());
+        }
+        if (s.size() == 0) return null;
+        var message = new JsonObject();
+        message.addProperty("t", "values");
+        message.add("s", s);
+        return Json.GSON.toJson(message);
     }
 
     public void clear() {
@@ -957,33 +1340,6 @@ public final class WebHub {
             for (var session : view.sessions) session.close(1001, "server stopping");
         }
         views.clear();
-    }
-
-    /** Marker in the outbox for "send this widget's current value" (see {@link #buildValueMessages}); never serialised. */
-    private static final JsonObject VALUE_PENDING = new JsonObject();
-
-    /** Replaces value markers by {@code {"t":"value",…}} messages with the widget's latest value. Under the view's lock. */
-    private static void buildValueMessages(View view, Map<String, JsonObject> pending) {
-        for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
-            var entry = it.next();
-            if (entry.getValue() != VALUE_PENDING) continue;
-            String key = entry.getKey(); // v:<uplinkId>:<widgetId> (the uplink id has no ':', a widget id may)
-            int sep = key.indexOf(':', 2);
-            String uplinkId = key.substring(2, sep), widgetId = key.substring(sep + 1);
-            var index = view.widgetIndex.get(uplinkId);
-            var widget = index == null ? null : index.get(widgetId);
-            if (widget == null || !widget.has("value")) {
-                it.remove();
-                continue;
-            }
-            var message = new JsonObject();
-            message.addProperty("t", "value");
-            message.addProperty("uplinkId", uplinkId);
-            message.addProperty("id", widgetId);
-            var value = widget.get("value");
-            message.add("value", value.isJsonPrimitive() || value.isJsonNull() ? value : value.deepCopy());
-            entry.setValue(message);
-        }
     }
 
     private static void put(View view, String key, JsonObject message) {
