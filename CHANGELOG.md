@@ -41,6 +41,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Jade: the tooltip plugin failed to load with Jade 26.1.12 ("Data providers cannot implement IComponentProvider since
   Minecraft 1.21.6"). The network lines now come from a separate server data provider and client tooltip provider; a
   unit test checks that rule on the compiled classes. `-PintegrationMods=jade` puts Jade into the dev runs.
+- Cloud Displays no longer reset to 1×1 ("was malformed") when a world loads: the block saved its position in the wall
+  as `x`/`y`, which the chunk save overwrites with the block's coordinates. The index is now saved as
+  `index_x`/`index_y`; walls saved by 0.9.0 join up again by themselves. The showcase builder writes the new keys.
 
 ## 0.9.0 – first public release candidate
 
