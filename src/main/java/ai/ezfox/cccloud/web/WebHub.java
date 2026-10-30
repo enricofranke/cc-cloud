@@ -766,7 +766,8 @@ public final class WebHub {
             var widget = index == null ? null : index.get(widgetId);
             String type = widget == null || !widget.has("type") ? null : widget.get("type").getAsString();
             String mode = uplink == null || !uplink.has("mode") ? null : uplink.get("mode").getAsString();
-            return AccessGate.actionPerm(type, mode, widgetId);
+            String template = uplink == null || !uplink.has("template") ? null : uplink.get("template").getAsString();
+            return AccessGate.actionPerm(type, mode, widgetId, template);
         }
     }
 

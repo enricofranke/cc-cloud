@@ -162,7 +162,8 @@ public final class SceneService {
     /** The permission a step needs besides pressing the button (null: none, e.g. alerts). */
     public static @Nullable Perm stepPerm(UUID mainframeId, Rule.Action action) {
         return switch (action) {
-            case Rule.WidgetAction w -> WebHub.INSTANCE.actionPerm(mainframeId, w.uplinkId(), w.widgetId());
+            case Rule.WidgetAction w -> WebHub.INSTANCE.actionPerm(mainframeId,
+                ai.ezfox.cccloud.rsdevice.RsDevices.sectionOf(mainframeId, w.uplinkId(), w.widgetId()), w.widgetId());
             case Rule.RedstoneAction r -> Perm.ACT_REDSTONE;
             case Rule.CraftAction c -> Perm.STORAGE_CRAFT;
             case Rule.DashboardAction d -> Perm.POWER_TOGGLE;

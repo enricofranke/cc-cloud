@@ -177,6 +177,7 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"net_unlink\",\"reqId\":\"r\",\"nodeId\":\"" + lua + "\"}", Perm.NETWORK_LINK);
         cases.put("{\"t\":\"rule_set\",\"reqId\":\"r\",\"rule\":{}}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rs_override\",\"reqId\":\"r\",\"channel\":\"door\",\"level\":15,\"seconds\":30}", Perm.ACT_REDSTONE);
+        cases.put("{\"t\":\"rs_device\",\"reqId\":\"r\",\"deviceId\":\"" + lua + "\",\"group\":\"Hall\"}", Perm.NETWORK_LINK);
         cases.put("{\"t\":\"rule_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rule_enable\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\",\"enabled\":true}", Perm.RULES_TOGGLE);
         cases.put("{\"t\":\"rule_run\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_TOGGLE);

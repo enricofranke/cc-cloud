@@ -39,7 +39,9 @@ public final class NetworkGraph {
     }
 
     public enum DeviceType {
-        UPLINK("uplink"), ADVANCED_UPLINK("advanced_uplink"), BRIDGE("bridge");
+        UPLINK("uplink"), ADVANCED_UPLINK("advanced_uplink"), BRIDGE("bridge"),
+        /** Cloud Switch / Button / Lamp / Sensor: radio only, a fraction of a device in capacity and FE. */
+        REDSTONE("redstone");
 
         public final String id;
 

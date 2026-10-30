@@ -283,7 +283,8 @@ public final class RuleService {
         return new RuleEngine.World() {
             @Override
             public @Nullable Double widget(String uplinkId, String widgetId) {
-                var value = WebHub.INSTANCE.widgetValue(id, uplinkId, widgetId);
+                // a Cloud Redstone device that moved to another card is followed there
+                var value = WebHub.INSTANCE.widgetValue(id, ai.ezfox.cccloud.rsdevice.RsDevices.sectionOf(id, uplinkId, widgetId), widgetId);
                 if (value == null || !value.isJsonPrimitive()) return null;
                 var p = value.getAsJsonPrimitive();
                 if (p.isNumber()) return p.getAsDouble();
@@ -380,11 +381,13 @@ public final class RuleService {
                 return result(section.handleAction("redstone", value, new Op.SetOutput(redstone.side(), redstone.value()), user, pinVerified));
             }
             case Rule.WidgetAction widget -> {
-                var section = section(id, widget.uplinkId());
+                // a Cloud Redstone device that moved to another card is followed there
+                String uplinkId = ai.ezfox.cccloud.rsdevice.RsDevices.sectionOf(id, widget.uplinkId(), widget.widgetId());
+                var section = section(id, uplinkId);
                 if (section == null) return "unknown_uplink";
                 if (section instanceof ai.ezfox.cccloud.scene.ScenesSection) return "not_interactive"; // scenes run through the scene action
                 // PIN widgets stay human-only (a scene press carries the PIN check of its presser)
-                if (!pinVerified && WebHub.INSTANCE.widgetNeedsPin(id, widget.uplinkId(), widget.widgetId())) return "pin_required";
+                if (!pinVerified && WebHub.INSTANCE.widgetNeedsPin(id, uplinkId, widget.widgetId())) return "pin_required";
                 return result(section.handleAction(widget.widgetId(), widget.value(), null, user, pinVerified));
             }
             case Rule.CraftAction craft -> {

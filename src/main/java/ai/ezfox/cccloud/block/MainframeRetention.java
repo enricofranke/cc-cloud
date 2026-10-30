@@ -170,6 +170,7 @@ public final class MainframeRetention extends SavedData {
         ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys().forgetMainframe(mainframeId);
         ai.ezfox.cccloud.push.PushService.forget(server, mainframeId);
         ai.ezfox.cccloud.network.SectionCache.get(server).forgetMainframe(mainframeId);
+        ai.ezfox.cccloud.rsdevice.RsDevices.purge(server, mainframeId);
         WebHub.INSTANCE.removeMainframe(mainframeId);
         ai.ezfox.cccloud.layout.LayoutData.get(server).remove(mainframeId);
         var data = get(server);

@@ -62,6 +62,21 @@ public final class ModRegistry {
         ai.ezfox.cccloud.cable.EnderFiberLinkBlock::new, p -> p.mapColor(MapColor.GOLD).strength(2.5f).sound(SoundType.METAL).noOcclusion()
             .pushReaction(PushReaction.BLOCK).lightLevel(s -> 4));
 
+    // Cloud Redstone devices (docs/SPEC.md "Cloud Redstone devices"): small, cheap, linked with the Link Card.
+    public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsPlateBlock> CLOUD_SWITCH = BLOCKS.registerBlock("cloud_switch",
+        p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.SWITCH, p), ModRegistry::plateProperties);
+    public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsPlateBlock> CLOUD_BUTTON = BLOCKS.registerBlock("cloud_button",
+        p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.BUTTON, p), ModRegistry::plateProperties);
+    public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsPlateBlock> CLOUD_SENSOR = BLOCKS.registerBlock("cloud_sensor",
+        p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.SENSOR, p), ModRegistry::plateProperties);
+    public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsLampBlock> CLOUD_LAMP = BLOCKS.registerBlock("cloud_lamp",
+        ai.ezfox.cccloud.rsdevice.RsLampBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).strength(0.3f).sound(SoundType.GLASS)
+            .lightLevel(s -> s.getValue(ai.ezfox.cccloud.rsdevice.RsLampBlock.LEVEL)));
+
+    private static BlockBehaviour.Properties plateProperties(BlockBehaviour.Properties p) {
+        return p.mapColor(MapColor.STONE).noCollision().noOcclusion().strength(0.5f).sound(SoundType.STONE).pushReaction(PushReaction.DESTROY);
+    }
+
     private static BlockBehaviour.Properties relayProperties(BlockBehaviour.Properties p) {
         return p.mapColor(MapColor.STONE).strength(2.0f).sound(SoundType.METAL).noOcclusion().pushReaction(PushReaction.BLOCK)
             .lightLevel(s -> s.getValue(ai.ezfox.cccloud.relay.RelayStatus.PROPERTY) == ai.ezfox.cccloud.relay.RelayStatus.ONLINE ? 5 : 0);
@@ -83,6 +98,10 @@ public final class ModRegistry {
     public static final DeferredItem<?> FIBER_CABLE_ITEM = ITEMS.registerSimpleBlockItem(FIBER_CABLE);
     public static final DeferredItem<?> FIBER_JUNCTION_ITEM = ITEMS.registerSimpleBlockItem(FIBER_JUNCTION);
     public static final DeferredItem<?> ENDER_FIBER_LINK_ITEM = ITEMS.registerSimpleBlockItem(ENDER_FIBER_LINK, p -> p.rarity(Rarity.EPIC));
+    public static final DeferredItem<?> CLOUD_SWITCH_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_SWITCH);
+    public static final DeferredItem<?> CLOUD_BUTTON_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_BUTTON);
+    public static final DeferredItem<?> CLOUD_LAMP_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_LAMP);
+    public static final DeferredItem<?> CLOUD_SENSOR_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_SENSOR);
     // v0.7 mainframe upgrades: 15 cards (type × tier), the Quantum Core and the optional Chunk Anchor card.
     public static final java.util.Map<String, DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem>> UPGRADE_CARDS = new java.util.LinkedHashMap<>();
 
@@ -121,6 +140,10 @@ public final class ModRegistry {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudUplinkBlockEntity>> UPLINK_BE = BLOCK_ENTITIES.register("cloud_uplink",
         () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get()));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity>> RS_DEVICE_BE = BLOCK_ENTITIES.register(
+        "redstone_device", () -> new BlockEntityType<>(ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity::new, CLOUD_SWITCH.get(), CLOUD_BUTTON.get(),
+            CLOUD_LAMP.get(), CLOUD_SENSOR.get()));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity>> ENDER_FIBER_LINK_BE =
         BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, ENDER_FIBER_LINK.get()));
 
@@ -139,6 +162,9 @@ public final class ModRegistry {
     public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<ai.ezfox.cccloud.gui.UplinkMenu>> UPLINK_MENU =
         MENUS.register("uplink", () -> net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(ai.ezfox.cccloud.gui.UplinkMenu::new));
 
+    public static final DeferredHolder<net.minecraft.world.inventory.MenuType<?>, net.minecraft.world.inventory.MenuType<ai.ezfox.cccloud.rsdevice.RsDeviceMenu>> RS_DEVICE_MENU =
+        MENUS.register("redstone_device", () -> net.neoforged.neoforge.common.extensions.IMenuTypeExtension.create(ai.ezfox.cccloud.rsdevice.RsDeviceMenu::new));
+
     // Creative tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("cccloud", () -> CreativeModeTab.builder()
         .title(Component.translatable("itemGroup.cccloud"))
@@ -153,6 +179,10 @@ public final class ModRegistry {
             out.accept(FIBER_CABLE_ITEM.get());
             out.accept(FIBER_JUNCTION_ITEM.get());
             out.accept(ENDER_FIBER_LINK_ITEM.get());
+            out.accept(CLOUD_SWITCH_ITEM.get());
+            out.accept(CLOUD_BUTTON_ITEM.get());
+            out.accept(CLOUD_LAMP_ITEM.get());
+            out.accept(CLOUD_SENSOR_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
             for (var card : UPGRADE_CARDS.values()) out.accept(card.get());
@@ -205,6 +235,14 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("scenes_rights_delays_pin", () -> ai.ezfox.cccloud.gametest.SceneTests::rightsDelaysPin);
         TEST_FUNCTIONS.register("schedules_clocks", () -> ai.ezfox.cccloud.gametest.ScheduleTests::clocks);
         TEST_FUNCTIONS.register("api_scopes_rights", () -> ai.ezfox.cccloud.gametest.ApiTests::scopesAndRights);
+        TEST_FUNCTIONS.register("rsdevice_switch_faces", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::switchFaces);
+        TEST_FUNCTIONS.register("rsdevice_button_pulse", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::buttonPulse);
+        TEST_FUNCTIONS.register("rsdevice_lamp_levels", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::lampLevels);
+        TEST_FUNCTIONS.register("rsdevice_sensor_load", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::sensorAfterLoad);
+        TEST_FUNCTIONS.register("rsdevice_group_cards", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::groupCards);
+        TEST_FUNCTIONS.register("rsdevice_rule_scene", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::ruleAndScene);
+        TEST_FUNCTIONS.register("rsdevice_permissions", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::permissions);
+        TEST_FUNCTIONS.register("rsdevice_capacity_power", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::capacityAndPower);
     }
 
     private ModRegistry() {

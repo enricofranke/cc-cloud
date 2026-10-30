@@ -33,6 +33,11 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
     public static final ModConfigSpec.DoubleValue FIBER_CAPACITY_WEIGHT;
     public static final ModConfigSpec.DoubleValue FIBER_POWER_FACTOR;
+    // Cloud Redstone devices (switch, button, lamp, sensor)
+    public static final ModConfigSpec.IntValue RANGE_REDSTONE_DEVICE;
+    public static final ModConfigSpec.DoubleValue REDSTONE_CAPACITY_WEIGHT;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_REDSTONE_DEVICE_FE;
+    public static final ModConfigSpec.IntValue RS_DEVICE_CHANGES_PER_SECOND;
     // v0.7 mainframe upgrades (base limits without cards) and the optional Chunk Anchor card
     public static final ModConfigSpec.IntValue BASE_DEVICES;
     public static final ModConfigSpec.IntValue BASE_BROWSERS;
@@ -183,6 +188,10 @@ public final class CloudConfig {
         FIBER_CAPACITY_WEIGHT = b.comment("How much a device attached by Fiber Cable counts against the mainframe's device capacity (1 = like any device).")
             .translation("cccloud.configuration.fiberCapacityWeight")
             .defineInRange("fiberCapacityWeight", 0.5, 0.0, 1.0);
+        RANGE_REDSTONE_DEVICE = range(b, "redstoneDeviceRange", 32, "Cloud Switch / Button / Lamp / Sensor: reach to the nearest node (radio only).");
+        REDSTONE_CAPACITY_WEIGHT = b.comment("How much a Cloud Switch / Button / Lamp / Sensor counts against the mainframe's device capacity (1 = like an uplink).")
+            .translation("cccloud.configuration.redstoneDeviceCapacityWeight")
+            .defineInRange("redstoneDeviceCapacityWeight", 0.25, 0.0, 1.0);
         b.pop();
 
         b.push("power");
@@ -201,6 +210,9 @@ public final class CloudConfig {
         MAINFRAME_PER_BRIDGE_FE = b.comment("Additional FE per tick per connected ME/RS Cloud Bridge.")
             .translation("cccloud.configuration.mainframePerBridgeFE")
             .defineInRange("mainframePerBridgeFE", 10, 0, 1_000_000);
+        MAINFRAME_PER_REDSTONE_DEVICE_FE = b.comment("Additional FE per tick per connected Cloud Switch / Button / Lamp / Sensor.")
+            .translation("cccloud.configuration.mainframePerRedstoneDeviceFE")
+            .defineInRange("mainframePerRedstoneDeviceFE", 1, 0, 1_000_000);
         MAINFRAME_PER_HOP_FE = b.comment("Additional FE per tick for every hop beyond the first of each routed device.")
             .translation("cccloud.configuration.mainframePerHopFE")
             .defineInRange("mainframePerHopFE", 1, 0, 1_000_000);
@@ -364,6 +376,13 @@ public final class CloudConfig {
                 "Private/LAN addresses are always refused unless the host is listed here; plain http only for listed ntfy hosts.")
             .translation("cccloud.configuration.pushAllowedHosts")
             .defineListAllowEmpty("pushAllowedHosts", java.util.List.of(), () -> "ntfy.example.org", o -> o instanceof String s && !s.isBlank() && s.length() <= 253);
+        b.pop();
+
+        b.push("redstoneDevices");
+        RS_DEVICE_CHANGES_PER_SECOND = b.comment("Changes per second one Cloud Switch / Button / Lamp may get from the dashboard, rules, scenes and the API",
+                "(bursts of twice as many are allowed; in-world clicks are not limited).")
+            .translation("cccloud.configuration.redstoneDeviceChangesPerSecond")
+            .defineInRange("redstoneDeviceChangesPerSecond", 4, 1, 40);
         b.pop();
 
         b.push("upgrades");

@@ -35,7 +35,9 @@ public final class AccessGate {
         /** v0.7 wireless redstone channel overrides. */
         REDSTONE(Perm.ACT_REDSTONE),
         /** v0.10 scenes: create, edit, delete (running is a button action). */
-        SCENE_EDIT(Perm.RULES_EDIT);
+        SCENE_EDIT(Perm.RULES_EDIT),
+        /** Cloud Redstone devices: rename / regroup from the dashboard (like linking them). */
+        RS_DEVICE(Perm.NETWORK_LINK);
 
         public final Perm perm;
 
@@ -68,7 +70,16 @@ public final class AccessGate {
      * everything else (buttons, toggles, sliders, inputs) {@code act.buttons}.
      */
     public static Perm actionPerm(@Nullable String widgetType, @Nullable String uplinkMode, String widgetId) {
+        return actionPerm(widgetType, uplinkMode, widgetId, null);
+    }
+
+    /**
+     * As above, with the section's {@code template}: every control of a Cloud Redstone card ({@code redstone}: switches,
+     * buttons, lamps, "All on/off") needs {@code act.redstone}.
+     */
+    public static Perm actionPerm(@Nullable String widgetType, @Nullable String uplinkMode, String widgetId, @Nullable String template) {
         if (widgetType == null) return Perm.ACT_BUTTONS;
+        if ("redstone".equals(template) && "direct".equals(uplinkMode)) return Perm.ACT_REDSTONE;
         return switch (widgetType) {
             case "item_search" -> Perm.STORAGE_CRAFT;
             case "watchlist" -> Perm.STORAGE_AUTOSTOCK;
@@ -139,7 +150,7 @@ public final class AccessGate {
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
             case "net_unlink" -> "net_result";
-            case "rs_override" -> "rs_result";
+            case "rs_override", "rs_device" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             case "scene_set", "scene_delete" -> "scene_result";
             case "production" -> "production_result";
