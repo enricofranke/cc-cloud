@@ -250,6 +250,7 @@ Widgets with \`pin=true\` ask for the mainframe PIN on a keypad before they act.
 | Removed | the mainframe block was broken – place its item again to bring everything back ([how](/docs/start#moving)) |
 | Mainframe has no power | the FE buffer is empty – see [power](/docs/start#power) |
 | Uplink offline | that uplink is unloaded or out of range |
+| Blocked – this machine is in …'s claim | another team claimed the machine's chunk – see [claims](/docs/faq#claims) |
 | Read-only device | this device may watch but not control |
 | Server not reachable | see [troubleshooting](/docs/faq#not-reachable) |
 `,
@@ -298,6 +299,7 @@ In the world, a click switches a switch or a lamp and presses a button. **Sneak 
 - Per device: **Ask for the mainframe PIN** and **Ask before switching** (in its screen, needs “Link devices”). “All on / All off” asks if any device of the card does.
 - Linking, renaming and the settings need **“Link devices”** on the mainframe; anyone who may use the block can still click it by hand, like a lever.
 - Each device takes at most 4 changes per second from the dashboard, rules, scenes and the API (\`redstoneDeviceChangesPerSecond\`, short bursts of 8); clicks in the world are not limited.
+- A device in another team's claim is blocked: its card shows the claim instead of the switch – see [claims](/docs/faq#claims).
 
 ## Range, capacity and power {#network}
 
@@ -1301,5 +1303,11 @@ After 5 wrong PINs the device is locked for 5 minutes. The owner can change the 
 - The server needs **FTB Quests** and the standard jar \`cccloud-<version>.jar\` – the modpack edition never adds quests.
 - The server log says what happened: look for \`FTB Quests:\` (for example \`installQuests = false\`, an id that is already used in the quest book, or a chapter that was deleted earlier).
 - The quests are added once; a deleted chapter does not come back. To start over, delete \`config/cccloud/quests-installed.json\` and restart. See [Quests](/docs/start#quests).
+
+## A card says "Blocked – this machine is in …'s claim" {#claims}
+
+Machines in another team's claim stop working on the dashboard. If a team claims the chunk of a machine that an uplink, probe, bridge, redstone device or wired machine card reads, and neither the player who linked it nor the mainframe's owner is in that team or allied with it, the card shows the claim instead of values and every control is refused – also from rules, scenes and the API. Only players allowed to see positions see the team's name.
+
+It works again by itself as soon as the claim is removed or your teams become allies. Server operators get no exception. Claims come from FTB Chunks; other claim mods are not checked yet.
 `,
 };
