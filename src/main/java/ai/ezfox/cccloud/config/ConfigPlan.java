@@ -26,7 +26,9 @@ public enum ConfigPlan {
     /** A feature switch the dashboard reads from {@code GET /api/config}: tell open dashboards to fetch it again. */
     FEATURES,
     /** Team providers / FTB Teams trust: re-check every open session's role now (not within 5 s). */
-    ACCESS;
+    ACCESS,
+    /** {@code [icons]}: open the vanilla source again and let the server renderer draw what is still missing. */
+    ICONS;
 
     /** Keys the dashboard shows as features ({@code GET /api/config}). */
     static final Set<String> FEATURE_KEYS = Set.of("terminal.terminalEnabled", "map.voxelView", "push.pushEnabled", "rules.rulesEnabled",
@@ -45,6 +47,7 @@ public enum ConfigPlan {
             if (key.equals("map.mapTileMaxAgeDays")) plan.add(MAP_SWEEP);
             if (FEATURE_KEYS.contains(key)) plan.add(FEATURES);
             if (key.equals("teams.disabledTeamProviders") || key.equals("server.ftbTeamsTrust")) plan.add(ACCESS);
+            if (key.startsWith("icons.")) plan.add(ICONS);
         }
         return plan;
     }

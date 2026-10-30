@@ -135,7 +135,7 @@ vanillaAssetsJar = ""           # or: the path to a client jar you own
 - `downloadVanillaAssets = true` downloads the official Minecraft client jar of exactly your server's version from Mojang's servers, once (about 40 MB, checked against Mojang's SHA-1, kept in `<server>/cccloud/cache`). It is only read locally for textures; nothing from it is passed on – browsers only get the 32×32 icons. By turning it on you agree to Mojang's terms (the [Minecraft EULA](https://www.minecraft.net/eula)).
 - `vanillaAssetsJar` points to a client jar you already have, e.g. `.minecraft/versions/26.1.2/26.1.2.jar`.
 
-Without either, vanilla items get their icons when the first player with the mod joins; the server log says so once at start. The settings are in the `[icons]` section of `<world>/serverconfig/cccloud-server.toml` and apply at the next start. In singleplayer and on LAN the host's game renders every icon, so the server renderer stays off there.
+Without either, vanilla items get their icons when the first player with the mod joins; the server log says so once at start. The settings are in the `[icons]` section of `<world>/serverconfig/cccloud-server.toml` and apply while the server runs: after a change it looks for missing icons again (so vanilla items are drawn right after you allow the download). In singleplayer and on LAN the host's game renders every icon, so the server renderer stays off there.
 
 `/cccloud icons status` shows how many icons come from players, how many from the server and how many are missing, and how far the server renderer is. `/cccloud icons rebuild` draws everything again, `/cccloud icons clear` deletes all icons.
 
@@ -172,6 +172,7 @@ What happens to the dashboard:
 - **Feature switches** (API, push, rules, scenes, terminal, voxels, production statistics, Script Store): apply to the next action; open dashboards update their menus.
 - **Limits** (API rate limits, Cloud Switch changes per second, upgrade base limits, history memory, buffers): apply at once. A lowered limit counts what was already used; a raised one gives nothing back. Browsers already open over a lowered browser limit stay connected (like after removing a Bandwidth upgrade).
 - **Ranges and power:** every network is recomputed within a second.
+- **Item icons** (`[icons]`): the server opens the vanilla textures again (downloading them once if you just allowed it) and draws the icons that are still missing; switching the server renderer off stops it, the icons it drew stay.
 
 A file with a syntax error is replaced by NeoForge with the defaults (it keeps a backup next to it) – the defaults are LAN only, so nothing opens up by accident.
 

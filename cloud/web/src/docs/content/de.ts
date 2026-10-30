@@ -1156,7 +1156,7 @@ ${code("toml", C.TOML_ICONS)}
 - \`downloadVanillaAssets = true\` lädt einmal das offizielle Minecraft-Client-Jar genau deiner Serverversion von Mojangs Servern (etwa 40 MB, gegen Mojangs SHA-1 geprüft, abgelegt in \`<server>/cccloud/cache\`). Es wird nur lokal für Texturen gelesen; nichts davon wird weitergegeben – Browser bekommen nur die 32×32-Icons. Mit dem Einschalten stimmst du Mojangs Bedingungen zu (der [Minecraft-EULA](https://www.minecraft.net/eula)).
 - \`vanillaAssetsJar\` zeigt auf ein Client-Jar, das du schon hast, z. B. \`.minecraft/versions/26.1.2/26.1.2.jar\`.
 
-Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit der Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt \`[icons]\` von \`<world>/serverconfig/cccloud-server.toml\` und gelten ab dem nächsten Start. Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
+Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit der Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt \`[icons]\` von \`<world>/serverconfig/cccloud-server.toml\` und gelten im laufenden Betrieb: Nach einer Änderung sucht der Server erneut nach fehlenden Icons (Vanilla-Items werden also gleich gezeichnet, nachdem du den Download erlaubt hast). Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
 
 \`/cccloud icons status\` zeigt, wie viele Icons von Spielern kommen, wie viele vom Server und wie viele fehlen, und wie weit der Server-Renderer ist. \`/cccloud icons rebuild\` zeichnet alles neu, \`/cccloud icons clear\` löscht alle Icons.
 
@@ -1189,6 +1189,7 @@ Was mit dem Dashboard passiert:
 - **Funktionsschalter** (API, Push, Regeln, Szenen, Terminal, Voxel, Produktionsstatistik, Script Store): gelten ab der nächsten Aktion; offene Dashboards passen ihre Menüs an.
 - **Limits** (API-Ratenlimits, Änderungen pro Sekunde der Cloud-Schalter, Grundwerte der Upgrades, Speicher der Statistik, Puffer): gelten sofort. Ein gesenktes Limit rechnet an, was schon verbraucht wurde; ein erhöhtes schenkt nichts zurück. Browser, die über einem gesenkten Browser-Limit schon offen sind, bleiben verbunden (wie nach dem Entfernen eines Bandbreiten-Upgrades).
 - **Reichweiten und Energie:** Jedes Netzwerk wird innerhalb einer Sekunde neu berechnet.
+- **Item-Icons** (\`[icons]\`): Der Server öffnet die Vanilla-Texturen neu (lädt sie einmal, wenn du den Download gerade erlaubt hast) und zeichnet die Icons, die noch fehlen; das Ausschalten des Server-Renderers stoppt ihn, die gezeichneten Icons bleiben.
 
 Eine Datei mit Syntaxfehler ersetzt NeoForge durch die Standardwerte (mit einer Sicherungskopie daneben) – die Standardwerte sind nur LAN, es öffnet sich also nichts aus Versehen.
 

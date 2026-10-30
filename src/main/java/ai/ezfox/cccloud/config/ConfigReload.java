@@ -124,6 +124,11 @@ public final class ConfigReload {
         }
         if (plan.contains(ConfigPlan.ACCESS)) CloudWebServer.recheckAll();
         if (plan.contains(ConfigPlan.NETWORK)) ai.ezfox.cccloud.network.NetworkService.markDirty();
+        if (plan.contains(ConfigPlan.ICONS)) {
+            var icons = ai.ezfox.cccloud.icons.IconService.current();
+            String note = icons == null ? null : icons.reconfigure();
+            if (note != null) notes.add(note);
+        }
 
         // What failed keeps its old value in the baseline, so the next reload tries it again.
         var next = new HashMap<String, Object>(now);

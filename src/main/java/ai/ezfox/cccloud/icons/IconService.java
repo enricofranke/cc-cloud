@@ -420,8 +420,25 @@ public final class IconService {
         });
     }
 
+    /**
+     * The {@code [icons]} config changed (live reload, server thread): on a dedicated server the vanilla source is
+     * opened again and the server renderer draws what is still missing (or stops when switched off).
+     *
+     * @return a line for the reload report, or null
+     */
+    public @Nullable String reconfigure() {
+        if (server == null || !net.neoforged.fml.loading.FMLEnvironment.getDist().isDedicatedServer()) return null;
+        startServerPass(false, true);
+        return CloudConfig.get(CloudConfig.RENDER_ICONS_ON_SERVER)
+            ? "Item icons: the server looks for missing icons again with the new settings (vanilla source included)"
+            : "Item icons: the server renderer is off; stored icons stay";
+    }
+
     /** Opens the vanilla source for {@code minecraft} assets, or logs how to get one. Render thread only. */
     private void resolveVanilla() {
+        ModAssets.setVanilla(null);
+        vanilla = Vanilla.NOT_NEEDED;
+        vanillaError = "";
         String configured = CloudConfig.get(CloudConfig.VANILLA_ASSETS_JAR).trim();
         if (!configured.isEmpty()) {
             try {

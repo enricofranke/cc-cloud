@@ -104,6 +104,8 @@ in, and who it was: a player's name or the kind of mob.
   Without either, the server logs one hint at start and vanilla items wait for the first player.
 - `/cccloud icons status` shows icons by source (game clients / server / missing), the server renderer's progress and
   where vanilla textures come from; `rebuild` also redraws the server's icons.
+- The `[icons]` settings apply while the server runs like all others: after a change the server opens the vanilla
+  textures again and draws the icons that are still missing.
 - The texture fallback found mod assets only for namespaces with an English language file; it now indexes every mod
   jar's `assets/` folder.
 
