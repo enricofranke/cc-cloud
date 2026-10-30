@@ -893,7 +893,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       source: "mainframe",
       widgets: pr.pins.map((p) => {
         const history = pinSeries(mf, p);
-        return { id: `p_${p.id}`, type: "chart" as const, label: p.label, opts: { unit: p.kind === "energy" ? "FE/t" : "/min", points: PROD_WINDOW }, value: history.at(-1) ?? 0, history };
+        return { id: `p_${p.id}`, type: "chart" as const, label: p.label, opts: { unit: p.kind === "energy" ? "FE/t" : "/min", points: PROD_WINDOW, interval: prodInterval, style: "line" }, value: history.at(-1) ?? 0, history };
       }),
     });
   }
@@ -1536,7 +1536,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         },
         {
           id: "e90a6b3c",
-          name: "Emergency",
+          name: "Alarm",
           icon: "warning",
           color: "yellow",
           confirm: false,

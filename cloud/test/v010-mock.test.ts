@@ -53,9 +53,9 @@ describe("scenes (mock)", () => {
     await start();
     const { conn, token } = await open("Enrico");
     const doc = conn.scenes.value!;
-    expect(doc.scenes.map((s) => s.name)).toEqual(["Night mode", "Reactor safe", "Good morning", "Emergency"]);
+    expect(doc.scenes.map((s) => s.name)).toEqual(["Night mode", "Reactor safe", "Good morning", "Alarm"]);
     expect(doc.limit).toBe(32);
-    expect(sceneOf(conn, "Emergency")).toMatchObject({ needsPin: true, owner: "Enrico" });
+    expect(sceneOf(conn, "Alarm")).toMatchObject({ needsPin: true, owner: "Enrico" });
     expect(sceneOf(conn, "Night mode").perms.sort()).toEqual(["act.buttons", "act.redstone"]);
     const section = conn.uplinks.value.find((u) => u.uplinkId === doc.sectionId)!;
     expect(section.title).toBe("Scenes");
@@ -154,8 +154,8 @@ describe("scenes (mock)", () => {
     expect(await press(conn, "e90a6b3c")).toMatchObject({ ok: false, error: "pin_required" });
     expect(await press(conn, "e90a6b3c", "9999")).toMatchObject({ ok: false, error: "wrong_pin" });
     expect(await press(conn, "e90a6b3c", "1234")).toMatchObject({ ok: true });
-    await waitFor(() => sceneOf(conn, "Emergency").lastRun?.finished != null);
-    expect(sceneOf(conn, "Emergency").lastRun!.steps.every((x) => x?.ok)).toBe(true);
+    await waitFor(() => sceneOf(conn, "Alarm").lastRun?.finished != null);
+    expect(sceneOf(conn, "Alarm").lastRun!.steps.every((x) => x?.ok)).toBe(true);
     // Tom (operator) may press "Night mode"; its steps need act.buttons/act.redstone, which operators have
     const { conn: tom } = await open("Tom");
     expect(await press(tom, "4e1a9c20")).toMatchObject({ ok: true });
