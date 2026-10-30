@@ -93,6 +93,15 @@ class TestBridge implements GameBridge {
         return new AccessApi.Response(200, json);
     }
 
+    /** What the public API's event streams may see (null: refused). */
+    java.util.@org.jspecify.annotations.Nullable Set<ai.ezfox.cccloud.access.Perm> streamPerms = java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW);
+
+    @Override
+    public java.util.@org.jspecify.annotations.Nullable Set<ai.ezfox.cccloud.access.Perm> apiStreamAccess(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, String ip) {
+        dispatched.add("stream:" + key.name());
+        return streamPerms;
+    }
+
     @Override
     public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
         dispatched.add(command.op());
