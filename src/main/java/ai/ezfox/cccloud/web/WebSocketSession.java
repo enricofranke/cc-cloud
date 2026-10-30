@@ -109,6 +109,12 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     private void handleText(String text) {
+        // Before authentication a message is at most 2 KB. With permessage-deflate the raw-frame guard only sees the
+        // compressed size (2 KB can inflate to the 257 KB frame limit), so the inflated message is checked here too.
+        if (state != State.READY && text.length() > FrameSizeGuard.PRE_AUTH_LIMIT) {
+            close(1009, "message too big");
+            return;
+        }
         var message = ClientMessages.parse(text);
 
         // Deny by default: before READY only the auth message is processed.
