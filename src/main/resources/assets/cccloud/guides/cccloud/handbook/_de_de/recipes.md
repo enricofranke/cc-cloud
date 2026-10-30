@@ -75,6 +75,9 @@ Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und 
 
 ## Redstone-Geräte
 
+### Erweiterter Cloud-Sensor
+<RecipesFor id="cccloud:advanced_cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
 ### Cloud-Taster
 <RecipesFor id="cccloud:cloud_button" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
@@ -187,6 +190,8 @@ ServerEvents.recipes(event => {
 | Rezept-ID | Ergebnis | Geladen |
 |---|---|---|
 | `cccloud:advanced_cloud_relay` | Erweitertes Cloud-Relais | immer |
+| `cccloud:advanced_cloud_sensor` | Erweiterter Cloud-Sensor | mit AllTheModium |
+| `cccloud:advanced_cloud_sensor_fallback` | Erweiterter Cloud-Sensor | ohne AllTheModium |
 | `cccloud:advanced_cloud_tablet` | Erweitertes Cloud-Tablet | immer |
 | `cccloud:advanced_cloud_tablet_upgrade` | Erweitertes Cloud-Tablet | immer |
 | `cccloud:advanced_cloud_uplink` | Erweiterter Cloud-Uplink | immer |

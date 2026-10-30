@@ -4,6 +4,29 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### New: Advanced Cloud Sensor
+A room nobody should enter? Place an **Advanced Cloud Sensor** – you get a push notification as soon as someone comes
+in, and who it was: a player's name or the kind of mob.
+- Watches a zone in front of it or around it (3×3×3 by default, up to 9×5×9; new configs `advancedSensorMaxZoneX/Y/Z`),
+  outlined in the world while you hold the sensor or a Link Card or have its screen open. The zone must lie in your own
+  claim or unclaimed land (FTB Chunks; not in spawn protection).
+- Reports players (by name), hostile and passive mobs (with their type, e.g. "Zombie", "Villager"), items and other
+  things that move – filtered by: everyone / players / mobs / hostile mobs, "ignore me and my team" (on by default), an
+  allow and a deny list of player names. Spectators and vanished players are never reported.
+- Its own dashboard card: who is inside, the last 20 events with relative time, today's count, arm/disarm and the
+  filters; an "occupied" light on its group's Redstone card. Powers redstone like a lever while something matching is
+  inside – also disarmed and without a mainframe.
+- Alerts to the dashboard and to push targets (Discord, ntfy, webhook) without spam: the first at once, then one summary
+  per cooldown ("3 Zombies entered Reactor room"), and a cooldown per entity (new configs `advancedSensorAlertCooldown`,
+  `advancedSensorEntityCooldown`).
+- Rules: new trigger "an Advanced Sensor detects …" (anyone, a player – optionally by name –, a mob, hostile, passive, an
+  item, something else); `{who}` in an alert text names who it was ("{who} betritt den Reaktorraum").
+- Privacy: only operators and up (`view.positions`) see player names; viewers, share links, Cloud Displays and API keys
+  without that right see "a player". `advancedSensorPlayerNames = false` turns names off for the whole server.
+- Recipe: Cloud Sensor, two observers, an eye of ender, a Cloud Core and AllTheModium ingots (without AllTheModium: gold
+  and diamonds). Counts 0.5 devices (`advancedSensorCapacityWeight`) and costs 4 FE/t while armed
+  (`mainframePerAdvancedSensorFE`). In JEI, Jade, the handbook and the docs (EN/DE).
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

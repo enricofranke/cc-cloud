@@ -123,6 +123,7 @@ CC: Cloud is built for big bases: hundreds of machines on one mainframe, many ma
 - **Map tiles on disk:** the 2D map caches its tiles in `<world>/cccloud/maptiles`. Tiles nobody drew or looked at for 30 days are deleted (`mapTileMaxAgeDays`, 0 keeps them), and purging a mainframe deletes its cave slices.
 - **In-game screens:** the mainframe screen lists the first 600 devices (problems first) and gets the network only when it changed; the dashboard's Network page shows every device. Big network maps leave out the links a device does not use.
 - **Slow browsers:** a browser that falls more than 4 MB or 10 seconds behind is disconnected and reconnects with a fresh snapshot; nothing piles up on the server.
+- **Advanced Cloud Sensors:** each looks at its zone twice a second with one bounded entity query, spread over the ticks; `advancedSensorScansPerTick` (default 32) caps the scans per tick on the whole server, and a disarmed sensor without redstone output does not scan at all.
 - **Measuring:** `/neoforge tps` or spark show the server's tick time. CC: Cloud's own cost for a 500-device mainframe with 10 browsers is about 0.5–1 ms per tick (developers: `./gradlew runGameTestServer -PscaleTest` measures it).
 
 ## What the server logs

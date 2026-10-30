@@ -123,6 +123,7 @@ CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, v
 - **Kartenkacheln auf der Festplatte:** Die 2D-Karte speichert ihre Kacheln in `<world>/cccloud/maptiles`. Kacheln, die 30 Tage weder gezeichnet noch angesehen wurden, werden gelöscht (`mapTileMaxAgeDays`, 0 behält sie), und das Löschen eines Mainframes (purge) entfernt seine Höhlenschnitte.
 - **Bildschirme im Spiel:** Der Mainframe-Bildschirm listet die ersten 600 Geräte (Probleme zuerst) und bekommt das Netzwerk nur, wenn es sich geändert hat; die Netzwerk-Seite des Dashboards zeigt alle Geräte. Große Netzwerkkarten lassen Verbindungen weg, die ein Gerät nicht benutzt.
 - **Langsame Browser:** Ein Browser, der mehr als 4 MB oder 10 Sekunden zurückliegt, wird getrennt und verbindet sich mit einem frischen Snapshot neu; auf dem Server stapelt sich nichts.
+- **Erweiterte Cloud-Sensoren:** jeder schaut zweimal pro Sekunde mit einer begrenzten Entity-Abfrage in seine Zone, verteilt über die Ticks; `advancedSensorScansPerTick` (Standard 32) begrenzt die Scans pro Tick auf dem ganzen Server, und ein unscharfer Sensor ohne Redstone-Ausgang scannt gar nicht.
 - **Messen:** `/neoforge tps` oder spark zeigen die Tick-Zeit des Servers. Der eigene Anteil von CC: Cloud liegt bei einem Mainframe mit 500 Geräten und 10 Browsern bei etwa 0,5–1 ms pro Tick (Entwickler: `./gradlew runGameTestServer -PscaleTest` misst das).
 
 ## Was der Server protokolliert

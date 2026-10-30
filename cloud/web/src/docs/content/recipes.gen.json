@@ -15,6 +15,45 @@
    }
   },
   {
+   "file": "advanced_cloud_sensor",
+   "result": "cccloud:advanced_cloud_sensor",
+   "grid": [
+    "AEA",
+    "OSO",
+    "ACA"
+   ],
+   "key": {
+    "E": "minecraft:ender_eye",
+    "A": "#c:ingots/allthemodium",
+    "S": "cccloud:cloud_sensor",
+    "O": "minecraft:observer",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "mod:allthemodium"
+   ]
+  },
+  {
+   "file": "advanced_cloud_sensor_fallback",
+   "result": "cccloud:advanced_cloud_sensor",
+   "grid": [
+    "GEG",
+    "OSO",
+    "DCD"
+   ],
+   "key": {
+    "E": "minecraft:ender_eye",
+    "G": "#c:ingots/gold",
+    "D": "#c:gems/diamond",
+    "S": "cccloud:cloud_sensor",
+    "O": "minecraft:observer",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:allthemodium"
+   ]
+  },
+  {
    "file": "advanced_cloud_tablet",
    "result": "cccloud:advanced_cloud_tablet",
    "grid": [
@@ -1080,6 +1119,10 @@
   "cccloud:cloud_sensor": {
    "en": "Cloud Sensor",
    "de": "Cloud-Sensor"
+  },
+  "cccloud:advanced_cloud_sensor": {
+   "en": "Advanced Cloud Sensor",
+   "de": "Erweiterter Cloud-Sensor"
   }
  }
 }

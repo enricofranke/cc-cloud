@@ -1552,6 +1552,168 @@ Code: `rsdevice/` – `RsKind`, `RsDevice` (the dashboard copy, pure), `RsCards`
 
 **Tests:** unit tests `RsCardsTest` (grouping, automatic card, widgets per kind, ids, chunks of 32, PIN/confirm), `RsScreenActionsTest`, `RedstoneDeviceGraphTest` (capacity weight, FE rate), `RedstoneCardPermissionTest`, the permission walk and share tests (`rs_device`); GameTests `rsdevice_switch_faces` (all six faces incl. bottom/top: strong/weak power, analog levels, clicks), `rsdevice_button_pulse`, `rsdevice_lamp_levels` (dashboard toggle/slider, follow redstone, history range), `rsdevice_sensor_load` (lever on before placing, simulated chunk reload), `rsdevice_group_cards` (case-insensitive groups, automatic card, All on, regroup, break), `rsdevice_rule_scene` (sensor triggers a rule that follows the lamp to its new card; scene dims the lamp), `rsdevice_permissions` (act.redstone, viewer/operator/deny, PIN, rate limit, link takeover), `rsdevice_capacity_power`, `rsdevice_setblock_card` (a lamp and a grouped switch placed by `/setblock` with their link are on their cards without any state change); web tests `redstone-devices.test.ts`.
 
+## Advanced Cloud Sensor (requested 2026-10-30)
+"Du hast einen Raum, in den niemand rein soll? Platzier einen Sensor – und du bekommst eine Push-Nachricht, sobald jemand
+reinkommt." The **Advanced Cloud Sensor** `cccloud:advanced_cloud_sensor` detects who or what enters a zone – which
+player, or which kind of mob – and reports it to the dashboard, to rules and to push notifications.
+
+### Block, linking, network
+- A Cloud Redstone plate (`RsKind.ADVANCED_SENSOR`, block `RsPlateBlock`, block entity `cccloud:redstone_device`): any of
+  the six faces, `facing` × `powered` (= something matching is inside) × `status` (36 variants), hitbox
+  `box(3, 3, 0, 13, 13, 3)` (10×10 plate with a gold-rimmed eye, docs/MODELS.md). Any click opens its screen (like the
+  basic sensor). The player who places it is its **owner** (stored with the block; a sensor placed by `/setblock` or a
+  structure uses its mainframe's owner).
+- Linked with the Link Card like every redstone device (`network.link`, relink rule, range/capacity check). Network device
+  type `ADVANCED_SENSOR`: radio only, range `redstoneDeviceRange` (32), capacity **`advancedSensorCapacityWeight` = 0.5**,
+  power **`mainframePerAdvancedSensorFE` = 4 FE/t while armed** (breakdown key `sensors`, count = armed sensors); a
+  disarmed sensor costs `mainframePerRedstoneDeviceFE` and is counted under `redstone`. Arming/disarming recomputes its
+  network (`NetworkService.markDirty(mainframe)`).
+- It is a redstone device in every other respect: name and group, an indicator `d_<12 hex>` ("occupied", red, icon `eye`)
+  on its group's Redstone card, network map node type `advanced_cloud_sensor` (`redstone:true`, `uplinkId` = its card),
+  Cloud Analyzer, Jade (plus "Armed · N inside · zone 3×3×3 in front", only for players with a role, never names),
+  `net_unlink`, `rs_device` rename/regroup.
+
+### Zone
+- Size along the world axes X × Y × Z, default 3×3×3, each 1 … the server maximum (`advancedSensorMaxZoneX/Y/Z`, default
+  9/5/9, hard caps 32/16/32; larger saved sizes are clamped). Placement **in front** (starts at the sensor's block and
+  reaches `size` blocks out of the face it looks out of, i.e. away from the block it sits on; centred on the other two
+  axes, the extra block of an even size on the positive side) or **around** (centred on the sensor). `SensorZone`.
+- **Claims:** the zone must lie in the owner's claim or unclaimed land – every chunk it touches is checked with
+  `XrayGuard.claimedByOther` (FTB Chunks; members and allies count as the own team, like the Cloud Probe). Not in spawn
+  protection (`Level.mayInteract` at the zone point closest to the spawn; with the owner offline: the dedicated server's
+  rule, the owner counted as no operator unless listed) and inside the world border (all eight corners). Checked when the
+  zone is set: in game with the player who sets it, from the dashboard, rules and scenes with the owner; refused with
+  `zone_claimed` / `zone_protected` (screen notice, action result). Claims are checked again every 5 s while it scans: a
+  zone that another team claims later is not watched (`problem: zone_claimed` on the card, grey outline) until that
+  changes. Claim mods other than FTB Chunks are not asked (as for the probe).
+- **Outline:** the block entity sends its zone (min/max, watching or not) in its update tag; the client draws it with the
+  vanilla gizmos from the client tick (`SensorZoneOverlay`, like the Cloud Analyzer) while the player holds an Advanced
+  Cloud Sensor or a Link Card (every sensor within 48 blocks, at most 32 boxes) or has a sensor's screen open (only that
+  one). Cyan = watching, grey = not (disarmed without output, or claimed).
+
+### Detection
+- **Scan** every 10 ticks at a phase from the block position (sensors spread over the ticks), at most
+  **`advancedSensorScansPerTick`** (default 32) scans per server tick on the whole server (the rest wait a tick), one AABB
+  entity query of the zone (`Level.getEntities`, never loads chunks: only loaded chunks are seen), at most 256 entities
+  looked at and 64 tracked. Nothing is scanned while the sensor is disarmed **and** its output is off. TickCost part
+  `advanced sensors` (scale benchmark: one in ten redstone devices of the benchmark bases is an Advanced Cloud Sensor).
+- **Kinds** (`SensorKind`): `player` (name; spectators never; players hidden by a vanish mod as far as cheaply visible:
+  entity tag `vanished`, NeoForge persistent flag `vanished`, or invisible without the invisibility effect), `hostile`
+  (any `Enemy` mob), `passive` (every other `Mob`), `item` (dropped items, by the item's name – never an anvil name),
+  `other` (vehicles, armor stands). Projectiles, XP orbs, markers, displays are never reported. Each with its entity type
+  id and English name ("Zombie", "Villager").
+- **Filter** (`SensorFilter`): mode `all` (everyone, default) / `players` / `mobs` (hostile + passive) / `hostile`;
+  **ignore my team** (default on: the owner and players in one of the owner's teams – the owner's scoreboard team or any
+  enabled `TeamProvider` team (FTB Teams; any rank), cached 5 s per player); **allow list** ("only these players", empty =
+  all) and **deny list** ("never these players"), ≤ 16 Minecraft names each, case-insensitive. Order: mode, deny, allow
+  (an allowed name is reported even from the owner's team), team.
+- **Presence** (`SensorTracker`): an entity counts as gone after 2 scans in a row without it (no flicker at the edge).
+  **Cooldown per entity** (`advancedSensorEntityCooldown`, default 60 s, 0 = off): an entity that comes back within the
+  cooldown after its last reported entry is inside again but silent (no "entered", and no "left" when it goes again).
+  **Baseline:** the first scan after loading, arming, or a new zone or filter only records who is there (no events) – a
+  restart or arming never reports who is already inside.
+- **Events** (`SensorLog`): "entered" / "left" with kind, type id, name and time; the last **20** are kept (saved with the
+  block, older ones dropped), with a sequence number; **today** = entries since midnight in the server's schedule time
+  zone (`schedules.timezone`). Disarmed: no events.
+- **Redstone:** while something that passes the filter is inside and the output is on (default), 15 like a lever: strong
+  into the block it sits on, weak on every side. Works disarmed and without a mainframe.
+
+### Dashboard card
+- One section per sensor (`SensorSection`), **section id = the device id** (so the map node, `net_unlink`, the orphan sweep
+  and the section cache treat it like an uplink's card), title = the device's name, `"mode":"direct","template":"sensor",
+  "source":"sensor"`, online = the device is online. Unloaded: greyed out with its last values (section cache, also at
+  server stop); unlinked or broken: removed.
+- Widgets (`SensorCards`, validated through `WidgetFactory`, `order`/`span` set): `activity` (new managed type
+  **`sensor_log`**, read-only, refused from Lua), `occupied` indicator (`history:"24h"`), `armed` toggle (with the device's
+  PIN/confirm), `detect` select (Everyone / Players only / Mobs only / Hostile mobs only), `notify` select (Off / Info /
+  Warning / Critical), `team` and `output` toggles, `allow` / `deny` text (comma-separated names), `zone_x/y/z` numbers
+  (1 … max; left out when the max is 1) and `place` select (In front / Around).
+- `sensor_log` value: `{"armed","today","zone":"3×3×3 in front","problem"?,"summary":"Steve and 2 Zombies inside · 5 today",
+  "inside":[{"k":"player","n":"Steve","c":1},{"k":"hostile","n":"Zombie","id":"minecraft:zombie","c":2}],"more"?,
+  "events":[{"t":ms,"in":true,"k","n"?,"id"}]}` (inside grouped, ≤ 16 rows; events newest first). The dashboard renders it
+  (`components/Sensor.tsx`, `lib/sensor.ts`: chips, events with relative time, "Armed"/"Disarmed", today); the tablet, the
+  in-game card preview and Cloud Displays show `summary` (the tablet also the 5 newest events).
+- **Permissions** (`AccessGate.actionPerm`, template `sensor`): `armed` needs **`act.redstone`**, every other control
+  **`network.link`**; rate limit `redstoneDeviceChangesPerSecond` per sensor. Rules and scenes use the same checks.
+
+### Private values (player names)
+- Widgets may carry a **`publicValue`** next to `value` in a published snapshot (and `publishValue(…, value, pub)` for
+  deltas): `WebHub` stores both per widget version; sessions that may see names (`WebHub.seesNames` = `view.positions`,
+  i.e. operator preset and up, the same right as positions and restricted cards) get `value`, all others the public value
+  – snapshots, section messages, value deltas, share links (`ShareFilter` works on the public form), Cloud Displays
+  (`sectionText` is always public), the public API (`sectionSnapshots(id, names)` by the key's rights; the event stream
+  like a dashboard), `InGameClients.section`. Alerts likewise: `publishAlert(…, text, level, publicText)`; the push listener
+  gets `text`. `publicValue` itself is never sent. A value published without a public form is not private any more.
+- The sensor's card: in `activity` players become "a player" (inside grouped as "N players", events without `n`), the
+  allow/deny lists become "". **`advancedSensorPlayerNames = false`** (server): no names anywhere – not reported, not
+  stored in the log, not in push; the full and the public form are the same. Rules for one player by name then never
+  fire; the allow/deny lists still work (they are matched at scan time and not reported).
+- In-game screen: names only for players with `view.positions` on the sensor's mainframe (unlinked: its owner); the
+  lists only for players who may change them (`network.link`).
+
+### Alerts and push
+- Every reported entry (armed, alert level not Off) becomes an alert on the sensor's card (`uplinkId` = its card, level
+  `info|warn|crit`, default `warn`), which the hub sends to the dashboards (toast, alert log; `crit` also a system
+  notification) and `PushService` to the push targets (`alerts` event, from their `minLevel`): "Steve entered Reactor
+  room" (public: "A player entered Reactor room"). Only while the sensor is online.
+- **Rate limit per sensor** (`SensorAlerts`): the first entries of a scan go out at once; everything that enters during
+  the next **`advancedSensorAlertCooldown`** (default 10 s) is collected (≤ 64, more counted) and sent as **one summary**
+  when it is over ("3 Zombies and a Skeleton entered …", "Steve, Alex and 2 more …" – `SensorText`, at most four parts),
+  which starts the next cooldown. With the per-entity cooldown a mob at the door gives one alert per minute at most.
+  Disarming drops what was collected. The mainframe-wide push limit (30/min) still applies.
+
+### Rules
+- New trigger `{"type":"sensor","uplinkId":"<sensor card>","kind":"any|player|mob|hostile|passive|item|other","player"?}`
+  (`kind` default `any`; `player` = a Minecraft name, only with `any`/`player`, stored as `player`). Fires when the
+  sensor's log has new "entered" events that match (after the trigger last looked; the first look only records the
+  position; an unloaded sensor keeps it). Cooldown and conditions as for every rule. Never while the mainframe is offline
+  or the sensor disarmed (no events).
+- **`{who}`** in an alert action's text becomes who it was (`SensorText.who` of the matching entries: "Steve", "Steve and
+  Alex", "2 Zombies and a Cow"): with names for operators and push, "a player" for viewers and share links (the alert's
+  public form). Rules without a sensor trigger and "Run now" fill in "someone". A rule run with `notify` pushes
+  "Rule 'X': ok (Steve)".
+- Dashboard: "an Advanced Sensor detects …" in the rule editor (sensor cards only, kind, optional player), plain-language
+  summary "Reactor room detects the player Steve".
+
+### Screen
+- `RsDeviceScreen` for `advanced_sensor`: Armed (needs `act.redstone`; unlinked: anyone), inside now, today, the 5 newest
+  events, zone size −/+ per axis and placement, Detect, Ignore me and my team, Redstone output, Notify, the two lists
+  (edit boxes) and the zone hint; PIN/confirm (for the card's arm switch), name, group, connection as for every device.
+  Actions `s_armed|s_team|s_output|s_detect|s_notify|s_place|s_allow|s_deny|s_zone` (argument ≤ 300 characters, validated
+  by `RsScreenActions` and `SensorActions.screen`), settings need `network.link`.
+
+### Config
+`[advancedSensor]` `advancedSensorPlayerNames` (true), `advancedSensorMaxZoneX/Y/Z` (9/5/9), `advancedSensorEntityCooldown`
+(60 s), `advancedSensorAlertCooldown` (10 s), `advancedSensorScansPerTick` (32); `[network]` `advancedSensorCapacityWeight`
+(0.5); `[power]` `mainframePerAdvancedSensorFE` (4).
+
+### Recipe (AllTheModium-free fallback like the other ATM recipes)
+```
+advanced_cloud_sensor (AllTheModium)   advanced_cloud_sensor_fallback (without)
+ A E A                                  G E G
+ O S O                                  O S O
+ A C A                                  D C D
+A=#c:ingots/allthemodium E=minecraft:ender_eye O=minecraft:observer S=cccloud:cloud_sensor C=cccloud:cloud_core
+G=#c:ingots/gold D=#c:gems/diamond
+```
+
+### Implementation notes (mod side)
+Code: `sensor/` – `SensorKind`, `SensorEntry`, `SensorFilter`, `SensorTracker`, `SensorLog`, `SensorAlerts`, `SensorText`,
+`SensorSettings`, `SensorZone`, `SensorActions`, `SensorCards` (pure, unit tested), `AdvancedSensor` (game logic, owned by
+`RsDeviceBlockEntity`, saved under `sensor`), `SensorSection`, `SensorZones` (client registry); client
+`SensorZoneOverlay`; `WebHub` private values; `Rule.SensorTrigger`, `RuleEngine.SensorFeed/Context`.
+
+**Tests:** unit `SensorFilterTest`, `SensorLogTest`, `SensorAlertsTest` (rate limit, summary text, plurals),
+`SensorTrackerTest` (presence, cooldown, bounds, zone geometry, settings), `SensorCardsTest` (widgets, public form,
+names off, permissions, actions), `SensorTriggerTest` (schema, kinds, player, `{who}`), `WebHubPrivateValuesTest`,
+`AdvancedSensorGraphTest` (capacity, FE armed/disarmed); GameTests `sensor_mobs_enter` (zombie and villager: entered with
+kind and type, the card, left), `sensor_team_filters` (team mate ignored, modes, deny, allow over team, vanished),
+`sensor_redstone` (lamp on/off, output off, disarmed keeps the output and logs nothing), `sensor_rule_who` (`{who}` with
+the player's name; rules for another player and for mobs do not run), `sensor_claims` (zone in another team's claim
+refused in game, from the dashboard and on the card; claimed later: not watching), `sensor_names_hidden` (operator vs
+viewer session: card and alert, display text, API form), `sensor_rate_limit` (first alert at once, one summary after the
+cooldown, no new event or alert within the per-entity cooldown); web `advanced-sensor.test.ts`.
+
 ## Live recipes in the dashboard docs (requested 2026-10-30)
 Modpacks (All the Mods via KubeJS, CraftTweaker, datapacks) change recipes. JEI/EMI and the in-game handbook (GuideME `<RecipeFor>`) show the recipes the server loaded, but the dashboard's `/docs` showed the defaults baked into `recipes.gen.json` – on a modpack server possibly wrong grids. Now the dashboard asks the server.
 
