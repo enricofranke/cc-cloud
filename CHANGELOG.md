@@ -135,6 +135,10 @@ in, and who it was: a player's name or the kind of mob.
 - The CC: Tweaked chapter writes its turtle-upgrade components as FTB Quests writes them back, so an FTB Quests re-save
   no longer counts as a change.
 
+### Fix: the pairing request showed up twice in chat
+- Reading the code on the mainframe screen and closing it to click [Allow] sent the request (and the internet
+  warning) into chat a second time. Closing the screen now only sends it to players who have not had it in chat yet.
+
 ### Fix: item icons were rendered again after every server start
 - On big packs only about 4,000 icons per player and hour were kept: the upload limit dropped everything over it
   silently, while the mainframe screen counted those icons as done – after a restart they were missing and rendered

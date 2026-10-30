@@ -117,7 +117,7 @@ public class MainframeMenu extends CloudMenu {
         return copy;
     }
 
-    /** Closing the screen while a browser waits for approval: the chat request is sent again (with the time left). */
+    /** Closing the screen while a browser waits for approval: the chat request follows, unless the player already has it. */
     @Override
     public void removed(Player player) {
         super.removed(player);
@@ -125,7 +125,7 @@ public class MainframeMenu extends CloudMenu {
         if (!(player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity mainframe) || !mainframe.has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) return;
         var auth = ai.ezfox.cccloud.web.WebAuthData.get(serverPlayer.level().getServer());
         for (var pending : auth.pendingFor(mainframe.getMainframeId())) {
-            ai.ezfox.cccloud.web.ApprovalPrompt.send(serverPlayer, pending, mainframe.getDisplayName());
+            ai.ezfox.cccloud.web.ApprovalPrompt.sendIfNew(serverPlayer, pending, mainframe.getDisplayName());
         }
     }
 
