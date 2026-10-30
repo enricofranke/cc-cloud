@@ -60,7 +60,8 @@ enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor> {
             String status = net.getStringOr("status", "offline");
             int hops = net.getIntOr("hops", -1);
             if (hops >= 0) {
-                tooltip.add(Component.translatable("cccloud.analyzer.signal", Math.round(net.getDoubleOr("signal", 0) * 100), hops).withStyle(ChatFormatting.GRAY));
+                tooltip.add(Component.translatable("cccloud.analyzer.signal", Math.round(net.getDoubleOr("signal", 0) * 100),
+                    ai.ezfox.cccloud.analyzer.CloudAnalyzerItem.via(hops)).withStyle(ChatFormatting.GRAY));
                 MutableComponent route = Component.empty();
                 var list = net.getListOrEmpty("route");
                 for (int i = 0; i < list.size(); i++) {
