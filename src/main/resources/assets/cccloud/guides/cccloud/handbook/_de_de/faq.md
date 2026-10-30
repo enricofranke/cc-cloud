@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Fehlerbehebung"
-  position: 14
+  position: 15
   icon: cccloud:cloud_analyzer
 ---
 

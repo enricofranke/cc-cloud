@@ -16,6 +16,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "start", icon: "home", title: { en: "Getting started", de: "Erste Schritte" } },
   { id: "cc-basics", icon: "cpu", title: { en: "CC basics", de: "CC-Grundlagen" } },
   { id: "dashboard", icon: "chart", title: { en: "The dashboard", de: "Das Dashboard" } },
+  { id: "redstone", icon: "lamp", title: { en: "Redstone devices", de: "Redstone-Geräte" } },
   { id: "lua", icon: "gear", title: { en: "Lua reference", de: "Lua-Referenz" } },
   { id: "ui-library", icon: "star", title: { en: "cloud.ui library", de: "cloud.ui-Bibliothek" } },
   { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },
@@ -111,6 +112,10 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "minecraft:redstone_block": { en: "Block of Redstone", de: "Redstoneblock" },
   "minecraft:string": { en: "String", de: "Faden" },
   "minecraft:book": { en: "Book", de: "Buch" },
+  "minecraft:lever": { en: "Lever", de: "Hebel" },
+  "minecraft:stone_button": { en: "Stone Button", de: "Steinknopf" },
+  "minecraft:comparator": { en: "Redstone Comparator", de: "Redstone-Komparator" },
+  "minecraft:redstone_lamp": { en: "Redstone Lamp", de: "Redstone-Lampe" },
   "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" },
   // every CC: Cloud item, from the mod's lang files (build step dev/build-recipes.ts)
   ...GEN.names,

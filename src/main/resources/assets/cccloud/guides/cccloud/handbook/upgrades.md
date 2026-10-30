@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Upgrades, tablet & display"
-  position: 6
+  position: 7
   icon: cccloud:cloud_tablet
 ---
 

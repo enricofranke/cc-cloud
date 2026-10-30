@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts â€“ edit cloud/web/src/docs/content instead.
 navigation:
   title: "All recipes"
-  position: 8
+  position: 9
 ---
 
 # All recipes
@@ -69,6 +69,20 @@ Every crafting recipe of CC: Cloud, generated from the mod's own recipe files â€
 
 ### Cloud Tablet
 <RecipeFor id="cccloud:cloud_tablet" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
+## Redstone devices
+
+### Cloud Button
+<RecipeFor id="cccloud:cloud_button" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
+### Cloud Lamp
+<RecipeFor id="cccloud:cloud_lamp" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
+### Cloud Sensor
+<RecipeFor id="cccloud:cloud_sensor" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
+### Cloud Switch
+<RecipeFor id="cccloud:cloud_switch" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ## Mainframe upgrades
 

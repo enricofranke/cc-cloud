@@ -9,6 +9,8 @@ export const de: Record<string, string> = {
 CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
 
 > **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
+>
+> Du willst nur eine Lampe schalten? Eine **Cloud-Lampe** setzen (oder einen Cloud-Schalter neben deine Redstone-Lampen) und verbinden – sie erscheint als Schalter im Dashboard. Siehe [Redstone-Geräte](/docs/redstone).
 
 ## Die Blöcke {#blocks}
 
@@ -17,7 +19,8 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
 | **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
 | **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
-| **Cloud Link Card** | Verbindet Uplinks und Bridges mit einem Mainframe. |
+| **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
+| **Cloud-Schalter / -Taster / -Lampe / -Sensor** | Kleine [Redstone-Geräte](/docs/redstone) ohne Computer: verbinden und Lampen, Türen und Maschinen im Dashboard schalten. Geräte mit derselben Gruppe teilen sich eine Karte. |
 | **ME / RS Cloud Bridge** | Hängt sich in ein Applied-Energistics-2- oder Refined-Storage-Netzwerk. Mit einem Uplink darauf bekommst du eine fertige Lager-Karte (Suche, Craften, Merkliste). Gibt es nur, wenn AE2 / RS installiert ist. |
 | **Cloud Core** | Crafting-Zutat. |
 
@@ -156,7 +159,7 @@ Weiter: [Lua-Referenz](/docs/lua) oder die [cloud.ui-Bibliothek](/docs/ui-librar
 
 ## Karten und Widgets {#widgets}
 
-Jeder Uplink wird zu einer **Karte**. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
+Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](/docs/redstone) teilen sich eine Karte pro Gruppe. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
 
 | Widget | Zeigt / macht |
 |---|---|
@@ -205,6 +208,77 @@ Widgets mit \`pin=true\` fragen vor dem Auslösen die Mainframe-PIN über ein Zi
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |
 | Server not reachable | siehe [Fehlerbehebung](/docs/faq#not-reachable) |
+`,
+
+  // ------------------------------------------------------------- redstone
+  redstone: `# Redstone-Geräte
+
+Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstellen, mit der Link Card verbinden, fertig.** Vier kleine Blöcke, jeder günstiger als ein Uplink.
+
+| Block | Funktion | Im Dashboard |
+|---|---|---|
+| **Cloud-Schalter** | Haftet wie ein Hebel an jeder Blockseite – an der Wand, auf dem Boden oder unter der Decke. Gibt Strom wie ein Hebel: stark in den Block, an dem er hängt, schwach rundherum. An/aus (0 oder 15) oder analog (0–15). | ein Schalter, im Analog-Modus ein Schieberegler |
+| **Cloud-Taster** | Wie ein Knopf: ein kurzer Impuls, 2–40 Ticks (Standard 10 = eine halbe Sekunde). | ein Knopf |
+| **Cloud-Lampe** | Ein Lampenblock, der von selbst leuchtet – ganz ohne Redstone. Helligkeit 1–15; kann zusätzlich auf ein Redstone-Signal reagieren. | ein Schalter und ein Helligkeitsregler |
+| **Cloud-Sensor** | Liest das Redstone-Signal, das er bekommt (der stärkste Nachbar, 0–15). | eine Leuchte (an/aus) und die Stufe |
+
+## Einrichten {#setup}
+
+1. Gerät craften und setzen (Rezepte [unten](/docs/redstone#recipes)).
+2. Mainframe mit einer **Cloud Link Card** anklicken, dann das Gerät – wie bei einem Uplink und mit denselben Rechten (Besitzer, Admins, „Geräte verbinden“).
+3. Es erscheint von selbst im Dashboard: auf der Karte **Redstone** oder auf der Karte seiner Gruppe.
+
+In der Welt schaltet ein Klick einen Schalter oder eine Lampe und drückt einen Taster. **Schleichen + Rechtsklick** (beim Sensor jeder Klick) öffnet das Fenster des Geräts: was es ist, sein Zustand, Name und Gruppe, Modus oder Impulslänge, PIN und Nachfrage und wie es verbunden ist.
+
+## Gruppen und Karten {#groups}
+
+- Jedes Gerät hat einen **Namen** und optional eine **Gruppe**. Geräte mit derselben Gruppe am selben Mainframe teilen sich **eine Karte** – zum Beispiel „Halle“ mit sechs Lampenschaltern. Groß- und Kleinschreibung spielt keine Rolle.
+- Geräte ohne Gruppe teilen sich die automatische Karte **Redstone** (eine pro Mainframe).
+- Eine Karte mit zwei oder mehr Schaltern oder Lampen bekommt **Alle an** und **Alle aus**.
+- Höchstens 32 Geräte pro Karte; weitere landen auf „Halle (2)“.
+- Name und Gruppe setzt du im Fenster des Geräts oder im Dashboard: **Netzwerk** → Gerät antippen → **Dashboard** (braucht „Geräte verbinden“).
+- Die Karten sind normale Karten: im [Layout-Editor](/docs/dashboard#edit-mode) anordnen, einzelne Regler auf eigene Karten ziehen, auf Cloud Tablet oder Cloud Display zeigen und schreibgeschützt teilen.
+
+## Regeln, Szenen und die API {#automation}
+
+- **Regeln:** einen Sensor unter **Wenn** → „ein Widget-Wert“ wählen (z. B. *über 0* = an) und eine Push-Nachricht senden, eine Szene starten oder eine Lampe schalten. Beispiel: Wenn *Türsensor* über 0 – dann *Verandalicht* an und Meldung „Jemand ist an der Tür“.
+- **Szenen:** ein Schritt „Regler bedienen“ auf einem Schalter, einer Lampe (auch ihrer Helligkeit) oder einem Taster.
+- Regeln und Szenen funktionieren weiter, wenn ein Gerät in eine andere Gruppe wechselt.
+- **[Öffentliche API](/docs/api):** die Karten sind normale Bereiche – lesen mit \`read:sections\`, schalten mit \`action:widgets\` (\`POST …/sections/<Karte>/widgets/<id>\` mit \`{"value": true}\`). Geräte mit PIN sind über die API nicht erreichbar.
+- **Verlauf:** das Licht der Lampe und die Stufe des Sensors werden aufgezeichnet (24 h, begrenzt durch das Memory-Upgrade des Mainframes) – auf das Diagramm-Symbol tippen.
+
+## Rechte und Schutz {#rights}
+
+- Bedienen braucht **„Redstone schalten“** (Operatoren haben es). Betrachter und Freigabe-Links schauen nur zu.
+- Pro Gerät: **Mainframe-PIN abfragen** und **Vor dem Schalten nachfragen** (in seinem Fenster, braucht „Geräte verbinden“). „Alle an / Alle aus“ fragt, wenn ein Gerät der Karte fragt.
+- Verbinden, Umbenennen und die Einstellungen brauchen **„Geräte verbinden“** am Mainframe; von Hand anklicken kann es trotzdem jeder, der den Block benutzen darf – wie einen Hebel.
+- Jedes Gerät nimmt höchstens 4 Änderungen pro Sekunde aus Dashboard, Regeln, Szenen und API an (\`redstoneDeviceChangesPerSecond\`, kurz bis zu 8); Klicks in der Welt sind nicht begrenzt.
+
+## Reichweite, Kapazität und Strom {#network}
+
+| | Redstone-Gerät | Cloud Uplink |
+|---|---|---|
+| Reichweite zum nächsten Knoten | 32 Blöcke (\`redstoneDeviceRange\`) | 48 |
+| Geräte-Kapazität | 0,25 (\`redstoneDeviceCapacityWeight\`) | 1 |
+| Strom am Mainframe | 1 FE/t (\`mainframePerRedstoneDeviceFE\`) | 4 FE/t |
+
+- Nur Funk (keine Kabel); [Relais](/docs/network) verlängern die Reichweite wie bei Uplinks. Außer Reichweite oder über der Kapazität antworten seine Regler „keine Verbindung zum Mainframe“.
+- Ein Gerät in einem nicht geladenen Chunk bleibt mit seinem letzten Zustand auf seiner Karte; seine Regler antworten „nicht geladen“.
+- Die Geräte erscheinen auf der Netzwerkkarte, im Cloud Analyzer und in Jade.
+
+## Rezepte {#recipes}
+
+### Cloud-Schalter
+${recipe(R.cloudSwitch)}
+
+### Cloud-Taster
+${recipe(R.cloudButton)}
+
+### Cloud-Lampe
+${recipe(R.cloudLamp)}
+
+### Cloud-Sensor
+${recipe(R.cloudSensor)}
 `,
 
   // ------------------------------------------------------------------ lua
@@ -282,7 +356,7 @@ ${code("lua", C.LUA_LAYOUT)}
 - \`cloud.page(id, title, {icon=})\` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – eine Karte; Widgets kommen mit \`group=\` hinein.
 - Jedes Widget akzeptiert außerdem \`page\`, \`group\`, \`span\` (1–4), \`order\` (0–10000), \`color\` und \`icon\`.
-- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick.
+- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
 ## Meldungen und Status {#alerts}
 
@@ -417,6 +491,7 @@ Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Kno
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
+| Cloud-Schalter / -Taster / -Lampe / -Sensor | – | 32 |
 
 **Knoten-Reichweite** = wie weit ein Relay oder der Mainframe **andere Relays und den Mainframe** erreicht. **Geräte-Reichweite** = wie weit er **Uplinks und Bridges** erreicht. Auf der Karte ist die Knoten-Reichweite der **durchgezogene Kreis**, die Geräte-Reichweite der **gestrichelte Kreis**; ein Klick auf ein Relay beschriftet beide, und das **?** auf der Karte erklärt, wie man Relays plant.
 
@@ -569,6 +644,8 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 
 **Beispiel:** Wenn *Core temperature (Fission Reactor)* über 900 – dann Redstone hinten am *Reaktor-Computer* auf 15 und Meldung „Reaktor heiß“ (Warnung).
 
+**Ohne Computer:** ein [Cloud-Sensor](/docs/redstone#automation) neben einer Druckplatte – wenn *Türsensor* über 0, dann *Verandalicht* an und eine Push-Nachricht „Jemand ist an der Tür“.
+
 ## Szenen {#scenes}
 
 Eine Szene ist **ein Knopf, der mehrere Schritte nacheinander ausführt** – „Nachtmodus“: Licht aus, 2 s warten, Tür zu, Reaktor-Regler auf 3, eine Meldung. Öffne **Szenen** in den Dashboard-Einstellungen (⚙).
@@ -677,6 +754,10 @@ ${C.recipeSection("bridges", "de")}
 ## Tablet, Display, Analyzer {#devices}
 
 ${C.recipeSection("devices", "de")}
+
+## Redstone-Geräte {#redstone}
+
+${C.recipeSection("redstone", "de")}
 
 ## Mainframe-Upgrades {#upgrades}
 

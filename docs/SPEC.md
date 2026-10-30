@@ -244,7 +244,7 @@ A card is one of:
 - `<uplinkId>~<pageId>` – ungrouped widgets of that uplink that set `opts.page`
 
 ### Icon set (bundled, 8×8 pixel icons; the same names work for `opts.icon` in Lua)
-`home bolt flame drop box fan lock warning gear chart star leaf heart cpu shield pick`
+`home bolt flame drop box fan lock warning gear chart star leaf heart cpu shield pick lever button lamp sensor`
 
 ### Defaults when there is no layout
 - Pages: `main` ("Overview", icon `home`) followed by the pages the scripts declared (`uplink.pages`, first one wins on duplicate ids). Cards whose page is unknown go to the first page.

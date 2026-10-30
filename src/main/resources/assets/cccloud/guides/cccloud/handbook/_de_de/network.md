@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Netzwerk, Relays & Reichweite"
-  position: 5
+  position: 6
   icon: cccloud:cloud_relay
 ---
 
@@ -21,6 +21,7 @@ Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Kno
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
+| Cloud-Schalter / -Taster / -Lampe / -Sensor | – | 32 |
 
 **Knoten-Reichweite** = wie weit ein Relay oder der Mainframe **andere Relays und den Mainframe** erreicht. **Geräte-Reichweite** = wie weit er **Uplinks und Bridges** erreicht. Auf der Karte ist die Knoten-Reichweite der **durchgezogene Kreis**, die Geräte-Reichweite der **gestrichelte Kreis**; ein Klick auf ein Relay beschriftet beide, und das **?** auf der Karte erklärt, wie man Relays plant.
 

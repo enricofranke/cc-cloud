@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Lua-Referenz"
-  position: 3
+  position: 4
   icon: computercraft:computer_advanced
 ---
 
@@ -114,7 +114,7 @@ cloud.indicator("running", "Running", {value=true, onColor="green", page="power"
 - `cloud.page(id, title, {icon=})` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
 - `cloud.group(id, title, {page=, cols=1..4})` – eine Karte; Widgets kommen mit `group=` hinein.
 - Jedes Widget akzeptiert außerdem `page`, `group`, `span` (1–4), `order` (0–10000), `color` und `icon`.
-- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick.
+- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
 ## Meldungen und Status
 
