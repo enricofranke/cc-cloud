@@ -178,17 +178,27 @@ public final class ScaleTest {
     private static boolean measuring;
     private static final List<Double> wholeTicks = new ArrayList<>();
     private static final List<Double> ownTicks = new ArrayList<>();
+    /** Server-thread CPU time per tick, and cccloud's wall time scaled by the tick's CPU/wall ratio (a busy machine
+     *  preempts the server thread, which inflates wall times; the CPU estimate is what a quiet server would see). */
+    private static final List<Double> cpuTicks = new ArrayList<>();
+    private static final List<Double> ownCpuTicks = new ArrayList<>();
+    private static final java.lang.management.ThreadMXBean THREADS = java.lang.management.ManagementFactory.getThreadMXBean();
+    private static long tickCpuStart;
     private static long[] partSums = new long[TickCost.NAMES.length];
     private static long[] partMax = new long[TickCost.NAMES.length];
 
     private static void onTickPre(ServerTickEvent.Pre event) {
         tickStart = System.nanoTime();
+        if (measuring) tickCpuStart = THREADS.getCurrentThreadCpuTime();
         if (measuring) TickCost.takeParts(); // nothing from before this tick
     }
 
     private static void onTickPost(ServerTickEvent.Post event) {
         if (!measuring) return;
-        wholeTicks.add((System.nanoTime() - tickStart) / 1e6);
+        long wall = System.nanoTime() - tickStart;
+        long cpu = THREADS.getCurrentThreadCpuTime() - tickCpuStart;
+        wholeTicks.add(wall / 1e6);
+        cpuTicks.add(cpu / 1e6);
         var parts = TickCost.takeParts();
         long sum = 0;
         for (int i = 0; i < parts.length; i++) {
@@ -197,6 +207,7 @@ public final class ScaleTest {
             partMax[i] = Math.max(partMax[i], parts[i]);
         }
         ownTicks.add(sum / 1e6);
+        ownCpuTicks.add(sum / 1e6 * Math.min(1.0, wall <= 0 ? 1.0 : (double) cpu / wall));
     }
 
     /** Real 20 TPS: the GameTest server would otherwise tick as fast as it can. Runs after everything else. */
@@ -250,6 +261,8 @@ public final class ScaleTest {
     private static void startMeasuring() {
         wholeTicks.clear();
         ownTicks.clear();
+        cpuTicks.clear();
+        ownCpuTicks.clear();
         partSums = new long[TickCost.NAMES.length];
         partMax = new long[TickCost.NAMES.length];
         TickCost.enabled = true;
@@ -264,6 +277,8 @@ public final class ScaleTest {
         json.addProperty("ticks", ownTicks.size());
         json.add("cccloudMs", stats(ownTicks));
         json.add("wholeTickMs", stats(wholeTicks));
+        json.add("wholeTickCpuMs", stats(cpuTicks));
+        json.add("cccloudCpuEstMs", stats(ownCpuTicks));
         var parts = new JsonObject();
         for (int i = 0; i < partSums.length; i++) {
             if (partSums[i] == 0) continue;
@@ -787,6 +802,8 @@ public final class ScaleTest {
                     double seconds = (now - phaseStart[0]) / 1e9;
                     result.addProperty("seconds", round(seconds));
                     result.addProperty("luaSetsPerSecond", Math.round(load.sets.get() / seconds));
+                    result.addProperty("systemLoadAverage", round(java.lang.management.ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage()));
+                    result.addProperty("cpus", Runtime.getRuntime().availableProcessors());
                     result.add("browsers", bandwidth(clients, seconds));
                     report.add("load", result);
                     report.add("memory", memory(bases));
