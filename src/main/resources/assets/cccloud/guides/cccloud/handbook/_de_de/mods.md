@@ -9,7 +9,7 @@ navigation:
 
 CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn die Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
 
-Daneben funktionieren zwei allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, und die **Tank**-Karte für einfache Flüssigkeitstanks. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag `#cccloud:no_generic_card` ausschließen. AE2 und Refined Storage haben eigene [Bridges](bridges.md).
+Daneben funktionieren allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, die **Tank**-Karte für einfache Flüssigkeitstanks und die **Peripherie-Karte** für jeden anderen Block, mit dem CC: Tweaked sprechen kann – du wählst bis zu 6 seiner Werte und einen optionalen Ein/Aus-Schalter in den Karteneinstellungen ([so geht's](dashboard.md)). Was CC: Tweaked als Peripheriegerät sieht, erscheint also auch. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag `#cccloud:no_generic_card` ausschließen. AE2 und Refined Storage haben eigene [Bridges](bridges.md).
 
 Bedienelemente folgen den [Rechten](accounts.md): Buttons und Schalter brauchen „Use controls“, der Redstone-Modus einer Maschine „Switch redstone“, und Karten mit Koordinaten (Wegsteine, Tore, Quests) „See coordinates“.
 
@@ -126,6 +126,24 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 |---|---|---|---|---|
 | CC: Tweaked (`computercraft`) | 1.120.0 | An uplink on a computer shows a card for every machine the computer reaches through its wired modems (networking cable, modems switched on): the card an uplink on that machine would show, same controls and permissions. Up to `wiredMachineCards` (8) per uplink, one per machine and mainframe, not for machines with their own uplink or probe. Lua bridge widgets accept bridges on the computer's cable network (`me_cloud_bridge_0`) with the uplink directly on the computer. Public CC API only (a listener node on the modem's network). | the card's own | yes (`wired_machine_cards`: an energy block behind a full wired modem; a chest gets no card) |
 
+### Noch mehr ATM11-Mods
+
+| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
+|---|---|---|---|---|
+| any mod: CC peripherals | – | generic **Peripheral card** (kind `peripheral`, fallback below every other card) for every block CC: Tweaked offers as a peripheral and that has no card of its own: up to 6 values and up to 2 charts picked in the card's settings, see "Peripheral card" below | an optional `set…(boolean)` method as switch (`act.buttons`, confirm, PIN by default); picking values needs `layout.edit` | yes (`peripheral_card_generic`: a vanilla chest through CC's generic inventory methods; `peripheral_card_own_methods`: a test peripheral with every kind of method) |
+| Just Dire Things (`justdirethings`) | 1.6.11 | **Generator** card (Simple Coal / Fuel Generator: status, output FE/t, energy, burn left and fuel or fuel tank), **Machine** card for every other redstone-controlled machine (breakers, placers, clickers, droppers, swappers, fluid collectors and placers, item collector, experience holder, paradox machine, energy transmitter: status, speed, energy and tank where present, the transmitter's network energy, the holder's experience), read-only **Sensor** card (signal out, what it senses, strong/weak). Player Accessor, Goo blocks and the Eclipse Gate get no card. | the machine's own redstone mode (Always on / without signal / with signal / one step per pulse), select with confirm, `act.redstone` | yes (coal generator: mode switch; advanced block breaker; simple sensor) |
+| Productive Trees (`productivetrees`) | 26.1.2-1.3.1 | **Sawmill**, **Pollen Sifter** and **Stripper**: status, progress (sawmill, sifter), input, output, by-products (sawmill) or axe (stripper); warn alert once when the output is full. Tree farms themselves are trees in the world, not blocks with state. | none (the machines have no switch) | yes (lone sawmill) |
+| Ranged Pumps (`rangedpumps`) | 2.0.0 | **Pump**: state (pumping, no energy, stopped by redstone, tank full, done), tank %, fluid and mB, energy %, scan range (no coordinates); info alert when done, warn alert when the tank is full | none: any redstone signal stops a pump, there is no mode | yes (lone pump) |
+| Charging Gadgets (`charginggadgets`) | 1.16.1 | **Charging Station**: status, station energy, burn left, fuel, the item being charged and its own charge (the item's energy capability); info alert when it is charged | none | yes (station burns coal into FE) |
+| wd's Selling Bin (`selling_bin`) | 1.6 | **Selling Bin** (read from its main block, also from an uplink on the other half): item to sell and what it is worth, credit (sold value not yet paid out), currency in the output. The mod keeps no sales history, so past earnings are not shown. | auto-sell toggle and a **Sell now** button (both `act.buttons`, what the bin's own buttons do) | yes (bin alone: toggle; Sell now refused while empty. A plain test world has no currency data, so no sale is run) |
+| Cooking for Blockheads (`cookingforblockheads`) | 26.1.2.6 | Fridges, cabinets and counters (plain and all 16 colours) as **Storage** cards with item search; **Oven** card (status, items cooking, cooking and burn progress, input, fuel, output, energy with a heating unit; warn alert when the output is full); **Toaster** card (progress, what is inside) | the toaster's on/off (`act.buttons`; refused while it is empty) | yes (oven, toaster switched on and off, fridge as Storage card) |
+| Farming for Blockheads (`farmingforblockheads`) | 26.1.2.5 | **Shipping Bin**: next shipment (value against the shipment size), goods, emeralds paid out; info alert when a shipment leaves. The Market only opens a trade screen and holds no state, so it has no card. | none | yes (bin alone, then wheat put in) |
+| Training Dummy (`trainingdummy`) | 1.9.0 | **Training dummies** mainframe card (restricted, `view.positions`): a DPS meter for the dummies within 64 blocks of the mainframe – DPS over the last 5 s, last hit, total of the current streak and who hit, the best DPS, a DPS chart. Dummies are entities and the mod keeps DPS only on the client, so the card counts hits itself (`LivingDamageEvent.Post`). | none | yes (dummy spawned next to the mainframe and hit) |
+| FTB Essentials (`ftbessentials`) | 26.1.2.5 | **Warps** mainframe card (restricted, `view.positions`): the server's warps (what `/listwarps` shows every player) with dimension and coordinates, nearest first, at most 8. Homes are private and never shown; nothing on the card teleports. Config `world.warpsCard`. | none | yes (warp added through FTB Essentials' warp manager) |
+| The Aether II (`aether_ii`) | 26.1.2-alpha.4.1 | Network map: the Aether dimension with its name, icon and height range (y −32 to 383) in the 2D slice and 3D cut sliders; Ender Relays link to it like to any dimension | – | unit tests of names, icons and ranges; not in a dev world |
+| The Undergarden (`undergarden`) | 26.1.2-0.9.8 | Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether) | – | unit tests; not in a dev world |
+| All the Modium (`allthemodium`) | 26.1.2-4.2.0 | Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges | – | unit tests; not in a dev world |
+
 ### Ohne eigene Karte
 
 - **Integrated Terminals / Tunnels**: –: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card
@@ -141,6 +159,18 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 - **Interdimensional Wireless Transmitter**: an RS2 network node; the RS Cloud Bridge already shows the network
 - **Trash Cans, Item Collectors**: no state worth a card (a trash can is always empty; a collector only has a filter and a range)
 - **Just Dire Things**: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined
+- **Nullscape** (`nullscape`): it reshapes the End's terrain (same dimension `minecraft:the_end`), which the map already handles
+- **DeepNull Reforged** (`deepnullreforged`): not a dimension but a Dank Null-style item storage you carry; nothing a block card could show
+- **Mystical Agradditions** (`mysticalagradditions`): adds no machine or block entity (storage blocks, cruxes, farmland, crops)
+- **Item Collectors** (`itemcollectors`): no count of collected items and no on/off; only a range and a filter
+- **Elevator** (`elevatorid`): there is no cabin – an elevator is a column of teleport pads, and "call to floor N" would mean teleporting a player standing near a pad from the dashboard, which CC: Cloud does not offer
+- **Refined Flow Analytics** (`refinedflowanalytics`): skipped in this wave: it records RS2 throughput on the server, but only in internal classes (no API) and only while a Flow Grid, Monitor or Detector is on the network; a candidate for the RS Cloud Bridge
+- **AE2 Network Analyser** (`ae2netanalyser`): items only; the data is computed for the player holding the analyser and never stored, no API
+- **LaserIO** (`laserio`): no transfer counters or machine state; a node only holds its cards
+- **More Red** (`morered`): bundled cables keep no signal to read; linking their 16 colour channels to Cloud Redstone would need a new bridge block
+- **Iron Jetpacks** (`ironjetpacks`): no blocks
+- **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
+- **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
 
 Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
 

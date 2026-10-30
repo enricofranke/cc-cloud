@@ -1,5 +1,5 @@
 // Generates web/src/docs/content/mods.gen.json – the "Supported mods" docs page – from docs/COMPAT.md
-// (wave 2 and 3 tables) and docs/BUILD.md (the v0.5 integrations table). Run by `pnpm build`.
+// (wave 2, 3 and 4 tables) and docs/BUILD.md (the v0.5 integrations table). Run by `pnpm build`.
 //   node dev/build-mods.ts
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -62,7 +62,7 @@ for (const line of v05.split("\n")) {
 let group = "";
 let header: string[] = [];
 for (const line of compat.split("\n")) {
-  const h = /^###\s+(.*)$/.exec(line) ?? /^##\s+(Wave 3.*)$/.exec(line);
+  const h = /^###\s+(.*)$/.exec(line) ?? /^##\s+(Wave \d.*)$/.exec(line);
   if (h) {
     group = h[1].replace(/^\d+\.\s*/, "").replace(/\s*\(.*\)$/, "").trim();
     header = [];

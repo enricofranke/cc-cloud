@@ -87,6 +87,23 @@ with the ATM11 jar (all identical). File ids live in `gradle.properties` (`*_cur
 | `advancedae` | Advanced AE 26.1.7 (`advanced_ae`; jar-in-jars ae2addonlib, ae2wtlib_api) | AE2, GuideME, AE2WTLib 26.1.2-beta, GeckoLib | `compat/advancedae` (cluster API) |
 | `jade` | Jade 26.1.12 (`maven.modrinth:jade:Pr1h4azo`, the ATM11 jar, compile-only otherwise) | – | `compat/jade` (tooltip plugin). Jade checks its providers only on a physical client: use `runClient`. |
 
+### Wave 4 (docs/COMPAT.md "Wave 4")
+CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cursemaven, FTB Essentials from maven.ftb.dev; the SHA-1 of every downloaded jar equals the instance's jar. File ids live in `gradle.properties`.
+
+| Key (`-PintegrationMods=`) | Mod (version) | Extra runtime jars | Compile use |
+| --- | --- | --- | --- |
+| `justdirethings` | Just Dire Things 1.6.11 | – | `compat/justdirethings` (machine base classes, redstone mode API) |
+| `productivetrees` | Productive Trees 26.1.2-1.3.1 (jar-in-jars productivelib) | – | `compat/productivetrees` (compiled against the productivelib extracted from Productive Bees) |
+| `rangedpumps` | Ranged Pumps 2.0.0 | – | `compat/rangedpumps` (tank, energy, state; `getState()`/`getRange()` are package-private and read by reflection, computed if that fails) |
+| `charginggadgets` | Charging Gadgets 1.16.1 | – | `compat/charginggadgets` |
+| `sellingbin` | wd's Selling Bin 1.6 (jar-in-jars tiny-multiblock-lib neo-26.1-3.1) | – | `compat/sellingbin`; `extractSellingBinLibs` copies tiny-multiblock-lib to `build/jarjar/` for compiling (only `IMultiBlock.getCenter`, the same in its 4.0.0 that ATM11 resolves) |
+| `cookingforblockheads` | Cooking for Blockheads 26.1.2.6 | Balm 26.1.2.15, Shogi 26.1.2.12 | `compat/cookingforblockheads` (oven, toaster); fridges, cabinets and counters by block id (`compat/storage`) |
+| `farmingforblockheads` | Farming for Blockheads 26.1.2.5 | Balm, Shogi | `compat/farmingforblockheads` |
+| `trainingdummy` | Training Dummy 1.9.0+mc26.1.2 | – | `compat/trainingdummy` (`DummyEntity`, `LivingDamageEvent.Post`) |
+| `ftbessentials` | FTB Essentials 26.1.2.5 (`dev.ftb.mods:ftb-essentials-neoforge`, maven.ftb.dev) | FTB Library | `compat/ftbessentials` (warp manager) |
+
+The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
+
 ```sh
 ./gradlew runGameTestServer -PintegrationMods -PdevWebPort=18797 --max-workers=3          # all integration mods
 ./gradlew runGameTestServer -PintegrationMods=powah,mffs -PdevWebPort=18797 --max-workers=3   # a subset (keys: see build.gradle)

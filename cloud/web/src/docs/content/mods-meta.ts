@@ -63,10 +63,23 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   guideme: { cat: "server", icon: "guideme:guide" },
   mffs: { cat: "protection", icon: "mffs:projector" },
   pylons: { cat: "protection", icon: "pylons:expulsion_pylon" },
+  // wave 4
+  justdirethings: { cat: "machines", icon: "justdirethings:generatort1" },
+  productivetrees: { cat: "farms", icon: "productivetrees:sawmill" },
+  rangedpumps: { cat: "machines", icon: "rangedpumps:pump" },
+  charginggadgets: { cat: "energy", icon: "charginggadgets:charging_station" },
+  selling_bin: { cat: "machines", icon: "selling_bin:selling_bin" },
+  cookingforblockheads: { cat: "machines", icon: "cookingforblockheads:white_oven" },
+  farmingforblockheads: { cat: "farms", icon: "farmingforblockheads:shipping_bin" },
+  trainingdummy: { cat: "world", icon: "minecraft:armor_stand" },
+  ftbessentials: { cat: "world", icon: "minecraft:ender_pearl" },
+  aether_ii: { cat: "world", icon: "minecraft:feather" },
+  undergarden: { cat: "world", icon: "minecraft:moss_block" },
+  allthemodium: { cat: "world", icon: "minecraft:netherite_pickaxe" },
 };
 
-/** The two generic cards that work with almost any mod. */
-export const GENERIC_ICONS = { energy: "minecraft:redstone_block", tank: "minecraft:water_bucket" };
+/** The generic cards that work with almost any mod. */
+export const GENERIC_ICONS = { energy: "minecraft:redstone_block", tank: "minecraft:water_bucket", peripheral: "computercraft:wired_modem_full" };
 
 /** Every icon id this page needs (for the icon export). */
 export function modIconIds(): string[] {

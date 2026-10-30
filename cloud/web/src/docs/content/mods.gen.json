@@ -570,6 +570,256 @@
    "controls": "the card's own",
    "tested": "yes (`wired_machine_cards`: an energy block behind a full wired modem; a chest gets no card)",
    "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "any mod: CC peripherals",
+   "id": "",
+   "version": "",
+   "what": "generic **Peripheral card** (kind `peripheral`, fallback below every other card) for every block CC: Tweaked offers as a peripheral and that has no card of its own: up to 6 values and up to 2 charts picked in the card's settings, see \"Peripheral card\" below",
+   "controls": "an optional `set…(boolean)` method as switch (`act.buttons`, confirm, PIN by default); picking values needs `layout.edit`",
+   "tested": "yes (`peripheral_card_generic`: a vanilla chest through CC's generic inventory methods; `peripheral_card_own_methods`: a test peripheral with every kind of method)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Just Dire Things",
+   "id": "justdirethings",
+   "version": "1.6.11",
+   "what": "**Generator** card (Simple Coal / Fuel Generator: status, output FE/t, energy, burn left and fuel or fuel tank), **Machine** card for every other redstone-controlled machine (breakers, placers, clickers, droppers, swappers, fluid collectors and placers, item collector, experience holder, paradox machine, energy transmitter: status, speed, energy and tank where present, the transmitter's network energy, the holder's experience), read-only **Sensor** card (signal out, what it senses, strong/weak). Player Accessor, Goo blocks and the Eclipse Gate get no card.",
+   "controls": "the machine's own redstone mode (Always on / without signal / with signal / one step per pulse), select with confirm, `act.redstone`",
+   "tested": "yes (coal generator: mode switch; advanced block breaker; simple sensor)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Productive Trees",
+   "id": "productivetrees",
+   "version": "26.1.2-1.3.1",
+   "what": "**Sawmill**, **Pollen Sifter** and **Stripper**: status, progress (sawmill, sifter), input, output, by-products (sawmill) or axe (stripper); warn alert once when the output is full. Tree farms themselves are trees in the world, not blocks with state.",
+   "controls": "none (the machines have no switch)",
+   "tested": "yes (lone sawmill)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Ranged Pumps",
+   "id": "rangedpumps",
+   "version": "2.0.0",
+   "what": "**Pump**: state (pumping, no energy, stopped by redstone, tank full, done), tank %, fluid and mB, energy %, scan range (no coordinates); info alert when done, warn alert when the tank is full",
+   "controls": "none: any redstone signal stops a pump, there is no mode",
+   "tested": "yes (lone pump)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Charging Gadgets",
+   "id": "charginggadgets",
+   "version": "1.16.1",
+   "what": "**Charging Station**: status, station energy, burn left, fuel, the item being charged and its own charge (the item's energy capability); info alert when it is charged",
+   "controls": "none",
+   "tested": "yes (station burns coal into FE)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "wd's Selling Bin",
+   "id": "selling_bin",
+   "version": "1.6",
+   "what": "**Selling Bin** (read from its main block, also from an uplink on the other half): item to sell and what it is worth, credit (sold value not yet paid out), currency in the output. The mod keeps no sales history, so past earnings are not shown.",
+   "controls": "auto-sell toggle and a **Sell now** button (both `act.buttons`, what the bin's own buttons do)",
+   "tested": "yes (bin alone: toggle; Sell now refused while empty. A plain test world has no currency data, so no sale is run)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Cooking for Blockheads",
+   "id": "cookingforblockheads",
+   "version": "26.1.2.6",
+   "what": "Fridges, cabinets and counters (plain and all 16 colours) as **Storage** cards with item search; **Oven** card (status, items cooking, cooking and burn progress, input, fuel, output, energy with a heating unit; warn alert when the output is full); **Toaster** card (progress, what is inside)",
+   "controls": "the toaster's on/off (`act.buttons`; refused while it is empty)",
+   "tested": "yes (oven, toaster switched on and off, fridge as Storage card)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Farming for Blockheads",
+   "id": "farmingforblockheads",
+   "version": "26.1.2.5",
+   "what": "**Shipping Bin**: next shipment (value against the shipment size), goods, emeralds paid out; info alert when a shipment leaves. The Market only opens a trade screen and holds no state, so it has no card.",
+   "controls": "none",
+   "tested": "yes (bin alone, then wheat put in)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Training Dummy",
+   "id": "trainingdummy",
+   "version": "1.9.0",
+   "what": "**Training dummies** mainframe card (restricted, `view.positions`): a DPS meter for the dummies within 64 blocks of the mainframe – DPS over the last 5 s, last hit, total of the current streak and who hit, the best DPS, a DPS chart. Dummies are entities and the mod keeps DPS only on the client, so the card counts hits itself (`LivingDamageEvent.Post`).",
+   "controls": "none",
+   "tested": "yes (dummy spawned next to the mainframe and hit)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "FTB Essentials",
+   "id": "ftbessentials",
+   "version": "26.1.2.5",
+   "what": "**Warps** mainframe card (restricted, `view.positions`): the server's warps (what `/listwarps` shows every player) with dimension and coordinates, nearest first, at most 8. Homes are private and never shown; nothing on the card teleports. Config `world.warpsCard`.",
+   "controls": "none",
+   "tested": "yes (warp added through FTB Essentials' warp manager)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "The Aether II",
+   "id": "aether_ii",
+   "version": "26.1.2-alpha.4.1",
+   "what": "Network map: the Aether dimension with its name, icon and height range (y −32 to 383) in the 2D slice and 3D cut sliders; Ender Relays link to it like to any dimension",
+   "controls": "–",
+   "tested": "unit tests of names, icons and ranges; not in a dev world",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "The Undergarden",
+   "id": "undergarden",
+   "version": "26.1.2-0.9.8",
+   "what": "Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether)",
+   "controls": "–",
+   "tested": "unit tests; not in a dev world",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "All the Modium",
+   "id": "allthemodium",
+   "version": "26.1.2-4.2.0",
+   "what": "Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges",
+   "controls": "–",
+   "tested": "unit tests; not in a dev world",
+   "skipped": false
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Nullscape",
+   "id": "nullscape",
+   "version": "1.2.20",
+   "what": "no card: it reshapes the End's terrain (same dimension `minecraft:the_end`), which the map already handles",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "DeepNull Reforged",
+   "id": "deepnullreforged",
+   "version": "4.2.1-beta",
+   "what": "skipped: not a dimension but a Dank Null-style item storage you carry; nothing a block card could show",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Mystical Agradditions",
+   "id": "mysticalagradditions",
+   "version": "9.0.4",
+   "what": "skipped: adds no machine or block entity (storage blocks, cruxes, farmland, crops)",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Item Collectors",
+   "id": "itemcollectors",
+   "version": "1.1.12a",
+   "what": "skipped: no count of collected items and no on/off; only a range and a filter",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Elevator",
+   "id": "elevatorid",
+   "version": "26.1-1.16.2",
+   "what": "skipped: there is no cabin – an elevator is a column of teleport pads, and \"call to floor N\" would mean teleporting a player standing near a pad from the dashboard, which CC: Cloud does not offer",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Refined Flow Analytics",
+   "id": "refinedflowanalytics",
+   "version": "2.0.0",
+   "what": "skipped in this wave: it records RS2 throughput on the server, but only in internal classes (no API) and only while a Flow Grid, Monitor or Detector is on the network; a candidate for the RS Cloud Bridge",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "AE2 Network Analyser",
+   "id": "ae2netanalyser",
+   "version": "1.0.0",
+   "what": "skipped: items only; the data is computed for the player holding the analyser and never stored, no API",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "LaserIO",
+   "id": "laserio",
+   "version": "1.10.2",
+   "what": "skipped: no transfer counters or machine state; a node only holds its cards",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "More Red",
+   "id": "morered",
+   "version": "26.1.2.3",
+   "what": "skipped: bundled cables keep no signal to read; linking their 16 colour channels to Cloud Redstone would need a new bridge block",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Iron Jetpacks",
+   "id": "ironjetpacks",
+   "version": "9.0.3",
+   "what": "skipped: no blocks",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Power Armor",
+   "id": "power_armor",
+   "version": "1.0.7",
+   "what": "no own card: the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 4 – more ATM11 mods",
+   "mod": "Mining Gadgets",
+   "id": "mininggadgets",
+   "version": "1.19.3",
+   "what": "skipped: only the modification table, without energy, progress or switch",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
   }
  ]
 }

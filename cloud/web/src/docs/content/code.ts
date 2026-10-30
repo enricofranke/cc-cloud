@@ -391,8 +391,13 @@ const GROUP_DE: Record<string, string> = {
   "In-game handbook": "Handbuch im Spiel",
   "KubeJS bindings": "KubeJS",
   "Wave 3 – more ATM11 machines": "Weitere ATM11-Maschinen",
+  "Wave 4 – more ATM11 mods": "Noch mehr ATM11-Mods",
 };
-const GROUP_EN: Record<string, string> = { v05: "Energy, server and teams", "Wave 3 – more ATM11 machines": "More ATM11 machines" };
+const GROUP_EN: Record<string, string> = {
+  v05: "Energy, server and teams",
+  "Wave 3 – more ATM11 machines": "More ATM11 machines",
+  "Wave 4 – more ATM11 mods": "Even more ATM11 mods",
+};
 const cell = (s: string) => (s || "–").replace(/\|/g, "/").replace(/\n/g, " ");
 /** Markdown tables of every supported mod, grouped like docs/COMPAT.md; skipped mods in a short list at the end. */
 export function modsSection(lang: "en" | "de") {
