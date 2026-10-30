@@ -145,7 +145,7 @@ python3 preview/build_viewer.py                                      # preview/v
 
 ### Releases
 - Version: `mod_version` in `gradle.properties` (0.9.0); changes go into `CHANGELOG.md`.
-- CI (`.github/workflows/build.yml`) on every push and pull request: web dashboard typecheck, tests and build (into `src/main/resources/cccloud_web`), then `./gradlew build` (unit tests, handbook check); the jar is kept as a workflow artifact. Pushing a tag `v*` (e.g. `git tag v0.9.0 && git push origin v0.9.0`) also creates a GitHub release with the jar and the changelog (tags with a `-`, e.g. `v0.9.0-rc1`, become pre-releases). No CurseForge upload yet.
+- CI (`.github/workflows/build.yml`) on every push and pull request: web dashboard typecheck, tests and build (into `src/main/resources/cccloud_web`), then `./gradlew build` (unit tests, handbook check); the jar is kept as a workflow artifact. Pushing a tag `v*` (e.g. `git tag v0.9.0 && git push origin v0.9.0`) also creates a GitHub release with the jar, the FTB Quests quest pack (`cccloud-quests-atm11-<version>.zip`, task `questPack`, part of `build`; see `integration/ftbquests/README.md`) and the changelog (tags with a `-`, e.g. `v0.9.0-rc1`, become pre-releases). No CurseForge upload yet.
 - The release jar contains no GameTest data (`data/cccloud/test_instance`, `test_environment`, the test structure); the test functions are only registered when NeoForge enables GameTests (development and the GameTest server). Dev helpers (`-PiconBenchmark`, `-PdemoShots`, `-PguideShots`, `-PguiScreenshot`, `-PscreenShots`, `-PtextureCheck`, `cccloud.devCommands`, `cccloud.gametest`) do nothing without their system property.
 
 ### Handbook check

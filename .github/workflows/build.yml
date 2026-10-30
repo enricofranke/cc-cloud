@@ -1,7 +1,8 @@
 name: Build
 
 # Every push and pull request: build the web dashboard (bundled into the jar), run its tests, build the mod and run
-# the unit tests and the handbook check. A tag v* additionally attaches the jar to a GitHub release.
+# the unit tests and the handbook check. A tag v* additionally attaches the jar and the FTB Quests quest pack
+# (cccloud-quests-atm11-<version>.zip, Gradle task questPack) to a GitHub release.
 # Actions are pinned to commit SHAs (the comment names the tag); update them deliberately.
 on:
   push:
@@ -61,6 +62,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
+      # `build` also zips the FTB Quests chapters (task questPack -> build/distributions/cccloud-quests-atm11-<version>.zip).
       - name: Build the mod and run the unit tests
         run: ./gradlew build --max-workers=3
 
@@ -69,6 +71,13 @@ jobs:
         with:
           name: cccloud-jar
           path: build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload the quest pack
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cccloud-quests
+          path: build/distributions/cccloud-quests-atm11-*.zip
           if-no-files-found: error
 
   release:
@@ -87,6 +96,12 @@ jobs:
           name: cccloud-jar
           path: dist
 
+      - name: Download the quest pack
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: cccloud-quests
+          path: dist
+
       # The release text is this version's section of CHANGELOG.md ("## 1.0.0-beta.1 – …" up to the next "## ").
       - name: Release notes from the changelog
         env:
@@ -99,7 +114,9 @@ jobs:
       - name: Create the GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          files: dist/*.jar
+          files: |
+            dist/*.jar
+            dist/cccloud-quests-atm11-*.zip
           body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}

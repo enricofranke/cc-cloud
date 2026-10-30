@@ -457,6 +457,27 @@ tasks.register('exportIcons', JavaExec) {
     outputs.upToDateWhen { false }
 }
 
+// Release asset next to the jar: the FTB Quests chapters as a ready-to-use quest pack (integration/ftbquests/README.md).
+// The quests are not inside the jar; they belong to the pack's quest book, which a server admin installs once.
+// build/distributions/cccloud-quests-atm11-<version>.zip: one top folder with quests/, install.sh, README.txt, LICENSE.
+def questPack = tasks.register('questPack', Zip) {
+    group = 'distribution'
+    description = 'Zips the FTB Quests chapters, install.sh and README.txt into build/distributions/cccloud-quests-atm11-<version>.zip.'
+    def packName = "cccloud-quests-atm11-${mod_version}".toString()
+    def packVersion = mod_version.toString()
+    archiveFileName = "${packName}.zip"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    into(packName) {
+        from('integration/ftbquests/quests') { into 'quests' }
+        from('integration/ftbquests/install.sh') { filePermissions { unix('rwxr-xr-x') } }
+        from('integration/ftbquests/release/README.txt') { filter { String line -> line.replace('@VERSION@', packVersion) } }
+        from('LICENSE')
+    }
+}
+tasks.named('assemble') { dependsOn questPack }
+
 // The release jar carries no GameTest data (test instances reference test functions that are only registered in
 // development and on the GameTest server; testpacks/ are datapacks only GameTest runs enable); dev runs read the
 // resources directly and keep them.

@@ -30,8 +30,15 @@ Until CC: Cloud 0.9.0 there were two CC: Cloud variants ("current" and "full" wi
 - Turtle upgrades and "any upgrade card of a tier" are matched with an FTB Filter System smart filter; the handbook task matches `guideme:guide` with the component `guideme:guide_id = cccloud:handbook` (`match_components: "fuzzy"`).
 
 ## Install
+The quests are **not inside the mod jar**: FTB Quests keeps every quest in the pack's quest book (`config/ftbquests/quests`), and CC: Cloud never writes into it. A server admin installs them once on the server (singleplayer: in the instance); players receive them from the server with FTB Quests' normal sync.
+
+**Release zip.** Every GitHub release carries `cccloud-quests-atm11-<version>.zip` next to the jar: one folder with `quests/` (this folder's `quests/`), `install.sh`, a bilingual `README.txt` (what it is, install with the script, the manual steps for hosts with only a file manager) and `LICENSE`. `./gradlew questPack` builds it into `build/distributions/` (also part of `./gradlew build`; CI attaches it on `v*` tags). The text of `README.txt` is `release/README.txt` (`@VERSION@` becomes the mod version).
+
+**Pack makers** ship the chapters in their own quest book, as they are or adapted (layout, rewards, chapter group). Outside ATM11 the milestone rewards point to ATM11's reward tables (`TABLES` in `tools/generate.py`), so adapt them there.
+
 ```sh
-integration/ftbquests/install.sh "<instance-path>"                  # new install
+./install.sh "<instance-path>"                                      # from the unpacked release zip
+integration/ftbquests/install.sh "<instance-path>"                  # new install from the repository
 integration/ftbquests/install.sh "<instance-path>" --replace-text   # update an earlier install, incl. its text
 integration/ftbquests/install.sh "<instance-path>" --dry-run
 ```

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Installs the CC: Tweaked and CC: Cloud quest chapters into an ATM11 instance.
+# Installs the CC: Tweaked and CC: Cloud quest chapters into an ATM11 instance or server (from the repository
+# folder integration/ftbquests or the release zip cccloud-quests-atm11-<version>.zip).
 #
-#   integration/ftbquests/install.sh <instance-path> [--replace-text] [--dry-run]
+#   ./install.sh <instance-path> [--replace-text] [--dry-run]
 #
 #   <instance-path>  folder that contains config/ftbquests/quests (client instance or server)
 #   --replace-text   replace our own lang files lang/<locale>/chapters/cc_tweaked.json5 and
@@ -32,7 +33,7 @@ for a in "$@"; do
     --full) echo "note: --full has no effect any more (one CC: Cloud chapter since 0.9.0)" ;;
     --replace-text) REPLACE=1 ;;
     --dry-run) DRY=1 ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
     *) INSTANCE="$a" ;;
   esac
 done
