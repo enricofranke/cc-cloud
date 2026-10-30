@@ -6,10 +6,14 @@ import { Sheet } from "./Overlays.tsx";
 import { IconPlus } from "./Icons.tsx";
 
 export const NETWORK_PAGE = "__network";
+/** v0.10: the production statistics page (always there when the server has them). */
+export const PRODUCTION_PAGE = "__production";
 
 export function Tabs(props: {
   pages: ResolvedPage[];
   network?: boolean;
+  /** v0.10: show the Production tab (its label follows the language preference) */
+  production?: string;
   current: string;
   isPhone: boolean;
   editing: boolean;
@@ -58,6 +62,17 @@ export function Tabs(props: {
           >
             <PixelIcon name="network" size={props.isPhone ? 18 : 14} />
             <span class="tab-text">Network</span>
+          </button>
+        )}
+        {props.production && (
+          <button
+            type="button"
+            class={`tab tab-production ${props.current === PRODUCTION_PAGE ? "on" : ""}`}
+            aria-current={props.current === PRODUCTION_PAGE ? "page" : undefined}
+            onClick={() => props.onSelect(PRODUCTION_PAGE)}
+          >
+            <PixelIcon name="chart" size={props.isPhone ? 18 : 14} />
+            <span class="tab-text">{props.production}</span>
           </button>
         )}
         {props.editing && props.pages.length < MAX_PAGES && (
