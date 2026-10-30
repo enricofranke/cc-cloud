@@ -271,6 +271,7 @@ public final class ScaleTest {
         final List<CloudRelayBlockEntity> relays = new ArrayList<>();
         int luaWidgets;
         String token;
+        ServerPlayer owner;
 
         UUID id() {
             return mainframe.getMainframeId();
@@ -305,6 +306,7 @@ public final class ScaleTest {
     static Base place(GameTestHelper helper, ServerPlayer owner, BlockPos floor, int devices, boolean big) {
         var level = helper.getLevel();
         var base = new Base();
+        base.owner = owner;
         var absFloor = helper.absolutePos(floor);
         set(level, base, absFloor, Blocks.STONE.defaultBlockState());
         base.mainframe = CloudGameTests.placeMainframe(helper, owner, floor);
@@ -622,11 +624,14 @@ public final class ScaleTest {
                 forced.add(new ChunkPos(cx, cz));
             }
         }
+        // one owner per base: players may only place a few mainframes each (mainframeLimit)
         var owner = ai.ezfox.cccloud.ingame.InGameTestSupport.player(helper, "scale_owner");
         long setupStart = System.nanoTime();
         var bases = new ArrayList<Base>();
         bases.add(place(helper, owner, new BlockPos(0, 20, 0), BIG, true));
-        for (int i = 0; i < MAINFRAMES; i++) bases.add(place(helper, owner, new BlockPos(0, 32 + 6 * i, 0), DEVICES, false));
+        for (int i = 0; i < MAINFRAMES; i++) {
+            bases.add(place(helper, ai.ezfox.cccloud.ingame.InGameTestSupport.player(helper, "scale_owner_" + i), new BlockPos(0, 32 + 6 * i, 0), DEVICES, false));
+        }
         report.addProperty("placeMs", (System.nanoTime() - setupStart) / 1_000_000);
         var big = bases.getFirst();
         helper.onEachTick(() -> {
@@ -683,7 +688,7 @@ public final class ScaleTest {
                 case STATIC -> {
                     addRules(helper, big, report);
                     measureStatic(helper, owner, bases, report);
-                    for (var base : bases) base.token = CloudWebServer.issueTestToken(server, base.id(), owner.getUUID());
+                    for (var base : bases) base.token = CloudWebServer.issueTestToken(server, base.id(), base.owner.getUUID());
                     CloudWebServer.setMaxConnectionsPerIpForTest(BROWSERS + 8);
                     for (int i = 0; i < BROWSERS; i++) {
                         int mf = i < BIG_BROWSERS ? 0 : 1 + (i - BIG_BROWSERS) % Math.max(1, MAINFRAMES);
