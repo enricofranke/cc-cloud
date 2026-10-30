@@ -18,11 +18,13 @@ export interface Features {
 }
 export interface PublicConfig {
   version: string | null;
+  /** internetAccess of the server; remote = this browser counts as an internet address (plain HTTP: writes need the PIN) */
+  internet: { mode: string; remote: boolean };
   store: { enabled: boolean; url: string | null; key?: string };
   features: Features;
 }
 const ALL_ON: Features = { terminal: true, voxels: true, push: true, rules: true, map: true, scenes: false, production: false, api: false };
-export const publicConfig = signal<PublicConfig>({ version: null, store: { enabled: true, url: null }, features: ALL_ON });
+export const publicConfig = signal<PublicConfig>({ version: null, internet: { mode: "off", remote: false }, store: { enabled: true, url: null }, features: ALL_ON });
 
 export function parseConfig(raw: any): PublicConfig {
   const f = raw?.features && typeof raw.features === "object" ? raw.features : {};
@@ -30,8 +32,10 @@ export function parseConfig(raw: any): PublicConfig {
   const newer = (k: keyof Features) => f[k] === true;
   const st = raw?.store && typeof raw.store === "object" ? raw.store : {};
   const parsed = parseStore(st);
+  const net = raw?.internet && typeof raw.internet === "object" ? raw.internet : {};
   return {
     version: typeof raw?.version === "string" ? raw.version.slice(0, 32) : null,
+    internet: { mode: typeof net.mode === "string" ? net.mode.slice(0, 16) : "off", remote: net.remote === true },
     store: { enabled: st.enabled !== false && !!parsed, url: parsed?.url ?? null, ...(parsed?.key ? { key: parsed.key } : {}) },
     features: { terminal: flag("terminal"), voxels: flag("voxels"), push: flag("push"), rules: flag("rules"), map: flag("map"), scenes: newer("scenes"), production: newer("production"), api: newer("api") },
   };

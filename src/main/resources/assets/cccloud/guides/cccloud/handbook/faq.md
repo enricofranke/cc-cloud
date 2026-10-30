@@ -42,7 +42,7 @@ The device was removed (in the mainframe screen or with `/cccloud revoke`), it e
 
 ## "LAN only"
 
-The server only allows local addresses. An admin can enable `webAllowInternet` – preferably behind HTTPS. See [security](security.md).
+The server only allows local addresses. The server owner can open it with `/cccloud internet` – see [internet access](security.md).
 
 ## Controls are greyed out
 

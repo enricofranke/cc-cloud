@@ -22,6 +22,10 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_ALLOWED_HOSTS;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
+    // Internet access in one setting (docs/HOSTING.md): maps to the [web] keys above, which stay as advanced overrides
+    public static final ModConfigSpec.ConfigValue<String> INTERNET_ACCESS;
+    public static final ModConfigSpec.ConfigValue<String> INTERNET_DOMAIN;
+    public static final ModConfigSpec.IntValue PUBLIC_TOKEN_IDLE_HOURS;
     // v0.4 network ranges (blocks, same dimension, spherical)
     public static final ModConfigSpec.IntValue RANGE_UPLINK;
     public static final ModConfigSpec.IntValue RANGE_ADVANCED_UPLINK;
@@ -187,6 +191,22 @@ public final class CloudConfig {
         TLS_KEY_PATH = b.comment("Optional TLS: path to the private key (PKCS#8 PEM). Both paths must be set to enable HTTPS.")
             .translation("cccloud.configuration.tlsKeyPath")
             .define("tlsKeyPath", "");
+
+        INTERNET_ACCESS = b.comment("Internet access to the dashboard in one setting (or /cccloud internet <mode> in game):",
+                "off   = LAN only (default); the advanced keys above decide everything, as before.",
+                "http  = plain HTTP over the internet, INSECURE: logins and the PIN can be read on the way. Every control action from an",
+                "        internet address needs the mainframe PIN, so a PIN must be set; device tokens used from the internet expire after",
+                "        publicTokenIdleHours without use; stricter rate limits for internet addresses.")
+            .translation("cccloud.configuration.internetAccess")
+            .define("internetAccess", "off", o -> o instanceof String s && ai.ezfox.cccloud.web.internet.InternetMode.parse(s) != null);
+        INTERNET_DOMAIN = b.comment("Optional host name (or IP address) players use from the internet, e.g. mybase.duckdns.org. Empty = the public IP",
+                "(looked up when you run /cccloud internet). Sets the link shown in game unless publicUrl is set.")
+            .translation("cccloud.configuration.internetDomain")
+            .define("internetDomain", "", o -> o instanceof String s && (s.isBlank() || ai.ezfox.cccloud.web.internet.InternetSettings.validDomain(s)));
+        PUBLIC_TOKEN_IDLE_HOURS = b.comment("internetAccess = http: a browser that shows up from an internet address after this many hours without use is",
+                "logged out and must be paired again (on the LAN the normal 30 days apply).")
+            .translation("cccloud.configuration.publicTokenIdleHours")
+            .defineInRange("publicTokenIdleHours", 24, 1, 720);
         b.pop();
 
         b.push("uplinks");

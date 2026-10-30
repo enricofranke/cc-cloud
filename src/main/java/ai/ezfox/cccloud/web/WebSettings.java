@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import ai.ezfox.cccloud.web.internet.InternetMode;
+import ai.ezfox.cccloud.web.internet.InternetSettings;
 import java.util.List;
 
 /**
@@ -14,14 +16,24 @@ import java.util.List;
  * ({@link CloudWebServer#reconfigure}). A reload compares the file against it and applies all of it or nothing.
  *
  * @param port           the requested port ({@code cccloud.devWebPort} wins in dev runs; 0 = any free port)
+ * @param publicUrl      the effective link for players ({@code publicUrl}, else derived from {@code internetAccess})
+ * @param allowInternet  the effective LAN rule ({@code webAllowInternet}, or implied by {@code internetAccess})
  * @param tlsFingerprint SHA-256 of the certificate and key files, so renewed files are picked up by a reload
+ * @param internet       {@code internetAccess} and its keys, mapped onto the keys above ({@link InternetSettings})
  */
 public record WebSettings(boolean enabled, String bind, int port, String publicUrl, boolean allowInternet, List<String> trustedProxies,
                           boolean trustCloudflare, boolean compression, List<String> allowedHosts, String certPath, String keyPath,
-                          String tlsFingerprint) {
+                          String tlsFingerprint, InternetSettings internet) {
     public WebSettings {
         trustedProxies = List.copyOf(trustedProxies);
         allowedHosts = List.copyOf(allowedHosts);
+    }
+
+    /** Without {@code internetAccess} (off: the advanced keys as given). */
+    public WebSettings(boolean enabled, String bind, int port, String publicUrl, boolean allowInternet, List<String> trustedProxies,
+                       boolean trustCloudflare, boolean compression, List<String> allowedHosts, String certPath, String keyPath, String tlsFingerprint) {
+        this(enabled, bind, port, publicUrl, allowInternet, trustedProxies, trustCloudflare, compression, allowedHosts, certPath, keyPath, tlsFingerprint,
+            new InternetSettings(InternetMode.OFF, allowInternet, publicUrl, null, false, 24 * InternetSettings.HOUR_MS, List.of()));
     }
 
     /** The current {@code [web]} section of the server config. */
@@ -30,11 +42,14 @@ public record WebSettings(boolean enabled, String bind, int port, String publicU
         String key = CloudConfig.get(CloudConfig.TLS_KEY_PATH).trim();
         var proxies = CloudConfig.get(CloudConfig.WEB_TRUSTED_PROXIES).stream().map(String::valueOf).toList();
         var hosts = CloudConfig.get(CloudConfig.WEB_ALLOWED_HOSTS).stream().map(String::valueOf).toList();
-        return new WebSettings(CloudConfig.get(CloudConfig.WEB_ENABLED), CloudConfig.get(CloudConfig.WEB_BIND).trim(),
-            // Dev runs (build.gradle) use another port so they do not collide with a game running on the same machine.
-            Integer.getInteger("cccloud.devWebPort", CloudConfig.get(CloudConfig.WEB_PORT)), CloudConfig.get(CloudConfig.PUBLIC_URL).trim(),
-            CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET), proxies, CloudConfig.get(CloudConfig.WEB_TRUST_CLOUDFLARE_HEADER),
-            CloudConfig.get(CloudConfig.WEB_COMPRESSION), hosts, cert, key, fingerprint(cert, key));
+        // Dev runs (build.gradle) use another port so they do not collide with a game running on the same machine.
+        int port = Integer.getInteger("cccloud.devWebPort", CloudConfig.get(CloudConfig.WEB_PORT));
+        var internet = InternetSettings.resolve(new InternetSettings.Inputs(CloudConfig.get(CloudConfig.INTERNET_ACCESS),
+            CloudConfig.get(CloudConfig.INTERNET_DOMAIN), port, CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET), CloudConfig.get(CloudConfig.PUBLIC_URL),
+            !cert.isEmpty() || !key.isEmpty(), CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS)));
+        return new WebSettings(CloudConfig.get(CloudConfig.WEB_ENABLED), CloudConfig.get(CloudConfig.WEB_BIND).trim(), port, internet.publicUrl(),
+            internet.allowInternet(), proxies, CloudConfig.get(CloudConfig.WEB_TRUST_CLOUDFLARE_HEADER),
+            CloudConfig.get(CloudConfig.WEB_COMPRESSION), hosts, cert, key, fingerprint(cert, key), internet);
     }
 
     public boolean tls() {
@@ -55,7 +70,7 @@ public record WebSettings(boolean enabled, String bind, int port, String publicU
     public boolean sameConnectionRules(WebSettings other) {
         return sameAddress(other) && certPath.equals(other.certPath) && keyPath.equals(other.keyPath) && allowInternet == other.allowInternet
             && trustedProxies.equals(other.trustedProxies) && trustCloudflare == other.trustCloudflare && allowedHosts.equals(other.allowedHosts)
-            && publicUrl.equals(other.publicUrl);
+            && publicUrl.equals(other.publicUrl) && internet.mode() == other.internet.mode() && java.util.Objects.equals(internet.domain(), other.internet.domain());
     }
 
     /** "" without TLS; otherwise a hash of both files ("unreadable" if one cannot be read: loading it fails anyway). */

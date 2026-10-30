@@ -372,6 +372,16 @@ public final class AuthStore {
         return removed;
     }
 
+    /**
+     * Drops one device like the 30-day expiry (not a revocation: its API keys stay). Plain-HTTP internet access uses it
+     * for tokens that show up from an internet address after too long without use. Returns the device, or null.
+     */
+    public synchronized @Nullable Device expire(String tokenHash) {
+        var removed = devices.remove(tokenHash);
+        if (removed != null) onChange.run();
+        return removed;
+    }
+
     /** Devices limited to this mainframe (mainframe pairing codes and v0.3 tokens). */
     public List<Device> devices(UUID mainframeId) {
         var list = new ArrayList<Device>();

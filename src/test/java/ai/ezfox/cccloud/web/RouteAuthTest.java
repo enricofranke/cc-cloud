@@ -203,7 +203,7 @@ class RouteAuthTest {
         assertEquals(403, response.status().code());
         String body = response.content().toString(StandardCharsets.UTF_8);
         assertTrue(body.contains("\"error\":\"lan_only\""), body);
-        assertTrue(body.contains("webAllowInternet"));
+        assertTrue(body.contains("/cccloud internet"), "says how to open it: " + body);
     }
 
     @Test

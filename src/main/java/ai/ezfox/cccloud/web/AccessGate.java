@@ -147,6 +147,16 @@ public final class AccessGate {
      * @return the answer, or null for pong (nothing to send)
      */
     public static @Nullable String shareDeny(String text) {
+        return deny(text, "forbidden");
+    }
+
+    /**
+     * Refuses a client message with {@code error}: requests with a reqId get their own result type, everything else
+     * {@code {"t":"error"}} (share sessions: {@code forbidden}; plain-HTTP internet access: {@code remote_locked}).
+     *
+     * @return the answer, or null for pong (nothing to send)
+     */
+    public static @Nullable String deny(String text, String error) {
         var peek = ClientMessages.peek(text);
         String t = peek.t();
         if ("pong".equals(t) || "ping".equals(t)) return null;
@@ -163,6 +173,7 @@ public final class AccessGate {
             case "storage" -> "storage_result";
             case "craft_preview" -> "craft_plan";
             case "term_open", "term_input" -> "term_result";
+            case "unlock" -> "unlock_result";
             default -> null;
         };
         var json = new JsonObject();
@@ -170,14 +181,14 @@ public final class AccessGate {
             json.addProperty("t", resultType);
             json.addProperty("reqId", peek.reqId());
             json.addProperty("ok", false);
-            json.addProperty("error", "forbidden");
+            json.addProperty("error", error);
             if (resultType.equals("query_result")) {
                 json.add("rows", new JsonArray());
                 json.addProperty("truncated", false);
             }
         } else {
             json.addProperty("t", "error");
-            json.addProperty("error", "forbidden");
+            json.addProperty("error", error);
         }
         return Json.GSON.toJson(json);
     }

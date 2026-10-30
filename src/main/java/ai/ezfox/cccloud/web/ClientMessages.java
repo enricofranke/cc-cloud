@@ -23,7 +23,14 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, CardSettings, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, CardSettings, Unlock, Pong, Invalid {
+    }
+
+    /**
+     * Plain-HTTP internet access ({@code internetAccess = http}): {@code {"t":"unlock","reqId","pin"}} unlocks writes
+     * from an internet address for a while ({@link ai.ezfox.cccloud.web.internet.InternetGuard}) → {@code unlock_result}.
+     */
+    public record Unlock(String reqId, String pin) implements Message {
     }
 
     /**
@@ -158,6 +165,38 @@ public final class ClientMessages {
     public record PairRequest(String code, String name) {
     }
 
+    /** Storage card operations that change something (cancel a job, favorites, the watchlist); the others only read. */
+    static final java.util.Set<String> STORAGE_WRITE_OPS = java.util.Set.of("cancel", "favorite", "autostock");
+
+    /**
+     * Whether a message changes something in the game or the mainframe's settings (controls, layout, rules, scenes,
+     * access, terminal input, …). Reads (item search, storage browsing, statistics, craft plans), authentication, pong,
+     * closing a terminal and the PIN unlock are not writes. Plain-HTTP internet access asks for the PIN before any write
+     * from an internet address. A new message type must be classified here (the switch is exhaustive).
+     */
+    public static boolean isWrite(Message message) {
+        return switch (message) {
+            case Action a -> true;
+            case LayoutSet l -> true;
+            case NetUnlink n -> true;
+            case RuleCommand r -> true;
+            case SceneCommand s -> true;
+            case RedstoneOverride r -> true;
+            case RedstoneDevice r -> true;
+            case CardSettings c -> true;
+            case Production p -> p.op().equals("pin") || p.op().equals("unpin");
+            case Storage s -> STORAGE_WRITE_OPS.contains(s.op());
+            case Terminal t -> !t.op().equals("term_close");
+            case Query q -> false;
+            case CraftPreview c -> false;
+            case Unlock u -> false;
+            case Auth a -> false;
+            case AuthShare a -> false;
+            case Pong p -> false;
+            case Invalid i -> false;
+        };
+    }
+
     /** Message types that are accepted before authentication. Everything else needs an authenticated session. */
     public static boolean isPublic(Message message) {
         return message instanceof Auth || message instanceof AuthShare || message instanceof Pong || message instanceof Invalid;
@@ -248,6 +287,12 @@ public final class ClientMessages {
                     ? new Invalid("invalid_message", reqId) : new CardSettings(reqId, uplinkId, settings.getAsJsonObject());
             }
             case "layout_set" -> parseLayoutSet(obj);
+            case "unlock" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                String pin = string(obj, "pin");
+                yield pin == null || pin.length() > 32 ? new Invalid("invalid_message", reqId) : new Unlock(reqId, pin);
+            }
             default -> new Invalid("invalid_message", null);
         };
     }

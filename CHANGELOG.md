@@ -4,6 +4,20 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Internet access in one setting
+- **`/cccloud internet http`** opens the dashboard to the internet with one command (server owner, op level 4): the chat
+  shows the link to open, the port to forward in the router and how to test it from a phone on mobile data. Or set
+  `internetAccess = "http"` (optionally `internetDomain`) in the server config. `/cccloud internet` shows the state,
+  `/cccloud internet off` closes it again. It applies at once (live config). The old `[web]` keys keep working as
+  advanced settings.
+- **Plain HTTP is easy mode and insecure** – logins and the PIN can be read on the way – so CC: Cloud protects what it
+  can: it is refused until every mainframe has a PIN, every control action from the internet asks for the PIN (once,
+  then 10 minutes in that browser), mainframes without a PIN can only be watched from the internet, browsers unused for
+  24 hours are logged out there (`publicTokenIdleHours`), stricter limits for internet addresses, new browsers still
+  need [Allow] in game (requests from the internet are marked), share links stay read-only, and the public API can't
+  control anything over plain HTTP from the internet.
+- Warnings in the server log, in chat for ops when they join and as a dashboard banner that can't be closed.
+
 ### Every CC peripheral shows up: the Peripheral card
 - A block without a card of its own still gets one if CC: Tweaked can talk to it: put an uplink or a Cloud Probe on it
   and the **Peripheral card** appears. In the layout editor, click the card and pick up to 6 of its values (methods that
