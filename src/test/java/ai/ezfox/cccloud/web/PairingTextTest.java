@@ -14,4 +14,12 @@ class PairingTextTest {
         assertNull(PairingText.pairUrl("", "ABCD-EF23"));
         assertNull(PairingText.pairUrl("http://x", "abc"), "only well-formed codes");
     }
+
+    @Test
+    void cardUrl() {
+        String mf = "0b6f5d38-3c2a-4a8e-9d1e-2f0c4b7a9e11", card = "7d1c2b3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+        assertEquals("http://192.168.1.5:8787/#/m/" + mf + "?card=" + card, PairingText.cardUrl("http://192.168.1.5:8787/", mf, card));
+        assertNull(PairingText.cardUrl(null, mf, card));
+        assertNull(PairingText.cardUrl("http://x", mf, "../evil"), "only UUIDs");
+    }
 }

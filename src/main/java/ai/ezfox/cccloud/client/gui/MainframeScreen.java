@@ -379,7 +379,27 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         g.text(font, scaleText, x + w - 3 - font.width(scaleText), y + h - 10, CloudGui.TEXT_DIM, false);
     }
 
+    /** What the mainframe is, how much is connected, and – if it is not working – why and how to fix it. */
+    private void summary() {
+        textRow(Component.translatable("cccloud.gui.mf.what"), CloudGui.TEXT_DIM);
+        String status = str(view, "status");
+        String problem = switch (status) {
+            case "killed" -> "cccloud.gui.hint.mainframe.killed";
+            case "no_power" -> "cccloud.gui.hint.mainframe.no_power";
+            default -> !bool(view, "cloudAllowed") ? null : !bool(view, "enabled") ? "cccloud.gui.mf.dashboard_off" : null;
+        };
+        if (problem != null) warningRow(Component.translatable(problem));
+        long linked = num(view, "uplinks");
+        if (view.has("devicesConnected")) {
+            long connected = num(view, "devicesConnected"), relays = num(view, "relays");
+            textRow(Component.translatable(relays == 1 ? "cccloud.gui.mf.devices_relay" : "cccloud.gui.mf.devices", connected, linked, relays),
+                connected < linked ? CloudGui.YELLOW : CloudGui.TEXT);
+            if (connected < linked) textRow(Component.translatable("cccloud.gui.mf.devices_missing"), CloudGui.TEXT_DIM);
+        }
+    }
+
     private void overview() {
+        summary();
         heading("cccloud.gui.dashboard_urls");
         var urls = view.has("urls") ? view.getAsJsonArray("urls") : new com.google.gson.JsonArray();
         if (!bool(view, "webRunning") || urls.isEmpty()) {

@@ -25,6 +25,31 @@ public final class PairingText {
         return base + "/pair#code=" + formattedCode;
     }
 
+    /**
+     * The dashboard URL that opens a mainframe and scrolls to one card ({@code #/m/<mainframe>?card=<section>}), or null
+     * without a dashboard URL or with ids that are not UUIDs.
+     */
+    public static @Nullable String cardUrl(@Nullable String dashboardUrl, String mainframeId, String sectionId) {
+        if (dashboardUrl == null || dashboardUrl.isBlank()) return null;
+        var uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+        if (!mainframeId.matches(uuid) || !sectionId.matches(uuid)) return null;
+        String base = dashboardUrl.endsWith("/") ? dashboardUrl.substring(0, dashboardUrl.length() - 1) : dashboardUrl;
+        return base + "/#/m/" + mainframeId + "?card=" + sectionId;
+    }
+
+    /** " [label]" in aqua, underlined, opening {@code url} on click (empty if the URL is invalid). */
+    public static MutableComponent openLink(String url, Component label) {
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            return Component.empty();
+        }
+        return Component.literal(" ").append(label.copy().withStyle(style -> style.withColor(ChatFormatting.AQUA)
+            .withUnderlined(true).withClickEvent(new ClickEvent.OpenUrl(uri))
+            .withHoverEvent(new HoverEvent.ShowText(Component.literal(url)))));
+    }
+
     /** The code in gold/bold; click copies it. */
     public static MutableComponent code(String formattedCode) {
         return Component.literal(formattedCode).withStyle(style -> style.withColor(ChatFormatting.GOLD).withBold(true)

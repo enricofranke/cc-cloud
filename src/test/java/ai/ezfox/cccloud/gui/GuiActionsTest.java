@@ -210,4 +210,43 @@ class GuiActionsTest {
         assertEquals("no_screen", GuiActions.uplink("redstone", "receive:door", false, true, ops));
         assertEquals("not_supported", GuiActions.uplink("redstone", "receive:door", true, true, () -> null), "bridges have no redstone");
     }
+
+    @Test
+    void uplinkRenameAndDashboardLink() {
+        var renamed = new String[1];
+        var linked = new boolean[1];
+        var ops = new GuiActions.UplinkOps() {
+            @Override
+            public String unlink() {
+                return null;
+            }
+
+            @Override
+            public String rename(String title) {
+                renamed[0] = title;
+                return null;
+            }
+
+            @Override
+            public String dashboardLink() {
+                linked[0] = true;
+                return null;
+            }
+        };
+        var layout = java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW, ai.ezfox.cccloud.access.Perm.LAYOUT_EDIT);
+        assertNull(GuiActions.uplink("rename", "  Reactor 2 ", true, layout, ops));
+        assertEquals("Reactor 2", renamed[0], "trimmed");
+        assertNull(GuiActions.uplink("rename", "", true, layout, ops), "empty = back to the default title");
+        assertEquals("", renamed[0]);
+        assertEquals("invalid_argument", GuiActions.uplink("rename", "x".repeat(49), true, layout, ops), "48 characters at most");
+        assertEquals("invalid_argument", GuiActions.uplink("rename", "a\nb", true, layout, ops), "no control characters");
+        assertEquals("not_allowed", GuiActions.uplink("rename", "Mine", true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW), ops), "needs layout.edit");
+        assertEquals("no_screen", GuiActions.uplink("rename", "Mine", false, layout, ops));
+        assertNull(GuiActions.uplink("dashboard", "", true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW), ops));
+        assertTrue(linked[0]);
+        assertEquals("not_allowed", GuiActions.uplink("dashboard", "", true, java.util.Set.of(), ops), "needs view");
+        assertEquals("invalid_argument", GuiActions.uplink("dashboard", "x", true, layout, ops));
+        assertEquals("not_owner", GuiActions.uplink("unlink", "", true, layout, ops), "unlinking still needs network.link");
+        assertEquals("not_supported", GuiActions.uplink("rename", "A", true, layout, () -> null), "screens without a card");
+    }
 }

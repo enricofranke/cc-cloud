@@ -93,6 +93,16 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
     }, 60);
   };
 
+  // #/m/<id>?card=<uplinkId> (in-game "Show in dashboard"): open the card's page and scroll to it once it is there
+  const wantCard = r.name === "mainframe" && !props.editing ? r.card : undefined;
+  const cardThere = !!wantCard && pages.some((p) => p.cards.some((c) => c.uplink.uplinkId === wantCard || c.widgets.some((w) => w.uplink.uplinkId === wantCard)));
+  useEffect(() => {
+    if (!wantCard || !cardThere) return;
+    openCard(wantCard);
+    if (mfId) history.replaceState(null, "", `/#/m/${encodeURIComponent(mfId)}`);
+    route.value = { name: "mainframe", id: r.name === "mainframe" ? r.id : mfId };
+  }, [wantCard, cardThere]);
+
   if (props.editing)
     return <EditorLoader conn={conn} uplinks={uplinks} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
 

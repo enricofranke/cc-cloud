@@ -111,4 +111,54 @@ public final class SecurityTests {
             })
             .thenSucceed();
     }
+
+    /**
+     * The uplink screen: the card's live preview and title, the mainframe's name without a second position, rights per
+     * player (rename needs layout.edit, positions need view.positions), and renaming through the dashboard layout.
+     */
+    public static void uplinkScreenCard(GameTestHelper helper) {
+        var setup = InGameTestSupport.mainframe(helper, "ux_screen_owner");
+        var viewer = InGameTestSupport.player(helper, "ux_screen_viewer");
+        InGameTestSupport.grant(helper, setup, viewer, Role.VIEWER);
+        InGameTestSupport.placeUplink(helper);
+        helper.startSequence()
+            .thenIdle(3)
+            .thenExecute(() -> InGameTestSupport.bindAndFill(helper, setup))
+            .thenWaitUntil(() -> helper.assertTrue(InGameTestSupport.uplink(helper).hasRoute(), "uplink routed"))
+            .thenExecute(() -> {
+                var uplink = InGameTestSupport.uplink(helper);
+                var server = helper.getLevel().getServer();
+                String key = uplink.getUplinkId().toString();
+                var o = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.uplink(uplink, setup.owner(), null)).getAsJsonObject();
+                helper.assertTrue("Lights".equals(o.get("title").getAsString()) && !o.get("customTitle").getAsBoolean(), "default title: " + o.get("title"));
+                helper.assertTrue(o.getAsJsonObject("preview").getAsJsonArray("widgets").size() == 3, "preview of the 3 widgets: " + o.get("preview"));
+                helper.assertTrue(setup.mainframe().getDisplayName().equals(o.get("mainframe").getAsString()), "the name once, no second position: " + o.get("mainframe"));
+                helper.assertTrue(o.get("canRename").getAsBoolean() && o.get("canUnlink").getAsBoolean() && o.has("signal"), "owner: rights and signal");
+                helper.assertTrue("stone".equals(net.minecraft.resources.Identifier.parse(o.getAsJsonObject("attached").get("block").getAsString()).getPath()),
+                    "attached block: " + o.get("attached"));
+                var v = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.uplink(uplink, viewer, null)).getAsJsonObject();
+                helper.assertTrue(!v.get("canRename").getAsBoolean() && !v.get("canUnlink").getAsBoolean(), "viewer: no rename, no unlink");
+                helper.assertTrue("Mainframe".equals(v.get("mainframe").getAsString()) && v.get("mainframePos").getAsString().isEmpty(), "viewer: no position");
+                var viewerPerms = ai.ezfox.cccloud.access.Access.resolve(viewer, setup.id()).perms();
+                helper.assertTrue("not_allowed".equals(ai.ezfox.cccloud.gui.GuiActions.uplink("rename", "Mine", true, viewerPerms,
+                    new ai.ezfox.cccloud.gui.GuiActions.UplinkOps() {
+                        @Override
+                        public String unlink() {
+                            return null;
+                        }
+                    })), "viewer may not rename");
+
+                helper.assertTrue(ai.ezfox.cccloud.gui.GuiNetwork.renameCard(server, setup.id(), key, "Reactor 2") == null, "rename");
+                var layout = ai.ezfox.cccloud.web.WebHub.INSTANCE.layout(setup.id());
+                helper.assertTrue(layout != null && "Reactor 2".equals(layout.getAsJsonObject("cards").getAsJsonObject(key).get("title").getAsString()),
+                    "title in the dashboard layout: " + layout);
+                var renamed = com.google.gson.JsonParser.parseString(ai.ezfox.cccloud.gui.GuiViews.uplink(uplink, setup.owner(), null)).getAsJsonObject();
+                helper.assertTrue("Reactor 2".equals(renamed.get("title").getAsString()) && renamed.get("customTitle").getAsBoolean()
+                    && "Lights".equals(renamed.get("defaultTitle").getAsString()), "renamed card: " + renamed.get("title"));
+                helper.assertTrue(ai.ezfox.cccloud.gui.GuiNetwork.renameCard(server, setup.id(), key, "") == null, "reset");
+                var reset = ai.ezfox.cccloud.web.WebHub.INSTANCE.layout(setup.id());
+                helper.assertTrue(reset != null && !reset.getAsJsonObject("cards").has(key), "reset removes the entry: " + reset);
+            })
+            .thenSucceed();
+    }
 }

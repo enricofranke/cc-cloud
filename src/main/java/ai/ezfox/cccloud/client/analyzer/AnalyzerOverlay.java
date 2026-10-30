@@ -212,7 +212,8 @@ public final class AnalyzerOverlay {
         String label;
         if (p.connects() && p.via() != null) {
             Gizmos.line(center, new Vec3(p.via().x(), p.via().y(), p.via().z()), GREEN, 2f).setAlwaysOnTop();
-            label = I18n.get("cccloud.analyzer.would_connect", name(p.via()), Math.round(p.signal() * 100), p.hops());
+            label = I18n.get("cccloud.analyzer.would_connect", name(p.via()), Math.round(p.signal() * 100),
+                ai.ezfox.cccloud.analyzer.CloudAnalyzerItem.via(p.hops()).getString());
         } else if (p.nearest() != null) {
             label = I18n.get("cccloud.analyzer.out_of_range", name(p.nearest()), Math.round(p.distance()), Math.round(p.range()));
         } else {

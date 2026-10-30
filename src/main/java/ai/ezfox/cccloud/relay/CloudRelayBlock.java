@@ -62,7 +62,9 @@ public class CloudRelayBlock extends Block implements EntityBlock {
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
-        if (level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay) relay.showStatus(player);
+        if (level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            ai.ezfox.cccloud.gui.GuiNetwork.openRelay(serverPlayer, relay);
+        }
         return InteractionResult.SUCCESS;
     }
 

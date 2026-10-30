@@ -78,7 +78,7 @@ public class CloudAnalyzerItem extends Item {
         lines.add(Component.translatable("cccloud.analyzer.header", Component.translatable("cccloud.analyzer.kind." + info.kind()), status)
             .withStyle(ChatFormatting.AQUA));
         if (info.hops() >= 0) {
-            lines.add(Component.translatable("cccloud.analyzer.signal", Math.round(info.signal() * 100), info.hops()).withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatable("cccloud.analyzer.signal", Math.round(info.signal() * 100), via(info.hops())).withStyle(ChatFormatting.GRAY));
             lines.add(Component.translatable("cccloud.analyzer.route", route(info)).withStyle(ChatFormatting.GRAY));
         }
         if (info.capacity() > 0) {
@@ -86,6 +86,13 @@ public class CloudAnalyzerItem extends Item {
                 .withStyle(ChatFormatting.GRAY));
         }
         return lines;
+    }
+
+    /** "direct" (one hop: straight to the mainframe) or "via 2 relays", from a route's hop count. */
+    public static MutableComponent via(int hops) {
+        int relays = Math.max(0, hops - 1);
+        return relays == 0 ? Component.translatable("cccloud.gui.conn.direct")
+            : Component.translatable(relays == 1 ? "cccloud.gui.conn.via_relay" : "cccloud.gui.conn.via_relays", relays);
     }
 
     /** "Mainframe → Cloud Relay → Cloud Uplink" from the route's type ids. */

@@ -10,6 +10,8 @@ navigation:
 
 Every uplink and bridge connects to the **nearest reachable node** – the mainframe or a relay – and the network routes it to the mainframe over the best path (fewest hops, then the best signal; at most 8 hops). Like a Wi-Fi mesh: place relays to reach far-away bases.
 
+Right-click an uplink, bridge or relay to see what it is connected to, the card it puts on the dashboard (as a live preview), its signal and – when something is wrong – a one-line fix. **Show in dashboard** sends a chat link that opens exactly that card; **Rename** changes the card's title for everyone.
+
 ## Ranges
 
 | Block | Range to nodes | Range for devices |

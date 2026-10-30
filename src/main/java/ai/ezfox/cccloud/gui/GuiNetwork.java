@@ -130,6 +130,14 @@ public final class GuiNetwork {
             buf -> writeOpen(buf, pos, view));
     }
 
+    /** The relay screen (read-only: what it does, its networks, power). */
+    public static void openRelay(ServerPlayer player, ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) {
+        String view = GuiViews.relay(relay, player, null);
+        var pos = relay.getBlockPos();
+        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, pos, view), relay.getBlockState().getBlock().getName()),
+            buf -> writeOpen(buf, pos, view));
+    }
+
     private static void writeOpen(RegistryFriendlyByteBuf buf, net.minecraft.core.BlockPos pos, String view) {
         buf.writeBlockPos(pos);
         buf.writeUtf(view, CloudMenu.MAX_VIEW);
@@ -189,13 +197,40 @@ public final class GuiNetwork {
             }
         }
         var link = section == null ? null : section.getLink();
-        boolean canUnlink = link != null && canManageMainframe(player, link.id());
+        java.util.Set<ai.ezfox.cccloud.access.Perm> perms = link == null ? java.util.Set.of() : ai.ezfox.cccloud.access.Access.resolve(player, link.id()).perms();
         var doUnlink = unlink;
         var target = redstoneTarget;
-        String error = GuiActions.uplink(payload.action(), payload.arg(), open, canUnlink, new GuiActions.UplinkOps() {
+        var card = section;
+        String[] notice = {null};
+        String error = GuiActions.uplink(payload.action(), payload.arg(), open, perms, new GuiActions.UplinkOps() {
             @Override
             public @Nullable String unlink() {
                 doUnlink.run();
+                return null;
+            }
+
+            @Override
+            public @Nullable String rename(String title) {
+                if (link == null || player.level().getServer() == null) return "not_linked";
+                String error = renameCard(player.level().getServer(), link.id(), card.sectionId().toString(), title);
+                if (error != null) return error;
+                CCCloud.LOGGER.info("[cccloud] {} renamed the card {} to '{}' (screen)", player.getGameProfile().name(), card.sectionId(), title);
+                notice[0] = title.isEmpty() ? "title_reset" : "renamed";
+                return null;
+            }
+
+            @Override
+            public @Nullable String dashboardLink() {
+                if (link == null) return "not_linked";
+                var urls = CloudWebServer.dashboardUrls();
+                if (!CloudWebServer.isRunning() || urls.isEmpty()) return "web_off";
+                String url = ai.ezfox.cccloud.web.PairingText.cardUrl(urls.getFirst(), link.id().toString(), card.sectionId().toString());
+                if (url == null) return "web_off";
+                String custom = GuiViews.customTitle(WebHub.INSTANCE.layout(link.id()), card.sectionId().toString());
+                String title = custom != null ? custom : card.getTitle().isEmpty() ? "-" : card.getTitle();
+                player.sendSystemMessage(Component.translatable("cccloud.gui.card.link_chat", title)
+                    .append(ai.ezfox.cccloud.web.PairingText.openLink(url, Component.translatable("cccloud.gui.card.link_open"))));
+                notice[0] = "link_sent";
                 return null;
             }
 
@@ -209,7 +244,37 @@ public final class GuiNetwork {
             }
         });
         if (error != null) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
-        if (open) push(player, error != null ? error : "redstone".equals(payload.action()) ? "redstone_saved" : "unlinked");
+        if (open) push(player, error != null ? error : notice[0] != null ? notice[0] : "redstone".equals(payload.action()) ? "redstone_saved" : "unlinked");
+    }
+
+    /**
+     * Sets (or with an empty title: removes) a card's custom title in the mainframe's dashboard layout and sends the
+     * layout to every open dashboard. A mainframe without a layout gets an empty v2 document (cards keep their
+     * automatic places). Returns null or an error code.
+     */
+    public static @Nullable String renameCard(MinecraftServer server, UUID mainframeId, String cardKey, String title) {
+        if (!WebHub.INSTANCE.tryLayoutSave(mainframeId)) return "rate_limited";
+        var current = WebHub.INSTANCE.layout(mainframeId);
+        var layout = current != null ? current : emptyLayout();
+        if (!(layout.get("cards") instanceof com.google.gson.JsonObject cards)) return "invalid_layout";
+        var card = cards.get(cardKey) instanceof com.google.gson.JsonObject c ? c : new com.google.gson.JsonObject();
+        if (title.isEmpty()) card.remove("title");
+        else card.addProperty("title", title);
+        if (card.isEmpty()) cards.remove(cardKey);
+        else cards.add(cardKey, card);
+        var result = ai.ezfox.cccloud.layout.LayoutValidator.validate(layout);
+        if (result.layout() == null) return "invalid_layout";
+        ai.ezfox.cccloud.layout.LayoutData.get(server).set(mainframeId, result.layout());
+        return null;
+    }
+
+    private static com.google.gson.JsonObject emptyLayout() {
+        var layout = new com.google.gson.JsonObject();
+        layout.addProperty("v", 2);
+        layout.add("pages", new com.google.gson.JsonArray());
+        layout.add("cards", new com.google.gson.JsonObject());
+        layout.add("widgets", new com.google.gson.JsonObject());
+        return layout;
     }
 
     private static final GuiActions.MainframeOps DENY_ALL = new GuiActions.MainframeOps() {
@@ -427,6 +492,7 @@ public final class GuiNetwork {
         if (menu instanceof MainframeMenu && be instanceof CloudMainframeBlockEntity mainframe) return GuiViews.mainframe(mainframe, player, notice);
         if (menu instanceof UplinkMenu && be instanceof CloudUplinkBlockEntity uplink) return GuiViews.uplink(uplink, player, notice);
         if (menu instanceof UplinkMenu && be instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) return GuiViews.bridge(bridge, player, notice);
+        if (menu instanceof UplinkMenu && be instanceof ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) return GuiViews.relay(relay, player, notice);
         return null;
     }
 

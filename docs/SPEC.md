@@ -339,10 +339,20 @@ Problem: after linking an uplink the dashboard said "No uplinks yet" plus Lua co
   - trusted players: add (name field) / remove
   - PIN: set/change/clear (masked input)
   - LAN-only / internet status (read-only, explains the config switch)
-- **Uplink screen** (right-click): status, linked mainframe (position, distance, range OK), title, widget count, mode (auto / Lua / direct), and an "unlink" button (owner/trusted).
+- **Uplink screen** (right-click): status, linked mainframe (position, distance, range OK), title, widget count, mode (auto / Lua / direct), and an "unlink" button (owner/trusted). Redesigned in plain language on 2026-10-30, see "Device screens in plain words" below.
 - Style: CC: Tweaked look (dark terminal panel with the CC border, silkscreen-like pixel headings, gold for advanced, cyan accents). GUI textures are drawn by the art generator (`textures/gui/mainframe.png`, `textures/gui/uplink.png`, widgets in `textures/gui/widgets.png`); the Java side draws text and dynamic parts.
 - All actions go through custom payload packets with server-side permission checks (never trust the client). The screen gets a snapshot when opened and live updates while it is open (pending approvals appear without reopening).
 - Chat stays as a fallback: the clickable Allow/Deny chat message still appears for players who do not have the screen open.
+
+### Device screens in plain words (2026-10-30)
+Feedback from the showcase world: on a reactor it was hard to see what an uplink is and does. The uplink, bridge and relay screens (one screen class, `UplinkScreen`, view by `GuiViews.uplink/bridge/relay`) now answer in this order:
+- **Header** (fixed): the attached block's icon and "Connected to: <block> (<mod>)" (computers: "Computer #7 “label”"; bridges: "Reads: ME system (Applied Energistics 2)"; relays: what they do) and a status pill in words ("Online – live on the dashboard", "Online – but the signal is weak", "Offline – the mainframe has no power", "Paused – the mainframe is full", "Not linked yet").
+- **The fix first**: when something is wrong, one warning line with what to do (not linked, no route, over capacity, old link out of range, mainframe without power / killed by redstone / dashboard off / not loaded / cloud disabled, weak signal below 15 %).
+- **On the dashboard**: what kind of card it is (ready-made machine card, Storage card, automatic computer card, Lua card, none yet), what a player can use on it, and a **live preview** of the card as the dashboard shows it (title incl. the layout's custom title, widgets as small read-only pixel widgets; layout-hidden widgets left out, layout labels used). The view carries `preview` (`CardPreview`: ≤ 24 widgets, texts ≤ 40 chars, ≤ 32 chart points, a few KB).
+- **Connection**: "Linked to <mainframe name>" (the default name already contains its position; it is never appended again; without `view.positions` just "Mainframe") and a signal bar with "72 % · direct / via 1 relay / by cable".
+- **Actions**: Rename (the card's `title` in the mainframe's dashboard layout, needs `layout.edit`, empty = the original name, 5 saves / 10 s per mainframe like `layout_set`), Show in dashboard (a chat link to `<dashboard>/#/m/<mainframe>?card=<section>`, needs `view`; the dashboard opens the card's page and scrolls to it), Unlink (needs `network.link`, asks once more).
+- **Advanced** (collapsed, remembered per player in `config/cccloud-screens.properties`): wireless redstone, card kind/template/mode, widget and computer counts, id, positions, distance, reach, hops and signal numbers.
+- The relay opens this screen on right-click (before: chat lines): what it does (its ranges), the networks it carries (devices routed through it, its own signal; names only where the player has `view`, others counted) and its power. The mainframe's overview starts with what it is, "6 of 7 linked devices connected · 1 relay" and the fix when it is off.
 
 ### Web empty state
 - Replace the "No uplinks yet" Lua wall with a 3-step setup guide using the in-game names (Place Cloud Uplink on a computer → link with the Link Card → it shows up here automatically as a Computer card). Below it, a collapsible "Build your own dashboard" with a **copy button** for the starter script and the hint "or run `cloud-demo` on the computer".

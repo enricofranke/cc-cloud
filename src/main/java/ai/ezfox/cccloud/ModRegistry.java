@@ -181,6 +181,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("security_no_escalation", () -> ai.ezfox.cccloud.gametest.SecurityTests::noEscalationInGame);
         TEST_FUNCTIONS.register("security_no_link_takeover", () -> ai.ezfox.cccloud.gametest.SecurityTests::noLinkTakeover);
         TEST_FUNCTIONS.register("security_screen_parts", () -> ai.ezfox.cccloud.gametest.SecurityTests::screenShowsOnlyAllowedParts);
+        TEST_FUNCTIONS.register("uplink_screen_card", () -> ai.ezfox.cccloud.gametest.SecurityTests::uplinkScreenCard);
         TEST_FUNCTIONS.register("section_cache", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::unloadAndReload);
         TEST_FUNCTIONS.register("section_orphan_broken", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::brokenUplinkDropsSection);
         TEST_FUNCTIONS.register("section_orphan_silent", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::silentlyRemovedUplinkDropsSection);

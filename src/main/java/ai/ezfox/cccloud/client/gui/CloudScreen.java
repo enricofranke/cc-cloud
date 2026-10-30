@@ -90,6 +90,12 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
             hits.add(new Hit(x, Math.max(y, clipTop), 14, Math.min(y + 14, clipBottom) - Math.max(y, clipTop), action));
         }
 
+        /** Makes an area clickable (only the part inside the viewport). */
+        public void hitArea(int x, int y, int w, int h, Runnable action) {
+            int top = Math.max(y, clipTop), bottom = Math.min(y + h, clipBottom);
+            if (bottom > top) hits.add(new Hit(x, top, w, bottom - top, action));
+        }
+
         public void toggle(int x, int y, boolean on, boolean enabled, Runnable action) {
             CloudGui.toggle(g, x, y, on);
             if (enabled) hits.add(new Hit(x, y, 24, 12, action));
@@ -243,6 +249,11 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
         setFocused(null);
         rows.clear();
         buildRows();
+    }
+
+    /** Scrolls the list to its end (clamped when drawn). */
+    public void scrollToEnd() {
+        scroll = Double.MAX_VALUE;
     }
 
     protected void playClick() {

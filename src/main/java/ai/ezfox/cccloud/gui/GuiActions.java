@@ -48,11 +48,19 @@ public final class GuiActions {
     }
 
     /**
-     * Uplink screen actions. Both need {@code network.link} on the linked mainframe: unlinking, and {@code redstone}
-     * (wireless redstone, arg {@code <off|transmit|receive>:<channel>}).
+     * Uplink screen actions (also the bridge screen's), each with the permission it needs on the linked mainframe:
+     * unlinking and {@code redstone} (wireless redstone, arg {@code <off|transmit|receive>:<channel>}) need
+     * {@code network.link}, {@code rename} (the card's dashboard title, arg = the title, empty = the default) needs
+     * {@code layout.edit}, {@code dashboard} (a chat link to the card on the dashboard) needs {@code view}.
      */
     public enum Uplink {
-        UNLINK, REDSTONE;
+        UNLINK(Perm.NETWORK_LINK), REDSTONE(Perm.NETWORK_LINK), RENAME(Perm.LAYOUT_EDIT), DASHBOARD(Perm.VIEW);
+
+        public final Perm perm;
+
+        Uplink(Perm perm) {
+            this.perm = perm;
+        }
 
         public String id() {
             return name().toLowerCase(Locale.ROOT);
@@ -100,6 +108,16 @@ public final class GuiActions {
         default @Nullable String redstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
             return "not_supported";
         }
+
+        /** The card's title on the dashboard (validated plain text, empty = back to the default). */
+        default @Nullable String rename(String title) {
+            return "not_supported";
+        }
+
+        /** Sends the player a chat link that opens this card on the dashboard. */
+        default @Nullable String dashboardLink() {
+            return "not_supported";
+        }
     }
 
     private GuiActions() {
@@ -145,14 +163,28 @@ public final class GuiActions {
      * @param canUnlink the uplink is linked and the player has rights on its mainframe
      */
     public static @Nullable String uplink(String action, String arg, boolean screenOpen, boolean canUnlink, UplinkOps ops) {
+        return uplink(action, arg, screenOpen, canUnlink ? Set.of(Perm.NETWORK_LINK) : Set.of(), ops);
+    }
+
+    /**
+     * @param perms the player's permissions on the mainframe the uplink is linked to (empty when it is not linked)
+     */
+    public static @Nullable String uplink(String action, String arg, boolean screenOpen, Set<Perm> perms, UplinkOps ops) {
         var a = Uplink.byId(action);
         if (a == null) return "unknown_action";
         if (!screenOpen) return "no_screen";
-        if (a == Uplink.UNLINK) {
+        if (a == Uplink.UNLINK || a == Uplink.DASHBOARD) {
             if (!arg.isEmpty()) return "invalid_argument";
-            if (!canUnlink) return "not_owner";
-            return ops.unlink();
+            if (!perms.contains(a.perm)) return a == Uplink.UNLINK ? "not_owner" : "not_allowed";
+            return a == Uplink.UNLINK ? ops.unlink() : ops.dashboardLink();
         }
+        if (a == Uplink.RENAME) {
+            String title = cardTitle(arg);
+            if (title == null) return "invalid_argument";
+            if (!perms.contains(a.perm)) return "not_allowed";
+            return ops.rename(title);
+        }
+        boolean canUnlink = perms.contains(Perm.NETWORK_LINK);
         int colon = arg.indexOf(':');
         var mode = colon < 0 ? null : ai.ezfox.cccloud.redstone.RedstoneMode.byId(arg.substring(0, colon));
         String channel = colon < 0 ? "" : arg.substring(colon + 1);
@@ -162,6 +194,15 @@ public final class GuiActions {
         }
         if (!canUnlink) return "not_owner";
         return ops.redstone(mode, channel);
+    }
+
+    /** A card title from the screen: plain text without control characters, trimmed, at most 48 characters; null if invalid. */
+    static @Nullable String cardTitle(String arg) {
+        if (arg.length() > ai.ezfox.cccloud.uplink.Limits.TITLE) return null;
+        for (int i = 0; i < arg.length(); i++) {
+            if (Character.isISOControl(arg.charAt(i))) return null;
+        }
+        return arg.strip();
     }
 
     private static @Nullable UUID parseUuid(String s) {
