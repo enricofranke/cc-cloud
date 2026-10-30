@@ -211,6 +211,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("uplink_side_fallback_hint", () -> ai.ezfox.cccloud.gametest.ProbeTests::sideFallbackAndHint);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
+        TEST_FUNCTIONS.register("recipes_live_catalog", () -> ai.ezfox.cccloud.gametest.RecipeCatalogTests::liveRecipes);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
         TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
         TEST_FUNCTIONS.register("access_permission_nodes", () -> ai.ezfox.cccloud.gametest.AccessTests::permissionNodes);

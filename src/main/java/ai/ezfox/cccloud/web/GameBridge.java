@@ -151,6 +151,15 @@ public interface GameBridge {
         return "store_not_configured";
     }
 
+    /** The live recipes of CC: Cloud items ({@code GET /api/recipes}): a serialized JSON document and its ETag. */
+    record RecipesJson(byte[] json, String etag) {
+    }
+
+    /** The server's current recipes for our items, or null if there are none to show. Server thread. */
+    default @Nullable RecipesJson recipes() {
+        return null;
+    }
+
     /** Security review L3: a share link works only while its creator may still create shares (null creator: older links). */
     default boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
         return true;

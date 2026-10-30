@@ -146,6 +146,17 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.@Nullable RecipesJson recipes() {
+        try {
+            var snapshot = ai.ezfox.cccloud.recipes.RecipeCatalog.get(server);
+            return new GameBridge.RecipesJson(snapshot.json(), snapshot.etag());
+        } catch (RuntimeException e) {
+            CloudLog.LOGGER.warn("[cccloud] Could not build the recipe catalog", e);
+            return null;
+        }
+    }
+
+    @Override
     public boolean shareCreatorAllowed(ai.ezfox.cccloud.access.AccessStore.Share share) {
         return share.creator() == null || resolver().resolve(share.creator(), share.mainframeId()).has(ai.ezfox.cccloud.access.Perm.SHARES_CREATE);
     }

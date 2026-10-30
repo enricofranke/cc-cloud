@@ -29,7 +29,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, RECIPES, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
         API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
 
         /** The v0.10 public API ({@code /api/v1/…}): only exists while {@code apiEnabled=true}. */
@@ -133,6 +133,8 @@ public final class Router {
         // Voxel view stage 2: the block texture atlas (game textures only, like item icons).
         new Route(Id.VOXEL_ATLAS, HttpMethod.GET, Pattern.compile("/api/voxel-atlas/[0-9]{1,9}\\.png"), Access.PUBLIC, "/api/voxel-atlas/1.png"),
         new Route(Id.ICON, HttpMethod.GET, Pattern.compile("/api/icon/[a-z0-9_.-]{1,64}/[a-z0-9_./-]{1,512}\\.png"), Access.PUBLIC, "/api/icon/minecraft/iron_ingot.png"),
+        // The live recipes of CC: Cloud items for /docs (public like the docs and icons: game data, no secrets).
+        new Route(Id.RECIPES, HttpMethod.GET, Pattern.compile("/api/recipes"), Access.PUBLIC, "/api/recipes"),
         // The upgrade itself is public; every WebSocket message except auth/pong is denied until the auth message succeeded.
         new Route(Id.WEBSOCKET, HttpMethod.GET, Pattern.compile("/ws/client"), Access.PUBLIC, "/ws/client"),
         // Static files: everything that is not under /api/ or /ws/.

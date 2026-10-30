@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "CC: Cloud GameTest only: recipe overrides for the live recipes test (never in the release jar)",
+    "min_format": 101,
+    "max_format": 101
+  }
+}

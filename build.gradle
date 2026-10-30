@@ -442,9 +442,10 @@ tasks.register('exportIcons', JavaExec) {
 }
 
 // The release jar carries no GameTest data (test instances reference test functions that are only registered in
-// development and on the GameTest server); dev runs read the resources directly and keep them.
+// development and on the GameTest server; testpacks/ are datapacks only GameTest runs enable); dev runs read the
+// resources directly and keep them.
 tasks.named('jar', Jar) {
-    exclude 'data/cccloud/test_instance/**', 'data/cccloud/test_environment/**', 'data/cccloud/structure/test_*'
+    exclude 'data/cccloud/test_instance/**', 'data/cccloud/test_environment/**', 'data/cccloud/structure/test_*', 'testpacks/**'
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
@@ -489,6 +490,8 @@ tasks.named('test', Test).configure {
     // StoreScriptsTest runs every store/scripts program (the tests run in build/minecraft-junit).
     systemProperty 'cccloud.storeScripts', file('store/scripts').absolutePath
     inputs.dir('store/scripts').withPropertyName('storeScripts').withPathSensitivity(PathSensitivity.RELATIVE)
+    // RecipeCatalogTest compares hand-made "live" recipes with the mod's own recipe files.
+    systemProperty 'cccloud.recipeDir', file('src/main/resources/data/cccloud/recipe').absolutePath
     testLogging {
         events "failed"
         exceptionFormat "full"
