@@ -238,7 +238,7 @@ Scope: what was added since 0.9.0 (public API, scenes and schedules, production 
 
 Checked and found sound: scope ∩ live rights on every API route and in the event stream (per-session filtering of restricted sections, no other mainframes), CORS only for exact origins, key hashing and constant-time compare, the API switched off (404, streams end within 5 s); scenes (rights of the presser or the scene owner per step at run time, PIN re-checked in every action path, no scene in a scene, run limits); production statistics (same mainframe, `storage.search`, `view.positions` for restricted sections, memory bounded per storage); live recipes (built once per reload off the server thread, one shared build, only our items); voxel batch (every rule per section, strict bounded body, bounded output); map tile copies (deep copies on the server thread, the background never touches live chunks); permessage-deflate inflate bounds; big-screen view decoding (vanilla string bounds, no reassembly).
 
-Open (low, recommendations): `hideNumbers` share links still send the values of charts and gauges (the dashboard hides gauge digits; consider dropping chart values too); production statistics map a storage to its mainframe from a cache refreshed every second; every per-IP limiter map is cleared once it holds 10 000 IPs (an attacker with that many addresses resets them); in a scene, the PIN flag of a step on a redstone device that moved to another card is decided by its old card (the step then fails with `pin_required` instead of asking first; no bypass, the action re-checks); the Discord bot's image tag is mutable (pin a digest) and its pod has no NetworkPolicy.
+Open (low, recommendations): `hideNumbers` share links still send the values of charts and gauges (the dashboard hides gauge digits; consider dropping chart values too); production statistics map a storage to its mainframe from a cache refreshed every second; every per-IP limiter map is cleared once it holds 10 000 IPs (an attacker with that many addresses resets them); in a scene, the PIN flag of a step on a redstone device that moved to another card is decided by its old card (the step then fails with `pin_required` instead of asking first; no bypass, the action re-checks).
 
 Follow-ups done after the review (2026-10-30, branch `followups`):
 - **Slice tiles on disk:** a purged mainframe's slice folders are deleted in every dimension (memory cache too, and tiles
@@ -247,6 +247,11 @@ Follow-ups done after the review (2026-10-30, branch `followups`):
 - **Production statistics, large stock changes:** new items are picked with a heap of at most `trackedItemsPerStorage`
   entries in one pass over the changes; a change of 50 000 types no longer allocates an entry with two rings for each of
   them before trimming (`ProductionTrackerTest`).
+- **Discord bot pod:** a NetworkPolicy (`discord-bot/deploy/networkpolicy.yaml`) denies all ingress (the kubelet's probe
+  comes from the node, which policies never block) and allows egress only to the cluster DNS and TCP 443 on public IPv4
+  addresses (private, link-local/metadata, loopback and CGNAT ranges excluded). Pinning the image by digest is documented
+  in `discord-bot/README.md` and the image workflow prints the digest; the Deployment still names the tag until the first
+  image is checked and pinned. Checked with `test/deploy.test.ts` and a strict schema validation (no cluster).
 
 ## Residual risks and operator advice
 - Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md).
