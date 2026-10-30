@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Security & hosting"
-  position: 12
+  position: 13
   icon: cccloud:quantum_core
 ---
 
