@@ -23,6 +23,9 @@ public final class RuleCodec {
     static final Pattern ITEM = Pattern.compile("[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,128}");
     static final Set<String> SIDES = Set.of("top", "bottom", "left", "right", "front", "back");
     static final Set<String> LEVELS = Set.of("info", "warn", "error");
+    /** Weekday names of a schedule trigger; index = bit (Monday = bit 0). */
+    public static final java.util.List<String> DAYS = java.util.List.of("mon", "tue", "wed", "thu", "fri", "sat", "sun");
+    static final Pattern CLOCK = Pattern.compile("([01][0-9]|2[0-3]):[0-5][0-9]");
 
     public record Result(@Nullable Rule rule, @Nullable String error) {
         static Result fail(String detail) {
@@ -104,6 +107,19 @@ public final class RuleCodec {
                 keys(obj, Set.of("type", "time"), "when");
                 yield new Rule.TimeTrigger((int) number(obj, "time", 0, 23_999, true));
             }
+            case "schedule" -> {
+                keys(obj, Set.of("type", "days", "at"), "when");
+                var days = array(obj, "days", DAYS.size());
+                int mask = 0;
+                for (var e : days) {
+                    int bit = e instanceof JsonPrimitive p && p.isString() ? DAYS.indexOf(p.getAsString()) : -1;
+                    if (bit < 0 || (mask & 1 << bit) != 0) throw new Invalid("days must be unique weekdays (mon … sun)");
+                    mask |= 1 << bit;
+                }
+                if (mask == 0) throw new Invalid("at least one day");
+                String at = string(obj, "at", CLOCK, "at (HH:MM)");
+                yield new Rule.ScheduleTrigger(mask, Integer.parseInt(at.substring(0, 2)) * 60 + Integer.parseInt(at.substring(3)));
+            }
             default -> throw new Invalid("unknown trigger " + type);
         };
     }
@@ -132,6 +148,22 @@ public final class RuleCodec {
             }
             default -> throw new Invalid("unknown check " + type);
         };
+    }
+
+    /** One rule action (also a scene step, v0.10): the action, or an error detail. */
+    public record ActionParse(Rule.@Nullable Action action, @Nullable String error) {
+    }
+
+    /** Parses one action with the rule schema; {@code allowScene} = the {@code scene} action is allowed (rules, not scenes). */
+    public static ActionParse parseAction(@Nullable JsonElement element, long maxCraft, boolean allowScene) {
+        if (!(element instanceof JsonObject obj)) return new ActionParse(null, "step must be an object");
+        try {
+            var action = action(obj, maxCraft);
+            if (action instanceof Rule.SceneAction && !allowScene) return new ActionParse(null, "a scene cannot run another scene");
+            return new ActionParse(action, null);
+        } catch (Invalid e) {
+            return new ActionParse(null, e.getMessage());
+        }
     }
 
     private static Rule.Action action(JsonObject obj, long maxCraft) {
@@ -166,6 +198,10 @@ public final class RuleCodec {
                 keys(obj, Set.of("type", "enabled"), "dashboard action");
                 yield new Rule.DashboardAction(bool(obj, "enabled"));
             }
+            case "scene" -> {
+                keys(obj, Set.of("type", "sceneId"), "scene action");
+                yield new Rule.SceneAction(string(obj, "sceneId", ID, "sceneId"));
+            }
             default -> throw new Invalid("unknown action " + type);
         };
     }
@@ -191,6 +227,14 @@ public final class RuleCodec {
                 o.addProperty("time", t.time());
                 yield o;
             }
+            case Rule.ScheduleTrigger t -> {
+                var o = obj("type", "schedule");
+                var days = new JsonArray();
+                for (int i = 0; i < DAYS.size(); i++) if ((t.days() & 1 << i) != 0) days.add(DAYS.get(i));
+                o.add("days", days);
+                o.addProperty("at", String.format(java.util.Locale.ROOT, "%02d:%02d", t.minute() / 60, t.minute() % 60));
+                yield o;
+            }
         });
         if (!rule.conditions().isEmpty()) {
             var conditions = new JsonArray();
@@ -198,34 +242,38 @@ public final class RuleCodec {
             json.add("if", conditions);
         }
         var actions = new JsonArray();
-        for (var a : rule.actions()) {
-            actions.add(switch (a) {
-                case Rule.RedstoneAction r -> {
-                    var o = obj("type", "redstone", "uplinkId", r.uplinkId(), "side", r.side());
-                    o.addProperty("value", r.value());
-                    yield o;
-                }
-                case Rule.WidgetAction w -> {
-                    var o = obj("type", "widget", "uplinkId", w.uplinkId(), "widgetId", w.widgetId());
-                    o.add("value", w.value());
-                    yield o;
-                }
-                case Rule.CraftAction c -> {
-                    var o = obj("type", "craft", "uplinkId", c.uplinkId(), "item", c.item());
-                    o.addProperty("amount", c.amount());
-                    yield o;
-                }
-                case Rule.AlertAction al -> obj("type", "alert", "text", al.text(), "level", al.level());
-                case Rule.DashboardAction d -> {
-                    var o = obj("type", "dashboard");
-                    o.addProperty("enabled", d.enabled());
-                    yield o;
-                }
-            });
-        }
+        for (var a : rule.actions()) actions.add(actionJson(a));
         json.add("then", actions);
         json.addProperty("notify", rule.push());
         return json;
+    }
+
+    /** One action as JSON (rules and scene steps). */
+    public static JsonObject actionJson(Rule.Action a) {
+        return switch (a) {
+            case Rule.RedstoneAction r -> {
+                var o = obj("type", "redstone", "uplinkId", r.uplinkId(), "side", r.side());
+                o.addProperty("value", r.value());
+                yield o;
+            }
+            case Rule.WidgetAction w -> {
+                var o = obj("type", "widget", "uplinkId", w.uplinkId(), "widgetId", w.widgetId());
+                o.add("value", w.value());
+                yield o;
+            }
+            case Rule.CraftAction c -> {
+                var o = obj("type", "craft", "uplinkId", c.uplinkId(), "item", c.item());
+                o.addProperty("amount", c.amount());
+                yield o;
+            }
+            case Rule.AlertAction al -> obj("type", "alert", "text", al.text(), "level", al.level());
+            case Rule.DashboardAction d -> {
+                var o = obj("type", "dashboard");
+                o.addProperty("enabled", d.enabled());
+                yield o;
+            }
+            case Rule.SceneAction sc -> obj("type", "scene", "sceneId", sc.sceneId());
+        };
     }
 
     private static JsonObject checkJson(Rule.Check check) {

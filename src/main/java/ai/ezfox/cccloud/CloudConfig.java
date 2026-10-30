@@ -66,6 +66,14 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_KEY;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
+    // v0.10 schedules, scenes
+    public static final ModConfigSpec.IntValue MAX_SCHEDULES;
+    public static final ModConfigSpec.IntValue MIN_INTERVAL_MINUTES;
+    public static final ModConfigSpec.BooleanValue RUN_MISSED;
+    public static final ModConfigSpec.IntValue MISSED_WINDOW_HOURS;
+    public static final ModConfigSpec.ConfigValue<String> TIMEZONE;
+    public static final ModConfigSpec.BooleanValue SCENES_ENABLED;
+    public static final ModConfigSpec.IntValue MAX_SCENES;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -229,6 +237,33 @@ public final class CloudConfig {
         MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
             .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("schedules");
+        MAX_SCHEDULES = b.comment("Schedules per mainframe: rules triggered by a clock (every N minutes, weekdays + time, in-game time of day).")
+            .translation("cccloud.configuration.maxSchedulesPerMainframe")
+            .defineInRange("maxSchedulesPerMainframe", 16, 1, 128);
+        MIN_INTERVAL_MINUTES = b.comment("Shortest real-time interval of an 'every N minutes' schedule.")
+            .translation("cccloud.configuration.minIntervalMinutes")
+            .defineInRange("minIntervalMinutes", 1, 1, 1440);
+        RUN_MISSED = b.comment("After a server restart, run at most one missed occurrence of each real-time schedule (false = never catch up).")
+            .translation("cccloud.configuration.runMissed")
+            .define("runMissed", true);
+        MISSED_WINDOW_HOURS = b.comment("Only missed occurrences younger than this many hours are caught up after a restart.")
+            .translation("cccloud.configuration.missedWindowHours")
+            .defineInRange("missedWindowHours", 24, 1, 168);
+        TIMEZONE = b.comment("Time zone of weekday + time schedules, e.g. Europe/Berlin. Empty = the server's system time zone.")
+            .translation("cccloud.configuration.timezone")
+            .define("timezone", "", o -> o instanceof String s && s.length() <= 64);
+        b.pop();
+
+        b.push("scenes");
+        SCENES_ENABLED = b.comment("Scenes: one dashboard button that runs several actions in order (each checked against the presser's rights).")
+            .translation("cccloud.configuration.scenesEnabled")
+            .define("scenesEnabled", true);
+        MAX_SCENES = b.comment("Scenes per mainframe.")
+            .translation("cccloud.configuration.maxScenesPerMainframe")
+            .defineInRange("maxScenesPerMainframe", 32, 1, 64);
         b.pop();
 
         b.push("store");
