@@ -2,6 +2,30 @@
 
 All notable changes to CC: Cloud. Versions before 0.9.0 were development milestones and were not published.
 
+## Unreleased
+
+### v0.10 – Scenes, schedules, production statistics, public API
+- **Scenes**: one named button that runs several actions in order (widgets on any card, redstone, crafting, alerts,
+  the dashboard switch) with delays counted in server ticks, optional confirmation and PIN. Every step is checked
+  against the rights of whoever pressed it, so a scene never does more than its presser could by hand; saving needs
+  every permission the steps need. Scenes show up as a Scenes card (move the buttons anywhere in the layout editor) and
+  work on the Cloud Tablet and the Cloud Display; the Scenes page edits them with the rule pickers and test-runs them
+  with a result per step.
+- **Schedules** as rule triggers: weekdays + time (server time zone), every N minutes, and in-game time with presets
+  (dawn, noon, dusk, midnight). After a restart at most one missed run is caught up; schedules of unloaded mainframes
+  are skipped and logged once. A rule can run a scene (with the scene owner's rights, never a PIN scene). Limits per
+  mainframe and a minimum interval in the server config.
+- **Production statistics** for AE2 and Refined Storage: items gained, consumed and crafted per minute and per hour,
+  top producers and consumers, an item view ("what is eating my iron"), the energy flow of all energy cards, charts,
+  and pinned rates as a Production card. Sampled once a minute from the bridges' item index with bounded memory; only
+  who may search a storage sees its numbers.
+- **Public API v1** (off by default): per-player API keys bound to one mainframe with scopes, optional expiry and IP
+  allow-list, `/api/v1` REST routes (sections, widget values, storage search, production, scenes), a read-only
+  Server-Sent Events stream, an OpenAPI description, rate limits, audit log; keys never get more than their owner's
+  live rights and never reach PIN-protected controls. New permission `api.keys` and server node `cccloud.api.keys`.
+- Docs (EN/DE): scenes, schedules, production statistics and a Public API page with curl, Home Assistant and a
+  Discord bot example; handbook regenerated.
+
 ## 0.9.0 – first public release candidate
 
 Minecraft 26.1.2, NeoForge 26.1.2.109+, CC: Tweaked 1.120.0+. This release bundles everything built in the
