@@ -159,6 +159,18 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             // ./gradlew runGameTestServer -PskipLoadTest skips the timing-sensitive load test (its own batch otherwise).
             if (project.hasProperty("skipLoadTest")) systemProperty 'cccloud.skipLoadTest', 'true'
+            // ./gradlew runGameTestServer -PscaleTest runs only the scale benchmark (docs/SPEC.md "Scaling"); sizes with
+            // -PscaleTestBig=500 -PscaleTestMainframes=10 -PscaleTestDevices=100 -PscaleTestBrowsers=50 -PscaleTestBigBrowsers=10
+            // -PscaleTestSeconds=30 -PscaleTestBaseline=10 -PscaleTestHold=0 (s, for tools/e2e/scale-render.mjs) -PscaleTestStrict=true.
+            if (project.hasProperty("scaleTest")) {
+                systemProperty 'cccloud.scaleTest', 'true'
+                systemProperty 'cccloud.skipLoadTest', 'true'
+                ['big', 'mainframes', 'devices', 'browsers', 'bigBrowsers', 'seconds', 'baseline', 'hold', 'strict'].each { key ->
+                    def name = 'scaleTest' + key.capitalize()
+                    if (project.hasProperty(name)) systemProperty "cccloud.scaleTest.${key}", project.property(name).toString()
+                }
+                programArguments.addAll '--tests', 'cccloud:scale_test'
+            }
             // A free port per run (parallel checkouts never collide) and hub flushes on the server tick (load-independent tests).
             systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '0'
             systemProperty 'cccloud.gametest', 'true'

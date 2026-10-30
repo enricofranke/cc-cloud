@@ -181,6 +181,15 @@ public final class RsDevices {
     // ---- cards -------------------------------------------------------------------------------------------------------
 
     static void tick(MinecraftServer server) {
+        long cost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            tickCards(server);
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RS_CARDS, cost);
+        }
+    }
+
+    private static void tickCards(MinecraftServer server) {
         var data = RsDeviceData.get(server);
         boolean all = server.getTickCount() % REFRESH_INTERVAL == 0;
         if (!all && DIRTY.isEmpty()) return;

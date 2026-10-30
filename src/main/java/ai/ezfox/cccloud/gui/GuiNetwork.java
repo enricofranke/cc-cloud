@@ -527,6 +527,15 @@ public final class GuiNetwork {
     private static void onServerTick(ServerTickEvent.Post event) {
         var server = event.getServer();
         if (server.getTickCount() % UPDATE_INTERVAL != 0) return;
+        long cost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            updateOpenScreens(server);
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.SCREENS, cost);
+        }
+    }
+
+    private static void updateOpenScreens(net.minecraft.server.MinecraftServer server) {
         for (var player : server.getPlayerList().getPlayers()) {
             if (!(player.containerMenu instanceof CloudMenu menu)) continue;
             try {

@@ -186,6 +186,15 @@ public final class TabletService {
 
     private static void onServerTick(ServerTickEvent.Post event) {
         if (OPEN.isEmpty()) return;
+        long cost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            tickOpen(event);
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.SCREENS, cost);
+        }
+    }
+
+    private static void tickOpen(ServerTickEvent.Post event) {
         InGameClients.flushIfNoWebServer();
         var server = event.getServer();
         boolean check = server.getTickCount() % CHECK_INTERVAL == 0;

@@ -58,7 +58,7 @@ public final class MainframeCards {
         try {
             tick(event.getServer());
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.CARDS, tickCost);
         }
     }
 

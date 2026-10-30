@@ -196,7 +196,7 @@ public final class RuleService {
                 }
             }
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RULES, tickCost);
         }
     }
 

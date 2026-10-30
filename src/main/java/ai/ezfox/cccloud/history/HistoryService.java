@@ -75,7 +75,7 @@ public final class HistoryService {
                 store.prune(now);
             }
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.HISTORY, tickCost);
         }
     }
 

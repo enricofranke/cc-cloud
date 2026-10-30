@@ -885,7 +885,7 @@ public final class WebHub {
     private final Object flushLock = new Object();
 
     /** GameTests ({@code -Dcccloud.gametest=true}): flush on every server tick, so delivery does not depend on wall-clock timers. */
-    public static final boolean FLUSH_EVERY_TICK = Boolean.getBoolean("cccloud.gametest");
+    public static volatile boolean FLUSH_EVERY_TICK = Boolean.getBoolean("cccloud.gametest");
 
     public void flush() {
         synchronized (flushLock) {

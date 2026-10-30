@@ -142,7 +142,7 @@ public final class ProductionService {
             sampleOneStorage(server);
             sampleEnergy(server);
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.PRODUCTION, tickCost);
         }
     }
 

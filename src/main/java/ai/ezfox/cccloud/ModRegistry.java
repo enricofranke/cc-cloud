@@ -210,6 +210,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("probe_remote_target", () -> ai.ezfox.cccloud.gametest.ProbeTests::remoteTarget);
         TEST_FUNCTIONS.register("uplink_side_fallback_hint", () -> ai.ezfox.cccloud.gametest.ProbeTests::sideFallbackAndHint);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
+        TEST_FUNCTIONS.register("scale_test", () -> ai.ezfox.cccloud.gametest.ScaleTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
         TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
