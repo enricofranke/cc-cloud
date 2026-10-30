@@ -158,13 +158,66 @@ export function removeItem<T extends GridItem>(items: T[], id: string): T[] {
 
 export const bottom = (items: GridItem[]) => items.reduce((m, i) => Math.max(m, i.y + i.h), 0);
 
+/**
+ * Up to this many items, overlapping saved boxes are resolved by pushing (item by item, like the editor) and items
+ * without a box go to the first free spot. Both are cubic in the worst case: a saved layout with 2048 cards on the same
+ * spot froze every dashboard that opened it for minutes (security review 2026-10-30). Beyond it, overlaps are resolved
+ * in one pass (boxes without overlaps never move), and items without a box beyond a work budget are packed below.
+ */
+export const PLACE_LIMIT = 64;
+/** Work (items², the worst case of one freeSpot) for placing items without a box: a few hundred items. */
+const FREE_SPOT_BUDGET = 20_000_000;
+
+/** True if two of the items overlap (sweep in reading order with the lowest filled row per column). */
+export function anyOverlap(items: GridItem[], cols: number): boolean {
+  const bottoms = new Array<number>(cols).fill(0);
+  for (const it of [...items].sort(byPos)) {
+    for (let c = it.x; c < it.x + it.w; c++) if (bottoms[c] > it.y) return true;
+    for (let c = it.x; c < it.x + it.w; c++) bottoms[c] = Math.max(bottoms[c], it.y + it.h);
+  }
+  return false;
+}
+
+/** Moves items down (in reading order) until nothing overlaps: linear in the number of items. Keeps the order given. */
+function settle<T extends GridItem>(items: T[], cols: number): T[] {
+  const bottoms = new Array<number>(cols).fill(0);
+  const at = new Map<string, number>();
+  for (const it of [...items].sort(byPos)) {
+    let y = it.y;
+    for (let c = it.x; c < it.x + it.w; c++) y = Math.max(y, bottoms[c]);
+    for (let c = it.x; c < it.x + it.w; c++) bottoms[c] = y + it.h;
+    at.set(it.id, y);
+  }
+  return items.map((it) => ({ ...it, y: at.get(it.id) ?? it.y }));
+}
+
 /** Places items without a position (keeps the order given) after/around the positioned ones. */
 export function placeAll<T extends GridItem & { placed?: boolean }>(items: T[], cols: number): T[] {
+  const boxed = items.filter((i) => i.placed !== false).map((it) => clampItem(it, cols));
   let out: T[] = [];
-  for (const it of items.filter((i) => i.placed !== false)) out = pushDown(out, clampItem(it, cols));
+  if (boxed.length <= PLACE_LIMIT) for (const it of boxed) out = pushDown(out, it);
+  else out = anyOverlap(boxed, cols) ? settle(boxed, cols) : boxed; // without overlaps pushing changes nothing
+  // freeSpot costs up to n² per item: within the budget the first free spot, then packed below in the order given
+  let spent = 0;
+  let flow: { x: number; y: number; rowH: number } | null = null;
   for (const it of items.filter((i) => i.placed === false)) {
     const c = clampItem(it, cols);
-    out.push({ ...c, ...freeSpot(out, c.w, c.h, cols) });
+    if (!flow) {
+      spent += Math.max(1, out.length) ** 2;
+      if (spent <= FREE_SPOT_BUDGET) {
+        out.push({ ...c, ...freeSpot(out, c.w, c.h, cols) });
+        continue;
+      }
+      flow = { x: 0, y: bottom(out), rowH: 0 };
+    }
+    if (flow.x + c.w > cols) {
+      flow.x = 0;
+      flow.y += flow.rowH;
+      flow.rowH = 0;
+    }
+    out.push({ ...c, x: flow.x, y: flow.y });
+    flow.x += c.w;
+    flow.rowH = Math.max(flow.rowH, c.h);
   }
   return compact(out);
 }
