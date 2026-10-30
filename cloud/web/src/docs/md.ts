@@ -21,12 +21,19 @@ export interface Recipe {
   /** 1–3 rows of up to 3 characters; space or "." = empty */
   grid?: string[];
   key?: Record<string, string>;
-  /** shapeless ingredients */
+  /** shapeless ingredients (other recipe types: the inputs) */
   items?: string[];
   note?: string;
   /** "mod:<id>" = needs that mod, "!mod:<id>" = only without it */
   requires?: string[];
+  /** the recipe file (cccloud:<file>), from the generated recipes */
+  file?: string;
 }
+
+/** What the server does with a docs recipe (live recipes, docs/live.ts); absent = the mod's default, as written. */
+export type RecipeLive =
+  | { status: "default" | "changed" | "added"; live: Recipe & { id: string; kind?: string; type?: string; station?: string } }
+  | { status: "removed" | "inactive" };
 
 export type Block =
   | { t: "h"; level: 1 | 2 | 3; id: string; c: Inline[]; text: string }
@@ -35,7 +42,7 @@ export type Block =
   | { t: "callout"; kind: "tip" | "warn" | "note"; c: Inline[][] }
   | { t: "table"; head: Inline[][]; rows: Inline[][][] }
   | { t: "code"; lang: string; code: string }
-  | { t: "recipe"; recipe: Recipe };
+  | { t: "recipe"; recipe: Recipe; live?: RecipeLive };
 
 export function slug(s: string) {
   return (

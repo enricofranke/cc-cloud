@@ -259,6 +259,15 @@ bot.on("messageCreate", async (msg) => {
 });
 bot.login(process.env.DISCORD_TOKEN);`;
 
+/** Mod names for recipe conditions ("Needs …", the pack makers' table). */
+export const MOD_NAMES: Record<string, string> = {
+  guideme: "GuideME",
+  allthemodium: "AllTheModium",
+  allthetweaks: "All The Tweaks",
+  ae2: "Applied Energistics 2",
+  refinedstorage: "Refined Storage",
+};
+
 /** Every crafting recipe of the mod, generated from its recipe JSONs (dev/build-recipes.ts). */
 export const ALL_RECIPES = GEN.recipes as GenRecipe[];
 const byFile = (f: string) => {

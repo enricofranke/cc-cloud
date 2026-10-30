@@ -1,13 +1,13 @@
 // /docs – bilingual documentation inside the dashboard bundle (lazy-loaded chunk).
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
+import { Fragment, type ComponentChildren } from "preact";
 import { signal } from "@preact/signals";
-import type { Block, Inline, Recipe } from "./md.ts";
-import { CONTENT, MODS, PAGES, UI, itemName, type Lang } from "./content/index.ts";
+import type { Block, Inline, Recipe, RecipeLive } from "./md.ts";
+import { CONTENT, MODS, PAGES, UI, itemName, iconItem, type Lang } from "./content/index.ts";
 import { pageBlocks, search } from "./search.ts";
+import { applyLive, liveSummary, parseCatalog, type LiveCatalog, type LiveRecipe } from "./live.ts";
 import { CodeBlock } from "../components/CodeBlock.tsx";
 import { ItemIcon } from "../components/ItemIcon.tsx";
-import { iconItem } from "./content/index.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { Logo, IconBack, IconClose, IconMoon, IconSun, IconAuto } from "../components/Icons.tsx";
 import { copyText } from "../lib/clipboard.ts";
@@ -27,6 +27,21 @@ function current() {
 }
 const loc = signal(current());
 addEventListener("popstate", () => (loc.value = current()));
+
+/**
+ * The server's live recipes (GET /api/recipes): undefined while loading, null when there are none (dev mock, offline,
+ * an older server) – then the docs show the mod's default recipes as generated.
+ */
+const live = signal<LiveCatalog | null | undefined>(undefined);
+let liveRequested = false;
+function loadLive() {
+  if (liveRequested) return;
+  liveRequested = true;
+  fetch("/api/recipes", { headers: { accept: "application/json" } })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => (live.value = parseCatalog(j)))
+    .catch(() => (live.value = null));
+}
 
 export function docsNavigate(href: string) {
   history.pushState(null, "", href);
@@ -116,56 +131,138 @@ function Heading({ b }: { b: Extract<Block, { t: "h" }> }) {
   );
 }
 
-function RecipeView({ r }: { r: Recipe }) {
+/** "Needs AllTheModium" / "Only without AllTheModium" for a conditional recipe. */
+function requiresText(c: string, l: Lang) {
+  const mod = c.replace(/^!?mod:/, "");
+  return `${c.startsWith("!") ? UI[l].without : UI[l].requires} ${MODS[mod] ?? mod}`;
+}
+
+function Slot({ id, l, cat }: { id: string | null; l: Lang; cat?: LiveCatalog }) {
+  return (
+    <span class={`slot ${id ? "full" : ""}`} title={id ? itemName(id, l, cat) : undefined}>
+      {id && <ItemIcon name={iconItem(id, cat)} displayName={itemName(id, l, cat)} />}
+    </span>
+  );
+}
+
+/**
+ * A crafting grid. With live recipes it shows what the server uses: the server's version with a badge where it differs
+ * from the mod's default (the default one click away), the default greyed out where the server removed it, and a short
+ * line for a conditional variant that is not loaded on this server.
+ */
+function RecipeView({ r, state }: { r: Recipe; state?: RecipeLive }) {
   const l = lang.value;
+  const cat = live.value ?? undefined;
+  if (state?.status === "inactive") {
+    return (
+      <p class="recipe-inactive">
+        <ItemIcon name={r.result} displayName={itemName(r.result, l, cat)} size={20} />
+        <span>
+          {itemName(r.result, l, cat)}: {r.requires?.length ? `${r.requires.map((c) => requiresText(c, l)).join(", ")} – ` : ""}
+          {UI[l].inactive}
+        </span>
+      </p>
+    );
+  }
+  const shown: Recipe & Partial<LiveRecipe> = state && "live" in state ? state.live : r;
+  const other = !shown.grid && !shown.shapeless;
   const cells: (string | null)[] = [];
-  if (r.shapeless) {
-    for (let i = 0; i < 9; i++) cells.push(r.items?.[i] ?? null);
+  if (other) {
+    for (const it of shown.items ?? []) cells.push(it);
+  } else if (shown.shapeless) {
+    for (let i = 0; i < 9; i++) cells.push(shown.items?.[i] ?? null);
   } else {
-    const rows = r.grid ?? [];
+    const rows = shown.grid ?? [];
     for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
       const ch = rows[y]?.[x];
-      cells.push(ch && ch !== " " && ch !== "." ? r.key?.[ch] ?? null : null);
+      cells.push(ch && ch !== " " && ch !== "." ? shown.key?.[ch] ?? null : null);
     }
   }
   const used = [...new Set(cells.filter(Boolean) as string[])];
+  const result = shown.result || r.result;
+  const status = state?.status;
+  const badge =
+    status === "changed" ? UI[l].badgeChanged : status === "added" ? UI[l].badgeAdded : status === "removed" ? UI[l].badgeRemoved : null;
+  const station = other && shown.station && shown.station !== "minecraft:crafting_table" ? shown.station : null;
   return (
-    <figure class="recipe">
+    <figure class={`recipe ${status === "removed" ? "is-removed" : ""} ${status ? `live-${status}` : ""}`}>
+      {badge && <p class={`recipe-badge badge-${status}`}>{badge}</p>}
       <div class="recipe-main">
-        <div class="craft-grid" role="img" aria-label={`${itemName(r.result, l)}: ${used.map((u) => itemName(u, l)).join(", ")}`}>
+        <div
+          class={other ? "craft-row" : "craft-grid"}
+          role="img"
+          aria-label={`${itemName(result, l, cat)}: ${used.map((u) => itemName(u, l, cat)).join(", ")}`}
+        >
           {cells.map((c, i) => (
-            <span key={i} class={`slot ${c ? "full" : ""}`} title={c ? itemName(c, l) : undefined}>
-              {c && <ItemIcon name={iconItem(c)} displayName={itemName(c, l)} />}
-            </span>
+            <Slot key={i} id={c} l={l} cat={cat} />
           ))}
         </div>
         <span class="craft-arrow" aria-hidden="true">
           →
         </span>
         <div class="craft-result">
-          <span class="slot full result" title={itemName(r.result, l)}>
-            <ItemIcon name={r.result} displayName={itemName(r.result, l)} />
-            {r.count && r.count > 1 && <span class="slot-count">{r.count}</span>}
+          <span class="slot full result" title={itemName(result, l, cat)}>
+            <ItemIcon name={result} displayName={itemName(result, l, cat)} />
+            {shown.count && shown.count > 1 && <span class="slot-count">{shown.count}</span>}
           </span>
-          <span class="craft-result-name">{itemName(r.result, l)}</span>
+          <span class="craft-result-name">{itemName(result, l, cat)}</span>
         </div>
       </div>
       <figcaption>
         <ul class="recipe-legend">
           {used.map((u) => (
             <li key={u}>
-              <ItemIcon name={iconItem(u)} displayName={itemName(u, l)} /> {itemName(u, l)}
+              <ItemIcon name={iconItem(u, cat)} displayName={itemName(u, l, cat)} /> {itemName(u, l, cat)}
             </li>
           ))}
         </ul>
-        {r.shapeless && <p class="muted small">{UI[l].shapeless}</p>}
-        {r.requires?.map((c) => (
-          <p key={c} class={`recipe-req ${c.startsWith("!") ? "without" : ""}`}>
-            {c.startsWith("!") ? UI[l].without : UI[l].requires} {MODS[c.replace(/^!?mod:/, "")] ?? c.replace(/^!?mod:/, "")}
+        {shown.shapeless && <p class="muted small">{UI[l].shapeless}</p>}
+        {station && (
+          <p class="muted small">
+            {UI[l].madeWith} {itemName(station, l, cat)}
           </p>
-        ))}
+        )}
+        {other && !station && shown.type && <p class="muted small">{shown.type}</p>}
+        {status !== "added" &&
+          r.requires?.map((c) => (
+            <p key={c} class={`recipe-req ${c.startsWith("!") ? "without" : ""}`}>
+              {requiresText(c, l)}
+            </p>
+          ))}
       </figcaption>
+      {status === "changed" && (
+        <details class="recipe-default">
+          <summary>{UI[l].defaultRecipe}</summary>
+          <RecipeView r={r} />
+        </details>
+      )}
     </figure>
+  );
+}
+
+/** Above the recipes: whether they are this server's or the defaults. */
+function LiveBanner() {
+  const l = lang.value;
+  const cat = live.value;
+  if (cat === undefined) return null;
+  if (cat === null)
+    return (
+      <aside class="callout callout-note recipe-live-banner">
+        <p>{UI[l].liveFallback}</p>
+      </aside>
+    );
+  const n = liveSummary(cat);
+  const parts = [
+    n.changed && `${n.changed} ${UI[l].liveChanged}`,
+    n.added && `${n.added} ${UI[l].liveAdded}`,
+    n.removed && `${n.removed} ${UI[l].liveRemoved}`,
+  ].filter(Boolean);
+  return (
+    <aside class="callout callout-tip recipe-live-banner">
+      <p>
+        <strong>{UI[l].liveTitle}</strong> {parts.length ? parts.join(" · ") : UI[l].liveAllDefault}
+      </p>
+    </aside>
   );
 }
 
@@ -232,7 +329,7 @@ function BlockView({ b }: { b: Block }) {
     case "code":
       return <CodeBlock code={b.code} label={b.lang || "shell"} />;
     case "recipe":
-      return <RecipeView r={b.recipe} />;
+      return <RecipeView r={b.recipe} state={b.live} />;
   }
 }
 
@@ -364,12 +461,20 @@ export default function Docs() {
   const { page, anchor } = loc.value;
   const l = lang.value;
   const [menu, setMenu] = useState(false);
-  const blocks = pageBlocks(l, page);
+  const cat = live.value;
+  const blocks = useMemo(
+    () =>
+      applyLive(pageBlocks(l, page), cat, {
+        leftovers: page === "recipes" ? { title: UI[l].addedHere, name: (id) => itemName(id, l, cat ?? undefined), before: "pack-makers" } : undefined,
+      }),
+    [l, page, cat],
+  );
   const idx = PAGES.findIndex((p) => p.id === page);
   const prev = PAGES[idx - 1];
   const next = PAGES[idx + 1];
   const mainRef = useRef<HTMLElement>(null);
   useScrollToAnchor(page, anchor);
+  useEffect(loadLive, []);
   useEffect(() => {
     document.documentElement.lang = l;
     document.title = `${PAGES[idx].title[l]} – CC: Cloud ${UI[l].docs}`;
@@ -428,7 +533,10 @@ export default function Docs() {
         <main class="docs-main" ref={mainRef}>
           <article class="docs-article" lang={l}>
             {blocks.map((b, i) => (
-              <BlockView key={`${page}-${l}-${i}`} b={b} />
+              <Fragment key={`${page}-${l}-${i}`}>
+                <BlockView b={b} />
+                {i === 0 && page === "recipes" && <LiveBanner />}
+              </Fragment>
             ))}
           </article>
           <nav class="docs-pager">

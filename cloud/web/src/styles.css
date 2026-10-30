@@ -6867,6 +6867,68 @@ body.rz-nwse * {
 .recipe-req.without {
   color: var(--yellow);
 }
+/* live recipes (GET /api/recipes): what the server changed, added or removed */
+.recipe-badge {
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.recipe-badge.badge-changed {
+  color: var(--orange);
+}
+.recipe-badge.badge-added {
+  color: var(--cyan);
+}
+.recipe-badge.badge-removed {
+  color: var(--red-text, var(--red));
+}
+.recipe.live-changed {
+  border-color: color-mix(in srgb, var(--orange) 55%, var(--line));
+}
+.recipe.is-removed {
+  border-style: dashed;
+}
+.recipe.is-removed .recipe-main,
+.recipe.is-removed .recipe-legend {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+.recipe-default {
+  margin-top: 10px;
+  font-size: 14px;
+}
+.recipe-default > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+.recipe-default .recipe {
+  margin: 8px 0 0;
+}
+.recipe-inactive {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.craft-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 6px;
+  max-width: 100%;
+  background: #8b8b8b;
+  box-shadow: inset 2px 2px 0 #373737, inset -2px -2px 0 #fff;
+}
+.recipe-live-banner {
+  margin: 8px 0 16px;
+}
 
 /* ================================================================ storage card v2 */
 .item-icon.s20 {
