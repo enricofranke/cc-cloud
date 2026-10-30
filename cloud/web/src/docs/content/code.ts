@@ -179,6 +179,86 @@ export const COMMANDS = `/cccloud status
 /cccloud pin set <4-8 digits>
 /cccloud pin clear`;
 
+// ---- v0.10 public API (docs page "api"; the same in both languages)
+export const TOML_API = `[api]
+apiEnabled = true                       # default false
+apiKeysPerPlayer = 5
+apiRequestsPerMinute = 60               # per key
+apiIpRequestsPerMinute = 120
+apiCorsOrigins = []                     # e.g. ["https://bot.example.org"] for browser tools
+apiEvents = true                        # the live event stream`;
+
+export const API_CURL = `KEY="cck_..."                                    # from the dashboard, shown once
+BASE="https://dash.example.com/api/v1/mainframes/<mainframe-id>"
+
+# who am I, which mainframe, which scopes
+curl -s -H "Authorization: Bearer $KEY" https://dash.example.com/api/v1/me
+
+# all sections (cards) with their widgets and values
+curl -s -H "Authorization: Bearer $KEY" "$BASE/sections"
+
+# set a widget: a toggle, slider, select, number or text (a button: "value": true)
+curl -s -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \\
+  -d '{"value": false}' "$BASE/sections/<section-id>/widgets/lights"
+
+# list the scenes, run one
+curl -s -H "Authorization: Bearer $KEY" "$BASE/scenes"
+curl -s -X POST -H "Authorization: Bearer $KEY" "$BASE/scenes/<scene-id>/run"
+
+# live changes as Server-Sent Events (event: snapshot, value, section, removed, state)
+curl -N -H "Authorization: Bearer $KEY" "$BASE/events"`;
+
+export const API_HA = `# configuration.yaml – the key goes into secrets.yaml:
+#   cccloud_auth: "Bearer cck_..."
+sensor:
+  - platform: rest
+    name: Reactor temperature
+    resource: https://dash.example.com/api/v1/mainframes/<mainframe-id>/sections/<section-id>
+    headers:
+      Authorization: !secret cccloud_auth
+    value_template: >
+      {{ (value_json.widgets | selectattr('id', 'eq', 'temp') | first).value }}
+    unit_of_measurement: K
+    scan_interval: 30
+
+rest_command:
+  cccloud_night_mode:
+    url: https://dash.example.com/api/v1/mainframes/<mainframe-id>/scenes/<scene-id>/run
+    method: POST
+    headers:
+      Authorization: !secret cccloud_auth`;
+
+export const API_DISCORD = `// bot.mjs – npm install discord.js, then:
+// DISCORD_TOKEN=... CCCLOUD_KEY=cck_... node bot.mjs
+import { Client, GatewayIntentBits } from "discord.js";
+
+const BASE = "https://dash.example.com/api/v1/mainframes/<mainframe-id>";
+const REACTOR = "<section-id>"; // the card with the "temp" gauge
+const NIGHT = "<scene-id>"; // the "Night mode" scene
+
+async function api(path, init = {}) {
+  const res = await fetch(BASE + path, { ...init, headers: { Authorization: \`Bearer \${process.env.CCCLOUD_KEY}\` } });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? res.status);
+  return res.json();
+}
+
+const bot = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+bot.on("messageCreate", async (msg) => {
+  if (msg.author.bot) return;
+  try {
+    if (msg.content === "!temp") {
+      const temp = (await api(\`/sections/\${REACTOR}\`)).widgets.find((w) => w.id === "temp");
+      await msg.reply(\`Reactor: \${temp.value} \${temp.unit ?? ""}\`);
+    } else if (msg.content === "!night") {
+      await api(\`/scenes/\${NIGHT}/run\`, { method: "POST" });
+      await msg.reply("Night mode started.");
+    }
+  } catch (e) {
+    await msg.reply(\`CC: Cloud says: \${e.message}\`);
+  }
+});
+bot.login(process.env.DISCORD_TOKEN);`;
+
 /** Every crafting recipe of the mod, generated from its recipe JSONs (dev/build-recipes.ts). */
 export const ALL_RECIPES = GEN.recipes as GenRecipe[];
 const byFile = (f: string) => {

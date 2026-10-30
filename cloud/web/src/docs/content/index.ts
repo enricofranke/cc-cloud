@@ -20,11 +20,12 @@ export const PAGES: DocPageMeta[] = [
   { id: "ui-library", icon: "star", title: { en: "cloud.ui library", de: "cloud.ui-Bibliothek" } },
   { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },
   { id: "upgrades", icon: "star", title: { en: "Upgrades, tablet & display", de: "Upgrades, Tablet & Display" } },
-  { id: "automation", icon: "bolt", title: { en: "Rules, notifications & history", de: "Regeln, Benachrichtigungen & Verlauf" } },
+  { id: "automation", icon: "bolt", title: { en: "Rules, scenes & notifications", de: "Regeln, Szenen & Benachrichtigungen" } },
   { id: "recipes", icon: "pick", title: { en: "All recipes", de: "Alle Rezepte" } },
   { id: "mods", icon: "box", title: { en: "Supported mods", de: "Unterstützte Mods" } },
   { id: "bridges", icon: "box", title: { en: "Bridges (AE2 / RS)", de: "Bridges (AE2 / RS)" } },
   { id: "accounts", icon: "lock", title: { en: "Accounts, roles & sharing", de: "Konten, Rollen & Teilen" } },
+  { id: "api", icon: "cpu", title: { en: "Public API", de: "Öffentliche API" } },
   { id: "security", icon: "shield", title: { en: "Security & hosting", de: "Sicherheit & Hosting" } },
   { id: "faq", icon: "warning", title: { en: "Troubleshooting", de: "Fehlerbehebung" } },
 ];
