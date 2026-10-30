@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class RuleEngineTest {
     static final String U = "0a1b2c3d-0000-4000-8000-000000000001";
 
-    static final class FakeWorld implements RuleEngine.World {
+    static class FakeWorld implements RuleEngine.World {
         final Map<String, Double> widgets = new HashMap<>();
         long now = 1_000_000;
         long day = 0;

@@ -414,6 +414,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return widget == null ? null : bridgeFor(widget);
     }
 
+    /** The device card this uplink shows (direct mode on a machine), or null (v0.10 production statistics). */
+    public synchronized ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard() {
+        return deviceCard;
+    }
+
     /** The storage (bridge) of a direct-mode Storage card, or null (v0.5 rules: item triggers and craft actions). */
     public @Nullable BridgeHost storageBridge() {
         return template && level instanceof ServerLevel serverLevel ? attachedBridge(serverLevel) : null;

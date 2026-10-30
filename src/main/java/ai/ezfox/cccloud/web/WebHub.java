@@ -57,6 +57,8 @@ public final class WebHub {
         @Nullable JsonObject rules;
         /** v0.7 wireless redstone channels ({channels, limit}), null = none yet; never sent to share sessions. */
         @Nullable JsonObject redstone;
+        /** v0.10 scenes of the mainframe ({scenes, log, limit, sectionId}), null = none yet; never sent to share sessions. */
+        @Nullable JsonObject scenes;
         /** Shared dashboard layout (validated), null = never edited. */
         @Nullable JsonObject layout;
         /** 5 layout saves per 10 s per mainframe. */
@@ -428,6 +430,27 @@ public final class WebHub {
         }
     }
 
+    /** Scenes document of a mainframe (v0.10): snapshot field {@code scenes}, delta {@code {"t":"scenes",…}}; never to share sessions. */
+    public void publishScenes(UUID mainframeId, JsonObject scenes) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            if (scenes.equals(view.scenes)) return;
+            view.scenes = scenes.deepCopy();
+            var message = scenes.deepCopy();
+            message.addProperty("t", "scenes");
+            put(view, "scenes", message);
+        }
+    }
+
+    /** Test hook: the published scenes document. */
+    public @Nullable JsonObject scenesForTest(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        synchronized (view) {
+            return view.scenes == null ? null : view.scenes.deepCopy();
+        }
+    }
+
     /**
      * v0.7 wireless redstone channels of a mainframe network ({@code {channels:[…], limit}}): snapshot field
      * {@code redstone}, delta {@code {"t":"redstone", channels, limit}}; never sent to share sessions.
@@ -587,7 +610,7 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return false;
         int browsers = 0;
-        for (var s : view.sessions) if (s.share() == null) browsers++;
+        for (var s : view.sessions) if (s.countsAsBrowser()) browsers++;
         return browsers >= browserLimit.applyAsInt(mainframeId);
     }
 
@@ -654,6 +677,7 @@ public final class WebHub {
         if (network != null) json.add("network", network);
         if (view.rules != null) json.add("rules", view.rules);
         if (view.redstone != null) json.add("redstone", view.redstone);
+        if (view.scenes != null) json.add("scenes", view.scenes);
         return json;
     }
 

@@ -5,6 +5,10 @@ import type { Scalar, Uplink, Widget } from "../lib/types.ts";
 import { IconLock } from "./Icons.tsx";
 import { labelFit, splitEntries } from "../lib/format.ts";
 import { ConfirmDialog, PinDialog, type PinState } from "./Overlays.tsx";
+import { PixelIcon } from "./PixelIcon.tsx";
+import { ICON_NAMES, type IconName } from "../lib/layout.ts";
+
+const isIcon = (v: unknown): v is IconName => (ICON_NAMES as readonly unknown[]).includes(v);
 
 export interface WidgetProps {
   w: Widget;
@@ -35,7 +39,7 @@ function useValue(conn: MainframeConn, uplinkId: string, w: Widget): { value: Sc
  * Sends an action, asking for the mainframe PIN first when the widget has opts.pin.
  * Returns `send(value, onCancel?)` and the dialog element to render.
  */
-function usePinGate(conn: MainframeConn, uplink: Uplink, w: Widget, optimistic: boolean, after?: () => void) {
+export function usePinGate(conn: MainframeConn, uplink: Uplink, w: Widget, optimistic: boolean, after?: () => void) {
   const [ask, setAsk] = useState<{ value: Scalar; onCancel?: () => void } | null>(null);
   const [state, setState] = useState<PinState>({ kind: "idle" });
   const needsPin = w.opts?.pin === true;
@@ -333,6 +337,7 @@ export function ActionButton({ w, uplink, conn, locked }: WidgetProps) {
         onClick={() => (w.opts?.confirm && !gate.needsPin ? setConfirming(true) : fire())}
       >
         {(locked || gate.needsPin) && <IconLock size={14} />}
+        {!locked && !gate.needsPin && isIcon(w.opts?.icon) && <PixelIcon name={w.opts.icon} size={12} class="btn-icon" />}
         <span>{w.label ?? w.id}</span>
       </button>
       {confirming && (

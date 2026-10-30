@@ -50,6 +50,8 @@ public final class BridgeCore {
     private long tick;
     private int alertSeq;
     private final ArrayDeque<Alert> alerts = new ArrayDeque<>();
+    /** Items of jobs that finished {@code done} since the last {@link #takeCrafted()} (v0.10 production statistics). */
+    private final Map<String, Long> crafted = new HashMap<>();
 
     public record Alert(int seq, String text, String level) {
     }
@@ -139,6 +141,7 @@ public final class BridgeCore {
             var state = adapter.jobState(job.handle);
             job.status = state.status();
             job.progress = Math.max(0, Math.min(1, state.progress()));
+            if (job.status.equals("done") && crafted.size() < 1024) crafted.merge(job.name, job.count, Long::sum);
             if (job.notify && job.finished()) {
                 if (job.status.equals("done")) addAlert("Crafted " + job.count + "× " + job.displayName, "info");
                 else addAlert("Crafting " + job.status + ": " + job.count + "× " + job.displayName, "warn");
@@ -203,6 +206,31 @@ public final class BridgeCore {
 
     public int alertSeq() {
         return alertSeq;
+    }
+
+    /** Items crafted by finished bridge jobs since the last call (name → count), then forgets them. */
+    public Map<String, Long> takeCrafted() {
+        if (crafted.isEmpty()) return Map.of();
+        var copy = Map.copyOf(crafted);
+        crafted.clear();
+        return copy;
+    }
+
+    /** Running crafting on the network now (own jobs and others): {@code [{name, displayName, count, progress}]}. */
+    public JsonArray runningTasks(int limit) {
+        var array = new JsonArray();
+        for (var e : jobRows(limit)) {
+            var row = e.getAsJsonObject();
+            String status = row.get("status").getAsString();
+            if (!status.equals("running") && !status.equals("queued")) continue;
+            var task = new JsonObject();
+            task.add("name", row.get("name"));
+            task.add("displayName", row.get("displayName"));
+            task.add("count", row.get("count"));
+            task.add("progress", row.get("progress"));
+            array.add(task);
+        }
+        return array;
     }
 
     // ---- items -----------------------------------------------------------------------------------------------------

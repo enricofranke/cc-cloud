@@ -66,6 +66,26 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_KEY;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
+    // v0.10 schedules, scenes, production statistics, public API
+    public static final ModConfigSpec.IntValue MAX_SCHEDULES;
+    public static final ModConfigSpec.IntValue MIN_INTERVAL_MINUTES;
+    public static final ModConfigSpec.BooleanValue RUN_MISSED;
+    public static final ModConfigSpec.IntValue MISSED_WINDOW_HOURS;
+    public static final ModConfigSpec.ConfigValue<String> TIMEZONE;
+    public static final ModConfigSpec.BooleanValue SCENES_ENABLED;
+    public static final ModConfigSpec.IntValue MAX_SCENES;
+    public static final ModConfigSpec.BooleanValue PRODUCTION_ENABLED;
+    public static final ModConfigSpec.IntValue PRODUCTION_SAMPLE_SECONDS;
+    public static final ModConfigSpec.IntValue PRODUCTION_WINDOW;
+    public static final ModConfigSpec.IntValue PRODUCTION_TRACKED_ITEMS;
+    public static final ModConfigSpec.BooleanValue API_ENABLED;
+    public static final ModConfigSpec.IntValue API_KEYS_PER_PLAYER;
+    public static final ModConfigSpec.IntValue API_REQUESTS_PER_MINUTE;
+    public static final ModConfigSpec.IntValue API_IP_REQUESTS_PER_MINUTE;
+    public static final ModConfigSpec.IntValue API_MAX_BODY;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> API_CORS_ORIGINS;
+    public static final ModConfigSpec.BooleanValue API_EVENTS;
+    public static final ModConfigSpec.IntValue API_STREAMS_PER_KEY;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -229,6 +249,76 @@ public final class CloudConfig {
         MAX_RULES = b.comment("Hard cap of rules per mainframe (the Memory upgrade raises the per-mainframe limit up to this cap).")
             .translation("cccloud.configuration.maxRules")
             .defineInRange("maxRulesPerMainframe", 128, 1, 128);
+        b.pop();
+
+        b.push("schedules");
+        MAX_SCHEDULES = b.comment("Schedules per mainframe: rules triggered by a clock (every N minutes, weekdays + time, in-game time of day).")
+            .translation("cccloud.configuration.maxSchedulesPerMainframe")
+            .defineInRange("maxSchedulesPerMainframe", 16, 1, 128);
+        MIN_INTERVAL_MINUTES = b.comment("Shortest real-time interval of an 'every N minutes' schedule.")
+            .translation("cccloud.configuration.minIntervalMinutes")
+            .defineInRange("minIntervalMinutes", 1, 1, 1440);
+        RUN_MISSED = b.comment("After a server restart, run at most one missed occurrence of each real-time schedule (false = never catch up).")
+            .translation("cccloud.configuration.runMissed")
+            .define("runMissed", true);
+        MISSED_WINDOW_HOURS = b.comment("Only missed occurrences younger than this many hours are caught up after a restart.")
+            .translation("cccloud.configuration.missedWindowHours")
+            .defineInRange("missedWindowHours", 24, 1, 168);
+        TIMEZONE = b.comment("Time zone of weekday + time schedules, e.g. Europe/Berlin. Empty = the server's system time zone.")
+            .translation("cccloud.configuration.timezone")
+            .define("timezone", "", o -> o instanceof String s && s.length() <= 64);
+        b.pop();
+
+        b.push("scenes");
+        SCENES_ENABLED = b.comment("Scenes: one dashboard button that runs several actions in order (each checked against the presser's rights).")
+            .translation("cccloud.configuration.scenesEnabled")
+            .define("scenesEnabled", true);
+        MAX_SCENES = b.comment("Scenes per mainframe.")
+            .translation("cccloud.configuration.maxScenesPerMainframe")
+            .defineInRange("maxScenesPerMainframe", 32, 1, 64);
+        b.pop();
+
+        b.push("production");
+        PRODUCTION_ENABLED = b.comment("Production statistics: items gained/consumed per minute of AE2/RS storages and the energy flow of energy cards.")
+            .translation("cccloud.configuration.productionEnabled")
+            .define("productionEnabled", true);
+        PRODUCTION_SAMPLE_SECONDS = b.comment("Seconds between two samples of a storage (one storage per tick, from the bridge's item index).")
+            .translation("cccloud.configuration.sampleSeconds")
+            .defineInRange("sampleSeconds", 60, 20, 600);
+        PRODUCTION_WINDOW = b.comment("Samples kept per series (the rates are averaged over this window).")
+            .translation("cccloud.configuration.windowSamples")
+            .defineInRange("windowSamples", 60, 10, 240);
+        PRODUCTION_TRACKED_ITEMS = b.comment("Items with their own rate per storage (the ones that move most; the storage totals count every item).")
+            .translation("cccloud.configuration.trackedItemsPerStorage")
+            .defineInRange("trackedItemsPerStorage", 256, 16, 1024);
+        b.pop();
+
+        b.push("api");
+        API_ENABLED = b.comment("Public REST API (/api/v1) for external tools with per-player API keys. Off by default: when false the routes do not exist.")
+            .translation("cccloud.configuration.apiEnabled")
+            .define("apiEnabled", false);
+        API_KEYS_PER_PLAYER = b.comment("API keys one player may have (over all mainframes).")
+            .translation("cccloud.configuration.apiKeysPerPlayer")
+            .defineInRange("apiKeysPerPlayer", 5, 1, 50);
+        API_REQUESTS_PER_MINUTE = b.comment("Requests per minute per API key (429 + Retry-After above).")
+            .translation("cccloud.configuration.apiRequestsPerMinute")
+            .defineInRange("apiRequestsPerMinute", 60, 1, 6000);
+        API_IP_REQUESTS_PER_MINUTE = b.comment("Requests per minute per client IP on /api/v1.")
+            .translation("cccloud.configuration.apiIpRequestsPerMinute")
+            .defineInRange("apiIpRequestsPerMinute", 120, 1, 6000);
+        API_MAX_BODY = b.comment("Largest JSON body of an API request (bytes).")
+            .translation("cccloud.configuration.apiMaxBody")
+            .defineInRange("apiMaxBody", 2048, 256, 4096);
+        API_CORS_ORIGINS = b.comment("Browser origins allowed to call the API (exact, e.g. https://bot.example.org). Empty = no CORS headers at all.")
+            .translation("cccloud.configuration.apiCorsOrigins")
+            .defineListAllowEmpty("apiCorsOrigins", java.util.List.of(), () -> "https://bot.example.org",
+                o -> o instanceof String s && ai.ezfox.cccloud.publicapi.ApiCors.validOrigin(s));
+        API_EVENTS = b.comment("Read-only event stream (Server-Sent Events) of value changes for keys with read:sections.")
+            .translation("cccloud.configuration.apiEvents")
+            .define("apiEvents", true);
+        API_STREAMS_PER_KEY = b.comment("Open event streams per API key (at most 32 on the whole server).")
+            .translation("cccloud.configuration.apiStreamsPerKey")
+            .defineInRange("apiStreamsPerKey", 2, 1, 8);
         b.pop();
 
         b.push("store");

@@ -9,12 +9,14 @@ import { takeInstallLink } from "./scriptstore.ts";
 export type Route =
   | { name: "list" }
   | { name: "pair"; code?: string; link?: PairLink }
-  | { name: "mainframe"; id: string }
+  | { name: "mainframe"; id: string; tab?: "production" }
   | { name: "devices" }
   | { name: "access"; id: string }
   | { name: "shares"; id: string }
   | { name: "rules"; id: string }
-  | { name: "push"; id: string };
+  | { name: "push"; id: string }
+  | { name: "scenes"; id: string }
+  | { name: "apikeys"; id: string };
 
 /** Script Store link (/store#install=<id>@<version>): opened on the next mainframe dashboard. */
 export const pendingInstall = signal<{ id: string; version?: string } | null>(null);
@@ -46,6 +48,10 @@ function parseRoute(): Route {
   if (parts[0] === "m" && parts[1] && parts[2] === "shares") return { name: "shares", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "rules") return { name: "rules", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "push") return { name: "push", id: decodeURIComponent(parts[1]) };
+  // v0.10: scenes and API keys are screens; production is a page of the dashboard (like Network)
+  if (parts[0] === "m" && parts[1] && parts[2] === "scenes") return { name: "scenes", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "apikeys") return { name: "apikeys", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "production") return { name: "mainframe", id: decodeURIComponent(parts[1]), tab: "production" };
   if (parts[0] === "m" && parts[1]) return { name: "mainframe", id: decodeURIComponent(parts[1]) };
   return { name: "list" };
 }

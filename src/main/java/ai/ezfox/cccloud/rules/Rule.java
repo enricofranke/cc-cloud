@@ -29,6 +29,11 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
         return new Rule(value, name, enabled, cooldown, when, conditions, actions, push);
     }
 
+    /** Triggers that fire on a clock (v0.10 "schedules"): real-time interval, weekly schedule, in-game time of day. */
+    public boolean isSchedule() {
+        return when instanceof IntervalTrigger || when instanceof TimeTrigger || when instanceof ScheduleTrigger;
+    }
+
     public enum Cmp {
         LT("<"), LE("<="), GT(">"), GE(">="), EQ("=="), NE("!=");
 
@@ -75,8 +80,9 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
     public record OnlineCheck(String uplinkId) implements Check {
     }
 
-    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger {
+    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger, ScheduleTrigger {
     }
+
 
     /** Fires when the check becomes true (edge). */
     public record CheckTrigger(Check check) implements Trigger {
@@ -94,10 +100,19 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
     public record TimeTrigger(int time) implements Trigger {
     }
 
+    /**
+     * Fires on the given weekdays at a wall-clock time in the server's time zone (v0.10).
+     *
+     * @param days   bit 0 = Monday … bit 6 = Sunday (at least one bit)
+     * @param minute minute of the day, 0–1439
+     */
+    public record ScheduleTrigger(int days, int minute) implements Trigger {
+    }
+
     public record Condition(Check check) {
     }
 
-    public sealed interface Action permits RedstoneAction, WidgetAction, CraftAction, AlertAction, DashboardAction {
+    public sealed interface Action permits RedstoneAction, WidgetAction, CraftAction, AlertAction, DashboardAction, SceneAction {
     }
 
     /** Set a redstone output on an auto-mode computer card (widget {@code redstone}). */
@@ -118,5 +133,9 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
 
     /** Switch the mainframe's dashboard on or off. */
     public record DashboardAction(boolean enabled) implements Action {
+    }
+
+    /** Run a scene (v0.10) with the rights of the scene's owner. Rules only; a scene step cannot run another scene. */
+    public record SceneAction(String sceneId) implements Action {
     }
 }

@@ -85,6 +85,36 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public AccessApi.Response apiV1(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, Router.Id route, String path, java.util.Map<String, String> query, String body,
+                                    String ip) {
+        dispatched.add("api:" + route + ":" + key.name());
+        var json = new com.google.gson.JsonObject();
+        json.addProperty("ok", true);
+        return new AccessApi.Response(200, json);
+    }
+
+    /** What the public API's event streams may see (null: refused). */
+    java.util.@org.jspecify.annotations.Nullable Set<ai.ezfox.cccloud.access.Perm> streamPerms = java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW);
+
+    @Override
+    public java.util.@org.jspecify.annotations.Nullable Set<ai.ezfox.cccloud.access.Perm> apiStreamAccess(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, String ip) {
+        dispatched.add("stream:" + key.name());
+        return streamPerms;
+    }
+
+    @Override
+    public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
+        dispatched.add(command.op());
+        return new GameBridge.RuleResult(null, null, null);
+    }
+
+    @Override
+    public GameBridge.StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
+        dispatched.add("production:" + request.op());
+        return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());
+    }
+
+    @Override
     public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
         dispatched.add("storage:" + request.op());
         return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());

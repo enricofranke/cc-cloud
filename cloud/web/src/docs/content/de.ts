@@ -537,9 +537,9 @@ Uplinks bekommen in ihrem Fenster einen **Redstone-Modus**: **Sender** oder **Em
 
 Im Dashboard listet der Chip **Redstone** im Network-Tab jeden Kanal mit Pegel, Sendern und Empfängern. Spieler mit dem Recht „Switch redstone“ (ab operator) können einen Kanal **übersteuern** – ein Pegel von 0 bis 15 für 30 s, 5 min, 1 h oder bis zum Zurücksetzen –, etwa um vom Handy aus eine Tür zu öffnen. Die Übersteuerung gewinnt gegen die Sender, bis sie abläuft oder du sie aufhebst; jede wird protokolliert.
 `,
-  automation: `# Regeln, Benachrichtigungen und Verlauf
+  automation: `# Regeln, Szenen, Benachrichtigungen und Verlauf
 
-Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Computerprogramm –, dazu Meldungen aufs Handy und Langzeit-Diagramme.
+Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Computerprogramm –, dazu Szenen, Zeitpläne, Meldungen aufs Handy, Langzeit-Diagramme und Produktionsstatistiken.
 
 ## Regeln {#rules}
 
@@ -547,9 +547,9 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 
 | Teil | Möglichkeiten |
 |---|---|
-| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, alle N Minuten, eine Uhrzeit (im Spiel) |
+| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, alle N Minuten, an Tagen zu einer Uhrzeit, eine Uhrzeit im Spiel ([Zeitpläne](/docs/automation#schedules)) |
 | Falls (optional, alle müssen gelten) | Widget-Wert, Itemanzahl, Strom, eine Karte ist online |
-| Dann (1–10, der Reihe nach) | eine Redstone-Seite eines Computers setzen, ein Bedienelement nutzen (Button, Schalter, Regler, Auswahl, Zahl, Text), ein Item craften, eine Meldung senden, das Dashboard ein-/ausschalten |
+| Dann (1–10, der Reihe nach) | eine Redstone-Seite eines Computers setzen, ein Bedienelement nutzen (Button, Schalter, Regler, Auswahl, Zahl, Text), ein Item craften, eine Meldung senden, das Dashboard ein-/ausschalten, eine [Szene](/docs/automation#scenes) starten |
 
 - Wert-Auslöser feuern **einmal**, wenn die Prüfung wahr wird, nicht erneut, solange sie wahr bleibt. Die **Abklingzeit** (mindestens 5 s) ist der Mindestabstand zwischen zwei Läufen.
 - **Run now** führt die Aktionen einmal aus und ignoriert Auslöser, Bedingungen und Abklingzeit – praktisch zum Testen.
@@ -559,6 +559,33 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 - Lua: \`cloud_mainframe.getRules()\` und \`setRuleEnabled(id, enabled)\`.
 
 **Beispiel:** Wenn *Core temperature (Fission Reactor)* über 900 – dann Redstone hinten am *Reaktor-Computer* auf 15 und Meldung „Reaktor heiß“ (Warnung).
+
+## Szenen {#scenes}
+
+Eine Szene ist **ein Knopf, der mehrere Schritte nacheinander ausführt** – „Nachtmodus“: Licht aus, 2 s warten, Tür zu, Reaktor-Regler auf 3, eine Meldung. Öffne **Szenen** in den Dashboard-Einstellungen (⚙).
+
+- **Schritte** (bis 16): dieselben Aktionen wie bei Regeln – Redstone-Seite setzen, Bedienelement nutzen, craften, Meldung senden, Dashboard an/aus – plus **Pause** (0,05–300 s, höchstens 600 s pro Szene). Mit ↑ und ↓ änderst du die Reihenfolge.
+- Jede Szene ist ein Knopf auf der Karte **Scenes**: drück ihn im Dashboard, auf einem Cloud Tablet, auf einem Cloud Display (nur Szenen ohne Nachfrage und PIN) oder verschieb ihn mit dem Layout-Editor auf eine beliebige Karte. **Testlauf** im Szenen-Fenster startet die gespeicherte Szene und hakt jeden Schritt beim Ablauf ab; der letzte Lauf behält ein Ergebnis pro Schritt.
+- Optionen: Farbe, Symbol, **vor dem Start nachfragen** und **immer nach der PIN fragen**. Ein Schritt auf einem PIN-geschützten Bedienelement lässt die Szene ohnehin nach der PIN fragen.
+- **Rechte:** Anlegen und Ändern braucht „Edit rules“ **und** jede Berechtigung, die die Schritte brauchen – niemand kann mehr weitergeben, als er selbst darf. Drücken braucht „Use controls“; jeder Schritt wird **beim Ablauf** erneut geprüft, mit den Rechten dessen, der gedrückt hat. Ein Schritt ohne Berechtigung schlägt fehl, die anderen laufen trotzdem.
+- **Planen…** öffnet eine neue Regel, die die Szene an Tagen zu einer Uhrzeit startet (unten).
+- Grenzen: 32 Szenen pro Mainframe (\`maxScenesPerMainframe\`), dieselbe Szene nie zweimal gleichzeitig, höchstens 4 Läufe gleichzeitig und 30 pro Minute und Mainframe. \`scenesEnabled = false\` in \`[scenes]\` schaltet Szenen ab.
+
+## Zeitpläne {#schedules}
+
+Zeitpläne sind Regeln mit einem **Zeit-Auslöser** – wähle ihn im Regel-Editor unter **When**:
+
+| Auslöser | Läuft |
+|---|---|
+| alle … Minuten | Echtzeit, alle N Minuten (mindestens \`minIntervalMinutes\`, Standard 1) |
+| an Tagen zu einer Uhrzeit | Echtzeit: an den gewählten Wochentagen um HH:MM (24 h) in der **Zeitzone des Servers** – der Editor zeigt sie (Einstellung \`timezone\`, leer = Systemzone des Servers) |
+| eine Uhrzeit im Spiel | wenn die Weltuhr die Uhrzeit überschreitet: **Sonnenaufgang**, **Mittag**, **Sonnenuntergang**, **Mitternacht** oder jede Spielstunde |
+
+- Mit der Aktion **Run a scene** startet ein Zeitplan viele Schritte. Eine geplante Szene läuft mit den Rechten ihres **Besitzers** (wer sie zuletzt gespeichert hat), nie mit PIN – Szenen, die die PIN brauchen, lassen sich deshalb nicht planen.
+- Die Regelliste zeigt bei Echtzeit-Plänen **next run in …**.
+- **Verpasste Läufe:** Nach einem Server-Neustart wird höchstens **ein** verpasster Lauf nachgeholt, und nur wenn er jünger als \`missedWindowHours\` (24 h) ist; \`runMissed = false\` holt nie nach. Die Spielzeit steht still, solange der Server aus ist – Spielzeit-Auslöser holen deshalb nie nach.
+- **Nicht geladene Mainframes:** Ist ein Lauf fällig, während der Mainframe nicht geladen oder offline ist, wird er **übersprungen** – das Protokoll zeigt einmal pro Ausfall „skipped – mainframe unloaded“, und nichts wird später nachgeholt. Halte den Chunk des Mainframes geladen (Chunk-Anchor-Upgrade, FTB Chunks) für verlässliche Zeitpläne.
+- Höchstens 16 Zeit-Regeln pro Mainframe (\`maxSchedulesPerMainframe\` in \`[schedules]\`).
 
 ## Push-Benachrichtigungen {#push}
 
@@ -581,6 +608,18 @@ cloud.gauge("temp", "Core temperature", { min = 0, max = 1200, unit = "K", histo
 \`\`\`
 
 Wie viel der Server aufbewahrt, hängt vom **Memory**-Upgrade ab: 1 h ohne, 24 h / 7 Tage / 30 Tage mit den Stufen. **Export CSV** lädt die Werte (Zeit, Wert) für Tabellen herunter – braucht das Recht „Use controls“.
+
+## Produktionsstatistik {#production}
+
+Die Seite **Produktion** (ein Tab neben Network, oder ⚙ → Produktion) zeigt, was jedes AE2- bzw. Refined-Storage-Netz hinter deinen Karten **dazubekommt, verbraucht und craftet** – pro Minute oder pro Stunde, über die letzte Stunde.
+
+- Der Server misst jeden Speicher jede Minute (\`sampleSeconds\`) und behält ein Fenster von 60 Messwerten (\`windowSamples\`). Die ersten Zahlen kommen nach einer Minute; ein Server-Neustart beginnt das Fenster von vorn.
+- Pro Speicher: dazu, verbraucht, netto und gecraftet, ein Diagramm und die **größten Zugänge und Abgänge** mit ihren Symbolen.
+- Ein Klick auf ein Item – „was frisst mein Eisen?“ – zeigt seine Raten und sein Diagramm, seine Crafting-Aufträge, was gerade im Netz gecraftet wird, die letzten 24 Stunden (beobachtete und favorisierte Items) und wann der Vorrat bei diesem Tempo leer ist.
+- **Was sie nicht sagen kann:** AE2 und Refined Storage melden nur, wie viel der Speicher dazubekommt und verliert – nicht, welche Maschine, Leitung oder welcher Spieler die Items genommen hat. Was zwischen zwei Messungen kommt und geht, hebt sich auf. **Gecraftet** zählt fertige Aufträge, die über die Bridge gestartet wurden (Dashboard, Lua, Auto-Lager, Regeln); am Terminal gestartete Aufträge sind nur sichtbar, solange sie laufen.
+- **Energie:** jede Energiekarte mit gespeicherter Energie und rein/raus in FE/t, die Summen und ein Diagramm. Blöcke, deren Mod keine Raten meldet, zeigen die gemessene Änderung („gemessen“).
+- **Als Karte anheften** legt die Rate eines Items, die Netto-Rate eines Speichers oder die Energiesummen als Diagramm auf die Karte **Production** – mit dem Layout-Editor anordnen; Tablets und Displays zeigen sie auch. Bis zu 16 Anheftungen; braucht „Edit the layout“ (und „Search storage“ für Items und Speicher).
+- Speicherzahlen brauchen das Recht „Search storage“. \`productionEnabled = false\` in \`[production]\` schaltet die Statistik ab.
 
 ## Terminal {#terminal}
 
@@ -673,6 +712,7 @@ Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). I
 - **Crafting-Vorschau:** Bevor ein Auftrag startet, siehst du, was aus dem Lager genommen, was gecraftet wird und was fehlt, dazu freie CPUs. Mit **Notify me** bekommst du eine Meldung, wenn er fertig ist oder fehlschlägt.
 - **Auf Lager halten (Auto-Lager):** Minimum und Ziel festlegen – fällt die Menge unter das Minimum und es gibt ein Muster, craftet der Server in Paketen zu 64 bis zum Ziel (ein Auftrag pro Item, höchstens alle 30 s). Das Abzeichen zeigt den Zustand: crafting, waiting for a CPU, missing resources oder nach 3 Fehlschlägen pausiert. Läuft auf dem Server – kein Computer nötig. Aus Lua: \`bridge.setAutoStock(name, min, target, enabled)\`.
 - **CPUs & Aufträge:** jede Crafting-CPU mit ihrem aktuellen Auftrag, alle laufenden Aufträge und **Cancel** (Operatoren).
+- **Produktion:** was das Netz pro Minute dazubekommt und verbraucht und was ein Item frisst – siehe [Produktionsstatistik](/docs/automation#production).
 
 ## Aus Lua {#lua}
 
@@ -758,6 +798,92 @@ Schaut ein Admin auf einen fremden Mainframe, sieht der Besitzer das im Protokol
 Tab springt durch alles, Enter oder Leertaste löst aus, Escape schließt Dialoge und Menüs, die Pfeiltasten wechseln zwischen Seiten-Tabs und Menüeinträgen, und „Skip to content“ springt an der Kopfzeile vorbei.
 `,
   // -------------------------------------------------------------- security
+  api: `# Öffentliche API
+
+Mit der öffentlichen API können **deine eigenen Programme** Werte lesen und Knöpfe drücken: ein Discord-Bot, Home Assistant, ein Tabellen-Skript. Es ist eine kleine HTTP-JSON-API unter der Adresse des Dashboards, mit **API-Schlüsseln**, die du im Dashboard anlegst.
+
+> **Hinweis:** Die API ist **standardmäßig aus**. Ein Server-Admin schaltet sie ein; bis dahin gibt es die Routen nicht.
+
+## Einschalten {#enable}
+
+In der \`serverconfig/cccloud-server.toml\` der Welt (beim dedizierten Server: \`world/serverconfig/\`), Abschnitt \`[api]\`, danach den Server neu starten:
+
+${code("toml", C.TOML_API)}
+
+Spieler brauchen auf dem Mainframe die Berechtigung **API keys** (Admins und Besitzer haben sie; siehe [Rollen](/docs/accounts#roles)). Server-Betreiber können Schlüssel für einen Spieler mit dem Berechtigungsknoten \`cccloud.api.keys\` verbieten – seine Schlüssel funktionieren dann auch nicht mehr.
+
+## Schlüssel anlegen {#keys}
+
+Dashboard → ⚙ → **API-Schlüssel** → **Neuer Schlüssel**:
+
+1. Ein **Name** (ein Schlüssel pro Programm – dann kannst du ihn einzeln widerrufen).
+2. Die **Bereiche** (Scopes) – was der Schlüssel darf (unten).
+3. Ein **Ablauf**: 1 Stunde, 24 Stunden, 7, 30 oder 90 Tage oder nie.
+4. Optional: die **IP-Adressen**, von denen er genutzt werden darf (bis 8, z. B. \`192.168.1.0/24\`).
+
+Der Schlüssel (\`cck_…\`) wird **genau einmal** angezeigt – kopiere ihn dann. Der Server behält nur einen Fingerabdruck (Hash). Die Liste zeigt jeden Schlüssel mit Bereichen, Erstellung, Ablauf, letzter Nutzung und IP; **Widerrufen** stoppt einen Schlüssel sofort. Spieler mit „Manage access“ sehen und widerrufen alle Schlüssel des Mainframes.
+
+## Bereiche {#scopes}
+
+Eine Anfrage braucht den Bereich **und** die aktuelle Berechtigung des Schlüssel-Besitzers – ein Schlüssel kann nie mehr als sein Spieler.
+
+| Bereich | Erlaubt | Braucht |
+|---|---|---|
+| \`read:sections\` | Karten, Widgets und Werte lesen; der Live-Ereignisstrom | View |
+| \`read:storage\` | Speicherkarten durchsuchen, Itemmengen | Search storage |
+| \`read:stats\` | Produktionsstatistik | View (Speicher: Search storage) |
+| \`action:widgets\` | Knöpfe drücken, Schalter, Regler, Auswahl, Zahlen und Texte setzen | Use controls (Redstone-Widgets: Switch redstone) |
+| \`run:scenes\` | Szenen auflisten und starten | Use controls und die Berechtigung jedes Schritts |
+
+## Routen {#routes}
+
+Alles JSON, \`Authorization: Bearer cck_…\` bei jeder Anfrage. \`<id>\` ist der Mainframe des Schlüssels (steht im Dashboard unter ⚙ → This mainframe).
+
+| Route | Bereich |
+|---|---|
+| \`GET /api/v1/me\` | jeder – der Schlüssel, sein Spieler und Mainframe |
+| \`GET /api/v1/mainframes/<id>/sections\` | read:sections |
+| \`GET /api/v1/mainframes/<id>/sections/<sectionId>\` | read:sections |
+| \`POST /api/v1/mainframes/<id>/sections/<sectionId>/widgets/<widgetId>\` mit \`{"value": …}\` | action:widgets |
+| \`GET /api/v1/mainframes/<id>/storage/<sectionId>/items?q=iron&limit=20\` | read:storage |
+| \`GET /api/v1/mainframes/<id>/production\` | read:stats |
+| \`GET /api/v1/mainframes/<id>/scenes\`, \`POST …/scenes/<sceneId>/run\` | run:scenes |
+| \`GET /api/v1/mainframes/<id>/events\` (Server-Sent Events) | read:sections |
+| \`GET /api/v1/openapi.json\` | öffentlich – die OpenAPI-Beschreibung |
+
+## Grenzen {#limits}
+
+- 60 Anfragen pro Minute und Schlüssel und 120 pro IP-Adresse (\`apiRequestsPerMinute\`, \`apiIpRequestsPerMinute\`); darüber antwortet der Server mit \`429 rate_limited\` und einem \`Retry-After\`-Header. Item-Suchen: 5 pro Sekunde und Schlüssel.
+- Anfragen bis 2 KB (\`apiMaxBody\`), bis zu 5 Schlüssel pro Spieler (\`apiKeysPerPlayer\`).
+- Ereignisströme: 2 pro Schlüssel (\`apiStreamsPerKey\`), 32 insgesamt; alle 20 s hält eine Kommentarzeile sie offen, langsame Leser werden getrennt.
+
+## Sicherheit {#security}
+
+- **Keine PIN in der API, mit Absicht:** PIN-geschützte Bedienelemente und Szenen antworten mit \`403 pin_required\` – ein verlorener Schlüssel kommt nie an den zweiten Faktor. Admin-Seiten, Zugriff, Geräte, Kopplung, Schlüsselverwaltung, Terminal, Skripte, Layout, Regeln, Push und die Karte sind mit einem Schlüssel nie erreichbar.
+- Schlüssel werden **einmal** gezeigt und nur als Hash gespeichert. Bewahre sie in einer Geheimnis-Datei auf, nie in einer URL – ein Schlüssel im Query-String (\`?key=\`) wird mit \`400 key_in_query\` abgelehnt.
+- Wähle **wenige Bereiche**, einen **Ablauf** und wo möglich eine **IP-Liste**; **widerrufe** Schlüssel, die du nicht mehr brauchst oder die bekannt geworden sein könnten.
+- Die API folgt den Regeln des Dashboards: dieselben Host- und Nur-LAN-Einstellungen, IP-Sperren und Verbindungsgrenzen. Nutze HTTPS, wenn sie aus dem Internet erreichbar ist ([Zugriff aus dem Internet](/docs/security#internet)). Jede Widget-Aktion und jeder Szenenlauf landet im Audit-Protokoll des Mainframes („API key 'bot' (Steve) …“).
+- Browser-Programme auf anderen Seiten brauchen ihren genauen Ursprung in \`apiCorsOrigins\`; sonst können Browser die API nicht aufrufen (Server und Bots betrifft das nicht).
+
+## Beispiele mit curl {#curl}
+
+${code("bash", C.API_CURL)}
+
+Fehler sind JSON wie \`{"error":"pin_required"}\`: \`401 unauthorized\` / \`expired\` (Schlüssel), \`403 no_access\` (der Spieler hat keinen Zugriff mehr), \`ip_not_allowed\`, \`pin_required\`, \`404 not_found\`, \`429 rate_limited\`.
+
+## Home Assistant {#home-assistant}
+
+Ein **REST-Sensor** liest ein Widget, ein **rest_command** startet eine Szene (in Automationen oder als Dashboard-Knopf). Der Schlüssel braucht \`read:sections\` und \`run:scenes\`.
+
+${code("yaml", C.API_HA)}
+
+## Ein kleiner Discord-Bot {#discord}
+
+\`!temp\` antwortet mit der Reaktortemperatur, \`!night\` startet die Szene „Nachtmodus“. Er braucht Node 18 oder neuer, einen Discord-Bot mit dem Intent **Message Content** (Discord Developer Portal → Bot) und einen Schlüssel mit \`read:sections\` und \`run:scenes\`. Die IDs deiner Karten und Szenen listest du einmal mit curl auf (\`/sections\`, \`/scenes\`).
+
+${code("js", C.API_DISCORD)}
+`,
+
   security: `# Sicherheit und Hosting
 
 Über das Dashboard lässt sich deine Welt steuern – deshalb ist es wie ein echter Webdienst geschützt.

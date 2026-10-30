@@ -40,6 +40,7 @@ Add items with a minimum amount (from a search result or by id). Items below the
 - **Craft preview:** before a craft starts you see what is taken from storage, what gets crafted and what is missing, plus free CPUs. Tick **Notify me** to get a notice when it is done or fails.
 - **Keep in stock (auto-stock):** set a minimum and a target – when the amount drops below the minimum and there is a pattern, the server crafts up to the target in batches of 64 (one job per item, every 30 s at most). The badge shows the state: crafting, waiting for a CPU, missing resources or paused after 3 failures. It runs on the server – no computer needed. From Lua: `bridge.setAutoStock(name, min, target, enabled)`.
 - **CPUs & jobs:** every crafting CPU with its current job, all running jobs, and **Cancel** (operators).
+- **Production:** what the network gains and uses per minute, and what eats an item – see [production statistics](automation.md).
 
 ## From Lua
 

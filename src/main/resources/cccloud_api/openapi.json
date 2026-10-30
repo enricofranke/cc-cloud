@@ -1,0 +1,673 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CC: Cloud public API",
+    "version": "1",
+    "description": "Read sections, storage and production statistics, set widget values and run scenes of one mainframe with a per-player API key. Off by default ([api] apiEnabled in serverconfig/cccloud-server.toml). Every request needs the key's scope and the key owner's live permission (scope and rights, never more). PIN-protected widgets and scenes are never available through the API."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "apiKey": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "cck_<43 characters>",
+        "description": "Authorization: Bearer cck_… only. A key in the URL is refused (400 key_in_query)."
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "An error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Too many requests (per key and per IP)",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Seconds"
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "missing_scope",
+            "description": "unauthorized, expired, key_in_query, ip_not_allowed, no_access, missing_scope, not_allowed, pin_required, not_found, invalid, invalid_value, not_interactive, not_supported, use_scene_route, offline, unloaded, busy, too_many, rate_limited, too_many_streams, disabled, too_large"
+          }
+        }
+      },
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "example": "gauge"
+          },
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "description": "number, string, boolean or rows"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pin": {
+            "type": "boolean",
+            "description": "PIN-protected: not settable through the API"
+          }
+        }
+      },
+      "Section": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "loaded": {
+            "type": "boolean"
+          },
+          "template": {
+            "type": "string"
+          },
+          "widgets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Widget"
+            }
+          }
+        }
+      },
+      "ItemRow": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "minecraft:iron_ingot"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "craftable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Ok": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/me": {
+      "get": {
+        "summary": "The key, its player and mainframe",
+        "responses": {
+          "200": {
+            "description": "Key info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/sections": {
+      "get": {
+        "summary": "All sections (scope read:sections)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sections": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Section"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/sections/{sectionId}": {
+      "get": {
+        "summary": "One section (scope read:sections)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Section",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Section"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/sections/{sectionId}/widgets/{widgetId}": {
+      "post": {
+        "summary": "Set a value or press a button (scope action:widgets)",
+        "description": "Validated like a dashboard action. PIN widgets answer 403 pin_required; crafting, watchlists and redstone sides answer 400 not_supported.",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "widgetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "oneOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Done",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/storage/{sectionId}/items": {
+      "get": {
+        "summary": "Search a storage card (scope read:storage)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "description": "Words must all match; @modid filters by mod"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ItemRow"
+                      }
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/production": {
+      "get": {
+        "summary": "Production statistics (scope read:stats)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "Storages (items gained/consumed/net/crafted per minute, series, top producers and consumers) and the energy flow of energy cards.",
+        "responses": {
+          "200": {
+            "description": "Overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/scenes": {
+      "get": {
+        "summary": "Scenes (scope run:scenes)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scenes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scenes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "needsPin": {
+                            "type": "boolean"
+                          },
+                          "running": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/scenes/{sceneId}/run": {
+      "post": {
+        "summary": "Run a scene (scope run:scenes)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sceneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}$"
+            }
+          }
+        ],
+        "description": "Like a press of the scene's button by the key's player: every step is checked against the player's live rights. Scenes that need the PIN answer 403 pin_required.",
+        "responses": {
+          "200": {
+            "description": "Started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ok"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/api/v1/mainframes/{mainframeId}/events": {
+      "get": {
+        "summary": "Server-Sent Events of value changes (scope read:sections)",
+        "parameters": [
+          {
+            "name": "mainframeId",
+            "in": "path",
+            "required": true,
+            "description": "The key's mainframe (any other mainframe answers 404).",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "description": "event: snapshot {sections}, then section, value {sectionId,id,value}, removed {sectionId}, state {online,enabled}, alert {sectionId?,text,level}; a comment line every 20 s; event: error {error} when the stream ends.",
+        "responses": {
+          "200": {
+            "description": "text/event-stream",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    }
+  }
+}

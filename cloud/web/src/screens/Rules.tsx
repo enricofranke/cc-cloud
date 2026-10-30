@@ -1,6 +1,5 @@
 // v0.5 C: rules – When → If → Then automation per mainframe (lazy route #/m/<id>/rules).
-import { useState } from "preact/hooks";
-import type { ComponentChildren } from "preact";
+import { useEffect, useState } from "preact/hooks";
 import { getConn } from "../lib/conns.ts";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Uplink } from "../lib/types.ts";
@@ -8,15 +7,14 @@ import { navigate, pushToast, timeAgo } from "../lib/ui.ts";
 import {
   OPS,
   RESULT_TEXT,
-  SIDES,
+  addsSchedule,
   clockToTicks,
   describeAction,
   describeCheck,
   newRule,
   numericWidgets,
   opText,
-  redstoneUplinks,
-  settableWidgets,
+  scheduleRule,
   storageUplinks,
   ticksToClock,
   toWire,
@@ -27,8 +25,13 @@ import {
   type Op,
   type Rule,
   type RuleState,
+  type SceneRef,
   type Trigger,
 } from "../lib/rules.ts";
+import { DAYS, TIME_PRESETS, dayShort, daysText, isTimeTrigger, nextRunText, nextScheduleRun, presetName, presetOf, type Day, type SchedulesInfo } from "../lib/schedules.ts";
+import { feature } from "../lib/config.ts";
+import { ACTION_LABEL, ActionFields, Field, UplinkSelect, freshAction, num } from "../components/ActionFields.tsx";
+import { tr } from "../lib/i18n.ts";
 import { IconBack, IconPlus } from "../components/Icons.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
@@ -36,6 +39,9 @@ import { DocsLink } from "../components/DocsLink.tsx";
 const ERR: Record<string, string> = {
   invalid_rule: "The server refused the rule",
   too_many: "This mainframe has reached its rule limit – a Memory upgrade card allows more.",
+  too_many_schedules: "This mainframe has reached its limit of time-based rules (maxSchedulesPerMainframe in the server config).",
+  unknown_scene: "That scene no longer exists.",
+  busy: "The scene is still running.",
   pin_widget: "Rules cannot use controls that are protected by the PIN.",
   unknown_rule: "That rule no longer exists.",
   not_allowed: "You lack the permission for this.",
@@ -50,15 +56,31 @@ const errText = (e: unknown) => {
   return `${ERR[x.message] ?? x.message}${x.detail ? `: ${x.detail}` : ""}`;
 };
 
+/** The scenes a `scene` action may pick (v0.10; empty on older servers). */
+export function sceneRefs(conn: MainframeConn): SceneRef[] {
+  return feature("scenes") ? (conn.scenes.value?.scenes ?? []).map((s) => ({ id: s.id, name: s.name, needsPin: s.needsPin })) : [];
+}
+
 export default function RulesScreen({ id }: { id: string }) {
   const conn = getConn(id);
-  const [editing, setEditing] = useState<Rule | null>(null);
+  const [editing, setEditing] = useState<{ rule: Rule; before: Rule | null } | null>(null);
+  const doc = conn?.rules.value;
+  // the Scenes screen's "Schedule…" shortcut: #/m/<id>/rules?schedule=<sceneId>
+  useEffect(() => {
+    if (!conn || !doc) return;
+    const sid = new URLSearchParams(location.hash.split("?")[1] ?? "").get("schedule");
+    if (!sid) return;
+    history.replaceState(null, "", `/#/m/${encodeURIComponent(id)}/rules`);
+    const sc = sceneRefs(conn).find((x) => x.id === sid);
+    if (sc && conn.can("rules.edit")) setEditing({ rule: scheduleRule(sc), before: null });
+  }, [!!doc]);
   if (!conn) return null;
-  const doc = conn.rules.value;
   const uplinks = conn.uplinks.value;
+  const scenes = sceneRefs(conn);
   const canEdit = conn.can("rules.edit");
   const canToggle = conn.can("rules.toggle");
   const name = conn.info.value?.name ?? "Mainframe";
+  const sched = doc?.schedules ?? null;
   return (
     <main class="page page-narrow-wide rules-page" id="main" tabIndex={-1}>
       <div class="page-head acc-head">
@@ -69,7 +91,7 @@ export default function RulesScreen({ id }: { id: string }) {
           <h1 class="px-heading">Rules</h1>
         </div>
         {canEdit && doc && (
-          <button type="button" class="pxbtn pxbtn-gold" disabled={doc.rules.length >= doc.limit} onClick={() => setEditing(newRule(uplinks))}>
+          <button type="button" class="pxbtn pxbtn-gold" disabled={doc.rules.length >= doc.limit} onClick={() => setEditing({ rule: newRule(uplinks), before: null })}>
             <span>
               <IconPlus size={14} /> New rule
             </span>
@@ -85,7 +107,14 @@ export default function RulesScreen({ id }: { id: string }) {
       ) : (
         <>
           <p class="muted small">
-            {doc.rules.length} / {doc.limit} rules{!canEdit && " · editing rules needs the “Edit rules” permission"}
+            {doc.rules.length} / {doc.limit} rules
+            {sched && (
+              <>
+                {" "}
+                · {sched.count} / {sched.limit} time-based{sched.timezone && ` · server time zone ${sched.timezone}`}
+              </>
+            )}
+            {!canEdit && " · editing rules needs the “Edit rules” permission"}
           </p>
           {doc.rules.length === 0 ? (
             <div class="rules-empty">
@@ -95,7 +124,7 @@ export default function RulesScreen({ id }: { id: string }) {
           ) : (
             <ul class="rule-list">
               {doc.rules.map((r) => (
-                <RuleRow key={r.id} r={r} conn={conn} uplinks={uplinks} canEdit={canEdit} canToggle={canToggle} onEdit={() => setEditing(structuredClone(r))} />
+                <RuleRow key={r.id} r={r} conn={conn} uplinks={uplinks} scenes={scenes} canEdit={canEdit} canToggle={canToggle} onEdit={() => setEditing({ rule: structuredClone(r), before: r })} />
               ))}
             </ul>
           )}
@@ -106,11 +135,11 @@ export default function RulesScreen({ id }: { id: string }) {
               </h2>
               <ul class="rule-log">
                 {[...doc.log].reverse().slice(0, 20).map((e, i) => (
-                  <li key={i}>
+                  <li key={i} class={e.skipped ? "skipped" : ""}>
                     <span class="muted small">{timeAgo(e.time)}</span>
                     <b>{e.name}</b>
                     {e.manual && <span class="tag tag-gray">run now</span>}
-                    <span class={`rule-res ${e.result === "ok" ? "ok" : "bad"}`}>{RESULT_TEXT[e.result] ?? e.result}</span>
+                    <span class={`rule-res ${e.result === "ok" ? "ok" : e.skipped ? "skip" : "bad"}`}>{RESULT_TEXT[e.result] ?? (e.skipped ? `skipped – ${e.result}` : e.result)}</span>
                   </li>
                 ))}
               </ul>
@@ -118,13 +147,13 @@ export default function RulesScreen({ id }: { id: string }) {
           )}
         </>
       )}
-      {editing && <RuleEditor conn={conn} initial={editing} uplinks={uplinks} onClose={() => setEditing(null)} />}
+      {editing && <RuleEditor conn={conn} initial={editing.rule} before={editing.before} uplinks={uplinks} scenes={scenes} schedules={sched} onClose={() => setEditing(null)} />}
     </main>
   );
 }
 
-function RuleRow(props: { r: RuleState; conn: MainframeConn; uplinks: Uplink[]; canEdit: boolean; canToggle: boolean; onEdit: () => void }) {
-  const { r, conn, uplinks } = props;
+function RuleRow(props: { r: RuleState; conn: MainframeConn; uplinks: Uplink[]; scenes: SceneRef[]; canEdit: boolean; canToggle: boolean; onEdit: () => void }) {
+  const { r, conn, uplinks, scenes } = props;
   const [busy, setBusy] = useState(false);
   const run = async (f: () => Promise<unknown>, ok?: string) => {
     setBusy(true);
@@ -189,9 +218,10 @@ function RuleRow(props: { r: RuleState; conn: MainframeConn; uplinks: Uplink[]; 
             <span class="kw">if</span> {r.if.map((c) => describeCheck(c, uplinks)).join(" and ")}
           </>
         )}{" "}
-        <span class="kw">then</span> {r.then.map((a) => describeAction(a, uplinks)).join(", ")}.
+        <span class="kw">then</span> {r.then.map((a) => describeAction(a, uplinks, "en", scenes)).join(", ")}.
       </p>
       <p class="muted small rule-meta">
+        {r.enabled && r.nextRun && <span class="rule-next">{nextRunText(r.nextRun, "en")}</span>}
         cooldown {r.cooldown} s · {r.runs} run{r.runs === 1 ? "" : "s"} since restart
         {r.lastRun ? ` · last ${timeAgo(r.lastRun)}` : " · not run yet"}
         {r.lastResult && <span class={`rule-res ${r.lastResult === "ok" ? "ok" : "bad"}`}>{RESULT_TEXT[r.lastResult] ?? r.lastResult}</span>}
@@ -201,29 +231,6 @@ function RuleRow(props: { r: RuleState; conn: MainframeConn; uplinks: Uplink[]; 
 }
 
 // ------------------------------------------------------------------ editor
-function Field({ label, children, hint }: { label: string; children: ComponentChildren; hint?: string }) {
-  return (
-    <label class="field">
-      <span class="field-label">{label}</span>
-      {children}
-      {hint && <span class="field-hint">{hint}</span>}
-    </label>
-  );
-}
-
-function UplinkSelect({ value, list, onChange, label = "Card" }: { value: string; list: Uplink[]; onChange: (id: string) => void; label?: string }) {
-  return (
-    <select class="select" aria-label={label} value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}>
-      {!list.some((u) => u.uplinkId === value) && <option value="">Pick a card…</option>}
-      {list.map((u) => (
-        <option key={u.uplinkId} value={u.uplinkId}>
-          {u.title || "Untitled"}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 function OpSelect({ value, onChange }: { value: Op; onChange: (o: Op) => void }) {
   return (
     <select class="select select-op" aria-label="Comparison" value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value as Op)}>
@@ -235,8 +242,6 @@ function OpSelect({ value, onChange }: { value: Op; onChange: (o: Op) => void })
     </select>
   );
 }
-
-const num = (s: string) => (s.trim() === "" ? NaN : Number(s));
 
 /** The editable part of a widget / items / power check (shared by When and If). */
 function CheckFields({ c, uplinks, onChange }: { c: Check; uplinks: Uplink[]; onChange: (c: Check) => void }) {
@@ -295,7 +300,9 @@ function freshCheck(type: string, uplinks: Uplink[]): Trigger {
     case "interval":
       return { type: "interval", minutes: 10 };
     case "time":
-      return { type: "time", time: 0 };
+      return { type: "time", time: 12000 };
+    case "schedule":
+      return { type: "schedule", days: ["mon", "tue", "wed", "thu", "fri"], at: "07:00" };
     default:
       return { type: "widget", uplinkId: nu?.uplinkId ?? "", widgetId: nu ? numericWidgets(nu)[0].id : "", op: ">", value: 0 };
   }
@@ -307,7 +314,8 @@ const TRIGGERS: [string, string][] = [
   ["power", "mainframe power"],
   ["offline", "a card goes offline"],
   ["interval", "every … minutes"],
-  ["time", "a time of day"],
+  ["schedule", "on days at a time"],
+  ["time", "an in-game time of day"],
 ];
 const CONDS: [string, string][] = [
   ["widget", "a widget value"],
@@ -315,136 +323,16 @@ const CONDS: [string, string][] = [
   ["power", "mainframe power"],
   ["online", "a card is online"],
 ];
-const ACTIONS: [Action["type"], string][] = [
-  ["redstone", "Set redstone"],
-  ["widget", "Use a control"],
-  ["craft", "Craft"],
-  ["alert", "Send an alert"],
-  ["dashboard", "Dashboard on/off"],
-];
-
-function freshAction(type: Action["type"], uplinks: Uplink[]): Action {
-  const ru = redstoneUplinks(uplinks)[0];
-  const cu = uplinks.find((u) => settableWidgets(u).length);
-  const su = storageUplinks(uplinks)[0];
-  switch (type) {
-    case "redstone":
-      return { type, uplinkId: ru?.uplinkId ?? "", side: "back", value: 15 };
-    case "widget": {
-      const w = cu ? settableWidgets(cu)[0] : undefined;
-      return { type, uplinkId: cu?.uplinkId ?? "", widgetId: w?.id ?? "", value: w?.type === "toggle" || w?.type === "button" ? true : 0 };
-    }
-    case "craft":
-      return { type, uplinkId: su?.uplinkId ?? "", item: "minecraft:iron_ingot", amount: 64 };
-    case "alert":
-      return { type, text: "", level: "warn" };
-    case "dashboard":
-      return { type, enabled: false };
-  }
-}
-
-function ActionFields({ a, uplinks, onChange }: { a: Action; uplinks: Uplink[]; onChange: (a: Action) => void }) {
-  switch (a.type) {
-    case "redstone":
-      return (
-        <div class="rule-fields">
-          <UplinkSelect value={a.uplinkId} list={redstoneUplinks(uplinks)} label="Computer" onChange={(uplinkId) => onChange({ ...a, uplinkId })} />
-          <select class="select" aria-label="Side" value={a.side} onChange={(e) => onChange({ ...a, side: (e.target as HTMLSelectElement).value as typeof a.side })}>
-            {SIDES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <input class="input input-num" type="number" min={0} max={15} aria-label="Level 0–15" value={a.value} onInput={(e) => onChange({ ...a, value: num((e.target as HTMLInputElement).value) })} />
-        </div>
-      );
-    case "widget": {
-      const list = uplinks.filter((u) => settableWidgets(u).length);
-      const u = uplinks.find((x) => x.uplinkId === a.uplinkId);
-      const ws = u ? settableWidgets(u) : [];
-      const w = ws.find((x) => x.id === a.widgetId);
-      const valueFor = (id: string) => {
-        const t = ws.find((x) => x.id === id)?.type;
-        return t === "toggle" || t === "button" ? true : t === "text" || t === "select" ? "" : 0;
-      };
-      return (
-        <div class="rule-fields">
-          <UplinkSelect
-            value={a.uplinkId}
-            list={list}
-            onChange={(uplinkId) => {
-              const first = settableWidgets(uplinks.find((x) => x.uplinkId === uplinkId)!)[0];
-              onChange({ ...a, uplinkId, widgetId: first?.id ?? "", value: first?.type === "toggle" || first?.type === "button" ? true : 0 });
-            }}
-          />
-          <select class="select" aria-label="Control" value={a.widgetId} onChange={(e) => onChange({ ...a, widgetId: (e.target as HTMLSelectElement).value, value: valueFor((e.target as HTMLSelectElement).value) })}>
-            {ws.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.label || x.id} ({x.type})
-              </option>
-            ))}
-          </select>
-          {w?.type === "toggle" && (
-            <select class="select" aria-label="Turn" value={a.value ? "on" : "off"} onChange={(e) => onChange({ ...a, value: (e.target as HTMLSelectElement).value === "on" })}>
-              <option value="on">on</option>
-              <option value="off">off</option>
-            </select>
-          )}
-          {w?.type === "button" && <span class="muted small">press it</span>}
-          {(w?.type === "slider" || w?.type === "number") && (
-            <input class="input input-num" type="number" aria-label="Value" min={w.opts?.min} max={w.opts?.max} value={String(a.value)} onInput={(e) => onChange({ ...a, value: num((e.target as HTMLInputElement).value) })} />
-          )}
-          {w?.type === "select" && (
-            <select class="select" aria-label="Option" value={String(a.value)} onChange={(e) => onChange({ ...a, value: (e.target as HTMLSelectElement).value })}>
-              {((w.opts?.options ?? []) as unknown[]).filter((x): x is string => typeof x === "string").map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          )}
-          {w?.type === "text" && <input class="input" maxLength={256} aria-label="Text" value={String(a.value)} onInput={(e) => onChange({ ...a, value: (e.target as HTMLInputElement).value })} />}
-        </div>
-      );
-    }
-    case "craft":
-      return (
-        <div class="rule-fields">
-          <UplinkSelect value={a.uplinkId} list={storageUplinks(uplinks)} label="Storage card" onChange={(uplinkId) => onChange({ ...a, uplinkId })} />
-          <input class="input" placeholder="minecraft:iron_ingot" aria-label="Item id" value={a.item} onInput={(e) => onChange({ ...a, item: (e.target as HTMLInputElement).value.trim().toLowerCase() })} />
-          <input class="input input-num" type="number" min={1} aria-label="Amount" value={a.amount} onInput={(e) => onChange({ ...a, amount: num((e.target as HTMLInputElement).value) })} />
-        </div>
-      );
-    case "alert":
-      return (
-        <div class="rule-fields">
-          <input class="input rule-grow" maxLength={120} placeholder="Reactor is hot!" aria-label="Alert text" value={a.text} onInput={(e) => onChange({ ...a, text: (e.target as HTMLInputElement).value })} />
-          <select class="select" aria-label="Level" value={a.level} onChange={(e) => onChange({ ...a, level: (e.target as HTMLSelectElement).value as typeof a.level })}>
-            <option value="info">info</option>
-            <option value="warn">warning</option>
-            <option value="error">error</option>
-          </select>
-        </div>
-      );
-    case "dashboard":
-      return (
-        <div class="rule-fields">
-          <select class="select" aria-label="Dashboard" value={a.enabled ? "on" : "off"} onChange={(e) => onChange({ ...a, enabled: (e.target as HTMLSelectElement).value === "on" })}>
-            <option value="off">turn the dashboard off</option>
-            <option value="on">turn the dashboard on</option>
-          </select>
-        </div>
-      );
-  }
-}
-
-function RuleEditor({ conn, initial, uplinks, onClose }: { conn: MainframeConn; initial: Rule; uplinks: Uplink[]; onClose: () => void }) {
+function RuleEditor(props: { conn: MainframeConn; initial: Rule; before: Rule | null; uplinks: Uplink[]; scenes: SceneRef[]; schedules: SchedulesInfo | null; onClose: () => void }) {
+  const { conn, initial, uplinks, scenes, schedules, onClose } = props;
   const [r, setR] = useState<Rule>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
-  const problem = validateRule(r, uplinks);
+  const problem = validateRule(r, uplinks, 4096, { minInterval: schedules?.minInterval, scenes });
+  // one more time-based rule than the server allows: say so before saving
+  const scheduleFull = !!schedules && addsSchedule(r, props.before) && schedules.count >= schedules.limit;
+  const actions: Action["type"][] = ["redstone", "widget", "craft", "alert", "dashboard", ...(feature("scenes") && conn.scenes.value ? (["scene"] as const) : [])];
   const set = (patch: Partial<Rule>) => setR({ ...r, ...patch });
   const save = async () => {
     setTried(true);
@@ -502,18 +390,50 @@ function RuleEditor({ conn, initial, uplinks, onClose }: { conn: MainframeConn; 
           {when.type === "interval" && (
             <div class="rule-fields">
               <span>every</span>
-              <input class="input input-num" type="number" min={1} max={1440} aria-label="Minutes" value={when.minutes} onInput={(e) => set({ when: { ...when, minutes: num((e.target as HTMLInputElement).value) } })} />
+              <input class="input input-num" type="number" min={schedules?.minInterval ?? 1} max={1440} aria-label="Minutes" value={when.minutes} onInput={(e) => set({ when: { ...when, minutes: num((e.target as HTMLInputElement).value) } })} />
               <span>minutes</span>
+              {schedules && schedules.minInterval > 1 && <span class="muted small">at least {schedules.minInterval} on this server</span>}
             </div>
           )}
+          {when.type === "schedule" && <ScheduleFields when={when} timezone={schedules?.timezone ?? ""} onChange={(w) => set({ when: w })} />}
           {when.type === "time" && (
             <div class="rule-fields">
+              <select
+                class="select"
+                aria-label="In-game time preset"
+                value={presetOf(when.time) ?? "custom"}
+                onChange={(e) => {
+                  const p = TIME_PRESETS.find((x) => x.id === (e.target as HTMLSelectElement).value);
+                  if (p) set({ when: { ...when, time: p.time } });
+                }}
+              >
+                {TIME_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {presetName(p.id, "en")} ({ticksToClock(p.time)})
+                  </option>
+                ))}
+                <option value="custom">any in-game time…</option>
+              </select>
               <span>at</span>
               <input class="input input-num" type="time" aria-label="In-game time" value={ticksToClock(when.time)} onInput={(e) => set({ when: { ...when, time: clockToTicks((e.target as HTMLInputElement).value) ?? when.time } })} />
-              <span class="muted small">in-game time ({when.time} ticks)</span>
+              <span class="muted small">in-game ({when.time} ticks)</span>
             </div>
           )}
-          <p class="muted small">Value triggers fire once when the check becomes true, not again while it stays true.</p>
+          {isTimeTrigger(when) ? (
+            <p class="muted small">
+              {when.type === "time"
+                ? "In-game time only passes while the server runs – there is no catch-up after a restart."
+                : "After a restart one missed run is made up (within 24 h by default). While the mainframe is unloaded or offline, runs are skipped and logged."}{" "}
+              <DocsLink to="/docs/automation#schedules">Schedules</DocsLink>
+            </p>
+          ) : (
+            <p class="muted small">Value triggers fire once when the check becomes true, not again while it stays true.</p>
+          )}
+          {scheduleFull && (
+            <p class="field-hint warn" role="status">
+              This mainframe already has {schedules!.count} of {schedules!.limit} time-based rules – the server will refuse another one.
+            </p>
+          )}
         </fieldset>
 
         <fieldset class="rule-block">
@@ -554,14 +474,14 @@ function RuleEditor({ conn, initial, uplinks, onClose }: { conn: MainframeConn; 
           </legend>
           {r.then.map((a, i) => (
             <div key={i} class="rule-item">
-              <select class="select" aria-label="Action" value={a.type} onChange={(e) => set({ then: r.then.map((x, j) => (j === i ? freshAction((e.target as HTMLSelectElement).value as Action["type"], uplinks) : x)) })}>
-                {ACTIONS.map(([v, l]) => (
+              <select class="select" aria-label="Action" value={a.type} onChange={(e) => set({ then: r.then.map((x, j) => (j === i ? freshAction((e.target as HTMLSelectElement).value as Action["type"], uplinks, scenes) : x)) })}>
+                {(actions.includes(a.type) ? actions : [...actions, a.type]).map((v) => (
                   <option key={v} value={v}>
-                    {l}
+                    {tr("en", ACTION_LABEL[v])}
                   </option>
                 ))}
               </select>
-              <ActionFields a={a} uplinks={uplinks} onChange={(na) => set({ then: r.then.map((x, j) => (j === i ? na : x)) })} />
+              <ActionFields a={a} uplinks={uplinks} scenes={scenes} onChange={(na) => set({ then: r.then.map((x, j) => (j === i ? na : x)) })} />
               <button type="button" class="icon-btn sm" aria-label="Remove action" disabled={r.then.length === 1} onClick={() => set({ then: r.then.filter((_, j) => j !== i) })}>
                 ×
               </button>
@@ -591,7 +511,7 @@ function RuleEditor({ conn, initial, uplinks, onClose }: { conn: MainframeConn; 
                 <span class="kw">if</span> {r.if.map((c) => describeCheck(c, uplinks)).join(" and ")}
               </>
             )}{" "}
-            <span class="kw">then</span> {r.then.map((a) => describeAction(a, uplinks)).join(", ")}.
+            <span class="kw">then</span> {r.then.map((a) => describeAction(a, uplinks, "en", scenes)).join(", ")}.
           </p>
         )}
         {tried && problem && (
@@ -615,5 +535,44 @@ function RuleEditor({ conn, initial, uplinks, onClose }: { conn: MainframeConn; 
         </div>
       </form>
     </Sheet>
+  );
+}
+
+/** The `schedule` trigger: weekday chips, the time (24 h, server time zone) and the next occurrence. */
+function ScheduleFields({ when, timezone, onChange }: { when: Extract<Trigger, { type: "schedule" }>; timezone: string; onChange: (w: Extract<Trigger, { type: "schedule" }>) => void }) {
+  const toggle = (d: Day) => onChange({ ...when, days: when.days.includes(d) ? when.days.filter((x) => x !== d) : DAYS.filter((x) => x === d || when.days.includes(x)) });
+  const next = nextScheduleRun(when.days, when.at, timezone);
+  const quick: [string, Day[]][] = [
+    ["Every day", [...DAYS]],
+    ["Mon–Fri", ["mon", "tue", "wed", "thu", "fri"]],
+    ["Weekend", ["sat", "sun"]],
+  ];
+  return (
+    <div class="sched">
+      <div class="day-chips" role="group" aria-label="Days">
+        {DAYS.map((d) => (
+          <button key={d} type="button" class={`day-chip ${when.days.includes(d) ? "on" : ""}`} aria-pressed={when.days.includes(d)} onClick={() => toggle(d)}>
+            {dayShort(d, "en")}
+          </button>
+        ))}
+        <span class="day-quick">
+          {quick.map(([label, days]) => (
+            <button key={label} type="button" class="link-btn small" onClick={() => onChange({ ...when, days })}>
+              {label}
+            </button>
+          ))}
+        </span>
+      </div>
+      <div class="rule-fields">
+        <span>at</span>
+        <input class="input input-num" type="time" aria-label="Time (24 h)" value={when.at} onInput={(e) => onChange({ ...when, at: (e.target as HTMLInputElement).value })} />
+        <span class="muted small">server time{timezone ? ` (${timezone})` : ""}</span>
+      </div>
+      {next && (
+        <p class="muted small">
+          {daysText(when.days, "en")} at {when.at} – next: {new Date(next).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} your time
+        </p>
+      )}
+    </div>
   );
 }

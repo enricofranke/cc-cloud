@@ -16,6 +16,7 @@ import { PERMISSIONS, presetHas, type MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
 import { CapacityLine } from "../components/Capacity.tsx";
 import { feature } from "../lib/config.ts";
+import { lang, setLang, t } from "../lib/i18n.ts";
 import { Sheet } from "../components/Overlays.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
@@ -355,12 +356,38 @@ export function Dashboard({ id }: { id: string }) {
               ))}
             </div>
           </div>
+          <div class="theme-row">
+            <span class="muted small" title="Docs, scenes, production and API keys">
+              Language
+            </span>
+            <div class="seg-ctl seg-lang" role="radiogroup" aria-label="Language">
+              {(["en", "de"] as const).map((l) => (
+                <button key={l} type="button" role="radio" aria-checked={lang.value === l} class={lang.value === l ? "on" : ""} onClick={() => setLang(l)}>
+                  {l === "en" ? "English" : "Deutsch"}
+                </button>
+              ))}
+            </div>
+          </div>
           <div class="settings-links">
             <a href="#/devices">Devices</a>
             {conn.can("access.manage") && <a href={`#/m/${encodeURIComponent(id)}/access`}>Access &amp; roles</a>}
             {conn.can("shares.create") && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
             {conn.rules.value && feature("rules") && <a href={`#/m/${encodeURIComponent(id)}/rules`}>Rules</a>}
+            {conn.scenes.value && feature("scenes") && <a href={`#/m/${encodeURIComponent(id)}/scenes`}>{t("sc.title")}</a>}
+            {feature("production") && (
+              <a
+                href={`#/m/${encodeURIComponent(id)}/production`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSheet(null);
+                  navigate(`/m/${encodeURIComponent(id)}/production`);
+                }}
+              >
+                {t("pr.tab")}
+              </a>
+            )}
             {conn.can("push.manage") && feature("push") && <a href={`#/m/${encodeURIComponent(id)}/push`}>Notifications</a>}
+            {conn.can("api.keys") && feature("api") && <a href={`#/m/${encodeURIComponent(id)}/apikeys`}>{t("ak.title")}</a>}
             {conn.store.value && conn.can("scripts.upload") && (
               <button type="button" class="link-btn" onClick={() => (setSheet(null), setStore({}))}>
                 Script Store

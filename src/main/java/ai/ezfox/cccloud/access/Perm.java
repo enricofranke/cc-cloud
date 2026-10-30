@@ -31,7 +31,9 @@ public enum Perm {
     SHARES_CREATE("shares.create", "manage"),
     PIN_MANAGE("pin.manage", "manage"),
     POWER_TOGGLE("power.toggle", "manage"),
-    NETWORK_LINK("network.link", "manage");
+    NETWORK_LINK("network.link", "manage"),
+    /** v0.10 public API: create API keys for this mainframe (admin and owner presets). */
+    API_KEYS("api.keys", "manage");
 
     public final String id;
     public final String group;

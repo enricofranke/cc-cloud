@@ -64,10 +64,17 @@ class PermissionWalkTest {
         expected.put(Router.Id.SCRIPT_MOVE, Perm.SCRIPTS_UPLOAD);
         expected.put(Router.Id.HISTORY, Perm.VIEW);
         expected.put(Router.Id.PUSH_POST, Perm.PUSH_MANAGE);
+        expected.put(Router.Id.APIKEYS_GET, Perm.API_KEYS);
+        expected.put(Router.Id.APIKEYS_POST, Perm.API_KEYS);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
             Router.Id.ICON, Router.Id.WEBSOCKET, Router.Id.STATIC, Router.Id.CONFIG, Router.Id.VOXEL_ATLAS);
         for (var id : Router.Id.values()) {
+            // v0.10 public API: scopes ∩ the key owner's rights, checked per route by ApiV1 (ApiV1Test walks them).
+            if (id.isPublicApi()) {
+                assertNull(AccessGate.routePerm(id), id.name());
+                continue;
+            }
             if (accountLevel.contains(id)) {
                 assertNull(AccessGate.routePerm(id), id.name());
                 continue;
@@ -126,6 +133,7 @@ class PermissionWalkTest {
     private EmbeddedChannel connect() {
         var pending = auth.pair(auth.accountCode(player).code(), "Laptop", "127.0.0.1");
         String token = auth.approve(pending.id(), player, "Alex", true).token();
+        auth.poll(pending.id()); // hand-out done: the approval does not count against the pending limit any more
         var handshaker = new WebSocketServerHandshaker13("ws://localhost/ws/client", null, WebSocketDecoderConfig.newBuilder().build());
         var channel = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1", null));
         channel.writeInbound(new TextWebSocketFrame("{\"t\":\"auth\",\"token\":\"" + token + "\",\"mainframeId\":\"" + mainframe + "\"}"));
@@ -172,6 +180,11 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"rule_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rule_enable\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\",\"enabled\":true}", Perm.RULES_TOGGLE);
         cases.put("{\"t\":\"rule_run\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_TOGGLE);
+        cases.put("{\"t\":\"scene_set\",\"reqId\":\"r\",\"scene\":{}}", Perm.RULES_EDIT);
+        cases.put("{\"t\":\"scene_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"item\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:iron_ingot\"}", Perm.STORAGE_SEARCH);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"pin\",\"kind\":\"energy\"}", Perm.LAYOUT_EDIT);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"unpin\",\"id\":\"0a1b2c3d\"}", Perm.LAYOUT_EDIT);
         for (var op : new String[]{"browse", "craftables", "fluids", "item", "cpus"}) {
             cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"" + op + "\"}", Perm.STORAGE_SEARCH);
         }

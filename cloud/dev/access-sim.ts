@@ -56,7 +56,7 @@ export const PERMS: { id: string; group: string }[] = [
   ["storage.search", "storage"], ["storage.craft", "storage"], ["storage.autostock", "storage"],
   ["scripts.upload", "scripts"], ["scripts.run", "scripts"], ["scripts.delete", "scripts"], ["terminal", "scripts"],
   ["layout.edit", "automation"], ["rules.edit", "automation"], ["rules.toggle", "automation"], ["push.manage", "automation"],
-  ["devices.manage", "manage"], ["network.link", "manage"], ["access.manage", "manage"], ["shares.create", "manage"], ["pin.manage", "manage"],
+  ["devices.manage", "manage"], ["network.link", "manage"], ["access.manage", "manage"], ["shares.create", "manage"], ["pin.manage", "manage"], ["api.keys", "manage"],
 ].map(([id, group]) => ({ id, group }));
 const ALL = PERMS.map((x) => x.id);
 const VIEWER = ["view", "storage.search"];

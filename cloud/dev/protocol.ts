@@ -109,6 +109,11 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("rule_delete"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
   z.object({ t: z.literal("rule_enable"), reqId: z.string().min(1).max(64), id: z.string().max(16), enabled: z.boolean() }),
   z.object({ t: z.literal("rule_run"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
+  // v0.10 scenes (the scene document is checked by the handler, like the mod's SceneCodec)
+  z.object({ t: z.literal("scene_set"), reqId: z.string().min(1).max(64), scene: z.record(z.string(), z.unknown()) }),
+  z.object({ t: z.literal("scene_delete"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
+  // v0.10 production statistics (op parameters are checked by the handler)
+  z.object({ t: z.literal("production"), reqId: z.string().min(1).max(64), op: z.enum(["overview", "item", "pin", "unpin"]) }).passthrough(),
   // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
   z.object({

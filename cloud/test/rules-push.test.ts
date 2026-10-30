@@ -65,7 +65,7 @@ describe("rules protocol (mock)", () => {
   it("saves, toggles, runs and deletes with permissions", async () => {
     mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, log: () => {} });
     const owner = await open("Enrico");
-    expect(owner.rules.value?.rules.map((r) => r.name)).toEqual(["Cool the reactor", "Night lights"]);
+    expect(owner.rules.value?.rules.map((r) => r.name)).toEqual(["Cool the reactor", "Night lights", "Morning routine", "Coolant check"]);
     expect(owner.rules.value?.limit).toBe(64);
     const { id } = await owner.ruleOp({
       t: "rule_set",

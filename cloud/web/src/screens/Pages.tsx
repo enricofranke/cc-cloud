@@ -7,9 +7,21 @@ import type { Uplink } from "../lib/types.ts";
 import { resolveLayout } from "../lib/layout.ts";
 import { adaptComputerCard } from "../lib/redstone.ts";
 import { Card } from "../components/Card.tsx";
-import { NETWORK_PAGE, Tabs } from "../components/PageTabs.tsx";
+import { NETWORK_PAGE, PRODUCTION_PAGE, Tabs } from "../components/PageTabs.tsx";
+import { feature } from "../lib/config.ts";
+import { t } from "../lib/i18n.ts";
+import { route } from "../lib/ui.ts";
 
-export { NETWORK_PAGE };
+export { NETWORK_PAGE, PRODUCTION_PAGE };
+
+/** v0.10: the production page is its own lazily loaded chunk. */
+function ProductionLoader({ conn }: { conn: MainframeConn }) {
+  const [Comp, setComp] = useState<ComponentType<{ conn: MainframeConn }> | null>(null);
+  useEffect(() => {
+    import("./Production.tsx").then((m) => setComp(() => m.default));
+  }, []);
+  return Comp ? <Comp conn={conn} /> : <div class="card skeleton net-skeleton" />;
+}
 
 /** The network page is its own lazily loaded chunk. */
 function NetworkLoader({ conn, onOpenCard }: { conn: MainframeConn; onOpenCard: (uplinkId: string) => void }) {
@@ -49,14 +61,25 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   // the Network page is always there (not part of the editable layout)
   const showNetwork = conn.network.value !== null;
   const onNetwork = showNetwork && current === NETWORK_PAGE && !props.editing;
+  // v0.10: the Production page too (#/m/<id>/production selects it)
+  const showProduction = feature("production") && !conn.isShare;
+  const onProduction = showProduction && current === PRODUCTION_PAGE && !props.editing;
   const page = pages.find((p) => p.id === current) ?? pages[0];
+  const mfId = conn.info.value?.id ?? "";
   const select = (id: string) => {
     setCurrent(id);
     try {
-      sessionStorage.setItem(pageKey(conn.info.value?.id ?? ""), id);
+      sessionStorage.setItem(pageKey(mfId), id);
     } catch {}
+    // keep the address in step with the production page (replace: tabs are not history entries)
+    const want = id === PRODUCTION_PAGE ? `#/m/${encodeURIComponent(mfId)}/production` : `#/m/${encodeURIComponent(mfId)}`;
+    if (mfId && location.hash.startsWith("#/m/") && location.hash !== want) history.replaceState(null, "", `/${want}`);
   };
-  const showTabs = pages.length > 1 || showNetwork;
+  const r = route.value;
+  useEffect(() => {
+    if (r.name === "mainframe" && r.tab === "production" && showProduction) select(PRODUCTION_PAGE);
+  }, [r, showProduction]);
+  const showTabs = pages.length > 1 || showNetwork || showProduction;
   const openCard = (uplinkId: string) => {
     const target = pages.find((p) => p.cards.some((c) => c.uplink.uplinkId === uplinkId || c.widgets.some((w) => w.uplink.uplinkId === uplinkId)));
     if (!target) return;
@@ -71,13 +94,27 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   };
 
   if (props.editing)
-    return <EditorLoader conn={conn} uplinks={uplinks} page={current && current !== NETWORK_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
+    return <EditorLoader conn={conn} uplinks={uplinks} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
 
   return (
     <>
-      {showTabs && <Tabs pages={pages} network={showNetwork} current={onNetwork ? NETWORK_PAGE : page.id} isPhone={isPhone} editing={false} onSelect={select} onAdd={() => {}} onChange={() => {}} />}
+      {showTabs && (
+        <Tabs
+          pages={pages}
+          network={showNetwork}
+          production={showProduction ? t("pr.tab") : undefined}
+          current={onNetwork ? NETWORK_PAGE : onProduction ? PRODUCTION_PAGE : page.id}
+          isPhone={isPhone}
+          editing={false}
+          onSelect={select}
+          onAdd={() => {}}
+          onChange={() => {}}
+        />
+      )}
       {onNetwork ? (
         <NetworkLoader conn={conn} onOpenCard={openCard} />
+      ) : onProduction ? (
+        <ProductionLoader conn={conn} />
       ) : page.cards.length === 0 ? (
         <div class="empty">
           <h2 class="px-title">Nothing on this page</h2>

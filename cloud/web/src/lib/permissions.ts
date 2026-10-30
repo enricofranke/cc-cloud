@@ -23,6 +23,7 @@ export const PERMISSIONS = [
   "access.manage",
   "shares.create",
   "pin.manage",
+  "api.keys",
 ] as const;
 export type Perm = (typeof PERMISSIONS)[number];
 
@@ -57,6 +58,7 @@ export const PERM_INFO: Record<Perm, { label: string; help: string; group: strin
   "access.manage": { label: "Manage access", help: "Change who may do what – including this page.", group: "manage", risky: true },
   "shares.create": { label: "Share links", help: "Create read-only links for people without an account.", group: "manage" },
   "pin.manage": { label: "Manage the PIN", help: "Set or change the mainframe PIN.", group: "manage" },
+  "api.keys": { label: "API keys", help: "Create keys for external tools (Discord bots, Home Assistant) – they act with your rights.", group: "manage", risky: true },
 };
 
 const VIEWER: readonly string[] = ["view", "storage.search"];

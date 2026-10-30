@@ -10,7 +10,8 @@ import { createMockServer, COMPUTER, REACTOR } from "./mock-server.ts";
 const here = fileURLToPath(new URL(".", import.meta.url));
 const out = resolve(here, "../screenshots");
 mkdirSync(out, { recursive: true });
-for (const f of readdirSync(out)) if (f.endsWith(".png")) rmSync(resolve(out, f));
+// the v0.10 screens have their own script (dev/scenes-shots.ts)
+for (const f of readdirSync(out)) if (f.endsWith(".png") && !/^(desktop|phone)-v10-/.test(f)) rmSync(resolve(out, f));
 const staticDir = resolve(here, "../../src/main/resources/cccloud_web");
 
 const mock = await createMockServer({ port: 0, host: "127.0.0.1", extras: true, tickMs: 700, approveDelayMs: 2500, voxelRate: 120, staticDir, log: () => {} });

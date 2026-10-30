@@ -40,6 +40,11 @@ public interface HubSession {
         return perms().contains(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
     }
 
+    /** Takes a browser slot of the mainframe (Bandwidth upgrade); share viewers and API event streams do not. */
+    default boolean countsAsBrowser() {
+        return share() == null;
+    }
+
     /** Queues messages for sending. Must not block. */
     void send(List<String> messages);
 

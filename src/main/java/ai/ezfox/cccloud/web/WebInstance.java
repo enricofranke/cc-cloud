@@ -47,6 +47,16 @@ final class WebInstance {
     final FailureLimiter shareLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** Share links: logins per share link (30 per minute). */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> shareLogins = new java.util.concurrent.ConcurrentHashMap<>();
+    /** v0.10 public API: the key store (the game's SavedData; tests use their own) and the {@code [api]} config. */
+    volatile ai.ezfox.cccloud.publicapi.ApiKeys apiKeys = new ai.ezfox.cccloud.publicapi.ApiKeys(System::currentTimeMillis, () -> { });
+    volatile ai.ezfox.cccloud.publicapi.ApiSettings api = ai.ezfox.cccloud.publicapi.ApiSettings.OFF;
+    /** Public API requests per key hash and per IP (config limits, per minute); item searches per key (5 per second). */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiKeyLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiIpLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiSearchLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** Open event streams per key hash, and in total. */
+    final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> apiStreams = new java.util.concurrent.ConcurrentHashMap<>();
+    final java.util.concurrent.atomic.AtomicInteger apiStreamTotal = new java.util.concurrent.atomic.AtomicInteger();
     /** PIN hashing is slow on purpose, so it runs on its own thread with a small bounded queue. */
     /** Store install verification (fetches the signed index; L9). */
     final ThreadPoolExecutor storeExecutor = new ThreadPoolExecutor(1, 2, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(16),

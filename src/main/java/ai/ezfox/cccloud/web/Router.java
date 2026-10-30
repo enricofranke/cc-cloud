@@ -18,12 +18,24 @@ public final class Router {
          * Needs a valid device token (Authorization: Bearer) of a player who is not banned. The role on the mainframe a
          * request touches is checked by the route ({@link AccessApi} via the AccessResolver and {@link AccessGate}).
          */
-        DEVICE
+        DEVICE,
+        /**
+         * v0.10 public API: needs a valid API key (Authorization: Bearer cck_…, never in the URL); device tokens are not
+         * accepted. Scopes and the key owner's live rights are checked by {@link ai.ezfox.cccloud.publicapi.ApiV1}. The
+         * route does not exist (404) while {@code apiEnabled=false}.
+         */
+        API_KEY
     }
 
     public enum Id {
         PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, WEBSOCKET, STATIC;
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
+        API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
+
+        /** The v0.10 public API ({@code /api/v1/…}): only exists while {@code apiEnabled=true}. */
+        public boolean isPublicApi() {
+            return name().startsWith("API_");
+        }
 
         /** Script import routes that change the computer (PIN if set, upload rate limit). */
         public boolean isScriptWrite() {
@@ -41,7 +53,8 @@ public final class Router {
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
-                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || this == HISTORY || isScript() || isMap();
+                || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || this == HISTORY
+                || this == APIKEYS_GET || this == APIKEYS_POST || isScript() || isMap();
         }
     }
 
@@ -50,6 +63,9 @@ public final class Router {
     /** Script import / editor file path in the URL: up to 8 levels (validated again by ScriptFiles). */
     private static final String FILE = "/files/[A-Za-z0-9_.-]{1,64}(/[A-Za-z0-9_.-]{1,64}){0,7}";
     private static final String EXAMPLE_COMPUTER = "/api/mainframes/00000000-0000-0000-0000-000000000000/computers/00000000-0000-0000-0000-000000000001";
+    private static final String V1 = "/api/v1/mainframes/" + UUID_RE;
+    private static final String EXAMPLE_V1 = "/api/v1/mainframes/00000000-0000-0000-0000-000000000000";
+    private static final String EXAMPLE_SECTION = "00000000-0000-0000-0000-000000000001";
 
     public record Route(Id id, HttpMethod method, Pattern path, Access access, String example) {
         boolean matches(HttpMethod m, String p) {
@@ -94,6 +110,23 @@ public final class Router {
             "/api/mainframes/00000000-0000-0000-0000-000000000000/voxels/minecraft:overworld/0/4/0"),
         new Route(Id.SHARE_DELETE, HttpMethod.DELETE, Pattern.compile("/api/mainframes/" + UUID_RE + "/shares/[0-9a-f]{16}"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares/0123456789abcdef"),
+        new Route(Id.APIKEYS_GET, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/apikeys"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/apikeys"),
+        new Route(Id.APIKEYS_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/apikeys"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/apikeys"),
+        // v0.10 public API (off by default: 404 then). The description is public while the API is enabled.
+        new Route(Id.API_OPENAPI, HttpMethod.GET, Pattern.compile("/api/v1/openapi\\.json"), Access.PUBLIC, "/api/v1/openapi.json"),
+        new Route(Id.API_PREFLIGHT, HttpMethod.OPTIONS, Pattern.compile("/api/v1/[A-Za-z0-9_./-]{1,256}"), Access.PUBLIC, "/api/v1/me"),
+        new Route(Id.API_ME, HttpMethod.GET, Pattern.compile("/api/v1/me"), Access.API_KEY, "/api/v1/me"),
+        new Route(Id.API_SECTIONS, HttpMethod.GET, Pattern.compile(V1 + "/sections"), Access.API_KEY, EXAMPLE_V1 + "/sections"),
+        new Route(Id.API_SECTION, HttpMethod.GET, Pattern.compile(V1 + "/sections/" + UUID_RE), Access.API_KEY, EXAMPLE_V1 + "/sections/" + EXAMPLE_SECTION),
+        new Route(Id.API_WIDGET, HttpMethod.POST, Pattern.compile(V1 + "/sections/" + UUID_RE + "/widgets/[A-Za-z0-9_.:-]{1,64}"), Access.API_KEY,
+            EXAMPLE_V1 + "/sections/" + EXAMPLE_SECTION + "/widgets/lamp"),
+        new Route(Id.API_ITEMS, HttpMethod.GET, Pattern.compile(V1 + "/storage/" + UUID_RE + "/items"), Access.API_KEY, EXAMPLE_V1 + "/storage/" + EXAMPLE_SECTION + "/items"),
+        new Route(Id.API_PRODUCTION, HttpMethod.GET, Pattern.compile(V1 + "/production"), Access.API_KEY, EXAMPLE_V1 + "/production"),
+        new Route(Id.API_SCENES, HttpMethod.GET, Pattern.compile(V1 + "/scenes"), Access.API_KEY, EXAMPLE_V1 + "/scenes"),
+        new Route(Id.API_SCENE_RUN, HttpMethod.POST, Pattern.compile(V1 + "/scenes/[0-9a-f]{8}/run"), Access.API_KEY, EXAMPLE_V1 + "/scenes/0a1b2c3d/run"),
+        new Route(Id.API_EVENTS, HttpMethod.GET, Pattern.compile(V1 + "/events"), Access.API_KEY, EXAMPLE_V1 + "/events"),
         // Item icons are public (explicitly allow-listed): no secrets, rate limited per IP, still LAN-only by default.
         // Public: version, Script Store URL and feature switches (no secrets).
         new Route(Id.CONFIG, HttpMethod.GET, Pattern.compile("/api/config"), Access.PUBLIC, "/api/config"),

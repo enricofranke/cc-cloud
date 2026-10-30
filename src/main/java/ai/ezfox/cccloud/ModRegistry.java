@@ -194,6 +194,9 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("upgrades_effects_capacity", () -> ai.ezfox.cccloud.gametest.UpgradeTests::effectsAndCapacity);
         TEST_FUNCTIONS.register("upgrades_chunk_anchor", () -> ai.ezfox.cccloud.gametest.UpgradeTests::chunkAnchor);
         TEST_FUNCTIONS.register("wireless_redstone", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstone);
+        TEST_FUNCTIONS.register("scenes_rights_delays_pin", () -> ai.ezfox.cccloud.gametest.SceneTests::rightsDelaysPin);
+        TEST_FUNCTIONS.register("schedules_clocks", () -> ai.ezfox.cccloud.gametest.ScheduleTests::clocks);
+        TEST_FUNCTIONS.register("api_scopes_rights", () -> ai.ezfox.cccloud.gametest.ApiTests::scopesAndRights);
     }
 
     private ModRegistry() {

@@ -13,6 +13,8 @@ It is reviewed before every release.
 | Share-link secrets | 128 bits each. They give read-only access to selected cards. |
 | Mainframe PIN | A second factor for `opts.pin` widgets. |
 | Server availability | The web server runs inside the Minecraft server process. It must never stall the server thread. |
+| API keys (v0.10) | 256-bit bearer keys for external tools. Each one acts for one player on one mainframe, within its scopes. |
+| Scenes and schedules (v0.10) | One press or one clock tick runs several actions; a scene must never do more than its presser (or owner) may. |
 
 ## Attackers
 
@@ -22,6 +24,7 @@ It is reviewed before every release.
 4. **Malicious mod clients.** Modified game clients sending crafted GUI payloads, such as screen actions or Link Card use.
 5. **A stolen browser or token.** For example a lost phone.
 6. **Cross-site attackers.** Web pages that try to use a victim's browser: CSRF, WebSocket hijacking, Referer leaks.
+7. **Leaked API keys and third-party tools (v0.10).** A key copied into a bot, a Home Assistant config or a script repository can leak; the tool itself may be buggy or hostile.
 
 ## Mitigations
 
@@ -100,7 +103,7 @@ It is reviewed before every release.
 ### Web hardening
 - The server is LAN-only by default (`webAllowInternet=false`). IP bans are honoured. `X-Forwarded-For` and `CF-Connecting-IP` are only trusted from configured proxies.
 - Deny by default:
-  - Every HTTP route declares its access level in `Router` and is checked centrally (`RouteAuthTest` walks every route).
+  - Every HTTP route declares its access level in `Router` (public, device token, or API key) and is checked centrally (`RouteAuthTest` walks every route, `ApiHttpTest` the public API).
   - WebSocket messages other than `auth`, `auth_share` and `pong` are rejected before authentication.
   - Authentication must happen within 5 seconds.
 - Size limits:
@@ -115,7 +118,9 @@ It is reviewed before every release.
   - 10 actions per second per socket;
   - 5 item searches per second;
   - 5 layout saves per 10 seconds per mainframe;
+  - 5 production requests per second per socket; scene saves like actions;
   - 120 API requests per minute per IP;
+  - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP.
 - Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit.
 - No CSRF surface:
@@ -142,6 +147,24 @@ It is reviewed before every release.
   - file paths are canonicalised inside the computer root;
   - `..`, absolute paths, symlinks, `rom/` and disk mounts are rejected;
   - size and quota limits apply.
+
+### Scenes, schedules and production statistics (v0.10)
+- **No escalation through scenes.** A scene press needs `act.buttons`; every step is checked again **when it runs**, with the live rights of the player behind the pressing device (read-only devices capped as always): widget steps need the widget's own action permission, redstone `act.redstone`, crafting `storage.craft`, the dashboard switch `power.toggle`. A refused step fails with `not_allowed` and the others still run. Saving a scene needs `rules.edit` and every permission its steps need, so nobody can store a scene that does more than they could do by hand.
+- **Scheduled scenes** (a rule's `scene` action) run with the live rights of the scene's owner (the player who saved it last), re-checked for every step; a banned owner or one without a role makes the run fail. Rules never enter a PIN: a scene that needs the PIN cannot be put into a rule (`pin_widget`) and is refused at run time.
+- **PIN:** a scene asks for the mainframe PIN when it is marked so or when any step targets a PIN-protected widget; steps on PIN widgets re-check that the press carried a verified PIN.
+- **Loops and load:** a scene cannot run a scene or press scene buttons; at most 4 runs at once and 30 runs per minute per mainframe; the same scene never runs twice at once; delays are server ticks (no threads, no blocking), at most 10 minutes per scene. Schedules are limited per mainframe (`maxSchedulesPerMainframe`) with a minimum interval; after a restart at most one missed run per schedule is caught up (no catch-up storm); schedules of unloaded mainframes are skipped and logged once per outage.
+- **Production statistics** are only sent for storages the session may see (restricted sections need `view.positions`) and with `storage.search`; item details need `storage.search`. Pinning a chart needs `layout.edit` (+ `storage.search`); a pinned rate is visible to everyone who sees the mainframe's cards, like watchlist rows. Sampling reads the bridge's existing item index snapshot at most once per storage per interval (one storage per tick) with bounded memory.
+
+### Public API (v0.10)
+- **Off by default** (`[api] apiEnabled=false`): the `/api/v1` routes do not exist (404); key management answers `disabled`.
+- **Keys:** `cck_` + 32 random bytes; only the SHA-256 is stored, compared in constant time; the key is shown exactly once and never logged. A key belongs to one player and one mainframe, has scopes, an optional expiry and an optional IP/CIDR allow-list (checked against the client IP after the trusted-proxy rules). At most `apiKeysPerPlayer` per player. Revocable by its player and by players with `access.manage` on that mainframe; deleted with the mainframe. Creating keys needs `api.keys` (admin and owner presets) and the base permission of every scope; the server node `cccloud.api.keys` (default true) switches keys off for a player, existing ones included.
+- **Scope ∩ live rights:** every request re-resolves the key owner's rights (bans, `cccloud.use`, roles, team ranks) like a device token and allows only what both the scope and the rights allow. Scopes never include management, access, devices, pairing, key management, terminal, files, scripts, layout, rules, push, map or voxels.
+- **No PIN through the API:** PIN-protected widgets and scenes that need the PIN are refused (`pin_required`), so a leaked key never reaches the second factor. Structured operations (crafting, watchlists, redstone sides) are not available.
+- **Transport:** `Authorization: Bearer` only; a key in the URL is refused (`key_in_query`) before it is looked up, so keys do not end up in logs or browser history. Device tokens are not accepted on `/api/v1` and API keys nowhere else. Per-key and per-IP rate limits with `Retry-After`, bodies ≤ `apiMaxBody`, strict JSON. The same LAN-only rule, IP bans, Host allow-list, connection limits and security headers as the dashboard.
+- **CORS** is off unless an origin is listed exactly in `apiCorsOrigins`; then only that origin gets `Access-Control-Allow-Origin` (and `Cross-Origin-Resource-Policy: cross-origin`). Since keys are never sent automatically by browsers (no cookies), CORS cannot be used for CSRF.
+- **Event stream (SSE):** read-only, same filtering as a dashboard with the owner's rights (restricted sections only with `view.positions`), rights re-checked every 5 s (revoked, expired, banned or a lost role end the stream), slow readers disconnected, at most `apiStreamsPerKey` streams per key and 32 in total; streams do not take a browser slot.
+- **Audit:** every write (widget value, scene run), key creation and revocation is written to the mainframe's audit log and the server log with the key's name and player.
+- Residual: anyone holding a key can do what its scopes and its owner's rights allow until it is revoked or expires. Prefer short expiries, narrow scopes and an IP allow-list; serve the API over HTTPS when it leaves the LAN.
 
 ### Map, voxels and X-ray
 - The surface map shows what is visible from above. Cave **slices** are configurable (`mapSlices`: auto = on in singleplayer and for LAN-only dashboards, off when `webAllowInternet` is set) and limited to ±32 blocks (Y) around the mainframe's own nodes.
