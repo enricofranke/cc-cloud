@@ -5,6 +5,7 @@
 // values with rollback, and the offline/disabled/unauthorized states.
 import { presetHas } from "./permissions.ts";
 import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
+import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch } from "@preact/signals";
 import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
@@ -211,6 +212,11 @@ export class MainframeConn {
   /** v0.5 C rules document (null = none / older mod / share session) */
   readonly rules = signal<RulesDoc | null>(null);
   private ruleReqs = new Map<string, { resolve: (r: { id?: string }) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  /** v0.10 scenes document (null = none / older mod / share session) */
+  readonly scenes = signal<ScenesDoc | null>(null);
+  private sceneReqs = new Map<string, { resolve: (r: { id?: string }) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  /** v0.10 production statistics: production_result */
+  private prodReqs = new Map<string, { resolve: (d: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
   private ws?: WebSocket;
   private stopped = true;
@@ -420,6 +426,7 @@ export class MainframeConn {
           this.network.value = normalizeNetwork(msg.network);
           this.redstone.value = normalizeRedstone(msg.redstone);
           this.rules.value = normalizeRules(msg.rules);
+          this.scenes.value = normalizeScenes(msg.scenes);
           this.role.value = ROLES.includes(msg.role) ? msg.role : null;
           this.perms.value = parsePerms(msg.perms);
           this.store.value = parseStore(msg.store);
@@ -531,6 +538,31 @@ export class MainframeConn {
       case "rules":
         this.rules.value = normalizeRules(msg);
         break;
+      case "scenes":
+        this.scenes.value = normalizeScenes(msg);
+        break;
+      case "scene_result": {
+        const r = this.sceneReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.sceneReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve(typeof msg.id === "string" ? { id: msg.id } : {});
+        else {
+          const e = new Error(typeof msg.error === "string" ? msg.error : "rejected") as Error & { detail?: string };
+          if (typeof msg.detail === "string") e.detail = msg.detail.slice(0, 200);
+          r.reject(e);
+        }
+        break;
+      }
+      case "production_result": {
+        const r = this.prodReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.prodReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve(msg.data && typeof msg.data === "object" ? msg.data : {});
+        else r.reject(new Error(typeof msg.error === "string" ? msg.error.slice(0, 32) : "failed"));
+        break;
+      }
       case "term": {
         const id = String(msg.uplinkId ?? "");
         if (!id || !(id in this.terminals.value)) return;
@@ -799,6 +831,35 @@ export class MainframeConn {
     });
   }
 
+  /** v0.10: scene_set / scene_delete → scene_result (rejects with the error code, `detail` attached: "step 2: act.redstone"). */
+  sceneOp(msg: { t: "scene_set"; scene: Scene } | { t: "scene_delete"; id: string }, timeoutMs = 8000): Promise<{ id?: string }> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("rules.edit");
+      if (no) return reject(new Error(no));
+      if (!this.send({ ...msg, reqId })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.sceneReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.sceneReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
+  /** v0.10 production statistics: {"t":"production","op",…} → production_result.data (rejects with the error code). */
+  production<T = any>(op: "overview" | "item" | "pin" | "unpin", params: Record<string, unknown> = {}, timeoutMs = 8000): Promise<T> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      if (this.isShare) return reject(new Error("forbidden"));
+      if (this.status.value !== "open" || !this.send({ t: "production", reqId, op, ...params })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.prodReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.prodReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
   /** Saves the shared layout: {"t":"layout_set"} → layout_result. Rejects with the server error code. */
   saveLayout(layout: LayoutDoc, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
@@ -903,6 +964,12 @@ export class MainframeConn {
       r.reject(new Error("disconnected"));
       this.ruleReqs.delete(id);
     }
+    for (const reqs of [this.sceneReqs, this.prodReqs] as Map<string, { reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>[])
+      for (const [id, r] of reqs) {
+        clearTimeout(r.timer);
+        r.reject(new Error("disconnected"));
+        reqs.delete(id);
+      }
     for (const [id, r] of this.netReqs) {
       clearTimeout(r.timer);
       r.reject(new Error("disconnected"));
