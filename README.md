@@ -112,6 +112,21 @@ Full reference: [cccloud.dev/en/docs](https://cccloud.dev/en/docs/), `/docs` on 
 - Server permissions via the NeoForge PermissionAPI (`cccloud.*` nodes) – works with LuckPerms and FTB Ranks.
 - Threat model and reviews: [`docs/SECURITY.md`](docs/SECURITY.md) · Found a vulnerability? See [SECURITY.md](SECURITY.md) – please report privately.
 
+## Performance & stability
+
+Measured with the mod's own benchmarks in a real NeoForge server (10-core desktop CPU; a Minecraft tick has 50 ms):
+
+| Scenario | Result |
+|---|---|
+| One mainframe, 500 devices, 10 open dashboards | **0.5–1 ms** per tick |
+| Stress test: 1,500 devices on 11 mainframes, 100 rules, 50 browsers, ~5,500 value changes/s | **1.6 ms** per tick on average (was 6.4 ms before the scaling work) |
+| Soak test: 6 hours, 20 browsers at once | 20 TPS throughout, **0 errors**, no memory growth |
+| Dashboard of a 500-device base | first card after **0.3 s**, 12 messages/s per browser, 112 KB snapshot (compressed) |
+| 3D view of a whole base (536 sections) | loads in **2 s**, reopens in under 1 s |
+
+How it is measured, the remaining limits and the server settings for big bases: [`docs/SPEC.md` → Scaling](docs/SPEC.md) and
+[Big servers](https://cccloud.dev/en/docs/security/#big-servers).
+
 ## Compatibility
 
 - Minecraft **26.1.2**, NeoForge **26.1.2.109+**, CC: Tweaked **1.120.0+**, Java **25**
