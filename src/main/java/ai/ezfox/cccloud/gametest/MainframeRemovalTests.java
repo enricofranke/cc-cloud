@@ -181,6 +181,17 @@ public final class MainframeRemovalTests {
                 long removedAt = entry.removedAt();
                 helper.assertTrue(data.purgeExpired(server, removedAt + MainframeRetention.retentionMs() - 60_000).isEmpty(), "nothing expires early");
                 assertKept(helper, id, friend, "a minute before the end");
+                // its cave slices in the map tile cache on disk (and a shared surface tile that must stay)
+                var tiles = ai.ezfox.cccloud.map.MapTileService.dirForTest(server);
+                try {
+                    for (var path : new String[]{"minecraft_overworld/slice_-60_" + id + "_" + friend.getUUID() + "/0_0.png",
+                        "minecraft_the_nether/slice_40_" + id + "_" + friend.getUUID() + "/1_-1.png", "minecraft_overworld/surface/9999_9999.png"}) {
+                        java.nio.file.Files.createDirectories(tiles.resolve(path).getParent());
+                        java.nio.file.Files.write(tiles.resolve(path), new byte[]{1});
+                    }
+                } catch (java.io.IOException e) {
+                    throw helper.assertionException("could not write test tiles: " + e);
+                }
                 helper.assertTrue(data.purgeExpired(server, removedAt + MainframeRetention.retentionMs() + 1).contains(id), "purged after the window");
                 helper.assertTrue(data.entry(id) == null, "entry gone");
                 helper.assertTrue(WebAuthData.access(server).access(id) == null, "accounts and roles deleted");
@@ -192,6 +203,19 @@ public final class MainframeRemovalTests {
                 helper.assertTrue(placed != null && CloudNetwork.mainframe(placed.getMainframeId()) == placed, "placed and registered");
                 helper.assertTrue(!placed.getMainframeId().equals(id), "a purged identity is not reused");
                 helper.assertTrue(stranger.getUUID().equals(placed.getOwner()), "a new mainframe of whoever placed it");
+            })
+            .thenWaitUntil(() -> {
+                var tiles = ai.ezfox.cccloud.map.MapTileService.dirForTest(server);
+                helper.assertTrue(!java.nio.file.Files.exists(tiles.resolve("minecraft_overworld/slice_-60_" + id + "_" + friend.getUUID()))
+                    && !java.nio.file.Files.exists(tiles.resolve("minecraft_the_nether/slice_40_" + id + "_" + friend.getUUID())), "its map slices are deleted");
+                helper.assertTrue(java.nio.file.Files.exists(tiles.resolve("minecraft_overworld/surface/9999_9999.png")), "shared surface tiles stay");
+            })
+            .thenExecute(() -> {
+                try {
+                    java.nio.file.Files.deleteIfExists(ai.ezfox.cccloud.map.MapTileService.dirForTest(server).resolve("minecraft_overworld/surface/9999_9999.png"));
+                } catch (java.io.IOException ignored) {
+                    // a test world
+                }
             })
             .thenSucceed();
     }

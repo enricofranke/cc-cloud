@@ -71,6 +71,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue VOXEL_VIEW;
     public static final ModConfigSpec.ConfigValue<String> MAP_SLICES;
     public static final ModConfigSpec.IntValue VOXEL_RADIUS;
+    public static final ModConfigSpec.IntValue MAP_TILE_MAX_AGE_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.BooleanValue PUSH_ENABLED;
@@ -285,6 +286,11 @@ public final class CloudConfig {
         VOXEL_RADIUS = b.comment("Voxel view: sections within this many blocks of a network node may be requested.")
             .translation("cccloud.configuration.voxelRadius")
             .defineInRange("voxelRadius", 64, 16, 128);
+        MAP_TILE_MAX_AGE_DAYS = b.comment("2D map tiles cached on disk (<world>/cccloud/maptiles): a tile that was neither drawn nor shown for this many",
+                "days is deleted (checked at server start and once a day). 0 keeps them forever. A purged mainframe's cave slices are",
+                "deleted at once.")
+            .translation("cccloud.configuration.mapTileMaxAgeDays")
+            .defineInRange("mapTileMaxAgeDays", 30, 0, 3650);
         b.pop();
 
         b.push("rules");

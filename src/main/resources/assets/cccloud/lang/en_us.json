@@ -363,6 +363,7 @@
   "cccloud.configuration.mapSlices": "Cave slices on the map",
   "cccloud.configuration.voxelView": "Voxel view",
   "cccloud.configuration.voxelRadius": "Voxel view radius",
+  "cccloud.configuration.mapTileMaxAgeDays": "Map tiles: days kept on disk",
   "cccloud.configuration.map": "Map",
   "block.cccloud.fiber_cable": "Fiber Cable",
   "block.cccloud.fiber_junction": "Fiber Junction",
