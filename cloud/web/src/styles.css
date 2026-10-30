@@ -7247,6 +7247,9 @@ body.rz-nwse * {
 .sheet.sheet-wide {
   width: min(100%, 920px);
 }
+.sheet.sheet-tall {
+  height: 82dvh;
+}
 .sb-tools .input,
 .sb-tools .select {
   width: auto;

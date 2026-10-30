@@ -504,7 +504,7 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
 
   if (open) return <ItemDetailSheet conn={conn} uplink={uplink} widgetId={props.widgetId} name={open.name} displayName={open.displayName} onClose={() => (setOpen(null), loadPage(0))} />;
   return (
-    <Sheet title={`${uplink.title || "Storage"} – browse`} onClose={props.onClose} wide>
+    <Sheet title={`${uplink.title || "Storage"} – browse`} onClose={props.onClose} wide tall>
       <div class="sb">
         <div class="nd-tabs" role="tablist" aria-label="Storage">
           {(

@@ -530,7 +530,7 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
     });
   };
   return (
-    <Sheet title="Watch an item" onClose={props.onClose}>
+    <Sheet title="Watch an item" onClose={props.onClose} tall={!!searchW}>
       {picked ? (
         <div class="picked">
           <ItemIcon name={picked.name} displayName={picked.displayName} />
