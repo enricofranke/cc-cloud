@@ -761,6 +761,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         setDirect(serverLevel, true);
         setChanged();
+        // the network map draws a line to the target
+        if (link != null) ai.ezfox.cccloud.network.NetworkService.markDirty(link.id());
         String name = serverLevel.getBlockState(pos).getBlock().getName().getString();
         CCCloud.LOGGER.info("[cccloud] {} pointed the Cloud Probe at {} to {} at {}", player.getGameProfile().name(), getBlockPos(), name, pos);
         player.sendSystemMessage(Component.translatable("cccloud.probe.target_set", serverLevel.getBlockState(pos).getBlock().getName(),
@@ -782,6 +784,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         setDirect(serverLevel, false);
         setChanged();
+        if (link != null) ai.ezfox.cccloud.network.NetworkService.markDirty(link.id());
         CCCloud.LOGGER.info("[cccloud] {} cleared the Cloud Probe target at {} (was {})", by, getBlockPos(), old);
     }
 

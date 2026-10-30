@@ -88,4 +88,26 @@ class ScreenNetworkTest {
         assertFalse(first.has("dim"));
         assertEquals("minecraft:overworld", compact.get("dim").getAsString());
     }
+
+    @Test
+    void probesKeepTheirTypeAndTarget() {
+        var full = full(2, 0);
+        var probe = full.getAsJsonArray("nodes").get(1).getAsJsonObject();
+        probe.addProperty("type", "probe");
+        var target = new JsonObject();
+        target.addProperty("x", 101);
+        target.addProperty("y", 64);
+        target.addProperty("z", -7);
+        probe.add("target", target);
+        var compact = NetworkService.compactForScreen(full, "minecraft:overworld", NetworkService.SCREEN_MAX_DEVICES);
+        JsonObject found = null;
+        for (var e : compact.getAsJsonArray("nodes")) if ("probe".equals(e.getAsJsonObject().get("type").getAsString())) found = e.getAsJsonObject();
+        assertNotNull(found, "the probe keeps its own type");
+        assertEquals(101, found.getAsJsonObject("target").get("x").getAsInt());
+        assertEquals(-7, found.getAsJsonObject("target").get("z").getAsInt());
+        assertFalse(found.getAsJsonObject("target").has("y"), "the mini map only needs x/z");
+        for (var e : compact.getAsJsonArray("nodes")) {
+            if (!"probe".equals(e.getAsJsonObject().get("type").getAsString())) assertFalse(e.getAsJsonObject().has("target"));
+        }
+    }
 }

@@ -295,7 +295,7 @@ public final class NetworkService {
             // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
             // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
             var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
-                Set.copyOf(mainframe.getLinkedUplinks().keySet()), namesHash(id, mainframe.getLinkedUplinks().keySet()));
+                Set.copyOf(mainframe.getLinkedUplinks().keySet()), namesHash(id, mainframe.getLinkedUplinks().keySet()), probeTargets(result));
             var last = PUBLISHED.get(id);
             long now = System.currentTimeMillis();
             if (last != null && last.key().equals(key) && now - last.at() < REPUBLISH_MS) {
@@ -550,6 +550,7 @@ public final class NetworkService {
             n.addProperty("type", type);
             n.addProperty("name", deviceName(mainframe.getMainframeId(), device.id(), section));
             redstoneFields(n, mainframe.getMainframeId(), device.id());
+            if (positions) probeTarget(n, section);
             String status = OVER_CAPACITY.contains(UUID.fromString(device.id())) ? "over_capacity"
                 : route == null || !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range"
                 : mainframe.isOnline() ? "online" : "offline";
@@ -656,7 +657,7 @@ public final class NetworkService {
 
     /** What a mainframe's published map was built from; an equal key within {@link #REPUBLISH_MS} skips the rebuild. */
     private record PublishKey(NetworkGraph.Result result, Set<String> over, boolean online, boolean enabled, @Nullable String reason, Set<UUID> linked,
-                              int names) {
+                              int names, List<String> probes) {
     }
 
     /** Names and redstone groups of a mainframe's devices as shown on the map (a rename from the map must show at once). */
@@ -729,6 +730,13 @@ public final class NetworkService {
                 pos.add("z", p.get("z"));
                 o.add("pos", pos);
             }
+            // Cloud Probe: the machine it reads (x/z), drawn as a line on the mini map
+            if (n.get("target") instanceof JsonObject t) {
+                var target = new JsonObject();
+                target.add("x", t.get("x"));
+                target.add("z", t.get("z"));
+                o.add("target", target);
+            }
             String dim = str(n, "dim");
             if (!dim.isEmpty() && !dim.equals(mainframeDim)) o.addProperty("dim", dim);
             outNodes.add(o);
@@ -768,8 +776,6 @@ public final class NetworkService {
             var type = ai.ezfox.cccloud.rsdevice.RsDevices.typeId(mainframeId, UUID.fromString(device.id()));
             return type != null ? type : device.type().id;
         }
-        // The dashboard (and its 3D view) know no probe type: a Cloud Probe shows as an advanced uplink with its card title.
-        if (device.type() == NetworkGraph.DeviceType.PROBE) return NetworkGraph.DeviceType.ADVANCED_UPLINK.id;
         if (device.type() != NetworkGraph.DeviceType.BRIDGE) return device.type().id;
         return section instanceof BridgeSection bridge && "rs".equals(bridge.host().bridgeCore().kind()) ? "rs_bridge" : "me_bridge";
     }
@@ -780,6 +786,32 @@ public final class NetworkService {
         if (section != null) return section.getTitle();
         var name = ai.ezfox.cccloud.rsdevice.RsDevices.name(mainframeId, UUID.fromString(deviceId));
         return name == null ? "" : name;
+    }
+
+    /**
+     * Cloud Probes: the machine they read as {@code target} (block position, only with positions like {@code pos}; the
+     * same check as every read, so a target out of range, unloaded or in a foreign claim is left out). Same dimension as
+     * the probe.
+     */
+    private static void probeTarget(JsonObject node, @Nullable DashboardSection section) {
+        var target = probeReadPos(section);
+        if (target != null) node.add("target", pos(target.getX(), target.getY(), target.getZ()));
+    }
+
+    private static @Nullable BlockPos probeReadPos(@Nullable DashboardSection section) {
+        return section instanceof CloudUplinkBlockEntity probe && probe.isProbe() && !probe.isRemoved() ? probe.readPos() : null;
+    }
+
+    /** What the probes of a network read right now (part of the publish key: a new target redraws the map). */
+    private static List<String> probeTargets(NetworkGraph.Result result) {
+        List<String> list = null;
+        for (var device : result.devices()) {
+            if (device.type() != NetworkGraph.DeviceType.PROBE) continue;
+            var target = probeReadPos(CloudNetwork.section(UUID.fromString(device.id())));
+            if (list == null) list = new ArrayList<>();
+            list.add(device.id() + "@" + (target == null ? "" : target.asLong()));
+        }
+        return list == null ? List.of() : list;
     }
 
     /** Redstone devices: the card (group) they are on, so the dashboard can rename/regroup them from the map. */

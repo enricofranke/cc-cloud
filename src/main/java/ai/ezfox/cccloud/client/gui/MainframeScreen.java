@@ -15,6 +15,8 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
  * LAN hint), Devices, Trusted and Security (PIN). Players without rights get the read-only overview only.
  */
 public class MainframeScreen extends CloudScreen<MainframeMenu> {
+    /** Cloud Probe marker and its line to the machine (the Cloud Analyzer's probe colour). */
+    private static final int PROBE_COLOR = 0xFFB48AE8;
     private final EditBox trustName;
     private final EditBox pin;
 
@@ -294,9 +296,12 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         String type = str(node, "type");
         String name = str(node, "name").isEmpty() ? Component.translatableWithFallback("cccloud.network.node." + type, type).getString() : str(node, "name");
         String distance = "";
+        boolean probe = "probe".equals(type);
         rows.add(new Row(14, (c, x, y, w) -> {
             int ix = x + 2 + depth * 8;
             var g = c.g();
+            // a Cloud Probe's status square sits in a purple ring (its lens; the mini map draws its line in the same colour)
+            if (probe) g.fill(ix - 1, y + 3, ix + 6, y + 10, PROBE_COLOR);
             g.fill(ix, y + 4, ix + 5, y + 9, legacy ? CloudGui.YELLOW : statusColor(status));
             int right = x + w - 2;
             if (signal != null && signal < 0) {
@@ -357,6 +362,22 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             int px = x + w / 2 + (int) Math.round((p.get("x").getAsDouble() - cx) * scale);
             int pz = y + h / 2 + (int) Math.round((p.get("z").getAsDouble() - cz) * scale);
             points.put(str(n, "id"), new int[]{px, pz, statusColor(str(n, "status")), "mainframe".equals(str(n, "type")) ? 1 : 0});
+        }
+        // Cloud Probes: a thin purple line to the machine they read (same dimension as the probe)
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            var from = points.get(str(n, "id"));
+            if (from == null || !(n.get("target") instanceof com.google.gson.JsonObject t)) continue;
+            int tx = x + w / 2 + (int) Math.round((t.get("x").getAsDouble() - cx) * scale);
+            int tz = y + h / 2 + (int) Math.round((t.get("z").getAsDouble() - cz) * scale);
+            tx = Math.clamp(tx, x, x + w - 1);
+            tz = Math.clamp(tz, y, y + h - 1);
+            int steps = Math.max(Math.abs(tx - from[0]), Math.abs(tz - from[1]));
+            for (int i = 0; i <= steps; i++) {
+                g.fill(from[0] + (tx - from[0]) * i / Math.max(1, steps), from[1] + (tz - from[1]) * i / Math.max(1, steps),
+                    from[0] + (tx - from[0]) * i / Math.max(1, steps) + 1, from[1] + (tz - from[1]) * i / Math.max(1, steps) + 1, PROBE_COLOR);
+            }
+            g.fill(tx - 1, tz - 1, tx + 2, tz + 2, PROBE_COLOR);
         }
         for (var e : network.getAsJsonArray("links")) {
             var l = e.getAsJsonObject();

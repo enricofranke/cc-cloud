@@ -198,6 +198,8 @@ export type NodeType =
   | "ender_relay"
   | "uplink"
   | "advanced_uplink"
+  /** Cloud Probe: an advanced uplink that reads one machine at a distance (`target`) */
+  | "probe"
   | "bridge"
   | "device"
   | "me_bridge"
@@ -248,6 +250,8 @@ export interface NetNode {
   capacity?: NetCapacity;
   /** Cloud Redstone devices: true, plus their group ("" = the automatic "Redstone" card) */
   redstone?: boolean;
+  /** Cloud Probe: the machine it reads (same dimension; only for devices that may see positions) */
+  target?: { x: number; y: number; z: number };
   group?: string;
 }
 

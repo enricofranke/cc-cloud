@@ -4721,6 +4721,22 @@ button.pwr:hover {
   stroke-width: 2;
   stroke-dasharray: 4 3;
 }
+/* Cloud Probe: a thin line to the machine it reads and a frame on it (the Cloud Analyzer's colour) */
+.probe-line {
+  stroke: #b48ae8;
+  stroke-width: 1.25;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.probe-target {
+  fill: rgba(180, 138, 232, 0.18);
+  stroke: #b48ae8;
+  stroke-width: 1.25;
+}
+.probe-aim.sel .probe-line {
+  stroke-width: 2;
+  opacity: 1;
+}
 .mlabel {
   fill: #c9d1d9;
   text-anchor: middle;

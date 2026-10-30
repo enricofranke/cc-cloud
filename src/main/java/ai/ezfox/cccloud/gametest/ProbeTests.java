@@ -6,6 +6,7 @@ import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.ingame.InGameTestSupport;
 import ai.ezfox.cccloud.item.ProbeTarget;
 import ai.ezfox.cccloud.map.XrayGuard;
+import com.google.gson.JsonObject;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
@@ -125,6 +126,70 @@ public final class ProbeTests {
             })
             .thenExecute(() -> helper.setBlock(far, Blocks.AIR))
             .thenSucceed();
+    }
+
+    /**
+     * The network map knows Cloud Probes: node type {@code probe} (not a generic uplink) and, with positions, the machine
+     * it reads as {@code target} (also in the in-game screen's compact network); without positions no target. Setting
+     * and clearing the target redraw the map.
+     */
+    public static void networkNode(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var owner = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+        var mainframe = CloudGameTests.placeMainframe(helper, owner, new BlockPos(1, 0, 1));
+        mainframe.setEnabled(true);
+        CloudGameTests.keepPowered(helper, mainframe);
+        var id = mainframe.getMainframeId();
+        BlockPos machine = new BlockPos(4, 1, 5);
+        BlockPos probePos = new BlockPos(4, 1, 2);
+        helper.setBlock(machine, Blocks.BEACON);
+        helper.setBlock(probePos.north(), Blocks.STONE);
+        helper.setBlock(probePos, ModRegistry.CLOUD_PROBE.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.NORTH));
+        var probe = (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(probePos));
+        var at = helper.absolutePos(machine);
+        String probeId = probe.getUplinkId().toString();
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(ai.ezfox.cccloud.network.CloudNetwork.mainframe(id) == mainframe && mainframe.isOnline(), "mainframe online"))
+            .thenExecute(() -> {
+                probe.bind(new ai.ezfox.cccloud.item.MainframeLink(GlobalPos.of(level.dimension(), mainframe.getBlockPos()), id), owner);
+                helper.assertTrue(probe.getLink() != null, "probe linked");
+                helper.assertTrue(probe.setRemoteTarget(new ProbeTarget(GlobalPos.of(level.dimension(), at), Direction.UP, owner.getUUID()), owner), "target set");
+            })
+            .thenWaitUntil(() -> {
+                var node = networkNode(ai.ezfox.cccloud.web.WebHub.INSTANCE.networkForTest(id, true), "uplinkId", probeId);
+                helper.assertTrue(node != null && "probe".equals(node.get("type").getAsString()), "its own node type: " + node);
+                var target = node.getAsJsonObject("target");
+                helper.assertTrue(target != null && target.get("x").getAsInt() == at.getX() && target.get("y").getAsInt() == at.getY()
+                    && target.get("z").getAsInt() == at.getZ(), "the machine it reads: " + node);
+                var stripped = networkNode(ai.ezfox.cccloud.web.WebHub.INSTANCE.networkForTest(id, false), "uplinkId", probeId);
+                helper.assertTrue(stripped != null && "probe".equals(stripped.get("type").getAsString()) && !stripped.has("target") && !stripped.has("pos"),
+                    "without positions: the type, no coordinates: " + stripped);
+                var screen = ai.ezfox.cccloud.network.NetworkService.screenNetwork(mainframe);
+                var compact = screen == null ? null : networkNode(screen.json(), "type", "probe");
+                helper.assertTrue(compact != null && compact.getAsJsonObject("target") != null
+                    && compact.getAsJsonObject("target").get("x").getAsInt() == at.getX() && compact.getAsJsonObject("target").get("z").getAsInt() == at.getZ(),
+                    "the in-game screen gets the line too: " + compact);
+            })
+            .thenExecute(() -> probe.clearRemoteTarget("test"))
+            .thenWaitUntil(() -> {
+                var node = networkNode(ai.ezfox.cccloud.web.WebHub.INSTANCE.networkForTest(id, true), "uplinkId", probeId);
+                helper.assertTrue(node != null && "probe".equals(node.get("type").getAsString()) && !node.has("target"), "target cleared: " + node);
+            })
+            .thenExecute(() -> {
+                helper.setBlock(probePos, Blocks.AIR);
+                helper.setBlock(machine, Blocks.AIR);
+            })
+            .thenSucceed();
+    }
+
+    private static @org.jspecify.annotations.Nullable JsonObject networkNode(@org.jspecify.annotations.Nullable JsonObject network,
+                                                                                           String key, String value) {
+        if (network == null) return null;
+        for (var e : network.getAsJsonArray("nodes")) {
+            var n = e.getAsJsonObject();
+            if (n.has(key) && value.equals(n.get(key).getAsString())) return n;
+        }
+        return null;
     }
 
     /**

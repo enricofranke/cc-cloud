@@ -221,6 +221,7 @@
   "cccloud.network.node.relay": "Cloud Relay",
   "cccloud.network.node.advanced_relay": "Advanced Cloud Relay",
   "cccloud.network.node.ender_relay": "Ender Relay",
+  "cccloud.network.node.probe": "Cloud Probe",
   "cccloud.gui.status.no_route": "NO ROUTE",
   "cccloud.gui.status.unloaded": "UNLOADED",
   "cccloud.gui.status.redstone": "REDSTONE KILL",

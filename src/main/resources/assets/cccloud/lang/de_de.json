@@ -221,6 +221,7 @@
   "cccloud.network.node.relay": "Cloud-Relais",
   "cccloud.network.node.advanced_relay": "Erweitertes Cloud-Relais",
   "cccloud.network.node.ender_relay": "Ender-Relais",
+  "cccloud.network.node.probe": "Cloud-Sonde",
   "cccloud.gui.status.no_route": "KEINE ROUTE",
   "cccloud.gui.status.unloaded": "ENTLADEN",
   "cccloud.gui.status.redstone": "REDSTONE-AUS",

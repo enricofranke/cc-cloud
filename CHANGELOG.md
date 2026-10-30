@@ -7,6 +7,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 ### Fixes and follow-ups
 - Cloud Redstone devices placed by `/setblock`, a structure or a schematic paste with their link in the block data now
   show on the dashboard at once; before, they only appeared after their first state change.
+- Cloud Probes are their own kind of device on the network map: own icon and label, and a thin purple line to the
+  machine they read on the 2D map, in the 3D view (with a frame on the machine) and on the mini map of the mainframe
+  screen; the detail panel says which machine and how far away. Before, a probe looked like an advanced uplink. For Lua:
+  `cloud_mainframe.getNetwork()` now reports probes as `type = "probe"` (was `"advanced_uplink"`) with `target`.
 
 ### Security review before the release
 - API keys end with the browser that created them: revoking a browser (in game, `/cccloud devices revoke`, the Account

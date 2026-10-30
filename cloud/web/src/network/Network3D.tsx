@@ -47,7 +47,7 @@ import type { NetNode, NetworkInfo, Waystone } from "../lib/types.ts";
 import type { Terrain } from "../lib/api.ts";
 import { isNodeType } from "../lib/network.ts";
 import { VoxelLayer, type VoxelSource } from "./voxelLayer.ts";
-import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, routedThrough, terrainMesh, type ModelDef, type VoxelStatus } from "../lib/net3d.ts";
+import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, probeLines, routedThrough, terrainMesh, type ModelDef, type VoxelStatus } from "../lib/net3d.ts";
 
 interface Part {
   tex: string;
@@ -430,12 +430,13 @@ class View3D {
 
   buildLinks() {
     const segs = linkSegments(this.props.net, this.props.dim);
-    const buckets: Record<"wired" | "radio" | "spare" | "ender" | "legacy", { pos: number[]; col: number[]; ids: [string, string][] }> = {
+    const buckets: Record<"wired" | "radio" | "spare" | "ender" | "legacy" | "probe", { pos: number[]; col: number[]; ids: [string, string][] }> = {
       wired: { pos: [], col: [], ids: [] },
       radio: { pos: [], col: [], ids: [] },
       spare: { pos: [], col: [], ids: [] },
       ender: { pos: [], col: [], ids: [] },
       legacy: { pos: [], col: [], ids: [] },
+      probe: { pos: [], col: [], ids: [] },
     };
     const va = new Vector3();
     const vb = new Vector3();
@@ -450,6 +451,15 @@ class View3D {
       c.setHex(LINK_RGB[s.cls] ?? 0x5ec8e5);
       b.col.push(c.r, c.g, c.b, c.r, c.g, c.b);
       b.ids.push([s.a.id, s.b.id]);
+    }
+    // Cloud Probes: a thin line to the machine each one reads, and that block's outline (lit with the probe)
+    c.setHex(LINK_RGB.probe);
+    for (const p of probeLines(this.props.net, this.props.dim)) {
+      buckets.probe.pos.push(...p.pos);
+      for (let i = 0; i < p.pos.length / 6; i++) {
+        buckets.probe.col.push(c.r, c.g, c.b, c.r, c.g, c.b);
+        buckets.probe.ids.push([p.id, p.id]);
+      }
     }
     const make = (k: keyof typeof buckets, mat: LineBasicMaterial | LineDashedMaterial) => {
       const b = buckets[k];
@@ -482,6 +492,7 @@ class View3D {
     make("spare", dashed(0.8, 1.6, 0.35));
     make("ender", dashed(0.4, 1.2));
     make("legacy", dashed(3, 1.5));
+    make("probe", new LineBasicMaterial({ vertexColors: true, opacity: 0.85 }));
   }
 
   buildRanges() {

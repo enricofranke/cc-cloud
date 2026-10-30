@@ -530,6 +530,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         ...(n.type === "mainframe" && mf.power ? { power: { stored: Math.round(mf.power.stored), capacity: mf.power.capacity, usage: mf.power.usage } } : {}),
         ...(n.type === "mainframe" ? { capacity } : {}),
         ...(via ? { via } : {}),
+        ...(withPositions && n.target ? { target: n.target } : {}),
       };
     });
     return {
@@ -983,7 +984,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     const ro = { t: "network", network: networkPayload(mf, false) };
     for (const c of mf.clients) if (!c.share) sendTo(c.ws, c.canControl ? full : ro);
   }
-  /** v0.4 power formula: base 40 + 4/uplink + 8/advanced uplink + 10/bridge + 2/client + 1 per extra hop. */
+  /** v0.4 power formula: base 40 + 4/uplink + 8/advanced uplink + 24/probe + 10/bridge + 2/client + 1 per extra hop. */
   function powerBreakdown(mf: Mainframe) {
     const items: { key: string; count?: number; fe: number }[] = [{ key: "base", fe: 40 }];
     if (mf.net) {
@@ -992,6 +993,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       const count = (types: string[]) => routed.filter((n) => types.includes(n.type)).length;
       const up = count(["uplink"]);
       const adv = count(["advanced_uplink"]);
+      const probes = count(["probe"]);
       const br = count(["bridge"]);
       const hops = routed.filter((n) => !RELAY_FE[n.type]).reduce((s, n) => s + Math.max(0, routes[n.id].length - 2), 0);
       // fiber-attached devices pay half (rounded up per category)
@@ -1003,6 +1005,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       items.push(
         { key: "uplinks", count: up, fe: cost(4, up, fu), ...(fu ? { fiber: fu } : {}) },
         { key: "advanced_uplinks", count: adv, fe: cost(8, adv, fa), ...(fa ? { fiber: fa } : {}) },
+        ...(probes ? [{ key: "probes", count: probes, fe: 24 * probes }] : []),
         { key: "bridges", count: br, fe: cost(10, br, fb), ...(fb ? { fiber: fb } : {}) },
       );
       items.push({ key: "clients", count: mf.clients.size, fe: 2 * mf.clients.size }, { key: "hops", count: hops, fe: hops });

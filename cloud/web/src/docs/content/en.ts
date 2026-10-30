@@ -99,7 +99,7 @@ An uplink reads the block it sits on. If a machine is built into a wall, or ever
 2. **Sneak + right-click the machine** with the Link Card – the card remembers it (and the face you clicked).
 3. **Right-click the probe** with the card. It now shows the machine's card, exactly as an uplink on that face would.
 
-Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe, within 10 minutes. The probe keeps checking: if another team claims the machine's chunk, or the server lowers the range, it stops reading until that changes; a probe that is moved (with a block mover or a contraption) forgets its machine. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer draws a thin line to the machine. If the machine is removed, the probe forgets it.
+Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe, within 10 minutes. The probe keeps checking: if another team claims the machine's chunk, or the server lowers the range, it stops reading until that changes; a probe that is moved (with a block mover or a contraption) forgets its machine. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer, the dashboard's network map (2D and 3D) and the mini map in the mainframe screen draw a thin purple line to the machine. If the machine is removed, the probe forgets it.
 
 If an uplink shows no card and the screen says *"This side exposes nothing"*, the machine offers its energy, items or fluids on another face – move the uplink there (the screen names one) or use a probe.
 
@@ -568,6 +568,8 @@ The **Network** tab shows everything that is connected, in three views:
 - **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
 - **Map** – a top-down x/z map per dimension on a real map of the world: **Surface** (like a Minecraft map) or **Slice** – a cut at a height you choose with the Y slider, so an underground base at y −60 shows its rooms and caves (darker = deeper). Only places near your network are shown, and only chunks that were loaded. With a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
 - **3D** – see below.
+
+A **Cloud Probe** has its own icon and draws a thin purple line to the machine it reads (also in 3D, where the machine gets a purple frame); its details say which machine and how far away. Like all coordinates, the line is only sent to players allowed to see positions.
 
 With FTB Chunks and Waystones installed, the map also shows your team's **claimed chunks** (team colour, force-loaded ones dashed) and your **waystones** (violet diamonds, global ones gold) – toggle them with **Claims** and **Waystones**. Waystones are also marked in the 3D view. Like all coordinates, they are only sent to players allowed to see positions.
 

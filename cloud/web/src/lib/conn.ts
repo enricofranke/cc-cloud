@@ -1112,9 +1112,9 @@ export function normalizePower(p: any): PowerInfo | undefined {
 
 const ROLES = ["viewer", "operator", "admin", "owner", "share"];
 const RS_TYPES = ["cloud_switch", "cloud_button", "cloud_lamp", "cloud_sensor"];
-const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
+const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "probe", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
 const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range", "over_capacity"];
-const DEVICE_TYPES = ["uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
+const DEVICE_TYPES = ["uplink", "advanced_uplink", "probe", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
 
 /** Validates the untrusted network graph (v0.4 map). */
 const FALLBACK_NAME: Record<string, string> = {
@@ -1124,6 +1124,7 @@ const FALLBACK_NAME: Record<string, string> = {
   ender_relay: "Ender Relay",
   uplink: "Uplink",
   advanced_uplink: "Advanced Uplink",
+  probe: "Cloud Probe",
   bridge: "Bridge",
   device: "Unloaded device",
   cloud_switch: "Cloud Switch",
@@ -1162,6 +1163,7 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       ...(flags?.length ? { flags } : {}),
       ...(n.via === "cable" || n.via === "fiber" ? { via: n.via } : {}),
       ...(n.redstone === true ? { redstone: true, group: typeof n.group === "string" ? n.group.slice(0, 32) : "" } : {}),
+      ...(n.type === "probe" && n.target && typeof n.target === "object" ? { target: { x: num(n.target.x), y: num(n.target.y), z: num(n.target.z) } } : {}),
       ...(n.capacity && typeof n.capacity === "object"
         ? {
             capacity: {

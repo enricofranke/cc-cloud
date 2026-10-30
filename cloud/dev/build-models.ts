@@ -264,6 +264,7 @@ export const KINDS: Record<string, { block: string; props: Record<string, string
   ender_relay: { block: "ender_relay", props: {}, statuses: ["online", "connecting", "offline", "no_power"], extra: ["cccloud:block/ender_relay_core"] },
   uplink: { block: "cloud_uplink", props: { facing: "down", direct: "false", mount: "full" }, statuses: ["online", "connecting", "offline"] },
   advanced_uplink: { block: "advanced_cloud_uplink", props: { facing: "down", direct: "false", mount: "full" }, statuses: ["online", "connecting", "offline"] },
+  probe: { block: "cloud_probe", props: { facing: "down", direct: "true" }, statuses: ["online", "connecting", "offline"] },
   bridge: { block: "me_cloud_bridge", props: {}, statuses: ["online", "connecting", "offline"] },
   // Cloud Redstone devices: plates lying on the ground (facing down), the lamp lit (no status of its own)
   cloud_switch: { block: "cloud_switch", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },

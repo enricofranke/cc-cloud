@@ -2,7 +2,7 @@
 // Computes links from ranges and routes every node to the mainframe over the
 // best path (fewest hops, then best weakest-link signal), max 8 hops.
 
-export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "bridge";
+export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "probe" | "bridge";
 export type Status = "online" | "offline" | "no_power" | "no_route" | "unloaded" | "legacy_out_of_range";
 
 export interface SimNode {
@@ -24,6 +24,8 @@ export interface SimNode {
   wired?: string;
   /** v0.7: that cable is CC: Cloud fiber (counts half for capacity, half the FE) */
   fiber?: boolean;
+  /** Cloud Probe: the machine it reads */
+  target?: { x: number; y: number; z: number };
 }
 
 export interface Link {
@@ -45,6 +47,7 @@ export const RANGES: Record<NodeType, { range: number; deviceRange?: number }> =
   ender_relay: { range: 48, deviceRange: 48 },
   uplink: { range: 48 },
   advanced_uplink: { range: 128 },
+  probe: { range: 128 },
   bridge: { range: 48 },
 };
 
@@ -164,7 +167,8 @@ export function exampleNodes(ids: { reactor: string; me: string; storage: string
     { id: ids.storage, type: "uplink", name: "Storage", pos: { x: 40, y: 64, z: -270 }, dim: O, uplinkId: ids.storage },
     { id: ids.control, type: "advanced_uplink", name: "Control Room", pos: { x: -160, y: 82, z: 120 }, dim: O, uplinkId: ids.control },
     { id: ids.turbine, type: "uplink", name: "Turbine Hall", pos: { x: -180, y: 85, z: 60 }, dim: O, uplinkId: ids.turbine, loaded: false },
-    { id: "dev-farm", type: "advanced_uplink", name: "Tree Farm", pos: { x: 120, y: 64, z: -110 }, dim: O },
+    // a Cloud Probe on the farm's wall reads the harvester behind it
+    { id: "dev-farm", type: "probe", name: "Tree Farm", pos: { x: 120, y: 64, z: -110 }, dim: O, target: { x: 124, y: 63, z: -106 } },
     { id: "dev-quarry", type: "advanced_uplink", name: "Quarry", pos: { x: 200, y: 62, z: -20 }, dim: O },
     { id: "dev-old", type: "uplink", name: "Old Sensor", pos: { x: -200, y: 64, z: -200 }, dim: O, legacy: true },
     { id: "dev-nether", type: "uplink", name: "Nether Farm", pos: { x: 10, y: 70, z: 10 }, dim: N },
