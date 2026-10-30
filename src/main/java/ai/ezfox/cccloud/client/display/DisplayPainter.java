@@ -50,13 +50,25 @@ final class DisplayPainter {
         } else {
             g.text(GlyphCanvas.fit(title.isEmpty() ? I18n.get("cccloud.tablet.untitled") : title, w - 2 * b - 8), b + 7, b + 1, GOLD);
         }
+        // claim guard (docs/SECURITY.md "Claims"): a blocked card has no widgets, it says why (never the team: a display
+        // stands in the world and gets the public form of the section)
+        if (section.get("blocked") instanceof JsonObject) {
+            g.text(GlyphCanvas.fit(I18n.get("cccloud.gui.claim.blocked_other"), w - 2 * b), b, b + 14, RED);
+        }
+        var blockedWidgets = section.get("blockedWidgets") instanceof JsonObject bw ? bw : null;
         var layout = DisplayLayout.layout(section, blocksW, blocksH);
         for (var box : layout.boxes()) {
             JsonObject widget = null;
             for (var e : section.getAsJsonArray("widgets")) if (str(e.getAsJsonObject(), "id").equals(box.id())) widget = e.getAsJsonObject();
             if (widget == null) continue;
             g.clip(box.x(), box.y(), box.w(), box.h());
-            widget(g, box, widget, interactive && box.clickable());
+            if (blockedWidgets != null && blockedWidgets.has(box.id())) {
+                // a Cloud Redstone device in another team's claim: its name and "Blocked" instead of its control
+                g.text(GlyphCanvas.fit(str(widget, "label"), box.w()), box.x(), box.y(), DIM);
+                g.text(GlyphCanvas.fit(I18n.get("cccloud.gui.state.claim_blocked"), box.w()), box.x(), box.y() + 11, RED);
+            } else {
+                widget(g, box, widget, interactive && box.clickable());
+            }
             g.resetClip();
         }
         if (layout.hidden() > 0) g.text("+" + layout.hidden(), w - b - GlyphCanvas.width("+" + layout.hidden()), h - b - 8, DIM);
