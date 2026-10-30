@@ -43,6 +43,10 @@ jobs:
       - name: Install web dependencies
         run: pnpm --dir cloud install --frozen-lockfile
 
+      # The Script Store client tests read the real index (store/dist is not committed; the builder has no dependencies).
+      - name: Build the Script Store index
+        run: node store/tools/build-index.mjs
+
       - name: Typecheck and test the web dashboard
         run: |
           pnpm --dir cloud run typecheck
