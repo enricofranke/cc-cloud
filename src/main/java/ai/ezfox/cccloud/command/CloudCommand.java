@@ -68,6 +68,10 @@ public final class CloudCommand {
                 .then(Commands.literal("status").executes(c -> icons(c, "status")))
                 .then(Commands.literal("rebuild").executes(c -> icons(c, "rebuild")))
                 .then(Commands.literal("clear").executes(c -> icons(c, "clear"))))
+            // diagnostics: map tile and voxel loading (requests, cache hits, server-thread time per tick)
+            .then(Commands.literal("map").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_VIEW))
+                .then(Commands.literal("stats").executes(c -> mapStats(c, false))
+                    .then(Commands.literal("reset").executes(c -> mapStats(c, true)))))
             // v0.6: all browsers of the player; "devices here" lists the browsers limited to the mainframe you look at.
             .then(Commands.literal("devices").executes(CloudCommand::browsers)
                 .then(Commands.literal("here").executes(CloudCommand::devices))
@@ -431,6 +435,14 @@ public final class CloudCommand {
     }
 
     /** {@code /cccloud icons status|rebuild|clear} (cccloud.command.icons). */
+    /** {@code /cccloud map stats [reset]}: loading counters of the map tiles and the voxel view (admins). */
+    private static int mapStats(CommandContext<CommandSourceStack> c, boolean reset) {
+        int tick = c.getSource().getServer().getTickCount();
+        for (var line : ai.ezfox.cccloud.map.MapStats.report(tick)) c.getSource().sendSystemMessage(Component.literal(line));
+        if (reset) ai.ezfox.cccloud.map.MapStats.reset(tick);
+        return 1;
+    }
+
     private static int icons(CommandContext<CommandSourceStack> c, String what) {
         var service = ai.ezfox.cccloud.icons.IconService.current();
         if (service == null) {

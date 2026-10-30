@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +20,10 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraft.world.level.storage.LevelResource;
@@ -79,11 +83,23 @@ public final class MapTileService {
         int nextChunk;
         /** Slices: the mainframe's node positions (ores near them may show). */
         int[][] nodes = new int[0][];
+        /**
+         * Copied block states per loaded chunk (ChunkPos.pack): one entry per section, a PalettedContainer copy,
+         * {@link #AIR} or null (not copied). Absent chunks were not loaded (or are claimed by another team).
+         */
+        final Map<Long, Object[]> chunks = new HashMap<>();
+        /** Surface: WORLD_SURFACE heights (256 per chunk, x + 16·z). */
+        final Map<Long, int[]> heights = new HashMap<>();
+        int minY, minSection;
 
         Job(Key key) {
             this.key = key;
         }
     }
+
+    /** Marker for an air-only section (not copied). */
+    private static final Object AIR = new Object();
+    private static final BlockState AIR_STATE = net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
 
     private static final Map<Key, Entry> CACHE = java.util.Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
         @Override
@@ -111,8 +127,10 @@ public final class MapTileService {
             }
             CACHE.clear();
             DIRTY.clear();
-            if (encoder != null) encoder.shutdownNow();
-            encoder = null;
+            synchronized (MapTileService.class) {
+                if (encoder != null) encoder.shutdownNow();
+                encoder = null;
+            }
         });
     }
 
@@ -122,27 +140,55 @@ public final class MapTileService {
     }
 
     /**
-     * A tile: from the cache if it is fresh (or changed less than 30 s ago), else re-rendered. Server thread.
+     * A tile: from the memory cache if it is fresh (or changed less than 30 s ago), else from the disk cache (read on the
+     * background thread, never on the server thread), else re-rendered. Server thread.
      */
     public static CompletableFuture<Tile> tile(MinecraftServer server, Key key) {
         var cached = CACHE.get(key);
-        if (cached == null) cached = loadFromDisk(server, key);
-        if (cached != null) {
-            Long changedAt = DIRTY.get(key.area());
-            boolean stale = changedAt != null && changedAt > cached.renderedAt() && System.currentTimeMillis() - changedAt >= DEBOUNCE_MS;
-            if (!stale) return CompletableFuture.completedFuture(new Tile(cached.png(), cached.etag()));
-        }
+        if (cached != null && fresh(key, cached)) return hit(cached);
         var level = level(server, key.dim());
         if (level == null) return CompletableFuture.completedFuture(new Tile(null, "\"none\""));
+        int[][] nodes = key.mainframe() != null ? XrayGuard.nodes(key.mainframe(), key.dim()) : new int[0][];
+        if (cached != null) return queue(key, nodes);
+        return CompletableFuture.supplyAsync(() -> loadFromDisk(server, key), encoder())
+            .thenCompose(disk -> disk != null && fresh(key, disk) ? hit(disk) : queue(key, nodes));
+    }
+
+    private static boolean fresh(Key key, Entry cached) {
+        Long changedAt = DIRTY.get(key.area());
+        return changedAt == null || changedAt <= cached.renderedAt() || System.currentTimeMillis() - changedAt < DEBOUNCE_MS;
+    }
+
+    private static CompletableFuture<Tile> hit(Entry cached) {
+        MapStats.TILES.hits.increment();
+        if (cached.png() == null) MapStats.TILES.empty.increment();
+        return CompletableFuture.completedFuture(new Tile(cached.png(), cached.etag()));
+    }
+
+    /** Queues the tile for sampling (or joins the job that is already queued). Any thread. */
+    private static CompletableFuture<Tile> queue(Key key, int[][] nodes) {
         synchronized (JOBS) {
             var running = JOBS.get(key);
             if (running != null) return running.future;
             var job = new Job(key);
-            if (key.mainframe() != null) job.nodes = XrayGuard.nodes(key.mainframe(), key.dim());
+            MapStats.TILES.misses.increment();
+            job.nodes = nodes;
             JOBS.put(key, job);
             QUEUE.add(job);
             return job.future;
         }
+    }
+
+    private static synchronized ExecutorService encoder() {
+        if (encoder == null) {
+            encoder = Executors.newSingleThreadExecutor(r -> {
+                var t = new Thread(r, "cccloud-map-tiles");
+                t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            });
+        }
+        return encoder;
     }
 
     public static @Nullable ServerLevel level(MinecraftServer server, String dim) {
@@ -150,98 +196,176 @@ public final class MapTileService {
         return id == null ? null : server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
     }
 
-    // ---- sampling (server thread, budgeted) --------------------------------------------------------------------------
+    // ---- copying (server thread, budgeted) and sampling (background) -----------------------------------------------
 
     private static void tick(MinecraftServer server) {
-        long start = System.nanoTime();
+        var start = MapStats.start();
+        if (copy(server, start[0])) MapStats.TILES.main(start);
+    }
+
+    /**
+     * Copies the block states of queued tiles within the tick budget; true if there was work. Per loaded chunk only its
+     * containers are copied ({@code PalettedContainer.copy()}, microseconds; air-only sections not at all): for the
+     * surface every section up to the highest block, for a slice the sections around the cut (also of the chunks around
+     * the tile, for the ore rule at the tile's border). Sampling and rendering run on the background thread.
+     */
+    private static boolean copy(MinecraftServer server, long start) {
+        boolean worked = false;
         while (System.nanoTime() - start < TICK_BUDGET_NANOS) {
             Job job;
             synchronized (JOBS) {
                 job = QUEUE.peek();
             }
-            if (job == null) return;
+            if (job == null) return worked;
+            worked = true;
             var level = level(server, job.key.dim());
             if (level == null) {
                 finish(server, job, null);
                 continue;
             }
-            int baseChunkX = job.key.tx() * 8, baseChunkZ = job.key.tz() * 8;
-            if (job.nextChunk == 0) sampleNorthRow(level, job);
-            while (job.nextChunk < 64 && System.nanoTime() - start < TICK_BUDGET_NANOS) {
-                int cx = baseChunkX + (job.nextChunk & 7), cz = baseChunkZ + (job.nextChunk >> 3);
+            boolean slice = job.key.layer() == Layer.SLICE;
+            int ring = slice ? 1 : 0, side = 8 + 2 * ring;
+            int baseChunkX = job.key.tx() * 8 - ring, baseChunkZ = job.key.tz() * 8 - ring;
+            if (job.nextChunk == 0) {
+                job.minY = level.getMinY();
+                job.minSection = level.getMinSectionY();
+                if (!slice) sampleNorthRow(level, job);
+            }
+            while (job.nextChunk < side * side && System.nanoTime() - start < TICK_BUDGET_NANOS) {
+                int cx = baseChunkX + job.nextChunk % side, cz = baseChunkZ + job.nextChunk / side;
                 job.nextChunk++;
                 LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz); // never loads or generates
                 // slices never show chunks claimed by another team (they stay unknown/transparent)
-                if (chunk != null && !(job.key.layer() == Layer.SLICE && XrayGuard.claimedByOther(level, cx, cz, job.key.player()))) sampleChunk(level, chunk, job);
+                if (chunk == null || (slice && XrayGuard.claimedByOther(level, cx, cz, job.key.player()))) continue;
+                copyChunk(level, chunk, job, slice);
             }
-            if (job.nextChunk >= 64) {
+            if (job.nextChunk >= side * side) {
                 synchronized (JOBS) {
                     QUEUE.poll();
                 }
-                render(server, job);
+                var done = job;
+                encoder().execute(() -> {
+                    var t0 = MapStats.start();
+                    try {
+                        sampleAll(done);
+                    } catch (RuntimeException e) {
+                        CCCloud.LOGGER.warn("[cccloud] Map tile {} failed", done.key, e);
+                    }
+                    MapStats.TILES.worker(t0);
+                    render(server, done);
+                });
             }
         }
+        return worked;
     }
 
-    private static void sampleChunk(ServerLevel level, LevelChunk chunk, Job job) {
+    private static void copyChunk(ServerLevel level, LevelChunk chunk, Job job, boolean slice) {
+        var sections = chunk.getSections();
+        var copies = new Object[sections.length];
+        int from, to;
+        if (slice) {
+            from = level.getSectionIndex(Math.max(level.getMinY(), job.key.y() - MapTileRenderer.SLICE_DEPTH - 1));
+            to = level.getSectionIndex(Math.min(level.getMaxY(), job.key.y() + 1));
+        } else {
+            var h = new int[256];
+            int max = level.getMinY();
+            for (int dz = 0; dz < 16; dz++) for (int dx = 0; dx < 16; dx++) max = Math.max(max, h[dx + 16 * dz] = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, dx, dz));
+            job.heights.put(chunk.getPos().pack(), h);
+            from = 0;
+            to = level.getSectionIndex(Math.min(level.getMaxY(), max));
+        }
+        for (int si = Math.max(0, from); si <= to && si < sections.length; si++) {
+            copies[si] = sections[si].hasOnlyAir() ? AIR : sections[si].getStates().copy();
+        }
+        job.chunks.put(chunk.getPos().pack(), copies);
+    }
+
+    /** A copied block state, air outside the world, null where nothing was copied (unknown). Background thread. */
+    @SuppressWarnings("unchecked")
+    private static @Nullable BlockState state(Job job, int x, int y, int z) {
+        Object[] sections = job.chunks.get(net.minecraft.world.level.ChunkPos.pack(x >> 4, z >> 4));
+        if (sections == null) return null;
+        int si = (y >> 4) - job.minSection;
+        if (si < 0 || si >= sections.length) return AIR_STATE;
+        Object c = sections[si];
+        if (c == null) return null;
+        if (c == AIR) return AIR_STATE;
+        return ((PalettedContainer<BlockState>) c).get(x & 15, y & 15, z & 15);
+    }
+
+    /** Map colour of a copied state (no level access: like an empty world around it). */
+    private static MapColor color(BlockState state, BlockPos.MutableBlockPos pos) {
+        return state.getMapColor(EmptyBlockGetter.INSTANCE, pos);
+    }
+
+    /** Samples every copied chunk of the tile. Background thread. */
+    private static void sampleAll(Job job) {
         var pos = new BlockPos.MutableBlockPos();
-        int minY = level.getMinY();
+        int minY = job.minY;
         int originX = job.key.tx() * MapTileRenderer.SIZE, originZ = job.key.tz() * MapTileRenderer.SIZE;
-        int chunkX = chunk.getPos().getMinBlockX(), chunkZ = chunk.getPos().getMinBlockZ();
-        for (int dz = 0; dz < 16; dz++) {
-            for (int dx = 0; dx < 16; dx++) {
-                int x = chunkX + dx, z = chunkZ + dz;
-                int i = (z - originZ) * MapTileRenderer.SIZE + (x - originX);
-                var s = job.samples;
-                if (job.key.layer() == Layer.SURFACE) {
-                    int y = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, dx, dz);
-                    var state = chunk.getBlockState(pos.set(x, y, z));
-                    while (state.getMapColor(level, pos) == MapColor.NONE && y > minY) state = chunk.getBlockState(pos.set(x, --y, z));
-                    int depth = 0;
-                    boolean water = !state.getFluidState().isEmpty();
-                    if (water) {
-                        int wy = y;
-                        while (wy > minY && depth < 64 && !chunk.getBlockState(pos.set(x, wy - 1, z)).getFluidState().isEmpty()) {
-                            wy--;
-                            depth++;
+        var s = job.samples;
+        for (int c = 0; c < 64; c++) {
+            int cx = job.key.tx() * 8 + (c & 7), cz = job.key.tz() * 8 + (c >> 3);
+            long key = net.minecraft.world.level.ChunkPos.pack(cx, cz);
+            if (!job.chunks.containsKey(key)) continue;
+            int[] heights = job.heights.get(key);
+            for (int dz = 0; dz < 16; dz++) {
+                for (int dx = 0; dx < 16; dx++) {
+                    int x = cx * 16 + dx, z = cz * 16 + dz;
+                    int i = (z - originZ) * MapTileRenderer.SIZE + (x - originX);
+                    if (job.key.layer() == Layer.SURFACE) {
+                        int y = heights[dx + 16 * dz];
+                        var state = state(job, x, y, z);
+                        while (state != null && color(state, pos.set(x, y, z)) == MapColor.NONE && y > minY) state = state(job, x, --y, z);
+                        if (state == null) continue; // unknown
+                        int depth = 0;
+                        boolean water = !state.getFluidState().isEmpty();
+                        if (water) {
+                            int wy = y;
+                            BlockState below;
+                            while (wy > minY && depth < 64 && (below = state(job, x, wy - 1, z)) != null && !below.getFluidState().isEmpty()) {
+                                wy--;
+                                depth++;
+                            }
                         }
-                        pos.set(x, y, z);
+                        s.color[i] = color(state, pos.set(x, y, z)).id;
+                        s.height[i] = y;
+                        s.depth[i] = depth;
+                        s.water[i] = water && s.color[i] == MapColor.WATER.id;
+                    } else {
+                        int top = job.key.y();
+                        int found = 0;
+                        s.color[i] = 0;
+                        for (int d = 0; d < MapTileRenderer.SLICE_DEPTH && top - d >= minY; d++) {
+                            var state = state(job, x, top - d, z);
+                            if (state == null) break;
+                            var color = color(state, pos.set(x, top - d, z));
+                            // ores look like stone unless they touch air near one of the mainframe's own nodes
+                            if (color != MapColor.NONE && XrayGuard.isOre(state) && !(touchesAir(job, x, top - d, z) && XrayGuard.nearNode(job.nodes, x, top - d, z))) {
+                                color = MapColor.STONE;
+                            }
+                            if (color != MapColor.NONE) {
+                                s.color[i] = color.id;
+                                s.depth[i] = d;
+                                s.height[i] = top - d;
+                                found = 1;
+                                break;
+                            }
+                        }
+                        if (found == 0) s.depth[i] = MapTileRenderer.SLICE_DEPTH;
                     }
-                    s.color[i] = state.getMapColor(level, pos.set(x, y, z)).id;
-                    s.height[i] = y;
-                    s.depth[i] = depth;
-                    s.water[i] = water && s.color[i] == MapColor.WATER.id;
-                } else {
-                    int top = job.key.y();
-                    int found = 0;
-                    s.color[i] = 0;
-                    for (int d = 0; d < MapTileRenderer.SLICE_DEPTH && top - d >= minY; d++) {
-                        var state = chunk.getBlockState(pos.set(x, top - d, z));
-                        var color = state.getMapColor(level, pos);
-                        // ores look like stone unless they touch air near one of the mainframe's own nodes
-                        if (color != MapColor.NONE && XrayGuard.isOre(state) && !(touchesAir(level, x, top - d, z) && XrayGuard.nearNode(job.nodes, x, top - d, z))) {
-                            color = MapColor.STONE;
-                        }
-                        if (color != MapColor.NONE) {
-                            s.color[i] = color.id;
-                            s.depth[i] = d;
-                            s.height[i] = top - d;
-                            found = 1;
-                            break;
-                        }
-                    }
-                    if (found == 0) s.depth[i] = MapTileRenderer.SLICE_DEPTH;
                 }
             }
         }
+        job.chunks.clear(); // the copies are not needed any more
+        job.heights.clear();
     }
 
-    private static boolean touchesAir(ServerLevel level, int x, int y, int z) {
-        var pos = new BlockPos.MutableBlockPos();
+    /** Air on a face, from the copies (unknown neighbors count as solid). */
+    private static boolean touchesAir(Job job, int x, int y, int z) {
         for (var d : net.minecraft.core.Direction.values()) {
-            pos.set(x + d.getStepX(), y + d.getStepY(), z + d.getStepZ());
-            var chunk = level.getChunkSource().getChunkNow(pos.getX() >> 4, pos.getZ() >> 4);
-            if (chunk != null && chunk.getBlockState(pos).isAir()) return true;
+            var n = state(job, x + d.getStepX(), y + d.getStepY(), z + d.getStepZ());
+            if (n != null && n.isAir()) return true;
         }
         return false;
     }
@@ -258,19 +382,11 @@ public final class MapTileService {
 
     // ---- rendering (background thread) -------------------------------------------------------------------------------
 
+    /** Renders, encodes and caches a sampled tile. Background thread. */
     private static void render(MinecraftServer server, Job job) {
         var previous = CACHE.get(job.key);
-        var executor = encoder;
-        if (executor == null) {
-            executor = Executors.newSingleThreadExecutor(r -> {
-                var t = new Thread(r, "cccloud-map-tiles");
-                t.setDaemon(true);
-                t.setPriority(Thread.MIN_PRIORITY);
-                return t;
-            });
-            encoder = executor;
-        }
-        executor.execute(() -> {
+        {
+            var t0 = MapStats.start();
             try {
                 var samples = job.samples;
                 for (int x = 0; x < MapTileRenderer.SIZE; x++) if (job.northRow[x] == Integer.MIN_VALUE) job.northRow[x] = samples.height[x];
@@ -284,12 +400,14 @@ public final class MapTileService {
                 CACHE.put(job.key, entry);
                 if (Boolean.getBoolean("cccloud.gametest")) SAMPLES_FOR_TEST.put(job.key, samples);
                 if (png != null) save(server, job.key, png);
+                if (png == null) MapStats.TILES.empty.increment();
+                MapStats.TILES.worker(t0);
                 finish(server, job, new Tile(png, entry.etag()));
             } catch (RuntimeException e) {
                 CCCloud.LOGGER.warn("[cccloud] Map tile {} failed", job.key, e);
                 finish(server, job, new Tile(null, "\"none\""));
             }
-        });
+        }
     }
 
     private static void finish(MinecraftServer server, Job job, @Nullable Tile tile) {

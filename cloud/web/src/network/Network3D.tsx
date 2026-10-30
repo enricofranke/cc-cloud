@@ -47,7 +47,7 @@ import type { NetNode, NetworkInfo, Waystone } from "../lib/types.ts";
 import type { Terrain } from "../lib/api.ts";
 import { isNodeType } from "../lib/network.ts";
 import { VoxelLayer, type VoxelSource } from "./voxelLayer.ts";
-import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, routedThrough, terrainMesh, type ModelDef } from "../lib/net3d.ts";
+import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, routedThrough, terrainMesh, type ModelDef, type VoxelStatus } from "../lib/net3d.ts";
 
 interface Part {
   tex: string;
@@ -76,7 +76,7 @@ export interface View3DProps {
   /** cut away everything above this Y (voxels only) */
   clipY: number | null;
   night: boolean;
-  onVoxelStatus?: (s: { loaded: number; total: number; triangles: number; unavailable: boolean }) => void;
+  onVoxelStatus?: (s: VoxelStatus) => void;
   /** Waystones overlay (this dimension is picked here) */
   waystones?: Waystone[];
 }
@@ -311,10 +311,12 @@ class View3D {
         this.scene.add(this.voxels.group);
         this.voxels.onChange = () => {
           this.request();
-          clearTimeout(this.statusTimer);
+          // throttled, not debounced: the indicator keeps moving while meshes stream in
+          if (this.statusTimer) return;
           this.statusTimer = window.setTimeout(() => {
+            this.statusTimer = 0;
             const v = this.voxels;
-            if (v) this.props.onVoxelStatus?.({ loaded: v.loaded, total: v.total, triangles: v.triangleCount, unavailable: v.unavailable });
+            if (v) this.props.onVoxelStatus?.(v.status);
           }, 120);
         };
       }

@@ -942,13 +942,18 @@ The 2D network map gets a real top-down map of the world as background, like a M
   - Slice: the first non-air block from the cut downwards (≤ 16 blocks). Cave floors are bright near the cut and darker deeper; rock at the cut is darkest; nothing within 16 blocks is transparent.
   - Only chunks that are loaded right now are sampled (never loaded or generated). Other pixels come from the last render, cached in memory and in `<world>/cccloud/maptiles/`.
   - A tile is re-rendered on request when its chunks were saved or unloaded at least 30 s ago (debounced).
-  - Sampling uses ≤ 2 ms of the server thread per tick; PNG encoding runs in the background.
+  - The server thread only copies the block states of the tile's loaded chunks (`PalettedContainer.copy()` of the
+    sections up to the highest block for the surface, of the sections around the cut – also of the chunks around the
+    tile, for the ore rule – for a slice; air-only sections are not copied), within ≤ 2 ms per tick. Sampling (map
+    colours with an empty world around the block, water depth, slice depth, ore rule), rendering and PNG encoding run
+    on the background thread; so does reading a cached tile from disk (2026-10-30, before: sampling and disk reads on
+    the server thread).
   - Reading chunks that are only on disk is not done yet; those areas fill in as players load them.
 
 ### "Crazy 3D": voxel view of the base (requested 2026-10-23)
 On top of the 3D network view: render the actual blocks around the network as voxels.
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
-- Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded or saved chunks only, never generate/force-load; 40 sections/s per session; server-side cache invalidated on block changes (debounced); config `voxelView` (default true).
+- Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded or saved chunks only, never generate/force-load; a section budget per device (see "Voxel view – batch API"); server-side cache validated by the sections' content; config `voxelView` (default true).
 - Stage 1 (now): colored voxels with map colors, greedy meshing in a Web Worker, ambient occlusion, emissive blocks glow, water translucent, day/night toggle; our devices drawn with their real models on top; clickable as in the 3D view; clipping plane / Y-slider to cut through floors of a base.
 - Stage 2: real block textures – game clients upload block face textures the same way they upload item icons (validated PNG, size caps), the server builds an atlas, and the web renders textured voxels (see "Voxel view – stage 2").
 - Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
@@ -959,7 +964,9 @@ On top of the 3D network view: render the actual blocks around the network as vo
   - Bearer token, permission `view.positions` (else `403 not_allowed`).
   - Only sections within config `voxelRadius` blocks (default 64, 16–128) of a node or device of the network, measured box to point (else `403 out_of_range`).
   - Config `voxelView=false` → `404 disabled`.
-  - 40 sections per second per device → `429`.
+  - Sections count against the device's section budget (2048, refilled at 256 per second, shared with the batch API)
+    → `429 {"error":"rate_limited","retryAfter":s}`. (Until 0.9.0: 40 requests per second, and every request also
+    counted against the 120 API requests per minute per IP, so a base of ~500 sections took minutes.)
 - **Response:** `200` with
   ```json
   {"dim","cx","cy","cz",
@@ -971,10 +978,98 @@ On top of the 3D network view: render the actual blocks around the network as vo
   - `204` when the section's chunk is not loaded.
   - `Cache-Control: private, max-age=5`.
 - **Anti X-ray:** only exposed blocks are sent: at least one face touches air or a non-occluding block (glass, leaves, fluids…). Neighbors in chunks that are not loaded count as solid, so chunk borders do not leak either.
-- **Server cost and cache:**
-  - The block states (section + 1-block border) are copied on the server thread from loaded chunks only (no loading or generating).
-  - Filtering and encoding run on 2 background threads.
-  - Results are cached (1024 sections) and invalidated, debounced 2 s, when a block in or next to the section changes.
+- **Server cost and cache** (same for the batch API):
+  - On the server thread only the block-state containers of the section and its six neighbors are copied
+    (`PalettedContainer.copy()`, a few microseconds each; air-only sections are not copied), from loaded chunks only (no
+    loading or generating).
+  - Everything else runs on 2 background threads: a hash of the section's states, the touching layer of each neighbor
+    (only that layer decides exposure and the ore rule) and the mainframe's nodes within the ore radius is compared
+    with the cached section's; only when it differs is the section rebuilt (exposed-only
+    filter, X-ray guard, encoding). So any block change – by players, machines, commands or block movers, with or
+    without neighbor updates – shows on the next request, and unchanged sections are never rebuilt. 8192 sections per
+    server are kept (per mainframe, because of the ore rule).
+  - There is no disk cache and no background pre-warming: building a whole base (~500 sections) takes well under a
+    second of background CPU (140 ms for the showcase base, see "Voxel view – loading measurements"), and an unread
+    cache would only cost memory.
+
+#### Voxel view – batch API (mod side, implemented 2026-10-30)
+Loading a base one section per request was slow: ~500 requests, rate limited to 120 per minute per IP (shared with the
+map tiles and every other API call). The dashboard now asks for up to 64 sections per request and keeps sections in the
+browser.
+- **Route:** `POST /api/mainframes/<id>/voxels/<dim>` with `Authorization: Bearer`, body (strict, ≤ 4 KB)
+  `{"sections":[[cx,cy,cz],[cx,cy,cz,"<hash>"],…]}` – 1 to 64 distinct sections; the optional 16-hex-digit hash is
+  what the browser already has. Anything else → `400 {"error":"invalid"}`.
+- **Access** as for single sections, checked per section: `view.positions` (else `403 not_allowed` for the whole
+  request), `voxelView` (`404 disabled`), unknown dimension `404`; per section `out_of_range` (beyond `voxelRadius`)
+  and `claimed` (another team's claim) are statuses in the answer.
+- **Limits:** one request of the 120 API requests per minute per IP, and as many sections of the device's section
+  budget as it asks for (2048, refilled at 256 per second; `429 {"error":"rate_limited","retryAfter":s}` when the
+  batch does not fit). Loading a whole base therefore never waits, while a client cannot make the server build more
+  than ~256 sections per second for long.
+- **Answer:** `200 application/octet-stream`, gzip (`Content-Encoding: gzip`) when the request accepts it,
+  `Cache-Control: no-store`. Layout:
+  ```
+  "CCVB"  version (1 byte, 1)  header length (u32 big endian)  header (UTF-8 JSON)  runs (bytes)
+  ```
+  The header is `{"dim","palette":[{"id","color","flags","tex"?,"tint"?}],"atlas"?,"sections":[…]}` – one palette for
+  the whole batch, with the stage-2 texture fields as in the single-section answer. Every section entry has
+  `"c":[cx,cy,cz]` and `"s"`:
+  - `ok`: `"h"` (content hash, 16 hex digits), `"n"` (exposed blocks), `"p"` (the section's palette as indices into
+    the batch palette) and `"l"` (byte length of its runs). The runs of the `ok` sections follow the header in order;
+    they are the LEB128 pairs `(run length, index)` of the single-section format, index n = `palette[p[n-1]]`.
+  - `same`: the hash the browser sent is current; `"h"` and `"p"` only (the palette refreshes colours and textures).
+  - `empty`: the chunk is not loaded (or the section is outside the world) – try again later; a cached copy may stay.
+  - `out_of_range`, `claimed`: refused for this section; the browser drops its copy.
+  The content hash covers the palette and the runs, so it changes exactly when what the browser would draw changes.
+- **Server work:** the access checks and copying the containers on the server thread (see above), building, the
+  batch and gzip on the background threads. `/cccloud map stats [reset]` (server admins) prints requests, sections,
+  cache hits, server-thread time (also per tick since the last reset), background time, bytes and 429s for the map
+  tiles and the voxels.
+
+#### Voxel view – loading in the dashboard (implemented 2026-10-30)
+- **Order:** sections within 40 blocks of the dimension's nodes, nearest to the mainframe first, in batches of 64, two
+  batches in flight.
+- **Browser cache:** sections are kept in IndexedDB (`cccloud-voxels`, key `<mainframe>|<dim>|<cx>,<cy>,<cz>`, with
+  hash, palette and runs). Reopening the 3D view draws the cached sections at once and then sends their hashes with
+  the batches, so the server answers `same` for everything that did not change. Entries outside the current area are
+  dropped on load; a mainframe's entries are deleted when it is removed from the browser or the server answers 401/403.
+- **Meshing:** a pool of Web Workers (cores − 1, at most 4; 2 on phones). Every worker decodes every section (meshing
+  needs the neighbours) and greedy-meshes the 32³ regions it owns (`regionOwner`); meshes come back as transferables.
+  The main thread merges region meshes per 2×2×2 regions (64³ blocks) and material, once per frame, so the scene has
+  up to 8× fewer draw calls; three.js culls each merged mesh against the view frustum.
+- **Indicator** (honest about the phase): "Loading blocks n %" (server answers so far), "Updating blocks n %" (cached
+  blocks are shown, the server is checking them), "Server busy – waiting (n %)" (429 with `retryAfter`), "Building
+  blocks…" (all answers are in, workers still meshing).
+- No separate low-detail pass: the first blocks appear within the first batch, faster than a coarse heightmap would
+  (numbers in "Voxel view – loading measurements").
+
+#### Voxel view – loading measurements (2026-10-30)
+Showcase world on the ATM11 test server (77 nodes/devices, 536 sections within 40 blocks, 191 of them with blocks),
+headless Chrome on the same Mac (LAN), `tools/showcase/loadbench.mjs` (cold = fresh browser profile, reload = same
+profile again, tiles = the 2D map's 20 tiles with an empty tile cache), server numbers from `/cccloud map stats`
+(thread CPU time). Before = main + the counters, after = this branch; both on an idle machine, the "after" cold run
+right after a server start (empty server caches, JIT cold), runs 2–3 with warm server caches.
+
+| | before | after |
+|---|---|---|
+| requests for the base | 952 (416 × 429) | 9 (0 × 429) |
+| first blocks / 50 % / 90 % / 100 % of the triangles | 0.33 s / 2.3 s / 140 s / 208 s | 0.40 s / 0.46 s / 1.8 s / 2.2 s (warm server: 0.47–0.71 s to 100 %) |
+| reload (same browser) to 100 % | 264 s (559 × 429) | 0.28–0.53 s (IndexedDB, server answers "same") |
+| bytes for the base | 121 KB (JSON) | 11 KB (gzip batches), 7 KB on reload |
+| server thread CPU for the base | 127 ms (0.24 ms per section) | 15 ms cold (0.03 ms), 4–5 ms warm (0.008 ms) |
+| background CPU for the base | 138 ms | 140 ms cold, 20–30 ms warm |
+| meshes sent by the workers (61 regions) | 336 (5.5 per region) | 61–79 |
+| triangles / draw calls | 15 288 / 183 | 13 044 / 108 |
+| meshing the 191 sections offline (`cloud/dev/voxel-bench.ts`) | 726 ms, 11 ms per region (p50) | 160–210 ms, 1.5–2.7 ms per region |
+| map tiles (cold, after the 3D view): first / all | 0.19 s / 0.53 s for 17 of 20, 2 × 429 (the API limit was used up by the voxels, the store pauses 10 s); server thread 39.8 ms CPU (2.3 ms per tile) | 0.23 s / 0.62 s; server thread 20.7 ms CPU (1.0 ms per tile) |
+| map tiles (cached): all | – | 0.09–0.14 s |
+
+- Tick impact: the voxel work runs as server tasks between ticks, so `tick query` stayed in its idle range while
+  loading (mostly 2–7 ms, single samples up to 28 ms right after the start, before and after alike). Per tick of the loading window the server thread spends 0.05–0.08 ms CPU when its
+  caches are warm and 0.26 ms on the first load after a start (15 ms in total, mostly JIT and first-time lookups);
+  before, the total was 8× higher but spread over 3.5 minutes by the rate limit (0.03 ms per tick on paper).
+- On a busy machine (load average 50–130, earlier the same day) the same "after" build loaded the base in 2.0–3.0 s
+  (reload 0.4–0.9 s) against 210–283 s before.
 
 #### X-ray guard for slices and voxels (security review M4)
 - Config `map.mapSlices`: `auto` (default: on in singleplayer and for LAN-only dashboards, off with `webAllowInternet`), `on`, `off`. Disabled → `404 disabled` for slice tiles.

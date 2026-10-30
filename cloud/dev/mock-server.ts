@@ -20,6 +20,8 @@ import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
 import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
+import { encodeBatch, sectionHash, type OutSection } from "./voxel-batch.ts";
+import { gzipSync } from "node:zlib";
 import { encodePng } from "./icons.ts";
 const STORE_DIST = fileURLToPath(new URL("../../store/dist/", import.meta.url));
 import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
@@ -220,7 +222,7 @@ export interface MockOptions {
   deepBase?: boolean;
   /** map tiles per minute per device (default 60) */
   tileRate?: number;
-  /** voxel sections per second per device (default 40) */
+  /** voxel section budget per device: refilled per second (default 256, capacity 8×) */
   voxelRate?: number;
   /** v0.7: min ms between terrain requests per token (default 5000) */
   terrainRateMs?: number;
@@ -2245,7 +2247,20 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
   const terrainCalls = new WeakMap<object, number>();
   const tileCalls = new WeakMap<object, number[]>();
-  const voxelCalls = new WeakMap<object, number[]>();
+  /** voxel section budget per token: [tokens, last refill ms] (like the mod's TokenBucket) */
+  const voxelBudget = new WeakMap<object, [number, number]>();
+  const voxelTake = (t: object, n: number) => {
+    const rate = opts.voxelRate ?? 256;
+    const cap = rate * 8;
+    const now = Date.now();
+    const b = voxelBudget.get(t) ?? [cap, now];
+    b[0] = Math.min(cap, b[0] + ((now - b[1]) / 1000) * rate);
+    b[1] = now;
+    voxelBudget.set(t, b);
+    if (b[0] < n) return Math.max(1, Math.ceil((Math.min(n, cap) - b[0]) / rate));
+    b[0] -= n;
+    return 0;
+  };
   const tileCache = new Map<string, Buffer>();
   const voxelCache = new Map<string, string>();
   const fsWrites = new WeakMap<object, number[]>();
@@ -2605,6 +2620,47 @@ export async function createMockServer(opts: MockOptions = {}) {
       }
       return json(res, 200, { key: `${kind}/${uplinkId}/${key}`, range, kept, retentionHours, step, points });
     }
+    // ---- voxel batch (docs/SPEC.md "Voxel view – batch API"): many sections in one binary, gzip-compressed answer
+    const vb = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/voxels\/([a-z0-9_.-]+:[a-z0-9_.-]+)$/.exec(p);
+    if (vb && req.method === "POST") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const g = gate(t, vb[1], "view.positions");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const dim = vb[2];
+      if (!["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"].includes(dim)) return json(res, 404, { error: "unknown_dimension" });
+      let b: { sections?: unknown } | null;
+      try {
+        b = (await body(req)) as { sections?: unknown } | null;
+      } catch {
+        return json(res, 400, { error: "invalid" });
+      }
+      const list = b && Array.isArray(b.sections) && Object.keys(b).length === 1 ? (b.sections as unknown[]) : null;
+      const ok = (e: unknown): e is [number, number, number, string?] =>
+        Array.isArray(e) && (e.length === 3 || (e.length === 4 && typeof e[3] === "string" && /^[0-9a-f]{16}$/.test(e[3]))) && e.slice(0, 3).every((v) => Number.isInteger(v));
+      if (!list || !list.length || list.length > 64 || !list.every(ok)) return json(res, 400, { error: "invalid" });
+      const wait = voxelTake(t, list.length);
+      if (wait) return json(res, 429, { error: "rate_limited", retryAfter: wait });
+      const nodes = (g.m.net?.nodes ?? []).filter((n) => n.dim === dim);
+      const out: OutSection[] = list.map(([cx, cy, cz, have]) => {
+        const near = nodes.some((n) => {
+          const d = (c: number, q: number) => Math.max(c * 16 - q, 0, q - (c * 16 + 15));
+          return Math.hypot(d(cx, n.pos.x), d(cy, n.pos.y), d(cz, n.pos.z)) <= 64;
+        });
+        if (!near) return { cx, cy, cz, status: "out_of_range" };
+        if (cy < -4 || cy > 19) return { cx, cy, cz, status: "empty" };
+        const key = `${dim}|${cx}|${cy}|${cz}`;
+        let sec = voxelCache.get(key);
+        if (!sec) voxelCache.set(key, (sec = JSON.stringify(voxelSection(dim, cx, cy, cz))));
+        const v = JSON.parse(sec) as { palette: { id: string; color: number; flags: number }[]; runs: string; exposed: number };
+        const data = { palette: v.palette, runs: new Uint8Array(Buffer.from(v.runs, "base64")), exposed: v.exposed };
+        return { cx, cy, cz, status: have && have === sectionHash(data) ? "same" : "ok", data };
+      });
+      const raw = encodeBatch(dim, out);
+      const gz = /\bgzip\b/.test(String(req.headers["accept-encoding"] ?? ""));
+      res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "application/octet-stream", "cache-control": "no-store", ...(gz ? { "content-encoding": "gzip" } : {}) });
+      return void res.end(gz ? gzipSync(raw) : raw);
+    }
     // ---- map tiles (surface / slice) and voxel sections (docs/SPEC.md "Map tiles – HTTP API", "Voxel view – HTTP API")
     const mt = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(map|voxels)\/([a-z0-9_.-]+:[a-z0-9_./-]+?)\/(.+)$/.exec(p);
     if (mt && req.method === "GET") {
@@ -2668,10 +2724,8 @@ export async function createMockServer(opts: MockOptions = {}) {
         return Math.hypot(d(cx, n.pos.x), d(cy, n.pos.y), d(cz, n.pos.z)) <= 64;
       });
       if (!near) return json(res, 403, { error: "out_of_range" });
-      const vc = (voxelCalls.get(t) ?? []).filter((x) => now - x < 1000);
-      if (vc.length >= (opts.voxelRate ?? 40)) return json(res, 429, { error: "rate_limited", retryAfter: 1 });
-      vc.push(now);
-      voxelCalls.set(t, vc);
+      const wait = voxelTake(t, 1);
+      if (wait) return json(res, 429, { error: "rate_limited", retryAfter: wait });
       const key = `${dim}|${cx}|${cy}|${cz}`;
       let sec = voxelCache.get(key);
       if (!sec) voxelCache.set(key, (sec = JSON.stringify(voxelSection(dim, cx, cy, cz))));

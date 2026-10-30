@@ -119,7 +119,10 @@ It is reviewed before every release.
   - 5 item searches per second;
   - 5 layout saves per 10 seconds per mainframe;
   - 5 production requests per second per socket; scene saves like actions;
-  - 120 API requests per minute per IP;
+  - 120 API requests per minute per IP (a voxel batch of up to 64 sections is one request);
+  - voxel sections: a budget of 2048 per device, refilled at 256 per second, counted per section for the batch and
+    the single-section route (until 0.9.0: 40 requests per second, each also one of the 120 API requests, which made
+    loading a base take minutes and starved the map tiles afterwards);
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP;
   - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread.
@@ -185,6 +188,8 @@ It is reviewed before every release.
 - Slices and **voxels** never include chunks claimed by another team (FTB Chunks; members and allies count as the same team).
 - Ores (`#c:ores`) show as stone in slices and voxels unless they touch air within 16 blocks of the requesting mainframe's own nodes. Voxels only contain blocks with a face to air or a see-through block.
 - Residual: within `voxelRadius` of the network, caves and structures are visible to everyone with `view.positions`. Turn `voxelView` off on servers where that is too much.
+- The voxel batch route (2026-10-30) applies every rule above per section (radius, claims, ore rule, `view.positions`) and only changes how many sections travel per request. Its body is strict JSON (≤ 64 distinct sections, optional 16-hex-digit hashes, nothing else); the hashes only let the server answer "same" and never select other data.
+- The dashboard keeps voxel sections in the browser's IndexedDB (`cccloud-voxels`) so the 3D view opens at once. That is data this browser was already allowed to load; it stays in the dashboard's origin, is deleted when the mainframe is removed from the browser or the server answers 401/403 for voxels, and is checked against the server (hashes) on every visit, so sections that became out of range or claimed are dropped. A browser whose access was revoked still has what it had loaded before, like a screenshot.
 
 ### Rate limits and resources (in-game)
 - Map waypoint subscriptions rebuild only on a change and at most once a second per player; opening the tablet at most once a second per player.

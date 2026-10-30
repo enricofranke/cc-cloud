@@ -23,11 +23,27 @@ public final class TokenBucket {
     }
 
     public synchronized boolean tryAcquire() {
+        return tryAcquire(1);
+    }
+
+    /** Takes {@code n} tokens at once, or none. */
+    public synchronized boolean tryAcquire(double n) {
+        refill();
+        if (tokens < n) return false;
+        tokens -= n;
+        return true;
+    }
+
+    /** Seconds until {@code n} tokens are available (0 if they are now; more than capacity never). */
+    public synchronized double secondsUntil(double n) {
+        refill();
+        if (tokens >= n) return 0;
+        return (Math.min(n, capacity) - tokens) / (perNano * 1e9);
+    }
+
+    private void refill() {
         long now = nanoClock.getAsLong();
         tokens = Math.min(capacity, tokens + (now - last) * perNano);
         last = now;
-        if (tokens < 1) return false;
-        tokens -= 1;
-        return true;
     }
 }

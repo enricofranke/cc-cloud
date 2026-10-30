@@ -115,6 +115,17 @@ public interface GameBridge {
     /** One 16³ section of exposed blocks (view.positions, within voxelRadius of the network). Server thread; completes later. */
     CompletableFuture<VoxelResult> voxels(AuthStore.Device device, UUID mainframeId, String dim, int cx, int cy, int cz);
 
+    /** Voxel batch: status 200 with the binary batch (gzip-compressed when {@code gzip}), or 403/404 (error). */
+    record VoxelBatchResult(int status, byte @Nullable [] body, boolean gzip, @Nullable String error) {
+    }
+
+    /**
+     * Many sections at once (docs/SPEC.md "Voxel view – batch API"): each {cx, cy, cz} with the hash the client already
+     * has (or null). Same checks as {@link #voxels} per section. Server thread; completes later.
+     */
+    CompletableFuture<VoxelBatchResult> voxelBatch(AuthStore.Device device, UUID mainframeId, String dim, java.util.List<int[]> sections,
+                                                   java.util.List<@Nullable String> have, boolean gzip);
+
     /** Tells the owner that a device got locked because of wrong PINs. */
     void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip);
 

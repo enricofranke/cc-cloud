@@ -1,75 +1,92 @@
 package ai.ezfox.cccloud.voxel;
 
 import ai.ezfox.cccloud.CloudConfig;
+import ai.ezfox.cccloud.map.MapStats;
+import ai.ezfox.cccloud.map.XrayGuard;
 import ai.ezfox.cccloud.network.NetworkService;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import io.netty.buffer.Unpooled;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.server.MinecraftServer;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Server side of the voxel view (stage 1): one 16³ section of exposed blocks around the network. The block states
- * (section plus a one-block border) are copied on the server thread from <b>loaded</b> chunks only; filtering and
- * encoding run in the background. Results are cached and invalidated (debounced) when blocks in or next to the section
- * change.
+ * Server side of the voxel view: 16³ sections of exposed blocks around the network.
+ * <ul>
+ *   <li><b>Server thread</b> ({@link #encode}): only copies the block-state containers of the requested sections and
+ *       their six neighbors from <b>loaded</b> chunks ({@code PalettedContainer.copy()}, microseconds each; air-only
+ *       sections are not copied). Nothing is loaded or generated.</li>
+ *   <li><b>Background</b> (2 threads): hashes the copied containers (plus the mainframe's nodes that decide ore
+ *       visibility) and answers from the cache when that input hash is unchanged; otherwise builds the section with the
+ *       exposed-only filter and the X-ray guard and caches it.</li>
+ * </ul>
+ * The cache is validated by content, so every block change (whatever caused it: players, machines, commands, block
+ * movers) shows on the next request, and unchanged sections are never rebuilt.
  */
 public final class VoxelService {
-    public static final long DEBOUNCE_MS = 2_000;
-    private static final int CACHE_SIZE = 1024;
+    private static final int CACHE_SIZE = 8192;
+    /** Bump when the build logic changes (invalidates input hashes). */
+    private static final int LOGIC_VERSION = 3;
 
-    private record Entry(JsonObject json, long renderedAt) {
+    private record Entry(long input, VoxelSection.Encoded encoded) {
     }
 
-    private static final Map<String, Entry> CACHE = java.util.Collections.synchronizedMap(new LinkedHashMap<>(64, 0.75f, true) {
+    /** What the web sees of a block state; {@code kind} null for air. */
+    private record Info(VoxelSection.@Nullable Kind kind, boolean ore) {
+    }
+
+    private static final Map<String, Entry> CACHE = java.util.Collections.synchronizedMap(new LinkedHashMap<>(256, 0.75f, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<String, Entry> eldest) {
             return size() > CACHE_SIZE;
         }
     });
-    private static final Map<String, Long> DIRTY = new ConcurrentHashMap<>();
+    private static final Map<BlockState, Info> INFO = new ConcurrentHashMap<>();
+    /** Marker for a section that only holds air (not copied). */
+    private static final Object AIR = new Object();
+    /** The encoding of an air-only section. */
+    private static final VoxelSection.Encoded AIR_SECTION = VoxelSection.encodeGrid(new int[VoxelSection.GRID * VoxelSection.GRID * VoxelSection.GRID], List.of());
     private static @Nullable ExecutorService executor;
 
     private VoxelService() {
     }
 
     public static void init() {
-        NeoForge.EVENT_BUS.addListener(BlockEvent.NeighborNotifyEvent.class, e -> {
-            if (!(e.getLevel() instanceof ServerLevel level)) return;
-            var pos = e.getPos();
-            String dim = level.dimension().identifier().toString();
-            long now = System.currentTimeMillis();
-            // The section and its neighbors (exposure depends on the blocks next to it).
-            for (int dx = -1; dx <= 1; dx++) for (int dy = -1; dy <= 1; dy++) for (int dz = -1; dz <= 1; dz++) {
-                DIRTY.put(key(dim, (pos.getX() + dx) >> 4, (pos.getY() + dy) >> 4, (pos.getZ() + dz) >> 4), now);
-            }
-        });
         NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, e -> {
             CACHE.clear();
-            DIRTY.clear();
+            INFO.clear();
             if (executor != null) executor.shutdownNow();
             executor = null;
         });
     }
 
-    static String key(String dim, int cx, int cy, int cz) {
-        return dim + "|" + cx + "|" + cy + "|" + cz;
+    static String key(String dim, int cx, int cy, int cz, @Nullable UUID mainframe) {
+        return dim + "|" + cx + "|" + cy + "|" + cz + "|" + mainframe;
     }
 
     /** Distance from a point to the section's box (0 inside). Pure. */
@@ -82,21 +99,36 @@ public final class VoxelService {
 
     /** Only sections within voxelRadius of a node or device of the mainframe's network (same dimension). */
     public static boolean allowed(UUID mainframeId, String dim, int cx, int cy, int cz) {
+        return allowed(viewPoints(mainframeId, dim), cx, cy, cz);
+    }
+
+    /**
+     * Positions of the reachable nodes and the devices of the mainframe's network in this dimension, whose voxelRadius
+     * opens the view (computed once per request). Server thread.
+     */
+    public static double[][] viewPoints(UUID mainframeId, String dim) {
         var result = NetworkService.result(mainframeId);
-        if (result == null) return false;
-        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
+        if (result == null) return new double[0][];
+        var list = new ArrayList<double[]>();
         for (var node : result.nodes()) {
-            if (node.dim().equals(dim) && result.reachable(node.id()) && distance(cx, cy, cz, node.x(), node.y(), node.z()) <= radius) return true;
+            if (node.dim().equals(dim) && result.reachable(node.id())) list.add(new double[]{node.x(), node.y(), node.z()});
         }
         for (var device : result.devices()) {
-            if (device.dim().equals(dim) && distance(cx, cy, cz, device.x(), device.y(), device.z()) <= radius) return true;
+            if (device.dim().equals(dim)) list.add(new double[]{device.x(), device.y(), device.z()});
         }
+        return list.toArray(new double[0][]);
+    }
+
+    /** A section within voxelRadius (box to point) of one of the points. */
+    public static boolean allowed(double[][] points, int cx, int cy, int cz) {
+        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
+        for (var p : points) if (distance(cx, cy, cz, p[0], p[1], p[2]) <= radius) return true;
         return false;
     }
 
     /**
-     * The section document, or null (204) if its chunk is not loaded. Server thread; completes on a background thread
-     * (or right away from the cache).
+     * The section document of the single-section endpoint, or null (204) if its chunk is not loaded. Server thread;
+     * completes on a background thread.
      */
     public static CompletableFuture<@Nullable JsonObject> section(ServerLevel level, int cx, int cy, int cz) {
         return section(level, cx, cy, cz, null);
@@ -108,96 +140,14 @@ public final class VoxelService {
      */
     public static CompletableFuture<@Nullable JsonObject> section(ServerLevel level, int cx, int cy, int cz, @Nullable UUID mainframeId) {
         String dim = level.dimension().identifier().toString();
-        String area = key(dim, cx, cy, cz);
-        String key = area + "|" + mainframeId;
-        int[][] nodes = mainframeId == null ? new int[0][] : ai.ezfox.cccloud.map.XrayGuard.nodes(mainframeId, dim);
-        var cached = CACHE.get(key);
-        Long changed = DIRTY.get(area);
-        if (cached != null && (changed == null || changed <= cached.renderedAt() || System.currentTimeMillis() - changed < DEBOUNCE_MS)) {
-            return CompletableFuture.completedFuture(cached.json());
-        }
-        if (cy < level.getMinSectionY() || cy > level.getMaxSectionY() || level.getChunkSource().getChunkNow(cx, cz) == null) {
-            return CompletableFuture.completedFuture(null);
-        }
-        // Copy the block states (section + 1-block border) on the server thread; unloaded neighbor chunks stay unknown.
-        var states = new BlockState[18 * 18 * 18];
-        var known = new boolean[18 * 18 * 18];
-        var pos = new BlockPos.MutableBlockPos();
-        int minY = level.getMinY(), maxY = level.getMaxY();
-        for (int lx = -1; lx <= 16; lx++) {
-            for (int lz = -1; lz <= 16; lz++) {
-                int x = cx * 16 + lx, z = cz * 16 + lz;
-                var chunk = level.getChunkSource().getChunkNow(x >> 4, z >> 4);
-                if (chunk == null) continue;
-                for (int ly = -1; ly <= 16; ly++) {
-                    int y = cy * 16 + ly;
-                    int i = (lx + 1) + 18 * (lz + 1) + 324 * (ly + 1);
-                    if (y < minY || y > maxY) {
-                        known[i] = true; // outside the world: air
-                        continue;
-                    }
-                    states[i] = chunk.getBlockState(pos.set(x, y, z));
-                    known[i] = true;
-                }
-            }
-        }
-        long started = System.currentTimeMillis();
-        return CompletableFuture.supplyAsync(() -> {
-            var json = encode(dim, cx, cy, cz, states, known, nodes);
-            CACHE.put(key, new Entry(json, started));
-            return json;
-        }, executor());
-    }
-
-    private static synchronized ExecutorService executor() {
-        if (executor == null) {
-            executor = Executors.newFixedThreadPool(2, r -> {
-                var t = new Thread(r, "cccloud-voxels");
-                t.setDaemon(true);
-                t.setPriority(Thread.MIN_PRIORITY);
-                return t;
-            });
-        }
-        return executor;
-    }
-
-    /** BlockState → web kind (map color, flags); air → null. Off-thread safe (no level access). */
-    static VoxelSection.@Nullable Kind kind(@Nullable BlockState state, Map<BlockState, VoxelSection.Kind> cache) {
-        if (state == null || state.isAir()) return null;
-        return cache.computeIfAbsent(state, s -> {
-            var color = s.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
-            int argb = color == MapColor.NONE ? 0xFF808080 : color.calculateARGBColor(MapColor.Brightness.HIGH);
-            int flags = 0;
-            if (!s.canOcclude()) flags |= VoxelSection.TRANSPARENT;
-            if (!s.getFluidState().isEmpty()) flags |= VoxelSection.FLUID;
-            if (s.getLightEmission() > 0) flags |= VoxelSection.EMISSIVE;
-            return new VoxelSection.Kind(BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString(), argb, flags);
+        return encode(level, List.of(new int[]{cx, cy, cz}), mainframeId).thenApply(list -> {
+            var encoded = list.getFirst();
+            return encoded == null ? null : json(dim, cx, cy, cz, encoded);
         });
     }
 
-    static JsonObject encode(String dim, int cx, int cy, int cz, BlockState[] states, boolean[] known) {
-        return encode(dim, cx, cy, cz, states, known, new int[0][]);
-    }
-
-    static JsonObject encode(String dim, int cx, int cy, int cz, BlockState[] states, boolean[] known, int[][] nodes) {
-        var kinds = new HashMap<BlockState, VoxelSection.Kind>();
-        var encoded = VoxelSection.encode(new VoxelSection.Lookup() {
-            @Override
-            public VoxelSection.@Nullable Kind at(int x, int y, int z) {
-                var state = states[(x + 1) + 18 * (z + 1) + 324 * (y + 1)];
-                // ores look like stone unless they touch air near one of the mainframe's own nodes (inside the section only)
-                if (x >= 0 && x < 16 && y >= 0 && y < 16 && z >= 0 && z < 16 && ai.ezfox.cccloud.map.XrayGuard.isOre(state)
-                    && !(touchesAir(states, known, x, y, z) && ai.ezfox.cccloud.map.XrayGuard.nearNode(nodes, cx * 16 + x, cy * 16 + y, cz * 16 + z))) {
-                    state = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
-                }
-                return kind(state, kinds);
-            }
-
-            @Override
-            public boolean known(int x, int y, int z) {
-                return known[(x + 1) + 18 * (z + 1) + 324 * (y + 1)];
-            }
-        });
+    /** The single-section JSON of the stage-1 endpoint. */
+    static JsonObject json(String dim, int cx, int cy, int cz, VoxelSection.Encoded encoded) {
         var json = new JsonObject();
         json.addProperty("dim", dim);
         json.addProperty("cx", cx);
@@ -212,22 +162,262 @@ public final class VoxelService {
             palette.add(p);
         }
         json.add("palette", palette);
-        json.addProperty("runs", encoded.runs());
+        json.addProperty("runs", encoded.runsBase64());
         json.addProperty("exposed", encoded.exposed());
         return json;
     }
 
-    private static boolean touchesAir(BlockState[] states, boolean[] known, int x, int y, int z) {
-        int[][] dirs = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-        for (var d : dirs) {
-            int i = (x + d[0] + 1) + 18 * (z + d[2] + 1) + 324 * (y + d[1] + 1);
-            if (known[i] && (states[i] == null || states[i].isAir())) return true;
+    /** The copied block states a request needs (server thread → background). */
+    private record Snapshot(String dim, int minSectionY, int maxSectionY, Map<Long, Object> containers, int[][] nodes) {
+        /** A section's container, {@link #AIR}, or null when its chunk is not loaded. */
+        @Nullable Object at(int cx, int cy, int cz) {
+            if (cy < minSectionY || cy > maxSectionY) return AIR; // outside the world: air
+            return containers.get(SectionPos.asLong(cx, cy, cz));
         }
+    }
+
+    /**
+     * Encodes sections (each {cx, cy, cz}; access must already be checked). Server thread: copies the needed containers;
+     * the returned future completes on a background thread with one entry per section, null where the chunk is not
+     * loaded or the section is outside the world.
+     */
+    public static CompletableFuture<List<VoxelSection.@Nullable Encoded>> encode(ServerLevel level, List<int[]> sections, @Nullable UUID mainframeId) {
+        String dim = level.dimension().identifier().toString();
+        int minY = level.getMinSectionY(), maxY = level.getMaxSectionY();
+        var containers = new HashMap<Long, Object>();
+        for (var s : sections) {
+            if (s[1] < minY || s[1] > maxY) continue;
+            copy(level, containers, s[0], s[1], s[2], minY, maxY);
+            copy(level, containers, s[0] + 1, s[1], s[2], minY, maxY);
+            copy(level, containers, s[0] - 1, s[1], s[2], minY, maxY);
+            copy(level, containers, s[0], s[1] + 1, s[2], minY, maxY);
+            copy(level, containers, s[0], s[1] - 1, s[2], minY, maxY);
+            copy(level, containers, s[0], s[1], s[2] + 1, minY, maxY);
+            copy(level, containers, s[0], s[1], s[2] - 1, minY, maxY);
+        }
+        int[][] nodes = mainframeId == null ? new int[0][] : XrayGuard.nodes(mainframeId, dim);
+        var snapshot = new Snapshot(dim, minY, maxY, containers, nodes);
+        return CompletableFuture.supplyAsync(() -> {
+            var t0 = MapStats.start();
+            var out = new ArrayList<VoxelSection.@Nullable Encoded>(sections.size());
+            for (var s : sections) out.add(build(snapshot, s[0], s[1], s[2], mainframeId));
+            MapStats.VOXELS.worker(t0);
+            return out;
+        }, executor());
+    }
+
+    /** Server thread: copies one section's block states if its chunk is loaded (never loads or generates). */
+    private static void copy(ServerLevel level, Map<Long, Object> into, int cx, int cy, int cz, int minY, int maxY) {
+        if (cy < minY || cy > maxY) return;
+        long key = SectionPos.asLong(cx, cy, cz);
+        if (into.containsKey(key)) return;
+        var chunk = level.getChunkSource().getChunkNow(cx, cz);
+        if (chunk == null) {
+            into.put(key, null);
+            return;
+        }
+        var section = chunk.getSection(chunk.getSectionIndexFromSectionY(cy));
+        into.put(key, section.hasOnlyAir() ? AIR : section.getStates().copy());
+    }
+
+    /** Background: one section from the snapshot, from the cache when its input is unchanged. */
+    private static VoxelSection.@Nullable Encoded build(Snapshot snap, int cx, int cy, int cz, @Nullable UUID mainframeId) {
+        var stats = MapStats.VOXELS;
+        Object self = snap.at(cx, cy, cz);
+        if (self == null || cy < snap.minSectionY() || cy > snap.maxSectionY()) {
+            stats.empty.increment();
+            return null;
+        }
+        if (self == AIR) {
+            stats.hits.increment();
+            return AIR_SECTION; // nothing to show, whatever is around
+        }
+        Object[] around = {snap.at(cx + 1, cy, cz), snap.at(cx - 1, cy, cz), snap.at(cx, cy + 1, cz), snap.at(cx, cy - 1, cz),
+            snap.at(cx, cy, cz + 1), snap.at(cx, cy, cz - 1)};
+        int[][] near = nearNodes(snap.nodes(), cx, cy, cz);
+        long input = inputHash(self, around, near);
+        String key = key(snap.dim(), cx, cy, cz, mainframeId);
+        var cached = CACHE.get(key);
+        if (cached != null && cached.input() == input) {
+            stats.hits.increment();
+            return cached.encoded();
+        }
+        stats.misses.increment();
+        var encoded = buildGrid(self, around, near, cx, cy, cz);
+        CACHE.put(key, new Entry(input, encoded));
+        return encoded;
+    }
+
+    /** Nodes whose ore radius reaches into the section (only they change what the section shows). */
+    private static int[][] nearNodes(int[][] nodes, int cx, int cy, int cz) {
+        var list = new ArrayList<int[]>();
+        for (var n : nodes) if (distance(cx, cy, cz, n[0], n[1], n[2]) <= XrayGuard.ORE_RADIUS + 1) list.add(n);
+        return list.toArray(new int[0][]);
+    }
+
+    private static final ThreadLocal<FriendlyByteBuf> HASH_BUFFER = ThreadLocal.withInitial(() -> new FriendlyByteBuf(Unpooled.buffer(16 * 1024)));
+
+    /**
+     * Hash of everything the section's encoding depends on: its own states, the touching layer of each of the six
+     * neighbors (only those decide exposure and the ore rule), and the nearby nodes. Activity elsewhere in a neighbor
+     * does not rebuild the section.
+     */
+    @SuppressWarnings("unchecked")
+    private static long inputHash(Object self, Object[] around, int[][] near) {
+        var buf = HASH_BUFFER.get();
+        buf.clear();
+        buf.writeInt(LOGIC_VERSION);
+        if (self == AIR) buf.writeByte(1);
+        else ((PalettedContainer<BlockState>) self).write(buf);
+        for (int f = 0; f < 6; f++) {
+            Object c = around[f];
+            if (c == null) buf.writeByte(0);
+            else if (c == AIR) buf.writeByte(1);
+            else {
+                buf.writeByte(2);
+                var n = (PalettedContainer<BlockState>) c;
+                for (int a = 0; a < 16; a++) for (int b = 0; b < 16; b++) {
+                    // the neighbor's layer that touches this section: +x, -x, +y, -y, +z, -z
+                    var state = switch (f) {
+                        case 0 -> n.get(0, a, b);
+                        case 1 -> n.get(15, a, b);
+                        case 2 -> n.get(a, 0, b);
+                        case 3 -> n.get(a, 15, b);
+                        case 4 -> n.get(a, b, 0);
+                        default -> n.get(a, b, 15);
+                    };
+                    buf.writeVarInt(net.minecraft.world.level.block.Block.getId(state));
+                }
+            }
+        }
+        for (var n : near) {
+            buf.writeInt(n[0]);
+            buf.writeInt(n[1]);
+            buf.writeInt(n[2]);
+        }
+        try {
+            var md = MessageDigest.getInstance("SHA-256");
+            md.update(buf.nioBuffer());
+            byte[] d = md.digest();
+            long h = 0;
+            for (int i = 0; i < 8; i++) h = (h << 8) | (d[i] & 0xFF);
+            return h;
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Fills the bordered grid from the copied containers and encodes it (exposed-only, ore guard). */
+    @SuppressWarnings("unchecked")
+    private static VoxelSection.Encoded buildGrid(Object self, Object[] around, int[][] near, int cx, int cy, int cz) {
+        var grid = new int[VoxelSection.GRID * VoxelSection.GRID * VoxelSection.GRID];
+        var kinds = new ArrayList<VoxelSection.Kind>();
+        var kindIds = new HashMap<VoxelSection.Kind, Integer>();
+        var stateIds = new IdentityHashMap<BlockState, Integer>();
+        var ores = new IdentityHashMap<BlockState, Boolean>();
+        // the section itself
+        if (self != AIR) {
+            var c = (PalettedContainer<BlockState>) self;
+            for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                var state = c.get(x, y, z);
+                int id = gridId(state, stateIds, kinds, kindIds);
+                if (id > 0 && info(state).ore()) ores.put(state, Boolean.TRUE);
+                grid[VoxelSection.gridIndex(x, y, z)] = id;
+            }
+        }
+        // the one-block border from the six neighbors: +x, -x, +y, -y, +z, -z
+        for (int f = 0; f < 6; f++) {
+            Object n = around[f];
+            for (int a = 0; a < 16; a++) for (int b = 0; b < 16; b++) {
+                int x, y, z, nx, ny, nz;
+                switch (f) {
+                    case 0 -> { x = 16; y = a; z = b; nx = 0; ny = a; nz = b; }
+                    case 1 -> { x = -1; y = a; z = b; nx = 15; ny = a; nz = b; }
+                    case 2 -> { x = a; y = 16; z = b; nx = a; ny = 0; nz = b; }
+                    case 3 -> { x = a; y = -1; z = b; nx = a; ny = 15; nz = b; }
+                    case 4 -> { x = a; y = b; z = 16; nx = a; ny = b; nz = 0; }
+                    default -> { x = a; y = b; z = -1; nx = a; ny = b; nz = 15; }
+                }
+                int g = VoxelSection.gridIndex(x, y, z);
+                if (n == null) grid[g] = VoxelSection.UNKNOWN;
+                else if (n != AIR) grid[g] = gridId(((PalettedContainer<BlockState>) n).get(nx, ny, nz), stateIds, kinds, kindIds);
+            }
+        }
+        // ores look like stone unless they touch air near one of the mainframe's own nodes (inside the section only)
+        if (!ores.isEmpty()) {
+            int stone = gridId(Blocks.STONE.defaultBlockState(), stateIds, kinds, kindIds);
+            var oreIds = new java.util.HashSet<Integer>();
+            for (var state : ores.keySet()) oreIds.add(stateIds.get(state));
+            for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                int g = VoxelSection.gridIndex(x, y, z);
+                if (!oreIds.contains(grid[g])) continue;
+                if (!(touchesAir(grid, g) && XrayGuard.nearNode(near, cx * 16 + x, cy * 16 + y, cz * 16 + z))) grid[g] = stone;
+            }
+        }
+        return VoxelSection.encodeGrid(grid, kinds);
+    }
+
+    private static final int[] STEPS = {1, -1, VoxelSection.GRID, -VoxelSection.GRID, VoxelSection.GRID * VoxelSection.GRID, -VoxelSection.GRID * VoxelSection.GRID};
+
+    private static boolean touchesAir(int[] grid, int g) {
+        for (int step : STEPS) if (grid[g + step] == 0) return true;
         return false;
+    }
+
+    /** Grid id of a state: 0 for air, else 1-based into {@code kinds} (equal kinds share an id). */
+    private static int gridId(BlockState state, IdentityHashMap<BlockState, Integer> stateIds, List<VoxelSection.Kind> kinds, Map<VoxelSection.Kind, Integer> kindIds) {
+        Integer id = stateIds.get(state);
+        if (id != null) return id;
+        var kind = info(state).kind();
+        if (kind == null) id = 0;
+        else {
+            id = kindIds.get(kind);
+            if (id == null) {
+                kinds.add(kind);
+                id = kinds.size();
+                kindIds.put(kind, id);
+            }
+        }
+        stateIds.put(state, id);
+        return id;
+    }
+
+    /** BlockState → web kind (map color, flags) and ore flag; cached. Off-thread safe (no level access). */
+    private static Info info(BlockState state) {
+        var info = INFO.get(state);
+        if (info == null) {
+            info = new Info(kind(state), XrayGuard.isOre(state));
+            INFO.put(state, info);
+        }
+        return info;
+    }
+
+    /** BlockState → web kind (map color, flags); air → null. Off-thread safe (no level access). */
+    static VoxelSection.@Nullable Kind kind(@Nullable BlockState state) {
+        if (state == null || state.isAir()) return null;
+        var color = state.getMapColor(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+        int argb = color == MapColor.NONE ? 0xFF808080 : color.calculateARGBColor(MapColor.Brightness.HIGH);
+        int flags = 0;
+        if (!state.canOcclude()) flags |= VoxelSection.TRANSPARENT;
+        if (!state.getFluidState().isEmpty()) flags |= VoxelSection.FLUID;
+        if (state.getLightEmission() > 0) flags |= VoxelSection.EMISSIVE;
+        return new VoxelSection.Kind(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString(), argb, flags);
+    }
+
+    /** The background executor (2 low-priority threads). */
+    public static synchronized Executor executor() {
+        if (executor == null) {
+            executor = Executors.newFixedThreadPool(2, r -> {
+                var t = new Thread(r, "cccloud-voxels");
+                t.setDaemon(true);
+                t.setPriority(Thread.MIN_PRIORITY);
+                return t;
+            });
+        }
+        return executor;
     }
 
     public static void clearForTest() {
         CACHE.clear();
-        DIRTY.clear();
     }
 }

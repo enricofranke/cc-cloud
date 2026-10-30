@@ -29,7 +29,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, ICON, RECIPES, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, ICON, RECIPES, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
         API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
 
         /** The v0.10 public API ({@code /api/v1/…}): only exists while {@code apiEnabled=true}. */
@@ -47,7 +47,7 @@ public final class Router {
         }
 
         public boolean isMap() {
-            return this == MAP_TILE || this == VOXELS;
+            return this == MAP_TILE || this == VOXELS || this == VOXEL_BATCH;
         }
 
         /** The v0.6 account/role APIs (rate limited per IP, answered by {@link AccessApi}). */
@@ -108,6 +108,10 @@ public final class Router {
         new Route(Id.VOXELS, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE
             + "/voxels/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}/-?[0-9]{1,7}/-?[0-9]{1,3}/-?[0-9]{1,7}"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/voxels/minecraft:overworld/0/4/0"),
+        // many sections in one binary response (body: the sections and the hashes the dashboard already has)
+        new Route(Id.VOXEL_BATCH, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE
+            + "/voxels/[a-z0-9_.-]{1,64}:[a-z0-9_.-]{1,64}"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/voxels/minecraft:overworld"),
         new Route(Id.SHARE_DELETE, HttpMethod.DELETE, Pattern.compile("/api/mainframes/" + UUID_RE + "/shares/[0-9a-f]{16}"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/shares/0123456789abcdef"),
         new Route(Id.APIKEYS_GET, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/apikeys"), Access.DEVICE,

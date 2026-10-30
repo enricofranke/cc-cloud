@@ -104,6 +104,13 @@ class RouteAuthTest {
         }
 
         @Override
+        public java.util.concurrent.CompletableFuture<GameBridge.VoxelBatchResult> voxelBatch(AuthStore.Device device, UUID mainframeId, String dim,
+                                                                                         java.util.List<int[]> sections, java.util.List<String> have, boolean gzip) {
+            fail("voxelBatch must not be reached without authentication");
+            return null;
+        }
+
+        @Override
         public void onPinLockout(AuthStore.Device device, UUID mainframeId, String ip) {
         }
 
