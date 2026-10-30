@@ -581,6 +581,7 @@ The **3D** view shows your base with the real block models at their real coordin
 - Click a block for its details. Clicking a **relay** (or the mainframe) highlights everything routed through it and dims the rest.
 - **Fly to…** finds a block by name and flies the camera there; the dimension tabs switch between Overworld, Nether and others.
 - **Blocks:** the world around your network as voxels – the real terrain, caves and your base, coloured like a Minecraft map, with soft shadows in corners, glowing lights and see-through water. Only blocks that touch air are sent (no x-ray for ores), only within about 40 blocks of your devices and only from loaded chunks. **Cut** removes everything above a height (slider) so you can look into an underground base; **Night** dims the world and lets the lights glow.
+- The blocks load nearest to the mainframe first, many at once, and this browser keeps them: the next time you open 3D the base is there at once and only changed blocks are fetched again. The line next to the switches says what is happening (loading, updating, building). Removing the mainframe from this browser also removes its stored blocks.
 - Far away, blocks are drawn larger so the base stays readable; the coloured dot above each block is its status.
 - 3D needs WebGL. Without it (switched off, very old graphics) the dashboard shows the 2D map instead. The 3D view is loaded only when you open it, so it does not slow down the rest of the dashboard.
 

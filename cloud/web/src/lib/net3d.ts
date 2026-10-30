@@ -227,3 +227,32 @@ export const STATUS_RGB: Partial<Record<NodeStatus, number>> = {
   cloud_disabled: 0x7d8790,
   over_capacity: 0xe8913a,
 };
+
+/** What the voxel loading indicator shows (VoxelLayer.status). */
+export interface VoxelStatus {
+  /** sections the server has answered */
+  loaded: number;
+  total: number;
+  /** sections shown from the browser cache before the server answered */
+  cached: number;
+  triangles: number;
+  /** workers are still meshing */
+  building: boolean;
+  /** paused by the server's rate limit */
+  waiting: boolean;
+  unavailable: boolean;
+}
+
+/**
+ * The loading line of the voxel view, or "" when everything is shown. Truthful about each phase: waiting for the
+ * server's rate limit, loading (or updating cached blocks), and meshing after the last answer.
+ */
+export function voxelProgress(s: VoxelStatus): string {
+  if (s.unavailable || s.total === 0) return "";
+  const pct = Math.min(100, Math.floor((s.loaded / s.total) * 100));
+  if (s.loaded < s.total) {
+    if (s.waiting) return `Server busy – waiting (${pct} %)`;
+    return s.cached > 0 ? `Updating blocks ${pct} %` : `Loading blocks ${pct} %`;
+  }
+  return s.building ? "Building blocks…" : "";
+}

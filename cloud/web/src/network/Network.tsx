@@ -56,7 +56,7 @@ import { DocsLink } from "../components/DocsLink.tsx";
 import { Card } from "../components/Card.tsx";
 import { resolveLayout } from "../lib/layout.ts";
 import { fetchTerrain, type Terrain } from "../lib/api.ts";
-import { hasWebGL, searchNodes } from "../lib/net3d.ts";
+import { hasWebGL, searchNodes, voxelProgress, type VoxelStatus } from "../lib/net3d.ts";
 import type { View3DProps } from "./Network3D.tsx";
 
 // ------------------------------------------------------------------- 3D view
@@ -930,7 +930,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   const [night, setNight] = useState(false);
   const [clipOn, setClipOn] = useState(false);
   const [clipY, setClipY] = useState<number | null>(null);
-  const [voxStatus, setVoxStatus] = useState<{ loaded: number; total: number; triangles: number; unavailable: boolean } | null>(null);
+  const [voxStatus, setVoxStatus] = useState<VoxelStatus | null>(null);
   const voxelsOn = use3d && blocks && webgl2 && conn.can("view.positions") && feature("voxels") && !voxStatus?.unavailable;
   const terrain = useTerrain(conn, activeDim ?? "", use3d && terrainOn && !voxelsOn);
   if (!net)
@@ -1095,9 +1095,9 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
                     <input type="range" min={-64} max={320} value={clipY ?? defaultClip} aria-label="Cut everything above this height" onInput={(e) => setClipY(Number((e.target as HTMLInputElement).value))} />
                   </label>
                 )}
-                {voxStatus && voxStatus.loaded < voxStatus.total && (
+                {voxStatus && voxelProgress(voxStatus) && (
                   <span class="muted small vox-progress" role="status">
-                    Loading blocks {Math.round((voxStatus.loaded / Math.max(1, voxStatus.total)) * 100)} %
+                    {voxelProgress(voxStatus)}
                   </span>
                 )}
               </>

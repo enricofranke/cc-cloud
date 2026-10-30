@@ -1,5 +1,6 @@
 // Paired mainframes live in localStorage: one browser can hold several.
 import { signal } from "@preact/signals";
+import { clearVoxelCache } from "./voxelcache.ts";
 
 export interface SavedMainframe {
   mainframeId: string;
@@ -82,6 +83,8 @@ export function addSaved(m: SavedMainframe) {
 
 export function removeSaved(mainframeId: string) {
   persist(saved.value.filter((x) => x.mainframeId !== mainframeId));
+  // the voxel view's cached blocks of that mainframe go with it (docs/SECURITY.md "Map, voxels and X-ray")
+  void clearVoxelCache(mainframeId);
 }
 
 export function renameSaved(mainframeId: string, name: string) {
