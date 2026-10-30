@@ -21,6 +21,11 @@ public class CCCloud {
         ModRegistry.register(modEventBus);
         modContainer.registerConfig(ModConfig.Type.SERVER, CloudConfig.SPEC);
         modEventBus.addListener(CCCloud::registerCapabilities);
+        // GameTest runs only: test machines for the Cloud Probe / side tests and a claim stand-in (ProbeTests).
+        if (Boolean.getBoolean("cccloud.gametest")) {
+            modEventBus.addListener(ai.ezfox.cccloud.gametest.ProbeTests::registerTestCapabilities);
+            ai.ezfox.cccloud.gametest.ProbeTests.init();
+        }
         CloudNetwork.init();
         CloudCommand.init();
         ai.ezfox.cccloud.block.MainframeGuard.init();

@@ -22,6 +22,9 @@ public final class CloudConfig {
     // v0.4 network ranges (blocks, same dimension, spherical)
     public static final ModConfigSpec.IntValue RANGE_UPLINK;
     public static final ModConfigSpec.IntValue RANGE_ADVANCED_UPLINK;
+    /** Cloud Probe: how far its machine may be (blocks), and how many device units it counts as. */
+    public static final ModConfigSpec.IntValue PROBE_RANGE;
+    public static final ModConfigSpec.IntValue PROBE_CAPACITY_UNITS;
     public static final ModConfigSpec.IntValue RANGE_BRIDGE;
     public static final ModConfigSpec.IntValue RANGE_MAINFRAME;
     public static final ModConfigSpec.IntValue RANGE_RELAY_NODES;
@@ -46,6 +49,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue ANCHOR_PER_CHUNK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_BRIDGE_FE;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_PROBE_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_HOP_FE;
     public static final ModConfigSpec.IntValue RELAY_FE;
     public static final ModConfigSpec.IntValue ADVANCED_RELAY_FE;
@@ -166,7 +170,13 @@ public final class CloudConfig {
 
         b.push("network");
         RANGE_UPLINK = range(b, "uplinkRange", 48, "Cloud Uplink: reach to the nearest node (mainframe or relay).");
-        RANGE_ADVANCED_UPLINK = range(b, "advancedUplinkRange", 128, "Advanced Cloud Uplink: reach to the nearest node.");
+        RANGE_ADVANCED_UPLINK = range(b, "advancedUplinkRange", 128, "Advanced Cloud Uplink: reach to the nearest node (the Cloud Probe uses it too).");
+        PROBE_RANGE = b.comment("Cloud Probe: how far (blocks, same dimension) the machine it reads may be from the probe.")
+            .translation("cccloud.configuration.probeRange")
+            .defineInRange("probeRange", 8, 1, 16);
+        PROBE_CAPACITY_UNITS = b.comment("Cloud Probe: how many devices it counts as against the mainframe's device capacity.")
+            .translation("cccloud.configuration.probeCapacityUnits")
+            .defineInRange("probeCapacityUnits", 2, 1, 8);
         RANGE_BRIDGE = range(b, "bridgeRange", 48, "ME/RS Cloud Bridge: reach to the nearest node.");
         RANGE_MAINFRAME = range(b, "mainframeRange", 96, "Mainframe: reach to relays and devices.");
         RANGE_RELAY_NODES = range(b, "relayNodeRange", 96, "Cloud Relay: reach to other nodes.");
@@ -201,6 +211,9 @@ public final class CloudConfig {
         MAINFRAME_PER_BRIDGE_FE = b.comment("Additional FE per tick per connected ME/RS Cloud Bridge.")
             .translation("cccloud.configuration.mainframePerBridgeFE")
             .defineInRange("mainframePerBridgeFE", 10, 0, 1_000_000);
+        MAINFRAME_PER_PROBE_FE = b.comment("Additional FE per tick per connected Cloud Probe (reads a machine at a distance).")
+            .translation("cccloud.configuration.mainframePerProbeFE")
+            .defineInRange("mainframePerProbeFE", 24, 0, 1_000_000);
         MAINFRAME_PER_HOP_FE = b.comment("Additional FE per tick for every hop beyond the first of each routed device.")
             .translation("cccloud.configuration.mainframePerHopFE")
             .defineInRange("mainframePerHopFE", 1, 0, 1_000_000);

@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "allthemodium"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "V": "#c:ingots/vibranium",
+    "E": "minecraft:ender_eye",
+    "A": "cccloud:advanced_cloud_uplink",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "VEV",
+    "VAV",
+    "VCV"
+  ],
+  "result": {
+    "id": "cccloud:cloud_probe"
+  }
+}

@@ -1,0 +1,240 @@
+{
+  "multipart": [
+    {
+      "when": {
+        "facing": "north",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_online",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_connecting",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/cloud_probe_offline",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "north"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring"
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "east"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "south"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "west"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "up"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "down"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_direct_ring",
+        "x": 90
+      }
+    }
+  ]
+}

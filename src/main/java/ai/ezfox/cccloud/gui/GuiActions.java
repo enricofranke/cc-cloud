@@ -54,7 +54,9 @@ public final class GuiActions {
      * {@code layout.edit}, {@code dashboard} (a chat link to the card on the dashboard) needs {@code view}.
      */
     public enum Uplink {
-        UNLINK(Perm.NETWORK_LINK), REDSTONE(Perm.NETWORK_LINK), RENAME(Perm.LAYOUT_EDIT), DASHBOARD(Perm.VIEW);
+        UNLINK(Perm.NETWORK_LINK), REDSTONE(Perm.NETWORK_LINK), RENAME(Perm.LAYOUT_EDIT), DASHBOARD(Perm.VIEW),
+        /** Cloud Probe: forget the machine it reads ({@code network.link} on a linked probe, anyone on an unlinked one). */
+        CLEAR_TARGET(Perm.NETWORK_LINK);
 
         public final Perm perm;
 
@@ -111,6 +113,16 @@ public final class GuiActions {
 
         /** The card's title on the dashboard (validated plain text, empty = back to the default). */
         default @Nullable String rename(String title) {
+            return "not_supported";
+        }
+
+        /** Whether the uplink is linked to a mainframe (unlinked probes may be re-pointed by anyone, like binding them). */
+        default boolean linked() {
+            return true;
+        }
+
+        /** Cloud Probe: forgets its target. */
+        default @Nullable String clearTarget() {
             return "not_supported";
         }
 
@@ -177,6 +189,11 @@ public final class GuiActions {
             if (!arg.isEmpty()) return "invalid_argument";
             if (!perms.contains(a.perm)) return a == Uplink.UNLINK ? "not_owner" : "not_allowed";
             return a == Uplink.UNLINK ? ops.unlink() : ops.dashboardLink();
+        }
+        if (a == Uplink.CLEAR_TARGET) {
+            if (!arg.isEmpty()) return "invalid_argument";
+            if (ops.linked() && !perms.contains(a.perm)) return "not_owner";
+            return ops.clearTarget();
         }
         if (a == Uplink.RENAME) {
             String title = cardTitle(arg);

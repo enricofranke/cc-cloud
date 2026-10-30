@@ -11,7 +11,11 @@ import java.util.Map;
  * tested.
  */
 public final class NetworkPower {
-    public record Rates(long base, long uplink, long advancedUplink, long bridge, long client, long extraHop) {
+    public record Rates(long base, long uplink, long advancedUplink, long bridge, long client, long extraHop, long probe) {
+        /** Without Cloud Probes (they cost like an advanced uplink). */
+        public Rates(long base, long uplink, long advancedUplink, long bridge, long client, long extraHop) {
+            this(base, uplink, advancedUplink, bridge, client, extraHop, advancedUplink);
+        }
     }
 
     /**
@@ -19,15 +23,20 @@ public final class NetworkPower {
      * device count with fiber members weighted.
      */
     public record Counts(int uplinks, int advancedUplinks, int bridges, int extraHops, int fiberUplinks, int fiberAdvancedUplinks,
-                         int fiberBridges, int wired, double capacityUsed) {
-        public static final Counts EMPTY = new Counts(0, 0, 0, 0, 0, 0, 0, 0, 0);
+                         int fiberBridges, int wired, double capacityUsed, int probes, int fiberProbes) {
+        public static final Counts EMPTY = new Counts(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        public Counts(int uplinks, int advancedUplinks, int bridges, int extraHops, int fiberUplinks, int fiberAdvancedUplinks,
+                      int fiberBridges, int wired, double capacityUsed) {
+            this(uplinks, advancedUplinks, bridges, extraHops, fiberUplinks, fiberAdvancedUplinks, fiberBridges, wired, capacityUsed, 0, 0);
+        }
 
         public int devices() {
-            return uplinks + advancedUplinks + bridges;
+            return uplinks + advancedUplinks + bridges + probes;
         }
 
         public int fiber() {
-            return fiberUplinks + fiberAdvancedUplinks + fiberBridges;
+            return fiberUplinks + fiberAdvancedUplinks + fiberBridges + fiberProbes;
         }
     }
 
@@ -36,7 +45,12 @@ public final class NetworkPower {
 
     /** Counts the routed devices of {@code network}; fiber members weigh {@code fiberCapacityWeight} for the capacity. */
     public static Counts counts(NetworkGraph.Result network, double fiberCapacityWeight) {
-        int uplinks = 0, advanced = 0, bridges = 0, extraHops = 0, fu = 0, fa = 0, fb = 0, wired = 0;
+        return counts(network, fiberCapacityWeight, 1);
+    }
+
+    /** @param probeUnits how many devices a Cloud Probe counts as against the capacity */
+    public static Counts counts(NetworkGraph.Result network, double fiberCapacityWeight, double probeUnits) {
+        int uplinks = 0, advanced = 0, bridges = 0, extraHops = 0, fu = 0, fa = 0, fb = 0, wired = 0, probes = 0, fp = 0;
         double capacity = 0;
         for (var device : network.devices()) {
             var route = network.route(device.id());
@@ -55,12 +69,16 @@ public final class NetworkPower {
                     bridges++;
                     if (fiber) fb++;
                 }
+                case PROBE -> {
+                    probes++;
+                    if (fiber) fp++;
+                }
             }
             if (route.wired()) wired++;
-            capacity += fiber ? Math.max(0, fiberCapacityWeight) : 1;
+            capacity += Capacity.weight(device, route, fiberCapacityWeight, probeUnits);
             extraHops += route.extraHops();
         }
-        return new Counts(uplinks, advanced, bridges, extraHops, fu, fa, fb, wired, capacity);
+        return new Counts(uplinks, advanced, bridges, extraHops, fu, fa, fb, wired, capacity, probes, fp);
     }
 
     /** FE of {@code count} devices of which {@code fiber} pay {@code factor} of the rate (rounded up per category). */
@@ -104,6 +122,7 @@ public final class NetworkPower {
         map.put("uplinks", share(rates.uplink(), counts.uplinks(), counts.fiberUplinks(), fiberPowerFactor));
         map.put("advanced_uplinks", share(rates.advancedUplink(), counts.advancedUplinks(), counts.fiberAdvancedUplinks(), fiberPowerFactor));
         map.put("bridges", share(rates.bridge(), counts.bridges(), counts.fiberBridges(), fiberPowerFactor));
+        if (counts.probes() > 0) map.put("probes", share(rates.probe(), counts.probes(), counts.fiberProbes(), fiberPowerFactor));
         map.put("clients", Math.max(0, rates.client()) * Math.max(0, clients));
         map.put("hops", Math.max(0, rates.extraHop()) * counts.extraHops());
         long total = 0;

@@ -141,6 +141,18 @@ public final class AnalyzerOverlay {
             if ("ender".equals(kind)) dashed(a, b, color);
             else Gizmos.line(a, b, color, used ? 2.5f : 1.5f).setAlwaysOnTop();
         }
+        // Cloud Probes: a thin line to the machine each one reads.
+        if (data.get("probes") instanceof com.google.gson.JsonArray probes) {
+            for (var element : probes) {
+                if (budget-- <= 0) break;
+                var a = element.getAsJsonArray();
+                var from = new Vec3(a.get(0).getAsDouble(), a.get(1).getAsDouble(), a.get(2).getAsDouble());
+                var to = new Vec3(a.get(3).getAsDouble(), a.get(4).getAsDouble(), a.get(5).getAsDouble());
+                if (from.distanceTo(eye) > 128) continue;
+                Gizmos.line(from, to, 0xC0B48AE8, 1f).setAlwaysOnTop();
+                Gizmos.cuboid(new AABB(BlockPos.containing(to)).inflate(0.01), GizmoStyle.stroke(0x90B48AE8, 1f)).setAlwaysOnTop();
+            }
+        }
         for (var e : statuses.entrySet()) {
             if (budget-- <= 0) break;
             var p = positions.get(e.getKey());
@@ -187,6 +199,7 @@ public final class AnalyzerOverlay {
     static double @Nullable [] heldRange(Item item, JsonObject data) {
         var ranges = data.getAsJsonObject("ranges");
         String kind = item == ModRegistry.CLOUD_UPLINK_ITEM.get() ? "uplink" : item == ModRegistry.ADVANCED_CLOUD_UPLINK_ITEM.get() ? "advanced_uplink"
+            : item == ModRegistry.CLOUD_PROBE_ITEM.get() ? "probe"
             : item == ModRegistry.CLOUD_RELAY_ITEM.get() ? "relay" : item == ModRegistry.ADVANCED_CLOUD_RELAY_ITEM.get() ? "advanced_relay"
             : item == ModRegistry.ENDER_RELAY_ITEM.get() ? "ender_relay" : isBridge(item) ? "bridge" : null;
         if (kind == null || !ranges.has(kind)) return null;

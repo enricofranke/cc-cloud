@@ -55,7 +55,8 @@ public class UplinkRenderer implements BlockEntityRenderer<CloudUplinkBlockEntit
         state.facing = blockState.getValue(CloudUplinkBlock.FACING);
         state.status = blockState.getValue(CloudUplinkBlock.STATUS);
         state.advanced = blockState.getBlock() instanceof CloudUplinkBlock b && b.isAdvanced();
-        state.compact = blockState.getValue(CloudUplinkBlock.MOUNT).compact();
+        // compact pucks and the Cloud Probe (static lens) have no moving part
+        state.compact = blockState.getValue(CloudUplinkBlock.MOUNT).compact() || blockState.getBlock() instanceof CloudUplinkBlock b2 && b2.isProbe();
         if (CloudClientConfig.animations()) {
             state.seconds = (Util.getMillis() % 3_600_000L) / 1000f;
             state.angle = be.clientAnimation().advance(state.status, state.advanced ? 45f : 90f, 3f);

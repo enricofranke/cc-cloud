@@ -207,6 +207,7 @@ public final class GuiViews {
         var json = new JsonObject();
         json.addProperty("kind", "uplink");
         json.addProperty("advanced", uplink.isAdvanced());
+        json.addProperty("probe", uplink.isProbe());
         json.addProperty("status", uplink.status().getSerializedName());
         json.addProperty("mode", uplink.mode());
         json.addProperty("cardKind", uplink.isTemplate() ? "storage" : !uplink.deviceKind().isEmpty() ? "device"
@@ -222,6 +223,9 @@ public final class GuiViews {
         link(json, player, link, uplink.getLevel(), uplink.getBlockPos(), uplink.getUplinkId(),
             ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)), uplink.routeState());
         boolean canEdit = bool(json, "canUnlink");
+        if (uplink.isProbe()) probe(json, uplink, !bool(json, "linked") || canEdit);
+        var elsewhere = uplink.exposedElsewhere();
+        if (elsewhere != null) json.addProperty("exposedElsewhere", elsewhere.getSerializedName());
         // v0.7 wireless redstone
         var redstone = new JsonObject();
         redstone.addProperty("mode", uplink.redstoneMode().id());
@@ -245,12 +249,31 @@ public final class GuiViews {
         return json.has(key) && json.get(key).getAsBoolean();
     }
 
-    /** What the uplink sticks to: the block (id), and for a CC computer its id, label and power. */
+    /**
+     * Cloud Probe: {@code remote: {block, distance, pos, side, range}} while it has a target ({@code pos} only with the
+     * rights to change it), the range, and whether the player may clear it.
+     */
+    private static void probe(JsonObject json, CloudUplinkBlockEntity probe, boolean canChange) {
+        var remote = new JsonObject();
+        remote.addProperty("range", CloudConfig.get(CloudConfig.PROBE_RANGE));
+        var target = probe.remoteTarget();
+        if (target != null && probe.getLevel() != null) {
+            var level = probe.getLevel();
+            remote.addProperty("loaded", level.isLoaded(target));
+            if (level.isLoaded(target)) remote.addProperty("block", BuiltInRegistries.BLOCK.getKey(level.getBlockState(target).getBlock()).toString());
+            remote.addProperty("distance", (int) Math.round(Math.sqrt(probe.getBlockPos().distSqr(target))));
+            remote.addProperty("side", probe.readSide().getSerializedName());
+            if (canChange) remote.addProperty("pos", pos(target));
+        }
+        json.add("remote", remote);
+        json.addProperty("canClearTarget", canChange && target != null);
+    }
+
+    /** What the uplink reads: the block it sticks to (a probe: its target) – the block id, and for a CC computer its id, label and power. */
     private static void attached(JsonObject json, CloudUplinkBlockEntity uplink) {
         if (!(uplink.getLevel() instanceof ServerLevel level)) return;
-        var facing = uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING);
-        var at = uplink.getBlockPos().relative(facing);
-        if (!level.isLoaded(at)) return;
+        var at = uplink.readPos();
+        if (at == null || !level.isLoaded(at)) return;
         var state = level.getBlockState(at);
         if (state.isAir()) return;
         var attached = new JsonObject();

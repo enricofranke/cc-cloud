@@ -230,7 +230,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         if (view.has("powerBreakdown")) {
             heading("cccloud.gui.power_breakdown");
             var power = view.getAsJsonObject("powerBreakdown");
-            for (var key : List.of("base", "uplinks", "advanced_uplinks", "bridges", "clients", "hops", "total")) {
+            for (var key : List.of("base", "uplinks", "advanced_uplinks", "probes", "bridges", "clients", "hops", "total")) {
                 long value = num(power, key);
                 if (value == 0 && !key.equals("total") && !key.equals("base")) continue;
                 rows.add(new Row(11, (c, x, y, w) -> {

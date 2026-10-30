@@ -9,7 +9,7 @@ import java.util.Set;
 
 /**
  * Device capacity of a mainframe (docs/SPEC.md "Mainframe upgrades"): relays on device routes count 1, routed devices 1 (by
- * fiber {@code fiberWeight}). Above the limit the devices with the most hops, then the most recently linked, go
+ * fiber {@code fiberWeight}), Cloud Probes {@code probeUnits} (times the fiber weight). Above the limit the devices with the most hops, then the most recently linked, go
  * {@code over_capacity} and stop until capacity returns. Pure Java, unit tested.
  */
 public final class Capacity {
@@ -34,13 +34,19 @@ public final class Capacity {
      * @return ids of the devices that are over capacity (empty when everything fits)
      */
     public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, Map<String, Integer> linkOrder) {
+        return overCapacity(result, mainframeId, limit, fiberWeight, 1, linkOrder);
+    }
+
+    /** @param probeUnits how many devices a Cloud Probe counts as */
+    public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, double probeUnits,
+                                           Map<String, Integer> linkOrder) {
         double used = relays(result, mainframeId);
         var connected = new ArrayList<NetworkGraph.Device>();
         for (var device : result.devices()) {
             var route = result.route(device.id());
             if (route == null || !route.connected()) continue;
             connected.add(device);
-            used += weight(route, fiberWeight);
+            used += weight(device, route, fiberWeight, probeUnits);
         }
         var over = new LinkedHashSet<String>();
         if (used <= limit + 1e-9) return over;
@@ -49,13 +55,19 @@ public final class Capacity {
         for (var device : connected) {
             if (used <= limit + 1e-9) break;
             over.add(device.id());
-            used -= weight(result.route(device.id()), fiberWeight);
+            used -= weight(device, result.route(device.id()), fiberWeight, probeUnits);
         }
         return over;
     }
 
     static double weight(NetworkGraph.Route route, double fiberWeight) {
         return route.fiber() ? Math.max(0, fiberWeight) : 1;
+    }
+
+    /** Capacity units of one routed device: 1 (fiber: {@code fiberWeight}), a Cloud Probe {@code probeUnits} times that. */
+    public static double weight(NetworkGraph.Device device, NetworkGraph.Route route, double fiberWeight, double probeUnits) {
+        double w = weight(route, fiberWeight);
+        return device.type() == NetworkGraph.DeviceType.PROBE ? w * Math.max(1, probeUnits) : w;
     }
 
     /** The result with the over-capacity devices cut off (no route). */

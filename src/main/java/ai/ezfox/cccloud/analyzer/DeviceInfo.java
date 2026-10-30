@@ -55,7 +55,7 @@ public record DeviceInfo(UUID mainframeId, String kind, String status, double si
         if (be instanceof CloudUplinkBlockEntity uplink && uplink.getLink() != null) {
             deviceId = uplink.getUplinkId();
             mainframeId = uplink.getLink().id();
-            kind = uplink.isAdvanced() ? "advanced_uplink" : "uplink";
+            kind = uplink.isProbe() ? "probe" : uplink.isAdvanced() ? "advanced_uplink" : "uplink";
         } else if (be instanceof BridgeHost bridge && bridge.bridgeSection().getLink() != null) {
             deviceId = bridge.bridgeSection().sectionId();
             mainframeId = bridge.bridgeSection().getLink().id();

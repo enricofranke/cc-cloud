@@ -127,6 +127,37 @@ class GuiActionsTest {
     }
 
     @Test
+    void probeClearTargetNeedsRightsWhenLinked() {
+        boolean[] linked = {true};
+        int[] cleared = {0};
+        var ops = new GuiActions.UplinkOps() {
+            @Override
+            public @org.jspecify.annotations.Nullable String unlink() {
+                return null;
+            }
+
+            @Override
+            public boolean linked() {
+                return linked[0];
+            }
+
+            @Override
+            public @org.jspecify.annotations.Nullable String clearTarget() {
+                cleared[0]++;
+                return null;
+            }
+        };
+        assertEquals("no_screen", GuiActions.uplink("clear_target", "", false, java.util.Set.of(ai.ezfox.cccloud.access.Perm.NETWORK_LINK), ops));
+        assertEquals("not_owner", GuiActions.uplink("clear_target", "", true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.VIEW), ops));
+        assertEquals("invalid_argument", GuiActions.uplink("clear_target", "x", true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.NETWORK_LINK), ops));
+        assertEquals(0, cleared[0]);
+        assertNull(GuiActions.uplink("clear_target", "", true, java.util.Set.of(ai.ezfox.cccloud.access.Perm.NETWORK_LINK), ops));
+        linked[0] = false;
+        assertNull(GuiActions.uplink("clear_target", "", true, java.util.Set.of(), ops), "an unlinked probe: anyone at the screen");
+        assertEquals(2, cleared[0]);
+    }
+
+    @Test
     void uplinkUnlinkNeedsScreenAndRights() {
         var ops = new Recorder();
         assertEquals("no_screen", GuiActions.uplink("unlink", "", false, true, ops));

@@ -112,13 +112,14 @@ public final class NetworkService {
     }
 
     public static NetworkGraph.DeviceType deviceType(CloudUplinkBlockEntity uplink) {
+        if (uplink.isProbe()) return NetworkGraph.DeviceType.PROBE;
         return uplink.isAdvanced() ? NetworkGraph.DeviceType.ADVANCED_UPLINK : NetworkGraph.DeviceType.UPLINK;
     }
 
     public static int deviceRange(NetworkGraph.DeviceType type) {
         return CloudConfig.get(switch (type) {
             case UPLINK -> CloudConfig.RANGE_UPLINK;
-            case ADVANCED_UPLINK -> CloudConfig.RANGE_ADVANCED_UPLINK;
+            case ADVANCED_UPLINK, PROBE -> CloudConfig.RANGE_ADVANCED_UPLINK;
             case BRIDGE -> CloudConfig.RANGE_BRIDGE;
         });
     }
@@ -222,12 +223,12 @@ public final class NetworkService {
             var limit = mainframe.effects().devices();
             var over = limit == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? Set.<String>of()
                 : ai.ezfox.cccloud.network.graph.Capacity.overCapacity(computed, id.toString(), limit, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
-                    linkOrder(mainframe));
+                    CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), linkOrder(mainframe));
             for (var o : over) OVER_CAPACITY.add(UUID.fromString(o));
             var result = ai.ezfox.cccloud.network.graph.Capacity.without(computed, over);
             RESULTS.put(id, result);
             for (var device : devices) ROUTES.put(UUID.fromString(device.id()), result.route(device.id()));
-            COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT)));
+            COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS)));
             for (var node : result.nodes()) {
                 if (node.type() != NetworkGraph.NodeType.MAINFRAME && result.reachable(node.id())) SERVING.add(UUID.fromString(node.id()));
             }
@@ -315,7 +316,8 @@ public final class NetworkService {
             int limit = mainframe.effects().devices();
             boolean counted = deviceId != null && ROUTES.containsKey(UUID.fromString(deviceId)) && route(UUID.fromString(deviceId)) != null
                 && route(UUID.fromString(deviceId)).connected();
-            double weight = route.fiber() ? CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT) : 1;
+            double weight = ai.ezfox.cccloud.network.graph.Capacity.weight(device, route, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
+                CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS));
             if (limit != ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED && !counted && capacityUsed(mainframe.getMainframeId()) + weight > limit + 1e-9) {
                 return Component.translatable("cccloud.network.capacity_full", limit);
             }
@@ -349,6 +351,7 @@ public final class NetworkService {
                 case "uplinks" -> counts.uplinks();
                 case "advanced_uplinks" -> counts.advancedUplinks();
                 case "bridges" -> counts.bridges();
+                case "probes" -> counts.probes();
                 case "clients" -> Math.max(0, clients);
                 case "hops" -> counts.extraHops();
                 default -> null;
@@ -358,6 +361,7 @@ public final class NetworkService {
                 case "uplinks" -> counts.fiberUplinks();
                 case "advanced_uplinks" -> counts.fiberAdvancedUplinks();
                 case "bridges" -> counts.fiberBridges();
+                case "probes" -> counts.fiberProbes();
                 default -> 0;
             };
             if (fiber > 0) item.addProperty("fiber", fiber);
@@ -370,7 +374,7 @@ public final class NetworkService {
     public static NetworkPower.Rates rates() {
         return new NetworkPower.Rates(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
             CloudConfig.get(CloudConfig.MAINFRAME_PER_ADVANCED_UPLINK_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_BRIDGE_FE),
-            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_HOP_FE));
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_HOP_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_PROBE_FE));
     }
 
     // ---- JSON (snapshot, deltas, Lua, in-game map) -------------------------------------------------------------------
@@ -530,6 +534,8 @@ public final class NetworkService {
     }
 
     private static String deviceTypeId(NetworkGraph.Device device, @Nullable DashboardSection section) {
+        // The dashboard (and its 3D view) know no probe type: a Cloud Probe shows as an advanced uplink with its card title.
+        if (device.type() == NetworkGraph.DeviceType.PROBE) return NetworkGraph.DeviceType.ADVANCED_UPLINK.id;
         if (device.type() != NetworkGraph.DeviceType.BRIDGE) return device.type().id;
         return section instanceof BridgeSection bridge && "rs".equals(bridge.host().bridgeCore().kind()) ? "rs_bridge" : "me_bridge";
     }

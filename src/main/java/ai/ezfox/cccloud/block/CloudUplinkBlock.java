@@ -67,6 +67,11 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         return advanced;
     }
 
+    /** The Cloud Probe ({@link CloudProbeBlock}): reads one machine at a distance instead of the block it sticks to. */
+    public boolean isProbe() {
+        return false;
+    }
+
     @Override
     protected MapCodec<? extends CloudUplinkBlock> codec() {
         return CODEC;
@@ -103,6 +108,7 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
 
     /** {@code state} with the mount (plate / compact puck) that fits the face it is attached to. */
     public static BlockState withMount(BlockState state, BlockGetter level, BlockPos pos) {
+        if (state.getBlock() instanceof CloudUplinkBlock b && b.isProbe()) return state.setValue(MOUNT, UplinkMount.FULL);
         return state.setValue(MOUNT, UplinkMount.compute(level, pos, state.getValue(FACING)));
     }
 

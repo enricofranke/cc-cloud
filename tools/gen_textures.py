@@ -190,6 +190,12 @@ LAYOUTS = {
         "tiles": {"body_l": (1, 0), "body": (1, 1)},
         "regions": {"front": (0, 0, 8, 6)},
     },
+    # Cloud Probe: the plate in slate blue with a raised gold-rimmed glass lens (no moving part, no antenna)
+    "probe": {
+        "size": 64,
+        "tiles": {"plate": (0, 0), "body_l": (1, 0), "gold": (2, 0), "glass_side": (3, 0)},
+        "regions": {"ring": (0, 16, 6, 6), "glass": (8, 16, 4, 4)},
+    },
     "bridge": {
         "size": 64,
         "tiles": {
@@ -484,6 +490,54 @@ def gen_uplink_compact(advanced: bool):
         ox, oy = T(name)
         cv.noise(ox, oy, 16, 16, shades, seed)
     cv.save(os.path.join(TEX, "block", "uplink_advanced_compact.png" if advanced else "uplink_compact.png"))
+
+
+PROBE_BODY = [hx("5b6770"), hx("5e6a73"), hx("58646d"), hx("5c6871")]
+PROBE_BODY_L = [hx("7b8891"), hx("7e8b94"), hx("77848d"), hx("7c8992")]
+
+
+def gen_probe():
+    """Cloud Probe: the uplink plate language (outline, lighter lower band, cloud emblem, LED slot, screws) in slate
+    blue, with a 6x6 gold rim and a 4x4 glass lens that stand proud of the plate."""
+    L = LAYOUTS["probe"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("probe", n)
+    R = L["regions"]
+    ox, oy = T("plate")
+    for y in range(16):
+        cv.hline(ox, oy + y, 16, PROBE_BODY_L if y >= 9 else PROBE_BODY, 240 + y)
+    cv.outline(ox + 1, oy + 1, 14, 14, EDGE, 241)
+    for y in range(9, 14):
+        cv.set(ox + 1, oy + y, EDGE_L[y % len(EDGE_L)])
+    # shadow under the lens (seen around the rim at grazing angles)
+    for y in range(4, 12):
+        for x in range(4, 12):
+            if 4 < x < 11 and 4 < y < 11:
+                cv.set(ox + x, oy + y, RECESS[_hash(x, y, 242) % len(RECESS)])
+    cv.ascii(ox + 2, oy + 2, [" Cc  ", "CccCc", "ccccc"], {"C": CYAN_L, "c": CYAN})
+    cv.hline(ox + 4, oy + 13, 8, SLOT, 243)
+    for (x, y) in ((2, 13), (13, 13), (13, 2)):
+        cv.set(ox + x, oy + y, grey(0x2b))
+    for name, shades, seed in (("body_l", PROBE_BODY_L, 244), ("gold", GOLD, 245)):
+        ox, oy = T(name)
+        cv.noise(ox, oy, 16, 16, shades, seed)
+    ox, oy = T("glass_side")
+    cv.noise(ox, oy, 16, 16, [CYAN_D, hx("2c8299"), hx("287c95")], 246)
+    # gold rim, chamfered corners, dark seat under the glass
+    x, y, _, _ = R["ring"]
+    cv.ascii(x, y, ["eHHHGe",
+                    "HddddG",
+                    "HddddG",
+                    "GddddG",
+                    "GddddG",
+                    "eGGGGe"], {"e": EDGE_L, "H": GOLD_L, "G": GOLD, "d": RECESS}, 247)
+    # glass: bright glint top-left, darker towards the bottom right
+    x, y, _, _ = R["glass"]
+    cv.ascii(x, y, ["WLcC",
+                    "LcCd",
+                    "cCdD",
+                    "CdDD"], {"W": hx("e8fbff"), "L": CYAN_L, "c": CYAN, "C": hx("3fa6c4"), "d": CYAN_D, "D": hx("1f5f73")})
+    cv.save(os.path.join(TEX, "block", "cloud_probe.png"))
 
 
 # --------------------------------------------------------------------------- cloud bridges (v0.2)
@@ -1304,6 +1358,7 @@ def main():
     gen_uplink(True)
     gen_uplink_compact(False)
     gen_uplink_compact(True)
+    gen_probe()
     gen_bridge("me")
     gen_bridge("rs")
     for st in STATUS:

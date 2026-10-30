@@ -53,6 +53,7 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/fiber_junction_stub` | 3 |
 | `block/ender_fiber_link` | 11 |
 | `item/fiber_cable` | 3 |
+| `block/cloud_probe` | 4 |
 | `block/uplink_compact_bottom` | 2 |
 | `block/uplink_compact_ring_bottom` | 4 |
 | `block/uplink_compact_low` | 2 |

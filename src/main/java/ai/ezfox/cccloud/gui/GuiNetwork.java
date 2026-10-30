@@ -235,6 +235,19 @@ public final class GuiNetwork {
             }
 
             @Override
+            public boolean linked() {
+                return link != null;
+            }
+
+            @Override
+            public @Nullable String clearTarget() {
+                if (target == null || !target.isProbe()) return "not_supported";
+                target.clearRemoteTarget(player.getGameProfile().name());
+                notice[0] = "target_cleared";
+                return null;
+            }
+
+            @Override
             public @Nullable String redstone(ai.ezfox.cccloud.redstone.RedstoneMode mode, String channel) {
                 if (target == null) return "not_supported";
                 target.setRedstone(mode, channel);

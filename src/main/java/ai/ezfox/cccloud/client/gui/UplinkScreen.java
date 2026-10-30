@@ -150,7 +150,10 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             }
             default -> {
                 var a = attached();
-                if (!a.has("block")) return new Component[]{Component.empty(), Component.translatable("cccloud.gui.what.nothing")};
+                boolean probe = bool(view, "probe");
+                if (!a.has("block")) {
+                    return new Component[]{Component.empty(), Component.translatable(probe ? "cccloud.gui.what.probe_none" : "cccloud.gui.what.nothing")};
+                }
                 var b = block(str(a, "block"));
                 String mod = modName(Identifier.tryParse(str(a, "block")) instanceof Identifier key ? key.getNamespace() : "");
                 String name;
@@ -162,7 +165,8 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
                 } else {
                     name = b.getName().getString();
                 }
-                return new Component[]{Component.translatable("cccloud.gui.what.connected"), Component.literal(withMod(name, mod))};
+                return new Component[]{Component.translatable(probe ? "cccloud.gui.what.reads_remote" : "cccloud.gui.what.connected"),
+                    Component.literal(withMod(name, mod))};
             }
         }
     }
@@ -229,11 +233,36 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             // A problem and its fix come first.
             var hint = hint();
             if (hint != null) warningRow(hint);
+            if (view.has("exposedElsewhere")) {
+                warningRow(Component.translatable("cccloud.gui.hint.side_exposes_nothing", face(str(view, "exposedElsewhere"))));
+            }
+            if (bool(view, "probe")) probeRows();
             cardRows();
             connectionRows();
             actionRows();
         }
         advancedRows();
+    }
+
+    /** Cloud Probe: the machine it reads (distance, face) or how to pick one, and a button to forget it. */
+    private void probeRows() {
+        heading("cccloud.gui.probe.heading");
+        var remote = view.get("remote") instanceof JsonObject r ? r : new JsonObject();
+        if (!remote.has("distance")) {
+            textRow(Component.translatable("cccloud.gui.probe.none", num(remote, "range")), CloudGui.TEXT_DIM);
+            return;
+        }
+        String name = remote.has("block") ? block(str(remote, "block")).getName().getString() : Component.translatable("cccloud.gui.probe.unloaded").getString();
+        textRow(Component.translatable("cccloud.gui.probe.reads", name, num(remote, "distance"), face(str(remote, "side"))), CloudGui.TEXT);
+        if (remote.has("pos")) textRow(Component.translatable("cccloud.gui.probe.at", str(remote, "pos")), CloudGui.TEXT_DIM);
+        boolean can = bool(view, "canClearTarget");
+        rows.add(new Row(20, (c, x, y, w) ->
+            c.button(x + 2, y + 3, Component.translatable("cccloud.gui.probe.clear"), CloudGui.ButtonStyle.NORMAL, can, () -> send("clear_target", ""))));
+    }
+
+    /** A block face in words ("top", "north", …). */
+    private static Component face(String side) {
+        return Component.translatableWithFallback("cccloud.gui.face." + side, side);
     }
 
     /** "On the dashboard": what kind of card, what it shows and controls, and the live preview. */

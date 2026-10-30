@@ -43,6 +43,9 @@ public final class ModRegistry {
         ModRegistry::uplinkProperties);
     public static final DeferredBlock<CloudUplinkBlock> ADVANCED_CLOUD_UPLINK = BLOCKS.registerBlock("advanced_cloud_uplink", p -> new CloudUplinkBlock(true, p),
         p -> uplinkProperties(p).mapColor(MapColor.GOLD));
+    /** Reads one machine at a distance (docs/SPEC.md "Cloud Probe"); shares the uplink block entity. */
+    public static final DeferredBlock<ai.ezfox.cccloud.block.CloudProbeBlock> CLOUD_PROBE = BLOCKS.registerBlock("cloud_probe",
+        ai.ezfox.cccloud.block.CloudProbeBlock::new, p -> uplinkProperties(p).mapColor(MapColor.COLOR_CYAN).strength(2.0f));
 
     // v0.4 relays
     public static final DeferredBlock<ai.ezfox.cccloud.relay.CloudRelayBlock> CLOUD_RELAY = BLOCKS.registerBlock("cloud_relay",
@@ -77,6 +80,8 @@ public final class ModRegistry {
         p -> new ai.ezfox.cccloud.item.CloudMainframeItem(CLOUD_MAINFRAME.get(), p), p -> p.useBlockDescriptionPrefix().rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_UPLINK);
     public static final DeferredItem<?> ADVANCED_CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_UPLINK, p -> p.rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<ai.ezfox.cccloud.item.CloudProbeItem> CLOUD_PROBE_ITEM = ITEMS.registerItem("cloud_probe",
+        p -> new ai.ezfox.cccloud.item.CloudProbeItem(CLOUD_PROBE.get(), p), p -> p.useBlockDescriptionPrefix().rarity(Rarity.RARE));
     public static final DeferredItem<?> CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_RELAY);
     public static final DeferredItem<?> ADVANCED_CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_RELAY, p -> p.rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> ENDER_RELAY_ITEM = ITEMS.registerSimpleBlockItem(ENDER_RELAY, p -> p.rarity(Rarity.RARE));
@@ -119,7 +124,7 @@ public final class ModRegistry {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.relay.CloudRelayBlockEntity>> RELAY_BE = BLOCK_ENTITIES.register("cloud_relay",
         () -> new BlockEntityType<>(ai.ezfox.cccloud.relay.CloudRelayBlockEntity::new, CLOUD_RELAY.get(), ADVANCED_CLOUD_RELAY.get(), ENDER_RELAY.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudUplinkBlockEntity>> UPLINK_BE = BLOCK_ENTITIES.register("cloud_uplink",
-        () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get()));
+        () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get(), CLOUD_PROBE.get()));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity>> ENDER_FIBER_LINK_BE =
         BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, ENDER_FIBER_LINK.get()));
@@ -127,6 +132,9 @@ public final class ModRegistry {
     // Data components
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
         b -> b.persistent(MainframeLink.CODEC).networkSynchronized(MainframeLink.STREAM_CODEC));
+    /** A machine picked for a Cloud Probe with the Link Card (sneak + right-click), see {@link ai.ezfox.cccloud.item.ProbeTarget}. */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ai.ezfox.cccloud.item.ProbeTarget>> PROBE_TARGET = COMPONENTS.registerComponentType("probe_target",
+        b -> b.persistent(ai.ezfox.cccloud.item.ProbeTarget.CODEC).networkSynchronized(ai.ezfox.cccloud.item.ProbeTarget.STREAM_CODEC));
     /** A mainframe item dropped by a broken mainframe: placing it restores that mainframe (docs/SPEC.md "Mainframe removal"). */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ai.ezfox.cccloud.item.MainframeIdentity>> MAINFRAME_IDENTITY =
         COMPONENTS.registerComponentType("mainframe_identity",
@@ -147,6 +155,7 @@ public final class ModRegistry {
             out.accept(CLOUD_MAINFRAME_ITEM.get());
             out.accept(CLOUD_UPLINK_ITEM.get());
             out.accept(ADVANCED_CLOUD_UPLINK_ITEM.get());
+            out.accept(CLOUD_PROBE_ITEM.get());
             out.accept(CLOUD_RELAY_ITEM.get());
             out.accept(ADVANCED_CLOUD_RELAY_ITEM.get());
             out.accept(ENDER_RELAY_ITEM.get());
@@ -168,6 +177,8 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("mainframe_break_lower_drops_one", () -> CloudGameTests::breakLowerDropsOne);
         TEST_FUNCTIONS.register("mainframe_ownership", () -> CloudGameTests::ownership);
         TEST_FUNCTIONS.register("uplink_mount_slab_side", () -> ai.ezfox.cccloud.gametest.UplinkMountTests::slabSide);
+        TEST_FUNCTIONS.register("probe_remote_target", () -> ai.ezfox.cccloud.gametest.ProbeTests::remoteTarget);
+        TEST_FUNCTIONS.register("uplink_side_fallback_hint", () -> ai.ezfox.cccloud.gametest.ProbeTests::sideFallbackAndHint);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);

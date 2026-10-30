@@ -114,6 +114,20 @@ class UplinkMountTest {
     }
 
     @Test
+    void probeHitboxMatchesItsModel() throws IOException {
+        double[] min = {99, 99, 99}, max = {-99, -99, -99};
+        for (var e : model("cloud_probe").getAsJsonArray("elements")) {
+            var from = e.getAsJsonObject().getAsJsonArray("from");
+            var to = e.getAsJsonObject().getAsJsonArray("to");
+            for (int i = 0; i < 3; i++) {
+                min[i] = Math.min(min[i], from.get(i).getAsDouble());
+                max[i] = Math.max(max[i], to.get(i).getAsDouble());
+            }
+        }
+        assertEquals(new AABB(min[0] / 16, min[1] / 16, min[2] / 16, max[0] / 16, max[1] / 16, max[2] / 16), CloudProbeBlock.NORTH_SHAPE.bounds());
+    }
+
+    @Test
     void blockstatesUseTheEnumValues() throws IOException {
         // a value the enum does not know would only show up as a model loading error on a client
         var expected = new java.util.TreeSet<String>();

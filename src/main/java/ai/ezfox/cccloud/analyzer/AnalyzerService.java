@@ -55,7 +55,7 @@ public final class AnalyzerService {
         var item = stack.getItem();
         if (item instanceof CloudAnalyzerItem || item == ModRegistry.CLOUD_LINK_CARD.get()) return true;
         if (item == ModRegistry.CLOUD_MAINFRAME_ITEM.get() || item == ModRegistry.CLOUD_UPLINK_ITEM.get() || item == ModRegistry.ADVANCED_CLOUD_UPLINK_ITEM.get()
-            || item == ModRegistry.CLOUD_RELAY_ITEM.get() || item == ModRegistry.ADVANCED_CLOUD_RELAY_ITEM.get() || item == ModRegistry.ENDER_RELAY_ITEM.get()) {
+            || item == ModRegistry.CLOUD_PROBE_ITEM.get() || item == ModRegistry.CLOUD_RELAY_ITEM.get() || item == ModRegistry.ADVANCED_CLOUD_RELAY_ITEM.get() || item == ModRegistry.ENDER_RELAY_ITEM.get()) {
             return true;
         }
         for (var bridge : BridgeRegistry.ITEMS) if (item == bridge.get()) return true;
@@ -109,7 +109,30 @@ public final class AnalyzerService {
             networks.add(new AnalyzerGeometry.Network(id.toString(), mainframe.getDisplayName(), result, names, statuses));
         }
         var p = player.position();
-        return AnalyzerGeometry.build(networks, player.level().dimension().identifier().toString(), p.x, p.y, p.z, ranges());
+        var json = AnalyzerGeometry.build(networks, player.level().dimension().identifier().toString(), p.x, p.y, p.z, ranges());
+        json.add("probes", probes(networks, player.level()));
+        return json;
+    }
+
+    /**
+     * Cloud Probes of the shown networks in the player's dimension and what they read: {@code [[x,y,z, tx,ty,tz]]} (block
+     * centres), drawn as a thin line. Within 128 blocks, at most 64.
+     */
+    static com.google.gson.JsonArray probes(List<AnalyzerGeometry.Network> networks, net.minecraft.world.level.Level level) {
+        var array = new com.google.gson.JsonArray();
+        for (var net : networks) {
+            for (var device : net.result().devices()) {
+                if (device.type() != ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.PROBE || array.size() >= 64) continue;
+                if (!(CloudNetwork.section(UUID.fromString(device.id())) instanceof ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity probe)
+                    || probe.getLevel() != level || probe.remoteTarget() == null) continue;
+                var a = probe.getBlockPos().getCenter();
+                var b = probe.remoteTarget().getCenter();
+                var line = new com.google.gson.JsonArray();
+                for (double v : new double[]{a.x, a.y, a.z, b.x, b.y, b.z}) line.add(v);
+                array.add(line);
+            }
+        }
+        return array;
     }
 
     /** Ranges for the placement preview: device types [range], node types [nodeRange, deviceRange]. */
@@ -117,6 +140,7 @@ public final class AnalyzerService {
         var map = new LinkedHashMap<String, int[]>();
         map.put("uplink", new int[]{CloudConfig.get(CloudConfig.RANGE_UPLINK)});
         map.put("advanced_uplink", new int[]{CloudConfig.get(CloudConfig.RANGE_ADVANCED_UPLINK)});
+        map.put("probe", new int[]{CloudConfig.get(CloudConfig.RANGE_ADVANCED_UPLINK)});
         map.put("bridge", new int[]{CloudConfig.get(CloudConfig.RANGE_BRIDGE)});
         for (var type : RelayType.values()) map.put(type.nodeType.id, new int[]{type.nodeRange(), type.deviceRange()});
         return map;

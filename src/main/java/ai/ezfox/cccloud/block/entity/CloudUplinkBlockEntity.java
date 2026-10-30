@@ -43,11 +43,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -104,6 +106,17 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard;
     private String deviceKind = "";
     private int deviceRevision;
+    /**
+     * Cloud Probe (docs/SPEC.md "Cloud Probe"): the machine it reads instead of the block it sticks to, and the face
+     * it reads it through (the face that was clicked with the Link Card). Null = no target yet. Only for probes.
+     */
+    private volatile @Nullable BlockPos remoteTarget;
+    private volatile Direction remoteSide = Direction.UP;
+    /**
+     * The block it reads has no card although another face of it exposes energy, items or fluids: that face (screen
+     * hint "this side exposes nothing"), else null. Updated with the card detection, once per second.
+     */
+    private volatile @Nullable Direction exposedElsewhere;
     /** Last forwarded watchlist alert per bridge (key = bridge position). */
     private final Map<String, Integer> bridgeAlertSeq = new java.util.HashMap<>();
 
@@ -155,6 +168,34 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return getBlockState().getBlock() instanceof CloudUplinkBlock b && b.isAdvanced();
     }
 
+    public boolean isProbe() {
+        return getBlockState().getBlock() instanceof CloudUplinkBlock b && b.isProbe();
+    }
+
+    /**
+     * The block this uplink reads (cards, bridge template, Computer card): the block it sticks to, or for a Cloud Probe
+     * its remote target (null without one).
+     */
+    public @Nullable BlockPos readPos() {
+        if (isProbe()) return remoteTarget;
+        return getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
+    }
+
+    /** The face of {@link #readPos()} it reads through (capability lookups). */
+    public Direction readSide() {
+        return isProbe() ? remoteSide : getBlockState().getValue(CloudUplinkBlock.FACING).getOpposite();
+    }
+
+    /** Cloud Probe: its target (null = none). */
+    public @Nullable BlockPos remoteTarget() {
+        return remoteTarget;
+    }
+
+    /** For the screen: another face of the machine that exposes something when this one shows no card, else null. */
+    public @Nullable Direction exposedElsewhere() {
+        return exposedElsewhere;
+    }
+
     public CloudStatus status() {
         return status;
     }
@@ -175,6 +216,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         rsMode = mode == null ? ai.ezfox.cccloud.redstone.RedstoneMode.OFF : mode;
         rsChannel = input.getStringOr("rs_channel", "");
         rsOutput = Math.max(0, Math.min(15, input.getIntOr("rs_output", 0)));
+        remoteTarget = input.read("remote_target", BlockPos.CODEC).orElse(null);
+        remoteSide = input.read("remote_side", Direction.CODEC).orElse(Direction.UP);
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
@@ -207,6 +250,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         output.putString("rs_mode", rsMode.id());
         output.putString("rs_channel", rsChannel);
         output.putInt("rs_output", rsOutput);
+        output.storeNullable("remote_target", BlockPos.CODEC, remoteTarget);
+        output.store("remote_side", Direction.CODEC, remoteSide);
         synchronized (this) {
             output.putString("title", title);
             output.putBoolean("template", template);
@@ -413,8 +458,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     /** The bridge this uplink is attached to (direct mode), or null. */
     private @Nullable BridgeHost attachedBridge(ServerLevel level) {
-        var pos = getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
-        if (!level.isLoaded(pos)) return null;
+        var pos = readPos();
+        if (pos == null || !level.isLoaded(pos)) return null;
         return level.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
     }
 
@@ -572,11 +617,15 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             card = deviceCard;
             free = !deviceKind.isEmpty() || (!template && !auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty());
         }
+        if (isProbe() && !checkRemoteTarget(level)) card = null;
         if (card != null && !ai.ezfox.cccloud.compat.card.DeviceCards.isValid(card)) card = null;
-        if (card == null && free && ai.ezfox.cccloud.compat.Integrations.deviceCardsEnabled()) {
-            var facing = getBlockState().getValue(CloudUplinkBlock.FACING);
-            card = ai.ezfox.cccloud.compat.card.DeviceCards.detect(level, getBlockPos().relative(facing), facing.getOpposite());
+        var readPos = readPos();
+        Direction hint = null;
+        if (card == null && free && readPos != null && ai.ezfox.cccloud.compat.Integrations.deviceCardsEnabled()) {
+            card = ai.ezfox.cccloud.compat.card.DeviceCards.detect(level, readPos, readSide());
+            if (card == null) hint = exposedElsewhere(level, readPos, readSide());
         }
+        exposedElsewhere = card == null ? hint : null;
         synchronized (this) {
             // Re-check under the lock: a Lua program may have taken the section in the meantime.
             boolean stillFree = !deviceKind.isEmpty() || (!template && !auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty());
@@ -595,6 +644,123 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 ai.ezfox.cccloud.compat.card.DeviceCards.refresh(card, deviceOutput);
             }
         }
+    }
+
+    /**
+     * Another face of the block at {@code pos} that exposes energy, items or fluids, when the given one does not and
+     * no card was found (screen hint); null if there is none, or if the block is a computer, a bridge or ours.
+     */
+    private static @Nullable Direction exposedElsewhere(ServerLevel level, BlockPos pos, Direction side) {
+        if (!level.isLoaded(pos)) return null;
+        var state = level.getBlockState(pos);
+        if (state.isAir() || ai.ezfox.cccloud.CCCloud.MODID.equals(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace())) {
+            return null;
+        }
+        if (CcComputers.find(level, pos) != null || exposes(level, pos, side)) return null;
+        for (var d : Direction.values()) if (d != side && exposes(level, pos, d)) return d;
+        return null;
+    }
+
+    private static boolean exposes(ServerLevel level, BlockPos pos, @Nullable Direction side) {
+        return level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Energy.BLOCK, pos, side) != null
+            || level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Item.BLOCK, pos, side) != null
+            || level.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.BLOCK, pos, side) != null;
+    }
+
+    // ---- Cloud Probe ---------------------------------------------------------------------------------------------
+
+    /**
+     * Why a probe target is refused, or null if it may be read: same dimension, within {@code probeRange}, loaded, a
+     * block entity, not a block of this mod and not the block the probe sticks to.
+     */
+    public static @Nullable String targetProblem(Level probeLevel, BlockPos probe, Level targetLevel, BlockPos target) {
+        if (probeLevel != targetLevel) return "cccloud.probe.other_dimension";
+        if (target.equals(probe)) return "cccloud.probe.not_a_machine";
+        double distance = Math.sqrt(probe.distSqr(target));
+        if (distance > CloudConfig.get(CloudConfig.PROBE_RANGE) + 1e-9) return "cccloud.probe.too_far";
+        if (!targetLevel.isLoaded(target)) return "cccloud.probe.unloaded";
+        var state = targetLevel.getBlockState(target);
+        if (targetLevel.getBlockEntity(target) == null
+            || ai.ezfox.cccloud.CCCloud.MODID.equals(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace())) {
+            return "cccloud.probe.not_a_machine";
+        }
+        return null;
+    }
+
+    /**
+     * Points this Cloud Probe at a machine (Link Card). The player needs the uplink rights of the probe's network
+     * ({@code network.link}) when it is linked; picking the machine already went through the normal interaction
+     * checks for that player (see {@link ai.ezfox.cccloud.item.CloudLinkCardItem}).
+     *
+     * @return true if the target was set
+     */
+    public boolean setRemoteTarget(ai.ezfox.cccloud.item.ProbeTarget target, Player player) {
+        if (!(level instanceof ServerLevel serverLevel) || !isProbe()) return false;
+        if (!target.player().equals(player.getUUID())) {
+            player.sendSystemMessage(Component.translatable("cccloud.probe.other_player").withStyle(ChatFormatting.RED));
+            return false;
+        }
+        if (link != null) {
+            var mainframe = CloudNetwork.mainframe(link.id());
+            if (mainframe == null || !mainframe.has(player, ai.ezfox.cccloud.access.Perm.NETWORK_LINK)) {
+                player.sendSystemMessage(Component.translatable(mainframe == null ? "cccloud.uplink.mainframe_missing" : "cccloud.mainframe.not_owner")
+                    .withStyle(ChatFormatting.RED));
+                return false;
+            }
+        }
+        var targetLevel = serverLevel.getServer().getLevel(target.pos().dimension());
+        var pos = target.pos().pos();
+        String problem = targetLevel == null ? "cccloud.probe.other_dimension" : targetProblem(serverLevel, getBlockPos(), targetLevel, pos);
+        if (problem != null) {
+            player.sendSystemMessage(Component.translatable(problem, CloudConfig.get(CloudConfig.PROBE_RANGE)).withStyle(ChatFormatting.RED));
+            return false;
+        }
+        remoteTarget = pos.immutable();
+        remoteSide = target.side();
+        synchronized (this) {
+            showDeviceCard(null);
+        }
+        setDirect(serverLevel, true);
+        setChanged();
+        String name = serverLevel.getBlockState(pos).getBlock().getName().getString();
+        CCCloud.LOGGER.info("[cccloud] {} pointed the Cloud Probe at {} to {} at {}", player.getGameProfile().name(), getBlockPos(), name, pos);
+        player.sendSystemMessage(Component.translatable("cccloud.probe.target_set", serverLevel.getBlockState(pos).getBlock().getName(),
+            (int) Math.round(Math.sqrt(getBlockPos().distSqr(pos)))).withStyle(ChatFormatting.GREEN));
+        return true;
+    }
+
+    /** Forgets the probe's target (screen button, or its machine was removed): the card goes like on detaching. */
+    public void clearRemoteTarget(String by) {
+        if (remoteTarget == null || !(level instanceof ServerLevel serverLevel)) return;
+        var old = remoteTarget;
+        remoteTarget = null;
+        exposedElsewhere = null;
+        synchronized (this) {
+            showDeviceCard(null);
+        }
+        setDirect(serverLevel, false);
+        setChanged();
+        CCCloud.LOGGER.info("[cccloud] {} cleared the Cloud Probe target at {} (was {})", by, getBlockPos(), old);
+    }
+
+    /**
+     * A probe's target must still be there and in range. A removed machine (no block entity any more) clears the
+     * target like an uplink falling off its block; an unloaded one or a shrunken range just reads nothing for now.
+     */
+    private boolean checkRemoteTarget(ServerLevel level) {
+        var target = remoteTarget;
+        if (target == null) return false;
+        if (!level.isLoaded(target)) return false;
+        if (level.getBlockEntity(target) == null || level.getBlockState(target).isAir()) {
+            clearRemoteTarget("removed machine");
+            return false;
+        }
+        return Math.sqrt(getBlockPos().distSqr(target)) <= CloudConfig.get(CloudConfig.PROBE_RANGE) + 1e-9;
+    }
+
+    private void setDirect(ServerLevel level, boolean direct) {
+        var state = getBlockState();
+        if (state.getValue(CloudUplinkBlock.DIRECT) != direct) level.setBlock(getBlockPos(), state.setValue(CloudUplinkBlock.DIRECT, direct), Block.UPDATE_CLIENTS);
     }
 
     /** Replaces the section by the card (null: back to an empty section). Keeps the history of charts with the same id. */
@@ -652,7 +818,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     private CcComputers.@Nullable Handle attachedComputer(ServerLevel level) {
         if (!CloudConfig.get(CloudConfig.AUTO_COMPUTER_CARD)) return null;
-        return CcComputers.find(level, getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING)));
+        var pos = readPos();
+        return pos == null ? null : CcComputers.find(level, pos);
     }
 
     /** Enters/leaves auto mode and refreshes the card (every 10 ticks). */

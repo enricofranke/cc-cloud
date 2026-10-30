@@ -561,6 +561,25 @@ def uplink_compact_ring(mount):
     return m
 
 
+# Cloud Probe: the plate (one 14x14x2 box, front = designed plate tile), status LED like the uplink, and a lens that
+# stands proud: 6x6 gold rim (z 2..3) with a 4x4 emissive glass (z 2..3.5). No moving part. Shape in CloudProbeBlock:
+# plate 1..15 x 1..15 x 0..2.25 + lens 5..11 x 5..11 x 0..3.5.
+PA = "probe"
+
+
+def probe_body():
+    tex = f"{NS}:block/cloud_probe"
+    m = Model(parent=f"{NS}:block/uplink_display", textures={
+        "particle": tex, "atlas": tex, "status": f"{NS}:block/uplink_status_online"})
+    plate = Tile("atlas", PA, "plate")
+    m.box([1, 1, 0], [15, 15, 2], {"*": Tile("atlas", PA, "body_l"), "south": plate, "north": plate})
+    m.box([4, 2, 2], [12, 3, 2.25], st("strip"), emit=15, skip=("north",))
+    m.box([5, 5, 2], [11, 11, 3], {"*": Tile("atlas", PA, "gold"), "south": Region("atlas", PA, "ring")}, skip=("north",))
+    m.box([6, 6, 2], [10, 10, 3.5], {"*": Tile("atlas", PA, "glass_side"), "south": Region("atlas", PA, "glass")},
+          emit=15, skip=("north",))
+    return m
+
+
 def uplink_body_model(advanced, mount, status):
     """Model id the blockstate uses for a tier / mount / status."""
     if mount == "full":
@@ -855,6 +874,7 @@ def main():
         "block/ender_fiber_link": ender_fiber_link(),
         "item/fiber_cable": fiber_cable_item(),
     }
+    models["block/cloud_probe"] = probe_body()
     for mt_ in MOUNTS[1:]:
         models[f"block/uplink_compact_{mt_}"] = uplink_compact(mt_)
         models[f"block/uplink_compact_ring_{mt_}"] = uplink_compact_ring(mt_)
@@ -872,6 +892,8 @@ def main():
               variant_child(f"{NS}:block/uplink", {"status": f"{NS}:block/uplink_status_{s}"}))
         write(f"models/block/uplink_advanced_{s}.json",
               variant_child(f"{NS}:block/uplink_advanced", {"status": f"{NS}:block/uplink_status_{s}"}))
+    for s in STATES:
+        write(f"models/block/cloud_probe_{s}.json", variant_child(f"{NS}:block/cloud_probe", {"status": f"{NS}:block/uplink_status_{s}"}))
     # compact uplinks: the advanced tier only swaps the atlas; status children swap the LED
     for mt_ in MOUNTS[1:]:
         write(f"models/block/uplink_advanced_compact_{mt_}.json",
@@ -958,6 +980,16 @@ def main():
                 parts.append({"when": {"direct": "true", "facing": f, "mount": mt_},
                               "apply": {"model": uplink_ring_model(mt_), **r}})
         write(f"blockstates/{block}.json", {"multipart": parts})
+
+    # Cloud Probe: always the plate with the lens (no mount variants); direct = it has a target -> the plate's ring
+    parts = []
+    for f, r in ALL6.items():
+        for s in STATES:
+            parts.append({"when": {"facing": f, "status": s}, "apply": {"model": f"{NS}:block/cloud_probe_{s}", **r}})
+    for f, r in ALL6.items():
+        parts.append({"when": {"direct": "true", "facing": f}, "apply": {"model": f"{NS}:block/uplink_direct_ring", **r}})
+    write("blockstates/cloud_probe.json", {"multipart": parts})
+    write("items/cloud_probe.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/cloud_probe_online"}})
 
     # item model definitions (26.1 items/*.json)
     write("items/cloud_mainframe.json", {"model": {"type": "minecraft:model", "model": f"{NS}:item/mainframe_item"}})
@@ -1158,6 +1190,24 @@ def validate_uplinks(data):
     for mt_, els in pairs:
         ring_els = elements(uplink_ring_model(mt_))
         problems.extend(f"uplink {mt_} body + direct ring: {msg}" for msg in coplanar_faces(els + ring_els))
+    # Cloud Probe: facing x status bodies, a direct ring per facing, lens bounds = the Java shape, no z-fighting
+    body, ring = {}, {}
+    for p in data.get("blockstates/cloud_probe.json", {}).get("multipart", []):
+        w, a = p.get("when", {}), p["apply"]
+        rot = {k: a[k] for k in ("x", "y") if k in a}
+        (body if "status" in w else ring).setdefault((w["facing"], w.get("status")), []).append((a["model"], rot))
+    for f, r in ALL6.items():
+        if ring.get((f, None)) != [(f"{NS}:block/uplink_direct_ring", r)]:
+            problems.append(f"cloud_probe: facing={f} direct ring {ring.get((f, None))}")
+        for s in STATES:
+            if body.get((f, s)) != [(f"{NS}:block/cloud_probe_{s}", r)]:
+                problems.append(f"cloud_probe: facing={f} status={s} body {body.get((f, s))}")
+    probe = elements(f"{NS}:block/cloud_probe")
+    lo = [min(e["from"][i] for e in probe) for i in range(3)] if probe else []
+    hi = [max(e["to"][i] for e in probe) for i in range(3)] if probe else []
+    if lo != [1, 1, 0] or hi != [15, 15, 3.5]:
+        problems.append(f"cloud_probe: bounds {lo}..{hi}, CloudProbeBlock's shape expects [1,1,0]..[15,15,3.5]")
+    problems.extend(f"cloud_probe body + direct ring: {msg}" for msg in coplanar_faces(probe + elements(f"{NS}:block/uplink_direct_ring")))
     return problems
 
 
@@ -1239,6 +1289,17 @@ geometry: `uplink_advanced_compact_<mount>` only swaps the atlas; `_<status>` ch
 `validate()` checks that every facing x mount x status has one body and every facing x mount one ring
 (with the plate's rotations), that pucks match the Java shapes, and that body + ring have no coplanar
 overlaps. The item and the dashboard's 3D view use `mount=full`.
+
+## Cloud Probe
+
+`block/cloud_probe` (+ `_online/_connecting/_offline` children swapping `uplink_status_*`), atlas
+`textures/block/cloud_probe.png` (64x64, layout `probe`): the uplink plate in slate blue (outline, lighter lower
+band, cloud emblem, LED slot, screws) as one 14x14x2 box, the status strip like the uplink, and a lens that stands
+proud – a 6x6 gold rim (z 2..3) holding a 4x4 emissive glass (z 2..3.5). Clearly not an uplink, no post or antenna.
+No moving part (the BER skips it). Blockstate `cloud_probe`: facing x status, plus `uplink_direct_ring` while
+`direct=true` (it has a target); the `mount` property exists (shared block class) but is always `full`.
+Shape (`CloudProbeBlock.NORTH_SHAPE`): plate 1..15 x 1..15 x 0..2.25 + lens 5..11 x 5..11 x 0..3.5; `validate()`
+checks the model bounds against it. Item: `items/cloud_probe.json` -> the `_online` model.
 
 ## Cloud bridges (v0.2)
 

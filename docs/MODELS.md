@@ -54,6 +54,7 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/fiber_junction_stub` | 3 |
 | `block/ender_fiber_link` | 11 |
 | `item/fiber_cable` | 3 |
+| `block/cloud_probe` | 4 |
 | `block/uplink_compact_bottom` | 2 |
 | `block/uplink_compact_ring_bottom` | 4 |
 | `block/uplink_compact_low` | 2 |
@@ -94,6 +95,17 @@ geometry: `uplink_advanced_compact_<mount>` only swaps the atlas; `_<status>` ch
 `validate()` checks that every facing x mount x status has one body and every facing x mount one ring
 (with the plate's rotations), that pucks match the Java shapes, and that body + ring have no coplanar
 overlaps. The item and the dashboard's 3D view use `mount=full`.
+
+## Cloud Probe
+
+`block/cloud_probe` (+ `_online/_connecting/_offline` children swapping `uplink_status_*`), atlas
+`textures/block/cloud_probe.png` (64x64, layout `probe`): the uplink plate in slate blue (outline, lighter lower
+band, cloud emblem, LED slot, screws) as one 14x14x2 box, the status strip like the uplink, and a lens that stands
+proud – a 6x6 gold rim (z 2..3) holding a 4x4 emissive glass (z 2..3.5). Clearly not an uplink, no post or antenna.
+No moving part (the BER skips it). Blockstate `cloud_probe`: facing x status, plus `uplink_direct_ring` while
+`direct=true` (it has a target); the `mount` property exists (shared block class) but is always `full`.
+Shape (`CloudProbeBlock.NORTH_SHAPE`): plate 1..15 x 1..15 x 0..2.25 + lens 5..11 x 5..11 x 0..3.5; `validate()`
+checks the model bounds against it. Item: `items/cloud_probe.json` -> the `_online` model.
 
 ## Cloud bridges (v0.2)
 

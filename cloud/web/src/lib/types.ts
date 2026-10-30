@@ -179,7 +179,7 @@ export interface PowerInfo {
 }
 
 export interface PowerItem {
-  /** base | uplinks | advanced_uplinks | bridges | clients | hops | anchor | efficiency (negative) | other */
+  /** base | uplinks | advanced_uplinks | probes | bridges | clients | hops | anchor | efficiency (negative) | other */
   key: string;
   count?: number;
   fe: number;

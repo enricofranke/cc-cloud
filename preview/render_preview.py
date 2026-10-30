@@ -836,3 +836,50 @@ def mounts_preview(a):
 
 if __name__ == "__main__" and os.environ.get("MOUNTS"):
     mounts_preview(Assets(DEFAULT_CC))
+
+
+# --------------------------------------------------------------------------- Cloud Probe
+def probe_quads(a, status="online", facing="north", pos=(0, 0, 0), direct=False):
+    x, y = FACING6[facing]
+    q = model_quads(a, f"cccloud:block/cloud_probe_{status}", blockstate_transform(x, y, pos))
+    if direct:
+        q += model_quads(a, "cccloud:block/uplink_direct_ring", blockstate_transform(x, y, pos))
+    return q
+
+
+def probe_preview(a):
+    """preview/renders/probe.png: the Cloud Probe next to the advanced uplink (close-ups, night) and on a wall, reading
+    a machine built into it three blocks away."""
+    os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
+    c = np.array([8, 8, 1.5])
+    shots = []
+    for (yaw, pitch, nm) in ((330, 25, "3/4"), (0, 0, "front"), (90, 0, "side")):
+        shots.append(label(render(probe_quads(a), 300, yaw=yaw, pitch=pitch, center=c, zoom=300 * 0.86 / 18), f"probe {nm}"))
+    shots.append(label(render(probe_quads(a, direct=True), 300, yaw=330, pitch=25, center=c, zoom=300 * 0.86 / 18), "probe with target (ring)"))
+    shots.append(label(render(uplink_quads(a, True, "online", "north", t=0.12), 300, yaw=330, pitch=25, center=c, zoom=300 * 0.86 / 18),
+                       "advanced uplink (for comparison)"))
+    for st in ("online", "connecting", "offline"):
+        shots.append(label(render(probe_quads(a, st), 300, yaw=330, pitch=25, night=True, center=c, zoom=300 * 0.86 / 18), f"probe {st} night"))
+    top = grid(shots, 4)
+    # a machine (furnace stand-in) built into a wall: probe on the wall 3 blocks to the side
+    wall = []
+    stone = "minecraft:block/stone" if a.find("minecraft:block/stone", "models", ".json") else None
+    for x in range(-1, 5):
+        for yy in range(0, 2):
+            if (x, yy) == (0, 0):
+                continue
+            if stone:
+                wall += model_quads(a, stone, blockstate_transform(offset=(x, yy, 0)))
+    machine = "minecraft:block/furnace" if a.find("minecraft:block/furnace", "models", ".json") else stone
+    if machine:
+        wall += model_quads(a, machine, blockstate_transform(offset=(0, 0, 0)))
+    wall += probe_quads(a, "online", "south", pos=(3, 0, -1), direct=True)
+    scene = label(render(wall, 700, yaw=200, pitch=22), "Cloud Probe on the wall, reading the furnace built into it 3 blocks away")
+    out = Image.new("RGB", (max(top.width, scene.width), top.height + scene.height), (30, 32, 34))
+    out.paste(top, (0, 0))
+    out.paste(scene, (0, top.height))
+    out.save(os.path.join(HERE, "renders", "probe.png"))
+
+
+if __name__ == "__main__" and os.environ.get("PROBE"):
+    probe_preview(Assets(DEFAULT_CC))

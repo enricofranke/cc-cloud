@@ -14,11 +14,11 @@ public final class MapWaypoints {
     private MapWaypoints() {
     }
 
-    /** Config category of a node type: {@code relay} covers both radio relay tiers, {@code uplink} both uplink tiers. */
+    /** Config category of a node type: {@code relay} covers both radio relay tiers, {@code uplink} both uplink tiers and the Cloud Probe. */
     public static String category(String type) {
         return switch (type) {
             case "relay", "advanced_relay" -> "relay";
-            case "uplink", "advanced_uplink" -> "uplink";
+            case "uplink", "advanced_uplink", "probe" -> "uplink";
             default -> type;
         };
     }
@@ -50,6 +50,7 @@ public final class MapWaypoints {
             case "advanced_relay" -> "block.cccloud.advanced_cloud_relay";
             case "ender_relay" -> "block.cccloud.ender_relay";
             case "advanced_uplink" -> "block.cccloud.advanced_cloud_uplink";
+            case "probe" -> "block.cccloud.cloud_probe";
             case "bridge" -> "cccloud.journeymap.bridge";
             default -> "block.cccloud.cloud_uplink";
         };
