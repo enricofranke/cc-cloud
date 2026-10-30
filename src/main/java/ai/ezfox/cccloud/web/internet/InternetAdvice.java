@@ -100,8 +100,8 @@ public final class InternetAdvice {
             case HTTP -> {
                 lines.add(new Line(Style.LINK, "cccloud.internet.status.link", runningUrl.isBlank() ? httpUrl(f) : runningUrl));
                 lines.add(new Line(Style.WARN, "cccloud.internet.http.warning", String.valueOf(f.idleHours())));
-                lines.add(f.withoutPin().isEmpty() ? new Line(Style.OK, "cccloud.internet.status.all_pins")
-                    : new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
+                // only with internetRequirePin: the PIN-less mainframes (view-only from the internet), else no PIN topic
+                if (!f.withoutPin().isEmpty()) lines.add(new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
             }
         }
         lines.add(new Line(Style.COMMAND, "cccloud.internet.status.modes", "/cccloud internet http", "/cccloud internet off"));
