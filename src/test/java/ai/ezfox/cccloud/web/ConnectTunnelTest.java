@@ -224,6 +224,120 @@ class ConnectTunnelTest {
         assertTrue(rejected.text().contains("bad_origin"), rejected.text());
     }
 
+    /** The next WebSocket text of a stream that is not a value update (or null). */
+    private JsonObject nextMessage(long stream, String type) throws InterruptedException {
+        long until = System.currentTimeMillis() + 10_000;
+        while (System.currentTimeMillis() < until) {
+            var f = relay.binary(stream, 200);
+            if (f == null || f.type != TunnelProtocol.WS_TEXT) continue;
+            var json = JsonParser.parseString(f.text()).getAsJsonObject();
+            if (json.get("t").getAsString().equals(type)) return json;
+        }
+        return null;
+    }
+
+    /** A mainframe with a PIN, a toggle card and a paired browser; returns {mainframe, uplink, token}. */
+    private String[] base() {
+        var mainframe = java.util.UUID.randomUUID();
+        var owner = java.util.UUID.randomUUID();
+        String uplink = java.util.UUID.randomUUID().toString();
+        WebHub.INSTANCE.publishMainframe(mainframe, "Base", true, true);
+        var card = new JsonObject();
+        card.addProperty("uplinkId", uplink);
+        card.addProperty("title", "Reactor");
+        card.addProperty("online", true);
+        card.addProperty("mode", "lua");
+        var widgets = new JsonArray();
+        var lamp = new JsonObject();
+        lamp.addProperty("id", "lamp");
+        lamp.addProperty("type", "toggle");
+        widgets.add(lamp);
+        card.add("widgets", widgets);
+        WebHub.INSTANCE.publishUplink(mainframe, card);
+        instance.auth.setPin(mainframe, instance.auth.hashPin("4711"));
+        var pending = instance.auth.pair(instance.auth.currentCode(mainframe, owner).code(), "Phone", "127.0.0.1");
+        String token = instance.auth.approve(pending.id(), owner, "Steve", true).token();
+        return new String[]{mainframe.toString(), uplink, token};
+    }
+
+    /** Opens the dashboard WebSocket through the tunnel and logs in. */
+    private void openAndLogin(long stream, String token) throws InterruptedException {
+        var open = new JsonObject();
+        open.addProperty("m", "GET");
+        open.addProperty("p", "/ws/client");
+        var h = new JsonArray();
+        var origin = new JsonArray();
+        origin.add("origin");
+        origin.add("https://abc.cccloud.dev");
+        h.add(origin);
+        open.add("h", h);
+        open.addProperty("ip", "203.0.113.7");
+        open.addProperty("host", "abc.cccloud.dev");
+        relay.send(frame(TunnelProtocol.WS_OPEN, stream, open.toString()));
+        assertEquals(TunnelProtocol.WS_ACCEPTED, relay.binary(stream, 5000).type);
+        relay.send(frame(TunnelProtocol.WS_TEXT, stream, "{\"t\":\"auth\",\"token\":\"" + token + "\"}"));
+        assertNotNull(nextMessage(stream, "snapshot"), "logged in through the tunnel");
+    }
+
+    private static String action(String uplink, String reqId) {
+        return "{\"t\":\"action\",\"reqId\":\"" + reqId + "\",\"uplinkId\":\"" + uplink + "\",\"id\":\"lamp\",\"value\":true}";
+    }
+
+    private JsonObject internetConfig() throws InterruptedException {
+        relay.send(request(1, "GET", "/api/config", "203.0.113.7", List.<String[]>of(), new byte[0]));
+        return JsonParser.parseString(answer(1).body()).getAsJsonObject().getAsJsonObject("internet");
+    }
+
+    /** internetAccess = connect, by default: control through the tunnel works without a PIN (like http). */
+    @Test
+    void controlThroughConnectWorksWithoutAPinByDefault() throws Exception {
+        instance.internet.update(ai.ezfox.cccloud.web.internet.InternetSettings.resolve(
+            new ai.ezfox.cccloud.web.internet.InternetSettings.Inputs("connect", "", 8787, false, "", false, 24)));
+        var b = base();
+        try {
+            connect("abc");
+            awaitState(ConnectStatus.State.CONNECTED);
+            var config = internetConfig();
+            assertEquals("connect", config.get("mode").getAsString());
+            assertFalse(config.get("remote").getAsBoolean(), "no PIN requirement by default");
+            openAndLogin(9, b[2]);
+            relay.send(frame(TunnelProtocol.WS_TEXT, 9, action(b[1], "a1")));
+            var done = nextMessage(9, "action_result");
+            assertNotNull(done);
+            assertFalse(done.has("error") && !done.get("error").isJsonNull(), done.toString());
+        } finally {
+            WebHub.INSTANCE.removeMainframe(java.util.UUID.fromString(b[0]));
+        }
+    }
+
+    /** internetAccess = connect with internetRequirePin: control through the tunnel needs the mainframe PIN first. */
+    @Test
+    void controlThroughConnectNeedsThePinWhenRequired() throws Exception {
+        instance.internet.update(ai.ezfox.cccloud.web.internet.InternetSettings.resolve(
+            new ai.ezfox.cccloud.web.internet.InternetSettings.Inputs("connect", "", 8787, false, "", false, 24, true)));
+        var b = base();
+        try {
+            connect("abc");
+            awaitState(ConnectStatus.State.CONNECTED);
+            assertTrue(internetConfig().get("remote").getAsBoolean(), "a browser through the tunnel is an internet address");
+            openAndLogin(9, b[2]);
+            relay.send(frame(TunnelProtocol.WS_TEXT, 9, action(b[1], "a1")));
+            var locked = nextMessage(9, "action_result");
+            assertNotNull(locked);
+            assertEquals("remote_locked", locked.get("error").getAsString());
+            relay.send(frame(TunnelProtocol.WS_TEXT, 9, "{\"t\":\"unlock\",\"reqId\":\"u1\",\"pin\":\"4711\"}"));
+            var unlock = nextMessage(9, "unlock_result");
+            assertNotNull(unlock);
+            assertTrue(unlock.get("ok").getAsBoolean(), unlock.toString());
+            relay.send(frame(TunnelProtocol.WS_TEXT, 9, action(b[1], "a2")));
+            var done = nextMessage(9, "action_result");
+            assertNotNull(done);
+            assertFalse(done.has("error") && !done.get("error").isJsonNull(), done.toString());
+        } finally {
+            WebHub.INSTANCE.removeMainframe(java.util.UUID.fromString(b[0]));
+        }
+    }
+
     @Test
     void aRefusedNameStopsRetrying() throws Exception {
         relay.refuse = "name_taken";

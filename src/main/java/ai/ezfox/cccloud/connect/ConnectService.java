@@ -90,6 +90,13 @@ public final class ConnectService {
             idle = new ConnectStatus(ConnectStatus.State.NO_NAME, "", "", null, true, 0, System.currentTimeMillis(), 0);
             return;
         }
+        if (CloudWebServer.internetMode() != ai.ezfox.cccloud.web.internet.InternetMode.CONNECT) {
+            // saved but not applied yet (the live config applies it within seconds; or it failed, see the log)
+            stopClient();
+            idle = new ConnectStatus(ConnectStatus.State.CONNECTING, settings.name(), ConnectClient.expectedUrl(settings, settings.name()), "pending", true, 0,
+                System.currentTimeMillis(), 0);
+            return;
+        }
         if (!CloudWebServer.isRunning()) {
             // nothing to forward to (webEnabled = false or the port failed)
             stopClient();
@@ -194,8 +201,9 @@ public final class ConnectService {
             if (r.equals("released")) {
                 srv.execute(() -> {
                     write(CloudConfig.CONNECT_NAME, "");
-                    setInternetAccess("off");
+                    setInternetAccess(ai.ezfox.cccloud.web.internet.InternetMode.OFF.id());
                     save();
+                    applyLive();
                     apply();
                 });
             }
@@ -207,8 +215,9 @@ public final class ConnectService {
     public static boolean claim(String name) {
         try {
             write(CloudConfig.CONNECT_NAME, name);
-            if (!setInternetAccess(ConnectSettings.MODE)) return false;
+            setInternetAccess(ConnectSettings.MODE);
             save();
+            applyLive();
         } catch (RuntimeException e) {
             CCCloud.LOGGER.error("[cccloud] Could not save the Connect settings to the server config", e);
             return false;
@@ -224,13 +233,16 @@ public final class ConnectService {
         value.set(text);
     }
 
-    /** Writes {@code internetAccess} (owned by the internet-access settings; looked up by its path). */
-    @SuppressWarnings("unchecked")
-    static boolean setInternetAccess(String mode) {
-        Object value = CloudConfig.SPEC.getValues().get(List.of("web", "internetAccess"));
-        if (!(value instanceof ModConfigSpec.ConfigValue<?> config)) return false;
-        ((ModConfigSpec.ConfigValue<String>) config).set(mode);
-        return true;
+    static void setInternetAccess(String mode) {
+        CloudConfig.INTERNET_ACCESS.set(mode);
+    }
+
+    /** The live config switches the dashboard server's mode now (as /cccloud internet does). */
+    private static void applyLive() {
+        var srv = server;
+        if (srv == null) return;
+        var report = ai.ezfox.cccloud.config.ConfigReload.apply(srv, "internet");
+        for (String error : report.errors()) CloudLog.LOGGER.error("[cccloud] Connect: {}", error);
     }
 
     private static void save() {

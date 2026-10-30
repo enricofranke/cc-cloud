@@ -134,6 +134,29 @@ class ConnectBasicsTest {
         assertThrows(java.io.IOException.class, () -> ConnectKeys.loadOrCreate(keyDir));
     }
 
+    /**
+     * internetAccess = connect: the port keeps its rule, internet addresses get the stricter limits, the PIN only with
+     * internetRequirePin (as for http), logins keep 30 days.
+     */
+    @Test
+    void connectModeMapping() {
+        var lan = ai.ezfox.cccloud.web.internet.InternetSettings.resolve(new ai.ezfox.cccloud.web.internet.InternetSettings.Inputs("connect", "", 8787, false, "", false, 24));
+        assertEquals(ai.ezfox.cccloud.web.internet.InternetMode.CONNECT, lan.mode());
+        assertFalse(lan.allowInternet(), "the dashboard port stays LAN only");
+        assertTrue(lan.strictPublic(), "internet-address rules (limits, lockouts) for the tunnel's browsers");
+        assertFalse(lan.requirePin(), "no PIN for control by default");
+        var strict = ai.ezfox.cccloud.web.internet.InternetSettings.resolve(new ai.ezfox.cccloud.web.internet.InternetSettings.Inputs("connect", "", 8787, false, "", false, 24, true));
+        assertTrue(strict.requirePin(), "internetRequirePin applies to connect too");
+        var guard = new ai.ezfox.cccloud.web.internet.InternetGuard(lan, System::currentTimeMillis);
+        assertFalse(guard.pinRequired("203.0.113.7"));
+        assertTrue(new ai.ezfox.cccloud.web.internet.InternetGuard(strict, System::currentTimeMillis).pinRequired("203.0.113.7"));
+        assertEquals(30L * 24 * 3_600_000L, lan.publicTokenIdleMs());
+        var legacy = ai.ezfox.cccloud.web.internet.InternetSettings.resolve(new ai.ezfox.cccloud.web.internet.InternetSettings.Inputs("connect", "", 8787, true, "", false, 24));
+        assertTrue(legacy.allowInternet(), "an older webAllowInternet setup keeps its port open");
+        assertEquals(ai.ezfox.cccloud.web.internet.InternetMode.CONNECT, ai.ezfox.cccloud.web.internet.InternetMode.parse("Connect"));
+        assertEquals("connect", ConnectSettings.MODE);
+    }
+
     @Test
     void relayAddresses() {
         assertEquals(URI.create("wss://connect.cccloud.dev"), ConnectSettings.relayUri("wss://connect.cccloud.dev/"));

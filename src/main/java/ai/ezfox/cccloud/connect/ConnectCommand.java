@@ -1,8 +1,8 @@
 package ai.ezfox.cccloud.connect;
 
 import ai.ezfox.cccloud.CCCloud;
+import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.web.WebAuthData;
-import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -18,30 +18,18 @@ import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.permissions.Permissions;
-import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
  * {@code /cccloud internet connect [<name>|release]}: CC: Cloud Connect, the dashboard at {@code https://<name>.cccloud.dev}
  * without port forwarding. Claiming or releasing a name changes the server's internet exposure, so it needs the server
  * owner (op level 4 or the console), like the other {@code /cccloud internet} modes; the status is shown to admins
- * (level 2). The node is registered on its own (Brigadier merges it below {@code /cccloud internet}).
+ * (level 2).
  */
 public final class ConnectCommand {
     private ConnectCommand() {
     }
 
-    public static void init() {
-        NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, e -> register(e.getDispatcher()));
-    }
-
-    static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("cccloud")
-            .then(Commands.literal("internet").requires(src -> src.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
-                .then(node())));
-    }
-
-    /** The {@code connect} node (for {@code /cccloud internet}). */
+    /** The {@code connect} node below {@code /cccloud internet} (InternetCommand). */
     public static LiteralArgumentBuilder<CommandSourceStack> node() {
         return Commands.literal("connect")
             .executes(ConnectCommand::connectConfigured)
@@ -124,10 +112,14 @@ public final class ConnectCommand {
             case CONNECTED -> {
                 source.sendSystemMessage(Component.translatable("cccloud.connect.online", link(status.url())).withStyle(ChatFormatting.GREEN));
                 if (!status.bundleKnown()) source.sendSystemMessage(Component.translatable("cccloud.connect.bundle_unknown").withStyle(ChatFormatting.GOLD));
-                source.sendSystemMessage(Component.translatable("cccloud.connect.pin_rule").withStyle(ChatFormatting.GRAY));
-                var missing = withoutPin(source.getServer());
-                if (missing > 0) {
-                    source.sendSystemMessage(Component.translatable("cccloud.connect.without_pin", missing, command("/cccloud pin set ")).withStyle(ChatFormatting.GOLD));
+                source.sendSystemMessage(Component.translatable("cccloud.connect.approval_rule").withStyle(ChatFormatting.GRAY));
+                // the PIN for control from the internet is opt-in (internetRequirePin), as for http
+                if (CloudConfig.get(CloudConfig.INTERNET_REQUIRE_PIN)) {
+                    source.sendSystemMessage(Component.translatable("cccloud.connect.pin_rule").withStyle(ChatFormatting.GRAY));
+                    var missing = withoutPin(source.getServer());
+                    if (missing > 0) {
+                        source.sendSystemMessage(Component.translatable("cccloud.connect.without_pin", missing, command("/cccloud pin set ")).withStyle(ChatFormatting.GOLD));
+                    }
                 }
                 source.sendSystemMessage(Component.translatable("cccloud.connect.switch_off", command("/cccloud internet off"),
                     command("/cccloud internet connect release")).withStyle(ChatFormatting.GRAY));
@@ -164,7 +156,7 @@ public final class ConnectCommand {
         return switch (code) {
             case "name_taken", "reserved", "invalid_name", "revoked", "key_limit", "ip_limit", "bad_signature", "key_error", "web_off", "rate_limited",
                  "unreachable", "tls", "timeout", "network", "replaced", "not_connected", "no_name", "disconnected", "protocol", "relay_error",
-                 "too_many_attempts" ->
+                 "too_many_attempts", "pending" ->
                 Component.translatable("cccloud.connect.error." + code);
             default -> Component.translatable("cccloud.connect.error.other", code);
         };

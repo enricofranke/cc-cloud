@@ -55,6 +55,8 @@ public final class InternetCommand {
             .executes(InternetCommand::status)
             .then(Commands.literal("status").executes(InternetCommand::status))
             .then(Commands.literal("off").requires(InternetCommand::owner).executes(c -> switchMode(c, InternetMode.OFF, null)))
+            // CC: Cloud Connect: connect [<name>|release] (https://<name>.cccloud.dev, no port forwarding)
+            .then(ai.ezfox.cccloud.connect.ConnectCommand.node())
             .then(Commands.literal("http").requires(InternetCommand::owner).executes(c -> switchMode(c, InternetMode.HTTP, null))
                 .then(Commands.argument("domain", StringArgumentType.greedyString())
                     .executes(c -> switchMode(c, InternetMode.HTTP, StringArgumentType.getString(c, "domain")))));
@@ -137,6 +139,7 @@ public final class InternetCommand {
         String domain = CloudConfig.get(CloudConfig.INTERNET_DOMAIN).trim();
         String ip = domain.isEmpty() ? PublicIp.last() : null;
         send(source, InternetAdvice.status(facts(source.getServer(), configured(), domain, ip), CloudWebServer.publicUrl()));
+        for (var line : ai.ezfox.cccloud.connect.ConnectCommand.statusLines(source.getServer())) source.sendSystemMessage(line);
         return 1;
     }
 

@@ -211,7 +211,10 @@ public final class CloudConfig {
                 "off   = LAN only (default); the advanced keys above decide everything, as before.",
                 "http  = plain HTTP over the internet, easy but readable on the network path (logins, PINs). New browsers still need",
                 "        [Allow] in game; device tokens used from the internet expire after publicTokenIdleHours without use; stricter",
-                "        rate limits for internet addresses; internetRequirePin makes control from the internet need the PIN.")
+                "        rate limits for internet addresses; internetRequirePin makes control from the internet need the PIN.",
+                "connect = CC: Cloud Connect, recommended: https://<name>.cccloud.dev with no port forwarding, through one outbound",
+                "        connection to the relay (set [connect] connectName, or use /cccloud internet connect <name>). New browsers still",
+                "        need [Allow] in game; internetRequirePin makes control from the internet need the PIN; the port stays LAN only.")
             .translation("cccloud.configuration.internetAccess")
             .define("internetAccess", "off", o -> o instanceof String s && ai.ezfox.cccloud.web.internet.InternetMode.parse(s) != null);
         INTERNET_DOMAIN = b.comment("Optional host name (or IP address) players use from the internet, e.g. mybase.duckdns.org. Empty = the public IP",
@@ -222,7 +225,7 @@ public final class CloudConfig {
                 "logged out and must be paired again (on the LAN the normal 30 days apply).")
             .translation("cccloud.configuration.publicTokenIdleHours")
             .defineInRange("publicTokenIdleHours", 24, 1, 720);
-        INTERNET_REQUIRE_PIN = b.comment("internetAccess = http, stricter: every control action from an internet address needs the mainframe PIN",
+        INTERNET_REQUIRE_PIN = b.comment("internetAccess = http or connect, stricter: every control action from an internet address needs the mainframe PIN",
                 "(entered once, then 10 minutes per browser); mainframes without a PIN are view-only from the internet. LAN unchanged.")
             .translation("cccloud.configuration.internetRequirePin")
             .define("internetRequirePin", false);

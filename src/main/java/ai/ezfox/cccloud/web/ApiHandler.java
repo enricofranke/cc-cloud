@@ -49,9 +49,12 @@ final class ApiHandler {
                 return;
             }
         }
-        // Plain-HTTP internet access: a key cannot carry the PIN, so nothing is controlled through the API from the internet.
-        if ((route.id() == Router.Id.API_WIDGET || route.id() == Router.Id.API_SCENE_RUN) && instance.internet.strict(ip)) {
-            respond(http, ctx, req, 403, error("insecure_transport"), origin, 0);
+        // Internet addresses: over plain HTTP keys travel readable, so nothing is controlled through the API from the internet.
+        // CC: Cloud Connect is HTTPS: control works unless internetRequirePin is on (a key cannot carry the PIN).
+        boolean connect = instance.internet.mode() == ai.ezfox.cccloud.web.internet.InternetMode.CONNECT;
+        if ((route.id() == Router.Id.API_WIDGET || route.id() == Router.Id.API_SCENE_RUN) && instance.internet.strict(ip)
+            && (!connect || instance.internet.pinRequired(ip))) {
+            respond(http, ctx, req, 403, error(connect ? "pin_required" : "insecure_transport"), origin, 0);
             return;
         }
         var tokens = HttpHandler.bearerTokens(req);

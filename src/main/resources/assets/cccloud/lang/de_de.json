@@ -350,7 +350,8 @@
   "cccloud.connect.release_failed": "%s konnte nicht freigegeben werden: %s",
   "cccloud.connect.online": "Dein Dashboard ist online: %s",
   "cccloud.connect.bundle_unknown": "Der Relay hat für diesen CC: Cloud-Build kein Dashboard; Browser sehen \"CC: Cloud aktualisieren\". Veröffentlichte Versionen funktionieren.",
-  "cccloud.connect.pin_rule": "Jeder neue Browser braucht weiterhin deine Freigabe im Spiel, und Steueraktionen aus dem Internet brauchen die Mainframe-PIN.",
+  "cccloud.connect.approval_rule": "Jeder neue Browser braucht weiterhin deine Freigabe im Spiel.",
+  "cccloud.connect.pin_rule": "internetRequirePin ist an: Steuer-Aktionen aus dem Internet brauchen die Mainframe-PIN.",
   "cccloud.connect.without_pin": "%s Mainframe(s) haben keine PIN und lassen sich aus dem Internet nur ansehen. Schau einen an und setze eine PIN: %s",
   "cccloud.connect.switch_off": "Ausschalten: %s · Namen zurückgeben: %s",
   "cccloud.connect.refused": "Der Relay hat %s abgelehnt: %s",
@@ -933,5 +934,8 @@
   "cccloud.internet.status.modes": "Modi: %s (unsicher, einfach) · %s (nur LAN)",
   "cccloud.internet.join.title": "[CC: Cloud] Das Dashboard ist per einfachem HTTP aus dem Internet erreichbar – ausschalten: %s",
   "cccloud.internet.owner_no_pin": "[CC: Cloud] Dein Mainframe %s hat keine PIN – Steuern aus dem Internet ist aus, bis du eine setzt: schau es an und /cccloud pin set <PIN> (oder im Sicherheits-Tab).",
-  "cccloud.configuration.internetRequirePin": "Einfaches HTTP: Steuern aus dem Internet nur mit PIN"
+  "cccloud.configuration.internetRequirePin": "Einfaches HTTP: Steuern aus dem Internet nur mit PIN",
+  "cccloud.internet.connect.title": "[CC: Cloud] Zugriff aus dem Internet: CC: Cloud Connect",
+  "cccloud.internet.status.connect": "Empfohlen: %s (HTTPS-Adresse, ohne Portfreigabe)",
+  "cccloud.connect.error.pending": "warte, bis der Dashboard-Server auf Connect umgestellt hat"
 }

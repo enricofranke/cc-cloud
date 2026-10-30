@@ -350,7 +350,8 @@
   "cccloud.connect.release_failed": "Could not release %s: %s",
   "cccloud.connect.online": "Your dashboard is online: %s",
   "cccloud.connect.bundle_unknown": "The relay has no dashboard for this CC: Cloud build; browsers see \"Update CC: Cloud\". Released versions work.",
-  "cccloud.connect.pin_rule": "Every new browser still needs your approval in game, and control actions from the internet need the mainframe PIN.",
+  "cccloud.connect.approval_rule": "Every new browser still needs your approval in game.",
+  "cccloud.connect.pin_rule": "internetRequirePin is on: control actions from the internet need the mainframe PIN.",
   "cccloud.connect.without_pin": "%s mainframe(s) have no PIN and can only be watched from the internet. Look at one and set a PIN: %s",
   "cccloud.connect.switch_off": "Turn it off: %s · give the name back: %s",
   "cccloud.connect.refused": "The relay refused %s: %s",
@@ -933,5 +934,8 @@
   "cccloud.internet.status.modes": "Modes: %s (insecure, easy) · %s (LAN only)",
   "cccloud.internet.join.title": "[CC: Cloud] The dashboard is open to the internet over plain HTTP – switch off: %s",
   "cccloud.internet.owner_no_pin": "[CC: Cloud] Your mainframe %s has no PIN – control from the internet is off until you set one: look at it and /cccloud pin set <pin> (or the Security tab).",
-  "cccloud.configuration.internetRequirePin": "Plain HTTP: control from the internet only with the PIN"
+  "cccloud.configuration.internetRequirePin": "Plain HTTP: control from the internet only with the PIN",
+  "cccloud.internet.connect.title": "[CC: Cloud] Internet access: CC: Cloud Connect",
+  "cccloud.internet.status.connect": "Recommended: %s (HTTPS address, no port forwarding)",
+  "cccloud.connect.error.pending": "waiting for the dashboard server to switch to Connect"
 }

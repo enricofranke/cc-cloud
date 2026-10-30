@@ -3,9 +3,7 @@ package ai.ezfox.cccloud.connect;
 import ai.ezfox.cccloud.CloudConfig;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
 import java.util.Locale;
-import net.neoforged.neoforge.common.ModConfigSpec;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -19,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 public record ConnectSettings(boolean enabled, String name, URI relay) {
     public static final String DEFAULT_RELAY = "wss://connect.cccloud.dev";
     /** The {@code internetAccess} value of this mode. */
-    public static final String MODE = "connect";
+    public static final String MODE = ai.ezfox.cccloud.web.internet.InternetMode.CONNECT.id();
 
     public static ConnectSettings fromConfig() {
         URI relay = relayUri(CloudConfig.get(CloudConfig.CONNECT_RELAY));
@@ -27,18 +25,9 @@ public record ConnectSettings(boolean enabled, String name, URI relay) {
             relay != null ? relay : URI.create(DEFAULT_RELAY));
     }
 
-    /** The configured {@code internetAccess} mode ("off" when the setting is missing). */
+    /** The configured {@code internetAccess} mode. */
     public static String internetAccess() {
-        try {
-            Object value = CloudConfig.SPEC.getValues().get(List.of("web", "internetAccess"));
-            if (value instanceof ModConfigSpec.ConfigValue<?> config) {
-                Object v = CloudConfig.SPEC.isLoaded() ? config.get() : config.getDefault();
-                if (v instanceof String s) return s.trim().toLowerCase(Locale.ROOT);
-            }
-        } catch (RuntimeException ignored) {
-            // config not built yet
-        }
-        return "off";
+        return CloudConfig.get(CloudConfig.INTERNET_ACCESS).trim().toLowerCase(Locale.ROOT);
     }
 
     /** The tunnel URL for {@code name}: {@code wss://connect.cccloud.dev/tunnel/<name>}. */

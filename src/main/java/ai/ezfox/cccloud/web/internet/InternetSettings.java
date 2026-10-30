@@ -26,6 +26,8 @@ import org.jspecify.annotations.Nullable;
 public record InternetSettings(InternetMode mode, boolean allowInternet, String publicUrl, @Nullable String domain, boolean strictPublic,
                                boolean requirePin, long publicTokenIdleMs, List<String> notes) {
     public static final long HOUR_MS = 60 * 60 * 1000L;
+    /** CC: Cloud Connect: a browser from the internet keeps its login as long as on the LAN (HTTPS, unlike plain HTTP). */
+    public static final long CONNECT_IDLE_MS = 30 * 24 * HOUR_MS;
     /** LAN only, nothing strict (unit tests and servers without the setting). */
     public static final InternetSettings OFF = new InternetSettings(InternetMode.OFF, false, "", null, false, 24 * HOUR_MS, List.of());
 
@@ -71,6 +73,10 @@ public record InternetSettings(InternetMode mode, boolean allowInternet, String 
                 String url = !configuredUrl.isEmpty() ? configuredUrl : domain != null && in.port() > 0 ? url(in.tls() ? "https" : "http", domain, in.port()) : "";
                 yield new InternetSettings(mode, true, url, domain, true, in.requirePin(), idle, notes);
             }
+            // TLS ends at the relay; the port keeps its own rule (LAN only unless webAllowInternet). The tunnel's browsers are
+            // internet addresses (stricter limits, lockout after wrong codes); the PIN only with internetRequirePin, as for
+            // http. HTTPS: logins keep the usual 30 days instead of plain HTTP's short idle time.
+            case CONNECT -> new InternetSettings(mode, in.allowInternet(), configuredUrl, domain, true, in.requirePin(), CONNECT_IDLE_MS, notes);
         };
     }
 

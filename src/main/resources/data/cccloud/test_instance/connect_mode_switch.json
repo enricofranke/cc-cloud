@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:internet",
+  "function": "cccloud:connect_mode_switch",
+  "max_ticks": 1200,
+  "structure": "cccloud:test_floor"
+}

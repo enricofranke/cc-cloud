@@ -67,6 +67,8 @@ public final class InternetAdvice {
                 lines.addAll(httpSteps(f));
                 lines.add(new Line(Style.COMMAND, "cccloud.internet.back_off", "/cccloud internet off"));
             }
+            // /cccloud internet connect reports itself (ConnectCommand)
+            case CONNECT -> lines.add(new Line(Style.TITLE, "cccloud.internet.connect.title"));
         }
         return lines;
     }
@@ -103,7 +105,13 @@ public final class InternetAdvice {
                 // only with internetRequirePin: the PIN-less mainframes (view-only from the internet), else no PIN topic
                 if (!f.withoutPin().isEmpty()) lines.add(new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
             }
+            // the address and the tunnel's state follow from ConnectCommand.statusLines; PIN-less mainframes only matter
+            // with internetRequirePin (the facts list them only then)
+            case CONNECT -> {
+                if (!f.withoutPin().isEmpty()) lines.add(new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
+            }
         }
+        lines.add(new Line(Style.COMMAND, "cccloud.internet.status.connect", "/cccloud internet connect"));
         lines.add(new Line(Style.COMMAND, "cccloud.internet.status.modes", "/cccloud internet http", "/cccloud internet off"));
         return lines;
     }

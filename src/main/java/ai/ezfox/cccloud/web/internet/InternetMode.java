@@ -11,9 +11,15 @@ public enum InternetMode {
     /** LAN only (default); the advanced keys decide everything, as before this setting existed. */
     OFF,
     /** Plain HTTP over the internet: insecure, with the extra protections of {@link InternetGuard}. */
-    HTTP;
+    HTTP,
+    /**
+     * CC: Cloud Connect ({@code ai.ezfox.cccloud.connect}): {@code https://<name>.cccloud.dev} through one outbound tunnel,
+     * no port forwarding. The dashboard port stays as the advanced keys say (LAN only by default); browsers from the
+     * internet get the internet-address rules of {@link InternetGuard} (PIN for every write).
+     */
+    CONNECT;
 
-    /** The config spelling: {@code off}, {@code http}. */
+    /** The config spelling: {@code off}, {@code http}, {@code connect}. */
     public String id() {
         return name().toLowerCase(Locale.ROOT);
     }
