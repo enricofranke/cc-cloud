@@ -307,6 +307,14 @@ export interface NetworkInfo {
   links: NetLink[];
   /** node id -> node ids from the mainframe to that node (both ends included) */
   routes: Record<string, string[]>;
+  /** wave 4: height range of each dimension on the map and whether it has a roof (Nether, Undergarden) */
+  dims?: Record<string, DimInfo>;
+}
+
+export interface DimInfo {
+  minY: number;
+  maxY: number;
+  ceiling?: boolean;
 }
 
 export interface MainframeInfo {

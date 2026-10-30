@@ -8,7 +8,7 @@ import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch, computed } from "@preact/signals";
-import { WIDGET_TYPES, type CardSettingsInfo, type ClaimsOverlay, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type CardSettingsInfo, type ClaimsOverlay, type DimInfo, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -1219,7 +1219,13 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       const path = v.filter((x): x is string => typeof x === "string" && ids.has(x)).slice(0, 9);
       if (path.length) routes[k] = path;
     }
-  return { nodes, links, routes };
+  const dims: Record<string, DimInfo> = {};
+  if (raw.dims && typeof raw.dims === "object")
+    for (const [k, v] of Object.entries(raw.dims as Record<string, any>).slice(0, 64)) {
+      if (!/^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(k) || k.length > 64 || !v || !fin(v.minY) || !fin(v.maxY) || v.maxY <= v.minY) continue;
+      dims[k] = { minY: Math.max(-2048, Math.round(v.minY)), maxY: Math.min(4096, Math.round(v.maxY)), ...(v.ceiling === true ? { ceiling: true } : {}) };
+    }
+  return { nodes, links, routes, ...(Object.keys(dims).length ? { dims } : {}) };
 }
 
 const fin = (v: unknown) => typeof v === "number" && Number.isFinite(v);

@@ -26,6 +26,7 @@ import {
   TREE_DY,
   TYPE_LABEL,
   dimLabel,
+  dimIcon,
   dimsOf,
   findLink,
   gridStep,
@@ -51,6 +52,7 @@ import { timeAgo, pushToast } from "../lib/ui.ts";
 import { PanZoom, type View } from "./PanZoom.tsx";
 import { TILE, TileStore, medianY, tileKey, tilePath, tilesFor, type Layer } from "../lib/maptiles.ts";
 import { PixelIcon } from "../components/PixelIcon.tsx";
+import { dimHasCeiling, dimRange } from "../lib/dims.ts";
 import { Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
 import { Card } from "../components/Card.tsx";
@@ -931,11 +933,18 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
   // map tiles (operator+: positions are sensitive); one store per mainframe connection
   const store = useMemo(() => new TileStore(conn.baseUrl, conn.token), [conn]);
   useEffect(() => () => store.dispose(), [store]);
-  const [layer, setLayer] = useState<Layer | "off">("surface");
+  // wave 4: each dimension's own height range; dimensions with a roof (Nether, Undergarden) start on a slice,
+  // because their surface map would only show the roof
+  const dimInfo = activeDim ? net?.dims?.[activeDim] : undefined;
+  const range = dimRange(activeDim ?? "", dimInfo);
+  const ceiling = dimHasCeiling(activeDim ?? "", dimInfo);
+  const [layerPick, setLayer] = useState<Layer | "off" | null>(null);
+  const layer: Layer | "off" = layerPick ?? (ceiling ? "slice" : "surface");
   const dimYs = (net?.nodes ?? []).filter((n) => n.dim === (dims.includes(dim) ? dim : dims[0]) && n.pos).map((n) => n.pos!.y);
   const [sliceY, setSliceY] = useState<number | null>(null);
   const [sliceDraft, setSliceDraft] = useState<number | null>(null);
-  const yNow = sliceY ?? medianY(dimYs);
+  const clampY = (y: number) => Math.max(range.minY, Math.min(range.maxY, Math.round(y)));
+  const yNow = clampY(sliceY ?? medianY(dimYs));
   useEffect(() => {
     if (sliceDraft === null) return;
     const t = setTimeout(() => setSliceY(sliceDraft), 280);
@@ -981,7 +990,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           budget: isPhone ? 150_000 : 450_000,
         }
       : null;
-  const defaultClip = (mfNode?.pos?.y ?? 64) + 5;
+  const defaultClip = clampY((mfNode?.pos?.y ?? 64) + 5);
   const counts = statusCounts(net);
   const used = new Set(net.nodes.map((n) => [parentOf(net, n.id), n.id].sort().join("|")));
   const weak = net.links.filter((l) => l.kind === "radio" && !l.legacy && (l.weak || l.signal < 0.15) && used.has([l.a, l.b].sort().join("|")));
@@ -1044,8 +1053,21 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
         <div class="net-toolbar sub">
           <div class="dim-tabs" role="tablist" aria-label="Dimension">
             {dims.map((d) => (
-              <button key={d} type="button" role="tab" aria-selected={d === activeDim} class={`dim-tab ${d === activeDim ? "on" : ""}`} onClick={() => setDim(d)}>
-                {dimLabel(d)}
+              <button
+                key={d}
+                type="button"
+                role="tab"
+                aria-selected={d === activeDim}
+                class={`dim-tab ${d === activeDim ? "on" : ""}`}
+                title={d}
+                onClick={() => {
+                  setDim(d);
+                  setSliceY(null);
+                  setSliceDraft(null);
+                  setClipY(null);
+                }}
+              >
+                <PixelIcon name={dimIcon(d)} size={12} class="dim-icon" /> {dimLabel(d)}
               </button>
             ))}
           </div>
@@ -1055,7 +1077,15 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
               <div class="map-layer">
                 <div class="seg-ctl seg-s" role="radiogroup" aria-label="Map background">
                   {(["surface", "slice", "off"] as const).map((l) => (
-                    <button key={l} type="button" role="radio" aria-checked={layer === l} class={layer === l ? "on" : ""} onClick={() => setLayer(l)}>
+                    <button
+                      key={l}
+                      type="button"
+                      role="radio"
+                      aria-checked={layer === l}
+                      class={layer === l ? "on" : ""}
+                      title={l === "surface" && ceiling ? "This dimension has a roof: the surface map shows the top of it" : undefined}
+                      onClick={() => setLayer(l)}
+                    >
                       {l === "surface" ? "Surface" : l === "slice" ? "Slice" : "No map"}
                     </button>
                   ))}
@@ -1065,8 +1095,8 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
                     <span>Y {sliceDraft ?? yNow}</span>
                     <input
                       type="range"
-                      min={-64}
-                      max={320}
+                      min={range.minY}
+                      max={range.maxY}
                       step={1}
                       value={sliceDraft ?? yNow}
                       aria-label="Slice height (Y)"
@@ -1117,7 +1147,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
                 {clipOn && (
                   <label class="slice-y small">
                     <span>Y {clipY ?? defaultClip}</span>
-                    <input type="range" min={-64} max={320} value={clipY ?? defaultClip} aria-label="Cut everything above this height" onInput={(e) => setClipY(Number((e.target as HTMLInputElement).value))} />
+                    <input type="range" min={range.minY} max={range.maxY} value={clipY ?? defaultClip} aria-label="Cut everything above this height" onInput={(e) => setClipY(Number((e.target as HTMLInputElement).value))} />
                   </label>
                 )}
                 {voxStatus && voxelProgress(voxStatus) && (

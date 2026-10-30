@@ -639,7 +639,35 @@ public final class NetworkService {
             routes.add(e.getKey(), path);
         }
         json.add("routes", routes);
+        json.add("dims", dimensions(mainframe, nodes));
         return json;
+    }
+
+    /**
+     * Wave 4: the height range of every dimension on the map and whether it has a roof (Nether, Undergarden):
+     * {@code {"<dim>":{"minY","maxY","ceiling"?}}}, so the dashboard's slice and cut sliders fit modded dimensions
+     * (Aether II from y -32, All the Modium's The Beyond from -128 to 383, ...).
+     */
+    static JsonObject dimensions(CloudMainframeBlockEntity mainframe, JsonArray nodes) {
+        var dims = new JsonObject();
+        var level = mainframe.getLevel();
+        var server = level == null ? null : level.getServer();
+        if (server == null) return dims;
+        var seen = new java.util.TreeSet<String>();
+        for (var e : nodes) {
+            var d = e.getAsJsonObject().get("dim");
+            if (d != null && d.isJsonPrimitive()) seen.add(d.getAsString());
+        }
+        for (String id : seen) {
+            var at = ai.ezfox.cccloud.map.MapTileService.level(server, id);
+            if (at == null) continue;
+            var o = new JsonObject();
+            o.addProperty("minY", at.getMinY());
+            o.addProperty("maxY", at.getMaxY());
+            if (at.dimensionType().hasCeiling()) o.addProperty("ceiling", true);
+            dims.add(id, o);
+        }
+        return dims;
     }
 
     /** Above this many devices the map leaves out the links a device does not use (count in {@code unusedLinks}). */

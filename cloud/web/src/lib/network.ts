@@ -1,5 +1,6 @@
 // v0.4 network map: pure helpers (tree layout, signal classes, labels), unit-tested.
 import type { ClaimsOverlay, NetLink, NetNode, NetworkInfo, NodeStatus, NodeType, Uplink, Waystone } from "./types.ts";
+import { DIM_ORDER, dimLabel as dimLabelOf } from "./dims.ts";
 
 export const WEAK_SIGNAL = 0.15;
 
@@ -75,10 +76,7 @@ export function signalBars(signal: number) {
   return signal >= 0.75 ? 4 : signal >= 0.5 ? 3 : signal >= WEAK_SIGNAL ? 2 : signal > 0 ? 1 : 0;
 }
 
-export function dimLabel(dim: string) {
-  const known: Record<string, string> = { "minecraft:overworld": "Overworld", "minecraft:the_nether": "Nether", "minecraft:the_end": "End" };
-  return known[dim] ?? dim.replace(/^[a-z0-9_.-]+:/, "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+export { dimLabel, dimIcon } from "./dims.ts";
 
 export const linkKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
@@ -216,9 +214,8 @@ function layoutTreeTB(net: NetworkInfo): { nodes: TreeNode[]; edges: { from: str
 
 // --------------------------------------------------------------------- map
 export function dimsOf(net: NetworkInfo) {
-  const order = ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"];
   const dims = [...new Set(net.nodes.map((n) => n.dim))];
-  return dims.sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99) || a.localeCompare(b));
+  return dims.sort((a, b) => (DIM_ORDER.indexOf(a) + 1 || 99) - (DIM_ORDER.indexOf(b) + 1 || 99) || dimLabelOf(a).localeCompare(dimLabelOf(b)));
 }
 
 /** Bounds of a dimension in map coordinates (x → x, z → y), with some padding. */

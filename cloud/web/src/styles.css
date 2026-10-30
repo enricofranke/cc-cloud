@@ -4355,8 +4355,17 @@ button.pwr:hover {
 .dim-tabs {
   display: flex;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .dim-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid var(--line-2);
@@ -8823,4 +8832,12 @@ body.rz-nwse * {
 }
 .ed-peripheral .ed-row {
   margin-top: 8px;
+}
+
+.dim-tab .dim-icon {
+  opacity: 0.8;
+}
+.dim-tab.on .dim-icon {
+  opacity: 1;
+  color: var(--gold);
 }
