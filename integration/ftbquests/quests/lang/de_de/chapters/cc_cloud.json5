@@ -248,4 +248,25 @@
   "quest.6F2062FE67DC6DB7.quest_desc": [
     "Bau &eCloud-Displays&r zu einer Wand (bis 8 x 6) zusammen und zeig eine beliebige Dashboard-Karte oder Seite in deiner Basis.",
   ],
+  "quest.616D2EFD7671AD0D.title": "Cloud-Lampe",
+  "quest.616D2EFD7671AD0D.quest_subtitle": "&7Eine Lampe auf dem Handy",
+  "quest.616D2EFD7671AD0D.quest_desc": [
+    "Die &eCloud-Lampe&r leuchtet von selbst: setzen, mit der &eCloud Link Card&r erst den Mainframe und dann die Lampe anklicken. Sie erscheint im Dashboard als Schalter mit Helligkeitsregler.",
+    "",
+    "&7Kein Computer, kein Lua, keine Kanäle. Schleichen + Rechtsklick öffnet ihr Fenster (Name, Gruppe, Helligkeit).",
+  ],
+  "quest.1796B1E0C0692AFD.title": "Schalter und Taster",
+  "quest.1796B1E0C0692AFD.quest_subtitle": "&7Eine Karte pro Gruppe",
+  "quest.1796B1E0C0692AFD.quest_desc": [
+    "Ein &eCloud-Schalter&r arbeitet wie ein Hebel (an/aus oder analog 0-15), ein &eCloud-Taster&r gibt einen kurzen Impuls. Beide haften an jeder Blockseite.",
+    "",
+    "Gib Geräten in ihrem Fenster dieselbe &bGruppe&r: sie teilen sich eine Dashboard-Karte mit &aAlle an&r und &aAlle aus&r. Geräte ohne Gruppe landen auf der Karte \"Redstone\".",
+  ],
+  "quest.6AC23D41F0DB24CE.title": "Cloud-Sensor",
+  "quest.6AC23D41F0DB24CE.quest_subtitle": "&7Wenn die Tür aufgeht ...",
+  "quest.6AC23D41F0DB24CE.quest_desc": [
+    "Der &eCloud-Sensor&r liest das Redstone-Signal neben sich und zeigt es im Dashboard.",
+    "",
+    "Nutze ihn in einer &bRegel&r: \"wenn der Sensor an ist, dann Lampe an und Push-Nachricht senden\" - Automatisierung ohne eine Zeile Lua.",
+  ],
 }

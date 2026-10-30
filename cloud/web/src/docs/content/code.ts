@@ -278,6 +278,10 @@ export const RECIPES = {
   advancedRelay: byFile("advanced_cloud_relay"),
   enderRelay: byFile("ender_relay"),
   rsBridge: byFile("rs_cloud_bridge"),
+  cloudSwitch: byFile("cloud_switch"),
+  cloudButton: byFile("cloud_button"),
+  cloudLamp: byFile("cloud_lamp"),
+  cloudSensor: byFile("cloud_sensor"),
 };
 export interface GenRecipe {
   file: string;
@@ -296,6 +300,7 @@ export const RECIPE_GROUPS: { id: string; en: string; de: string; match: (r: Gen
   { id: "network", en: "Relays and cables", de: "Relays und Kabel", match: (r) => /relay|fiber/.test(r.result) },
   { id: "bridges", en: "Bridges", de: "Bridges", match: (r) => /bridge/.test(r.result) },
   { id: "devices", en: "Tablet, display, analyzer", de: "Tablet, Display, Analyzer", match: (r) => /tablet|display|analyzer/.test(r.result) },
+  { id: "redstone", en: "Redstone devices", de: "Redstone-Geräte", match: (r) => /cloud_(switch|button|lamp|sensor)$/.test(r.result) },
   { id: "upgrades", en: "Mainframe upgrades", de: "Mainframe-Upgrades", match: (r) => /upgrade_|quantum_core/.test(r.result) },
   { id: "misc", en: "Other", de: "Sonstiges", match: () => true },
 ];

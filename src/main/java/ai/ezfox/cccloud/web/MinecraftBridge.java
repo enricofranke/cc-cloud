@@ -241,6 +241,15 @@ public final class MinecraftBridge implements GameBridge {
         if (id == null) return "unknown_node";
         if (id.equals(mainframeId)) return "not_allowed"; // the mainframe cannot be unlinked
         var section = CloudNetwork.section(id);
+        var redstone = ai.ezfox.cccloud.rsdevice.RsDevices.loaded(id);
+        if (redstone != null && redstone.getLink() != null && redstone.getLink().id().equals(mainframeId)) {
+            // a Cloud Redstone device: no section of its own (it sits on a card of the mainframe)
+            String name = redstone.record().displayName();
+            redstone.unlink(device.playerName() + " (web)");
+            WebAuthData.access(server).audit(mainframeId, device.playerName() + " unlinked " + name + " (network map)");
+            ai.ezfox.cccloud.network.NetworkService.markDirty();
+            return null;
+        }
         if (section == null || section.getLink() == null || !section.getLink().id().equals(mainframeId)) {
             for (var relay : CloudNetwork.relays()) if (relay.relayId().equals(id)) return "not_allowed"; // relays are not linked
             return "unknown_node";
@@ -265,6 +274,22 @@ public final class MinecraftBridge implements GameBridge {
                 + (override.seconds() == null ? " until reset" : " for " + override.seconds() + " s")));
         }
         return error;
+    }
+
+    @Override
+    public @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
+        String error = check(device, mainframeId, AccessGate.Kind.RS_DEVICE.perm);
+        if (error != null) return error;
+        var target = ai.ezfox.cccloud.rsdevice.RsDevices.loaded(message.deviceId());
+        if (target == null || target.getLink() == null || !target.getLink().id().equals(mainframeId)) {
+            // known but its chunk is not loaded: the block holds the name, so it can only change while loaded
+            return ai.ezfox.cccloud.rsdevice.RsDevices.device(mainframeId, message.deviceId()) != null ? "unloaded" : "unknown_node";
+        }
+        String before = target.record().displayName();
+        ai.ezfox.cccloud.rsdevice.RsDevices.rename(target, message.name(), message.group());
+        WebAuthData.access(server).audit(mainframeId, device.playerName() + " renamed redstone device " + before + " → "
+            + target.record().displayName() + (target.group().isEmpty() ? "" : " (" + target.group() + ")"));
+        return null;
     }
 
     @Override

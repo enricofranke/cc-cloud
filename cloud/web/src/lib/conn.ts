@@ -138,6 +138,7 @@ export const REJECT_TEXT: Record<string, string> = {
   timeout: "No answer from the server.",
   unconfirmed: "No answer from the computer yet – is the program running?",
   unloaded: "Its chunk is not loaded – nobody is nearby. Keep it loaded (e.g. FTB Chunks force-load) to control it from here.",
+  device_offline: "This redstone device has no connection to the mainframe (out of range or over capacity).",
   disconnected: "Not connected to the server.",
   read_only: "This device is read-only.",
   no_power: "The mainframe has no power.",
@@ -763,6 +764,24 @@ export class MainframeConn {
     });
   }
 
+  /**
+   * Cloud Redstone devices: renames a device and/or moves it to another group (= card, "" = the automatic
+   * "Redstone" card) ({"t":"rs_device"} → rs_result). Needs network.link.
+   */
+  redstoneDevice(deviceId: string, change: { name?: string; group?: string }, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("network.link");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "rs_device", reqId, deviceId, ...change })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
   /** v0.5 E: opens (or refreshes) the terminal of the computer behind a card. Frames arrive in `terminals`. */
   termOpen(uplinkId: string, pin?: string, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
@@ -1072,9 +1091,10 @@ export function normalizePower(p: any): PowerInfo | undefined {
 }
 
 const ROLES = ["viewer", "operator", "admin", "owner", "share"];
-const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
+const RS_TYPES = ["cloud_switch", "cloud_button", "cloud_lamp", "cloud_sensor"];
+const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
 const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range", "over_capacity"];
-const DEVICE_TYPES = ["uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge"];
+const DEVICE_TYPES = ["uplink", "advanced_uplink", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
 
 /** Validates the untrusted network graph (v0.4 map). */
 const FALLBACK_NAME: Record<string, string> = {
@@ -1086,6 +1106,10 @@ const FALLBACK_NAME: Record<string, string> = {
   advanced_uplink: "Advanced Uplink",
   bridge: "Bridge",
   device: "Unloaded device",
+  cloud_switch: "Cloud Switch",
+  cloud_button: "Cloud Button",
+  cloud_lamp: "Cloud Lamp",
+  cloud_sensor: "Cloud Sensor",
 };
 
 export function normalizeNetwork(raw: any): NetworkInfo | null {
@@ -1117,6 +1141,7 @@ export function normalizeNetwork(raw: any): NetworkInfo | null {
       ...(typeof n.hops === "number" && n.hops >= 0 ? { hops: Math.min(16, Math.round(n.hops)) } : {}),
       ...(flags?.length ? { flags } : {}),
       ...(n.via === "cable" || n.via === "fiber" ? { via: n.via } : {}),
+      ...(n.redstone === true ? { redstone: true, group: typeof n.group === "string" ? n.group.slice(0, 32) : "" } : {}),
       ...(n.capacity && typeof n.capacity === "object"
         ? {
             capacity: {
@@ -1217,6 +1242,7 @@ function normalizeUplink(u: any): Uplink | null {
     title: typeof u.title === "string" ? u.title : "",
     online: u.online !== false,
     mode: u.mode === "auto" || u.mode === "lua" || u.mode === "direct" ? u.mode : undefined,
+    ...(typeof u.template === "string" && /^[a-z0-9_]{1,32}$/.test(u.template) ? { template: u.template } : {}),
     ...(u.loaded === false ? { loaded: false, online: false } : {}),
     ...(u.loaded === false && typeof u.lastSeen === "number" && Number.isFinite(u.lastSeen) ? { lastSeen: u.lastSeen } : {}),
     widgets: widgets

@@ -30,6 +30,7 @@ Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Disc
 | | |
 |---|---|
 | 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11, plus generic Energy and Tank cards for everything else. |
+| 💡 **Redstone devices** | Cloud Switch, Button, Lamp and Sensor: place, link with the Link Card, done – switch lamps and doors from your phone, react to a sensor in rules. Devices with the same group share one card. |
 | 📦 **AE2 & Refined Storage** | ME / RS Cloud Bridges: browse and search the whole network, item details with history, craft previews with missing items, CPUs and jobs, auto-stock rules that craft when stock runs low. |
 | 🧩 **Custom dashboards** | A Lua API (`cloud.button`, `cloud.gauge`, `cloud.chart`, pages, groups …) and the `cloud.ui` helper library. Arrange the live cards in the WYSIWYG layout editor – drag, resize, styles, undo. |
 | ⚙️ **Automation** | No-code rules (when → if → then) that run on the server, push notifications to Discord, ntfy or webhooks, long-term history charts with CSV export. |
@@ -78,11 +79,13 @@ Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Disc
 | **Cloud Uplink / Advanced Cloud Uplink** | Flat plate like a CC modem. Stick it on a computer (Lua or automatic card) or directly on a machine. |
 | **ME / RS Cloud Bridge** | Joins your AE2 or Refined Storage network (only registered when the mod is installed). |
 | **Cloud Relay / Advanced / Ender Relay** | Extend the range of your network; Ender Relays link dimensions. |
+| **Cloud Switch / Button / Lamp / Sensor** | Small redstone devices without a computer: a lever, a button, a dimmable lamp and a signal reader on the dashboard. |
 
 <p align="center">
   <img src="preview/renders/uplinks.png" width="760" alt="Cloud Uplinks">
   <img src="preview/renders/bridges.png" width="760" alt="Cloud Bridges">
   <img src="preview/renders/relays.png" width="760" alt="Cloud Relays">
+  <img src="preview/renders/redstone_scene.png" width="760" alt="Cloud Redstone devices">
 </p>
 
 ## Quick start

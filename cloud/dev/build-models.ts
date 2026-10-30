@@ -265,6 +265,11 @@ export const KINDS: Record<string, { block: string; props: Record<string, string
   uplink: { block: "cloud_uplink", props: { facing: "down", direct: "false", mount: "full" }, statuses: ["online", "connecting", "offline"] },
   advanced_uplink: { block: "advanced_cloud_uplink", props: { facing: "down", direct: "false", mount: "full" }, statuses: ["online", "connecting", "offline"] },
   bridge: { block: "me_cloud_bridge", props: {}, statuses: ["online", "connecting", "offline"] },
+  // Cloud Redstone devices: plates lying on the ground (facing down), the lamp lit (no status of its own)
+  cloud_switch: { block: "cloud_switch", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },
+  cloud_button: { block: "cloud_button", props: { facing: "down", powered: "false" }, statuses: ["online", "connecting", "offline"] },
+  cloud_sensor: { block: "cloud_sensor", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },
+  cloud_lamp: { block: "cloud_lamp", props: { level: "15" }, statuses: ["online"] },
 };
 
 export function generate(): GenModels {

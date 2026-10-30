@@ -31,6 +31,7 @@ const ICONS: Record<string, string> = {
   start: "cccloud:cloud_mainframe",
   "cc-basics": "computercraft:computer_advanced",
   dashboard: "cccloud:cloud_uplink",
+  redstone: "cccloud:cloud_lamp",
   lua: "computercraft:computer_advanced",
   "ui-library": "cccloud:cloud_uplink",
   network: "cccloud:cloud_relay",

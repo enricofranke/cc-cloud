@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Sicherheit & Hosting"
-  position: 13
+  position: 14
   icon: cccloud:quantum_core
 ---
 

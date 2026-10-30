@@ -161,6 +161,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.LayoutSet layout -> layout(current, layout);
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
+            case ClientMessages.RedstoneDevice device -> redstoneDevice(current, device);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
             case ClientMessages.Production request -> production(current, request);
@@ -608,6 +609,33 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             });
         } catch (RejectedExecutionException e) {
             sendTypedResult("rs_result", override.reqId(), "offline");
+        }
+    }
+
+    /** Cloud Redstone device rename / regroup (network.link): {@code rs_result}; the cards and the map follow. */
+    private void redstoneDevice(AuthStore.Device current, ClientMessages.RedstoneDevice message) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.RS_DEVICE);
+        if (denied != null) {
+            sendTypedResult("rs_result", message.reqId(), denied);
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendTypedResult("rs_result", message.reqId(), "rate_limited");
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.redstoneDevice(current, mainframeId, message);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while renaming a redstone device from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendTypedResult("rs_result", message.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendTypedResult("rs_result", message.reqId(), "offline");
         }
     }
 

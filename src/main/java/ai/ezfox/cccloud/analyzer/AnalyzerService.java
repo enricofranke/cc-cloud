@@ -59,7 +59,13 @@ public final class AnalyzerService {
             return true;
         }
         for (var bridge : BridgeRegistry.ITEMS) if (item == bridge.get()) return true;
-        return false;
+        return isRedstoneDevice(item);
+    }
+
+    /** Cloud Switch / Button / Lamp / Sensor items (placement preview with the redstone device range). */
+    public static boolean isRedstoneDevice(net.minecraft.world.item.Item item) {
+        return item == ModRegistry.CLOUD_SWITCH_ITEM.get() || item == ModRegistry.CLOUD_BUTTON_ITEM.get() || item == ModRegistry.CLOUD_LAMP_ITEM.get()
+            || item == ModRegistry.CLOUD_SENSOR_ITEM.get();
     }
 
     static boolean holding(ServerPlayer player) {
@@ -103,8 +109,8 @@ public final class AnalyzerService {
             names.put(id.toString(), mainframe.getDisplayName());
             statuses.put(id.toString(), "no_power".equals(mainframe.reason()) ? "no_power" : mainframe.isOnline() && mainframe.isEnabled() ? "online" : "offline");
             for (var device : result.devices()) {
-                var section = CloudNetwork.section(UUID.fromString(device.id()));
-                if (section != null && !section.getTitle().isEmpty()) names.put(device.id(), section.getTitle());
+                String name = NetworkService.deviceName(id, device.id(), null);
+                if (!name.isEmpty()) names.put(device.id(), name);
             }
             networks.add(new AnalyzerGeometry.Network(id.toString(), mainframe.getDisplayName(), result, names, statuses));
         }
@@ -118,6 +124,7 @@ public final class AnalyzerService {
         map.put("uplink", new int[]{CloudConfig.get(CloudConfig.RANGE_UPLINK)});
         map.put("advanced_uplink", new int[]{CloudConfig.get(CloudConfig.RANGE_ADVANCED_UPLINK)});
         map.put("bridge", new int[]{CloudConfig.get(CloudConfig.RANGE_BRIDGE)});
+        map.put("redstone", new int[]{CloudConfig.get(CloudConfig.RANGE_REDSTONE_DEVICE)});
         for (var type : RelayType.values()) map.put(type.nodeType.id, new int[]{type.nodeRange(), type.deviceRange()});
         return map;
     }

@@ -248,4 +248,25 @@
   "quest.6F2062FE67DC6DB7.quest_desc": [
     "Build &eCloud Displays&r into a wall (up to 8 x 6) and show any dashboard card or page in your base.",
   ],
+  "quest.616D2EFD7671AD0D.title": "Cloud Lamp",
+  "quest.616D2EFD7671AD0D.quest_subtitle": "&7A lamp on your phone",
+  "quest.616D2EFD7671AD0D.quest_desc": [
+    "The &eCloud Lamp&r lights up by itself: place it, right-click the mainframe with the &eCloud Link Card&r, then the lamp. It shows up on the dashboard as a switch with a brightness slider.",
+    "",
+    "&7No computer, no Lua, no channels. Sneak + right-click opens its screen (name, group, brightness).",
+  ],
+  "quest.1796B1E0C0692AFD.title": "Switches and Buttons",
+  "quest.1796B1E0C0692AFD.quest_subtitle": "&7One card per group",
+  "quest.1796B1E0C0692AFD.quest_desc": [
+    "A &eCloud Switch&r works like a lever (on/off or analog 0-15), a &eCloud Button&r gives a short pulse. Both stick to any side of a block.",
+    "",
+    "Give devices the same &bgroup&r in their screen: they share one dashboard card, with &aAll on&r and &aAll off&r. Devices without a group go to the card \"Redstone\".",
+  ],
+  "quest.6AC23D41F0DB24CE.title": "Cloud Sensor",
+  "quest.6AC23D41F0DB24CE.quest_subtitle": "&7When the door opens ...",
+  "quest.6AC23D41F0DB24CE.quest_desc": [
+    "The &eCloud Sensor&r reads the redstone signal next to it and shows it on the dashboard.",
+    "",
+    "Use it in a &brule&r: \"when the sensor is on, then turn on the lamp and send a push notification\" - automation without a single line of Lua.",
+  ],
 }

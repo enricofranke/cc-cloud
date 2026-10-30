@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Rules, scenes & notifications"
-  position: 7
+  position: 8
 ---
 
 # Rules, scenes, notifications and history
@@ -27,6 +27,8 @@ Open **Rules** in the dashboard settings (⚙). A rule reads like a sentence: **
 - Lua: `cloud_mainframe.getRules()` and `setRuleEnabled(id, enabled)`.
 
 **Example:** When *Core temperature (Fission Reactor)* is above 900 – then set redstone back of *Reactor computer* to 15 and alert “Reactor hot” (warning).
+
+**Without a computer:** a [Cloud Sensor](redstone.md) next to a pressure plate – when *Door sensor* is above 0, then *Porch light* on and a push “Someone is at the door”.
 
 ## Scenes
 

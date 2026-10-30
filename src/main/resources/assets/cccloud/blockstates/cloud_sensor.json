@@ -1,0 +1,142 @@
+{
+  "variants": {
+    "facing=north,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online"
+    },
+    "facing=north,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting"
+    },
+    "facing=north,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline"
+    },
+    "facing=north,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online"
+    },
+    "facing=north,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting"
+    },
+    "facing=north,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline"
+    },
+    "facing=east,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online",
+      "y": 90
+    },
+    "facing=east,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting",
+      "y": 90
+    },
+    "facing=east,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline",
+      "y": 90
+    },
+    "facing=east,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online",
+      "y": 90
+    },
+    "facing=east,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting",
+      "y": 90
+    },
+    "facing=east,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline",
+      "y": 90
+    },
+    "facing=south,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online",
+      "y": 180
+    },
+    "facing=south,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting",
+      "y": 180
+    },
+    "facing=south,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline",
+      "y": 180
+    },
+    "facing=south,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online",
+      "y": 180
+    },
+    "facing=south,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting",
+      "y": 180
+    },
+    "facing=south,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline",
+      "y": 180
+    },
+    "facing=west,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online",
+      "y": 270
+    },
+    "facing=west,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting",
+      "y": 270
+    },
+    "facing=west,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline",
+      "y": 270
+    },
+    "facing=west,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online",
+      "y": 270
+    },
+    "facing=west,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting",
+      "y": 270
+    },
+    "facing=west,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline",
+      "y": 270
+    },
+    "facing=up,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online",
+      "x": 270
+    },
+    "facing=up,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting",
+      "x": 270
+    },
+    "facing=up,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline",
+      "x": 270
+    },
+    "facing=up,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online",
+      "x": 270
+    },
+    "facing=up,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting",
+      "x": 270
+    },
+    "facing=up,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline",
+      "x": 270
+    },
+    "facing=down,powered=false,status=online": {
+      "model": "cccloud:block/cloud_sensor_online",
+      "x": 90
+    },
+    "facing=down,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_connecting",
+      "x": 90
+    },
+    "facing=down,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_sensor_offline",
+      "x": 90
+    },
+    "facing=down,powered=true,status=online": {
+      "model": "cccloud:block/cloud_sensor_lit_online",
+      "x": 90
+    },
+    "facing=down,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_sensor_lit_connecting",
+      "x": 90
+    },
+    "facing=down,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_sensor_lit_offline",
+      "x": 90
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "cccloud:block/cloud_switch_off_online"
+  }
+}

@@ -22,7 +22,7 @@ export type OpValue = z.infer<typeof opValue>;
 
 // ---- layout document (docs/SPEC.md "Layout schema") ----
 export const ACCENTS = ["gold", "cyan", "green", "yellow", "red", "purple", "orange", "gray"] as const;
-export const ICONS = ["home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick"] as const;
+export const ICONS = ["home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick", "lever", "button", "lamp", "sensor"] as const;
 const layoutKey = z.string().min(1).max(160);
 const pagesSchema = z
   .array(z.strictObject({ id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/), title: z.string().min(1).max(48), icon: z.enum(ICONS).optional() }))
@@ -116,6 +116,8 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("production"), reqId: z.string().min(1).max(64), op: z.enum(["overview", "item", "pin", "unpin"]) }).passthrough(),
   // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
+  // Cloud Redstone devices: rename / regroup (network.link); plain text ≤ 32, at least one of name/group
+  z.object({ t: z.literal("rs_device"), reqId: z.string().min(1).max(64), deviceId: entityId, name: z.string().max(32).optional(), group: z.string().max(32).optional() }).strict(),
   z.object({
     t: z.literal("query"),
     reqId: z.string().min(1).max(64),

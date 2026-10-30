@@ -837,3 +837,72 @@ def mounts_preview(a):
 
 if __name__ == "__main__" and os.environ.get("MOUNTS"):
     mounts_preview(Assets(DEFAULT_CC))
+
+
+# --------------------------------------------------------------------------- Cloud Redstone devices preview
+RS_PLATE_MODELS = {"switch": ("cloud_switch_off", "cloud_switch_on"), "button": ("cloud_button", "cloud_button_pressed"),
+                   "sensor": ("cloud_sensor", "cloud_sensor_lit")}
+
+
+def stone_quads(a, pos):
+    """A plain support block for the scenes (the plates' own grey body texture, no vanilla assets needed)."""
+    tex = a.texture("cccloud:block/redstone_plate")
+    uv = np.array([(12, 0), (16, 0), (16, 4), (12, 4)], float) / 16.0
+    off = np.array(pos, float) * 16.0
+    quads = []
+    for d, corners in FACE_CORNERS.items():
+        pts = np.array([[16.0 * ix, 16.0 * iy, 16.0 * iz] for (ix, iy, iz) in corners]) + off
+        quads.append(Quad(pts, uv, tex, 0))
+    return quads
+
+
+def rs_plate_quads(a, kind, on=False, status="online", facing="north", pos=(0, 0, 0)):
+    x, y = FACING6[facing]
+    return model_quads(a, f"cccloud:block/{RS_PLATE_MODELS[kind][1 if on else 0]}_{status}", blockstate_transform(x, y, pos))
+
+
+def redstone_preview(a):
+    os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
+    S = 300
+    close = dict(center=np.array([8, 8, 1.5]), zoom=S * 0.86 / 13)
+    shots = []
+    for kind in RS_PLATE_MODELS:
+        for on in (False, True):
+            shots.append(label(render(rs_plate_quads(a, kind, on), S, yaw=330, pitch=25, **close),
+                               f"{kind} {'on' if on else 'off'}"))
+    for kind in RS_PLATE_MODELS:
+        shots.append(label(render(rs_plate_quads(a, kind, True), S, yaw=330, pitch=25, night=True, **close), f"{kind} on, night"))
+    for kind, st in (("switch", "connecting"), ("sensor", "offline"), ("button", "connecting")):
+        shots.append(label(render(rs_plate_quads(a, kind, False, st), S, yaw=0, pitch=0, night=True, **close), f"{kind} {st} (LED), night"))
+    for step in ("off", "dim", "mid", "on"):
+        shots.append(label(render(model_quads(a, f"cccloud:block/cloud_lamp_{step}"), S, yaw=200, pitch=25), f"lamp {step}"))
+    for step in ("off", "dim", "mid", "on"):
+        shots.append(label(render(model_quads(a, f"cccloud:block/cloud_lamp_{step}"), S, yaw=200, pitch=25, night=True), f"lamp {step}, night"))
+    for item, models in (("switch", ["cccloud:block/cloud_switch_off_online"]), ("button", ["cccloud:block/cloud_button_online"]),
+                         ("sensor", ["cccloud:block/cloud_sensor_online"]), ("lamp", ["cccloud:block/cloud_lamp_on"])):
+        shots.append(label(item_render(a, models, S), f"{item} item (GUI)"))
+    grid(shots, 6).save(os.path.join(HERE, "renders", "redstone.png"))
+
+    # in the world: a wall with a switch, a button and a sensor on the front, a switch on top and one hanging
+    # below a block, and a row of lamps at every light step
+    q = []
+    for x in range(3):
+        q += stone_quads(a, (x, 0, 0))
+    q += stone_quads(a, (1, 2, 0))
+    q += rs_plate_quads(a, "switch", True, facing="north", pos=(0, 0, 1))
+    q += rs_plate_quads(a, "button", False, facing="north", pos=(1, 0, 1))
+    q += rs_plate_quads(a, "sensor", True, facing="north", pos=(2, 0, 1))
+    q += rs_plate_quads(a, "switch", False, facing="down", pos=(0, 1, 0))
+    q += rs_plate_quads(a, "switch", True, facing="up", pos=(1, 1, 0))
+    wall = list(q)
+    for i, step in enumerate(("off", "dim", "mid", "on")):
+        q += model_quads(a, f"cccloud:block/cloud_lamp_{step}", blockstate_transform(offset=(-1.5 + 1.5 * i, 0, 3)))
+    scene = [label(render(q, 640, yaw=25, pitch=24), "switch / button / sensor on a wall, a switch on top, lamps off..on"),
+             label(render(q, 640, yaw=25, pitch=24, night=True), "night"),
+             label(render(wall, 640, yaw=25, pitch=-25), "from below: a switch hanging under a block"),
+             label(render(wall, 640, yaw=25, pitch=-25, night=True), "from below, night")]
+    grid(scene, 2).save(os.path.join(HERE, "renders", "redstone_scene.png"))
+
+
+if __name__ == "__main__" and os.environ.get("REDSTONE"):
+    redstone_preview(Assets(DEFAULT_CC))

@@ -22,6 +22,7 @@ export const ACCENTS = ["gold", "cyan", "green", "yellow", "red", "purple", "ora
 export type Accent = (typeof ACCENTS)[number];
 export const ICON_NAMES = [
   "home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick",
+  "lever", "button", "lamp", "sensor",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 export const CARD_STYLES = ["comfortable", "compact"] as const;
@@ -238,8 +239,12 @@ function luaPages(uplinks: Uplink[]): LayoutPage[] {
 
 const hasBox = (p: Partial<Box>) => p.x !== undefined && p.y !== undefined && p.w !== undefined && p.h !== undefined;
 
+const REDSTONE_ICONS = new Set(["lamp", "lever", "button", "sensor"]);
 /** A guess for a card icon from its title when nobody chose one (view-mode polish). */
 export function guessIcon(title: string, widgets: Widget[]): IconName | undefined {
+  // Cloud Redstone cards: the icon of their devices (lamps, switches, buttons, sensors)
+  const rs = widgets.find((w) => typeof w.opts?.icon === "string" && REDSTONE_ICONS.has(w.opts.icon as string));
+  if (rs) return rs.opts!.icon as IconName;
   const t = title.toLowerCase();
   const rules: [RegExp, IconName][] = [
     [/reactor|fission|fusion|core|heat|boiler/, "flame"],

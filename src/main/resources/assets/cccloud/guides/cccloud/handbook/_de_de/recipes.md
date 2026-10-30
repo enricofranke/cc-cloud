@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Alle Rezepte"
-  position: 8
+  position: 9
 ---
 
 # Alle Rezepte
@@ -69,6 +69,20 @@ Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbs
 
 ### Cloud-Tablet
 <RecipeFor id="cccloud:cloud_tablet" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+## Redstone-Geräte
+
+### Cloud-Taster
+<RecipeFor id="cccloud:cloud_button" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+### Cloud-Lampe
+<RecipeFor id="cccloud:cloud_lamp" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+### Cloud-Sensor
+<RecipeFor id="cccloud:cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+### Cloud-Schalter
+<RecipeFor id="cccloud:cloud_switch" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ## Mainframe-Upgrades
 

@@ -52,6 +52,11 @@ public interface GameBridge {
     /** v0.7 wireless redstone override of a channel (act.redstone). Returns null or an error code. */
     @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override);
 
+    /** Cloud Redstone devices: rename / regroup (network.link). Returns null or an error code. */
+    default @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
+        return "unsupported";
+    }
+
     /** v0.5 rules command (role already checked by the session, re-checked live here). */
     RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command);
 

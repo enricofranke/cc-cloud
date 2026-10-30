@@ -6,7 +6,9 @@ import java.util.Set;
 public final class Icons {
     public static final Set<String> ALL = Set.of(
         "home", "bolt", "flame", "drop", "box", "fan", "lock", "warning",
-        "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick"
+        "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick",
+        // Cloud Redstone devices (switch, button, lamp, sensor)
+        "lever", "button", "lamp", "sensor"
     );
 
     private Icons() {

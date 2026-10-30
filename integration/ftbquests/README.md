@@ -6,7 +6,7 @@ Both sit in ATM11's **Tech** chapter group (`2B51AC12041E3F89`), after EnderIO/X
 | Chapter | File | Quests |
 |---|---|---|
 | CC: Tweaked | `chapters/cc_tweaked.json5` | 24: computer, shell/help, edit, advanced computer, disk drive and floppies, startup, pocket computer, speaker, printer, redstone relay, monitors, advanced monitors, wired modems and cable, wireless modem/rednet, ender modem, GPS, turtles, mining turtle, crafty turtle, inventory and energy/fluid peripherals, Energy Meter, Energized Power, Logistics Networks |
-| CC: Cloud | `chapters/cc_cloud.json5` | 35, see below |
+| CC: Cloud | `chapters/cc_cloud.json5` | 38, see below |
 
 CC: Cloud quests, by area (it starts after the CC: Tweaked quest **Advanced Computer**, cross-chapter dependency plus a quest link):
 - **Start:** Cloud Core, Handbook (GuideMe guide item, optional), Cloud Mainframe, power (FE), Cloud Uplink, Cloud Link Card, pair a browser, kill switch and trust (optional), the automatic Computer card, first `cloud.ui` program (`cloud-demo`), Advanced Cloud Uplink.
@@ -15,6 +15,7 @@ CC: Cloud quests, by area (it starts after the CC: Tweaked quest **Advanced Comp
 - **Network:** Cloud Analyzer, Cloud Relay, Advanced Cloud Relay, Ender Relay, CC cable links, Fiber Cable, Fiber Junction, Ender Fiber Link.
 - **Mainframe upgrades:** Allthemodium / Vibranium / Unobtainium cards (any card of the tier counts), Quantum Core, Chunk Anchor upgrade (optional; the quest says that it is off by default in the server config).
 - **In-game devices:** wireless redstone, Cloud Tablet, Advanced Cloud Tablet, Cloud Display.
+- **Redstone devices:** Cloud Lamp, Cloud Switch / Button (groups and cards), Cloud Sensor in a rule.
 
 Quests that depend on other mods or server settings are `optional: true`, so the chapters can be completed without them. FTB Quests has no "mod is loaded" condition; ATM11 ships AE2, Refined Storage and GuideMe, so all items exist in the pack.
 

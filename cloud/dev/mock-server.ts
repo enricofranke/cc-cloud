@@ -1863,7 +1863,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
           const type =
-            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
+            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -2072,6 +2072,11 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} pinned ${pin.label} (audit)`);
           publishProduction(m);
           return pres(true, { data: { id: pin.id } });
+        }
+        if (msg.t === "rs_device") {
+          // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown
+          const rd = denied(c, "network.link");
+          return sendTo(ws, { t: "rs_result", reqId: msg.reqId, ok: false, error: rd ?? "unknown_node" });
         }
         if (msg.t === "rs_override") {
           const rres = (ok: boolean, error?: string) => sendTo(ws, { t: "rs_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });

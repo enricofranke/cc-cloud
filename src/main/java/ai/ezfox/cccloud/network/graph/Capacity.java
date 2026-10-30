@@ -9,8 +9,8 @@ import java.util.Set;
 
 /**
  * Device capacity of a mainframe (docs/SPEC.md "Mainframe upgrades"): relays on device routes count 1, routed devices 1 (by
- * fiber {@code fiberWeight}). Above the limit the devices with the most hops, then the most recently linked, go
- * {@code over_capacity} and stop until capacity returns. Pure Java, unit tested.
+ * fiber {@code fiberWeight}, Cloud Redstone devices {@code redstoneWeight}). Above the limit the devices with the most
+ * hops, then the most recently linked, go {@code over_capacity} and stop until capacity returns. Pure Java, unit tested.
  */
 public final class Capacity {
     private Capacity() {
@@ -34,13 +34,19 @@ public final class Capacity {
      * @return ids of the devices that are over capacity (empty when everything fits)
      */
     public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, Map<String, Integer> linkOrder) {
+        return overCapacity(result, mainframeId, limit, fiberWeight, 1, linkOrder);
+    }
+
+    /** @param redstoneWeight what a Cloud Redstone device counts (config {@code redstoneDeviceCapacityWeight}) */
+    public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, double redstoneWeight,
+                                           Map<String, Integer> linkOrder) {
         double used = relays(result, mainframeId);
         var connected = new ArrayList<NetworkGraph.Device>();
         for (var device : result.devices()) {
             var route = result.route(device.id());
             if (route == null || !route.connected()) continue;
             connected.add(device);
-            used += weight(route, fiberWeight);
+            used += weight(device, route, fiberWeight, redstoneWeight);
         }
         var over = new LinkedHashSet<String>();
         if (used <= limit + 1e-9) return over;
@@ -49,12 +55,13 @@ public final class Capacity {
         for (var device : connected) {
             if (used <= limit + 1e-9) break;
             over.add(device.id());
-            used -= weight(result.route(device.id()), fiberWeight);
+            used -= weight(device, result.route(device.id()), fiberWeight, redstoneWeight);
         }
         return over;
     }
 
-    static double weight(NetworkGraph.Route route, double fiberWeight) {
+    static double weight(NetworkGraph.Device device, NetworkGraph.Route route, double fiberWeight, double redstoneWeight) {
+        if (device.type() == NetworkGraph.DeviceType.REDSTONE) return Math.max(0, redstoneWeight);
         return route.fiber() ? Math.max(0, fiberWeight) : 1;
     }
 

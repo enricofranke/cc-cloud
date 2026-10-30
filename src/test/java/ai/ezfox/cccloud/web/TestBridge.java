@@ -79,6 +79,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
+        dispatched.add("rs_device:" + message.deviceId() + "=" + message.name() + "/" + message.group());
+        return null;
+    }
+
+    @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         dispatched.add(command.op());
         return new GameBridge.RuleResult(null, null, null);

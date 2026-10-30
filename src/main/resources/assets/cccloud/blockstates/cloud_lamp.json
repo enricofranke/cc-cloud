@@ -1,0 +1,52 @@
+{
+  "variants": {
+    "level=0": {
+      "model": "cccloud:block/cloud_lamp_off"
+    },
+    "level=1": {
+      "model": "cccloud:block/cloud_lamp_dim"
+    },
+    "level=2": {
+      "model": "cccloud:block/cloud_lamp_dim"
+    },
+    "level=3": {
+      "model": "cccloud:block/cloud_lamp_dim"
+    },
+    "level=4": {
+      "model": "cccloud:block/cloud_lamp_dim"
+    },
+    "level=5": {
+      "model": "cccloud:block/cloud_lamp_dim"
+    },
+    "level=6": {
+      "model": "cccloud:block/cloud_lamp_mid"
+    },
+    "level=7": {
+      "model": "cccloud:block/cloud_lamp_mid"
+    },
+    "level=8": {
+      "model": "cccloud:block/cloud_lamp_mid"
+    },
+    "level=9": {
+      "model": "cccloud:block/cloud_lamp_mid"
+    },
+    "level=10": {
+      "model": "cccloud:block/cloud_lamp_mid"
+    },
+    "level=11": {
+      "model": "cccloud:block/cloud_lamp_on"
+    },
+    "level=12": {
+      "model": "cccloud:block/cloud_lamp_on"
+    },
+    "level=13": {
+      "model": "cccloud:block/cloud_lamp_on"
+    },
+    "level=14": {
+      "model": "cccloud:block/cloud_lamp_on"
+    },
+    "level=15": {
+      "model": "cccloud:block/cloud_lamp_on"
+    }
+  }
+}

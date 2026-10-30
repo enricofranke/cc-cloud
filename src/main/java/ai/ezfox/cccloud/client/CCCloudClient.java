@@ -30,6 +30,7 @@ public class CCCloudClient {
     private static void registerScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
         event.register(ModRegistry.MAINFRAME_MENU.get(), ai.ezfox.cccloud.client.gui.MainframeScreen::new);
         event.register(ModRegistry.UPLINK_MENU.get(), ai.ezfox.cccloud.client.gui.UplinkScreen::new);
+        event.register(ModRegistry.RS_DEVICE_MENU.get(), ai.ezfox.cccloud.client.gui.RsDeviceScreen::new);
     }
 
 
