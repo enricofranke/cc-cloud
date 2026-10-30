@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:sensor_team_filters",
+  "max_ticks": 1200,
+  "structure": "cccloud:test_floor"
+}

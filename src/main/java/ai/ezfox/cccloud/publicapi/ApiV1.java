@@ -142,7 +142,8 @@ public final class ApiV1 {
 
     private static JsonObject sections(UUID mainframeId, Set<Perm> perms) {
         var array = new JsonArray();
-        for (var snapshot : WebHub.INSTANCE.sectionSnapshots(mainframeId)) {
+        // player names (Advanced Cloud Sensor) only for keys whose player may see them, like the dashboard
+        for (var snapshot : WebHub.INSTANCE.sectionSnapshots(mainframeId, WebHub.seesNames(perms))) {
             var api = apiSection(mainframeId, snapshot, perms);
             if (api != null) array.add(api);
         }
@@ -152,7 +153,7 @@ public final class ApiV1 {
     }
 
     private static AccessApi.Response section(UUID mainframeId, String sectionId, Set<Perm> perms) {
-        var snapshot = WebHub.INSTANCE.sectionSnapshot(mainframeId, sectionId);
+        var snapshot = WebHub.INSTANCE.sectionSnapshot(mainframeId, sectionId, WebHub.seesNames(perms));
         var api = snapshot == null ? null : apiSection(mainframeId, snapshot, perms);
         return api == null ? AccessApi.error(404, "not_found") : new AccessApi.Response(200, api);
     }

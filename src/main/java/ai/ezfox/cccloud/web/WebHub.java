@@ -47,15 +47,22 @@ public final class WebHub {
         final JsonObject base;
         private final String baseText;
         final @Nullable JsonElement value;
+        /**
+         * Private values (Advanced Cloud Sensor: player names): what sessions get that may not see them (viewers, share
+         * links, Cloud Displays, see {@link #seesNames}); null = the value is not private.
+         */
+        final @Nullable JsonElement pub;
         final @Nullable JsonArray history;
         final int points;
         private @Nullable String historyText;
 
-        private W(String id, JsonObject base, String baseText, @Nullable JsonElement value, @Nullable JsonArray history, int points) {
+        private W(String id, JsonObject base, String baseText, @Nullable JsonElement value, @Nullable JsonElement pub, @Nullable JsonArray history,
+                  int points) {
             this.id = id;
             this.base = base;
             this.baseText = baseText;
             this.value = value;
+            this.pub = pub;
             this.history = history;
             this.points = points;
         }
@@ -64,10 +71,12 @@ public final class WebHub {
         static W of(JsonObject widget) {
             var base = new JsonObject();
             JsonElement value = null;
+            JsonElement pub = null;
             JsonArray history = null;
             for (var e : widget.entrySet()) {
                 switch (e.getKey()) {
                     case "value" -> value = e.getValue();
+                    case "publicValue" -> pub = e.getValue();
                     case "history" -> {
                         if (e.getValue() instanceof JsonArray a) history = a;
                         else base.add(e.getKey(), e.getValue());
@@ -78,7 +87,7 @@ public final class WebHub {
             int points = 60;
             if (base.get("opts") instanceof JsonObject o && o.get("points") instanceof com.google.gson.JsonPrimitive p && p.isNumber()) points = p.getAsInt();
             String text = Json.GSON.toJson(base);
-            return new W(base.get("id").getAsString(), base, text.substring(0, text.length() - 1), value, history, points);
+            return new W(base.get("id").getAsString(), base, text.substring(0, text.length() - 1), value, pub, history, points);
         }
 
         @Nullable String type() {
@@ -87,6 +96,11 @@ public final class WebHub {
 
         /** With a new value: a number appends one point to a chart's history (trimmed to opts.points), an array replaces it. */
         W with(JsonElement newValue) {
+            return with(newValue, null);
+        }
+
+        /** As above, with the public form of a private value (null = not private). */
+        W with(JsonElement newValue, @Nullable JsonElement newPub) {
             var h = history;
             if (h != null) {
                 if (newValue.isJsonArray()) {
@@ -99,12 +113,22 @@ public final class WebHub {
                     h = array;
                 }
             }
-            return new W(id, base, baseText, newValue, h, points);
+            return new W(id, base, baseText, newValue, newPub, h, points);
+        }
+
+        /** The value a session gets: the public form of a private value unless it may see names. */
+        @Nullable JsonElement value(boolean names) {
+            return names || pub == null ? value : pub;
         }
 
         void write(StringBuilder sb) {
+            write(sb, true);
+        }
+
+        void write(StringBuilder sb, boolean names) {
             sb.append(baseText);
-            if (value != null) sb.append(",\"value\":").append(Json.GSON.toJson(value));
+            var v = value(names);
+            if (v != null) sb.append(",\"value\":").append(Json.GSON.toJson(v));
             if (history != null) {
                 var text = historyText;
                 if (text == null) historyText = text = Json.GSON.toJson(history);
@@ -115,9 +139,14 @@ public final class WebHub {
 
         /** As a widget object (shares the immutable parts; callers that hand it out copy it). */
         JsonObject json() {
+            return json(true);
+        }
+
+        JsonObject json(boolean names) {
             var o = new JsonObject();
             for (var e : base.entrySet()) o.add(e.getKey(), e.getValue());
-            if (value != null) o.add("value", value);
+            var v = value(names);
+            if (v != null) o.add("value", v);
             if (history != null) o.add("history", history);
             return o;
         }
@@ -134,6 +163,9 @@ public final class WebHub {
         final Map<String, String> history;
         private volatile @Nullable String text;
         private volatile @Nullable JsonObject json;
+        /** The public form (private values replaced), built once per version; only for sections with private values. */
+        private volatile @Nullable String publicText;
+        private volatile @Nullable JsonObject publicJson;
 
         private Section(JsonObject head, String headText, W[] widgets, Map<String, Integer> pos, Map<String, String> history) {
             this.head = head;
@@ -191,16 +223,47 @@ public final class WebHub {
         /** The section as JSON text, built once per version and shared by every snapshot. */
         String text() {
             var t = text;
-            if (t == null) {
-                var sb = new StringBuilder(headText.length() + widgets.length * 160);
-                sb.append(headText).append(head.size() > 0 ? "," : "").append("\"widgets\":[");
-                for (int i = 0; i < widgets.length; i++) {
-                    if (i > 0) sb.append(',');
-                    widgets[i].write(sb);
-                }
-                text = t = sb.append("]}").toString();
-            }
+            if (t == null) text = t = build(true);
             return t;
+        }
+
+        /** Has widgets with private values (player names): sessions that may not see them get {@link #text(boolean)} false. */
+        boolean hasPrivate() {
+            for (var w : widgets) if (w.pub != null) return true;
+            return false;
+        }
+
+        /** The text a session gets: with names, or the public form (the same text for sections without private values). */
+        String text(boolean names) {
+            if (names || !hasPrivate()) return text();
+            var t = publicText;
+            if (t == null) publicText = t = build(false);
+            return t;
+        }
+
+        private String build(boolean names) {
+            var sb = new StringBuilder(headText.length() + widgets.length * 160);
+            sb.append(headText).append(head.size() > 0 ? "," : "").append("\"widgets\":[");
+            for (int i = 0; i < widgets.length; i++) {
+                if (i > 0) sb.append(',');
+                widgets[i].write(sb, names);
+            }
+            return sb.append("]}").toString();
+        }
+
+        /** The JSON a session gets (see {@link #text(boolean)}); shared, never change it. */
+        JsonObject json(boolean names) {
+            if (names || !hasPrivate()) return json();
+            var j = publicJson;
+            if (j == null) {
+                j = new JsonObject();
+                for (var e : head.entrySet()) j.add(e.getKey(), e.getValue());
+                var array = new JsonArray(widgets.length);
+                for (var w : widgets) array.add(w.json(false));
+                j.add("widgets", array);
+                publicJson = j;
+            }
+            return j;
         }
 
         /** The section as a JSON object, built once per version (shared: never change it, copy it to hand it out). */
@@ -233,6 +296,8 @@ public final class WebHub {
         final Set<String> restricted = new java.util.HashSet<>();
         /** Structural messages (sections, state, layout, alerts …), coalesced by key, in order. */
         Map<String, JsonObject> outbox = new LinkedHashMap<>();
+        /** Public forms of outbox messages with private values (alerts with player names), by outbox key. */
+        Map<String, JsonObject> publicOutbox = new LinkedHashMap<>();
         /** uplinkId → ids of widgets whose value changed since the last flush. */
         Map<String, Set<String>> values = new LinkedHashMap<>();
         int pendingAlerts;
@@ -309,6 +374,12 @@ public final class WebHub {
      * thread keep the old version). No JSON is copied. Under the view's lock.
      */
     private static boolean setValues(View view, String uplinkId, String[] widgetIds, JsonElement[] values, int count, boolean queue) {
+        return setValues(view, uplinkId, widgetIds, values, null, count, queue);
+    }
+
+    /** As above; {@code pubs} = the public forms of private values (null entries: not private). */
+    private static boolean setValues(View view, String uplinkId, String[] widgetIds, JsonElement[] values, JsonElement @Nullable [] pubs, int count,
+                                     boolean queue) {
         var section = view.uplinks.get(uplinkId);
         if (section == null) return false;
         W[] copy = null;
@@ -317,7 +388,7 @@ public final class WebHub {
             var pos = section.pos.get(widgetIds[i]);
             if (pos == null || values[i] == null) continue;
             if (copy == null) copy = section.widgets.clone();
-            copy[pos] = copy[pos].with(values[i]);
+            copy[pos] = copy[pos].with(values[i], pubs == null ? null : pubs[i]);
             if (queue) {
                 if (pending == null) pending = view.values.computeIfAbsent(uplinkId, k -> new LinkedHashSet<>());
                 pending.add(widgetIds[i]);
@@ -479,11 +550,19 @@ public final class WebHub {
     }
 
     public void publishValue(UUID mainframeId, String uplinkId, String widgetId, JsonElement value) {
+        publishValue(mainframeId, uplinkId, widgetId, value, null);
+    }
+
+    /**
+     * A private value (Advanced Cloud Sensor: player names) with its public form {@code pub}, which sessions that may
+     * not see names get instead ({@link #seesNames}); {@code pub} null = not private.
+     */
+    public void publishValue(UUID mainframeId, String uplinkId, String widgetId, JsonElement value, @Nullable JsonElement pub) {
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
             // Nobody subscribed: new sessions get the value with their snapshot, nothing to queue.
-            setValues(view, uplinkId, new String[]{widgetId}, new JsonElement[]{value}, 1, !view.sessions.isEmpty());
+            setValues(view, uplinkId, new String[]{widgetId}, new JsonElement[]{value}, new JsonElement[]{pub}, 1, !view.sessions.isEmpty());
         }
     }
 
@@ -522,6 +601,11 @@ public final class WebHub {
 
     /** Copies of all published section snapshots of a mainframe, in publish order (layout migration and checks). */
     public java.util.List<JsonObject> sectionSnapshots(UUID mainframeId) {
+        return sectionSnapshots(mainframeId, true);
+    }
+
+    /** As above; {@code names} false = private values in their public form (see {@link #seesNames}). */
+    public java.util.List<JsonObject> sectionSnapshots(UUID mainframeId, boolean names) {
         var list = new ArrayList<JsonObject>();
         var view = views.get(mainframeId);
         if (view == null) return list;
@@ -529,7 +613,7 @@ public final class WebHub {
         synchronized (view) {
             refs = new ArrayList<>(view.uplinks.values());
         }
-        for (var section : refs) list.add(section.json().deepCopy());
+        for (var section : refs) list.add(section.json(names).deepCopy());
         return list;
     }
 
@@ -549,7 +633,10 @@ public final class WebHub {
         return types;
     }
 
-    /** A section as JSON text (built once per version and shared; Cloud Displays poll it), or null. */
+    /**
+     * A section as JSON text (built once per version and shared; Cloud Displays poll it), or null. Public form: a display
+     * stands in the world, anyone walking by reads it, so private values (player names) are never on it.
+     */
     public @Nullable String sectionText(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
         if (view == null) return null;
@@ -557,7 +644,7 @@ public final class WebHub {
         synchronized (view) {
             section = view.uplinks.get(uplinkId);
         }
-        return section == null ? null : section.text();
+        return section == null ? null : section.text(false);
     }
 
     /** v0.5 F: the current value of a widget that asked for long-term statistics ({@code opts.history}). */
@@ -607,13 +694,18 @@ public final class WebHub {
 
     /** v0.7 in-game display: a copy of a section's published snapshot, or null. */
     public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId) {
+        return sectionSnapshot(mainframeId, uplinkId, true);
+    }
+
+    /** As above; {@code names} false = private values in their public form (see {@link #seesNames}). */
+    public @Nullable JsonObject sectionSnapshot(UUID mainframeId, String uplinkId, boolean names) {
         var view = views.get(mainframeId);
         if (view == null) return null;
         Section section;
         synchronized (view) {
             section = view.uplinks.get(uplinkId);
         }
-        return section == null ? null : section.json().deepCopy();
+        return section == null ? null : section.json(names).deepCopy();
     }
 
     /** v0.7 display picker: [{uplinkId, title, restricted}] of the published sections. */
@@ -779,6 +871,15 @@ public final class WebHub {
     }
 
     public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level) {
+        publishAlert(mainframeId, uplinkId, text, level, null);
+    }
+
+    /**
+     * An alert whose text has private values (Advanced Cloud Sensor: player names): {@code publicText} is what sessions
+     * get that may not see names ({@link #seesNames}) and share links; the push listener gets {@code text} (push targets
+     * are set up by admins). {@code publicText} null = not private.
+     */
+    public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level, @Nullable String publicText) {
         ai.ezfox.cccloud.api.CloudEvents.alert(new ai.ezfox.cccloud.api.CloudEvents.Alert(mainframeId, uplinkId, text, level));
         var listener = onAlert;
         if (listener != null) {
@@ -807,7 +908,13 @@ public final class WebHub {
             message.addProperty("level", level);
             message.addProperty("ts", System.currentTimeMillis());
             view.pendingAlerts++;
-            view.outbox.put("a:" + (view.alertSeq++), message);
+            String key = "a:" + (view.alertSeq++);
+            view.outbox.put(key, message);
+            if (publicText != null && !publicText.equals(text)) {
+                var pub = shallowCopy(message);
+                pub.addProperty("text", publicText);
+                view.publicOutbox.put(key, pub);
+            }
         }
     }
 
@@ -872,7 +979,7 @@ public final class WebHub {
 
     /** What a snapshot is built from: references collected under the view's lock (all immutable), serialised outside it. */
     private record SnapshotParts(JsonObject head, List<Section> sections, @Nullable JsonObject layout, @Nullable JsonObject network,
-                                 @Nullable JsonObject rules, @Nullable JsonObject redstone, @Nullable JsonObject scenes) {
+                                 @Nullable JsonObject rules, @Nullable JsonObject redstone, @Nullable JsonObject scenes, boolean names) {
     }
 
     /**
@@ -939,9 +1046,10 @@ public final class WebHub {
     /** The snapshot without sections, then one {@code uplink} message per section (each fits an in-game payload). */
     private static List<String> serializeSplit(View view, SnapshotParts parts) {
         var out = new ArrayList<String>(parts.sections().size() + 1);
-        out.add(serialize(view, new SnapshotParts(parts.head(), List.of(), parts.layout(), parts.network(), parts.rules(), parts.redstone(), parts.scenes())));
+        out.add(serialize(view, new SnapshotParts(parts.head(), List.of(), parts.layout(), parts.network(), parts.rules(), parts.redstone(), parts.scenes(),
+            parts.names())));
         for (var section : parts.sections()) {
-            String text = section.text();
+            String text = section.text(parts.names());
             out.add("{\"t\":\"uplink\"," + text.substring(1));
         }
         return out;
@@ -984,7 +1092,7 @@ public final class WebHub {
         }
         // Positions only with view.positions.
         var network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
-        return new SnapshotParts(json, sections, view.layout, network, view.rules, view.redstone, view.scenes);
+        return new SnapshotParts(json, sections, view.layout, network, view.rules, view.redstone, view.scenes, seesNames(session.perms()));
     }
 
     /** The snapshot text: the head, then the sections (each serialised once per change and shared), then the rest. */
@@ -996,7 +1104,7 @@ public final class WebHub {
         for (var section : parts.sections()) {
             if (!first) sb.append(',');
             first = false;
-            sb.append(section.text());
+            sb.append(section.text(parts.names()));
         }
         sb.append("],\"layout\":").append(parts.layout() == null ? "null" : Json.GSON.toJson(parts.layout()));
         if (parts.network() != null) sb.append(",\"network\":").append(Json.GSON.toJson(parts.network()));
@@ -1031,7 +1139,7 @@ public final class WebHub {
         mainframe.addProperty("enabled", view.enabled());
         json.add("mainframe", mainframe);
         json.addProperty("canControl", false);
-        var sections = jsonSections(view.sections()).values();
+        var sections = jsonSections(view.sections(), false).values();
         var keys = ShareFilter.scope(sections, view.layout(), share);
         var uplinks = new JsonArray();
         for (var uplink : sections) {
@@ -1045,9 +1153,9 @@ public final class WebHub {
     }
 
     /** The sections as JSON objects (cached per section version; shared, never change them). Any thread. */
-    private static Map<String, JsonObject> jsonSections(Map<String, Section> sections) {
+    private static Map<String, JsonObject> jsonSections(Map<String, Section> sections, boolean names) {
         var map = new LinkedHashMap<String, JsonObject>(sections.size() * 2);
-        for (var e : sections.entrySet()) map.put(e.getKey(), e.getValue().json());
+        for (var e : sections.entrySet()) map.put(e.getKey(), e.getValue().json(names));
         return map;
     }
 
@@ -1056,6 +1164,14 @@ public final class WebHub {
      * viewers and share links never get them.
      */
     public static boolean seesRestricted(java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+        return perms.contains(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+    }
+
+    /**
+     * Private values (Advanced Cloud Sensor: player names) are shown from the operator role up, the same right as
+     * positions and the restricted cards ({@code view.positions}); viewers, share links and displays get the public form.
+     */
+    public static boolean seesNames(java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
         return perms.contains(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
     }
 
@@ -1225,6 +1341,7 @@ public final class WebHub {
 
     private void flush(View view, long now) {
         Map<String, JsonObject> pending;
+        Map<String, JsonObject> publicPending;
         Map<String, Set<String>> changedValues;
         Map<String, Section> changedSections = new HashMap<>();
         JsonObject networkFull = null, networkStripped = null;
@@ -1242,8 +1359,10 @@ public final class WebHub {
             if (view.outbox.isEmpty() && view.values.isEmpty() && networkFull == null) return;
             pending = view.outbox;
             view.outbox = new LinkedHashMap<>();
+            publicPending = view.publicOutbox.isEmpty() ? new LinkedHashMap<>() : view.publicOutbox;
+            if (!view.publicOutbox.isEmpty()) view.publicOutbox = new LinkedHashMap<>();
             view.pendingAlerts = 0;
-            resolveSections(view, pending);
+            resolveSections(view, pending, publicPending);
             // only references under the lock (the server thread publishes to this view every tick); the value
             // messages are built outside it from the immutable section versions
             changedValues = view.values;
@@ -1265,8 +1384,12 @@ public final class WebHub {
             }
         }
         if (targets.isEmpty()) return;
-        var valueSections = valuesOf(changedValues, changedSections);
-        Map<String, JsonObject> uplinks = shareSections == null ? Map.of() : jsonSections(shareSections);
+        var valueSections = valuesOf(changedValues, changedSections, true);
+        // Private values (player names): sessions that may not see them get the public forms.
+        boolean anyPrivate = !publicPending.isEmpty();
+        for (var section : changedSections.values()) anyPrivate |= section.hasPrivate();
+        var publicValueSections = anyPrivate ? valuesOf(changedValues, changedSections, false) : valueSections;
+        Map<String, JsonObject> uplinks = shareSections == null ? Map.of() : jsonSections(shareSections, false);
         String fullNet = null, strippedNet = null;
         if (networkFull != null) {
             // Serialised once per change, outside the view's lock and off the server thread.
@@ -1285,20 +1408,24 @@ public final class WebHub {
                 if (fullNet != null) out.add(session.seesPositions() ? fullNet : strippedNet);
                 if (messages == null) {
                     messages = new ArrayList<>(pending.size() + 1);
-                    readOnly = restricted.isEmpty() ? messages : new ArrayList<>(pending.size() + 1);
-                    for (var message : pending.values()) {
+                    readOnly = restricted.isEmpty() && !anyPrivate ? messages : new ArrayList<>(pending.size() + 1);
+                    for (var entry : pending.entrySet()) {
+                        var message = entry.getValue();
                         String json = Json.GSON.toJson(message);
                         messages.add(json);
-                        if (readOnly != messages && !(message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString()))) readOnly.add(json);
+                        if (readOnly == messages || message.has("uplinkId") && restricted.contains(message.get("uplinkId").getAsString())) continue;
+                        var pub = publicPending.get(entry.getKey());
+                        readOnly.add(pub == null ? json : Json.GSON.toJson(pub));
                     }
                     if (!valueSections.isEmpty()) {
                         messages.add(valuesMessage(valueSections, null));
                         if (readOnly != messages) {
-                            var visible = valuesMessage(valueSections, restricted);
+                            var visible = valuesMessage(publicValueSections, restricted);
                             if (visible != null) readOnly.add(visible);
                         }
                     }
                 }
+                // seesNames and seesRestricted are the same right (view.positions), so one split serves both
                 out.addAll(seesRestricted(session.perms()) ? messages : readOnly);
             } else {
                 if (shareMessages == null) shareMessages = new HashMap<>();
@@ -1306,11 +1433,11 @@ public final class WebHub {
                 if (filtered == null) {
                     filtered = new ArrayList<>();
                     var keys = ShareFilter.scope(uplinks.values(), layout, share);
-                    for (var message : pending.values()) {
-                        var m = ShareFilter.message(message, uplinks, keys, share.hideNumbers());
+                    for (var entry : pending.entrySet()) {
+                        var m = ShareFilter.message(publicPending.getOrDefault(entry.getKey(), entry.getValue()), uplinks, keys, share.hideNumbers());
                         if (m != null) filtered.add(Json.GSON.toJson(m));
                     }
-                    var values = ShareFilter.values(valueSections, uplinks, keys, share.hideNumbers());
+                    var values = ShareFilter.values(publicValueSections, uplinks, keys, share.hideNumbers());
                     if (values != null) filtered.add(valuesMessage(values, null));
                     shareMessages.put(share.id(), filtered);
                 }
@@ -1328,8 +1455,11 @@ public final class WebHub {
     /** Marker in the outbox for "send this section as it is at flush time" ({@code u:<uplinkId>}); never serialised. */
     private static final JsonObject SECTION_PENDING = new JsonObject();
 
-    /** Replaces section markers by {@code {"t":"uplink",…}} with the section's current version. Under the view's lock. */
-    private static void resolveSections(View view, Map<String, JsonObject> pending) {
+    /**
+     * Replaces section markers by {@code {"t":"uplink",…}} with the section's current version; sections with private
+     * values also get their public form in {@code publicPending}. Under the view's lock.
+     */
+    private static void resolveSections(View view, Map<String, JsonObject> pending, Map<String, JsonObject> publicPending) {
         for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
             var entry = it.next();
             if (entry.getValue() != SECTION_PENDING) continue;
@@ -1341,11 +1471,19 @@ public final class WebHub {
             var message = shallowCopy(section.json());
             message.addProperty("t", "uplink");
             entry.setValue(message);
+            if (section.hasPrivate()) {
+                var pub = shallowCopy(section.json(false));
+                pub.addProperty("t", "uplink");
+                publicPending.put(entry.getKey(), pub);
+            }
         }
     }
 
-    /** uplinkId → {widgetId: latest value} of the changed widgets (from immutable section versions; any thread). */
-    private static Map<String, JsonObject> valuesOf(Map<String, Set<String>> changedValues, Map<String, Section> sections) {
+    /**
+     * uplinkId → {widgetId: latest value} of the changed widgets (from immutable section versions; any thread);
+     * {@code names} false = private values in their public form.
+     */
+    private static Map<String, JsonObject> valuesOf(Map<String, Set<String>> changedValues, Map<String, Section> sections, boolean names) {
         if (changedValues.isEmpty()) return Map.of();
         var out = new LinkedHashMap<String, JsonObject>();
         for (var entry : changedValues.entrySet()) {
@@ -1354,8 +1492,9 @@ public final class WebHub {
             var changed = new JsonObject();
             for (var widgetId : entry.getValue()) {
                 var widget = section.widget(widgetId);
-                if (widget == null || widget.value == null) continue;
-                changed.add(widgetId, widget.value);
+                var value = widget == null ? null : widget.value(names);
+                if (value == null) continue;
+                changed.add(widgetId, value);
             }
             if (changed.size() > 0) out.put(entry.getKey(), changed);
         }

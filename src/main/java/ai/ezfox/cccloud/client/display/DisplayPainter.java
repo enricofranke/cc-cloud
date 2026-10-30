@@ -123,6 +123,12 @@ final class DisplayPainter {
                 }
                 if (list.isEmpty()) g.text("-", x + 2, ry, DIM);
             }
+            case "sensor_log" -> {
+                // the public form (displays never get player names): summary, then the newest events
+                var o = value != null && value.isJsonObject() ? value.getAsJsonObject() : new JsonObject();
+                if (!label.isEmpty()) g.text(GlyphCanvas.fit(label, w), x, y, DIM);
+                g.text(GlyphCanvas.fit(str(o, "summary"), w), x, y + 11, TEXT);
+            }
             case "redstone_sides" -> {
                 g.text(GlyphCanvas.fit(label, w), x, y, DIM);
                 var sides = value != null && value.isJsonArray() ? value.getAsJsonArray() : new JsonArray();

@@ -69,6 +69,12 @@ public class RsDeviceBlockEntity extends BlockEntity {
     private boolean statusPending = true;
     /** Changes from the dashboard, rules, scenes and the API (in-world clicks are not limited, like a lever). */
     private @Nullable TokenBucket changes;
+    /** Advanced Cloud Sensor: its zone, filter, log, alerts and card (null for the other kinds). */
+    private ai.ezfox.cccloud.sensor.@Nullable AdvancedSensor sensor;
+    /** Client: the zone of an Advanced Cloud Sensor as its server sent it (min/max corners, scanning or not). */
+    private @Nullable BlockPos clientZoneMin;
+    private @Nullable BlockPos clientZoneMax;
+    private boolean clientZoneOn;
 
     public RsDeviceBlockEntity(BlockPos pos, BlockState state) {
         super(ModRegistry.RS_DEVICE_BE.get(), pos, state);
@@ -80,6 +86,36 @@ public class RsDeviceBlockEntity extends BlockEntity {
 
     public UUID deviceId() {
         return deviceId;
+    }
+
+    /** The Advanced Cloud Sensor logic of this block (null for the other kinds). */
+    public ai.ezfox.cccloud.sensor.@Nullable AdvancedSensor sensor() {
+        if (sensor == null && kind() == RsKind.ADVANCED_SENSOR) sensor = new ai.ezfox.cccloud.sensor.AdvancedSensor(this);
+        return sensor;
+    }
+
+    /** Its device type in the network graph (capacity weight and FE). */
+    public NetworkGraph.DeviceType graphType() {
+        return kind() == RsKind.ADVANCED_SENSOR ? NetworkGraph.DeviceType.ADVANCED_SENSOR : NetworkGraph.DeviceType.REDSTONE;
+    }
+
+    /** An Advanced Cloud Sensor that is armed (costs its own FE rate). */
+    public boolean sensorArmed() {
+        var s = sensor();
+        return s != null && s.settings().armed();
+    }
+
+    /** Client: the zone corners of an Advanced Cloud Sensor (null when unknown), and whether it is watching. */
+    public @Nullable BlockPos clientZoneMin() {
+        return clientZoneMin;
+    }
+
+    public @Nullable BlockPos clientZoneMax() {
+        return clientZoneMax;
+    }
+
+    public boolean clientZoneOn() {
+        return clientZoneOn;
     }
 
     public @Nullable MainframeLink getLink() {
@@ -130,9 +166,10 @@ public class RsDeviceBlockEntity extends BlockEntity {
         return input;
     }
 
-    /** Switch: the redstone output (0–15). */
+    /** Switch: the redstone output (0–15); Advanced Cloud Sensor: 15 while something matching is inside (output on). */
     public int output() {
-        return output;
+        var s = sensor();
+        return s != null ? s.redstoneOutput() : output;
     }
 
     /** The device's level: switch output, lamp light, sensor input, 15 while the button is pressed. */
@@ -142,6 +179,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
             case BUTTON -> getBlockState().hasProperty(RsPlateBlock.POWERED) && getBlockState().getValue(RsPlateBlock.POWERED) ? 15 : 0;
             case LAMP -> Math.max(lampOn ? preset : 0, follow ? input : 0);
             case SENSOR -> input;
+            case ADVANCED_SENSOR -> sensor() != null && sensor().occupied() ? 15 : 0;
         };
     }
 
@@ -170,6 +208,17 @@ public class RsDeviceBlockEntity extends BlockEntity {
         pulse = RsDevice.clampPulse(in.getIntOr("pulse", RsDevice.PULSE_DEFAULT));
         pin = in.getBooleanOr("pin", false);
         confirm = in.getBooleanOr("confirm", false);
+        var s = sensor();
+        if (s != null) {
+            String saved = in.getStringOr("sensor", "");
+            if (!saved.isEmpty()) s.load(saved);
+        }
+        // Client: the zone from the update tag (see getUpdateTag)
+        if (in.getBooleanOr("zone_sync", false)) {
+            clientZoneMin = BlockPos.of(in.getLongOr("zone_min", 0));
+            clientZoneMax = BlockPos.of(in.getLongOr("zone_max", 0));
+            clientZoneOn = in.getBooleanOr("zone_on", false);
+        }
     }
 
     @Override
@@ -188,6 +237,26 @@ public class RsDeviceBlockEntity extends BlockEntity {
         out.putInt("pulse", pulse);
         out.putBoolean("pin", pin);
         out.putBoolean("confirm", confirm);
+        if (sensor != null) out.putString("sensor", sensor.save());
+    }
+
+    /** Advanced Cloud Sensor: the client gets its zone (drawn while a sensor or Link Card is held, or its screen is open). */
+    @Override
+    public net.minecraft.nbt.CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        var tag = new net.minecraft.nbt.CompoundTag();
+        var s = sensor();
+        if (s == null) return tag;
+        var zone = s.zone();
+        tag.putBoolean("zone_sync", true);
+        tag.putLong("zone_min", zone.min().asLong());
+        tag.putLong("zone_max", zone.max().asLong());
+        tag.putBoolean("zone_on", s.settings().scans() && s.zoneProblem() == null);
+        return tag;
+    }
+
+    @Override
+    public net.minecraft.network.protocol.game.@Nullable ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return kind() == RsKind.ADVANCED_SENSOR ? net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this) : null;
     }
 
     private static String clip(String text) {
@@ -201,6 +270,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
     public void onLoad() {
         super.onLoad();
         chunkUnloading = false;
+        if (level != null && level.isClientSide() && kind() == RsKind.ADVANCED_SENSOR) ai.ezfox.cccloud.sensor.SensorZones.CLIENT.add(this);
         if (level == null || level.isClientSide()) return;
         if (!RsDevices.register(this)) {
             // A copy of this block (structure placement, creative pick with data): become a new device.
@@ -215,6 +285,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
         statusPending = true;
         inputPending = true;
         NetworkService.markDirty(link == null ? null : link.id());
+        var s = sensor();
+        if (s != null) s.attach();
     }
 
     @Override
@@ -226,6 +298,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+        if (level != null && level.isClientSide()) ai.ezfox.cccloud.sensor.SensorZones.CLIENT.remove(this);
+        if (sensor != null && level != null && !level.isClientSide()) sensor.detach(chunkUnloading && !broken && link != null);
         if (!registered) return;
         registered = false;
         // Removed without the break path (/setblock, explosions without side effects, block movers): the mainframe
@@ -248,8 +322,10 @@ public class RsDeviceBlockEntity extends BlockEntity {
 
     private void unlinkFrom(MainframeLink old) {
         RsDevices.forget(old.id(), deviceId);
+        if (sensor != null) sensor.detach(false);
         var mainframe = CloudNetwork.mainframe(old.id());
         if (mainframe != null) mainframe.unlinkUplink(deviceId);
+        else if (sensor != null) ai.ezfox.cccloud.web.WebHub.INSTANCE.publishUplinkRemoved(old.id(), deviceId.toString());
     }
 
     // ---- server tick -------------------------------------------------------------------------------------------------
@@ -270,6 +346,14 @@ public class RsDeviceBlockEntity extends BlockEntity {
             tickCounter++;
         } finally {
             ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RSDEVICE, cost);
+        }
+        if (sensor != null) {
+            long sensorCost = ai.ezfox.cccloud.network.TickCost.start();
+            try {
+                sensor.tick(level);
+            } finally {
+                ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.SENSORS, sensorCost);
+            }
         }
     }
 
@@ -304,6 +388,10 @@ public class RsDeviceBlockEntity extends BlockEntity {
             }
         }
         routeState = newRoute;
+        if (sensor != null) {
+            if (status != newStatus) sensor.markDirty();
+            sensor.attach();
+        }
         status = newStatus;
         var state = getBlockState();
         if (state.hasProperty(RsPlateBlock.STATUS) && state.getValue(RsPlateBlock.STATUS) != newStatus) {
@@ -344,13 +432,13 @@ public class RsDeviceBlockEntity extends BlockEntity {
         var state = getBlockState();
         int lvl = signalLevel();
         var next = switch (kind()) {
-            case SWITCH, SENSOR -> state.setValue(RsPlateBlock.POWERED, lvl > 0);
+            case SWITCH, SENSOR, ADVANCED_SENSOR -> state.setValue(RsPlateBlock.POWERED, lvl > 0);
             case LAMP -> state.setValue(RsLampBlock.LEVEL, lvl);
             case BUTTON -> state;
         };
         if (next != state) level.setBlock(getBlockPos(), next, Block.UPDATE_ALL);
-        // an analog level change keeps the block state: tell the neighbours anyway
-        if (kind() == RsKind.SWITCH) RsPlateBlock.updateNeighbours(next, level, getBlockPos());
+        // an analog level change keeps the block state (and the sensor's output follows its setting): tell the neighbours anyway
+        if (kind() == RsKind.SWITCH || kind() == RsKind.ADVANCED_SENSOR) RsPlateBlock.updateNeighbours(next, level, getBlockPos());
         setChanged();
         RsDevices.changed(this);
     }
@@ -429,7 +517,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
                 click(lampOn);
             }
             case BUTTON -> press(player);
-            case SENSOR -> {
+            case SENSOR, ADVANCED_SENSOR -> {
             }
         }
     }
@@ -455,7 +543,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
     @Nullable String apply(RsCards.Control control, JsonElement value, String user) {
         if (status != CloudStatus.ONLINE) return "device_offline";
         var kind = kind();
-        if (kind == RsKind.SENSOR) return "not_interactive";
+        if (kind.sensor()) return "not_interactive";
         if ((control == RsCards.Control.ALL_ON || control == RsCards.Control.ALL_OFF) && !kind.switchable()) return null;
         if (!changes().tryAcquire()) return "rate_limited";
         switch (control) {
@@ -488,6 +576,32 @@ public class RsDeviceBlockEntity extends BlockEntity {
         return null;
     }
 
+    // ---- Advanced Cloud Sensor -----------------------------------------------------------------------------------------
+
+    /**
+     * The sensor's occupancy or settings changed: the plate's {@code powered} and redstone output, the group card copy;
+     * {@code zoneChanged} = the client's zone outline too.
+     */
+    public void sensorChanged(boolean zoneChanged) {
+        applyState();
+        if (zoneChanged && level != null && !level.isClientSide()) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    /** The sensor's log changed (saved with the block). */
+    public void sensorLogged() {
+        setChanged();
+    }
+
+    /** One change from the dashboard, rules, scenes or the API (rate limit per device). */
+    public boolean tryChange() {
+        return changes().tryAcquire();
+    }
+
+    /** Client sync of the zone after a setting changed that the outline shows (scanning on/off). */
+    public void syncZone() {
+        if (level != null && !level.isClientSide()) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
     // ---- settings (screen) -------------------------------------------------------------------------------------------
 
     /** Name and group (validated by {@link RsScreens}). */
@@ -497,6 +611,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         group = newGroup;
         setChanged();
         RsDevices.changed(this);
+        if (sensor != null) sensor.markDirty(); // the card's title
     }
 
     /** Test hook (scale test): name and group like the screen sets them. */
@@ -529,6 +644,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         confirm = newConfirm;
         setChanged();
         RsDevices.changed(this);
+        if (sensor != null) sensor.markDirty(); // PIN / confirmation of its arm switch
     }
 
     // ---- binding (link card) -----------------------------------------------------------------------------------------
@@ -549,7 +665,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
             return;
         }
         // Range (and capacity) are checked against the whole network, like an uplink; redstone devices use radio only.
-        var error = NetworkService.checkLink(mainframe, serverLevel, getBlockPos(), NetworkGraph.DeviceType.REDSTONE, deviceId.toString(), null);
+        var error = NetworkService.checkLink(mainframe, serverLevel, getBlockPos(), graphType(), deviceId.toString(), null);
         if (error != null) {
             player.sendSystemMessage(error.copy().withStyle(ChatFormatting.RED));
             return;
@@ -562,6 +678,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         setChanged();
         RsDevices.changed(this);
         updateStatus(serverLevel);
+        if (sensor != null) sensor.attach();
         CCCloud.LOGGER.info("[cccloud] {} bound the {} at {} to {}", player.getGameProfile().name(), kind().block, getBlockPos(), mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.rsdevice.bound", record().displayName(), newLink.describe()).withStyle(ChatFormatting.GREEN));
         ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), deviceId, "redstone:" + kind().id,
@@ -589,5 +706,6 @@ public class RsDeviceBlockEntity extends BlockEntity {
         if (mainframe != null && level != null) mainframe.linkUplink(deviceId, GlobalPos.of(level.dimension(), getBlockPos()));
         NetworkService.markDirty();
         RsDevices.changed(this);
+        if (sensor() != null) sensor.attach();
     }
 }

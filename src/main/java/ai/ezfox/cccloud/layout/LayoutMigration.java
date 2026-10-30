@@ -41,11 +41,11 @@ public final class LayoutMigration {
         Map.entry("gauge", 0), Map.entry("indicator", 1), Map.entry("chart", 2), Map.entry("progress", 3), Map.entry("label", 4),
         Map.entry("item_search", 5), Map.entry("watchlist", 6), Map.entry("jobs", 7), Map.entry("toggle", 8), Map.entry("slider", 8),
         Map.entry("select", 8), Map.entry("number", 8), Map.entry("text", 8), Map.entry("buttons", 9), Map.entry("button", 10),
-        Map.entry("redstone_sides", 11));
+        Map.entry("redstone_sides", 11), Map.entry("sensor_log", 2));
     private static final Map<String, Integer> DEFAULT_H = Map.ofEntries(
         Map.entry("progress", 2), Map.entry("item_search", 3), Map.entry("watchlist", 4), Map.entry("jobs", 3), Map.entry("toggle", 1),
         Map.entry("slider", 2), Map.entry("select", 1), Map.entry("number", 1), Map.entry("text", 1), Map.entry("buttons", 1),
-        Map.entry("button", 2), Map.entry("redstone_sides", 6));
+        Map.entry("button", 2), Map.entry("redstone_sides", 6), Map.entry("sensor_log", 6));
     private static final int CARD_CHROME_H = 2;
     private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
     private static final List<Map.Entry<Pattern, String>> ICON_GUESSES = List.of(

@@ -41,7 +41,7 @@ public final class RsScreens {
         public static final StreamCodec<ByteBuf, ActionPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, ActionPayload::containerId,
             ByteBufCodecs.stringUtf8(16), ActionPayload::action,
-            ByteBufCodecs.stringUtf8(128), ActionPayload::arg,
+            ByteBufCodecs.stringUtf8(RsScreenActions.MAX_SENSOR_ARG), ActionPayload::arg,
             ActionPayload::new);
 
         @Override
@@ -75,6 +75,24 @@ public final class RsScreens {
     static boolean canManage(ServerPlayer player, RsDeviceBlockEntity device) {
         var link = device.getLink();
         return link == null || Access.has(player, link.id(), Perm.NETWORK_LINK);
+    }
+
+    /** May this player arm or disarm an Advanced Cloud Sensor? Linked: {@code act.redstone} on its mainframe. */
+    static boolean canOperate(ServerPlayer player, RsDeviceBlockEntity device) {
+        var link = device.getLink();
+        return link == null || Access.has(player, link.id(), Perm.ACT_REDSTONE);
+    }
+
+    /**
+     * May this player see player names in an Advanced Cloud Sensor's screen? Like the dashboard: {@code view.positions}
+     * on its mainframe (unlinked: its owner), and only while names are on for the server.
+     */
+    static boolean seesNames(ServerPlayer player, RsDeviceBlockEntity device) {
+        if (!ai.ezfox.cccloud.sensor.AdvancedSensor.namesEnabled()) return false;
+        var link = device.getLink();
+        var sensor = device.sensor();
+        if (link == null) return sensor != null && player.getUUID().equals(sensor.owner());
+        return Access.has(player, link.id(), Perm.VIEW_POSITIONS);
     }
 
     /** The screen's view: what it is, its state and settings, and how it is connected. */
@@ -123,8 +141,56 @@ public final class RsScreens {
             json.add("groups", array);
             json.addProperty("canUnlink", manage);
         }
+        var sensor = device.sensor();
+        if (sensor != null) json.add("sensor", sensorView(device, sensor, player, manage));
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
+    }
+
+    /** The Advanced Cloud Sensor part of the screen: state, last events, settings (lists only for players who may change them). */
+    static JsonObject sensorView(RsDeviceBlockEntity device, ai.ezfox.cccloud.sensor.AdvancedSensor sensor, ServerPlayer player, boolean manage) {
+        var s = sensor.settings();
+        var o = new JsonObject();
+        boolean names = seesNames(player, device);
+        o.addProperty("armed", s.armed());
+        o.addProperty("canArm", canOperate(player, device));
+        o.addProperty("output", s.redstone());
+        o.addProperty("team", s.filter().ignoreTeam());
+        o.addProperty("detect", s.filter().mode().id);
+        o.addProperty("notify", s.alert().id);
+        o.addProperty("place", s.placement().id);
+        var clamped = s.clamped(ai.ezfox.cccloud.sensor.AdvancedSensor.maxX(), ai.ezfox.cccloud.sensor.AdvancedSensor.maxY(),
+            ai.ezfox.cccloud.sensor.AdvancedSensor.maxZ());
+        var zone = new JsonArray();
+        zone.add(clamped.sizeX());
+        zone.add(clamped.sizeY());
+        zone.add(clamped.sizeZ());
+        o.add("zone", zone);
+        var max = new JsonArray();
+        max.add(ai.ezfox.cccloud.sensor.AdvancedSensor.maxX());
+        max.add(ai.ezfox.cccloud.sensor.AdvancedSensor.maxY());
+        max.add(ai.ezfox.cccloud.sensor.AdvancedSensor.maxZ());
+        o.add("max", max);
+        if (manage) {
+            o.addProperty("allow", ai.ezfox.cccloud.sensor.SensorFilter.join(s.filter().allow()));
+            o.addProperty("deny", ai.ezfox.cccloud.sensor.SensorFilter.join(s.filter().deny()));
+        }
+        if (sensor.zoneProblem() != null) o.addProperty("problem", sensor.zoneProblem());
+        var inside = sensor.inside();
+        o.addProperty("inside", inside.isEmpty() ? "" : ai.ezfox.cccloud.sensor.SensorText.sentence(inside, names, ai.ezfox.cccloud.sensor.SensorText.who(inside, names)));
+        o.addProperty("today", sensor.log().today(System.currentTimeMillis(), ai.ezfox.cccloud.rules.RuleService.zone()));
+        var events = new JsonArray();
+        var list = sensor.log().events();
+        for (int i = list.size() - 1; i >= 0 && events.size() < 5; i--) {
+            var e = list.get(i);
+            var row = new JsonObject();
+            row.addProperty("t", e.time());
+            row.addProperty("in", e.entered());
+            row.addProperty("n", names && e.entry().named() ? e.entry().name() : ai.ezfox.cccloud.sensor.SensorText.capitalize(e.entry().publicLabel()));
+            events.add(row);
+        }
+        o.add("events", events);
+        return o;
     }
 
     private static void onAction(ActionPayload payload, IPayloadContext context) {
@@ -147,6 +213,7 @@ public final class RsScreens {
         var action = RsScreenActions.parse(name, arg);
         if (action == null || !RsScreenActions.fits(action, device.kind())) return "invalid";
         if (RsScreenActions.needsManage(action) && !canManage(player, device)) return "no_rights";
+        if (RsScreenActions.needsOperate(action) && !canOperate(player, device)) return "no_rights";
         String who = player.getGameProfile().name();
         switch (action) {
             case RsScreenActions.Rename r -> device.setNameAndGroup(r.name(), device.group());
@@ -174,6 +241,16 @@ public final class RsScreens {
                 if (device.getLink() == null) return "not_linked";
                 device.unlink(who);
                 return "unlinked";
+            }
+            case RsScreenActions.Sensor sa -> {
+                var sensor = device.sensor();
+                if (sensor == null) return "invalid";
+                var r = ai.ezfox.cccloud.sensor.SensorActions.screen(sensor.settings(), sa.key(), sa.arg(), ai.ezfox.cccloud.sensor.AdvancedSensor.maxX(),
+                    ai.ezfox.cccloud.sensor.AdvancedSensor.maxY(), ai.ezfox.cccloud.sensor.AdvancedSensor.maxZ());
+                if (r.settings() == null) return "invalid";
+                String error = sensor.update(r.settings(), player);
+                if (error != null) return error;
+                device.setChanged();
             }
         }
         CCCloud.LOGGER.info("[cccloud] {} changed the {} at {}: {} = {}", who, device.kind().block, device.getBlockPos(), name, arg);

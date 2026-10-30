@@ -72,6 +72,9 @@ public final class ModRegistry {
         p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.BUTTON, p), ModRegistry::plateProperties);
     public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsPlateBlock> CLOUD_SENSOR = BLOCKS.registerBlock("cloud_sensor",
         p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.SENSOR, p), ModRegistry::plateProperties);
+    /** Advanced Cloud Sensor (docs/SPEC.md "Advanced Cloud Sensor"): who or what enters a zone. */
+    public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsPlateBlock> ADVANCED_CLOUD_SENSOR = BLOCKS.registerBlock("advanced_cloud_sensor",
+        p -> new ai.ezfox.cccloud.rsdevice.RsPlateBlock(ai.ezfox.cccloud.rsdevice.RsKind.ADVANCED_SENSOR, p), ModRegistry::plateProperties);
     public static final DeferredBlock<ai.ezfox.cccloud.rsdevice.RsLampBlock> CLOUD_LAMP = BLOCKS.registerBlock("cloud_lamp",
         ai.ezfox.cccloud.rsdevice.RsLampBlock::new, p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).strength(0.3f).sound(SoundType.GLASS)
             .lightLevel(s -> s.getValue(ai.ezfox.cccloud.rsdevice.RsLampBlock.LEVEL)));
@@ -107,6 +110,7 @@ public final class ModRegistry {
     public static final DeferredItem<?> CLOUD_BUTTON_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_BUTTON);
     public static final DeferredItem<?> CLOUD_LAMP_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_LAMP);
     public static final DeferredItem<?> CLOUD_SENSOR_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_SENSOR);
+    public static final DeferredItem<?> ADVANCED_CLOUD_SENSOR_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_SENSOR, p -> p.rarity(Rarity.UNCOMMON));
     // v0.7 mainframe upgrades: 15 cards (type × tier), the Quantum Core and the optional Chunk Anchor card.
     public static final java.util.Map<String, DeferredItem<ai.ezfox.cccloud.upgrade.UpgradeItem>> UPGRADE_CARDS = new java.util.LinkedHashMap<>();
 
@@ -147,7 +151,7 @@ public final class ModRegistry {
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity>> RS_DEVICE_BE = BLOCK_ENTITIES.register(
         "redstone_device", () -> new BlockEntityType<>(ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity::new, true, CLOUD_SWITCH.get(), CLOUD_BUTTON.get(),
-            CLOUD_LAMP.get(), CLOUD_SENSOR.get()));
+            CLOUD_LAMP.get(), CLOUD_SENSOR.get(), ADVANCED_CLOUD_SENSOR.get()));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity>> ENDER_FIBER_LINK_BE =
         BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, true, ENDER_FIBER_LINK.get()));
@@ -192,6 +196,7 @@ public final class ModRegistry {
             out.accept(CLOUD_BUTTON_ITEM.get());
             out.accept(CLOUD_LAMP_ITEM.get());
             out.accept(CLOUD_SENSOR_ITEM.get());
+            out.accept(ADVANCED_CLOUD_SENSOR_ITEM.get());
             out.accept(CLOUD_LINK_CARD.get());
             out.accept(CLOUD_CORE.get());
             for (var card : UPGRADE_CARDS.values()) out.accept(card.get());
@@ -263,6 +268,13 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("rsdevice_permissions", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::permissions);
         TEST_FUNCTIONS.register("rsdevice_capacity_power", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::capacityAndPower);
         TEST_FUNCTIONS.register("rsdevice_setblock_card", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::placedBySetblock);
+        TEST_FUNCTIONS.register("sensor_mobs_enter", () -> ai.ezfox.cccloud.sensor.SensorGameTests::mobsEnter);
+        TEST_FUNCTIONS.register("sensor_team_filters", () -> ai.ezfox.cccloud.sensor.SensorGameTests::teamAndFilters);
+        TEST_FUNCTIONS.register("sensor_redstone", () -> ai.ezfox.cccloud.sensor.SensorGameTests::redstoneOutput);
+        TEST_FUNCTIONS.register("sensor_rule_who", () -> ai.ezfox.cccloud.sensor.SensorGameTests::ruleWithName);
+        TEST_FUNCTIONS.register("sensor_claims", () -> ai.ezfox.cccloud.sensor.SensorGameTests::claims);
+        TEST_FUNCTIONS.register("sensor_names_hidden", () -> ai.ezfox.cccloud.sensor.SensorGameTests::namesHidden);
+        TEST_FUNCTIONS.register("sensor_rate_limit", () -> ai.ezfox.cccloud.sensor.SensorGameTests::rateLimitAndSummary);
     }
 
     private ModRegistry() {

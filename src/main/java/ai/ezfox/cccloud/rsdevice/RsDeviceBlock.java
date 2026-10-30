@@ -27,13 +27,13 @@ public interface RsDeviceBlock {
     }
 
     /**
-     * Right-click: sneak (or any click on a sensor) opens the device's screen, otherwise the device reacts like its
+     * Right-click: sneak (or any click on a sensor, basic or advanced) opens the device's screen, otherwise the device reacts like its
      * vanilla counterpart (switch and lamp toggle, button presses).
      */
     static InteractionResult use(RsKind kind, Level level, BlockPos pos, Player player) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (!(level.getBlockEntity(pos) instanceof RsDeviceBlockEntity device)) return InteractionResult.PASS;
-        if (player.isSecondaryUseActive() || kind == RsKind.SENSOR) {
+        if (player.isSecondaryUseActive() || kind.sensor()) {
             if (player instanceof ServerPlayer serverPlayer) RsScreens.open(serverPlayer, device);
             return InteractionResult.SUCCESS;
         }

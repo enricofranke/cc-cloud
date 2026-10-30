@@ -309,8 +309,8 @@ public final class RuleService {
             CCCloud.LOGGER.info("[cccloud] Rule '{}' of {} ran{} ({} action(s)): {}", run.name(), mainframeName, run.manual() ? " manually" : "",
                 run.actions(), result);
         }
-        if (run.push()) notifier.accept(new Notification(mainframeId, mainframeName, "Rule '" + run.name() + "': " + result,
-            run.ok() ? "info" : "warn"));
+        if (run.push()) notifier.accept(new Notification(mainframeId, mainframeName, "Rule '" + run.name() + "': " + result
+            + (run.who() != null ? " (" + run.who() + ")" : ""), run.ok() ? "info" : "warn"));
     }
 
     /** The {@link RuleEngine.World} of a loaded mainframe. */
@@ -360,9 +360,35 @@ public final class RuleService {
 
             @Override
             public @Nullable String run(Rule rule, Rule.Action action) {
-                return RuleService.run(mainframe, rule, action);
+                return RuleService.run(mainframe, rule, action, RuleEngine.Context.NONE);
+            }
+
+            @Override
+            public @Nullable String run(Rule rule, Rule.Action action, RuleEngine.Context context) {
+                return RuleService.run(mainframe, rule, action, context);
+            }
+
+            @Override
+            public RuleEngine.@Nullable SensorFeed sensor(String uplinkId) {
+                return sensorFeed(id, uplinkId);
             }
         };
+    }
+
+    /** An Advanced Cloud Sensor of this mainframe (by its card id) as rules see it; null while it is not loaded. */
+    static RuleEngine.@Nullable SensorFeed sensorFeed(UUID mainframeId, String uplinkId) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uplinkId);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        var sensor = ai.ezfox.cccloud.sensor.AdvancedSensor.of(uuid);
+        var section = sensor == null ? null : sensor.section();
+        if (section == null || !section.mainframeId().equals(mainframeId)) return null;
+        var hits = new ArrayList<RuleEngine.SensorHit>();
+        for (var e : sensor.enteredAfter(0)) hits.add(new RuleEngine.SensorHit(e.seq(), e.entry()));
+        return new RuleEngine.SensorFeed(sensor.lastSeq(), hits);
     }
 
     private static @Nullable DashboardSection section(UUID mainframeId, String uplinkId) {
@@ -385,11 +411,11 @@ public final class RuleService {
     }
 
     /** Runs one action with the same validation as a human action; user = "rule:<name>", never with a PIN. */
-    static @Nullable String run(CloudMainframeBlockEntity mainframe, Rule rule, Rule.Action action) {
+    static @Nullable String run(CloudMainframeBlockEntity mainframe, Rule rule, Rule.Action action, RuleEngine.Context context) {
         if (action instanceof Rule.SceneAction scene) {
             return ai.ezfox.cccloud.scene.SceneService.startFromRule(mainframe, scene.sceneId(), rule.name());
         }
-        return runAction(mainframe, action, "rule:" + rule.name(), false);
+        return runAction(mainframe, action, "rule:" + rule.name(), false, context);
     }
 
     /**
@@ -397,10 +423,21 @@ public final class RuleService {
      * rights; {@code pinVerified} = the mainframe PIN was entered for this run (PIN widgets refuse otherwise).
      */
     public static @Nullable String runAction(CloudMainframeBlockEntity mainframe, Rule.Action action, String user, boolean pinVerified) {
+        return runAction(mainframe, action, user, pinVerified, RuleEngine.Context.NONE);
+    }
+
+    /**
+     * As above, with the trigger's context: {@code {who}} in an alert text becomes who an Advanced Cloud Sensor saw
+     * (with player names for operators and push, "a player" for viewers and share links).
+     */
+    public static @Nullable String runAction(CloudMainframeBlockEntity mainframe, Rule.Action action, String user, boolean pinVerified,
+                                             RuleEngine.Context context) {
         UUID id = mainframe.getMainframeId();
         switch (action) {
             case Rule.AlertAction alert -> {
-                WebHub.INSTANCE.publishAlert(id, null, alert.text(), alert.level()); // also pushed (WebHub.onAlert)
+                String text = context.fill(alert.text(), true);
+                String pub = context.fill(alert.text(), false);
+                WebHub.INSTANCE.publishAlert(id, null, text, alert.level(), pub.equals(text) ? null : pub); // also pushed (WebHub.onAlert)
                 return null;
             }
             case Rule.DashboardAction dashboard -> {

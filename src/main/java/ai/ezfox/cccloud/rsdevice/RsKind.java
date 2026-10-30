@@ -4,14 +4,16 @@ import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The four Cloud Redstone devices (docs/SPEC.md "Cloud Redstone devices"). {@code id} is the saved/protocol name,
+ * The Cloud Redstone devices (docs/SPEC.md "Cloud Redstone devices"). {@code id} is the saved/protocol name,
  * {@code block} the block id, {@code icon} the bundled dashboard icon of their widgets.
  */
 public enum RsKind {
     SWITCH("switch", "cloud_switch", "lever", "Switch"),
     BUTTON("button", "cloud_button", "button", "Button"),
     LAMP("lamp", "cloud_lamp", "lamp", "Lamp"),
-    SENSOR("sensor", "cloud_sensor", "sensor", "Sensor");
+    SENSOR("sensor", "cloud_sensor", "sensor", "Sensor"),
+    /** Advanced Cloud Sensor: who or what is in its zone (docs/SPEC.md "Advanced Cloud Sensor"); its own card too. */
+    ADVANCED_SENSOR("advanced_sensor", "advanced_cloud_sensor", "eye", "Advanced Sensor");
 
     public final String id;
     public final String block;
@@ -29,6 +31,11 @@ public enum RsKind {
     /** Switches and lamps can be turned on and off (the card's "All on" / "All off" buttons). */
     public boolean switchable() {
         return this == SWITCH || this == LAMP;
+    }
+
+    /** Sensors (basic and advanced) only report; they have no control on the cards and their screen opens on any click. */
+    public boolean sensor() {
+        return this == SENSOR || this == ADVANCED_SENSOR;
     }
 
     public static @Nullable RsKind byId(String id) {

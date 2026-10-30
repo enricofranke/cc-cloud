@@ -26,6 +26,7 @@ public final class RuleCodec {
     /** Weekday names of a schedule trigger; index = bit (Monday = bit 0). */
     public static final java.util.List<String> DAYS = java.util.List.of("mon", "tue", "wed", "thu", "fri", "sat", "sun");
     static final Pattern CLOCK = Pattern.compile("([01][0-9]|2[0-3]):[0-5][0-9]");
+    static final Pattern PLAYER = Pattern.compile("[A-Za-z0-9_]{1,16}");
 
     public record Result(@Nullable Rule rule, @Nullable String error) {
         static Result fail(String detail) {
@@ -119,6 +120,14 @@ public final class RuleCodec {
                 if (mask == 0) throw new Invalid("at least one day");
                 String at = string(obj, "at", CLOCK, "at (HH:MM)");
                 yield new Rule.ScheduleTrigger(mask, Integer.parseInt(at.substring(0, 2)) * 60 + Integer.parseInt(at.substring(3)));
+            }
+            case "sensor" -> {
+                keys(obj, Set.of("type", "uplinkId", "kind", "player"), "when");
+                String kind = obj.has("kind") ? string(obj, "kind", null, "kind") : "any";
+                if (!Rule.SensorTrigger.KINDS.contains(kind)) throw new Invalid("kind must be one of " + String.join(", ", Rule.SensorTrigger.KINDS));
+                String player = obj.has("player") ? string(obj, "player", PLAYER, "player (a Minecraft name)") : null;
+                if (player != null && !kind.equals("any") && !kind.equals("player")) throw new Invalid("a player name needs kind player");
+                yield new Rule.SensorTrigger(string(obj, "uplinkId", UUID_RE, "uplinkId"), player != null ? "player" : kind, player);
             }
             default -> throw new Invalid("unknown trigger " + type);
         };
@@ -225,6 +234,11 @@ public final class RuleCodec {
             case Rule.TimeTrigger t -> {
                 var o = obj("type", "time");
                 o.addProperty("time", t.time());
+                yield o;
+            }
+            case Rule.SensorTrigger t -> {
+                var o = obj("type", "sensor", "uplinkId", t.uplinkId(), "kind", t.kind());
+                if (t.player() != null) o.addProperty("player", t.player());
                 yield o;
             }
             case Rule.ScheduleTrigger t -> {

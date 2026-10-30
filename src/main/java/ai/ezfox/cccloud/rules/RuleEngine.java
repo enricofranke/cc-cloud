@@ -47,6 +47,19 @@ public final class RuleEngine {
         /** Runs one action. Returns null on success, else an error code. */
         @Nullable String run(Rule rule, Rule.Action action);
 
+        /** Runs one action with the trigger's context ({@code {who}} in alert texts). */
+        default @Nullable String run(Rule rule, Rule.Action action, Context context) {
+            return run(rule, action);
+        }
+
+        /**
+         * An Advanced Cloud Sensor's events (its card's {@code uplinkId}): the newest sequence number and the recent
+         * "entered" events, or null while the sensor is unknown (not loaded).
+         */
+        default @Nullable SensorFeed sensor(String uplinkId) {
+            return null;
+        }
+
         /** The mainframe is loaded and online (rules can act). Only schedules are evaluated otherwise. */
         default boolean available() {
             return true;
@@ -55,6 +68,26 @@ public final class RuleEngine {
         /** Why the mainframe is not available: {@code unloaded} or {@code offline}. */
         default String unavailable() {
             return "offline";
+        }
+    }
+
+    /** What a sensor trigger saw: the newest sequence number and the recent "entered" events (oldest first). */
+    public record SensorFeed(long lastSeq, List<SensorHit> entered) {
+    }
+
+    public record SensorHit(long seq, ai.ezfox.cccloud.sensor.SensorEntry entry) {
+    }
+
+    /**
+     * What a run's actions may refer to: {@code {who}} in alert texts, with player names ({@code who}, for operators and
+     * push) and without ({@code whoPublic}, for viewers and share links).
+     */
+    public record Context(String who, String whoPublic) {
+        public static final Context NONE = new Context("someone", "someone");
+
+        /** Replaces {@code {who}} in an alert text. */
+        public String fill(String text, boolean names) {
+            return text.replace("{who}", names ? who : whoPublic);
         }
     }
 
@@ -75,9 +108,14 @@ public final class RuleEngine {
      *
      * @param skipped a schedule came due while the mainframe was unavailable ({@code error} = skipped_unloaded|offline)
      */
-    public record Run(String ruleId, String name, long time, boolean manual, @Nullable String error, int actions, boolean push, boolean skipped) {
+    public record Run(String ruleId, String name, long time, boolean manual, @Nullable String error, int actions, boolean push, boolean skipped,
+                      @Nullable String who) {
+        public Run(String ruleId, String name, long time, boolean manual, @Nullable String error, int actions, boolean push, boolean skipped) {
+            this(ruleId, name, time, manual, error, actions, push, skipped, null);
+        }
+
         public Run(String ruleId, String name, long time, boolean manual, @Nullable String error, int actions, boolean push) {
-            this(ruleId, name, time, manual, error, actions, push, false);
+            this(ruleId, name, time, manual, error, actions, push, false, null);
         }
 
         public boolean ok() {
@@ -101,6 +139,10 @@ public final class RuleEngine {
         boolean skipping;
         long runs;
         @Nullable String lastResult;
+        /** Sensor triggers: the newest event already looked at (-1 = not yet). */
+        long seq = -1;
+        /** The context of the trigger that fired in this evaluation (sensor triggers). */
+        @Nullable Context context;
 
         public long lastRun() {
             return lastRun;
@@ -207,6 +249,9 @@ public final class RuleEngine {
     }
 
     private @Nullable Run run(Rule rule, World world, boolean manual) {
+        var state0 = state(rule.id());
+        var context = manual || state0.context == null ? Context.NONE : state0.context;
+        state0.context = null;
         long now = world.now();
         if (now - windowStart >= 1000) {
             windowStart = now;
@@ -226,7 +271,7 @@ public final class RuleEngine {
             if (done >= Rule.MAX_ACTIONS) break;
             String result;
             try {
-                result = world.run(rule, action);
+                result = world.run(rule, action, context);
             } catch (RuntimeException e) {
                 result = "internal_error";
             }
@@ -236,7 +281,7 @@ public final class RuleEngine {
         state.lastRun = now;
         state.runs++;
         state.lastResult = error == null ? "ok" : error;
-        return new Run(rule.id(), rule.name(), now, manual, error, done, rule.push());
+        return new Run(rule.id(), rule.name(), now, manual, error, done, rule.push(), false, context == Context.NONE ? null : context.who());
     }
 
     private Fire fires(Rule rule, State state, World world, long now, long day, boolean startup, boolean available, Settings settings) {
@@ -281,6 +326,22 @@ public final class RuleEngine {
                 if (now < state.nextAt) yield Fire.NONE;
                 state.nextAt = ScheduleMath.next(t, now, settings.zone()); // several passed occurrences fire once
                 fired(state, now);
+                yield Fire.DUE;
+            }
+            case Rule.SensorTrigger t -> {
+                state.context = null;
+                var feed = world.sensor(t.uplinkId());
+                if (feed == null) yield Fire.NONE; // not loaded: keep the position
+                if (state.seq < 0 || feed.lastSeq() < state.seq) {
+                    // first look (or the sensor's log started over): only what comes from now on fires
+                    state.seq = feed.lastSeq();
+                    yield Fire.NONE;
+                }
+                var hits = new ArrayList<ai.ezfox.cccloud.sensor.SensorEntry>();
+                for (var hit : feed.entered()) if (hit.seq() > state.seq && t.matches(hit.entry())) hits.add(hit.entry());
+                state.seq = feed.lastSeq();
+                if (hits.isEmpty()) yield Fire.NONE;
+                state.context = new Context(ai.ezfox.cccloud.sensor.SensorText.who(hits, true), ai.ezfox.cccloud.sensor.SensorText.who(hits, false));
                 yield Fire.DUE;
             }
             case Rule.TimeTrigger t -> {

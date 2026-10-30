@@ -42,6 +42,16 @@ public final class CloudConfig {
     public static final ModConfigSpec.DoubleValue REDSTONE_CAPACITY_WEIGHT;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_REDSTONE_DEVICE_FE;
     public static final ModConfigSpec.IntValue RS_DEVICE_CHANGES_PER_SECOND;
+    // Advanced Cloud Sensor (who or what enters a zone)
+    public static final ModConfigSpec.DoubleValue ADVANCED_SENSOR_CAPACITY_WEIGHT;
+    public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_SENSOR_FE;
+    public static final ModConfigSpec.BooleanValue ADVANCED_SENSOR_PLAYER_NAMES;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_MAX_ZONE_X;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_MAX_ZONE_Y;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_MAX_ZONE_Z;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_ENTITY_COOLDOWN;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_ALERT_COOLDOWN;
+    public static final ModConfigSpec.IntValue ADVANCED_SENSOR_SCANS_PER_TICK;
     // v0.7 mainframe upgrades (base limits without cards) and the optional Chunk Anchor card
     public static final ModConfigSpec.IntValue BASE_DEVICES;
     public static final ModConfigSpec.IntValue BASE_BROWSERS;
@@ -209,6 +219,10 @@ public final class CloudConfig {
         REDSTONE_CAPACITY_WEIGHT = b.comment("How much a Cloud Switch / Button / Lamp / Sensor counts against the mainframe's device capacity (1 = like an uplink).")
             .translation("cccloud.configuration.redstoneDeviceCapacityWeight")
             .defineInRange("redstoneDeviceCapacityWeight", 0.25, 0.0, 1.0);
+        ADVANCED_SENSOR_CAPACITY_WEIGHT = b.comment("How much an Advanced Cloud Sensor counts against the mainframe's device capacity (1 = like an uplink).",
+                "Its range is redstoneDeviceRange (radio only).")
+            .translation("cccloud.configuration.advancedSensorCapacityWeight")
+            .defineInRange("advancedSensorCapacityWeight", 0.5, 0.0, 4.0);
         b.pop();
 
         b.push("power");
@@ -233,6 +247,10 @@ public final class CloudConfig {
         MAINFRAME_PER_REDSTONE_DEVICE_FE = b.comment("Additional FE per tick per connected Cloud Switch / Button / Lamp / Sensor.")
             .translation("cccloud.configuration.mainframePerRedstoneDeviceFE")
             .defineInRange("mainframePerRedstoneDeviceFE", 1, 0, 1_000_000);
+        MAINFRAME_PER_ADVANCED_SENSOR_FE = b.comment("Additional FE per tick per connected Advanced Cloud Sensor while it is armed (disarmed it costs",
+                "mainframePerRedstoneDeviceFE like the other redstone devices).")
+            .translation("cccloud.configuration.mainframePerAdvancedSensorFE")
+            .defineInRange("mainframePerAdvancedSensorFE", 4, 0, 1_000_000);
         MAINFRAME_PER_HOP_FE = b.comment("Additional FE per tick for every hop beyond the first of each routed device.")
             .translation("cccloud.configuration.mainframePerHopFE")
             .defineInRange("mainframePerHopFE", 1, 0, 1_000_000);
@@ -408,6 +426,35 @@ public final class CloudConfig {
                 "(bursts of twice as many are allowed; in-world clicks are not limited).")
             .translation("cccloud.configuration.redstoneDeviceChangesPerSecond")
             .defineInRange("redstoneDeviceChangesPerSecond", 4, 1, 40);
+        b.pop();
+
+        b.push("advancedSensor");
+        ADVANCED_SENSOR_PLAYER_NAMES = b.comment("Advanced Cloud Sensor: report players by name. false = every player is reported as \"a player\" (dashboard,",
+                "alerts, push, rules) and no player names are stored in its log. Even when true, only players with the operator role",
+                "(\"See coordinates\") on the sensor's mainframe see names; viewers, share links and Cloud Displays always see \"a player\".")
+            .translation("cccloud.configuration.advancedSensorPlayerNames")
+            .define("advancedSensorPlayerNames", true);
+        ADVANCED_SENSOR_MAX_ZONE_X = b.comment("Advanced Cloud Sensor: largest zone along X (blocks).")
+            .translation("cccloud.configuration.advancedSensorMaxZoneX")
+            .defineInRange("advancedSensorMaxZoneX", 9, 1, ai.ezfox.cccloud.sensor.SensorSettings.HARD_MAX_XZ);
+        ADVANCED_SENSOR_MAX_ZONE_Y = b.comment("Advanced Cloud Sensor: largest zone along Y (height, blocks).")
+            .translation("cccloud.configuration.advancedSensorMaxZoneY")
+            .defineInRange("advancedSensorMaxZoneY", 5, 1, ai.ezfox.cccloud.sensor.SensorSettings.HARD_MAX_Y);
+        ADVANCED_SENSOR_MAX_ZONE_Z = b.comment("Advanced Cloud Sensor: largest zone along Z (blocks).")
+            .translation("cccloud.configuration.advancedSensorMaxZoneZ")
+            .defineInRange("advancedSensorMaxZoneZ", 9, 1, ai.ezfox.cccloud.sensor.SensorSettings.HARD_MAX_XZ);
+        ADVANCED_SENSOR_ENTITY_COOLDOWN = b.comment("Advanced Cloud Sensor: seconds after an entity was reported entering before the same entity is reported",
+                "again (a mob walking in and out of the zone gives one entered/left pair per cooldown). 0 = report every time.")
+            .translation("cccloud.configuration.advancedSensorEntityCooldown")
+            .defineInRange("advancedSensorEntityCooldown", 60, 0, 3600);
+        ADVANCED_SENSOR_ALERT_COOLDOWN = b.comment("Advanced Cloud Sensor: at most one alert / push message per sensor in this many seconds; whatever enters",
+                "meanwhile is sent as one summary (\"3 Zombies entered …\") when the cooldown is over.")
+            .translation("cccloud.configuration.advancedSensorAlertCooldown")
+            .defineInRange("advancedSensorAlertCooldown", 10, 1, 3600);
+        ADVANCED_SENSOR_SCANS_PER_TICK = b.comment("Advanced Cloud Sensor: zone scans per server tick on the whole server (each sensor scans every 10 ticks,",
+                "spread over the ticks; scans beyond this wait for the next tick).")
+            .translation("cccloud.configuration.advancedSensorScansPerTick")
+            .defineInRange("advancedSensorScansPerTick", 32, 1, 1024);
         b.pop();
 
         b.push("upgrades");

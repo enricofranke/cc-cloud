@@ -24,7 +24,12 @@ public enum WidgetType {
     /** Bound to a storage bridge: value = crafting job rows, read-only. */
     JOBS(false),
     /** The automatic Computer card's six redstone sides (value [{side,out,in}], action {op:"set_output"}). Not available from Lua. */
-    REDSTONE_SIDES(true);
+    REDSTONE_SIDES(true),
+    /**
+     * An Advanced Cloud Sensor's activity: who is inside, the last events and today's count (value
+     * {@code {summary, inside, events, today, armed, zone, problem?}}). Read-only; not available from Lua.
+     */
+    SENSOR_LOG(false);
 
     private final boolean interactive;
 
