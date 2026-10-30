@@ -3,6 +3,7 @@ import { effect, signal } from "@preact/signals";
 import { MainframeConn } from "./conn.ts";
 import { saved, renameSaved, removeSaved, account, setAccount, syncAccountMainframes, type SavedMainframe } from "./store.ts";
 import { fetchMainframes, ApiError } from "./api.ts";
+import { clearVoxelCache, voxelsForbidden } from "./voxelcache.ts";
 import { navigate, notifyCrit, pushToast, route } from "./ui.ts";
 
 const conns = new Map<string, MainframeConn>();
@@ -55,6 +56,10 @@ function create(m: SavedMainframe) {
       const viewing = route.value.name === "mainframe" && route.value.id === m.mainframeId;
       if (viewing || saved.value.length === 0) navigate("/pair", true);
     });
+  });
+  // The role lost "See coordinates": the 3D view's blocks this browser kept go at once (docs/SECURITY.md "Map, voxels and X-ray").
+  effect(() => {
+    if (voxelsForbidden(conn.perms.value)) void clearVoxelCache(m.mainframeId);
   });
   if (m.canControl === false) conn.canControl.value = false;
   conn.start();

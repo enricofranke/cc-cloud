@@ -557,7 +557,7 @@ public final class MinecraftBridge implements GameBridge {
         String denied = AccessGate.check(resolution.role(), resolution.perms(), AccessGate.routePerm(route));
         if (denied != null) return AccessApi.error(403, denied.equals("read_only") ? "not_allowed" : denied);
         var keys = ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys();
-        var caller = new ai.ezfox.cccloud.publicapi.ApiKeysApi.Caller(device.player(), device.playerName(), resolution.perms());
+        var caller = new ai.ezfox.cccloud.publicapi.ApiKeysApi.Caller(device.player(), device.playerName(), resolution.perms(), device.tokenHash());
         long now = System.currentTimeMillis();
         if (route == Router.Id.APIKEYS_GET) return ai.ezfox.cccloud.publicapi.ApiKeysApi.get(keys, apiSettings(), mainframeId, caller, now);
         return ai.ezfox.cccloud.publicapi.ApiKeysApi.post(keys, apiSettings(), mainframeId, caller, body, now, line -> {

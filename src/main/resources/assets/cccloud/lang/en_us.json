@@ -704,6 +704,7 @@
   "cccloud.probe.unloaded": "The machine is not loaded",
   "cccloud.probe.not_a_machine": "A Cloud Probe reads machines (blocks with a block entity), not CC: Cloud blocks",
   "cccloud.probe.no_access": "You may not use this machine here (claim or spawn protection)",
+  "cccloud.probe.stale": "This machine was picked more than 10 minutes ago – pick it again with the Link Card",
   "cccloud.gui.what.reads_remote": "Reads (remote):",
   "cccloud.gui.what.probe_none": "No machine picked yet",
   "cccloud.gui.probe.heading": "Remote machine",

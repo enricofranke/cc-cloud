@@ -33,7 +33,7 @@ public final class Ae2Compat {
         p -> p.mapColor(MapColor.COLOR_PURPLE).strength(2.5f).sound(SoundType.METAL));
     public static final DeferredItem<BlockItem> ITEM = ITEMS.registerSimpleBlockItem(BLOCK);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<MeBridgeBlockEntity>> BLOCK_ENTITY = BLOCK_ENTITIES.register("me_cloud_bridge",
-        () -> new BlockEntityType<>(MeBridgeBlockEntity::new, BLOCK.get()));
+        () -> new BlockEntityType<>(MeBridgeBlockEntity::new, true, BLOCK.get()));
 
     static {
         TEST_FUNCTIONS.register("me_bridge_storage", () -> Ae2GameTests::storage);

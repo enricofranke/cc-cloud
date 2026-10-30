@@ -127,9 +127,26 @@ public final class AuthStore {
     private record MainframePinFailures(int count, long lastFailure, long lockedUntil, int lockouts) {
     }
 
+    /** Told about every revoked device (not about expired ones): API keys made with it end too (v0.10). */
+    private volatile java.util.function.Consumer<Device> onRevoke = d -> {
+    };
+
     public AuthStore(LongSupplier clock, Runnable onChange) {
         this.clock = clock;
         this.onChange = onChange;
+    }
+
+    /** Replaces the revocation listener (one per server start). */
+    public void onRevoke(java.util.function.Consumer<Device> listener) {
+        this.onRevoke = listener;
+    }
+
+    private void revoked(Device device) {
+        try {
+            onRevoke.accept(device);
+        } catch (RuntimeException e) {
+            ai.ezfox.cccloud.CloudLog.LOGGER.error("[cccloud] Error while revoking the API keys of device '{}'", device.name(), e);
+        }
     }
 
     // ---- persistence views -------------------------------------------------------------------------------------------
@@ -383,6 +400,7 @@ public final class AuthStore {
         if (match == null || !allowed.test(match)) return null;
         devices.remove(match.tokenHash());
         onChange.run();
+        revoked(match);
         return match;
     }
 
@@ -397,6 +415,7 @@ public final class AuthStore {
             }
         }
         if (!removed.isEmpty()) onChange.run();
+        for (var device : removed) revoked(device);
         return removed;
     }
 
@@ -412,6 +431,7 @@ public final class AuthStore {
         if (match == null) return null;
         devices.remove(match.tokenHash());
         onChange.run();
+        revoked(match);
         return match;
     }
 

@@ -34,6 +34,7 @@ public class CCCloud {
         ai.ezfox.cccloud.access.Access.init();
         ai.ezfox.cccloud.rules.RuleService.init();
         ai.ezfox.cccloud.scene.SceneService.init();
+        ai.ezfox.cccloud.publicapi.ApiKeyData.init();
         ai.ezfox.cccloud.production.ProductionService.init();
         ai.ezfox.cccloud.push.PushService.init();
         ai.ezfox.cccloud.terminal.TerminalService.init();

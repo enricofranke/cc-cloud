@@ -26,14 +26,15 @@ public final class ApiKeyData extends SavedData {
         Codec.LONG.optionalFieldOf("expires", 0L).forGetter(ApiKeys.Key::expires),
         Codec.STRING.listOf().optionalFieldOf("ips", List.of()).forGetter(ApiKeys.Key::ips),
         Codec.LONG.optionalFieldOf("last_used", 0L).forGetter(ApiKeys.Key::lastUsed),
-        Codec.STRING.optionalFieldOf("last_ip", "").forGetter(ApiKeys.Key::lastIp)
-    ).apply(i, (id, hash, name, player, playerName, mainframe, scopes, created, expires, ips, lastUsed, lastIp) -> {
+        Codec.STRING.optionalFieldOf("last_ip", "").forGetter(ApiKeys.Key::lastIp),
+        Codec.STRING.optionalFieldOf("device", "").forGetter(ApiKeys.Key::device)
+    ).apply(i, (id, hash, name, player, playerName, mainframe, scopes, created, expires, ips, lastUsed, lastIp, device) -> {
         var set = EnumSet.noneOf(ApiScope.class);
         for (var s : scopes) {
             var scope = ApiScope.byId(s);
             if (scope != null) set.add(scope);
         }
-        return new ApiKeys.Key(id, hash, name, player, playerName, mainframe, set, created, expires, ips, lastUsed, lastIp);
+        return new ApiKeys.Key(id, hash, name, player, playerName, mainframe, set, created, expires, ips, lastUsed, lastIp, device);
     }));
 
     private static final Codec<ApiKeyData> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -53,6 +54,18 @@ public final class ApiKeyData extends SavedData {
 
     public static ApiKeyData get(MinecraftServer server) {
         return server.getDataStorage().computeIfAbsent(TYPE);
+    }
+
+    /** Revoking a browser revokes the API keys created with it (lost phone: one revocation ends everything). */
+    public static void init() {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(net.neoforged.neoforge.event.server.ServerStartedEvent.class, e -> {
+            var server = e.getServer();
+            get(server).keys().followRevocations(ai.ezfox.cccloud.web.WebAuthData.get(server), (device, key) -> {
+                String text = "API key '" + key.name() + "' (" + key.playerName() + ") revoked with the browser '" + device.name() + "' that created it";
+                ai.ezfox.cccloud.web.WebAuthData.access(server).audit(key.mainframeId(), text);
+                ai.ezfox.cccloud.CloudLog.LOGGER.info("[cccloud] {}", text);
+            });
+        });
     }
 
     public ApiKeys keys() {

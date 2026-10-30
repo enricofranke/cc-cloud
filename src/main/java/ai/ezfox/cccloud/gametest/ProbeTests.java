@@ -5,6 +5,7 @@ import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.ingame.InGameTestSupport;
 import ai.ezfox.cccloud.item.ProbeTarget;
+import ai.ezfox.cccloud.map.XrayGuard;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
@@ -146,5 +147,70 @@ public final class ProbeTests {
             helper.assertTrue(onTable.deviceKind().isEmpty(), "nothing on the north face, nothing inside: no card");
             helper.assertTrue(onTable.exposedElsewhere() == Direction.UP, "the hint names the top: " + onTable.exposedElsewhere());
         });
+    }
+
+    /**
+     * Security review 2026-10-30: a probe reads its machine only while the rules hold, not only when it was linked. A
+     * picked machine expires after 10 minutes; a chunk another team claimed for the picking player is refused when
+     * linking and stops the reading (and the card) later; a probe moved with its data (block movers, contraptions)
+     * forgets its target instead of reading the same coordinates at its new place.
+     */
+    public static void guards(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var player = InGameTestSupport.player(helper, "probe_guard");
+        BlockPos machine = new BlockPos(1, 1, 1);
+        BlockPos probePos = new BlockPos(3, 1, 1);
+        BlockPos movedPos = new BlockPos(3, 1, 3);
+        helper.setBlock(machine, Blocks.BEACON);
+        helper.setBlock(probePos.north(), Blocks.STONE);
+        helper.setBlock(movedPos.north(), Blocks.STONE);
+        helper.setBlock(probePos, ModRegistry.CLOUD_PROBE.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.NORTH));
+        var probe = (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(probePos));
+        var at = GlobalPos.of(level.dimension(), helper.absolutePos(machine));
+        // claims of other teams for this test's player only (everything else goes to the real provider)
+        var claimed = ConcurrentHashMap.<Long>newKeySet();
+        long chunk = net.minecraft.world.level.ChunkPos.pack(at.pos().getX() >> 4, at.pos().getZ() >> 4);
+        var previous = XrayGuard.claims;
+        XrayGuard.claims = (l, cx, cz, p) -> p.equals(player.getUUID()) && claimed.contains(net.minecraft.world.level.ChunkPos.pack(cx, cz))
+            || previous != null && previous.claimedByOther(l, cx, cz, p);
+
+        var stale = new ProbeTarget(at, Direction.UP, player.getUUID(), System.currentTimeMillis() - ProbeTarget.VALID_MS - 1_000);
+        helper.assertTrue(!probe.setRemoteTarget(stale, player) && probe.remoteTarget() == null, "a machine picked more than 10 minutes ago is refused");
+        helper.assertTrue(!probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID(), 0), player), "a card without a pick time is refused");
+        claimed.add(chunk);
+        helper.assertTrue(!probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID()), player) && probe.remoteTarget() == null,
+            "a machine in a chunk another team claimed is refused when linking (also a card made without picking)");
+        claimed.clear();
+        helper.assertTrue(probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID()), player), "fresh and unclaimed: linked");
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue("energy".equals(probe.deviceKind()) && at.pos().equals(probe.readPos()), "reads the machine"))
+            .thenExecute(() -> claimed.add(chunk))
+            .thenWaitUntil(() -> {
+                helper.assertTrue(probe.readPos() == null, "claimed later: nothing is read");
+                helper.assertTrue(probe.deviceKind().isEmpty(), "and the card is gone: " + probe.deviceKind());
+            })
+            .thenExecute(() -> claimed.clear())
+            .thenWaitUntil(() -> helper.assertTrue("energy".equals(probe.deviceKind()), "unclaimed again: the card is back"))
+            .thenExecute(() -> {
+                // Moved with its data (a contraption, a block mover): the saved probe is placed somewhere else.
+                var tag = probe.saveWithFullMetadata(level.registryAccess());
+                helper.setBlock(probePos, Blocks.AIR);
+                helper.setBlock(movedPos, ModRegistry.CLOUD_PROBE.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.NORTH));
+                var abs = helper.absolutePos(movedPos);
+                var loaded = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(abs, level.getBlockState(abs), tag, level.registryAccess());
+                helper.assertTrue(loaded instanceof CloudUplinkBlockEntity u && at.pos().equals(u.remoteTarget()) && u.readPos() == null,
+                    "a moved probe does not read the old coordinates");
+                level.setBlockEntity(loaded);
+            })
+            .thenWaitUntil(() -> {
+                var moved = (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(movedPos));
+                helper.assertTrue(moved != null && moved.remoteTarget() == null, "and forgets its target");
+                helper.assertTrue(moved.deviceKind().isEmpty(), "no card");
+            })
+            .thenExecute(() -> {
+                XrayGuard.claims = previous;
+                helper.setBlock(movedPos, Blocks.AIR);
+            })
+            .thenSucceed();
     }
 }

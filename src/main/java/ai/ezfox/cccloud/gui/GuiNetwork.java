@@ -177,6 +177,7 @@ public final class GuiNetwork {
 
     private static void onMainframeAction(MainframeActionPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
+        if (!ai.ezfox.cccloud.ingame.PacketLimiter.SCREEN_ACTIONS.allow(player.getUUID())) return;
         CloudMainframeBlockEntity mainframe = null;
         boolean open = false;
         if (player.containerMenu instanceof MainframeMenu menu && menu.containerId == payload.containerId() && menu.stillValid(player)
@@ -189,13 +190,16 @@ public final class GuiNetwork {
         var ops = mainframe == null ? null : new Ops(player, mainframe);
         String error = GuiActions.mainframe(payload.action(), payload.arg(), open, perms, ops == null ? DENY_ALL : ops);
         if (error != null) {
-            CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+            // without an open screen it is a stray or crafted packet: no log line per packet
+            if (open) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+            else CCCloud.LOGGER.debug("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
         }
         if (open) push(player, error != null ? error : ops.notice);
     }
 
     private static void onUplinkAction(UplinkActionPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
+        if (!ai.ezfox.cccloud.ingame.PacketLimiter.SCREEN_ACTIONS.allow(player.getUUID())) return;
         ai.ezfox.cccloud.network.DashboardSection section = null;
         Runnable unlink = null;
         CloudUplinkBlockEntity redstoneTarget = null;
@@ -273,7 +277,10 @@ public final class GuiNetwork {
                 return null;
             }
         });
-        if (error != null) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+        if (error != null) {
+            if (open) CCCloud.LOGGER.info("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+            else CCCloud.LOGGER.debug("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+        }
         if (open) push(player, error != null ? error : notice[0] != null ? notice[0] : "redstone".equals(payload.action()) ? "redstone_saved" : "unlinked");
     }
 

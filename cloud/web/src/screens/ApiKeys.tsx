@@ -135,7 +135,11 @@ export default function ApiKeysScreen({ id }: { id: string }) {
                       {" · "}
                       {k.expires === null ? t("ak.noExpiry") : expired ? t("ak.expiredAt", { date: new Date(k.expires).toLocaleString(locale(L)) }) : t("ak.expires", { in: inText(k.expires, L) })}
                       {" · "}
-                      {k.lastUsed ? t("ak.lastUsed", { ago: agoText(k.lastUsed, L), ip: k.lastIp ?? "?" }) : t("ak.neverUsed")}
+                      {k.lastUsed
+                        ? k.lastIp
+                          ? t("ak.lastUsed", { ago: agoText(k.lastUsed, L), ip: k.lastIp })
+                          : t("ak.lastUsedNoIp", { ago: agoText(k.lastUsed, L) })
+                        : t("ak.neverUsed")}
                     </p>
                     {k.ips.length > 0 && <p class="muted small">{t("ak.onlyFrom", { list: k.ips.join(", ") })}</p>}
                   </li>

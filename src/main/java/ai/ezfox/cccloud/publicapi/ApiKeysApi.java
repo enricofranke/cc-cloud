@@ -25,8 +25,15 @@ import org.jspecify.annotations.Nullable;
 public final class ApiKeysApi {
     private static final Set<String> CREATE_FIELDS = Set.of("op", "name", "scopes", "expiresIn", "ips");
 
-    /** Who asks: the device's player and their permissions on the mainframe. */
-    public record Caller(UUID player, String playerName, Set<Perm> perms) {
+    /**
+     * Who asks: the device's player, their permissions on the mainframe and the device's token hash (a key ends when the
+     * browser that created it is revoked).
+     */
+    public record Caller(UUID player, String playerName, Set<Perm> perms, String device) {
+        public Caller(UUID player, String playerName, Set<Perm> perms) {
+            this(player, playerName, perms, "");
+        }
+
         boolean moderates() {
             return perms.contains(Perm.ACCESS_MANAGE);
         }
@@ -52,6 +59,10 @@ public final class ApiKeysApi {
         return new AccessApi.Response(200, json);
     }
 
+    /**
+     * One key as the list shows it. Keys of other players (seen by moderators to revoke them) leave out the last IP
+     * address and the allow-list: those are the other player's network addresses.
+     */
     static JsonObject keyJson(ApiKeys.Key key, boolean own, long now) {
         var k = new JsonObject();
         k.addProperty("id", key.id());
@@ -66,10 +77,10 @@ public final class ApiKeysApi {
         k.addProperty("expired", key.expired(now));
         if (key.lastUsed() == 0) k.add("lastUsed", JsonNull.INSTANCE);
         else k.addProperty("lastUsed", key.lastUsed());
-        if (key.lastIp().isEmpty()) k.add("lastIp", JsonNull.INSTANCE);
+        if (key.lastIp().isEmpty() || !own) k.add("lastIp", JsonNull.INSTANCE);
         else k.addProperty("lastIp", key.lastIp());
         var ips = new JsonArray();
-        for (var ip : key.ips()) ips.add(ip);
+        if (own) for (var ip : key.ips()) ips.add(ip);
         k.add("ips", ips);
         k.addProperty("own", own);
         return k;
@@ -133,7 +144,7 @@ public final class ApiKeysApi {
             }
         }
         if (keys.count(caller.player()) >= settings.keysPerPlayer()) return AccessApi.error(409, "too_many");
-        var created = keys.create(caller.player(), caller.playerName(), mainframeId, name, scopes, expiresIn, List.copyOf(ips));
+        var created = keys.create(caller.player(), caller.playerName(), mainframeId, name, scopes, expiresIn, List.copyOf(ips), caller.device());
         audit.accept(caller.playerName() + " created the API key '" + name + "' (" + String.join(", ", scopes.stream().map(s -> s.id).toList()) + ")");
         var json = keyJson(created.key(), true, now);
         json.addProperty("key", created.secret());

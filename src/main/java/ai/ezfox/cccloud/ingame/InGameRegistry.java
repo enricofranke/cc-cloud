@@ -47,7 +47,7 @@ public final class InGameRegistry {
         ai.ezfox.cccloud.analyzer.CloudAnalyzerItem::new, p -> p.stacksTo(1));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudDisplayBlockEntity>> DISPLAY_BE = BLOCK_ENTITIES.register("cloud_display",
-        () -> new BlockEntityType<>(CloudDisplayBlockEntity::new, CLOUD_DISPLAY.get()));
+        () -> new BlockEntityType<>(CloudDisplayBlockEntity::new, true, CLOUD_DISPLAY.get()));
 
     public static final DeferredHolder<MenuType<?>, MenuType<TabletMenu>> TABLET_MENU = MENUS.register("tablet", () -> IMenuTypeExtension.create(TabletMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<DisplayMenu>> DISPLAY_MENU = MENUS.register("display", () -> IMenuTypeExtension.create(DisplayMenu::new));
