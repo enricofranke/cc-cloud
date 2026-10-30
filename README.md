@@ -23,7 +23,7 @@ Build a **Cloud Mainframe**, attach **Uplinks** to your computers and machines, 
 
 No external service, no account, no relay: the dashboard is served by the mod itself.
 
-Made by **[Enrico Franke](https://github.com/enricofranke)**.
+Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Discord](https://discord.gg/4fnQcvbzg6)
 
 ## Features
 
