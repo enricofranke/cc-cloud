@@ -58,6 +58,33 @@ public abstract class DeviceCard {
         return null;
     }
 
+    /**
+     * Settings the owner chose in the dashboard's card settings (wave 4, the Peripheral card), saved with the uplink and
+     * given back through {@link #applySettings} when the card is shown again. Null if the card has none.
+     */
+    public com.google.gson.@Nullable JsonObject settings() {
+        return null;
+    }
+
+    /**
+     * What the dashboard's card settings offer (uplink snapshot key {@code cardSettings}), or null if the card has no
+     * settings. Any thread: built from state that is fixed once the card exists.
+     */
+    public com.google.gson.@Nullable JsonObject settingsInfo() {
+        return null;
+    }
+
+    /**
+     * Applies settings: strictly validated when they come from the dashboard ({@code saved} false: an error code such
+     * as {@code invalid_settings} or {@code unknown_method}), leniently when they were saved with the uplink (whatever
+     * no longer fits is dropped). The caller rebuilds the card's widgets afterwards.
+     *
+     * @return null on success, else the error code
+     */
+    public @Nullable String applySettings(com.google.gson.JsonObject settings, boolean saved) {
+        return "unsupported";
+    }
+
     /** Where a card writes its values and alerts. */
     public interface CardOutput {
         void value(String widgetId, JsonElement value);

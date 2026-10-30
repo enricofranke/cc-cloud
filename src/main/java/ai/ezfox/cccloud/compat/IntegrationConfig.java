@@ -13,6 +13,8 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
     public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
     public static final ModConfigSpec.IntValue WIRED_MACHINE_CARDS;
+    public static final ModConfigSpec.BooleanValue PERIPHERAL_CARD;
+    public static final ModConfigSpec.IntValue PERIPHERAL_POLL_SECONDS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> GENERIC_CARD_EXCLUDES;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
@@ -44,6 +46,13 @@ public final class IntegrationConfig {
                 "an uplink or probe of their own keep that one.")
             .translation("cccloud.configuration.wiredMachineCards")
             .defineInRange("wiredMachineCards", 8, 0, 32);
+        PERIPHERAL_CARD = b.comment("Blocks without a card of their own that CC: Tweaked offers as a peripheral get the Peripheral card: the owner picks",
+                "up to 6 getters (methods without arguments) in the dashboard's card settings, and optionally a set...(boolean) method as switch.")
+            .translation("cccloud.configuration.peripheralCard")
+            .define("peripheralCard", true);
+        PERIPHERAL_POLL_SECONDS = b.comment("How often the Peripheral card calls the picked getters (seconds). Slow methods are called less often automatically.")
+            .translation("cccloud.configuration.peripheralPollSeconds")
+            .defineInRange("peripheralPollSeconds", 2, 1, 60);
         b.pop();
 
         b.push("server");

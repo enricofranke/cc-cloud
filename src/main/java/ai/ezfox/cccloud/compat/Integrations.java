@@ -33,6 +33,10 @@ public final class Integrations {
         DeviceCards.register(ai.ezfox.cccloud.compat.card.FluidTankCard.KIND, DeviceCards.GENERIC - 1, ai.ezfox.cccloud.compat.card.FluidTankCard::detect);
         test("tank_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericTank);
         test("energy_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericEnergy);
+        // Wave 4: the Peripheral card for every other block CC: Tweaked offers as a peripheral (uplinks and probes only).
+        DeviceCards.register(ai.ezfox.cccloud.compat.cc.PeripheralCard.KIND, DeviceCards.FALLBACK, ai.ezfox.cccloud.compat.cc.PeripheralCard::detect);
+        test("peripheral_card_generic", () -> ai.ezfox.cccloud.compat.cc.PeripheralGameTests::chest);
+        test("peripheral_card_own_methods", () -> ai.ezfox.cccloud.compat.cc.PeripheralGameTests::ownMethods);
         optional("powah", () -> ai.ezfox.cccloud.compat.powah.PowahCompat::init);
         optional("enderio", () -> ai.ezfox.cccloud.compat.enderio.EnderIoCards::init);
         optional("oritech", () -> ai.ezfox.cccloud.compat.oritech.OritechCards::init);

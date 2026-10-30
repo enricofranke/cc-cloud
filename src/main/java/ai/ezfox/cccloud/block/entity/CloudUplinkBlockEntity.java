@@ -107,6 +107,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private String deviceKind = "";
     private int deviceRevision;
     /**
+     * Wave 4: the owner's settings of the device card (the Peripheral card's picked methods), saved with the uplink, and
+     * the block they were made for (settings never carry over to another block). Guarded by this.
+     */
+    private com.google.gson.@Nullable JsonObject cardSettings;
+    private String cardSettingsFor = "";
+    /**
      * Cloud Probe (docs/SPEC.md "Cloud Probe"): the machine it reads instead of the block it sticks to, and the face
      * it reads it through (the face that was clicked with the Link Card). Null = no target yet. Only for probes.
      */
@@ -245,6 +251,13 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             auto = input.getBooleanOr("auto", false);
             templateKind = input.getStringOr("template_kind", "");
             deviceKind = input.getStringOr("device_kind", "");
+            cardSettingsFor = input.getStringOr("card_settings_for", "");
+            try {
+                String saved = input.getStringOr("card_settings", "");
+                cardSettings = saved.isEmpty() ? null : JsonParser.parseString(saved).getAsJsonObject();
+            } catch (RuntimeException e) {
+                cardSettings = null;
+            }
             readDeclarations(input.getStringOr("pages", "[]"), pages);
             readDeclarations(input.getStringOr("groups", "[]"), groups);
             widgets.clear();
@@ -284,6 +297,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             output.putBoolean("auto", auto);
             output.putString("template_kind", templateKind);
             output.putString("device_kind", deviceKind);
+            if (cardSettings != null) {
+                output.putString("card_settings", Json.GSON.toJson(cardSettings));
+                output.putString("card_settings_for", cardSettingsFor);
+            }
             output.putString("pages", Json.GSON.toJson(declarations(pages)));
             output.putString("groups", Json.GSON.toJson(declarations(groups)));
             var array = new JsonArray();
@@ -664,7 +681,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var readPos = readPos();
         Direction hint = null;
         if (card == null && free && readPos != null && ai.ezfox.cccloud.compat.Integrations.deviceCardsEnabled()) {
-            card = ai.ezfox.cccloud.compat.card.DeviceCards.detect(level, readPos, readSide());
+            card = ai.ezfox.cccloud.compat.card.DeviceCards.detect(level, readPos, readSide(), true);
             if (card == null) hint = exposedElsewhere(level, readPos, readSide());
         }
         exposedElsewhere = card == null ? hint : null;
@@ -872,6 +889,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             title = "";
             widgets.clear();
         } else {
+            if (deviceCard != card && cardSettings != null && cardSettingsFor.equals(readBlockId())) {
+                ai.ezfox.cccloud.compat.card.DeviceCards.applySettings(card, cardSettings, true);
+            }
             var cardWidgets = ai.ezfox.cccloud.compat.card.DeviceCards.widgets(card);
             if (cardWidgets == null) {
                 showDeviceCard(null);
@@ -1256,8 +1276,44 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             json.addProperty("bridge", templateKind);
         } else if (!deviceKind.isEmpty()) {
             json.addProperty("template", deviceKind);
+            var info = deviceCard == null ? null : ai.ezfox.cccloud.compat.card.DeviceCards.settingsInfo(deviceCard);
+            if (info != null) json.add("cardSettings", info);
         }
         return json;
+    }
+
+    /** Block id of the block the uplink reads ("" if none), to tie saved card settings to it. */
+    private String readBlockId() {
+        var pos = readPos();
+        if (pos == null || level == null || !level.isLoaded(pos)) return "";
+        return net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString();
+    }
+
+    /**
+     * Wave 4: the dashboard's card settings for the device card (the Peripheral card's picked methods). The web layer
+     * has checked {@code layout.edit}. Server thread. Null on success, else an error code.
+     */
+    @Override
+    public @Nullable String handleCardSettings(com.google.gson.JsonObject settings, String user) {
+        if (!isOnline()) return "uplink_offline";
+        ai.ezfox.cccloud.compat.card.DeviceCard card;
+        synchronized (this) {
+            card = deviceCard;
+        }
+        if (card == null || ai.ezfox.cccloud.compat.card.DeviceCards.settingsInfo(card) == null) return "unsupported";
+        String error = ai.ezfox.cccloud.compat.card.DeviceCards.applySettings(card, settings, false);
+        if (error != null) return error;
+        synchronized (this) {
+            if (deviceCard != card) return "unavailable";
+            cardSettings = ai.ezfox.cccloud.compat.card.DeviceCards.settings(card);
+            cardSettingsFor = readBlockId();
+            showDeviceCard(card);
+            deviceRevision = ai.ezfox.cccloud.compat.card.DeviceCards.revision(card);
+        }
+        ai.ezfox.cccloud.compat.card.DeviceCards.refresh(card, deviceOutput);
+        setChanged();
+        CCCloud.LOGGER.info("[cccloud] {} changed the settings of the {} card on uplink {}: {}", user, card.kind(), uplinkId, Json.GSON.toJson(cardSettings));
+        return null;
     }
 
     public synchronized void setTitle(String title) {

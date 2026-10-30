@@ -8,7 +8,7 @@ import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch, computed } from "@preact/signals";
-import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type CardSettingsInfo, type ClaimsOverlay, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -627,6 +627,7 @@ export class MainframeConn {
         break;
       }
       case "rs_result":
+      case "card_settings_result":
       case "net_result": {
         const r = this.netReqs.get(String(msg.reqId ?? ""));
         if (!r) return;
@@ -749,6 +750,24 @@ export class MainframeConn {
         this.notice("info", `${req.label}: no answer`, REJECT_TEXT.unconfirmed);
       }, this.o.confirmTimeoutMs);
     }
+  }
+
+  /**
+   * Wave 4: changes a device card's settings, e.g. the Peripheral card's values ({"t":"card_settings"} →
+   * card_settings_result). Needs layout.edit.
+   */
+  cardSettings(uplinkId: string, settings: PeripheralSettings, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("layout.edit");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "card_settings", reqId, uplinkId, settings })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
   }
 
   /** v0.4: unlinks a device or relay from the network ({"t":"net_unlink"} → net_result). */
@@ -1256,6 +1275,43 @@ function normalizeWaystones(raw: any): WaystonesOverlay | undefined {
   };
 }
 
+const METHOD_NAME = /^[A-Za-z_][A-Za-z0-9_]{0,47}$/;
+
+function normalizeMethods(raw: unknown, max: number) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((m: any) => m && typeof m.name === "string" && METHOD_NAME.test(m.name))
+    .slice(0, max)
+    .map((m: any) => ({
+      name: m.name as string,
+      caption: typeof m.caption === "string" && m.caption ? m.caption.slice(0, 48) : (m.name as string),
+      ...(m.value === "bool" || m.value === "number" || m.value === "text" ? { value: m.value as "bool" | "number" | "text" } : {}),
+    }));
+}
+
+/** Wave 4: the card settings a device card offers (the Peripheral card's methods); anything malformed is dropped. */
+export function normalizeCardSettings(raw: any): CardSettingsInfo | undefined {
+  if (!raw || typeof raw !== "object" || typeof raw.kind !== "string") return undefined;
+  const names = (v: unknown, max: number) => (Array.isArray(v) ? v.filter((n): n is string => typeof n === "string" && METHOD_NAME.test(n)).slice(0, max) : []);
+  const s = raw.settings && typeof raw.settings === "object" ? raw.settings : {};
+  const settings: PeripheralSettings = {
+    show: names(s.show, 6),
+    charts: names(s.charts, 2),
+    toggle: typeof s.toggle === "string" && METHOD_NAME.test(s.toggle) ? s.toggle : null,
+    pin: s.pin !== false,
+  };
+  return {
+    kind: raw.kind.slice(0, 32),
+    ...(typeof raw.type === "string" ? { type: raw.type.slice(0, 64) } : {}),
+    types: (Array.isArray(raw.types) ? raw.types : []).filter((t: unknown): t is string => typeof t === "string" && /^[A-Za-z0-9_.:/-]{1,64}$/.test(t)).slice(0, 8),
+    getters: normalizeMethods(raw.getters, 64),
+    setters: normalizeMethods(raw.setters, 16),
+    unknown: typeof raw.unknown === "number" && raw.unknown > 0 ? Math.min(999, Math.floor(raw.unknown)) : 0,
+    maxValues: typeof raw.maxValues === "number" ? Math.max(1, Math.min(6, raw.maxValues)) : 6,
+    maxCharts: typeof raw.maxCharts === "number" ? Math.max(0, Math.min(2, raw.maxCharts)) : 2,
+    settings,
+  };
+}
+
 function normalizeUplink(u: any): Uplink | null {
   if (!u || typeof u.uplinkId !== "string") return null;
   const widgets = Array.isArray(u.widgets) ? u.widgets : [];
@@ -1290,6 +1346,7 @@ function normalizeUplink(u: any): Uplink | null {
       : undefined,
     ...(normalizeClaims(u.claims) ? { claims: normalizeClaims(u.claims) } : {}),
     ...(normalizeWaystones(u.waystones) ? { waystones: normalizeWaystones(u.waystones) } : {}),
+    ...(normalizeCardSettings(u.cardSettings) ? { cardSettings: normalizeCardSettings(u.cardSettings) } : {}),
     groups: Array.isArray(u.groups)
       ? u.groups
           .filter((g: any) => g && typeof g.id === "string")

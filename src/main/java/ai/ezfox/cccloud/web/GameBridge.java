@@ -40,6 +40,11 @@ public interface GameBridge {
      */
     CompletableFuture<ActionResult> dispatchAction(AuthStore.Device device, UUID mainframeId, ClientMessages.Action action, boolean pinVerified, String ip);
 
+    /** Wave 4: applies a device card's settings (layout.edit). Returns null or an error code. */
+    default @Nullable String cardSettings(AuthStore.Device device, UUID mainframeId, ClientMessages.CardSettings message) {
+        return "unsupported";
+    }
+
     /** Runs an item search on an item_search widget (read-only, any role from viewer up). */
     QueryResult dispatchQuery(AuthStore.Device device, UUID mainframeId, ClientMessages.Query query);
 
