@@ -49,6 +49,7 @@ In der Welt schaltet ein Klick einen Schalter oder eine Lampe und drückt einen 
 - Pro Gerät: **Mainframe-PIN abfragen** und **Vor dem Schalten nachfragen** (in seinem Fenster, braucht „Geräte verbinden“). „Alle an / Alle aus“ fragt, wenn ein Gerät der Karte fragt.
 - Verbinden, Umbenennen und die Einstellungen brauchen **„Geräte verbinden“** am Mainframe; von Hand anklicken kann es trotzdem jeder, der den Block benutzen darf – wie einen Hebel.
 - Jedes Gerät nimmt höchstens 4 Änderungen pro Sekunde aus Dashboard, Regeln, Szenen und API an (`redstoneDeviceChangesPerSecond`, kurz bis zu 8); Klicks in der Welt sind nicht begrenzt.
+- Ein Gerät im Claim eines anderen Teams ist gesperrt: Seine Karte zeigt den Claim statt des Schalters – siehe [Claims](faq.md).
 
 ## Reichweite, Kapazität und Strom
 

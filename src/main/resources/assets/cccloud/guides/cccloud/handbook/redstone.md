@@ -49,6 +49,7 @@ In the world, a click switches a switch or a lamp and presses a button. **Sneak 
 - Per device: **Ask for the mainframe PIN** and **Ask before switching** (in its screen, needs “Link devices”). “All on / All off” asks if any device of the card does.
 - Linking, renaming and the settings need **“Link devices”** on the mainframe; anyone who may use the block can still click it by hand, like a lever.
 - Each device takes at most 4 changes per second from the dashboard, rules, scenes and the API (`redstoneDeviceChangesPerSecond`, short bursts of 8); clicks in the world are not limited.
+- A device in another team's claim is blocked: its card shows the claim instead of the switch – see [claims](faq.md).
 
 ## Range, capacity and power
 

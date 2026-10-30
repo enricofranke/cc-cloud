@@ -161,13 +161,14 @@ neoForge {
             if (project.hasProperty("skipLoadTest")) systemProperty 'cccloud.skipLoadTest', 'true'
             // ./gradlew runGameTestServer -PscaleTest runs only the scale benchmark (docs/SPEC.md "Scaling"); sizes with
             // -PscaleTestBig=500 -PscaleTestMainframes=10 -PscaleTestDevices=100 -PscaleTestBrowsers=50 -PscaleTestBigBrowsers=10
-            // -PscaleTestSeconds=30 -PscaleTestBaseline=10 -PscaleTestHold=0 (s, for tools/e2e/scale-render.mjs) -PscaleTestStrict=true.
+            // -PscaleTestSeconds=30 -PscaleTestBaseline=10 -PscaleTestHold=0 (s, for tools/e2e/scale-render.mjs) -PscaleTestStrict=true
+            // -PscaleTestClaims=true (every chunk "claimed" by a trusted team: every device runs the claim guard's full check).
             // -PgameTests=cccloud:load_test (a selector with wildcards) runs only those GameTests
             if (project.hasProperty("gameTests") && !project.hasProperty("scaleTest")) programArguments.addAll '--tests', project.property("gameTests").toString()
             if (project.hasProperty("scaleTest")) {
                 systemProperty 'cccloud.scaleTest', 'true'
                 systemProperty 'cccloud.skipLoadTest', 'true'
-                ['big', 'mainframes', 'devices', 'browsers', 'bigBrowsers', 'seconds', 'baseline', 'hold', 'strict'].each { key ->
+                ['big', 'mainframes', 'devices', 'browsers', 'bigBrowsers', 'seconds', 'baseline', 'hold', 'strict', 'claims'].each { key ->
                     def name = 'scaleTest' + key.capitalize()
                     if (project.hasProperty(name)) systemProperty "cccloud.scaleTest.${key}", project.property(name).toString()
                 }

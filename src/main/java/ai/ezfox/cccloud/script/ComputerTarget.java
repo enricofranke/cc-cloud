@@ -31,10 +31,17 @@ public final class ComputerTarget {
     /** The computer an uplink sits on, or null (no computer there, not loaded, no id yet). */
     public static @Nullable ComputerTarget of(CloudUplinkBlockEntity uplink) {
         if (!(uplink.getLevel() instanceof ServerLevel level)) return null;
+        if (blocked(uplink)) return null;
         var handle = CcComputers.find(level, uplink.getBlockPos().relative(uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING)));
         if (handle == null) return null;
         String dir = handle.saveDir();
         return dir == null ? null : new ComputerTarget(handle, dir);
+    }
+
+    /** Claim guard: the uplink is blocked, or the computer is in a chunk another team claimed for its owners. */
+    public static boolean blocked(CloudUplinkBlockEntity uplink) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(uplink) != null) return true;
+        return uplink.getLevel() instanceof ServerLevel level && ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(level, uplink.attachedPos(), uplink.guardOwners());
     }
 
     public int id() {

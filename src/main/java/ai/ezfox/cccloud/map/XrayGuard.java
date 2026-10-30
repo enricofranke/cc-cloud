@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
  *   <li>config {@code map.mapSlices} ({@code auto}: on for singleplayer and LAN-only dashboards, off when
  *       {@code webAllowInternet} is set);</li>
  *   <li>slices only within {@link #SLICE_RANGE} blocks (Y) of one of the requesting mainframe's nodes;</li>
- *   <li>nothing from chunks claimed by another team (FTB Chunks, when installed);</li>
+ *   <li>nothing from chunks claimed by another team (the claim guard's provider: FTB Chunks, when installed);</li>
  *   <li>ores ({@code #c:ores}) are shown as stone unless the ore touches air and is within {@link #ORE_RADIUS} blocks of
  *       one of the mainframe's nodes.</li>
  * </ul>
@@ -23,14 +23,6 @@ import org.jspecify.annotations.Nullable;
 public final class XrayGuard {
     public static final int ORE_RADIUS = 16;
     public static final int SLICE_RANGE = 32;
-
-    /** Claims of other teams (set by the FTB Chunks integration). */
-    public interface Claims {
-        /** True if the chunk is claimed by a team the player is not a member or ally of. */
-        boolean claimedByOther(ServerLevel level, int chunkX, int chunkZ, UUID player);
-    }
-
-    public static volatile @Nullable Claims claims;
 
     private XrayGuard() {
     }
@@ -80,13 +72,11 @@ public final class XrayGuard {
         return state != null && state.is(net.neoforged.neoforge.common.Tags.Blocks.ORES);
     }
 
+    /**
+     * True if the chunk is claimed by a team the player is not a member or ally of: the claim mod of the shared claim
+     * guard ({@link ai.ezfox.cccloud.claims.ClaimGuard#claimedByOther}, FTB Chunks when installed). Fails closed.
+     */
     public static boolean claimedByOther(ServerLevel level, int chunkX, int chunkZ, @Nullable UUID player) {
-        var c = claims;
-        if (c == null || player == null) return false;
-        try {
-            return c.claimedByOther(level, chunkX, chunkZ, player);
-        } catch (RuntimeException | LinkageError e) {
-            return true; // fail closed
-        }
+        return ai.ezfox.cccloud.claims.ClaimGuard.claimedByOther(level, chunkX, chunkZ, player);
     }
 }

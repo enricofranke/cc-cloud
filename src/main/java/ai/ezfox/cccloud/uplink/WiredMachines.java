@@ -126,8 +126,10 @@ public final class WiredMachines {
         UUID mainframe = link == null ? null : link.id();
         if (publishedTo != null && !publishedTo.equals(mainframe)) removeAll(true); // unlinked or linked elsewhere
         int limit = limit();
-        // probes read one machine at a distance; only an uplink on a computer follows the computer's modems
-        var readPos = uplink.isProbe() ? null : uplink.readPos();
+        // probes read one machine at a distance; only an uplink on a computer follows the computer's modems. The
+        // computer is only the hub: each machine card has its own claim check (an uplink blocked by the claim guard
+        // still finds its computer here).
+        var readPos = uplink.isProbe() ? null : uplink.attachedPos();
         boolean computer = readPos != null && ai.ezfox.cccloud.compat.cc.CcComputers.find(level, readPos) != null;
         reach.update(level, limit > 0 && computer ? readPos : null, uplink.getBlockPos());
         if (mainframe == null || limit <= 0 || !computer) {
@@ -174,8 +176,10 @@ public final class WiredMachines {
             String title = titles.get(i++);
             var section = sections.get(e.getKey());
             if (section == null) {
-                section = new WiredMachineSection(uplink.getUplinkId(), dim, e.getKey(), link, e.getValue().getKey(), e.getValue().getValue(), title);
+                section = new WiredMachineSection(uplink, dim, e.getKey(), link, e.getValue().getKey(), e.getValue().getValue(), title);
                 if (!CloudNetwork.registerSection(section)) continue;
+                // claim guard: a machine in a chunk another team claimed shows its card blocked from the start
+                ai.ezfox.cccloud.claims.ClaimGuard.check(section);
                 HOSTS.put(hostKey(mainframe, dim, e.getKey()), uplink.getUplinkId());
                 saved.remove(section.sectionId());
             }
@@ -200,6 +204,7 @@ public final class WiredMachines {
         reach.close();
         for (var section : sections.values()) {
             CloudNetwork.unregisterSection(section);
+            section.markRemoved();
             HOSTS.remove(hostKey(section.getLink().id(), level.dimension().identifier().toString(), section.pos()), uplink.getUplinkId());
             var cached = SectionCache.unloaded(section.snapshot());
             WebHub.INSTANCE.publishUplink(section.getLink().id(), cached);
@@ -224,6 +229,7 @@ public final class WiredMachines {
     private void remove(WiredMachineSection section, boolean fromDashboard) {
         sections.remove(section.pos());
         CloudNetwork.unregisterSection(section);
+        section.markRemoved();
         var level = uplink.getLevel();
         if (level != null) HOSTS.remove(hostKey(section.getLink().id(), level.dimension().identifier().toString(), section.pos()), uplink.getUplinkId());
         if (fromDashboard) WebHub.INSTANCE.publishUplinkRemoved(section.getLink().id(), section.sectionId().toString());
@@ -269,7 +275,7 @@ public final class WiredMachines {
         for (var other : CloudNetwork.uplinks()) {
             if (other == uplink || other.getLink() == null || !mainframe.equals(other.getLink().id()) || other.getLevel() != uplink.getLevel()) continue;
             // a probe's own target (its full read check runs in the probe once a second already)
-            var read = other.isProbe() ? other.remoteTarget() : other.readPos();
+            var read = other.isProbe() ? other.remoteTarget() : other.attachedPos();
             if (read != null) taken.add(read.immutable());
         }
         String prefix = mainframe + "|" + dim + "|";

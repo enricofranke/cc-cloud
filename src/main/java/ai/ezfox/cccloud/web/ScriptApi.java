@@ -36,6 +36,7 @@ public final class ScriptApi {
         if (!(section instanceof CloudUplinkBlockEntity uplink) || section.getLink() == null || !section.getLink().id().equals(request.mainframeId())) {
             return AccessApi.error(404, "unknown_computer");
         }
+        if (ComputerTarget.blocked(uplink)) return AccessApi.error(409, ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         var target = ComputerTarget.of(uplink);
         if (target == null) return AccessApi.error(404, "unknown_computer");
         var store = target.store(server);

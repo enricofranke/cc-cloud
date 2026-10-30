@@ -276,7 +276,7 @@ public final class ApiV1 {
             case "unknown_uplink", "unknown_widget", "unknown_scene", "not_found" -> 404;
             case "not_allowed", "read_only", "forbidden", "pin_required" -> 403;
             case "rate_limited" -> 429;
-            case "offline", "no_power", "disabled", "unloaded", "uplink_offline", "busy", "too_many" -> 409;
+            case "offline", "no_power", "disabled", "unloaded", "uplink_offline", "busy", "too_many", "claim_blocked" -> 409;
             default -> 400;
         };
         return AccessApi.error(status, switch (error) {

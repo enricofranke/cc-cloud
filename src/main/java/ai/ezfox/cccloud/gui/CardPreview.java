@@ -55,6 +55,8 @@ public final class CardPreview {
         }
         out.add("widgets", list);
         if (more > 0) out.addProperty("more", more);
+        // claim guard: the card shows the claim instead of values (the screen names the team when the player may see it)
+        if (snapshot.get("blocked") instanceof JsonObject) out.addProperty("blocked", true);
         return out;
     }
 

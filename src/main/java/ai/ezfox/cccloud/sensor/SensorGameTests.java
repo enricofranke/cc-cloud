@@ -347,30 +347,40 @@ public final class SensorGameTests {
 
     /**
      * A zone in a chunk another team claimed (for the owner) is refused when it is set, and a zone claimed later stops
-     * the sensor from watching (nothing reported, "zone_claimed" on its card).
+     * the sensor from watching (nothing reported, "zone_claimed"). Both checks go through the claim guard's provider
+     * ({@link ai.ezfox.cccloud.gametest.TestClaims}: a team that only distrusts this test's owner). When the claimed chunks
+     * include the sensor's own block, the claim guard blocks the sensor itself: its card shows the claim instead of its
+     * widgets and refuses actions with {@code claim_blocked}; it works again once the claims go.
      */
     public static void claims(GameTestHelper helper) {
         var level = helper.getLevel();
         var s = setup(helper, "sensor_claim_owner");
         var owner = s.owner();
-        // claims of other teams for this test's owner only (the sensor's own test hook: other tests swap XrayGuard.claims)
-        var claimed = ConcurrentHashMap.<Long>newKeySet();
-        AdvancedSensor.TEST_CLAIMS.put(owner.getUUID(), claimed);
+        var claims = ai.ezfox.cccloud.gametest.TestClaims.get();
+        var team = claims.team("sensor_claim_rivals", java.util.Set.of(owner.getUUID()));
         var zombie = mob(helper, EntityType.ZOMBIE, OUTSIDE);
+        boolean[] ownChunk = {false};
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(ready(s), "sensor online"))
             .thenExecute(() -> {
                 s.sensor().scan(level);
-                // a bigger zone reaches into the chunk claimed by another team: refused, with the player and from the dashboard
+                // a bigger zone reaches into the chunks claimed by another team: refused, with the player and from the dashboard
                 var zone = SensorZone.of(helper.absolutePos(SENSOR), Direction.DOWN, s.sensor().settings().withZone(9, 3, 9, SensorSettings.Placement.FRONT));
-                for (var chunk : zone.chunks()) claimed.add(net.minecraft.world.level.ChunkPos.pack(chunk.x(), chunk.z()));
+                var sensorChunk = net.minecraft.world.level.ChunkPos.containing(helper.absolutePos(SENSOR));
+                for (var chunk : zone.chunks()) {
+                    claims.claim(level, new BlockPos(chunk.x() << 4, 0, chunk.z() << 4), team);
+                    if (chunk.x() == sensorChunk.x() && chunk.z() == sensorChunk.z()) ownChunk[0] = true;
+                }
                 var bigger = s.sensor().settings().withZone(9, 3, 9, SensorSettings.Placement.FRONT);
                 helper.assertTrue("zone_claimed".equals(s.sensor().update(bigger, owner)), "refused in game");
                 helper.assertTrue("zone_claimed".equals(s.sensor().update(bigger, null)), "refused from the dashboard (checked for the owner)");
                 var card = s.sensor().section();
                 var result = card.handleAction(SensorCards.ZONE_X, new JsonPrimitive(9), null, "test", false).getNow(null);
-                helper.assertTrue(result != null && "zone_claimed".equals(result.error()), "the card's zone field says why: " + (result == null ? null : result.error()));
+                // the sensor's own chunk claimed too: the claim guard refuses every action first
+                String expected = ownChunk[0] ? ai.ezfox.cccloud.claims.ClaimGuard.ERROR : "zone_claimed";
+                helper.assertTrue(result != null && expected.equals(result.error()), "the card's zone field says why: " + (result == null ? null : result.error()));
                 helper.assertTrue(s.sensor().settings().sizeX() == 3, "the zone stays as it was");
+                helper.assertTrue((s.device().claimBlock() != null) == ownChunk[0], "the sensor itself is blocked exactly when its own chunk is claimed");
                 // the current zone is claimed now: the sensor stops watching
                 move(helper, zombie, INSIDE);
                 AdvancedSensor.setClockForTest(s.device().deviceId(), () -> System.currentTimeMillis() + 60_000); // the claim check is due
@@ -380,12 +390,21 @@ public final class SensorGameTests {
             })
             .thenWaitUntil(() -> {
                 var card = WebHub.INSTANCE.sectionSnapshot(s.id(), s.card());
-                helper.assertTrue(card != null && card.toString().contains("zone_claimed"), "the card says so: " + card);
+                if (ownChunk[0]) {
+                    helper.assertTrue(card != null && card.has("blocked") && card.getAsJsonArray("widgets").isEmpty(), "the card shows the claim: " + card);
+                    var publicCard = WebHub.INSTANCE.sectionSnapshot(s.id(), s.card(), false);
+                    helper.assertTrue(!publicCard.getAsJsonObject("blocked").has("team"), "the team only for viewers with positions: " + publicCard);
+                } else {
+                    helper.assertTrue(card != null && card.toString().contains("zone_claimed"), "the card says so: " + card);
+                }
             })
-            .thenExecute(() -> {
-                AdvancedSensor.TEST_CLAIMS.remove(owner.getUUID());
-                cleanup(helper, s, List.of(zombie));
+            .thenExecute(() -> claims.forget(level, team))
+            .thenWaitUntil(() -> {
+                helper.assertTrue(s.device().claimBlock() == null, "claims gone: the sensor works again");
+                var card = WebHub.INSTANCE.sectionSnapshot(s.id(), s.card());
+                helper.assertTrue(card != null && !card.has("blocked") && !card.getAsJsonArray("widgets").isEmpty(), "its card is back: " + card);
             })
+            .thenExecute(() -> cleanup(helper, s, List.of(zombie)))
             .thenSucceed();
     }
 

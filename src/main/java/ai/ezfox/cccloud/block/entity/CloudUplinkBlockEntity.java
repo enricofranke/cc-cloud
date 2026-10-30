@@ -64,7 +64,7 @@ import org.jspecify.annotations.Nullable;
  * Threading: the Lua methods run on computer threads and only mutate the widget model under {@code synchronized(this)}
  * and mark it dirty. {@link #serverTick} (server thread) pushes dirty state into the {@link WebHub}.
  */
-public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccloud.network.DashboardSection {
+public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccloud.network.DashboardSection, ai.ezfox.cccloud.claims.ClaimGuard.Guarded {
     /** Max pending cloud_action events per computer (token bucket, refilled at 16/s). */
     public static final int MAX_PENDING_EVENTS = 64;
     private static final int STATUS_INTERVAL = 10;
@@ -128,6 +128,16 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private volatile @Nullable BlockPos remoteOrigin;
     private volatile String remoteDim = "";
     private volatile @Nullable UUID remoteBy;
+    /** Who linked it with the Link Card (claim guard: their team may use claimed land); null for links made before 0.11. */
+    private volatile @Nullable UUID linkedBy;
+    /** Who placed it (claim guard, until it is linked); null when placed by a command or before 0.11. */
+    private volatile @Nullable UUID placedBy;
+    /** Claim guard (docs/SECURITY.md "Claims"): the claim the block it reads is in, while that blocks it; else null. */
+    private volatile ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock;
+    /** The card's title when it was blocked (the blocked card keeps showing it). */
+    private String blockedTitle = "";
+    /** Unblocked: look for the card, computer and bridge again on the next tick instead of within a second. */
+    private volatile boolean claimRefresh;
     /**
      * The block it reads has no card although another face of it exposes energy, items or fluids: that face (screen
      * hint "this side exposes nothing"), else null. Updated with the card detection, once per second.
@@ -208,6 +218,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
      * its remote target (null without one).
      */
     public @Nullable BlockPos readPos() {
+        if (claimBlock != null) return null; // claim guard: nothing is read
         if (isProbe()) return usableTarget();
         return getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
     }
@@ -252,9 +263,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         remoteOrigin = input.read("remote_origin", BlockPos.CODEC).orElse(null);
         remoteDim = input.getStringOr("remote_dim", "");
         remoteBy = input.read("remote_by", UUIDUtil.STRING_CODEC).orElse(null);
+        linkedBy = input.read("linked_by", UUIDUtil.STRING_CODEC).orElse(null);
+        placedBy = input.read("placed_by", UUIDUtil.STRING_CODEC).orElse(null);
         wiredMachines.load(input.read("wired_cards", UUIDUtil.STRING_CODEC.listOf()).orElse(java.util.List.of()));
         synchronized (this) {
             title = input.getStringOr("title", "");
+            blockedTitle = input.getStringOr("blocked_title", "");
             template = input.getBooleanOr("template", false);
             auto = input.getBooleanOr("auto", false);
             templateKind = input.getStringOr("template_kind", "");
@@ -299,8 +313,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var wiredCards = wiredMachines.ids();
         if (!wiredCards.isEmpty()) output.store("wired_cards", UUIDUtil.STRING_CODEC.listOf(), wiredCards);
         output.storeNullable("remote_by", UUIDUtil.STRING_CODEC, remoteBy);
+        output.storeNullable("linked_by", UUIDUtil.STRING_CODEC, linkedBy);
+        output.storeNullable("placed_by", UUIDUtil.STRING_CODEC, placedBy);
         synchronized (this) {
             output.putString("title", title);
+            if (claimBlock != null && !blockedTitle.isEmpty()) output.putString("blocked_title", blockedTitle);
             output.putBoolean("template", template);
             output.putBoolean("auto", auto);
             output.putString("template_kind", templateKind);
@@ -355,6 +372,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         rsInputPending = true;
         mountPending = true;
         wired.onLoad();
+        // claim guard: a device in a chunk another team claimed meanwhile reads nothing from the first tick on
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         // only this device's network is computed again (a chunk of a big base loading must not recompute every network)
         ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
     }
@@ -372,6 +391,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     public void setRemoved() {
         super.setRemoved();
         wired.onRemoved();
+        ai.ezfox.cccloud.claims.ClaimGuard.forget(this);
         if (level instanceof ServerLevel serverLevel && !serverLevel.isClientSide()) {
             // chunk unload: the wired machines' cards stay greyed out like this uplink's card; otherwise they go
             if (chunkUnloading && registered) wiredMachines.unloaded(serverLevel);
@@ -439,6 +459,15 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             statusPending = false; // right after loading, then every STATUS_INTERVAL ticks
             updateStatus(level);
         }
+        if (claimRefresh) {
+            // unblocked by the claim guard: the card, the computer and the bridge come back at once
+            claimRefresh = false;
+            if (claimBlock == null) {
+                updateBridges(level);
+                updateComputer(level);
+                updateDeviceCard(level);
+            }
+        }
         if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
         if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
         if (tickCounter % BRIDGE_INTERVAL == 15) updateDeviceCard(level);
@@ -446,6 +475,13 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         wiredMachines.tick(level.getGameTime());
         tickCounter++;
         sampleCharts(level.getGameTime());
+        if (claimBlock != null) {
+            // claim guard: values and alerts of a Lua program are not sent (the blocked card has no widgets)
+            synchronized (this) {
+                dirtyValues.clear();
+                pendingAlerts.clear();
+            }
+        }
         if (link == null || suppressed) {
             synchronized (this) {
                 dirtyValues.clear();
@@ -537,6 +573,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var target = serverLevel.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, id));
         var pos = new BlockPos(ref.x(), ref.y(), ref.z());
         if (target == null || !target.isLoaded(pos)) return null;
+        // claim guard: a blocked uplink reads no bridge, and no bridge in a chunk another team claimed
+        if (claimBlock != null || ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(target, pos, guardOwners())) return null;
         return target.getBlockEntity(pos) instanceof BridgeHost host ? host : null;
     }
 
@@ -548,7 +586,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     /** The device card this uplink shows (direct mode on a machine), or null (v0.10 production statistics). */
     public synchronized ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard() {
-        return deviceCard;
+        return claimBlock != null ? null : deviceCard;
     }
 
     /** The storage (bridge) of a direct-mode Storage card, or null (v0.5 rules: item triggers and craft actions). */
@@ -803,6 +841,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         synchronized (this) {
             showDeviceCard(null);
         }
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         setDirect(serverLevel, true);
         setChanged();
         // the network map draws a line to the target
@@ -826,6 +865,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         synchronized (this) {
             showDeviceCard(null);
         }
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         setDirect(serverLevel, false);
         setChanged();
         if (link != null) ai.ezfox.cccloud.network.NetworkService.markDirty(link.id());
@@ -856,8 +896,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
      * A probe's target if it may be read now, else null (security review 2026-10-30). Every read and action of a probe
      * goes through {@link #readPos()} and so through here: the machine card, the Computer card, the Storage card and
      * the screens. The probe still stands where the target was set, in that dimension; the target is within the
-     * current {@code probeRange}, loaded, not a CC: Cloud block, and not in a chunk another team claimed for the player
-     * who set it. Server only.
+     * current {@code probeRange}, loaded and not a CC: Cloud block. Claims of other teams are the claim guard's part
+     * ({@link #readPos()} is null while it blocks the probe). Server only.
      */
     private @Nullable BlockPos usableTarget() {
         var target = remoteTarget;
@@ -872,7 +912,6 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (!serverLevel.isLoaded(target)) return null;
         var state = serverLevel.getBlockState(target);
         if (ai.ezfox.cccloud.CCCloud.MODID.equals(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace())) return null;
-        if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(serverLevel, target.getX() >> 4, target.getZ() >> 4, remoteBy)) return null;
         return target;
     }
 
@@ -1185,6 +1224,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             structureDirty = chartsDirty = true;
         }
         ai.ezfox.cccloud.network.NetworkService.markDirty();
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
     }
 
     /** Test hook: behave like a device linked before v0.4. */
@@ -1220,6 +1260,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        linkedBy = player.getUUID();
         legacyLink = false;
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         mainframe.linkUplink(uplinkId, here);
@@ -1230,6 +1271,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         updateStatus(serverLevel);
         CCCloud.LOGGER.info("[cccloud] {} bound uplink {} to {}", player.getGameProfile().name(), uplinkId, mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.uplink.bound", newLink.describe()).withStyle(ChatFormatting.GREEN));
+        var blocked = ai.ezfox.cccloud.claims.ClaimGuard.check(this);
+        if (blocked != null) player.sendSystemMessage(ai.ezfox.cccloud.claims.ClaimGuard.linkMessage(blocked));
         ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), uplinkId, "uplink",
             serverLevel.dimension().identifier().toString(), getBlockPos(), player.getUUID(), player.getGameProfile().name()));
     }
@@ -1244,6 +1287,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var old = link;
         unlinkFrom(old);
         link = null;
+        linkedBy = null;
         legacyLink = false;
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         synchronized (this) {
@@ -1251,6 +1295,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         setChanged();
         updateStatus(serverLevel);
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         CCCloud.LOGGER.info("[cccloud] {} unlinked uplink {} from {}", by, uplinkId, old.describe());
     }
 
@@ -1274,11 +1319,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     public synchronized JsonObject snapshot() {
         var json = new JsonObject();
         json.addProperty("uplinkId", uplinkId.toString());
-        json.addProperty("title", title);
+        var block = claimBlock;
+        json.addProperty("title", block != null && title.isEmpty() ? blockedTitle : title);
         json.addProperty("online", status == CloudStatus.ONLINE);
         var array = new JsonArray();
-        for (var widget : widgets.values()) array.add(widget.toJson());
+        // claim guard: a blocked card shows the claim instead of its widgets and values
+        if (block == null) for (var widget : widgets.values()) array.add(widget.toJson());
         json.add("widgets", array);
+        if (block != null) json.add("blocked", ai.ezfox.cccloud.claims.ClaimGuard.json(block));
         if (!pages.isEmpty()) json.add("pages", declarations(pages));
         if (!groups.isEmpty()) json.add("groups", declarations(groups));
         json.addProperty("mode", template || !deviceKind.isEmpty() ? "direct" : auto ? "auto" : "lua");
@@ -1443,6 +1491,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
      */
     @Override
     public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement rawValue, @Nullable Op op, String user, boolean pinVerified) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return ActionResult.done(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (!isOnline()) return ActionResult.done("uplink_offline");
         ActionValidator.Result result;
         Widget widget;
@@ -1512,6 +1561,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     /** Item search on an item_search widget (server thread). */
     @Override
     public QueryResult handleQuery(String widgetId, String query) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return QueryResult.fail(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (!isOnline()) return QueryResult.fail("uplink_offline");
         Widget widget;
         synchronized (this) {
@@ -1554,6 +1604,87 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 computers.remove(computer);
             }
         }
+    }
+
+    // ---- claim guard (docs/SECURITY.md "Claims") -----------------------------------------------------------------
+
+    /** The block it sticks to (for a computer: the computer), whatever the claim guard says. */
+    public BlockPos attachedPos() {
+        return getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
+    }
+
+    /** Who linked it with the Link Card (null for older links). */
+    public @Nullable UUID linkedBy() {
+        return linkedBy;
+    }
+
+    /** Placed by a player (the block's setPlacedBy): checked at once. */
+    public void placedBy(Player player) {
+        placedBy = player.getUUID();
+        setChanged();
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
+    }
+
+    @Override
+    public @Nullable ServerLevel guardLevel() {
+        return level instanceof ServerLevel serverLevel ? serverLevel : null;
+    }
+
+    /**
+     * The block it reads: a probe's target, else the block it sticks to. Also while unlinked: its screen shows the card's
+     * preview, and an uplink outside a claim can touch a machine inside it.
+     */
+    @Override
+    public @Nullable BlockPos guardPos() {
+        if (isRemoved()) return null;
+        return isProbe() ? remoteTarget : attachedPos();
+    }
+
+    /** Who linked it (a probe: who set its target; unlinked: who placed it) and the mainframe's owner. */
+    @Override
+    public List<UUID> guardOwners() {
+        var by = isProbe() && remoteBy != null ? remoteBy : linkedBy != null ? linkedBy : placedBy;
+        return ai.ezfox.cccloud.claims.ClaimGuard.owners(by, link);
+    }
+
+    @Override
+    public ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock() {
+        return claimBlock;
+    }
+
+    /** Blocked: the card, the Computer card and the Storage card go at once (the card keeps its title); unblocked: back. */
+    @Override
+    public void applyClaimBlock(ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block block) {
+        synchronized (this) {
+            if (block != null && claimBlock == null) {
+                blockedTitle = title.isEmpty() ? blockedTitle : title;
+                claimBlock = block;
+                if (deviceCard != null || !deviceKind.isEmpty()) showDeviceCard(null);
+                if (template) leaveTemplate();
+                if (auto) leaveAuto();
+                dirtyValues.clear();
+                pendingAlerts.clear();
+            }
+            claimBlock = block;
+            exposedElsewhere = null;
+            structureDirty = chartsDirty = true;
+        }
+        if (block == null) claimRefresh = true;
+    }
+
+    @Override
+    public String guardLabel() {
+        return (isProbe() ? "Cloud Probe " : "uplink ") + uplinkId.toString().substring(0, 8);
+    }
+
+    @Override
+    public @Nullable UUID guardMainframe() {
+        return link == null ? null : link.id();
+    }
+
+    @Override
+    public boolean guardRemoved() {
+        return isRemoved();
     }
 
     /** Client-side animation state for the block entity renderer. */

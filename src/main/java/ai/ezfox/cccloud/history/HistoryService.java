@@ -97,7 +97,7 @@ public final class HistoryService {
     }
 
     private static @Nullable BridgeCore core(ai.ezfox.cccloud.network.DashboardSection section) {
-        if (section instanceof BridgeSection bridge) return bridge.host().bridgeCore();
+        if (section instanceof BridgeSection bridge) return bridge.readableCore();
         if (section instanceof CloudUplinkBlockEntity uplink && uplink.storageBridge() != null) return uplink.storageBridge().bridgeCore();
         return null;
     }

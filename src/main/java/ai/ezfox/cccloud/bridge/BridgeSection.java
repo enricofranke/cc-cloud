@@ -42,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  * unlimited range, any dimension) and publishes the ready-made Storage section itself, with a stable section id.
  * Same widgets as direct mode ({@link StorageTemplate}). Owned by the bridge block entity; server thread only.
  */
-public final class BridgeSection implements DashboardSection {
+public final class BridgeSection implements DashboardSection, ai.ezfox.cccloud.claims.ClaimGuard.Guarded {
     private static final int STATUS_INTERVAL = 10;
     private static final int VALUE_INTERVAL = 20;
 
@@ -59,6 +59,10 @@ public final class BridgeSection implements DashboardSection {
     private boolean broken;
     private int ticks;
     private boolean legacyLink;
+    /** Who linked it with the Link Card (claim guard); null for links made before 0.11. */
+    private @Nullable UUID linkedBy;
+    /** Claim guard: the claim the bridge is in while that blocks it, else null. */
+    private ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock;
 
     public BridgeSection(BridgeHost host) {
         this.host = host;
@@ -124,6 +128,7 @@ public final class BridgeSection implements DashboardSection {
         input.read("section_id", UUIDUtil.STRING_CODEC).ifPresent(id -> sectionId = id);
         link = input.read("link", MainframeLink.CODEC).orElse(null);
         legacyLink = link != null && (input.getIntOr("net_v", 0) < 1 || input.getBooleanOr("legacy_link", false));
+        linkedBy = input.read("linked_by", UUIDUtil.STRING_CODEC).orElse(null);
         structureDirty = true;
     }
 
@@ -132,6 +137,7 @@ public final class BridgeSection implements DashboardSection {
         output.storeNullable("link", MainframeLink.CODEC, link);
         output.putInt("net_v", 1);
         output.putBoolean("legacy_link", legacyLink);
+        output.storeNullable("linked_by", UUIDUtil.STRING_CODEC, linkedBy);
     }
 
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
@@ -149,15 +155,18 @@ public final class BridgeSection implements DashboardSection {
             // staggered by position: many bridges loaded together do not all refresh in the same tick
             ticks = Math.floorMod(Long.hashCode(host.asBlockEntity().getBlockPos().asLong()), VALUE_INTERVAL);
             ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
+            // claim guard: a bridge in a chunk another team claimed meanwhile reads nothing from the first tick on
+            ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         }
         if (ticks % STATUS_INTERVAL == 0) updateStatus(level);
-        if (ticks % VALUE_INTERVAL == 0 && link != null) refreshValues();
+        if (ticks % VALUE_INTERVAL == 0 && link != null && claimBlock == null) refreshValues();
         ticks++;
         publish();
     }
 
     /** Chunk unload or block removal. */
     public void removed() {
+        ai.ezfox.cccloud.claims.ClaimGuard.forget(this);
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterSection(this);
@@ -232,16 +241,19 @@ public final class BridgeSection implements DashboardSection {
         }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        linkedBy = player.getUUID();
         legacyLink = false;
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         mainframe.linkUplink(sectionId, GlobalPos.of(level.dimension(), be.getBlockPos()));
         structureDirty = true;
         be.setChanged();
         updateStatus(level);
-        refreshValues();
+        var blocked = ai.ezfox.cccloud.claims.ClaimGuard.check(this);
+        if (blocked == null) refreshValues();
         CCCloud.LOGGER.info("[cccloud] {} bound the {} bridge at {} to {}", player.getGameProfile().name(), host.bridgeCore().kind(), be.getBlockPos(),
             mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.bridge.bound", newLink.describe()).withStyle(ChatFormatting.GREEN));
+        if (blocked != null) player.sendSystemMessage(ai.ezfox.cccloud.claims.ClaimGuard.linkMessage(blocked));
         ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), sectionId, "bridge:" + host.bridgeCore().kind(),
             level.dimension().identifier().toString(), be.getBlockPos(), player.getUUID(), player.getGameProfile().name()));
     }
@@ -251,10 +263,12 @@ public final class BridgeSection implements DashboardSection {
         var old = link;
         unlinkFrom(old);
         link = null;
+        linkedBy = null;
         legacyLink = false;
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         status = CloudStatus.OFFLINE;
         host.asBlockEntity().setChanged();
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         CCCloud.LOGGER.info("[cccloud] {} unlinked the {} bridge at {} from {}", by, host.bridgeCore().kind(), host.asBlockEntity().getBlockPos(), old.describe());
     }
 
@@ -291,17 +305,23 @@ public final class BridgeSection implements DashboardSection {
         json.addProperty("title", getTitle());
         json.addProperty("online", status == CloudStatus.ONLINE);
         var array = new JsonArray();
-        for (var widget : widgets.values()) array.add(widget.toJson());
+        // claim guard: a blocked card shows the claim instead of its widgets and values
+        if (claimBlock == null) for (var widget : widgets.values()) array.add(widget.toJson());
         json.add("widgets", array);
         json.addProperty("mode", "direct");
         json.addProperty("template", "storage");
         json.addProperty("bridge", host.bridgeCore().kind());
         json.addProperty("source", "bridge");
+        if (claimBlock != null) json.add("blocked", ai.ezfox.cccloud.claims.ClaimGuard.json(claimBlock));
         return json;
     }
 
     private void publish() {
-        if (link == null) {
+        if (link == null || claimBlock != null) {
+            if (link != null && structureDirty) {
+                structureDirty = false;
+                WebHub.INSTANCE.publishUplink(link.id(), snapshot());
+            }
             dirtyValues.clear();
             pendingAlerts.clear();
             return;
@@ -329,6 +349,7 @@ public final class BridgeSection implements DashboardSection {
 
     @Override
     public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement value, @Nullable Op op, String user, boolean pinVerified) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return ActionResult.done(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (status != CloudStatus.ONLINE) return ActionResult.done("uplink_offline");
         var widget = widgets.get(widgetId);
         var result = ActionValidator.validate(widget, value, op, pinVerified);
@@ -347,6 +368,7 @@ public final class BridgeSection implements DashboardSection {
 
     @Override
     public QueryResult handleQuery(String widgetId, String query) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return QueryResult.fail(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (status != CloudStatus.ONLINE) return QueryResult.fail("uplink_offline");
         var widget = widgets.get(widgetId);
         if (widget == null || widget.type() != WidgetType.ITEM_SEARCH) return QueryResult.fail("unknown_widget");
@@ -357,6 +379,60 @@ public final class BridgeSection implements DashboardSection {
         var rows = new JsonArray(page.rows().size());
         for (var row : page.rows()) rows.add(row.toJson());
         return new QueryResult(rows, page.truncated(), null);
+    }
+
+    // ---- claim guard (docs/SECURITY.md "Claims") -----------------------------------------------------------------
+
+    /** The storage for reads from other services (statistics, rules, production, storage view); null while blocked. */
+    public @Nullable BridgeCore readableCore() {
+        return claimBlock != null ? null : host.bridgeCore();
+    }
+
+    @Override
+    public @Nullable ServerLevel guardLevel() {
+        return host.asBlockEntity().getLevel() instanceof ServerLevel level ? level : null;
+    }
+
+    /** The bridge's own block (it reads the storage network through it); null while unlinked. */
+    @Override
+    public net.minecraft.core.@Nullable BlockPos guardPos() {
+        return link == null ? null : host.asBlockEntity().getBlockPos();
+    }
+
+    @Override
+    public List<UUID> guardOwners() {
+        return ai.ezfox.cccloud.claims.ClaimGuard.owners(linkedBy, link);
+    }
+
+    @Override
+    public ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock() {
+        return claimBlock;
+    }
+
+    /** Blocked: no values, no alerts, no auto-stock (the bridge's standing orders pause); unblocked: values at once. */
+    @Override
+    public void applyClaimBlock(ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block block) {
+        claimBlock = block;
+        dirtyValues.clear();
+        pendingAlerts.clear();
+        structureDirty = true;
+        host.bridgeCore().setClaimPaused(block != null);
+        if (block == null && link != null) refreshValues();
+    }
+
+    @Override
+    public String guardLabel() {
+        return host.bridgeCore().kind().toUpperCase(java.util.Locale.ROOT) + " bridge " + sectionId.toString().substring(0, 8);
+    }
+
+    @Override
+    public @Nullable UUID guardMainframe() {
+        return link == null ? null : link.id();
+    }
+
+    @Override
+    public boolean guardRemoved() {
+        return host.asBlockEntity().isRemoved();
     }
 
     /** Test/diagnostics: the current values. */

@@ -85,6 +85,11 @@ public final class ScaleTest {
     static final int BASELINE_S = prop("baseline", 10);
     static final int LOAD_S = prop("seconds", 30);
     static final int HOLD_S = prop("hold", 0);
+    /**
+     * {@code -PscaleTestClaims=true}: a claim mod that reports every chunk as claimed by a team every player belongs to,
+     * so every device runs the claim guard's whole check (lookup, cache, rule) without being blocked.
+     */
+    static final boolean CLAIMS = Boolean.getBoolean("cccloud.scaleTest.claims");
     static final int RULES = 100;
     static final long TICK_NANOS = 50_000_000L;
 
@@ -667,7 +672,22 @@ public final class ScaleTest {
         config.addProperty("browsers", BROWSERS);
         config.addProperty("bigBrowsers", BIG_BROWSERS);
         config.addProperty("rules", RULES);
+        config.addProperty("claims", CLAIMS);
         report.add("config", config);
+        if (CLAIMS) {
+            var team = new ai.ezfox.cccloud.claims.ClaimProvider.Team(UUID.nameUUIDFromBytes("cccloud-scale-claims".getBytes(StandardCharsets.UTF_8)), "Scale");
+            ai.ezfox.cccloud.claims.ClaimGuard.setProvider(new ai.ezfox.cccloud.claims.ClaimProvider() {
+                @Override
+                public ai.ezfox.cccloud.claims.ClaimProvider.Team claimAt(ServerLevel l, int chunkX, int chunkZ) {
+                    return team;
+                }
+
+                @Override
+                public boolean trusted(ai.ezfox.cccloud.claims.ClaimProvider.Team t, UUID player) {
+                    return true;
+                }
+            });
+        }
 
         // Everything lives above the test structure; its chunks stay loaded while the test runs.
         var origin = helper.absolutePos(BlockPos.ZERO);
@@ -1107,6 +1127,7 @@ public final class ScaleTest {
     }
 
     private static void cleanup(GameTestHelper helper, List<Base> bases, List<ChunkPos> forced, List<Client> clients, LuaLoad load) {
+        if (CLAIMS) ai.ezfox.cccloud.claims.ClaimGuard.setProvider(null);
         load.running = false;
         throttle = false;
         WebHub.FLUSH_EVERY_TICK = Boolean.getBoolean("cccloud.gametest");

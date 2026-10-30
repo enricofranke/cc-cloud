@@ -26,7 +26,7 @@ CC: Tweaked 26.1 source for reference (read-only): a local checkout of https://g
 Uplinks only read the block they stick to. A machine built into a wall, or one whose every face is taken by pipes and cables, needs the **Cloud Probe**: a separate, expensive uplink that reads **exactly one** machine at a distance. Normal uplinks stay adjacent-only.
 - **Linking** with the Link Card: sneak + right-click the machine (stores it on the card with the clicked face, the player and the time), then right-click the probe within 10 minutes (an older pick, or a card without a pick time, says "pick it again"). The probe reads the machine exactly as if an uplink were attached to that face: device cards, the bridge Storage template, the Computer card. A Link Card holding a target says so in its tooltip; sneak + right-click in the air clears it with the mainframe.
 - **Limits:** same dimension, within `probeRange` blocks (server config, default 8, 1–16, block-centre distance), the machine loaded and a block entity, no CC: Cloud block, one target per probe. Only the player who picked the machine can hand it to a probe. A linked probe needs `network.link` on its mainframe to change the target (an unlinked one: anyone, like binding).
-- **Permission checks** (when picking): the sneak + right-click is a real block interaction – NeoForge fires `PlayerInteractEvent.RightClickBlock` before the item's `onItemUseFirst`, so claim mods that protect blocks this way (FTB Chunks, Open Parties and Claims, …) cancel it in claims the player may not use; the server's spawn protection / world border (`Level.mayInteract`) and adventure mode (`Player.mayUseItemAt`) are checked again in the item. **When linking** (security review 2026-10-30) spawn protection / world border are checked again, and a chunk claimed by another team for that player (FTB Chunks, members and allies count as the own team) is refused, also for a card a creative client made without picking. **On every read and action** the probe checks its target again (`readPos()`, used by the machine card, the Computer card, the Storage card and the screens): within the current `probeRange`, loaded, not a CC: Cloud block, the probe still standing where and in the dimension where the target was set (it stores its own position, the dimension and the player; a probe moved with its data by a contraption or block mover forgets the target), and the chunk not claimed by another team for the player who set it. Claim mods other than FTB Chunks are only asked when picking.
+- **Permission checks** (when picking): the sneak + right-click is a real block interaction – NeoForge fires `PlayerInteractEvent.RightClickBlock` before the item's `onItemUseFirst`, so claim mods that protect blocks this way (FTB Chunks, Open Parties and Claims, …) cancel it in claims the player may not use; the server's spawn protection / world border (`Level.mayInteract`) and adventure mode (`Player.mayUseItemAt`) are checked again in the item. **When linking** (security review 2026-10-30) spawn protection / world border are checked again, and a chunk claimed by another team for that player (FTB Chunks, members and allies count as the own team) is refused, also for a card a creative client made without picking. **On every read and action** the probe checks its target again (`readPos()`, used by the machine card, the Computer card, the Storage card and the screens): within the current `probeRange`, loaded, not a CC: Cloud block, the probe still standing where and in the dimension where the target was set (it stores its own position, the dimension and the player; a probe moved with its data by a contraption or block mover forgets the target), and the claim guard (section "Claim guard": the chunk not claimed by a team that neither the player who set the target nor the mainframe's owner belongs to or is allied with). Claim mods other than FTB Chunks are only asked when picking.
 - **Target removed:** a machine whose block entity disappears clears the target like an uplink falling off its block (section emptied, `direct` off), and so does moving the probe; an unloaded machine, one outside a reduced `probeRange` or one in a chunk claimed later just reads nothing for now (its card goes, actions answer `unavailable`).
 - **Costs:** recipe Advanced Cloud Uplink + Cloud Core + an eye of ender + 6 vibranium ingots (`#c:ingots/vibranium`; without Allthemodium: 4 diamonds + 2 netherite scrap, `cloud_probe_fallback`). In the network it is device type `probe`: radio range of the advanced uplink, `probeCapacityUnits` (default 2) against the device capacity, `mainframePerProbeFE` (default 24 FE/t, breakdown key `probes`). Network map (dashboard 2D/3D, in-game mainframe screen, `cloud_mainframe.getNetwork()`; follow-up 2026-10-30, before it showed as an advanced uplink): node type `probe` with its card title, its own icon and label "Cloud Probe", and with positions `target:{x,y,z}` = the machine it reads (`readPos()`, so a target out of range, unloaded or in a foreign claim is left out; part of the map's publish key, and setting or clearing a target marks the network dirty). The 2D map and the 3D view draw a thin purple line to it (3D: plus the block's outline), the detail panel says "Reads the machine at x y z · N blocks away"; the in-game screen's compact network keeps `target:{x,z}`, the mini map draws the line and the tree marks probes with a purple ring.
 - **Look:** the uplink plate in slate blue with a raised gold-rimmed glass lens, no moving part, no antenna; it needs a face that carries the plate (any direction). Screen: "Reads <machine>, N blocks away (remote, through its <face> side)", its position for players who may change it, and **Clear target**. Cloud Analyzer: a thin purple line from each probe to its machine.
@@ -1606,12 +1606,14 @@ player, or which kind of mob – and reports it to the dashboard, to rules and t
   9/5/9, hard caps 32/16/32; larger saved sizes are clamped). Placement **in front** (starts at the sensor's block and
   reaches `size` blocks out of the face it looks out of, i.e. away from the block it sits on; centred on the other two
   axes, the extra block of an even size on the positive side) or **around** (centred on the sensor). `SensorZone`.
-- **Claims:** the zone must lie in the owner's claim or unclaimed land – every chunk it touches is checked with
-  `XrayGuard.claimedByOther` (FTB Chunks; members and allies count as the own team, like the Cloud Probe). Not in spawn
+- **Claims:** the zone must lie in the owners' claims or unclaimed land – every chunk it touches is checked through the
+  claim guard's provider and rule (`ClaimGuard`, section "Claim guard": FTB Chunks; members and allies count as the own
+  team, like the Cloud Probe). The sensor's own block goes through the claim guard like every redstone device. Not in spawn
   protection (`Level.mayInteract` at the zone point closest to the spawn; with the owner offline: the dedicated server's
   rule, the owner counted as no operator unless listed) and inside the world border (all eight corners). Checked when the
   zone is set: in game with the player who sets it, from the dashboard, rules and scenes with the owner; refused with
-  `zone_claimed` / `zone_protected` (screen notice, action result). Claims are checked again every 5 s while it scans: a
+  `zone_claimed` / `zone_protected` (screen notice, action result). Claims are checked again every 5 s while it scans
+  (with the sensor's owners – who placed it, who linked it, the mainframe's owner – and the guard's per-chunk cache): a
   zone that another team claims later is not watched (`problem: zone_claimed` on the card, grey outline) until that
   changes. Claim mods other than FTB Chunks are not asked (as for the probe).
 - **Outline:** the block entity sends its zone (min/max, watching or not) in its update tag; the client draws it with the
@@ -1809,14 +1811,16 @@ tick; memory is bounded per device and per series.
   real 20 TPS (sleeping after each tick, outside the measurement) and the hub flushes on its own 100 ms timer, as on a real
   server. 10 s idle (`-PscaleTestBaseline`), 30 s load (`-PscaleTestSeconds`).
 - Measured: cccloud's server-thread time per tick by part (`TickCost`: uplinks, mainframes, redstone devices, network,
-  rules, history, production, scenes, mainframe cards, redstone cards, screens, web housekeeping) as avg/p50/p95/p99/max,
+  rules, history, production, scenes, mainframe cards, redstone cards, screens, web housekeeping, advanced sensors, claim guard) as avg/p50/p95/p99/max,
   the whole tick in wall and CPU time, and `cccloudCpuEstMs` (cccloud's wall time scaled by the tick's CPU/wall ratio: on
   a busy machine the server thread is preempted, which inflates wall times); snapshot size and time per browser; bytes,
   messages and values per second per browser; the view of every in-game screen (mainframe, uplink with a Lua or machine
   card, relay, redstone device) against `OPEN_VIEW`/`MAX_VIEW`; the tablet snapshot against `InGamePayloads.MAX_DATA`;
   network recompute and link check; history memory and save encoding; heap per device; machine load.
 - Writes `run/scaletest-report.json`. Fails only on functional problems (a browser disconnected, a view or a tablet
-  message over its limit, no deltas); `-PscaleTestStrict=true` also checks the timing targets.
+  message over its limit, no deltas); `-PscaleTestStrict=true` also checks the timing targets. `-PscaleTestClaims=true`
+  installs a claim mod that reports every chunk as claimed by a team every player belongs to, so every device runs the
+  claim guard's full check (part "claim guard"; see "Claim guard").
 - `-PscaleTestHold=180` keeps the bases running and writes `run/scaletest-session.json`; then
   `node tools/e2e/scale-render.mjs [--chrome <Chrome binary>]` opens the big mainframe's dashboard in headless Chromium and
   measures time to the first card and to all cards, long tasks while loading and while live updates arrive, JS heap and
@@ -2145,3 +2149,88 @@ through the tunnel, auth refused like on the LAN, control without a PIN by defau
 refusal stops retrying, reconnect, Host and IP rules), `ConnectDevRelayTest` (opt-in: against the real relay under
 `wrangler dev`); relay: 27 vitest tests in the Workers runtime (pages, claim/replace/release/revoke/expiry, filtering,
 WebSocket, hibernation, limits).
+
+## Claim guard (2026-10-30)
+Devices placed in unclaimed land kept reading and controlling their machine after another team claimed the chunk (only
+the Cloud Probe re-checked claims). One shared guard (`claims/ClaimGuard`) now covers every device kind.
+
+### Rule
+- **The block a device reads or controls:** uplink – the block it sticks to (on a computer: the computer); Cloud Probe –
+  its target; Cloud Bridge – its own block; Cloud Redstone device – its own block (the Advanced Cloud Sensor too; its
+  zone has its own check through the same provider and rule, see below); wired machine card – the machine.
+- **Owners:** the player who linked the device (stored as `linked_by` when the Link Card binds it; a probe: `remote_by`,
+  who set its target; an unlinked uplink: `placed_by`) and the owner of its mainframe (the access store's record, so also
+  while the mainframe is unloaded). A wired machine card has the owners of the uplink whose computer reaches it; an
+  Advanced Cloud Sensor also counts who placed it.
+- **Blocked** while that block is in a chunk claimed by a team none of the owners is a member or ally of. Unclaimed land
+  and the owners' own or allied claims are fine. No bypass for operators (as for the probe's pick and the map). A claim
+  mod that throws fails closed; no owner known and a claim: blocked. Pure function `ClaimGuard.rule`.
+
+### When it is checked
+- Linking (all kinds; the linking player gets a red chat line when the device is blocked right away), placing an uplink,
+  loading a device, setting or clearing a probe target, creating a wired machine card.
+- Before every action and query (`handleAction`/`handleQuery` of uplinks, bridges, wired machine cards, a redstone
+  device's `apply`), storage operations, the terminal and script import: a fresh check.
+- Events: FTB Chunks `ChunkChange.Post` (CLAIM/UNCLAIM) → `ClaimGuard.claimsChanged(dim, x, z)` clears that chunk's
+  cached lookup and re-checks the devices that read a block in it at the end of the same tick. FTB Teams events (party
+  join/leave, team change, deletion, ownership transfer, allies) reach `Teams.fireChanged(player)` →
+  `ClaimGuard.teamChanged(player)` re-checks that player's devices and every blocked one.
+- Safety pass: every loaded device once per `PASS_TICKS` = 200 ticks (10 s), `ceil(n / 200)` per tick. Claim lookups
+  are cached per chunk for 200 ticks. Event re-checks and the pass share a budget of 512 checks and 2 ms per tick
+  (`TickCost` part "claim guard"). Without a claim mod the guard does nothing (one check per tick).
+- When the claim mod's data loads (server start), every device is re-checked, spread over the ticks.
+- Cost (scale benchmark with `-PscaleTestClaims=true`, 2026-10-30: 1 650 devices, 50 browsers, every chunk "claimed"
+  by a team every player belongs to, so every check runs the whole lookup and rule; machine at load 30–50 from other
+  work): the "claim guard" part averaged 0.04–0.12 ms per tick (idle and under load, two runs), about 1 % of cccloud's
+  own tick time; its single-tick maxima (0.8–8 ms) were in the range of trivial parts such as "web housekeeping"
+  (1–11 ms) in the same runs, i.e. preemption, not work. A check is a few map lookups; event re-checks and the pass are
+  capped at 512 checks and 2 ms per tick.
+
+### Blocked devices
+- Uplink/probe: `readPos()` is null, so the machine card, the Computer card and the Storage template go (the title stays
+  for the card); Lua widgets stay in the uplink but neither they nor their values are published; `deviceCard()` and
+  `storageBridge()` are null (production, rules, history); a Lua widget bound to a bridge in a foreign claim reads
+  nothing. Unblocked: the card is looked for again on the next tick. Wired machine cards keep following the computer's
+  modems (the computer is only a hub; each card has its own check).
+- Bridge: no values, no alerts; the core pauses auto-stock and watchlist alerts; `BridgeSection.readableCore()` is null
+  for statistics, rules, production and the storage view.
+- Wired machine card: kept, not refreshed.
+- Redstone device: `apply` refuses; its dashboard copy keeps the level it had (no new reads); its widgets are listed in
+  the card's `blockedWidgets` and record no history; "All on/off" skips it.
+- Advanced Cloud Sensor: does not scan (the tracker forgets who was inside, the redstone output goes off, pending alerts
+  are dropped); its own card (`SensorSection`) shows the claim instead of its widgets and refuses actions. Its zone check
+  (`AdvancedSensor.claimProblem`, every 5 s while scanning) uses `ClaimGuard.blockedInChunk` with the sensor's owners
+  (the guard's rule and per-chunk cache); setting a zone checks the player who sets it with
+  `ClaimGuard.claimedByOther`. The sensor's own GameTest claim hook is gone: `sensor_claims` uses `TestClaims`.
+- Section snapshot: `"blocked":{"reason":"claim","team":"<name>"}` and no widgets (uplink, probe, bridge, wired machine
+  card, Advanced Cloud Sensor card); redstone cards: `"blockedWidgets":{"<widget id>":{"reason":"claim","team":"<name>"}}`.
+  In `WebHub` the team is a private part of the section, like the sensor's player names: `Section.hasPrivate()` is also
+  true for a head that names a team, and the public form (`text(false)`/`json(false)`) has the head without `team`.
+  Sessions and API keys with `WebHub.seesNames` (`view.positions`) get the full form, everything else the public one
+  (viewers, share links, Cloud Displays, the Cloud Tablet's pickers).
+- Error `claim_blocked` for every refused action and query (public API: 409). The dashboard shows "Blocked – this
+  machine is in <team>'s claim" (or "another team's claim") with a hint and a link to the FAQ (`/docs/faq#claims`), a
+  red "Blocked" tag, no terminal or script buttons; a blocked redstone device shows "Blocked – in <team>'s claim" in its
+  row. English and German (`claim.*` in `lib/i18n.ts`). In-game: the uplink and bridge screen state "Blocked by a claim"
+  with the same text (team only with `view.positions`), the redstone device screen likewise; the Cloud Tablet shows the
+  text under the card's title and in a blocked device's row, the Cloud Display under the title ("another team's claim":
+  a display only gets the public form) and "Blocked by a claim" in a blocked device's box.
+- Audit: one line per transition of a linked device, server log and the mainframe's audit log ("Claim guard: uplink
+  1a2b3c4d blocked: its machine is in Rivals's claim"); an unlinked device shows nothing anywhere, so its blocking (and
+  the unblocking when it is linked) writes none.
+
+### Claim mods
+`ClaimProvider` (`claimAt(level, chunkX, chunkZ)` → team id and name or null, `trusted(team, player)`, `ready()`) is the
+only thing the guard, the probe's pick check and the map/voxel X-ray guard ask. FTB Chunks implements it
+(`compat/ftbchunks/FtbClaims`, registered with the Claims card integration). Other claim mods are not integrated; an
+implementation and `ClaimGuard.setProvider` are all it takes (events are optional, the safety pass finds changes).
+
+### Tests
+Unit: `ClaimRuleTest`, `WebHubClaimTeamTest`; dashboard: `claims.test.ts`. GameTests: `claim_guard` (uplink on a machine,
+wired machine card, Cloud Switch; claim, ally, end of the alliance, unclaim; with the GameTest claim mod `TestClaims`,
+which only distrusts the test's own player so neighbouring tests are unaffected), `probe_guards`, `map_tiles`,
+`sensor_claims` (a zone in a claim is refused and stops the scan; when the sensor's own chunk is claimed the sensor is
+blocked, its card shows the claim and refuses actions, and it comes back after the unclaim); with
+`-PintegrationMods=ftbchunks` `ftbchunks_claim_guard` (the same scenario with real FTB Chunks claims and FTB Teams
+allies, own test environment `cccloud:claims`; the claims overlay test `ftbchunks_claims` moved to `cccloud:claims_card`
+and unclaims at the end, because a real claim affects the tests around it).

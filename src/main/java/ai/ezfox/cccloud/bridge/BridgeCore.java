@@ -52,6 +52,8 @@ public final class BridgeCore {
     private final ArrayDeque<Alert> alerts = new ArrayDeque<>();
     /** GameTests: moves the auto-stock clock forward (cooldowns are wall-clock time). */
     private long clockOffsetForTest;
+    /** Claim guard: the bridge's section is blocked; auto-stock and the watchlist alerts pause. */
+    private volatile boolean claimPaused;
     /** Items of jobs that finished {@code done} since the last {@link #takeCrafted()} (v0.10 production statistics). */
     private final Map<String, Long> crafted = new HashMap<>();
 
@@ -150,7 +152,7 @@ public final class BridgeCore {
                 else addAlert("Crafting " + job.status + ": " + job.count + "× " + job.displayName, "warn");
             }
         }
-        if (!watchlist.isEmpty() && isConnected()) {
+        if (!watchlist.isEmpty() && isConnected() && !claimPaused) {
             // Auto-stock (level maintainer): server side, no computer needed.
             var log = watchlist.autoStock(System.currentTimeMillis() + clockOffsetForTest, CloudConfig.get(CloudConfig.AUTO_STOCK_BATCH), new Watchlist.Crafter() {
                 @Override
@@ -189,7 +191,12 @@ public final class BridgeCore {
             var followed = watchlist.jobIds();
             jobs.removeIf(job -> job.status.equals(Watchlist.WAITING) && !followed.contains(job.id));
         }
-        if (!watchlist.isEmpty() && isConnected()) checkWatchlist();
+        if (!watchlist.isEmpty() && isConnected() && !claimPaused) checkWatchlist();
+    }
+
+    /** Claim guard (docs/SECURITY.md "Claims"): pauses auto-stock and the watchlist while the bridge is blocked. */
+    public void setClaimPaused(boolean paused) {
+        claimPaused = paused;
     }
 
     /** Refreshes the watchlist counts and turns every new "below min" crossing into an alert. */

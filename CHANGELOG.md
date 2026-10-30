@@ -165,6 +165,18 @@ in, and who it was: a player's name or the kind of mob.
 - The texture fallback found mod assets only for namespaces with an English language file; it now indexes every mod
   jar's `assets/` folder.
 
+### Security
+- Machines in another team's claim stop working on the dashboard. Before, an uplink, Cloud Bridge, Cloud Redstone
+  device or wired machine card placed in unclaimed land kept reading and controlling its machine after another team
+  claimed the chunk (only the Cloud Probe checked again). Now every device is checked when it is linked or loaded, at
+  once when FTB Chunks reports a claim or unclaim or FTB Teams a change of teams or allies, before every action, and in
+  a light background pass. A blocked card says "Blocked – this machine is in <team>'s claim" (the team's name only for
+  players allowed to see positions; in English and German), reads nothing and refuses every control with
+  `claim_blocked` – also from rules, scenes and the API. The Cloud Tablet and Cloud Displays show it too. An Advanced
+  Cloud Sensor in another team's claim stops watching; its zone check uses the same claim rules. It works again by
+  itself when the claim is removed or the teams become allies. Members and allies of the claiming team count as the same team; operators get no exception. Only FTB
+  Chunks claims are checked; other claim mods are not integrated yet.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

@@ -937,5 +937,13 @@
   "cccloud.configuration.internetRequirePin": "Einfaches HTTP: Steuern aus dem Internet nur mit PIN",
   "cccloud.internet.connect.title": "[CC: Cloud] Zugriff aus dem Internet: CC: Cloud Connect",
   "cccloud.internet.status.connect": "Empfohlen: %s (HTTPS-Adresse, ohne Portfreigabe)",
-  "cccloud.connect.error.pending": "warte, bis der Dashboard-Server auf Connect umgestellt hat"
+  "cccloud.connect.error.pending": "warte, bis der Dashboard-Server auf Connect umgestellt hat",
+  "cccloud.claim.linked_blocked": "Verbunden, aber gesperrt: Diese Maschine liegt im Claim von %s. Sie liest und steuert nichts, bis der Claim weg ist oder eure Teams verbündet sind.",
+  "cccloud.claim.linked_blocked_other": "Verbunden, aber gesperrt: Diese Maschine liegt im Claim eines anderen Teams. Sie liest und steuert nichts, bis der Claim weg ist oder eure Teams verbündet sind.",
+  "cccloud.gui.claim.blocked": "Gesperrt – diese Maschine liegt im Claim von %s",
+  "cccloud.gui.claim.blocked_other": "Gesperrt – diese Maschine liegt im Claim eines anderen Teams",
+  "cccloud.gui.claim.blocked_device": "Gesperrt – dieses Gerät liegt im Claim von %s",
+  "cccloud.gui.claim.blocked_device_other": "Gesperrt – dieses Gerät liegt im Claim eines anderen Teams",
+  "cccloud.gui.claim.hint": "Das Dashboard kann sie weder lesen noch steuern. Sie geht von selbst wieder, sobald der Claim entfernt wird oder eure Teams Verbündete werden.",
+  "cccloud.gui.state.claim_blocked": "Durch einen Claim gesperrt"
 }

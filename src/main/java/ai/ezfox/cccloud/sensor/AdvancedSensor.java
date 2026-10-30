@@ -45,7 +45,8 @@ import org.jspecify.annotations.Nullable;
  * ticks), at most {@code advancedSensorScansPerTick} scans on the whole server per tick (the rest wait a tick), one
  * bounded AABB entity query of the zone (entities in unloaded chunks are never found), at most
  * {@link #MAX_ENTITIES} entities looked at. Nothing is scanned while the sensor is disarmed and its redstone output off,
- * or while the zone touches a chunk another team claimed.
+ * while the zone touches a chunk another team claimed, or while the claim guard blocks the sensor's own block
+ * (docs/SECURITY.md "Claims"; both claim checks go through the guard's {@link ai.ezfox.cccloud.claims.ClaimProvider}).
  */
 public final class AdvancedSensor {
     public static final int SCAN_INTERVAL = 10;
@@ -64,11 +65,6 @@ public final class AdvancedSensor {
     private static final Map<UUID, LongSupplier> TEST_CLOCKS = new ConcurrentHashMap<>();
     /** GameTests: fake players are not in the world's entity list; tests hand them to the scan here. */
     public static final List<Entity> TEST_ENTITIES = new CopyOnWriteArrayList<>();
-    /**
-     * GameTests: chunks (packed) claimed by another team for a player, on top of the real claims – a hook of its own, so
-     * tests that swap {@code XrayGuard.claims} at the same time do not interfere.
-     */
-    public static final Map<UUID, java.util.Set<Long>> TEST_CLAIMS = new ConcurrentHashMap<>();
 
     private final RsDeviceBlockEntity device;
     private SensorSettings settings = SensorSettings.DEFAULT;
@@ -303,7 +299,7 @@ public final class AdvancedSensor {
             scanDue = false;
             scan(level);
         }
-        if (settings.armed() && settings.alert() != SensorSettings.Alert.OFF) {
+        if (settings.armed() && settings.alert() != SensorSettings.Alert.OFF && device.claimBlock() == null) {
             var due = alerts.due(now(), alertCooldownMs());
             if (due != null) sendAlert(due);
         }
@@ -354,7 +350,8 @@ public final class AdvancedSensor {
         boolean wasOccupied = tracker.occupied();
         int before = tracker.size();
         List<SensorTracker.Change> changes;
-        if (zoneProblem != null) {
+        // claim guard: a sensor whose own block is in another team's claim reads nothing (its card shows the claim)
+        if (zoneProblem != null || device.claimBlock() != null) {
             tracker.rebase();
             changes = List.of();
         } else {
@@ -474,19 +471,40 @@ public final class AdvancedSensor {
         return member;
     }
 
-    /** Claims of other teams on the zone (checked every few seconds; spawn protection is checked when the zone is set). */
+    /**
+     * Claims of other teams on the zone (checked every few seconds; spawn protection is checked when the zone is set):
+     * the claim guard's rule for every chunk the zone touches, with the sensor's owners (who placed it, who linked it,
+     * the mainframe's owner; members and allies count as the same team) and its cached claim lookups.
+     */
     private @Nullable String claimProblem(ServerLevel level, SensorZone zone) {
-        UUID who = effectiveOwner();
-        for (var chunk : zone.chunks()) if (claimedByOther(level, chunk.x(), chunk.z(), who)) return "zone_claimed";
+        var owners = device.guardOwners();
+        if (owners.isEmpty()) {
+            UUID who = effectiveOwner();
+            owners = who == null ? List.of() : List.of(who);
+        }
+        for (var chunk : zone.chunks()) if (ai.ezfox.cccloud.claims.ClaimGuard.blockedInChunk(level, chunk.x(), chunk.z(), owners)) return "zone_claimed";
         return null;
     }
 
-    /** A chunk claimed by a team {@code who} is not a member or ally of (FTB Chunks, like the Cloud Probe). */
+    /** A chunk claimed by a team {@code who} is not a member or ally of (the claim guard's provider, like the probe's pick). */
     static boolean claimedByOther(ServerLevel level, int chunkX, int chunkZ, @Nullable UUID who) {
-        if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, chunkX, chunkZ, who)) return true;
-        if (who == null || TEST_CLAIMS.isEmpty()) return false;
-        var test = TEST_CLAIMS.get(who);
-        return test != null && test.contains(net.minecraft.world.level.ChunkPos.pack(chunkX, chunkZ));
+        return ai.ezfox.cccloud.claims.ClaimGuard.claimedByOther(level, chunkX, chunkZ, who);
+    }
+
+    /**
+     * The claim guard blocked or unblocked the sensor's own block: blocked, it forgets who is inside (its redstone output
+     * goes off) and drops pending alerts; either way its card is rebuilt and the zone is checked again.
+     */
+    public void claimChanged(boolean blocked) {
+        if (blocked) {
+            boolean wasOccupied = tracker.occupied();
+            tracker.rebase();
+            alerts.clear();
+            if (wasOccupied) device.sensorChanged(false);
+        }
+        zoneCheckedAt = Long.MIN_VALUE;
+        scanDue = true;
+        dirty = true;
     }
 
     // ---- alerts --------------------------------------------------------------------------------------------------------

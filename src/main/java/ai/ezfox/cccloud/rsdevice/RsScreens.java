@@ -143,6 +143,7 @@ public final class RsScreens {
         }
         var sensor = device.sensor();
         if (sensor != null) json.add("sensor", sensorView(device, sensor, player, manage));
+        ai.ezfox.cccloud.gui.GuiViews.claim(json, player, device.claimBlock(), link);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
     }

@@ -250,6 +250,7 @@ Widgets mit \`pin=true\` fragen vor dem Auslösen die Mainframe-PIN über ein Zi
 | Removed | der Mainframe-Block wurde abgebaut – sein Item wieder platzieren bringt alles zurück ([wie](/docs/start#moving)) |
 | Mainframe has no power | der FE-Puffer ist leer – siehe [Strom](/docs/start#power) |
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
+| Gesperrt – diese Maschine liegt im Claim von … | ein anderes Team hat den Chunk der Maschine geclaimt – siehe [Claims](/docs/faq#claims) |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |
 | Server not reachable | siehe [Fehlerbehebung](/docs/faq#not-reachable) |
 `,
@@ -298,6 +299,7 @@ In der Welt schaltet ein Klick einen Schalter oder eine Lampe und drückt einen 
 - Pro Gerät: **Mainframe-PIN abfragen** und **Vor dem Schalten nachfragen** (in seinem Fenster, braucht „Geräte verbinden“). „Alle an / Alle aus“ fragt, wenn ein Gerät der Karte fragt.
 - Verbinden, Umbenennen und die Einstellungen brauchen **„Geräte verbinden“** am Mainframe; von Hand anklicken kann es trotzdem jeder, der den Block benutzen darf – wie einen Hebel.
 - Jedes Gerät nimmt höchstens 4 Änderungen pro Sekunde aus Dashboard, Regeln, Szenen und API an (\`redstoneDeviceChangesPerSecond\`, kurz bis zu 8); Klicks in der Welt sind nicht begrenzt.
+- Ein Gerät im Claim eines anderen Teams ist gesperrt: Seine Karte zeigt den Claim statt des Schalters – siehe [Claims](/docs/faq#claims).
 
 ## Reichweite, Kapazität und Strom {#network}
 
@@ -1328,5 +1330,11 @@ Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PI
 - Der Server braucht **FTB Quests** und die normale Jar \`cccloud-<version>.jar\` – die Modpack-Edition fügt nie Quests hinzu.
 - Im Server-Log steht, was passiert ist: Suche nach \`FTB Quests:\` (zum Beispiel \`installQuests = false\`, eine ID, die im Questbuch schon vergeben ist, oder ein Kapitel, das früher gelöscht wurde).
 - Die Quests kommen nur einmal; ein gelöschtes Kapitel kommt nicht wieder. Für einen Neuanfang \`config/cccloud/quests-installed.json\` löschen und neu starten. Siehe [Quests](/docs/start#quests).
+
+## Eine Karte zeigt „Gesperrt – diese Maschine liegt im Claim von …“ {#claims}
+
+Maschinen im Claim eines anderen Teams funktionieren auf dem Dashboard nicht mehr. Claimt ein Team den Chunk einer Maschine, die ein Uplink, eine Sonde, eine Bridge, ein Redstone-Gerät oder eine Karte über ein CC-Kabel liest, und ist weder der Spieler, der es verbunden hat, noch der Besitzer des Mainframes in diesem Team oder mit ihm verbündet, zeigt die Karte den Claim statt der Werte, und jedes Bedienelement wird abgelehnt – auch aus Regeln, Szenen und der API. Den Namen des Teams sehen nur Spieler, die Positionen sehen dürfen.
+
+Sie geht von selbst wieder, sobald der Claim entfernt wird oder eure Teams Verbündete werden. Server-Operatoren bekommen keine Ausnahme. Claims kommen aus FTB Chunks; andere Claim-Mods werden noch nicht geprüft.
 `,
 };

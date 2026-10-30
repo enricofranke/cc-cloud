@@ -126,13 +126,28 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
                 textRow(Component.translatable("cccloud.tablet.cached", seen > 0 ? ago(Math.max(0, (System.currentTimeMillis() - seen) / 1000)) : "?"),
                     CloudGui.TEXT_DIM);
             }
+            // claim guard (docs/SECURITY.md "Claims"): the claim instead of values; the team only with view.positions
+            if (uplink.get("blocked") instanceof JsonObject blocked) textRow(claimText(blocked, false), CloudGui.RED);
+            var blockedWidgets = uplink.get("blockedWidgets") instanceof JsonObject b ? b : null;
             for (var element : uplink.getAsJsonArray("widgets")) {
                 var widget = element.getAsJsonObject();
                 var wl = widgetsLayout.get(uplinkId + "/" + str(widget, "id"));
                 if (wl != null && wl.isJsonObject() && bool(wl.getAsJsonObject(), "hidden")) continue;
+                if (blockedWidgets != null && blockedWidgets.get(str(widget, "id")) instanceof JsonObject blocked) {
+                    String label = str(widget, "label");
+                    textRow(Component.literal(label.isEmpty() ? "" : label + ": ").append(claimText(blocked, true)), CloudGui.RED);
+                    continue;
+                }
                 widget(uplinkId, widget, online);
             }
         }
+    }
+
+    /** "Blocked – this machine is in Rivals's claim" (or another team's); {@code device}: a redstone device's row. */
+    private static Component claimText(JsonObject blocked, boolean device) {
+        String team = str(blocked, "team");
+        if (device) return team.isEmpty() ? Component.translatable("cccloud.gui.claim.blocked_device_other") : Component.translatable("cccloud.gui.claim.blocked_device", team);
+        return team.isEmpty() ? Component.translatable("cccloud.gui.claim.blocked_other") : Component.translatable("cccloud.gui.claim.blocked", team);
     }
 
     private void alerts() {

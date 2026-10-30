@@ -29,7 +29,8 @@ import org.jspecify.annotations.Nullable;
  * {@code "source":"wired"} and {@code "peripheral"} (the computer's name for it) say where it comes from. Server thread
  * only.
  */
-public final class WiredMachineSection implements DashboardSection {
+public final class WiredMachineSection implements DashboardSection, ai.ezfox.cccloud.claims.ClaimGuard.Guarded {
+    private final ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity host;
     private final UUID sectionId;
     private final MainframeLink link;
     private final String peripheral;
@@ -43,6 +44,9 @@ public final class WiredMachineSection implements DashboardSection {
     private boolean online;
     private int revision;
     private boolean failed;
+    /** Claim guard: the claim the machine is in while that blocks the card, else null. */
+    private ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock;
+    private boolean removed;
 
     private final DeviceCard.CardOutput output = new DeviceCard.CardOutput() {
         @Override
@@ -59,8 +63,10 @@ public final class WiredMachineSection implements DashboardSection {
         }
     };
 
-    WiredMachineSection(UUID uplinkId, String dimension, BlockPos pos, MainframeLink link, String peripheral, DeviceCard card, String title) {
-        this.sectionId = sectionId(uplinkId, dimension, pos);
+    WiredMachineSection(ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity host, String dimension, BlockPos pos, MainframeLink link, String peripheral,
+                        DeviceCard card, String title) {
+        this.host = host;
+        this.sectionId = sectionId(host.getUplinkId(), dimension, pos);
         this.link = link;
         this.peripheral = peripheral;
         this.pos = pos.immutable();
@@ -137,9 +143,9 @@ public final class WiredMachineSection implements DashboardSection {
         return online;
     }
 
-    /** Once a second: reads the machine. */
+    /** Once a second: reads the machine (not while the claim guard blocks it). */
     void refresh() {
-        if (failed) return;
+        if (failed || claimBlock != null) return;
         int rev = DeviceCards.revision(card);
         if (rev < 0 || !DeviceCards.refresh(card, output)) {
             failed = true;
@@ -157,8 +163,13 @@ public final class WiredMachineSection implements DashboardSection {
             online = nowOnline;
             structureDirty = true;
         }
-        for (var widget : widgets.values()) {
-            if (widget.type() == WidgetType.CHART && widget.sample(gameTime)) dirty.add(widget.id());
+        if (claimBlock != null) {
+            dirty.clear();
+            alerts.clear();
+        } else {
+            for (var widget : widgets.values()) {
+                if (widget.type() == WidgetType.CHART && widget.sample(gameTime)) dirty.add(widget.id());
+            }
         }
         var mainframeId = link.id();
         String id = sectionId.toString();
@@ -183,12 +194,14 @@ public final class WiredMachineSection implements DashboardSection {
         json.addProperty("title", title);
         json.addProperty("online", online);
         var array = new JsonArray();
-        for (var widget : widgets.values()) array.add(widget.toJson());
+        // claim guard: a blocked card shows the claim instead of its widgets and values
+        if (claimBlock == null) for (var widget : widgets.values()) array.add(widget.toJson());
         json.add("widgets", array);
         json.addProperty("mode", "direct");
         json.addProperty("template", card.kind());
         json.addProperty("source", "wired");
         json.addProperty("peripheral", peripheral);
+        if (claimBlock != null) json.add("blocked", ai.ezfox.cccloud.claims.ClaimGuard.json(claimBlock));
         return json;
     }
 
@@ -199,6 +212,7 @@ public final class WiredMachineSection implements DashboardSection {
 
     @Override
     public CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement value, @Nullable Op op, String user, boolean pinVerified) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return ActionResult.done(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         if (!online) return ActionResult.done("uplink_offline");
         if (!DeviceCards.isValid(card)) return ActionResult.done("unavailable");
         var result = ActionValidator.validate(widgets.get(widgetId), value, op, pinVerified);
@@ -209,7 +223,62 @@ public final class WiredMachineSection implements DashboardSection {
 
     @Override
     public QueryResult handleQuery(String widgetId, String query) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return QueryResult.fail(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
         var result = DeviceCards.query(card, widgetId, query);
         return result != null ? result : QueryResult.fail("unknown_widget");
+    }
+
+    // ---- claim guard (docs/SECURITY.md "Claims") -----------------------------------------------------------------
+
+    @Override
+    public net.minecraft.server.level.@Nullable ServerLevel guardLevel() {
+        return host.getLevel() instanceof net.minecraft.server.level.ServerLevel level ? level : null;
+    }
+
+    /** The machine. */
+    @Override
+    public BlockPos guardPos() {
+        return pos;
+    }
+
+    /** Like the uplink whose computer reaches it: who linked that uplink and the mainframe's owner. */
+    @Override
+    public List<UUID> guardOwners() {
+        return ai.ezfox.cccloud.claims.ClaimGuard.owners(host.linkedBy(), link);
+    }
+
+    @Override
+    public ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock() {
+        return claimBlock;
+    }
+
+    @Override
+    public void applyClaimBlock(ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block block) {
+        claimBlock = block;
+        dirty.clear();
+        alerts.clear();
+        structureDirty = true;
+        if (block == null) refresh(); // values at once, not a second later
+    }
+
+    @Override
+    public String guardLabel() {
+        return "wired machine card '" + title + "' of uplink " + host.getUplinkId().toString().substring(0, 8);
+    }
+
+    @Override
+    public UUID guardMainframe() {
+        return link.id();
+    }
+
+    @Override
+    public boolean guardRemoved() {
+        return removed || host.isRemoved();
+    }
+
+    /** No longer shown (WiredMachines). */
+    void markRemoved() {
+        removed = true;
+        ai.ezfox.cccloud.claims.ClaimGuard.forget(this);
     }
 }

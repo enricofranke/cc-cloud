@@ -35,7 +35,7 @@ public final class StorageService {
     public static @Nullable BridgeCore coreFor(UUID mainframeId, UUID uplinkId, @Nullable String widgetId) {
         var section = CloudNetwork.section(uplinkId);
         if (section == null || section.getLink() == null || !section.getLink().id().equals(mainframeId)) return null;
-        if (section instanceof BridgeSection bridge) return bridge.host().bridgeCore();
+        if (section instanceof BridgeSection bridge) return bridge.readableCore();
         if (section instanceof CloudUplinkBlockEntity uplink) {
             BridgeHost host = widgetId != null ? uplink.bridgeForWidget(widgetId) : uplink.storageBridge();
             return host == null ? null : host.bridgeCore();
@@ -44,6 +44,11 @@ public final class StorageService {
     }
 
     public static Result handle(UUID mainframeId, UUID uplinkId, @Nullable String widgetId, String op, JsonObject args) {
+        // claim guard: a storage in a chunk another team claimed is neither read nor changed
+        if (CloudNetwork.section(uplinkId) instanceof ai.ezfox.cccloud.claims.ClaimGuard.Guarded guarded
+            && ai.ezfox.cccloud.claims.ClaimGuard.check(guarded) != null) {
+            return Result.fail(ai.ezfox.cccloud.claims.ClaimGuard.ERROR);
+        }
         var core = coreFor(mainframeId, uplinkId, widgetId);
         if (core == null) return Result.fail("unavailable");
         if (!core.isConnected()) return Result.fail("offline");

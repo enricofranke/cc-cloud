@@ -63,6 +63,7 @@ Widgets with `pin=true` ask for the mainframe PIN on a keypad before they act. T
 | Removed | the mainframe block was broken – place its item again to bring everything back ([how](index.md)) |
 | Mainframe has no power | the FE buffer is empty – see [power](index.md) |
 | Uplink offline | that uplink is unloaded or out of range |
+| Blocked – this machine is in …'s claim | another team claimed the machine's chunk – see [claims](faq.md) |
 | Read-only device | this device may watch but not control |
 | Server not reachable | see [troubleshooting](faq.md) |
 

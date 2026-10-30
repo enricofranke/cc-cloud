@@ -103,6 +103,7 @@ export const SCRIPT_ERRORS: Record<string, string> = {
   not_allowed: "Only admins of this mainframe can manage scripts.",
   no_access: "This browser has no access to this mainframe.",
   unknown_computer: "There is no computer behind this card (or its chunk is not loaded).",
+  claim_blocked: "This computer is in another team's claim, so its files cannot be changed from here.",
   offline: "The mainframe is offline.",
   invalid_path: "That file name is not allowed.",
   exists: "A file with that name already exists.",

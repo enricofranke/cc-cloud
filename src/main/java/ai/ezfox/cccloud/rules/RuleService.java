@@ -405,7 +405,7 @@ public final class RuleService {
 
     private static @Nullable BridgeCore storage(UUID mainframeId, String uplinkId) {
         var section = section(mainframeId, uplinkId);
-        if (section instanceof BridgeSection bridge) return bridge.host().bridgeCore();
+        if (section instanceof BridgeSection bridge) return bridge.readableCore();
         if (section instanceof CloudUplinkBlockEntity uplink && uplink.storageBridge() != null) return uplink.storageBridge().bridgeCore();
         return null;
     }

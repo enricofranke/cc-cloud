@@ -63,6 +63,7 @@ Widgets mit `pin=true` fragen vor dem Auslösen die Mainframe-PIN über ein Ziff
 | Removed | der Mainframe-Block wurde abgebaut – sein Item wieder platzieren bringt alles zurück ([wie](index.md)) |
 | Mainframe has no power | der FE-Puffer ist leer – siehe [Strom](index.md) |
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
+| Gesperrt – diese Maschine liegt im Claim von … | ein anderes Team hat den Chunk der Maschine geclaimt – siehe [Claims](faq.md) |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |
 | Server not reachable | siehe [Fehlerbehebung](faq.md) |
 

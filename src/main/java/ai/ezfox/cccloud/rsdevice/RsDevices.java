@@ -41,6 +41,8 @@ public final class RsDevices {
     private static final Set<UUID> DIRTY = new HashSet<>();
     /** What each mainframe's cards were last built from (see refresh). */
     private static final Map<UUID, Object> LAST_INPUT = new HashMap<>();
+    /** Devices the claim guard blocks → the claim's team (kept while they are unloaded; dropped on unlink and purge). */
+    private static final Map<UUID, String> BLOCKED = new HashMap<>();
     private static boolean listening;
 
     private RsDevices() {
@@ -103,14 +105,27 @@ public final class RsDevices {
         return link != null && device(link.id(), device.deviceId()) != null;
     }
 
+    /** The claim guard blocked or unblocked a device: its widgets on the card change at the end of the tick. */
+    static void claimChanged(RsDeviceBlockEntity device) {
+        var block = device.claimBlock();
+        boolean changed = block == null ? BLOCKED.remove(device.deviceId()) != null : !block.team().equals(BLOCKED.put(device.deviceId(), block.team()));
+        var link = device.getLink();
+        if (changed && link != null) {
+            changed(device);
+            DIRTY.add(link.id());
+        }
+    }
+
     /** The device was unlinked or broken. */
     static void forget(UUID mainframeId, UUID deviceId) {
+        BLOCKED.remove(deviceId);
         var server = CloudNetwork.server();
         if (server != null && RsDeviceData.get(server).remove(mainframeId, deviceId)) DIRTY.add(mainframeId);
     }
 
     /** Mainframe purged (docs/SPEC.md "Mainframe removal"): its devices' copies and cards go. */
     public static void purge(MinecraftServer server, UUID mainframeId) {
+        BLOCKED.keySet().removeAll(RsDeviceData.get(server).devices(mainframeId).keySet());
         RsDeviceData.get(server).forget(mainframeId);
         var sections = SECTIONS.remove(mainframeId);
         LAST_INPUT.remove(mainframeId);
@@ -247,10 +262,17 @@ public final class RsDevices {
         var link = new MainframeLink(GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos()), mainframeId);
         // The cards are a pure function of the device copies, online and the link: nothing to do when those are the same
         // as last time (the periodic pass on a big base rebuilt hundreds of widgets every second for nothing).
-        var input = List.of(List.copyOf(data.devices(mainframeId).values()), online, link);
+        var blocked = new HashMap<UUID, String>();
+        if (!BLOCKED.isEmpty()) {
+            for (var id : data.devices(mainframeId).keySet()) {
+                var team = BLOCKED.get(id);
+                if (team != null) blocked.put(id, team);
+            }
+        }
+        var input = List.of(List.copyOf(data.devices(mainframeId).values()), online, link, blocked);
         if (current != null && input.equals(LAST_INPUT.get(mainframeId))) return;
         LAST_INPUT.put(mainframeId, input);
-        var cards = RsCards.build(data.devices(mainframeId).values());
+        var cards = RsCards.build(data.devices(mainframeId).values(), blocked);
         var next = new LinkedHashMap<UUID, RsGroupSection>();
         for (var card : cards) {
             var id = RsCards.sectionId(mainframeId, card.groupKey(), card.part());
@@ -325,6 +347,7 @@ public final class RsDevices {
     }
 
     static void clear() {
+        BLOCKED.clear();
         LOADED.clear();
         SECTIONS.clear();
         DIRTY.clear();

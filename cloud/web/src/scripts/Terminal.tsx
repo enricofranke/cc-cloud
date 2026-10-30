@@ -10,6 +10,7 @@ const ERR: Record<string, string> = {
   not_allowed: "You need the “Terminal” permission on this mainframe.",
   read_only: "This device is read-only.",
   unknown_computer: "There is no computer behind this card (or its chunk is not loaded).",
+  claim_blocked: "This computer is in another team's claim, so it cannot be used from here.",
   disabled: "The server admin switched the browser terminal off.",
   too_many: "Too many terminals open – close another one first.",
   rate_limited: "Too many requests – wait a moment.",

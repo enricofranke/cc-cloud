@@ -6,9 +6,10 @@ package ai.ezfox.cccloud.network;
  */
 public final class TickCost {
     public static final int MAINFRAME = 0, UPLINK = 1, OTHER_BE = 2, GLOBAL = 3, RSDEVICE = 4, NETWORK = 5, RULES = 6, HISTORY = 7,
-        PRODUCTION = 8, SCENES = 9, CARDS = 10, RS_CARDS = 11, SCREENS = 12, WEB = 13, SENSORS = 14;
+        PRODUCTION = 8, SCENES = 9, CARDS = 10, RS_CARDS = 11, SCREENS = 12, WEB = 13, SENSORS = 14, CLAIMS = 15;
     public static final String[] NAMES = {"mainframe", "uplink", "other block entities", "global tick handlers", "redstone devices", "network",
-        "rules", "history", "production", "scenes", "mainframe cards", "redstone cards", "screens", "web housekeeping", "advanced sensors"};
+        "rules", "history", "production", "scenes", "mainframe cards", "redstone cards", "screens", "web housekeeping", "advanced sensors",
+        "claim guard"};
     public static volatile boolean enabled;
     private static final long[] NANOS = new long[NAMES.length];
 

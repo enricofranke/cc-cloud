@@ -44,7 +44,7 @@ public final class MapTileTests {
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.MapResult>[] surface = new CompletableFuture[1];
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.MapResult>[] slice = new CompletableFuture[1];
         UUID viewer = UUID.randomUUID();
-        ai.ezfox.cccloud.map.XrayGuard.Claims[] claimsBefore = new ai.ezfox.cccloud.map.XrayGuard.Claims[1];
+        ai.ezfox.cccloud.claims.ClaimProvider.Team[] claimsBefore = new ai.ezfox.cccloud.claims.ClaimProvider.Team[1];
         MapTileService.clearForTest();
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId()) != null,
@@ -90,17 +90,15 @@ public final class MapTileTests {
                     + " expected " + Integer.toHexString(floor));
                 // Security review 2026-10-30: another team claims the cave's chunk after the slice was cached. The cached
                 // pixels must not be served again, and the new tile shows the chunk empty.
-                var previous = ai.ezfox.cccloud.map.XrayGuard.claims;
-                claimsBefore[0] = previous;
-                int ccx = caveAbs.getX() >> 4, ccz = caveAbs.getZ() >> 4;
-                ai.ezfox.cccloud.map.XrayGuard.claims = (l, x, z, p) -> p.equals(owner.getUUID()) && x == ccx && z == ccz
-                    || previous != null && previous.claimedByOther(l, x, z, p);
+                var claims = TestClaims.get();
+                claimsBefore[0] = claims.team("map_tiles_team", java.util.Set.of(owner.getUUID()));
+                claims.claim(helper.getLevel(), caveAbs, claimsBefore[0]);
                 var access = Access.resolver(server).resolve(owner.getUUID(), mainframe.getMainframeId());
                 slice[0] = MinecraftBridge.mapTile(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, true, caveAbs.getY() + 2, ctx, ctz);
             })
             .thenWaitUntil(() -> helper.assertTrue(slice[0].isDone(), "slice rendered again"))
             .thenExecute(() -> {
-                ai.ezfox.cccloud.map.XrayGuard.claims = claimsBefore[0];
+                TestClaims.get().forget(helper.getLevel(), claimsBefore[0]);
                 var c = slice[0].join();
                 helper.assertTrue(c.status() == 200 || c.status() == 204, "slice tile: " + c.status());
                 var cut = MapTileService.argbForTest(new MapTileService.Key(dim, MapTileService.Layer.SLICE, caveAbs.getY() + 2, ctx, ctz, mainframe.getMainframeId(), owner.getUUID()));

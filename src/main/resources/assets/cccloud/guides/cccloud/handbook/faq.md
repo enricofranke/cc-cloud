@@ -75,3 +75,9 @@ After 5 wrong PINs the device is locked for 5 minutes. The owner can change the 
 - The server log says what happened: look for `FTB Quests:` (for example `installQuests = false`, an id that is already used in the quest book, or a chapter that was deleted earlier).
 - The quests are added once; a deleted chapter does not come back. To start over, delete `config/cccloud/quests-installed.json` and restart. See [Quests](index.md).
 
+## A card says "Blocked – this machine is in …'s claim"
+
+Machines in another team's claim stop working on the dashboard. If a team claims the chunk of a machine that an uplink, probe, bridge, redstone device or wired machine card reads, and neither the player who linked it nor the mainframe's owner is in that team or allied with it, the card shows the claim instead of values and every control is refused – also from rules, scenes and the API. Only players allowed to see positions see the team's name.
+
+It works again by itself as soon as the claim is removed or your teams become allies. Server operators get no exception. Claims come from FTB Chunks; other claim mods are not checked yet.
+

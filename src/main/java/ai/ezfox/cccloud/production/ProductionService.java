@@ -111,7 +111,7 @@ public final class ProductionService {
 
     /** The storage behind a section: a linked bridge, or an uplink in direct mode on a bridge. */
     static @Nullable BridgeCore core(DashboardSection section) {
-        if (section instanceof BridgeSection bridge) return bridge.host().bridgeCore();
+        if (section instanceof BridgeSection bridge) return bridge.readableCore();
         if (section instanceof CloudUplinkBlockEntity uplink && uplink.storageBridge() != null) return uplink.storageBridge().bridgeCore();
         return null;
     }

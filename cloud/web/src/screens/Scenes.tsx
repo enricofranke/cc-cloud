@@ -55,6 +55,7 @@ const ERR_KEYS: Record<string, Key> = {
   rate_limited: "sc.err.rate_limited",
   offline: "sc.err.offline",
   unknown_widget: "sc.err.unknown_widget",
+  claim_blocked: "sc.err.claim_blocked",
 };
 /** Per-step results ("missing permission", "needs the PIN", …). */
 const RES_KEYS: Record<string, Key> = {
@@ -66,6 +67,7 @@ const RES_KEYS: Record<string, Key> = {
   unknown_uplink: "sc.res.unknown_uplink",
   uplink_offline: "sc.res.uplink_offline",
   unloaded: "sc.res.unloaded",
+  claim_blocked: "sc.res.claim_blocked",
   invalid_value: "sc.res.invalid_value",
   not_craftable: "sc.res.not_craftable",
   busy: "sc.res.busy",

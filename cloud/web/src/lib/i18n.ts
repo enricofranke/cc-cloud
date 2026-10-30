@@ -164,6 +164,7 @@ const EN = {
   "sc.err.offline": "The mainframe is offline.",
   "sc.err.unknown_widget": "The scene button is gone – the scene was deleted or the mainframe is unloaded.",
   "sc.err.stepPerm": "Step {n} needs “{perm}”, which you do not have.",
+  "sc.err.claim_blocked": "This machine is in another team's claim, so it cannot be controlled.",
   "sc.res.ok": "ran fine",
   "sc.res.not_allowed": "missing permission",
   "sc.res.pin_required": "needs the PIN",
@@ -172,6 +173,7 @@ const EN = {
   "sc.res.unknown_uplink": "card gone",
   "sc.res.uplink_offline": "card offline",
   "sc.res.unloaded": "chunk not loaded",
+  "sc.res.claim_blocked": "in another team's claim",
   "sc.res.invalid_value": "value refused",
   "sc.res.not_craftable": "not craftable",
   "sc.res.busy": "already running",
@@ -317,6 +319,14 @@ const EN = {
   "ak.err.unreachable": "The server cannot be reached.",
   "ak.err.unsupported": "This server has no public API yet (CC: Cloud v0.10 or newer).",
   "ak.err.not_found": "That key no longer exists.",
+  // ---- claim guard (dashboard cards)
+  "claim.tag": "Blocked",
+  "claim.blocked": "Blocked – this machine is in {team}'s claim",
+  "claim.blockedOther": "Blocked – this machine is in another team's claim",
+  "claim.widget": "Blocked – in {team}'s claim",
+  "claim.widgetOther": "Blocked – in another team's claim",
+  "claim.hint": "The dashboard can neither read nor control it. It works again by itself once the claim is removed or your teams become allies.",
+  "claim.why": "Why?",
 } as const;
 
 export type Key = keyof typeof EN;
@@ -465,6 +475,7 @@ const DE: Record<Key, string> = {
   "sc.err.offline": "Der Mainframe ist offline.",
   "sc.err.unknown_widget": "Der Szenen-Knopf ist weg – die Szene wurde gelöscht oder der Mainframe ist nicht geladen.",
   "sc.err.stepPerm": "Schritt {n} braucht „{perm}“, und das hast du nicht.",
+  "sc.err.claim_blocked": "Diese Maschine liegt im Claim eines anderen Teams und lässt sich nicht steuern.",
   "sc.res.ok": "lief gut",
   "sc.res.not_allowed": "fehlende Berechtigung",
   "sc.res.pin_required": "braucht die PIN",
@@ -473,6 +484,7 @@ const DE: Record<Key, string> = {
   "sc.res.unknown_uplink": "Karte weg",
   "sc.res.uplink_offline": "Karte offline",
   "sc.res.unloaded": "Chunk nicht geladen",
+  "sc.res.claim_blocked": "im Claim eines anderen Teams",
   "sc.res.invalid_value": "Wert abgelehnt",
   "sc.res.not_craftable": "nicht craftbar",
   "sc.res.busy": "läuft schon",
@@ -618,6 +630,13 @@ const DE: Record<Key, string> = {
   "ak.err.unreachable": "Der Server ist nicht erreichbar.",
   "ak.err.unsupported": "Dieser Server hat noch keine öffentliche API (CC: Cloud v0.10 oder neuer).",
   "ak.err.not_found": "Diesen Schlüssel gibt es nicht mehr.",
+  "claim.tag": "Gesperrt",
+  "claim.blocked": "Gesperrt – diese Maschine liegt im Claim von {team}",
+  "claim.blockedOther": "Gesperrt – diese Maschine liegt im Claim eines anderen Teams",
+  "claim.widget": "Gesperrt – im Claim von {team}",
+  "claim.widgetOther": "Gesperrt – im Claim eines anderen Teams",
+  "claim.hint": "Das Dashboard kann sie weder lesen noch steuern. Sie geht von selbst wieder, sobald der Claim entfernt wird oder eure Teams Verbündete werden.",
+  "claim.why": "Warum?",
 };
 
 export const STRINGS: Record<Lang, Record<Key, string>> = { en: EN, de: DE };

@@ -39,6 +39,7 @@ import { canRedo, canUndo, createHistory, current, isDirty, push, redo, undo, ty
 import { Flip, springTo } from "./motion.ts";
 import { PICKUP_HELP, describe, kbdStep, type Kind } from "./keyboard.ts";
 import { AddGallery, CardSettings, ShortcutHelp, WidgetSettings } from "./Panels.tsx";
+import { keepBlockedWidgets } from "../lib/claims.ts";
 
 const SAVE_ERRORS: Record<string, string> = {
   read_only: "This device is read-only and cannot change the layout.",
@@ -576,7 +577,8 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
 
   // ------------------------------------------------------------- save, exit
   const save = async () => {
-    const doc = snapshotLayout(current(histRef.current), props.uplinks);
+    // cards blocked by a claim have no widgets right now: their saved widget layout is kept
+    const doc = keepBlockedWidgets(snapshotLayout(current(histRef.current), props.uplinks), conn.layout.value, props.uplinks);
     if (layoutSize(doc) > MAX_LAYOUT_BYTES) return setError(SAVE_ERRORS.too_large);
     setSaving(true);
     setError(null);

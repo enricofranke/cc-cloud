@@ -937,5 +937,13 @@
   "cccloud.configuration.internetRequirePin": "Plain HTTP: control from the internet only with the PIN",
   "cccloud.internet.connect.title": "[CC: Cloud] Internet access: CC: Cloud Connect",
   "cccloud.internet.status.connect": "Recommended: %s (HTTPS address, no port forwarding)",
-  "cccloud.connect.error.pending": "waiting for the dashboard server to switch to Connect"
+  "cccloud.connect.error.pending": "waiting for the dashboard server to switch to Connect",
+  "cccloud.claim.linked_blocked": "Linked, but blocked: this machine is in %s's claim. It reads and controls nothing until the claim is gone or your teams are allies.",
+  "cccloud.claim.linked_blocked_other": "Linked, but blocked: this machine is in another team's claim. It reads and controls nothing until the claim is gone or your teams are allies.",
+  "cccloud.gui.claim.blocked": "Blocked – this machine is in %s's claim",
+  "cccloud.gui.claim.blocked_other": "Blocked – this machine is in another team's claim",
+  "cccloud.gui.claim.blocked_device": "Blocked – this device is in %s's claim",
+  "cccloud.gui.claim.blocked_device_other": "Blocked – this device is in another team's claim",
+  "cccloud.gui.claim.hint": "The dashboard can neither read nor control it. It works again by itself once the claim is removed or your teams become allies.",
+  "cccloud.gui.state.claim_blocked": "Blocked by a claim"
 }

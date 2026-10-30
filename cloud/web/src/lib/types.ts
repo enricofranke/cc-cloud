@@ -120,6 +120,10 @@ export interface Uplink {
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
   groups?: { id: string; title?: string; page?: string; cols?: number }[];
+  /** claim guard: the machine is in another team's claim, so nothing is read or controlled (no widgets) */
+  blocked?: Blocked;
+  /** claim guard on a Cloud Redstone card: widget id → why that device is blocked (its widgets keep their last value) */
+  blockedWidgets?: Record<string, Blocked>;
   /** map overlays of mainframe cards (FTB Chunks claims, Waystones) */
   claims?: ClaimsOverlay;
   waystones?: WaystonesOverlay;
@@ -153,6 +157,12 @@ export interface CardSettingsInfo {
   maxValues?: number;
   maxCharts?: number;
   settings: PeripheralSettings;
+}
+
+/** Claim guard: blocked by another team's claim. `team` only for viewers with view.positions. */
+export interface Blocked {
+  reason: "claim";
+  team?: string;
 }
 
 export interface ClaimsOverlay {

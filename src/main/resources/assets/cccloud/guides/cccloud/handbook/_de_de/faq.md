@@ -75,3 +75,9 @@ Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PI
 - Im Server-Log steht, was passiert ist: Suche nach `FTB Quests:` (zum Beispiel `installQuests = false`, eine ID, die im Questbuch schon vergeben ist, oder ein Kapitel, das früher gelöscht wurde).
 - Die Quests kommen nur einmal; ein gelöschtes Kapitel kommt nicht wieder. Für einen Neuanfang `config/cccloud/quests-installed.json` löschen und neu starten. Siehe [Quests](index.md).
 
+## Eine Karte zeigt „Gesperrt – diese Maschine liegt im Claim von …“
+
+Maschinen im Claim eines anderen Teams funktionieren auf dem Dashboard nicht mehr. Claimt ein Team den Chunk einer Maschine, die ein Uplink, eine Sonde, eine Bridge, ein Redstone-Gerät oder eine Karte über ein CC-Kabel liest, und ist weder der Spieler, der es verbunden hat, noch der Besitzer des Mainframes in diesem Team oder mit ihm verbündet, zeigt die Karte den Claim statt der Werte, und jedes Bedienelement wird abgelehnt – auch aus Regeln, Szenen und der API. Den Namen des Teams sehen nur Spieler, die Positionen sehen dürfen.
+
+Sie geht von selbst wieder, sobald der Claim entfernt wird oder eure Teams Verbündete werden. Server-Operatoren bekommen keine Ausnahme. Claims kommen aus FTB Chunks; andere Claim-Mods werden noch nicht geprüft.
+

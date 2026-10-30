@@ -16,7 +16,9 @@ import { DocsLink } from "./DocsLink.tsx";
 import { timeAgo } from "../lib/ui.ts";
 import { historyOf } from "../lib/history.ts";
 import { feature } from "../lib/config.ts";
-import type { Uplink, Widget } from "../lib/types.ts";
+import { t } from "../lib/i18n.ts";
+import { blockedText } from "../lib/claims.ts";
+import type { Blocked, Uplink, Widget } from "../lib/types.ts";
 
 /** Widgets that only exist to act: left out entirely in read-only (share) views. */
 const ACTION_ONLY = new Set(["button", "item_search"]);
@@ -34,9 +36,21 @@ function StaticValue({ w }: { w: ResolvedWidget["w"] }) {
   );
 }
 
+/** A Cloud Redstone device in another team's claim: its name and the claim instead of its control and value. */
+function BlockedWidget({ label, blocked }: { label: string; blocked: Blocked }) {
+  return (
+    <div class="kv w-blocked" title={t("claim.hint")}>
+      <span class="kv-key">{label}</span>
+      <span class="kv-val">{blockedText(blocked, true)}</span>
+    </div>
+  );
+}
+
 export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget; conn: MainframeConn; locked: boolean; viewOnly?: boolean }) {
   // a label set in the editor wins; without any caption (resolver fell back to the id) keep none
   const caption = captionOf(rw);
+  const blocked = rw.uplink.blockedWidgets?.[rw.w.id];
+  if (blocked) return <BlockedWidget label={caption ?? rw.w.label ?? rw.w.id} blocked={blocked} />;
   const display = rw.display !== "auto" && rw.display !== (DISPLAYS_FOR[rw.w.type]?.[0] ?? "auto") ? rw.display : undefined;
   const w = withLayoutColor(
     caption !== rw.w.label || display || rw.icon
@@ -212,6 +226,8 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
   const online = card.custom ? card.widgets.every((w) => w.uplink.online) : card.uplink.online;
   // the chunk is unloaded: the mod sends the cached last snapshot
   const cached = !card.custom && card.uplink.loaded === false;
+  // claim guard: the machine is in another team's claim, the card shows that instead of values
+  const blocked = card.custom ? undefined : card.uplink.blocked;
   const [scripts, setScripts] = useState(false);
   const [hist, setHist] = useState<ResolvedWidget | null>(null);
   const [term, setTerm] = useState(false);
@@ -240,13 +256,23 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
             auto
           </span>
         )}
-        {cached ? <span class="tag tag-gray">Not loaded</span> : !online ? <span class="tag tag-red">Uplink offline</span> : card.icon && <span class="led led-on" aria-hidden="true" />}
-        {!edit && !viewOnly && !card.custom && conn.can("terminal") && feature("terminal") && online && card.uplink.mode !== "direct" && (
+        {blocked ? (
+          <span class="tag tag-red" title={blockedText(blocked)}>
+            {t("claim.tag")}
+          </span>
+        ) : cached ? (
+          <span class="tag tag-gray">Not loaded</span>
+        ) : !online ? (
+          <span class="tag tag-red">Uplink offline</span>
+        ) : (
+          card.icon && <span class="led led-on" aria-hidden="true" />
+        )}
+        {!edit && !viewOnly && !card.custom && !blocked && conn.can("terminal") && feature("terminal") && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-term" title="Terminal" aria-label={`Terminal of ${card.title || "this computer"}`} onClick={() => setTerm(true)}>
             <span aria-hidden="true">{">_"}</span>
           </button>
         )}
-        {!edit && !viewOnly && !card.custom && conn.can("scripts.upload") && online && card.uplink.mode !== "direct" && (
+        {!edit && !viewOnly && !card.custom && !blocked && conn.can("scripts.upload") && online && card.uplink.mode !== "direct" && (
           <button type="button" class="icon-btn card-scripts" title="Scripts on this computer" aria-label={`Upload script to ${card.title || "this computer"}`} onClick={() => setScripts(true)}>
             <span aria-hidden="true">{"</>"}</span>
           </button>
@@ -268,12 +294,20 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
           <DocsLink to="/docs/faq#unloaded">Why?</DocsLink>
         </p>
       )}
+      {blocked && (
+        <div class="card-blocked" role="status">
+          <p class="card-blocked-title">{blockedText(blocked)}</p>
+          <p class="card-blocked-hint">
+            {t("claim.hint")} <DocsLink to="/docs/faq#claims">{t("claim.why")}</DocsLink>
+          </p>
+        </div>
+      )}
       {term && <TermLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setTerm(false)} />}
       {hist && <HistoryLoader conn={conn} uplink={hist.uplink} w={hist.w} onClose={() => setHist(null)} />}
       {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
       {!near ? (
         <div class="card-body card-lazy" aria-busy="true" />
-      ) : shown.length === 0 && !edit ? (
+      ) : shown.length === 0 && !edit && blocked ? null : shown.length === 0 && !edit ? (
         <p class="card-empty">
           Nothing to show yet – this uplink is not attached to a computer or bridge, or its program cleared all widgets.{" "}
           <DocsLink to="/docs/faq#no-widgets">Why?</DocsLink>
