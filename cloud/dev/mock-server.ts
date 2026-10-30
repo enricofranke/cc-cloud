@@ -23,7 +23,10 @@ import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
 import { encodePng } from "./icons.ts";
 const STORE_DIST = fileURLToPath(new URL("../../store/dist/", import.meta.url));
 import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
-import { MAX_LAYOUT_BYTES, layoutDoc, opValue, type OpValue } from "./protocol.ts";
+import { MAX_LAYOUT_BYTES, layoutDoc, opValue, ICONS, type OpValue } from "./protocol.ts";
+import { EnergyTracker, StorageTracker, dayHistory, rng } from "./production-sim.ts";
+import { nextScheduleRun, validAt, validDays, type Day } from "../web/src/lib/schedules.ts";
+import { SCOPES as API_SCOPES, validIp } from "../web/src/lib/apikeys.ts";
 
 type Level = "info" | "warn" | "crit";
 type Row = Record<string, string | number | boolean | null>;
@@ -55,6 +58,8 @@ interface Uplink {
   /** map overlays of mainframe cards (claims, waystones) */
   claims?: unknown;
   waystones?: unknown;
+  /** v0.10 sections the mainframe publishes itself (Scenes, Production) */
+  source?: "mainframe";
 }
 interface Client {
   ws: WebSocket;
@@ -124,8 +129,20 @@ interface Mainframe {
   upgrades?: { devices: number | null; feFactor: number; historyHours?: number };
   /** v0.5 E fake terminals per computer uplink */
   terms?: Map<string, FakeTerminal>;
-  /** v0.5 C rules (run state in memory like the mod) */
-  rules?: { list: Record<string, any>[]; log: { time: number; rule: string; name: string; result: string; manual: boolean }[] };
+  /** v0.5 C rules (run state in memory like the mod); v0.10 log entries may be skipped runs */
+  rules?: { list: Record<string, any>[]; log: { time: number; rule: string; name: string; result: string; manual: boolean; skipped?: boolean }[]; loadedAt?: number };
+  /** v0.10 scenes: stored list + log, run state in memory */
+  scenes?: { list: Record<string, any>[]; log: { time: number; scene: string; name: string; by: string; source: string; result: string }[]; running: Set<string>; minuteRuns: number[] };
+  /** v0.10 production statistics: trackers per storage card, energy, pins and the synthetic terminal tasks */
+  production?: {
+    storages: Map<string, StorageTracker>;
+    energy: EnergyTracker | null;
+    pins: { id: string; kind: "item" | "storage" | "energy"; uplinkId?: string; name?: string; label: string }[];
+    since: number;
+    countedJobs: Set<string>;
+    tasks: { name: string; displayName: string; count: number; progress: number }[];
+    hits: WeakMap<object, number[]>;
+  };
   /** v0.5 D push targets (url/token kept here, masked in answers) */
   push?: { id: string; type: "discord" | "ntfy" | "webhook"; name: string; url: string; token?: string; minLevel: string; events: string[]; enabled: boolean; lastSent: number | null; lastResult: string | null }[];
   /** v0.7 wireless redstone channels */
@@ -182,7 +199,19 @@ export interface MockOptions {
   /** dev store signature: valid (default), bad (tampered) or none (no index.json.sig) */
   storeSignature?: "valid" | "bad" | "none";
   /** override the public config's feature switches */
-  features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map", boolean>>;
+  features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map" | "scenes" | "production" | "api", boolean>>;
+  /** v0.10 [scenes] scenesEnabled (default true) */
+  scenes?: boolean;
+  /** v0.10 [production] productionEnabled (default true) */
+  production?: boolean;
+  /** v0.10 seconds per production sample (default 20; one sample every that many sim ticks) */
+  productionInterval?: number;
+  /** v0.10 [api] apiEnabled – the mock defaults to true so the keys page can be tried (the mod: false) */
+  apiEnabled?: boolean;
+  /** v0.10 [schedules] minIntervalMinutes (1), maxSchedulesPerMainframe (16), timezone ("Europe/Berlin" in the mock) */
+  minIntervalMinutes?: number;
+  maxSchedules?: number;
+  timezone?: string;
   /** v0.5 D config pushEnabled (default true) */
   pushEnabled?: boolean;
   /** serve ../store/dist at /store/ and announce it in the snapshot (default true) */
@@ -267,6 +296,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     accountCodes.set(code, { uuid: p.uuid, code });
   }
   const shares = new Map<string, Share>();
+  /** v0.10 API keys: only the SHA-256 of a key is kept (docs/SPEC.md "Public API v1") */
+  const apiKeys = new Map<string, { id: string; mainframeId: string; player: string; name: string; scopes: string[]; created: number; expires: number | null; lastUsed: number | null; lastIp: string | null; ips: string[]; hash: string }>();
+  const apiOn = opts.apiEnabled !== false;
   // dev Script Store signing key (the mod verifies index.json.sig with [store] scriptStoreKey)
   const storeKey = (() => {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519");
@@ -436,6 +468,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           ...(mf.net ? { network: networkPayload(mf, c?.canControl ?? true) } : {}),
           ...(mf.redstone ? { redstone: redstonePayload(mf) } : {}),
           ...(mf.rules ? { rules: rulesPayload(mf) } : {}),
+          ...(mf.scenes && scenesOn ? { scenes: scenesPayload(mf) } : {}),
         };
 
   // ---- v0.4 network map
@@ -533,11 +566,34 @@ export async function createMockServer(opts: MockOptions = {}) {
       limit: 64,
     };
   }
-  /** v0.5 C rules document: rules + run state, last 50 runs, limit from the Memory upgrade */
+  // ---- v0.10 schedules: time triggers, their limits and the next occurrence
+  const minInterval = opts.minIntervalMinutes ?? 1;
+  const maxSchedules = opts.maxSchedules ?? 16;
+  const timezone = opts.timezone ?? "Europe/Berlin";
+  const TIME_TRIGGERS = ["interval", "schedule", "time"];
+  const isTime = (r: Record<string, any> | undefined) => TIME_TRIGGERS.includes(r?.when?.type);
+  /** interval: last fire (or load) + N minutes, the next step ahead of now; schedule: next day/time in the zone */
+  function nextRunOf(mf: Mainframe, r: Record<string, any>): number | null {
+    const w = r.when;
+    if (w?.type === "schedule") return nextScheduleRun(w.days as Day[], w.at, timezone);
+    if (w?.type === "interval") {
+      const step = w.minutes * 60_000;
+      const from = r.lastFire ?? mf.rules?.loadedAt ?? Date.now();
+      const now = Date.now();
+      return from + step > now ? from + step : now + step - ((now - from) % step);
+    }
+    return null;
+  }
+  /** v0.5 C rules document: rules + run state, last 50 runs, limit from the Memory upgrade; v0.10 schedules */
   function rulesPayload(mf: Mainframe) {
     if (!mf.rules) return null;
     const h = mf.upgrades?.historyHours ?? 1;
-    return { rules: mf.rules.list, log: mf.rules.log.slice(-50), limit: h >= 720 ? 128 : h >= 168 ? 64 : h >= 24 ? 24 : 8 };
+    return {
+      rules: mf.rules.list.map((r) => ({ ...r, nextRun: nextRunOf(mf, r), lastFire: r.lastFire ?? null })),
+      log: mf.rules.log.slice(-50),
+      limit: h >= 720 ? 128 : h >= 168 ? 64 : h >= 24 ? 24 : 8,
+      schedules: { count: mf.rules.list.filter(isTime).length, limit: maxSchedules, minInterval, timezone },
+    };
   }
   function broadcastRules(mf: Mainframe) {
     const r = rulesPayload(mf);
@@ -555,6 +611,13 @@ export async function createMockServer(opts: MockOptions = {}) {
         else if (w.type !== "button") setValue(mf, a.uplinkId, a.widgetId, a.value);
       } else if (a.type === "dashboard") setState(mf, { enabled: a.enabled === true });
       else if ((a.type === "redstone" || a.type === "craft") && !mf.uplinks.get(a.uplinkId)) result = result === "ok" ? "unknown_uplink" : result;
+      else if (a.type === "scene") {
+        // v0.10: the scene runs with its owner's live rights, never with a PIN
+        const sc = mf.scenes?.list.find((x) => x.id === a.sceneId);
+        const perms = sc?.ownerUuid ? resolvePerms(mf.access, sc.ownerUuid) : presetPerms("admin");
+        const err = !sc ? "unknown_scene" : !perms.includes("view") ? "not_allowed" : sceneNeedsPin(mf, sc) ? "pin_required" : startScene(mf, sc, { by: sc.owner, device: `rule ${rule.name}`, source: "rule", perms, pinVerified: false });
+        if (err && result === "ok") result = err;
+      }
     }
     rule.lastRun = Date.now();
     rule.lastResult = result;
@@ -565,7 +628,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
   /** The strict schema of docs/SPEC.md "C. Rules" (enough of it for the dashboard: first problem as detail). */
   function ruleProblem(r: Record<string, any>): string | null {
-    const known = ["id", "name", "enabled", "cooldown", "notify", "when", "if", "then", "lastRun", "lastResult", "runs"];
+    const known = ["id", "name", "enabled", "cooldown", "notify", "when", "if", "then", "lastRun", "lastResult", "runs", "nextRun", "lastFire"];
     const extra = Object.keys(r).find((k) => !known.includes(k));
     if (extra) return `unknown key ${extra}`;
     if (JSON.stringify(r).length > 4096) return "rule too large";
@@ -580,7 +643,8 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (c.type === "power") return ops.includes(c.op) && c.value >= 0 && c.value <= 100 ? null : "power check";
       if (trig && c.type === "offline") return typeof c.uplinkId === "string" ? null : "offline";
       if (!trig && c.type === "online") return typeof c.uplinkId === "string" ? null : "online";
-      if (trig && c.type === "interval") return Number.isInteger(c.minutes) && c.minutes >= 1 && c.minutes <= 1440 ? null : "interval";
+      if (trig && c.type === "interval") return Number.isInteger(c.minutes) && c.minutes >= minInterval && c.minutes <= 1440 ? null : `interval: ${minInterval}–1440 minutes`;
+      if (trig && c.type === "schedule") return Array.isArray(c.days) && validDays(c.days) && typeof c.at === "string" && validAt(c.at) && Object.keys(c).every((k) => ["type", "days", "at"].includes(k)) ? null : "schedule";
       if (trig && c.type === "time") return Number.isInteger(c.time) && c.time >= 0 && c.time <= 23999 ? null : "time";
       return `unknown type ${c.type}`;
     };
@@ -596,10 +660,314 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (a.type === "redstone" && !(["top", "bottom", "left", "right", "front", "back"].includes(a.side) && Number.isInteger(a.value) && a.value >= 0 && a.value <= 15)) return "then: redstone";
       else if (a.type === "alert" && !(typeof a.text === "string" && a.text.trim() && a.text.length <= 120 && ["info", "warn", "error"].includes(a.level))) return "then: alert";
       else if (a.type === "craft" && !(Number.isInteger(a.amount) && a.amount >= 1 && a.amount <= 4096)) return "then: craft amount";
-      else if (!["redstone", "widget", "craft", "alert", "dashboard"].includes(a.type)) return `then: unknown type ${a.type}`;
+      else if (a.type === "scene" && !(typeof a.sceneId === "string" && /^[0-9a-f]{8}$/.test(a.sceneId))) return "then: scene";
+      else if (!["redstone", "widget", "craft", "alert", "dashboard", "scene"].includes(a.type)) return `then: unknown type ${a.type}`;
     }
     if (r.when.type === "widget" && r.then.some((a: any) => a.type === "widget" && a.uplinkId === r.when.uplinkId && a.widgetId === r.when.widgetId)) return "loop: an action writes the trigger's widget";
     return null;
+  }
+
+  // ---- v0.10 scenes (docs/SPEC.md "Scenes (mod side)")
+  const scenesOn = opts.scenes !== false;
+  const SCENE_COLORS = ["cyan", "green", "yellow", "red", "gray"];
+  const STEP_TYPES = ["widget", "redstone", "craft", "alert", "dashboard", "delay"];
+  /** a stable UUID-looking id from the mainframe id and a name (the mod derives it the same way) */
+  const stableId = (mf: Mainframe, what: string) => {
+    const h = sha(`${mf.id}:${what}`);
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
+  };
+  /** AccessGate.actionPerm: redstone widgets and the auto Computer card's power buttons need act.redstone */
+  function actionPerm(u: Uplink | undefined, widgetId: string) {
+    const w = u?.widgets.find((x) => x.id === widgetId);
+    if (widgetId === "redstone" || widgetId.endsWith("_redstone") || w?.type === "redstone_sides") return "act.redstone";
+    if (u?.mode === "auto" && ["power", "turn_on", "reboot", "shutdown"].includes(widgetId)) return "act.redstone";
+    return "act.buttons";
+  }
+  function stepPerm(mf: Mainframe, st: Record<string, any>): string | null {
+    if (st.type === "widget") return actionPerm(mf.uplinks.get(st.uplinkId), String(st.widgetId));
+    return st.type === "redstone" ? "act.redstone" : st.type === "craft" ? "storage.craft" : st.type === "dashboard" ? "power.toggle" : null;
+  }
+  const sceneNeedsPin = (mf: Mainframe, sc: Record<string, any>) =>
+    sc.pin === true || (sc.steps as Record<string, any>[]).some((st) => st.type === "widget" && (mf.uplinks.get(st.uplinkId)?.widgets.find((w) => w.id === st.widgetId)?.opts as { pin?: boolean } | undefined)?.pin === true);
+  /** The strict schema of the scene document (first problem as detail, like the mod's SceneCodec). */
+  function sceneProblem(sc: Record<string, any>): string | null {
+    const known = ["id", "name", "icon", "color", "confirm", "pin", "steps", "owner", "needsPin", "perms", "runs", "lastRun"];
+    const extra = Object.keys(sc).find((k) => !known.includes(k));
+    if (extra) return `unknown key ${extra}`;
+    if (JSON.stringify(sc).length > 4096) return "scene too large";
+    if (sc.id !== undefined && !(typeof sc.id === "string" && /^[0-9a-f]{8}$/.test(sc.id))) return "id";
+    if (typeof sc.name !== "string" || !sc.name.trim() || sc.name.length > 32 || /[\u0000-\u001f]/.test(sc.name)) return "name";
+    if (sc.icon !== undefined && !(ICONS as readonly string[]).includes(sc.icon)) return "icon";
+    if (sc.color !== undefined && !SCENE_COLORS.includes(sc.color)) return "color";
+    if (sc.confirm !== undefined && typeof sc.confirm !== "boolean") return "confirm";
+    if (sc.pin !== undefined && typeof sc.pin !== "boolean") return "pin";
+    if (!Array.isArray(sc.steps) || !sc.steps.length || sc.steps.length > 16) return "steps: 1–16";
+    let delay = 0;
+    for (let i = 0; i < sc.steps.length; i++) {
+      const st = sc.steps[i];
+      const n = `step ${i + 1}`;
+      if (!st || typeof st !== "object" || !STEP_TYPES.includes(st.type)) return `${n}: unknown type ${st?.type}`;
+      if (st.type === "delay") {
+        if (!(typeof st.seconds === "number" && st.seconds >= 0.05 && st.seconds <= 300)) return `${n}: delay 0.05–300 s`;
+        delay += Math.ceil(st.seconds * 20) / 20;
+      } else if (st.type === "widget" && !(typeof st.uplinkId === "string" && typeof st.widgetId === "string" && ["number", "string", "boolean"].includes(typeof st.value) && (typeof st.value !== "string" || st.value.length <= 256))) return `${n}: widget`;
+      else if (st.type === "redstone" && !(typeof st.uplinkId === "string" && ["top", "bottom", "left", "right", "front", "back"].includes(st.side) && Number.isInteger(st.value) && st.value >= 0 && st.value <= 15)) return `${n}: redstone`;
+      else if (st.type === "craft" && !(typeof st.uplinkId === "string" && /^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(st.item ?? "") && Number.isInteger(st.amount) && st.amount >= 1 && st.amount <= 4096)) return `${n}: craft`;
+      else if (st.type === "alert" && !(typeof st.text === "string" && st.text.trim() && st.text.length <= 120 && ["info", "warn", "error"].includes(st.level))) return `${n}: alert`;
+      else if (st.type === "dashboard" && typeof st.enabled !== "boolean") return `${n}: dashboard`;
+    }
+    if (delay > 600) return "delays: at most 600 s in total";
+    return null;
+  }
+  function scenesPayload(mf: Mainframe) {
+    if (!mf.scenes || !scenesOn) return null;
+    return {
+      scenes: mf.scenes.list.map(({ ownerUuid: _o, ...sc }) => ({
+        ...sc,
+        needsPin: sceneNeedsPin(mf, sc),
+        perms: [...new Set((sc.steps as Record<string, any>[]).map((st) => stepPerm(mf, st)).filter(Boolean))],
+      })),
+      log: mf.scenes.log.slice(-50),
+      limit: 32,
+      sectionId: mf.scenes.list.length && mf.online ? stableId(mf, "scenes") : null,
+    };
+  }
+  function broadcastScenes(mf: Mainframe) {
+    const d = scenesPayload(mf);
+    if (d) for (const c of mf.clients) if (!c.share) sendTo(c.ws, { t: "scenes", ...d });
+  }
+  /** The Scenes section: one button per scene (opts.pin when the scene needs the PIN). */
+  function publishScenes(mf: Mainframe) {
+    const id = stableId(mf, "scenes");
+    if (!scenesOn || !mf.scenes?.list.length) {
+      if (mf.uplinks.delete(id)) broadcast(mf, { t: "uplink_removed", uplinkId: id });
+      return;
+    }
+    putUplink(mf, {
+      uplinkId: id,
+      title: "Scenes",
+      online: true,
+      mode: "direct",
+      template: "scenes",
+      source: "mainframe",
+      widgets: mf.scenes.list.map((sc) => ({
+        id: `s_${sc.id}`,
+        type: "button" as const,
+        label: sc.name,
+        opts: { color: sc.color ?? "gray", ...(sc.icon ? { icon: sc.icon } : {}), ...(sc.confirm ? { confirm: true } : {}), ...(sceneNeedsPin(mf, sc) ? { pin: true } : {}) },
+      })),
+    });
+  }
+  /** One step with the given rights (null = ok, else the error code). */
+  function runStep(mf: Mainframe, st: Record<string, any>, who: { by: string; perms: string[]; pinVerified: boolean }): string | null {
+    const perm = stepPerm(mf, st);
+    if (perm && !who.perms.includes(perm)) return "not_allowed";
+    switch (st.type) {
+      case "widget": {
+        const u = mf.uplinks.get(st.uplinkId);
+        if (!u) return "unknown_uplink";
+        if (u.loaded === false) return "unloaded";
+        if (!u.online) return "uplink_offline";
+        const w = u.widgets.find((x) => x.id === st.widgetId);
+        if (!w) return "unknown_widget";
+        if ((w.opts as { pin?: boolean } | undefined)?.pin && !who.pinVerified) return "pin_required";
+        const value = coerce(w, st.value);
+        if (value === undefined) return "invalid_value";
+        if (!mf.ignoreActions) mf.onAction?.(st.uplinkId, st.widgetId, value, who.by);
+        return null;
+      }
+      case "redstone": {
+        if (!mf.uplinks.get(st.uplinkId)) return "unknown_uplink";
+        const r = mf.onOp?.(st.uplinkId, "redstone", { op: "set_output", side: st.side, value: st.value }, who.by);
+        return r?.ok ? null : (r?.error ?? "unavailable");
+      }
+      case "craft": {
+        if (!mf.uplinks.get(st.uplinkId)) return "unknown_uplink";
+        const r = mf.onOp?.(st.uplinkId, "search", { op: "craft", name: st.item, count: st.amount }, who.by);
+        return r?.ok ? null : (r?.error ?? "unavailable");
+      }
+      case "alert":
+        alert(mf, undefined, String(st.text), st.level === "error" ? "crit" : st.level === "warn" ? "warn" : "info");
+        return null;
+      case "dashboard":
+        setState(mf, { enabled: st.enabled === true });
+        return null;
+    }
+    return null;
+  }
+  /**
+   * Starts a run (null = started, else busy / too_many / rate_limited / offline). Steps up to the next delay
+   * run at once, a delay parks the run on a timer; every step result is broadcast.
+   */
+  function startScene(mf: Mainframe, sc: Record<string, any>, who: { by: string; device: string; source: string; perms: string[]; pinVerified: boolean }): string | null {
+    const st = mf.scenes!;
+    if (!mf.online) return "offline";
+    if (st.running.has(sc.id)) return "busy";
+    if (st.running.size >= 4) return "too_many";
+    const now = Date.now();
+    st.minuteRuns = st.minuteRuns.filter((x) => now - x < 60_000);
+    if (st.minuteRuns.length >= 30) return "rate_limited";
+    st.minuteRuns.push(now);
+    const steps = sc.steps as Record<string, any>[];
+    const run = { by: who.by, source: who.source, started: now, finished: null as number | null, steps: steps.map(() => null as { ok: boolean; error?: string } | null) };
+    sc.lastRun = run;
+    st.running.add(sc.id);
+    const finish = () => {
+      run.finished = Date.now();
+      sc.runs = (sc.runs ?? 0) + 1;
+      const bad = run.steps.find((x) => x && !x.ok);
+      const result = bad?.error ?? "ok";
+      st.running.delete(sc.id);
+      st.log.push({ time: run.finished, scene: sc.id, name: sc.name, by: who.by, source: who.source, result });
+      log(`[cccloud] ${who.by} (${who.device}) ran scene '${sc.name}' on ${mf.name}: ${result}`);
+      broadcastScenes(mf);
+    };
+    const go = (from: number) => {
+      for (let i = from; i < steps.length; i++) {
+        if (!mf.online) {
+          for (let j = i; j < steps.length; j++) run.steps[j] = { ok: false, error: "offline" };
+          break;
+        }
+        const step = steps[i];
+        if (step.type === "delay") {
+          broadcastScenes(mf);
+          later(Math.ceil(step.seconds * 20) * 50, () => {
+            run.steps[i] = { ok: true };
+            go(i + 1);
+          });
+          return;
+        }
+        const err = runStep(mf, step, who);
+        run.steps[i] = err ? { ok: false, error: err } : { ok: true };
+      }
+      finish();
+    };
+    broadcastScenes(mf);
+    // the action_result goes out first, then the steps run on the next "tick"
+    later(actionDelayMs, () => go(0));
+    return null;
+  }
+
+  // ---- v0.10 production statistics (docs/SPEC.md "Production statistics (mod side)")
+  const prodOn = opts.production !== false;
+  const prodInterval = opts.productionInterval ?? 20;
+  const PROD_WINDOW = 60;
+  /** per-minute movements of the demo base on top of the fake AE2 network (smelting, quarry, farms) */
+  const DEMO_FLOW: Record<string, { gain: number; use: number; name: string }> = {
+    "minecraft:iron_ingot": { gain: 12_000, use: 21_000, name: "Iron Ingot" },
+    "minecraft:raw_iron": { gain: 11_000, use: 12_300, name: "Raw Iron" },
+    "minecraft:cobblestone": { gain: 60_000, use: 20_000, name: "Cobblestone" },
+    "minecraft:redstone": { gain: 9_000, use: 27_000, name: "Redstone Dust" },
+    "mysticalagriculture:inferium_essence": { gain: 1_250, use: 80, name: "Inferium Essence" },
+    "minecraft:wheat": { gain: 410, use: 120, name: "Wheat" },
+    "minecraft:copper_ingot": { gain: 380, use: 60, name: "Copper Ingot" },
+    "ae2:certus_quartz_crystal": { gain: 160, use: 210, name: "Certus Quartz Crystal" },
+    "minecraft:glass": { gain: 260, use: 40, name: "Glass" },
+    "ae2:silicon": { gain: 0, use: 140, name: "Silicon" },
+    "minecraft:gold_ingot": { gain: 120, use: 30, name: "Gold Ingot" },
+    "create:andesite_alloy": { gain: 90, use: 150, name: "Andesite Alloy" },
+  };
+  const prodRand = rng(23);
+  const pinLabel = (mf: Mainframe, p: { kind: string; uplinkId?: string; name?: string }) =>
+    p.kind === "energy" ? "Energy in/out FE/t" : p.kind === "storage" ? `${mf.uplinks.get(p.uplinkId ?? "")?.title ?? "Storage"} net /min` : `${meSim?.items.get(p.name ?? "")?.displayName ?? p.name} /min`;
+  /** a pin's chart: net per minute of the item or storage, energy in − out */
+  function pinSeries(mf: Mainframe, p: { kind: string; uplinkId?: string; name?: string }) {
+    const pr = mf.production!;
+    if (p.kind === "energy") return pr.energy ? pr.energy.in.map((v, i) => v - (pr.energy!.out[i] ?? 0)) : [];
+    return pr.storages.get(p.uplinkId ?? "")?.netSeries(p.kind === "item" ? p.name : undefined) ?? [];
+  }
+  /** The Production section: one chart per pin (p_<pinId>), the window as history. */
+  function publishProduction(mf: Mainframe) {
+    const id = stableId(mf, "production");
+    const pr = mf.production;
+    if (!prodOn || !pr?.pins.length) {
+      if (mf.uplinks.delete(id)) broadcast(mf, { t: "uplink_removed", uplinkId: id });
+      return;
+    }
+    putUplink(mf, {
+      uplinkId: id,
+      title: "Production",
+      online: true,
+      mode: "direct",
+      template: "production",
+      source: "mainframe",
+      widgets: pr.pins.map((p) => {
+        const history = pinSeries(mf, p);
+        return { id: `p_${p.id}`, type: "chart" as const, label: p.label, opts: { unit: p.kind === "energy" ? "FE/t" : "/min", points: PROD_WINDOW }, value: history.at(-1) ?? 0, history };
+      }),
+    });
+  }
+  /** One sample: the base keeps moving items, the trackers diff the storage snapshots, pinned charts get a point. */
+  function sampleProduction(mf: Mainframe) {
+    const pr = mf.production;
+    if (!pr || !prodOn || !mf.online) return;
+    const ae2 = meSim;
+    if (ae2 && pr.storages.has(ME)) {
+      const per = prodInterval / 60;
+      for (const [name, f] of Object.entries(DEMO_FLOW)) {
+        const it = ae2.items.get(name);
+        if (!it) continue;
+        // the fake network already eats iron/redstone and adds cobblestone every tick; add the rest of the base
+        const live = name === "minecraft:iron_ingot" ? { gain: f.gain, use: 0 } : name === "minecraft:redstone" ? { gain: f.gain, use: 0 } : name === "minecraft:cobblestone" ? { gain: 0, use: f.use } : f;
+        const d = Math.round((live.gain * (0.75 + prodRand() * 0.5) - live.use * (0.7 + prodRand() * 0.6)) * per);
+        it.count = Math.max(0, it.count + d);
+      }
+      let crafted = 0;
+      for (const j of ae2.jobs)
+        if (j.status === "done" && !pr.countedJobs.has(j.jobId)) {
+          pr.countedJobs.add(j.jobId);
+          crafted += j.count;
+        }
+      pr.storages.get(ME)!.sample(ae2.items, crafted);
+      for (const t of pr.tasks) t.progress = t.progress >= 0.98 ? 0.05 : Math.min(0.98, t.progress + 0.04);
+    }
+    pr.energy?.sample();
+    // a pinned chart gets a point when its ring got one (the first storage sample only records the snapshot)
+    for (const p of pr.pins) {
+      const ring = pinSeries(mf, p);
+      const w = mf.uplinks.get(stableId(mf, "production"))?.widgets.find((x) => x.id === `p_${p.id}`);
+      if (w && ring.length && (ring.length > (w.history?.length ?? 0) || ring.length >= PROD_WINDOW)) setValue(mf, stableId(mf, "production"), `p_${p.id}`, ring.at(-1)!);
+    }
+  }
+  /** What a session may see: storages need storage.search (restricted ones view.positions), energy cards visible ones. */
+  function productionOverview(mf: Mainframe, c: Client) {
+    const pr = mf.production!;
+    const visible = (uplinkId: string) => {
+      const u = mf.uplinks.get(uplinkId);
+      return !!u && (!u.restricted || c.perms.includes("view.positions"));
+    };
+    return {
+      interval: prodInterval,
+      window: PROD_WINDOW,
+      since: pr.since,
+      storages: c.perms.includes("storage.search")
+        ? [...pr.storages]
+            .filter(([id]) => visible(id))
+            .map(([id, tr]) => ({ uplinkId: id, title: mf.uplinks.get(id)?.title ?? "Storage", bridge: "me", online: !!mf.uplinks.get(id)?.online, ...tr.overview() }))
+        : [],
+      energy: pr.energy?.doc(visible) ?? null,
+      pins: pr.pins,
+      pinLimit: 16,
+    };
+  }
+  function productionItem(mf: Mainframe, uplinkId: string, name: string) {
+    const tr = mf.production!.storages.get(uplinkId);
+    const it = uplinkId === ME ? meSim?.items.get(name) : undefined;
+    if (!tr) return { error: "unknown_storage" };
+    if (!it) return { error: "unknown_item" };
+    const watched = meSim!.watch.some((w) => w.name === name) || meSim!.favorites.has(name);
+    return {
+      data: {
+        name,
+        displayName: it.displayName,
+        count: it.count,
+        ...tr.item(name),
+        crafted: 0,
+        jobs: meSim!.jobRows().filter((j) => j.name === name),
+        tasks: [...mf.production!.tasks.filter((x) => x.name === name), ...meSim!.cpus().tasks.filter((x) => x.name === name).map(({ name: n, displayName, count, progress }) => ({ name: n, displayName, count, progress }))],
+        history: watched ? dayHistory(it.count, name.length * 31 + name.charCodeAt(0)) : null,
+      },
+    };
   }
   function broadcastRedstone(mf: Mainframe) {
     const r = redstonePayload(mf);
@@ -679,6 +1047,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     Object.assign(mf, patch);
     if (patch.online === true) mf.reason = undefined;
     broadcast(mf, { t: "state", online: mf.online, enabled: mf.enabled, ...(mf.reason ? { reason: mf.reason } : {}), ...(mf.power ? { power: powerOf(mf) } : {}) });
+    if (patch.online !== undefined && mf.scenes) broadcastScenes(mf);
   }
   function putUplink(mf: Mainframe, u: Uplink) {
     mf.uplinks.set(u.uplinkId, u);
@@ -1099,6 +1468,180 @@ export async function createMockServer(opts: MockOptions = {}) {
       { time: Date.now() - 3 * 3600_000, rule: "0a1b2c3d", name: "Cool the reactor", result: "pin_required", manual: false },
     ],
   };
+
+  // v0.10: demo scenes (they use the Control Room and the auto Computer card), schedules and production
+  base.rules.loadedAt = Date.now() - 37 * 60_000;
+  const demoScenes = opts.controlRoom !== false && opts.computer !== false;
+  if (demoScenes) {
+    const ago = (m: number) => Date.now() - m * 60_000;
+    const enrico = PLAYERS[0];
+    base.scenes = {
+      list: [
+        {
+          id: "4e1a9c20",
+          name: "Night mode",
+          icon: "star",
+          color: "cyan",
+          confirm: true,
+          pin: false,
+          steps: [
+            { type: "widget", uplinkId: CONTROL, widgetId: "mode", value: "eco" },
+            { type: "widget", uplinkId: CONTROL, widgetId: "harvest", value: false },
+            { type: "delay", seconds: 2 },
+            { type: "redstone", uplinkId: COMPUTER, side: "back", value: 0 },
+            { type: "widget", uplinkId: STORAGE, widgetId: "output", value: 20 },
+            { type: "alert", text: "Good night – base in eco mode", level: "info" },
+          ],
+          owner: enrico.player,
+          ownerUuid: enrico.uuid,
+          runs: 14,
+          lastRun: { by: "Lisa", source: "tablet", started: ago(62), finished: ago(62) + 2300, steps: [{ ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: true }, { ok: true }] },
+        },
+        {
+          id: "7b3f0d51",
+          name: "Reactor safe",
+          icon: "shield",
+          color: "red",
+          confirm: true,
+          pin: false,
+          steps: [
+            { type: "widget", uplinkId: REACTOR, widgetId: "power", value: false },
+            { type: "widget", uplinkId: REACTOR, widgetId: "vent", value: true },
+            { type: "delay", seconds: 5 },
+            { type: "widget", uplinkId: REACTOR, widgetId: "vent", value: true },
+            { type: "alert", text: "Reactor is safe", level: "warn" },
+          ],
+          owner: enrico.player,
+          ownerUuid: enrico.uuid,
+          runs: 3,
+          lastRun: { by: "Tom", source: "dashboard", started: ago(185), finished: ago(185) + 5200, steps: [{ ok: true }, { ok: false, error: "not_allowed" }, { ok: true }, { ok: false, error: "not_allowed" }, { ok: true }] },
+        },
+        {
+          id: "c2d84e17",
+          name: "Good morning",
+          icon: "home",
+          color: "green",
+          confirm: false,
+          pin: false,
+          steps: [
+            { type: "widget", uplinkId: CONTROL, widgetId: "mode", value: "normal" },
+            { type: "widget", uplinkId: CONTROL, widgetId: "harvest", value: true },
+            { type: "redstone", uplinkId: COMPUTER, side: "back", value: 15 },
+            { type: "alert", text: "Good morning – farms are running", level: "info" },
+          ],
+          owner: enrico.player,
+          ownerUuid: enrico.uuid,
+          runs: 22,
+          lastRun: { by: enrico.player, source: "rule", started: ago(26 * 60), finished: ago(26 * 60) + 120, steps: [{ ok: true }, { ok: true }, { ok: true }, { ok: true }] },
+        },
+        {
+          id: "e90a6b3c",
+          name: "Emergency",
+          icon: "warning",
+          color: "yellow",
+          confirm: false,
+          pin: false,
+          steps: [
+            { type: "widget", uplinkId: REACTOR, widgetId: "scram", value: true },
+            { type: "redstone", uplinkId: COMPUTER, side: "front", value: 15 },
+            { type: "alert", text: "Emergency stop!", level: "error" },
+          ],
+          owner: enrico.player,
+          ownerUuid: enrico.uuid,
+          runs: 0,
+          lastRun: null,
+        },
+      ],
+      log: [
+        { time: ago(26 * 60) + 120, scene: "c2d84e17", name: "Good morning", by: "Enrico", source: "rule", result: "ok" },
+        { time: ago(185) + 5200, scene: "7b3f0d51", name: "Reactor safe", by: "Tom", source: "dashboard", result: "not_allowed" },
+        { time: ago(62) + 2300, scene: "4e1a9c20", name: "Night mode", by: "Lisa", source: "tablet", result: "ok" },
+      ],
+      running: new Set(),
+      minuteRuns: [],
+    };
+    base.rules.list.push(
+      {
+        id: "9d2c7a14",
+        name: "Morning routine",
+        enabled: true,
+        cooldown: 30,
+        notify: false,
+        when: { type: "schedule", days: ["mon", "tue", "wed", "thu", "fri"], at: "07:00" },
+        if: [],
+        then: [{ type: "scene", sceneId: "c2d84e17" }],
+        lastRun: null,
+        lastResult: null,
+        runs: 0,
+        lastFire: ago(26 * 60),
+      },
+      {
+        id: "1f6e3b88",
+        name: "Coolant check",
+        enabled: true,
+        cooldown: 30,
+        notify: false,
+        when: { type: "interval", minutes: 15 },
+        if: [{ type: "power", op: ">=", value: 20 }],
+        then: [{ type: "alert", text: "Coolant check done", level: "info" }],
+        lastRun: ago(9),
+        lastResult: "ok",
+        runs: 2,
+        lastFire: ago(9),
+      },
+    );
+    base.rules.log.push(
+      { time: ago(6 * 60), rule: "1f6e3b88", name: "Coolant check", result: "skipped_unloaded", manual: false, skipped: true },
+      { time: ago(24), rule: "1f6e3b88", name: "Coolant check", result: "ok", manual: false },
+      { time: ago(9), rule: "1f6e3b88", name: "Coolant check", result: "ok", manual: false },
+    );
+    base.rules.log.sort((a, b) => a.time - b.time);
+    publishScenes(base);
+  }
+  if (prodOn) {
+    const storages = new Map<string, StorageTracker>();
+    if (meSim) {
+      const tr = new StorageTracker(PROD_WINDOW, prodInterval);
+      tr.seed(DEMO_FLOW, PROD_WINDOW - 6);
+      storages.set(ME, tr);
+    }
+    const cards = [
+      ...(opts.controlRoom !== false ? [{ uplinkId: CONTROL, title: "Induction Matrix", stored: 312e6, capacity: 500e6, in: 52_000, out: 38_000, measured: false }] : []),
+      { uplinkId: REACTOR, title: "Fission Reactor", stored: 2.45e6, capacity: 4e6, in: 12_000, out: 4_000, measured: false },
+      { uplinkId: STORAGE, title: "Storage cell", stored: 0.86e6, capacity: 2e6, in: 0, out: 0, measured: true },
+    ];
+    const energy = new EnergyTracker(cards, PROD_WINDOW);
+    for (let i = 0; i < PROD_WINDOW - 6; i++) energy.sample(i);
+    base.production = {
+      storages,
+      energy,
+      pins: [],
+      since: Date.now() - (PROD_WINDOW - 6) * prodInterval * 1000,
+      countedJobs: new Set(meSim?.jobs.filter((j) => j.status === "done").map((j) => j.jobId) ?? []),
+      tasks: meSim ? [{ name: "minecraft:iron_ingot", displayName: "Iron Ingot", count: 2048, progress: 0.35 }] : [],
+      hits: new WeakMap(),
+    };
+    if (meSim) {
+      for (const pin of [
+        { id: "a1b2c3d4", kind: "item" as const, uplinkId: ME, name: "minecraft:iron_ingot", label: "" },
+        { id: "e5f6a7b8", kind: "energy" as const, label: "" },
+      ])
+        base.production.pins.push({ ...pin, label: pinLabel(base, pin) });
+      publishProduction(base);
+    }
+  }
+  // v0.10: API keys of the demo (the key strings themselves are unknown – only their hashes exist)
+  {
+    const day = 86_400_000;
+    const now = Date.now();
+    const demoKey = (k: { name: string; player: string; scopes: string[]; created: number; expires: number | null; lastUsed: number | null; lastIp: string | null; ips: string[] }) => {
+      const id = sha(k.name).slice(0, 16);
+      apiKeys.set(id, { id, mainframeId: base.id, hash: sha(`demo:${k.name}`), ...k });
+    };
+    demoKey({ name: "Discord bot", player: "Enrico", scopes: ["read:sections", "run:scenes"], created: now - 9 * day, expires: now + 21 * day, lastUsed: now - 4 * 60_000, lastIp: "203.0.113.24", ips: [] });
+    demoKey({ name: "Home Assistant", player: "Enrico", scopes: ["read:sections", "read:stats", "action:widgets"], created: now - 30 * day, expires: null, lastUsed: now - 50_000, lastIp: "192.168.1.20", ips: ["192.168.1.0/24"] });
+    demoKey({ name: "Stock sheet", player: "Lisa", scopes: ["read:storage"], created: now - 40 * day, expires: now - 3 * day, lastUsed: now - 5 * day, lastIp: "198.51.100.7", ips: [] });
+  }
   // v0.5 D: one Discord target
   base.push = [
     { id: "p1", type: "discord", name: "Base channel", url: "https://discord.com/api/webhooks/1234567890/abcdefghijk7f3a", minLevel: "warn", events: ["alerts", "rules", "power"], enabled: true, lastSent: Date.now() - 42 * 60_000, lastResult: "ok" },
@@ -1211,6 +1754,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     mainframes.forEach((m) => {
       tickPower(m);
       if (m.online) m.tick?.();
+      if (powerTicks % prodInterval === 0) sampleProduction(m);
     });
   };
   const ticker = opts.tickMs === 0 ? undefined : setInterval(tickAll, opts.tickMs ?? 1000);
@@ -1317,7 +1861,8 @@ export async function createMockServer(opts: MockOptions = {}) {
           const t = (json as { t?: unknown } | undefined)?.t;
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
-          const type = t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : null;
+          const type =
+            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -1406,11 +1951,14 @@ export async function createMockServer(opts: MockOptions = {}) {
             const problem = ruleProblem(r);
             if (problem) return rr(false, { error: "invalid_rule", detail: problem });
             if ((r.then as any[]).some((a) => a.type === "widget" && (m.uplinks.get(a.uplinkId)?.widgets.find((w) => w.id === a.widgetId)?.opts as { pin?: boolean } | undefined)?.pin)) return rr(false, { error: "pin_widget" });
+            // v0.10: a scene that needs the PIN cannot be run by a rule
+            if ((r.then as any[]).some((a) => a.type === "scene" && ((sc) => sc && sceneNeedsPin(m, sc))(m.scenes?.list.find((x) => x.id === a.sceneId)))) return rr(false, { error: "pin_widget" });
             const i = r.id ? list.findIndex((x) => x.id === r.id) : -1;
             if (i < 0 && list.length >= rulesPayload(m)!.limit) return rr(false, { error: "too_many" });
+            if (isTime(r) && !(i >= 0 && isTime(list[i])) && list.filter(isTime).length >= maxSchedules) return rr(false, { error: "too_many_schedules" });
             const id = r.id && i >= 0 ? r.id : Math.floor(Math.random() * 2 ** 32).toString(16).padStart(8, "0");
-            const prev = i >= 0 ? list[i] : { lastRun: null, lastResult: null, runs: 0 };
-            const rule = { id, name: r.name.trim(), enabled: r.enabled !== false, cooldown: r.cooldown ?? 30, notify: r.notify === true, when: r.when, if: r.if ?? [], then: r.then, lastRun: prev.lastRun, lastResult: prev.lastResult, runs: prev.runs };
+            const prev = i >= 0 ? list[i] : { lastRun: null, lastResult: null, runs: 0, lastFire: null };
+            const rule = { id, name: r.name.trim(), enabled: r.enabled !== false, cooldown: r.cooldown ?? 30, notify: r.notify === true, when: r.when, if: r.if ?? [], then: r.then, lastRun: prev.lastRun, lastResult: prev.lastResult, runs: prev.runs, lastFire: prev.lastFire ?? null };
             if (i >= 0) list[i] = rule;
             else list.push(rule);
             log(`${c.user} saved rule ${rule.name}`);
@@ -1430,6 +1978,99 @@ export async function createMockServer(opts: MockOptions = {}) {
           rr(true);
           broadcastRules(m);
           return;
+        }
+        if (msg.t === "scene_set" || msg.t === "scene_delete") {
+          const sr = (ok: boolean, extra: Record<string, unknown> = {}) => sendTo(ws, { t: "scene_result", reqId: msg.reqId, ok, ...extra });
+          const sd = denied(c, "rules.edit");
+          if (sd) return sr(false, { error: sd });
+          if (!scenesOn) return sr(false, { error: "disabled" });
+          if (!m.scenes) m.scenes = { list: [], log: [], running: new Set(), minuteRuns: [] };
+          const list = m.scenes.list;
+          if (msg.t === "scene_delete") {
+            const i = list.findIndex((x) => x.id === msg.id);
+            if (i < 0) return sr(false, { error: "unknown_scene" });
+            const [gone] = list.splice(i, 1);
+            log(`${c.user} deleted scene ${gone.name} (audit)`);
+            sr(true);
+            publishScenes(m);
+            broadcastScenes(m);
+            return;
+          }
+          const sc = msg.scene as Record<string, any>;
+          const problem = sceneProblem(sc);
+          if (problem) return sr(false, { error: "invalid_scene", detail: problem });
+          // saving needs every permission the steps need: no escalation through a scene
+          const lacking = (sc.steps as Record<string, any>[]).map((st, i) => ({ i, perm: stepPerm(m, st) })).find((x) => x.perm && !c.perms.includes(x.perm));
+          if (lacking) return sr(false, { error: "not_allowed", detail: `step ${lacking.i + 1}: ${lacking.perm}` });
+          const i = sc.id ? list.findIndex((x) => x.id === sc.id) : -1;
+          if (i < 0 && list.length >= 32) return sr(false, { error: "too_many" });
+          const id = sc.id && i >= 0 ? sc.id : Math.floor(Math.random() * 2 ** 32).toString(16).padStart(8, "0");
+          const prev = i >= 0 ? list[i] : { runs: 0, lastRun: null };
+          const owner = (c.uuid && playerByUuid(c.uuid)?.player) || c.user;
+          const saved = {
+            id,
+            name: sc.name.trim(),
+            ...(sc.icon ? { icon: sc.icon } : {}),
+            ...(sc.color ? { color: sc.color } : {}),
+            confirm: sc.confirm === true,
+            pin: sc.pin === true,
+            steps: sc.steps,
+            owner,
+            ownerUuid: c.uuid,
+            runs: prev.runs ?? 0,
+            lastRun: prev.lastRun ?? null,
+          };
+          if (i >= 0) list[i] = saved;
+          else list.push(saved);
+          log(`${c.user} saved scene ${saved.name} (audit)`);
+          sr(true, { id });
+          publishScenes(m);
+          broadcastScenes(m);
+          return;
+        }
+        if (msg.t === "production") {
+          const pres = (ok: boolean, extra: Record<string, unknown> = {}) => sendTo(ws, { t: "production_result", reqId: msg.reqId, ok, ...extra });
+          const now = Date.now();
+          const pr = m.production;
+          if (!prodOn || !pr) return pres(false, { error: "disabled" });
+          const hits = (pr.hits.get(c) ?? []).filter((h) => now - h < 1000);
+          if (hits.length >= 5) return pres(false, { error: "rate_limited" });
+          pr.hits.set(c, [...hits, now]);
+          const p = msg as Record<string, any>;
+          if (p.op === "overview") return pres(true, { data: productionOverview(m, c) });
+          if (p.op === "item") {
+            const pd = denied(c, "storage.search");
+            if (pd) return pres(false, { error: pd });
+            const r = productionItem(m, String(p.uplinkId ?? ""), String(p.name ?? ""));
+            return "error" in r ? pres(false, { error: r.error }) : pres(true, { data: r.data });
+          }
+          const ld = denied(c, "layout.edit");
+          if (ld) return pres(false, { error: ld });
+          if (p.op === "unpin") {
+            const i = pr.pins.findIndex((x) => x.id === p.id);
+            if (i < 0) return pres(false, { error: "unknown_pin" });
+            pr.pins.splice(i, 1);
+            log(`${c.user} unpinned a production chart (audit)`);
+            publishProduction(m);
+            return pres(true, { data: {} });
+          }
+          const kind = p.kind;
+          if (!["item", "storage", "energy"].includes(kind)) return pres(false, { error: "invalid" });
+          if (kind !== "energy") {
+            const sd = denied(c, "storage.search");
+            if (sd) return pres(false, { error: sd });
+            if (!pr.storages.has(String(p.uplinkId ?? ""))) return pres(false, { error: "unknown_storage" });
+            if (kind === "item" && !meSim?.items.has(String(p.name ?? ""))) return pres(false, { error: "unknown_item" });
+          }
+          const same = pr.pins.find((x) => x.kind === kind && (kind === "energy" || x.uplinkId === p.uplinkId) && (kind !== "item" || x.name === p.name));
+          if (same) return pres(true, { data: { id: same.id } });
+          if (pr.pins.length >= 16) return pres(false, { error: "too_many" });
+          const pin = { id: randomBytes(4).toString("hex"), kind, ...(kind !== "energy" ? { uplinkId: String(p.uplinkId) } : {}), ...(kind === "item" ? { name: String(p.name) } : {}), label: "" };
+          pin.label = pinLabel(m, pin);
+          pr.pins.push(pin);
+          log(`${c.user} pinned ${pin.label} (audit)`);
+          publishProduction(m);
+          return pres(true, { data: { id: pin.id } });
         }
         if (msg.t === "rs_override") {
           const rres = (ok: boolean, error?: string) => sendTo(ws, { t: "rs_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
@@ -1544,6 +2185,13 @@ export async function createMockServer(opts: MockOptions = {}) {
           }
           t.pinFails = 0;
         }
+        if (u.template === "scenes" && u.source === "mainframe") {
+          const sc = m.scenes?.list.find((x) => `s_${x.id}` === w.id);
+          if (!sc) return result(msg.reqId, false, "unknown_widget");
+          const who = (c.uuid && playerByUuid(c.uuid)?.player) || c.user;
+          const err = startScene(m, sc, { by: who, device: c.user, source: "dashboard", perms: c.perms, pinVerified: (w.opts as { pin?: boolean } | undefined)?.pin === true });
+          return err ? result(msg.reqId, false, err) : result(msg.reqId, true);
+        }
         if (w.type === "item_search" || w.type === "watchlist" || w.type === "redstone_sides") {
           const op = opValue.safeParse(msg.value);
           const allowed = w.type === "item_search" ? ["craft"] : w.type === "watchlist" ? ["add", "remove", "set_min"] : ["set_output"];
@@ -1649,7 +2297,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       return json(res, 200, {
         version: "0.9.0-dev",
         store: { enabled: on, url: on ? `http://localhost:${port}/store/` : null, ...(on ? { key: storeKey.publicB64 } : {}) },
-        features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, ...(opts.features ?? {}) },
+        features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, scenes: scenesOn, production: prodOn, api: true, ...(opts.features ?? {}) },
       });
     }
     // dev: the Script Store's static build (../store/dist) on the same origin, signed with a dev key
@@ -2041,6 +2689,80 @@ export async function createMockServer(opts: MockOptions = {}) {
       res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "application/json", "cache-control": "private, max-age=60" });
       return void res.end(JSON.stringify(doc));
     }
+
+    // ---- v0.10 API key management (docs/SPEC.md "Public API v1" → "Key management"; api.keys)
+    const km = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/apikeys$/.exec(p);
+    if (km) {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const g = gate(t, km[1], "api.keys");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      const player = (t.uuid && playerByUuid(t.uuid)?.player) || t.name;
+      const moderator = g.perms.includes("access.manage");
+      const row = (k: typeof apiKeys extends Map<string, infer V> ? V : never) => {
+        const { hash: _h, mainframeId: _m, ...rest } = k;
+        return { ...rest, expired: k.expires !== null && k.expires <= Date.now(), own: k.player === player };
+      };
+      const doc = () => ({
+        enabled: apiOn,
+        scopes: [...API_SCOPES],
+        limit: 5,
+        keys: [...apiKeys.values()].filter((k) => k.mainframeId === g.m.id && (k.player === player || moderator)).sort((a, b) => b.created - a.created).map(row),
+      });
+      if (req.method === "GET") return json(res, 200, doc());
+      if (req.method !== "POST") return json(res, 405, { error: "method" });
+      const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+      if (b.op === "revoke") {
+        const k = apiKeys.get(String(b.id ?? ""));
+        if (!k || k.mainframeId !== g.m.id) return json(res, 404, { error: "not_found" });
+        if (k.player !== player && !moderator) return json(res, 403, { error: "not_allowed" });
+        apiKeys.delete(k.id);
+        log(`${player} revoked API key '${k.name}' of ${k.player} (audit)`);
+        return json(res, 200, { ok: true });
+      }
+      if (b.op !== "create") return json(res, 400, { error: "invalid" });
+      if (!apiOn) return json(res, 409, { error: "disabled" });
+      const known = ["op", "name", "scopes", "expiresIn", "ips"];
+      const name = typeof b.name === "string" ? b.name.trim() : "";
+      const scopes = Array.isArray(b.scopes) ? b.scopes : null;
+      const ips = b.ips === undefined ? [] : Array.isArray(b.ips) ? b.ips : null;
+      if (
+        Object.keys(b).some((k) => !known.includes(k)) ||
+        !name ||
+        name.length > 40 ||
+        !scopes ||
+        !scopes.length ||
+        new Set(scopes).size !== scopes.length ||
+        !scopes.every((x: unknown) => (API_SCOPES as readonly unknown[]).includes(x)) ||
+        !(b.expiresIn === null || b.expiresIn === undefined || [3600, 86400, 604800, 2592000, 7776000].includes(b.expiresIn)) ||
+        !ips ||
+        ips.length > 8 ||
+        !ips.every((x: unknown) => typeof x === "string" && validIp(x))
+      )
+        return json(res, 400, { error: "invalid" });
+      // a key never reaches past its creator: each scope's base permission is needed to create it
+      const basePerm: Record<string, string> = { "read:sections": "view", "read:stats": "view", "read:storage": "storage.search", "action:widgets": "act.buttons", "run:scenes": "act.buttons" };
+      if (scopes.some((x: string) => !g.perms.includes(basePerm[x]))) return json(res, 403, { error: "not_allowed" });
+      if ([...apiKeys.values()].filter((k) => k.player === player).length >= 5) return json(res, 409, { error: "too_many" });
+      const key = `cck_${randomBytes(32).toString("base64url")}`;
+      const entry = {
+        id: randomBytes(8).toString("hex"),
+        mainframeId: g.m.id,
+        player,
+        name,
+        scopes,
+        created: Date.now(),
+        expires: b.expiresIn ? Date.now() + b.expiresIn * 1000 : null,
+        lastUsed: null,
+        lastIp: null,
+        ips,
+        hash: sha(key),
+      };
+      apiKeys.set(entry.id, entry);
+      log(`${player} created API key '${name}' (${scopes.join(", ")}) (audit)`);
+      // the only time the key itself leaves the server
+      return json(res, 200, { key, ...row(entry) });
+    }
     // ---- v0.6 access + shares (admin+)
     const am = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(access|shares)(?:\/([A-Za-z0-9]{1,32}))?$/.exec(p);
     if (am) {
@@ -2282,6 +3004,10 @@ export async function createMockServer(opts: MockOptions = {}) {
     shares,
     accountCodes,
     tickPower: (mf: Mainframe = base) => tickPower(mf),
+    /** v0.10: one production sample now (tests run without the tick) */
+    sampleProduction: (mf: Mainframe = base) => sampleProduction(mf),
+    /** v0.10 API keys (hashes only) */
+    apiKeys,
     /** The fake AE2 network (undefined with ae2:false). */
     get ae2() {
       return meSim;
