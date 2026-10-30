@@ -416,9 +416,9 @@
    "mod": "JourneyMap",
    "id": "journeymap",
    "version": "6.0.10 (API 2.0.0)",
-   "what": "client plugin (`client/compat/journeymap`, found by JourneyMap's `@JourneyMapPlugin`): the mainframes, relays and devices of every network where the player has `view.positions` as temporary (non-persistent) waypoints named \"CC: Cloud – <mainframe>: <device>\", coloured by type. The client subscribes with the `map_nodes_subscribe` payload while the client config `journeyMapWaypoints` (default true) is on; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes.",
-   "controls": "client config toggle",
-   "tested": "server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit test `MapNodesTest`); the JourneyMap side needs a client and is untested",
+   "what": "client plugin (`client/compat/journeymap`, found by JourneyMap's `@JourneyMapPlugin`): nodes of every network where the player has `view.positions` as temporary (non-persistent) waypoints in one JourneyMap waypoint group \"CC: Cloud\" (switch the group off in JourneyMap's waypoint manager to hide them all; the group and that choice are kept). Client config `journeyMapWaypoints` (default true) and `journeyMapWaypointTypes` (default `mainframe`, `ender_relay`; also `relay`, `uplink`, `bridge`). Only mainframes get JourneyMap's in-world marker and beam, everything else shows on the map only. Names: the device's card title (computer label, Lua title, machine card) or the block's name (\"Cloud Mainframe\", \"Ender Relay\"), coloured by type. The client subscribes with the `map_nodes_subscribe` payload; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes; the client filters by type.",
+   "controls": "client config",
+   "tested": "server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit tests `MapNodesTest`, `MapWaypointsTest`: default types, map-only devices, names); the JourneyMap side needs a client and is untested",
    "skipped": false
   },
   {

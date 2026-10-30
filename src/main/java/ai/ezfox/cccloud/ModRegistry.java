@@ -167,6 +167,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("mainframe_place_and_break_upper", () -> CloudGameTests::placeAndBreakUpper);
         TEST_FUNCTIONS.register("mainframe_break_lower_drops_one", () -> CloudGameTests::breakLowerDropsOne);
         TEST_FUNCTIONS.register("mainframe_ownership", () -> CloudGameTests::ownership);
+        TEST_FUNCTIONS.register("uplink_mount_slab_side", () -> ai.ezfox.cccloud.gametest.UplinkMountTests::slabSide);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);

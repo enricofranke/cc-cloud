@@ -113,7 +113,7 @@ class ApiEventStreamTest {
         channel.runPendingTasks();
         String next = events(channel);
         assertTrue(next.contains("event: value\ndata: {\"sectionId\":\"" + uplink + "\",\"id\":\"temp\",\"value\":55}"), next);
-        assertFalse(next.contains("99"), "no values of restricted cards: " + next);
+        assertFalse(next.contains("\"sectionId\":\"" + restricted + "\"") || next.contains("\"value\":99"), "no values of restricted cards: " + next);
         assertEquals(List.of("stream:ha"), bridge.dispatched, "the owner's rights were checked on the server thread");
         // A second stream of the same key is over the limit (1 per key in this test).
         var second = open(secret);

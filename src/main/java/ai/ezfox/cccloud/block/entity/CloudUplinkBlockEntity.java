@@ -93,6 +93,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private long rsLastChange = Long.MIN_VALUE / 2;
     /** The input is not saved: a transmitter samples it on its first tick after loading (neighbours are loaded then). */
     private boolean rsInputPending;
+    /**
+     * Re-check the {@code mount} (plate / compact puck) on the first tick after loading: uplinks from before the
+     * compact variant, {@code /setblock} and rotated structures get the right model without a neighbour update.
+     */
+    private boolean mountPending;
     /** "no_route", "over_capacity", "legacy_out_of_range" or null (for the screen). */
     private volatile @Nullable String routeState;
     /** v0.5 device card (compat/card): direct mode on a supported machine. {@code deviceKind} is saved; both guarded by this. */
@@ -252,6 +257,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), 2 * BRIDGE_INTERVAL);
         statusPending = true;
         rsInputPending = true;
+        mountPending = true;
         wired.onLoad();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -316,6 +322,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     }
 
     private void tick(ServerLevel level) {
+        if (mountPending) {
+            mountPending = false;
+            var state = getBlockState();
+            var fitted = CloudUplinkBlock.withMount(state, level, getBlockPos());
+            if (fitted != state) level.setBlock(getBlockPos(), fitted, Block.UPDATE_CLIENTS);
+        }
         if (rsInputPending) {
             // A lever that was already on when the chunk loaded sends no neighbour update; afterwards neighborChanged does.
             rsInputPending = false;

@@ -4,6 +4,17 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Visual polish: compact uplinks, quieter JourneyMap
+- **Compact uplink**: on faces that cannot carry the 14x14 plate – slab sides, tray-height machines such as Energized
+  Power solar panels, carpet-height blocks – the uplink becomes a small module on the visible part of the face instead
+  of a plate sticking out like a sign; on top of a low machine it stands on a short post. Chosen automatically from the
+  attached block's shape, follows it when that block changes, and fixes itself in existing worlds after loading. The
+  hitbox matches. Placement rules are unchanged.
+- **JourneyMap**: by default only mainframes and Ender Relays become waypoints (client config
+  `journeyMapWaypointTypes` adds relays, uplinks, bridges), all in one waypoint group "CC: Cloud" that JourneyMap can
+  hide at once; only mainframes get the in-world marker and beam; names are the card title (computer label) or the
+  block name instead of "CC: Cloud – Mainframe @ x y z: uplink".
+
 ### v0.10 – Scenes, schedules, production statistics, public API
 - **Scenes**: one named button that runs several actions in order (widgets on any card, redstone, crafting, alerts,
   the dashboard switch) with delays counted in server ticks, optional confirmation and PIN. Every step is checked

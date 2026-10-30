@@ -4,7 +4,6 @@ import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.Map;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -31,13 +30,13 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
 /**
  * A small module stuck to the face of another block. {@code facing} points from the uplink towards the block it is
- * attached to (like a CC modem).
+ * attached to (like a CC modem). {@code mount} picks the 14x14 plate or, on faces that cannot carry it (slab sides,
+ * solar panels, the top of low blocks), the compact puck; it follows the attached block's shape (see {@link UplinkMount}).
  */
 public class CloudUplinkBlock extends Block implements EntityBlock {
     public static final MapCodec<CloudUplinkBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -48,10 +47,8 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING = DirectionalBlock.FACING;
     public static final EnumProperty<CloudStatus> STATUS = CloudStatus.PROPERTY;
     public static final BooleanProperty DIRECT = BooleanProperty.create("direct");
-
-    /** Shape when attached to the block to the north: a flat 14x14 plate, 2.25 px deep (matches the models). */
-    private static final VoxelShape NORTH_SHAPE = Block.box(1, 1, 0, 15, 15, 2.25);
-    private static final Map<Direction, VoxelShape> SHAPES = Shapes.rotateAll(NORTH_SHAPE);
+    /** Plate or compact puck, from the attached block's shape (see {@link UplinkMount}). */
+    public static final EnumProperty<UplinkMount> MOUNT = UplinkMount.PROPERTY;
 
     private final boolean advanced;
 
@@ -61,7 +58,8 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         registerDefaultState(stateDefinition.any()
             .setValue(FACING, Direction.NORTH)
             .setValue(STATUS, CloudStatus.OFFLINE)
-            .setValue(DIRECT, false));
+            .setValue(DIRECT, false)
+            .setValue(MOUNT, UplinkMount.FULL));
     }
 
     public boolean isAdvanced() {
@@ -75,12 +73,12 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, STATUS, DIRECT);
+        builder.add(FACING, STATUS, DIRECT, MOUNT);
     }
 
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPES.get(state.getValue(FACING));
+        return state.getValue(MOUNT).shape(state.getValue(FACING));
     }
 
     @Override
@@ -90,7 +88,12 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
         if (!state.canSurvive(level, pos)) return null;
-        return state.setValue(DIRECT, isDirect(level.getBlockState(pos.relative(facing))));
+        return withMount(state.setValue(DIRECT, isDirect(level.getBlockState(pos.relative(facing)))), level, pos);
+    }
+
+    /** {@code state} with the mount (plate / compact puck) that fits the face it is attached to. */
+    public static BlockState withMount(BlockState state, BlockGetter level, BlockPos pos) {
+        return state.setValue(MOUNT, UplinkMount.compute(level, pos, state.getValue(FACING)));
     }
 
     @Override
@@ -108,7 +111,8 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     ) {
         if (direction != state.getValue(FACING)) return state;
         if (!state.canSurvive(level, pos)) return net.minecraft.world.level.block.Blocks.AIR.defaultBlockState();
-        return state.setValue(DIRECT, isDirect(neighbourState));
+        return state.setValue(DIRECT, isDirect(neighbourState))
+            .setValue(MOUNT, UplinkMount.compute(neighbourState, level, neighbourPos, direction));
     }
 
     /**

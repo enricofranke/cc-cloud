@@ -184,6 +184,12 @@ LAYOUTS = {
             "eye": (8, 32, 3, 3),
         },
     },
+    # compact uplink ("puck") for non-full faces: own small atlas per tier, so uplink*.png stay unchanged
+    "uplink_compact": {
+        "size": 32,
+        "tiles": {"body_l": (1, 0), "post": (0, 1), "body": (1, 1)},
+        "regions": {"front": (0, 0, 8, 6)},
+    },
     "bridge": {
         "size": 64,
         "tiles": {
@@ -373,6 +379,7 @@ STATUS_REGIONS = {
     "lens": (4, 0, 4, 4), "lens_core": (8, 0, 2, 2), "port": (10, 0, 1, 1), "tip": (11, 0, 1, 1),
     "crystal": (12, 0, 2, 2),
     "strip": (0, 8, 8, 1),   # uplink status LED strip (uplink_status_* only)
+    "strip4": (0, 8, 4, 1),  # first half of the strip: the compact uplink's 4 px LED
 }
 
 
@@ -454,6 +461,29 @@ def gen_uplink(advanced: bool):
              {"d": ENDER_D, "E": ENDER, "k": hx("102a22"), "C": CYAN_L})
 
     cv.save(os.path.join(TEX, "block", "uplink_advanced.png" if advanced else "uplink.png"))
+
+
+def gen_uplink_compact(advanced: bool):
+    """Compact uplink for non-full faces (slab sides, solar panels): an 8x6 front in the same plate
+    language (1 px dark outline, lighter lower band with a lighter left edge, mini cloud emblem, dark
+    slot under the 4 px status LED), plus side / post materials."""
+    L = LAYOUTS["uplink_compact"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("uplink_compact", n)
+    body, body_l = (GOLD, GOLD_L) if advanced else (GREY, GREY_L)
+    x0, y0, w, h = L["regions"]["front"]
+    rows = ["EEEEEEEE",
+            "EobCcboE",
+            "EbCcccbE",
+            "ellllllE",
+            "elSSSSlE",
+            "EEEEEEEE"]
+    cv.ascii(x0, y0, rows, {"E": EDGE, "e": EDGE_L, "b": body, "l": body_l, "o": grey(0x2b),
+                            "C": CYAN_L, "c": CYAN, "S": SLOT}, 220)
+    for name, shades, seed in (("body", body, 221), ("body_l", body_l, 222), ("post", CABLE_D, 223)):
+        ox, oy = T(name)
+        cv.noise(ox, oy, 16, 16, shades, seed)
+    cv.save(os.path.join(TEX, "block", "uplink_advanced_compact.png" if advanced else "uplink_compact.png"))
 
 
 # --------------------------------------------------------------------------- cloud bridges (v0.2)
@@ -1272,6 +1302,8 @@ def main():
         gen_status("uplink_status", st)
     gen_uplink(False)
     gen_uplink(True)
+    gen_uplink_compact(False)
+    gen_uplink_compact(True)
     gen_bridge("me")
     gen_bridge("rs")
     for st in STATUS:

@@ -40,6 +40,9 @@ class Assets:
                               os.path.join(cc_src, "generated/resources/assets/computercraft")],
             "ae2": [os.path.join(MODREF, "ae2/assets/ae2")],
             "refinedstorage": [os.path.join(MODREF, "rs/assets/refinedstorage")],
+            # vanilla slab/carpet/stone and the Energized Power solar panel for the uplink mount scene
+            "minecraft": [os.path.join(MODREF, "minecraft/assets/minecraft")],
+            "energizedpower": [os.path.join(MODREF, "energizedpower/assets/energizedpower")],
         }
         self.tex_cache = {}
 
@@ -314,8 +317,15 @@ def mainframe_quads(a, status="online", facing_y=0, pos=(0, 0, 0), t=0.0, holo=T
 FACING6 = {"north": (0, 0), "east": (0, 90), "south": (0, 180), "west": (0, 270), "up": (270, 0), "down": (90, 0)}
 
 
-def uplink_quads(a, advanced=False, status="online", facing="north", pos=(0, 0, 0), direct=False, t=0.0):
+def uplink_quads(a, advanced=False, status="online", facing="north", pos=(0, 0, 0), direct=False, t=0.0, mount="full"):
     x, y = FACING6[facing]
+    if mount != "full":
+        # compact puck (blockstate mount != full): no moving part
+        base = "uplink_advanced_compact" if advanced else "uplink_compact"
+        q = model_quads(a, f"cccloud:block/{base}_{mount}_{status}", blockstate_transform(x, y, pos))
+        if direct:
+            q += model_quads(a, f"cccloud:block/uplink_compact_ring_{mount}", blockstate_transform(x, y, pos))
+        return q
     base = "uplink_advanced" if advanced else "uplink"
     q = model_quads(a, f"cccloud:block/{base}_{status}", blockstate_transform(x, y, pos))
     part = "cccloud:block/uplink_advanced_core" if advanced else "cccloud:block/uplink_ring"
@@ -755,3 +765,75 @@ def fiber_preview(a):
 
 if __name__ == "__main__" and os.environ.get("FIBER"):
     fiber_preview(Assets(DEFAULT_CC))
+
+
+# --------------------------------------------------------------------------- uplink mounts (compact puck)
+# Which `mount` the server picks for each attached block (UplinkMount.compute; UplinkMountTest checks the same cases).
+MOUNT_SCENE = [
+    # label, attached model, side mount, top mount
+    ("full block", "minecraft:block/stone", "full", "full"),
+    ("slab (8 px)", "minecraft:block/smooth_stone_slab", "low", "post8"),
+    ("solar panel (4 px)", "energizedpower:block/solar_panel_1", "bottom", "post12"),
+    ("carpet (1 px)", "minecraft:block/white_carpet", "bottom", "post16"),
+]
+
+
+def _attached(a, rid, pos):
+    if a.find(rid, "models", ".json") is None:  # reference assets missing: plain stand-in of the right height
+        h = {"minecraft:block/smooth_stone_slab": 8, "energizedpower:block/solar_panel_1": 4,
+             "minecraft:block/white_carpet": 1}.get(rid, 16)
+        tex = a.texture("cccloud:block/uplink_compact")[16:32, 0:16]
+        quads = []
+        for d in FACE_CORNERS:
+            f, t = np.array([0, 0, 0.0]), np.array([16, h, 16.0])
+            pts = np.array([[t[0] if ix else f[0], t[1] if iy else f[1], t[2] if iz else f[2]] for ix, iy, iz in FACE_CORNERS[d]])
+            quads.append(Quad(blockstate_transform(offset=pos)(pts), np.array([(0, 0), (1, 0), (1, 1), (0, 1)], float), tex, 0))
+        return quads
+    return model_quads(a, rid, blockstate_transform(offset=pos))
+
+
+def mounts_scene(a, advanced=False, direct=False, status="online"):
+    q = []
+    for i, (_, rid, side, top) in enumerate(MOUNT_SCENE):
+        x = -2 * i
+        q += _attached(a, rid, (x, 0, 0))
+        # side: the uplink sits north of the block (facing = towards the block = south); top: above it (facing down)
+        q += uplink_quads(a, advanced, status, "south", pos=(x, 0, -1), direct=direct, t=0.1, mount=side)
+        q += uplink_quads(a, advanced, status, "down", pos=(x, 1, 0), direct=direct, t=0.1, mount=top)
+    return q
+
+
+def mounts_preview(a):
+    """preview/renders/uplink_mounts.png: uplinks on the side and on top of a full block, a slab, a
+    tray-height solar panel and a carpet-height block (normal / advanced + direct ring, day / night),
+    plus close-ups of the compact puck."""
+    os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
+    names = "  |  ".join(m[0] for m in MOUNT_SCENE)
+    shots = [label(render(mounts_scene(a), 900, yaw=205, pitch=28), "Uplinks (side + top): " + names),
+             label(render(mounts_scene(a, True, True), 900, yaw=205, pitch=28), "Advanced uplinks, direct mode (ring)"),
+             label(render(mounts_scene(a), 900, yaw=150, pitch=12), "low angle from the other side: " + names),
+             label(render(mounts_scene(a, True, False, "connecting"), 900, yaw=205, pitch=28, night=True),
+                   "night: advanced, connecting")]
+    top = grid(shots, 2)
+    close = []
+    for adv in (False, True):
+        for (yaw, pitch, nm) in ((330, 25, "3/4"), (0, 0, "front"), (90, 0, "side")):
+            q = uplink_quads(a, adv, "online", "north", mount="center")
+            close.append(label(render(q, 300, yaw=yaw, pitch=pitch, center=np.array([8, 8, 1.0]), zoom=300 * 0.86 / 18),
+                               f"{'adv ' if adv else ''}compact {nm}"))
+        q = uplink_quads(a, adv, "online", "north", mount="post12")
+        close.append(label(render(q, 300, yaw=320, pitch=20, center=np.array([8, 8, -5.0]), zoom=300 * 0.86 / 20),
+                           f"{'adv ' if adv else ''}post12"))
+        for st in ("connecting", "offline"):
+            q = uplink_quads(a, adv, st, "north", mount="center", direct=(st == "offline"))
+            close.append(label(render(q, 300, yaw=330, pitch=25, night=True, center=np.array([8, 8, 1.0]),
+                                      zoom=300 * 0.86 / 18), f"{'adv ' if adv else ''}{st} night" + (" + ring" if st == "offline" else "")))
+    bottom = grid(close, 6)
+    out = Image.new("RGB", (max(top.width, bottom.width), top.height + bottom.height), (30, 32, 34))
+    out.paste(top, (0, 0))
+    out.paste(bottom, (0, top.height))
+    out.save(os.path.join(HERE, "renders", "uplink_mounts.png"))
+
+
+if __name__ == "__main__" and os.environ.get("MOUNTS"):
+    mounts_preview(Assets(DEFAULT_CC))
