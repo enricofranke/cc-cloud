@@ -70,10 +70,9 @@ public final class DisplayService {
         if (origin == null) return;
         String view = view(origin, player);
         var pos = origin.getBlockPos();
-        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new DisplayMenu(id, pos, view), Component.translatable("block.cccloud.cloud_display")), buf -> {
-            buf.writeBlockPos(pos);
-            buf.writeUtf(view, DisplayMenu.MAX_VIEW);
-        });
+        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new DisplayMenu(id, pos, view), Component.translatable("block.cccloud.cloud_display")),
+            buf -> GuiNetwork.writeOpen(buf, pos, view));
+        GuiNetwork.sendLargeView(player, view);
     }
 
     /** The screen's view: status, rights and (for admins) the sections that may be shown. */

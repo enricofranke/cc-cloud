@@ -113,6 +113,7 @@ public final class GuiNetwork {
                 who -> who instanceof ServerPlayer sp && mainframe.has(sp, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)),
                 Component.translatable("block.cccloud.cloud_mainframe")),
             buf -> writeOpen(buf, pos, view));
+        sendLargeView(player, view);
     }
 
     public static void openUplink(ServerPlayer player, CloudUplinkBlockEntity uplink) {
@@ -120,6 +121,7 @@ public final class GuiNetwork {
         var pos = uplink.getBlockPos();
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, pos, view), uplink.getBlockState().getBlock().getName()),
             buf -> writeOpen(buf, pos, view));
+        sendLargeView(player, view);
     }
 
     public static void openBridge(ServerPlayer player, ai.ezfox.cccloud.bridge.BridgeHost bridge) {
@@ -128,6 +130,7 @@ public final class GuiNetwork {
         var pos = be.getBlockPos();
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, pos, view), be.getBlockState().getBlock().getName()),
             buf -> writeOpen(buf, pos, view));
+        sendLargeView(player, view);
     }
 
     /** The relay screen (read-only: what it does, its networks, power). */
@@ -136,11 +139,23 @@ public final class GuiNetwork {
         var pos = relay.getBlockPos();
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new UplinkMenu(id, pos, view), relay.getBlockState().getBlock().getName()),
             buf -> writeOpen(buf, pos, view));
+        sendLargeView(player, view);
     }
 
-    private static void writeOpen(RegistryFriendlyByteBuf buf, net.minecraft.core.BlockPos pos, String view) {
+    public static void writeOpen(RegistryFriendlyByteBuf buf, net.minecraft.core.BlockPos pos, String view) {
         buf.writeBlockPos(pos);
-        buf.writeUtf(view, CloudMenu.MAX_VIEW);
+        buf.writeUtf(view.length() <= CloudMenu.OPEN_VIEW ? view : "{}", CloudMenu.MAX_VIEW);
+    }
+
+    /** After {@code openMenu}: a view too big for the open packet follows as a view update. */
+    public static void sendLargeView(ServerPlayer player, String view) {
+        if (view.length() <= CloudMenu.OPEN_VIEW || !(player.containerMenu instanceof CloudMenu menu)) return;
+        if (view.length() > CloudMenu.MAX_VIEW) {
+            CCCloud.LOGGER.warn("[cccloud] Screen view for {} is too big ({} chars); not sent", player.getGameProfile().name(), view.length());
+            return;
+        }
+        menu.lastSent = view;
+        PacketDistributor.sendToPlayer(player, new ViewPayload(menu.containerId, view));
     }
 
     /** True if this player currently has the screen of this mainframe open. */
@@ -495,7 +510,7 @@ public final class GuiNetwork {
     public static void push(ServerPlayer player, @Nullable String notice) {
         if (!(player.containerMenu instanceof CloudMenu menu)) return;
         String view = view(player, menu, notice);
-        if (view == null) return;
+        if (view == null || view.length() > CloudMenu.MAX_VIEW) return;
         menu.lastSent = view;
         PacketDistributor.sendToPlayer(player, new ViewPayload(menu.containerId, view));
     }
@@ -516,7 +531,7 @@ public final class GuiNetwork {
             if (!(player.containerMenu instanceof CloudMenu menu)) continue;
             try {
                 String view = view(player, menu, null);
-                if (view == null || view.equals(menu.lastSent)) continue;
+                if (view == null || view.equals(menu.lastSent) || view.length() > CloudMenu.MAX_VIEW) continue;
                 menu.lastSent = view;
                 PacketDistributor.sendToPlayer(player, new ViewPayload(menu.containerId, view));
             } catch (RuntimeException e) {
