@@ -77,6 +77,27 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Misclick guard (`mainframeBreakProtection`, default on): in creative the mainframe only breaks while sneaking; in
   survival only its owner, its admins and server admins can break it.
 
+### 3D blocks and map tiles load in seconds
+- The 3D view's blocks loaded one 16³ section per request, and every request also counted against the 120 API requests
+  per minute per IP: the showcase base (536 sections) showed "Loading blocks 10 %" for minutes. The dashboard now
+  asks for up to 64 sections per request (a compact binary batch, gzip), nearest to the mainframe first; the limit
+  counts sections (2048 per device, refilled at 256 per second), so a base loads without waiting. Measured on the
+  showcase world: the whole base in 2.2 s instead of 3.5 minutes (9 requests instead of 952), first blocks after 0.4 s,
+  11 KB instead of 121 KB, and the server thread spends 15 ms (4–5 ms with warm caches) instead of 127 ms on it.
+- This browser keeps the blocks (IndexedDB): reopening 3D shows the base at once (0.3–0.5 s) and the server only
+  confirms unchanged sections. Removing the mainframe from the browser removes them too.
+- Meshing runs in a small pool of workers with a 4× faster mesher, each region is meshed about once instead of five
+  times, region meshes are merged (draw calls 183 → 108, triangles −15 %), and the loading line says what is
+  happening (loading, updating, waiting for the server, building).
+- Server: the server thread only copies the block-state containers of the asked sections (microseconds each); hashing,
+  building and encoding run in the background, and the cache is checked against the blocks themselves, so changes
+  that fire no neighbor update (block movers, `/setblock` variants) show too. Map tiles: the server thread copies the
+  chunks' block states, sampling and PNG encoding run in the background, cached tiles are read from disk in the
+  background (server thread per tile 2.3 → 1.0 ms; all 20 showcase tiles in 0.6 s, and they no longer wait for the
+  API limit after the 3D view).
+- `/cccloud map stats [reset]` (server admins) shows requests, cache hits, server-thread time per tick and bytes for
+  the map tiles and the voxels. `tools/showcase/loadbench.mjs` measures the loading on the showcase world.
+
 ### Fixes
 - Script Store: `door-controller` 1.0.1 no longer passes `icon` to `cloud.group()` (groups take `page` and `cols`; the
   card shows its first widget's icon), which the mod refused at start. A unit test now runs every store script on CC's
