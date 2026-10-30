@@ -13,6 +13,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   `cloud_mainframe.getNetwork()` now reports probes as `type = "probe"` (was `"advanced_uplink"`) with `target`.
 - Map tiles on disk no longer grow forever: purging a mainframe deletes its cave slices, and tiles that were neither drawn
   nor shown for 30 days are deleted (new config `mapTileMaxAgeDays`, 0 keeps them).
+- Production statistics: a huge stock change (thousands of item types at once, e.g. emptying a drive) no longer creates
+  a short-lived statistics entry for every changed item; only the items that will be tracked are created.
 
 ### Security review before the release
 - API keys end with the browser that created them: revoking a browser (in game, `/cccloud devices revoke`, the Account

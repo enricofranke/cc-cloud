@@ -6,7 +6,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +17,10 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Bounded memory: the previous index snapshot (an immutable object the bridge built anyway; capped at 50 000 types),
  * rings of {@code window} values for the storage totals, and at most {@code maxTracked} items with their own rings – the
- * items that moved most in the window win, items without movement for a whole window are dropped. A delta is the net
- * change between two samples: what was gained and taken in the same interval cancels out.
+ * items that moved most in the window win, items without movement for a whole window are dropped. New items are picked
+ * with a heap of at most {@code maxTracked} entries, so a sample costs memory for that many whatever the number of
+ * changed items. A delta is the net change between two samples: what was gained and taken in the same interval cancels
+ * out.
  */
 public final class ProductionTracker {
     public static final int TOP = 10;
@@ -35,6 +36,7 @@ public final class ProductionTracker {
     private final RateRing consumed;
     private final RateRing crafted;
     private final Map<String, Tracked> items = new LinkedHashMap<>();
+    private int created;
 
     private static final class Tracked {
         final RateRing deltas;
@@ -100,57 +102,131 @@ public final class ProductionTracker {
         if (since == 0) since = now;
         // A cut-off index (more than 50 000 types) does not say anything about the items it left out.
         boolean partial = before.truncated() || index.truncated();
-        var deltas = new HashMap<String, Double>();
-        var names = new HashMap<String, String>();
+        // One pass over the changes: the totals, and the items not tracked yet that moved most in a heap of at most
+        // maxTracked entries. Nothing is allocated per changed item (a stock change of 50 000 types used to build an
+        // entry with two rings for each before trimming).
+        var candidates = new TopCandidates(maxTracked);
+        double plus = 0, minus = 0, made = 0;
         for (var row : index.rows()) {
             var old = before.get(row.name());
             if (old == null && partial) continue;
             long d = row.count() - (old == null ? 0 : old.count());
-            if (d != 0) deltas.put(row.name(), (double) d);
-            names.put(row.name(), row.displayName());
+            if (d == 0) continue;
+            if (d > 0) plus += d;
+            else minus -= d;
+            if (!items.containsKey(row.name())) candidates.offer(row.name(), row.displayName(), Math.abs(d) + craftedNow.getOrDefault(row.name(), 0L));
         }
         if (!partial) {
             for (var row : before.rows()) {
                 if (index.get(row.name()) != null || row.count() == 0) continue;
-                deltas.put(row.name(), (double) -row.count());
-                names.put(row.name(), row.displayName());
+                minus += row.count();
+                if (!items.containsKey(row.name())) candidates.offer(row.name(), row.displayName(), row.count() + craftedNow.getOrDefault(row.name(), 0L));
             }
         }
-        double plus = 0, minus = 0, made = 0;
-        for (double d : deltas.values()) {
-            if (d > 0) plus += d;
-            else minus -= d;
+        for (var e : craftedNow.entrySet()) {
+            made += e.getValue();
+            // crafted without a stock change (the items went straight out again): tracked for what was crafted
+            if (items.containsKey(e.getKey()) || delta(before, index, e.getKey(), partial) != 0) continue;
+            var row = index.get(e.getKey());
+            candidates.offer(e.getKey(), row == null ? e.getKey() : row.displayName(), e.getValue());
         }
-        for (long c : craftedNow.values()) made += c;
         minutes.add((now - last) / 60_000.0);
         gained.add(plus);
         consumed.add(minus);
         crafted.add(made);
-        track(deltas, craftedNow, names);
+        track(before, index, partial, craftedNow, candidates);
         return true;
     }
 
-    /** Pushes this sample into the tracked items and picks the ones that move most. */
-    private void track(Map<String, Double> deltas, Map<String, Long> craftedNow, Map<String, String> names) {
+    /** The stock change of one item between two samples (0 where a cut-off index cannot tell). */
+    private static double delta(ItemIndex before, ItemIndex index, String name, boolean partial) {
+        var row = index.get(name);
+        var old = before.get(name);
+        if (row != null) return old == null && partial ? 0 : row.count() - (old == null ? 0 : old.count());
+        return partial || old == null ? 0 : -old.count();
+    }
+
+    /**
+     * Pushes this sample into the tracked items, drops the idle ones and adds the new items that moved most, keeping at
+     * most {@code maxTracked} (the ones with the most movement in the window; on a tie the tracked item stays).
+     */
+    private void track(ItemIndex before, ItemIndex index, boolean partial, Map<String, Long> craftedNow, TopCandidates candidates) {
         for (var e : items.entrySet()) {
-            e.getValue().deltas.add(deltas.getOrDefault(e.getKey(), 0.0));
+            e.getValue().deltas.add(delta(before, index, e.getKey(), partial));
             e.getValue().crafted.add(craftedNow.getOrDefault(e.getKey(), 0L));
         }
-        var candidates = new ArrayList<String>();
-        for (var name : deltas.keySet()) if (!items.containsKey(name)) candidates.add(name);
-        for (var name : craftedNow.keySet()) if (!items.containsKey(name) && !deltas.containsKey(name)) candidates.add(name);
-        for (var name : candidates) {
-            var t = new Tracked(window, names.getOrDefault(name, name));
-            t.deltas.add(deltas.getOrDefault(name, 0.0));
-            t.crafted.add(craftedNow.getOrDefault(name, 0L));
-            items.put(name, t);
-        }
         items.values().removeIf(t -> t.score() == 0);
-        if (items.size() <= maxTracked) return;
-        var ranked = new ArrayList<>(items.entrySet());
-        ranked.sort(Comparator.comparingDouble((Map.Entry<String, Tracked> e) -> e.getValue().score()).reversed());
+        var fresh = candidates.best();
+        if (fresh.isEmpty()) return;
+        if (items.size() + fresh.size() <= maxTracked) {
+            for (var c : fresh) add(c, before, index, partial, craftedNow);
+            return;
+        }
+        // rank the tracked items and the candidates together (at most twice maxTracked entries)
+        var ranked = new ArrayList<Object[]>(items.size() + fresh.size());
+        for (var e : items.entrySet()) ranked.add(new Object[]{e.getValue().score(), e.getKey(), e.getValue()});
+        for (var c : fresh) ranked.add(new Object[]{c.score(), c.name(), c});
+        ranked.sort(Comparator.comparingDouble((Object[] r) -> (double) r[0]).reversed()); // stable: tracked items first on a tie
+        var kept = new LinkedHashMap<String, Tracked>();
+        for (int i = 0; i < maxTracked; i++) {
+            var r = ranked.get(i);
+            kept.put((String) r[1], r[2] instanceof Tracked t ? t : create((Candidate) r[2], before, index, partial, craftedNow));
+        }
         items.clear();
-        for (int i = 0; i < maxTracked; i++) items.put(ranked.get(i).getKey(), ranked.get(i).getValue());
+        items.putAll(kept);
+    }
+
+    private void add(Candidate c, ItemIndex before, ItemIndex index, boolean partial, Map<String, Long> craftedNow) {
+        items.put(c.name(), create(c, before, index, partial, craftedNow));
+    }
+
+    private Tracked create(Candidate c, ItemIndex before, ItemIndex index, boolean partial, Map<String, Long> craftedNow) {
+        created++;
+        var t = new Tracked(window, c.displayName());
+        t.deltas.add(delta(before, index, c.name(), partial));
+        t.crafted.add(craftedNow.getOrDefault(c.name(), 0L));
+        return t;
+    }
+
+    /** How many tracked entries were ever created (tests: a big change creates at most {@code maxTracked}). */
+    int createdForTest() {
+        return created;
+    }
+
+    private record Candidate(String name, String displayName, double score, long order) {
+    }
+
+    /**
+     * The {@code limit} best new items of one sample: a min-heap of at most {@code limit} entries (the weakest on top, on
+     * a tie the later one), so a sample with any number of changed items needs memory for {@code limit} only.
+     */
+    private static final class TopCandidates {
+        private final int limit;
+        private final java.util.PriorityQueue<Candidate> heap;
+        private long order;
+
+        TopCandidates(int limit) {
+            this.limit = Math.max(0, limit);
+            this.heap = new java.util.PriorityQueue<>(Math.max(1, Math.min(this.limit, 1024)),
+                Comparator.comparingDouble(Candidate::score).thenComparing(Comparator.comparingLong(Candidate::order).reversed()));
+        }
+
+        void offer(String name, String displayName, double score) {
+            if (score <= 0 || limit == 0) return;
+            if (heap.size() < limit) {
+                heap.add(new Candidate(name, displayName, score, order++));
+            } else if (score > heap.peek().score()) {
+                heap.poll();
+                heap.add(new Candidate(name, displayName, score, order++));
+            }
+        }
+
+        /** Best first (on a tie the one offered first). */
+        List<Candidate> best() {
+            var list = new ArrayList<>(heap);
+            list.sort(Comparator.comparingDouble(Candidate::score).reversed().thenComparingLong(Candidate::order));
+            return list;
+        }
     }
 
     /** Minutes covered by the last {@code n} samples. */
