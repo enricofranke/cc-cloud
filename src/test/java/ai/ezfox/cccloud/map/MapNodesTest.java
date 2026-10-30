@@ -33,6 +33,9 @@ class MapNodesTest {
         assertEquals(10, mainframe.get("x").getAsInt());
         assertEquals(-4, mainframe.get("z").getAsInt());
         assertEquals("Reactor", nodes.get(2).getAsJsonObject().get("name").getAsString());
+        // no title: empty (the client uses the block name), never the type id
+        assertEquals("", nodes.get(1).getAsJsonObject().get("name").getAsString());
+        assertEquals("", MapNodes.build(List.of(network(mine, 2)), id -> true).getAsJsonArray("nodes").get(3).getAsJsonObject().get("name").getAsString());
         assertEquals("minecraft:the_nether", nodes.get(2).getAsJsonObject().get("dim").getAsString());
         assertFalse(json.get("truncated").getAsBoolean());
         assertEquals(0, MapNodes.build(List.of(network(mine, 1)), id -> false).getAsJsonArray("nodes").size());

@@ -11,7 +11,8 @@ import java.util.function.Predicate;
 /**
  * The network nodes a client map mod may show as waypoints (v0.8 wave 3, JourneyMap): mainframes, relays and devices
  * of every network where the player has {@code view.positions}. Pure Java, unit tested. Payload:
- * {@code {"nodes":[{"id","mf","mfName","name","type","dim","x","y","z"}],"truncated"}}.
+ * {@code {"nodes":[{"id","mf","mfName","name","type","dim","x","y","z"}],"truncated"}}; {@code name} is the mainframe's
+ * name, a device's card title or empty. The client filters by type ({@link MapWaypoints}).
  */
 public final class MapNodes {
     /** Waypoints per player at most. */
@@ -59,7 +60,8 @@ public final class MapNodes {
         o.addProperty("id", id);
         o.addProperty("mf", net.mainframeId().toString());
         o.addProperty("mfName", net.name());
-        o.addProperty("name", net.names().getOrDefault(id, type.equals("mainframe") ? net.name() : type));
+        // devices: their card title (computer label, Lua title, machine card) or "" - the client names it after the block
+        o.addProperty("name", net.names().getOrDefault(id, type.equals("mainframe") ? net.name() : ""));
         o.addProperty("type", type);
         o.addProperty("dim", dim);
         o.addProperty("x", (int) Math.floor(x));
