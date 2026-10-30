@@ -87,10 +87,19 @@ jobs:
           name: cccloud-jar
           path: dist
 
+      # The release text is this version's section of CHANGELOG.md ("## 1.0.0-beta.1 – …" up to the next "## ").
+      - name: Release notes from the changelog
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          v="${VERSION#v}"
+          awk -v v="$v" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on {print}' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || { echo "CHANGELOG.md has no section for $v"; exit 1; }
+
       - name: Create the GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: dist/*.jar
-          body_path: CHANGELOG.md
+          body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}

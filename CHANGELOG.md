@@ -4,6 +4,13 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+## 1.0.0-beta.1 – 2026-10-30
+
+The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,
+Java 25). Drop both jars into `mods/` on the client and the server, place a Cloud Mainframe and follow the pairing code
+– or read [Getting started](https://cccloud.dev/en/docs/start/). Found a bug? Report it in the
+[Discord](https://discord.gg/4fnQcvbzg6) #help forum or as an [issue](https://github.com/enricofranke/cc-cloud/issues/new/choose).
+
 ### Fixes and follow-ups
 - Cloud Redstone devices placed by `/setblock`, a structure or a schematic paste with their link in the block data now
   show on the dashboard at once; before, they only appeared after their first state change.
