@@ -137,7 +137,8 @@ How it is measured, the remaining limits and the server settings for big bases: 
 
 - Help, ideas and showcases: the **[Discord](https://discord.gg/4fnQcvbzg6)**.
 - Bugs and feature requests: [issues](https://github.com/enricofranke/cc-cloud/issues/new/choose).
-- Code, docs, translations and scripts: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
+- Code, docs and translations: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
+- Script Store scripts: a pull request to [cc-cloud-scripts](https://github.com/enricofranke/cc-cloud-scripts) ([how to submit](https://github.com/enricofranke/cc-cloud-scripts/blob/main/CONTRIBUTING.md)).
 
 <details>
 <summary><b>Development</b></summary>
@@ -153,6 +154,7 @@ cd cloud && npx pnpm@10 install && npx pnpm@10 dev   # dashboard with a mock ser
 - Dashboard (Preact PWA): `cloud/web/` – built into `src/main/resources/cccloud_web/`
 - Art is generated pixel by pixel: `tools/gen_textures.py`, `tools/gen_models.py`, 3D preview in `preview/viewer.html`
 - Spec: [`docs/SPEC.md`](docs/SPEC.md) · Build notes: [`docs/BUILD.md`](docs/BUILD.md) · FTB Quests chapters: [`integration/ftbquests/`](integration/ftbquests/)
+- Script Store registry (scripts, validator, index builder): [cc-cloud-scripts](https://github.com/enricofranke/cc-cloud-scripts)
 
 </details>
 

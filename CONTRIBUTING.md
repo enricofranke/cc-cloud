@@ -6,7 +6,8 @@ Thanks for helping! Bug reports, mod integrations, translations, docs and Script
 - **Bugs:** open an issue with the bug template (versions + an [mclo.gs](https://mclo.gs) log link).
 - **Security issues:** never in public – see [SECURITY.md](SECURITY.md).
 - **Bigger changes:** open an issue or ask on Discord first, so we can agree on the approach before you write code.
-- **Script Store scripts:** follow [`store/CONTRIBUTING.md`](store/CONTRIBUTING.md).
+- **Script Store scripts:** live in their own repository, [cc-cloud-scripts](https://github.com/enricofranke/cc-cloud-scripts);
+  follow its [CONTRIBUTING.md](https://github.com/enricofranke/cc-cloud-scripts/blob/main/CONTRIBUTING.md).
 
 ## Development setup
 
@@ -30,11 +31,13 @@ More detail – icon export, screenshots, the handbook generator, CI – is in [
 | `src/main/java/ai/ezfox/cccloud/` | The mod: blocks, network, web server, integrations |
 | `cloud/web/` | The dashboard (Preact PWA), built into `src/main/resources/cccloud_web/` |
 | `cloud/web/src/docs/content/` | The bilingual docs (EN/DE); the in-game handbook is generated from them |
-| `website/` | cccloud.dev (Astro) |
-| `store/` | Script Store registry, validator and index builder |
-| `discord-bot/` | The community Discord bot |
-| `tools/` | Art generators, capture, showcase and helper scripts |
+| `tools/` | Art generators, the handbook generator, e2e/soak/load test scripts |
+| `preview/` | Block art previews and the three.js model viewer |
+| `integration/` | FTB Quests chapters for modpacks |
 | `docs/` | Spec, security, hosting, build and compatibility notes |
+
+The Script Store registry (scripts, validator, index builder) is [cc-cloud-scripts](https://github.com/enricofranke/cc-cloud-scripts);
+the website cccloud.dev and the community Discord bot live in a separate repository.
 
 ## Guidelines
 

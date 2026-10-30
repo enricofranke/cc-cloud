@@ -1,5 +1,5 @@
 // DEV-ONLY: offline benchmark of the voxel decoder and mesher with real sections
-// captured by tools/showcase/loadbench.mjs (LOADBENCH_SAVE=1 → voxel-bodies.json).
+// captured by tools/showcase/loadbench.mjs of the website repository (LOADBENCH_SAVE=1 → voxel-bodies.json).
 //   node dev/voxel-bench.ts <voxel-bodies.json>
 // Prints decode and meshing time (per region and total), triangles and quads.
 import { readFileSync } from "node:fs";

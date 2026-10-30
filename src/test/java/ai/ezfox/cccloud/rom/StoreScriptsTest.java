@@ -1,6 +1,7 @@
 package ai.ezfox.cccloud.rom;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.google.gson.JsonParser;
 import java.io.ByteArrayInputStream;
@@ -15,20 +16,23 @@ import org.squiddev.cobalt.LuaTable;
 import org.squiddev.cobalt.function.LuaFunction;
 
 /**
- * Runs every Script Store program ({@code store/scripts/<id>}) on Cobalt against the fake uplink of {@link RomLuaTest},
- * so each widget, page and group declaration and every value it sets goes through the mod's real {@code WidgetFactory}.
- * An option the mod does not accept (like {@code icon} on a group) fails here instead of on a player's computer. Each
- * program also gets one dashboard action per interactive widget and a few timer rounds; handler errors fail too.
+ * Runs every Script Store program ({@code scripts/<id>} of enricofranke/cc-cloud-scripts) on Cobalt against the fake
+ * uplink of {@link RomLuaTest}, so each widget, page and group declaration and every value it sets goes through the
+ * mod's real {@code WidgetFactory}. An option the mod does not accept (like {@code icon} on a group) fails here instead
+ * of on a player's computer. Each program also gets one dashboard action per interactive widget and a few timer rounds;
+ * handler errors fail too.
  */
 class StoreScriptsTest {
-    /** Set by build.gradle (the tests run in build/minecraft-junit). */
-    private static final Path SCRIPTS = Path.of(System.getProperty("cccloud.storeScripts", "store/scripts"));
+    /** Set by build.gradle when the registry is checked out (-PstoreScripts or ../cc-cloud-scripts). */
+    private static final String SCRIPTS = System.getProperty("cccloud.storeScripts");
 
     @TestFactory
     Stream<DynamicTest> everyStoreScriptBuildsAValidDashboard() throws Exception {
-        assertTrue(Files.isDirectory(SCRIPTS), "store scripts not found at " + SCRIPTS.toAbsolutePath());
+        assumeTrue(SCRIPTS != null, "no Script Store registry: check out enricofranke/cc-cloud-scripts next to this repository or pass -PstoreScripts=<its scripts folder>");
+        var scripts = Path.of(SCRIPTS);
+        assertTrue(Files.isDirectory(scripts), "store scripts not found at " + scripts.toAbsolutePath());
         var tests = new ArrayList<DynamicTest>();
-        try (var dirs = Files.list(SCRIPTS)) {
+        try (var dirs = Files.list(scripts)) {
             for (var dir : dirs.filter(Files::isDirectory).sorted().toList()) {
                 tests.add(DynamicTest.dynamicTest(dir.getFileName().toString(), () -> runScript(dir)));
             }

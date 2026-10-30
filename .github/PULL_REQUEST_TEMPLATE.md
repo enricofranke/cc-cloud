@@ -9,4 +9,4 @@
 - [ ] Docs, handbook and `CHANGELOG.md` ("Unreleased") updated where behaviour changes
 - [ ] No Minecraft or third-party textures added (icons are exported at build time)
 
-<!-- Script Store submissions follow store/CONTRIBUTING.md instead. -->
+<!-- Script Store submissions go to https://github.com/enricofranke/cc-cloud-scripts instead. -->

@@ -1,0 +1,303 @@
+{
+ "format": 1,
+ "name": "CC: Cloud Script Store",
+ "generatedAt": "2026-10-30T19:37:13.020Z",
+ "count": 6,
+ "tags": [
+  "ae2",
+  "automation",
+  "door",
+  "energy",
+  "farm",
+  "mekanism",
+  "monitoring",
+  "reactor",
+  "redstone",
+  "refined-storage",
+  "security",
+  "starter",
+  "storage",
+  "utility"
+ ],
+ "scripts": [
+  {
+   "id": "cloud-test",
+   "version": "1.0.0",
+   "name": {
+    "en": "Cloud Test",
+    "de": "Cloud-Test"
+   },
+   "description": {
+    "en": "The smallest possible test program: a lamp toggle, a click counter, an in-game time gauge, a redstone slider and a test alert. Uses the raw uplink API without the cloud.ui helper.",
+    "de": "Das kleinstmögliche Testprogramm: Lampe, Klickzähler, Ingame-Zeit als Anzeige, Redstone-Slider und ein Test-Alarm. Nutzt direkt die Uplink-API ohne die cloud.ui-Bibliothek."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "starter",
+    "redstone"
+   ],
+   "uses": [
+    "redstone",
+    "peripherals"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink"
+    ]
+   },
+   "entry": "cloud-test.lua",
+   "files": [
+    {
+     "path": "cloud-test.lua",
+     "size": 1528,
+     "sha256": "d3a333d14b2ce68a3be41ba08eed55e823f31f3c1c903e820c86ae4c95c49ece"
+    }
+   ],
+   "sha256": "23872f6b7f3267922c4c05df67127a7b564fbd942d82c077deed332bb408c5ae",
+   "size": 1528,
+   "lines": 40,
+   "reviewed": true,
+   "detail": "scripts/cloud-test/1.0.0.json"
+  },
+  {
+   "id": "control-room",
+   "version": "1.0.0",
+   "name": {
+    "en": "Control Room",
+    "de": "Kontrollraum"
+   },
+   "description": {
+    "en": "A small control room for one computer: lamp toggle, timed door button, redstone strength slider, program launcher, in-game clock chart and a PIN-protected alarm.",
+    "de": "Ein kleiner Kontrollraum für einen Computer: Lampe schalten, Tür mit Timer öffnen, Redstone-Stärke per Slider, Programme starten, Ingame-Uhr als Diagramm und ein Alarm mit PIN."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "starter",
+    "redstone",
+    "utility"
+   ],
+   "uses": [
+    "redstone",
+    "shell"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink"
+    ]
+   },
+   "entry": "control-room.lua",
+   "files": [
+    {
+     "path": "control-room.lua",
+     "size": 2635,
+     "sha256": "081fd394526982d013bdebd6e6b98ad92df764edbe33f00976124e4ba6ed27cc"
+    }
+   ],
+   "sha256": "970c84f5798981ea7d33b26e8305656807a093ca3447f057ff8f67f3bf0cbe82",
+   "size": 2635,
+   "lines": 74,
+   "reviewed": true,
+   "detail": "scripts/control-room/1.0.0.json"
+  },
+  {
+   "id": "door-controller",
+   "version": "1.0.1",
+   "name": {
+    "en": "Door Controller",
+    "de": "Tür-Steuerung"
+   },
+   "description": {
+    "en": "Open your base door from the dashboard, let it close by itself after a few seconds, lock it down behind a PIN and see who used it last. A button inside the base works too.",
+    "de": "Die Basistür vom Dashboard aus öffnen, nach ein paar Sekunden automatisch schließen, per PIN abriegeln und sehen, wer sie zuletzt benutzt hat. Ein Knopf innen funktioniert ebenfalls."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "door",
+    "security",
+    "redstone"
+   ],
+   "uses": [
+    "redstone"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink"
+    ]
+   },
+   "entry": "door-controller.lua",
+   "files": [
+    {
+     "path": "door-controller.lua",
+     "size": 3289,
+     "sha256": "a104c6bdf321f951c78dcc121e936b3996c5667a94fb84fb257362df1cf6b7f6"
+    }
+   ],
+   "sha256": "a64fdeeae7f0f548e4ab531eb121b4b4efe95fec873f216ca800daeab7cabac9",
+   "size": 3289,
+   "lines": 96,
+   "reviewed": true,
+   "detail": "scripts/door-controller/1.0.1.json"
+  },
+  {
+   "id": "farm-switch",
+   "version": "1.0.0",
+   "name": {
+    "en": "Farm Switch",
+    "de": "Farm-Schalter"
+   },
+   "description": {
+    "en": "Turn a farm on and off with redstone from the dashboard, optionally only during the in-game day, and watch how full the output chest gets.",
+    "de": "Eine Farm per Redstone vom Dashboard aus an- und ausschalten, auf Wunsch nur tagsüber, und sehen, wie voll die Ausgabekiste wird."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "farm",
+    "redstone",
+    "automation"
+   ],
+   "uses": [
+    "redstone",
+    "peripherals"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink"
+    ]
+   },
+   "entry": "farm-switch.lua",
+   "files": [
+    {
+     "path": "farm-switch.lua",
+     "size": 3101,
+     "sha256": "303c3167a0e24466bfabae2f2c513bf5b1bab402f2d53eeb48cc5edce8209684"
+    }
+   ],
+   "sha256": "7ec6bf91e884c62062539a743bf03d7a9a61ac75fc14e957ee3fc81a717d813c",
+   "size": 3101,
+   "lines": 92,
+   "reviewed": true,
+   "detail": "scripts/farm-switch/1.0.0.json"
+  },
+  {
+   "id": "reactor-monitor",
+   "version": "1.0.0",
+   "name": {
+    "en": "Reactor Monitor",
+    "de": "Reaktor-Monitor"
+   },
+   "description": {
+    "en": "Watch a Mekanism fission reactor from your phone: temperature, damage, tanks and burn rate, start and SCRAM behind a PIN, and an automatic safety SCRAM that runs on the computer itself.",
+    "de": "Einen Mekanism-Fissionsreaktor vom Handy aus überwachen: Temperatur, Schaden, Tanks und Brennrate, Start und SCRAM hinter einer PIN und ein automatischer Sicherheits-SCRAM, der direkt auf dem Computer läuft."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "reactor",
+    "mekanism",
+    "energy",
+    "monitoring"
+   ],
+   "uses": [
+    "peripherals"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink",
+     "fissionReactorLogicAdapter"
+    ],
+    "mods": [
+     "mekanism",
+     "mekanismgenerators"
+    ]
+   },
+   "entry": "reactor-monitor.lua",
+   "files": [
+    {
+     "path": "reactor-monitor.lua",
+     "size": 5187,
+     "sha256": "bd34bf49520cdccb537034045545da5172b27a7e40576a719df6f319065b307b"
+    }
+   ],
+   "sha256": "88fd566377718023a9911c239712f180a465720d437f0854d9d2fad9e1280b74",
+   "size": 5187,
+   "lines": 113,
+   "reviewed": true,
+   "detail": "scripts/reactor-monitor/1.0.0.json"
+  },
+  {
+   "id": "storage-overview",
+   "version": "1.0.0",
+   "name": {
+    "en": "Storage Overview",
+    "de": "Lager-Übersicht"
+   },
+   "description": {
+    "en": "Your ME or Refined Storage system at a glance: fill level, energy, item trend, the most common items, low-stock alerts for the items you pick, plus search, crafting and jobs.",
+    "de": "Dein ME- oder Refined-Storage-System auf einen Blick: Füllstand, Energie, Verlauf, die häufigsten Items, Warnungen bei niedrigem Bestand für ausgewählte Items sowie Suche, Crafting und Aufträge."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "storage",
+    "ae2",
+    "refined-storage",
+    "monitoring"
+   ],
+   "uses": [
+    "peripherals"
+   ],
+   "requires": {
+    "cccloud": ">=0.2.0",
+    "computer": "any",
+    "peripherals": [
+     "cloud_uplink"
+    ]
+   },
+   "entry": "storage-overview.lua",
+   "files": [
+    {
+     "path": "storage-overview.lua",
+     "size": 4551,
+     "sha256": "eabf0edd914c83476a26a9233ddfc8524bd66d0a0215f1b31e8f42d9bdedc8ad"
+    }
+   ],
+   "sha256": "f975ff7597735b7aeedb4a049303a1c5900969f565908a1550a92f4f3a552403",
+   "size": 4551,
+   "lines": 111,
+   "reviewed": true,
+   "detail": "scripts/storage-overview/1.0.0.json"
+  }
+ ]
+}

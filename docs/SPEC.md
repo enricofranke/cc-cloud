@@ -919,7 +919,7 @@ Implemented by the dev mock (`cloud/dev/mock-server.ts`, `network-sim.ts`) and t
 **3D view (client only, no new messages):** three.js `0.186.1` bundled in a lazy chunk (`Network3D`), loaded only when the 3D tab opens. Block models are converted at build time from `src/main/resources/assets/cccloud/{blockstates,models,textures}` by `cloud/dev/build-models.ts` (same rules as `preview/build_viewer.py`) into `web/src/network/models.gen.json` – geometry per node type, status variants as texture swaps. Without WebGL the dashboard shows the 2D map with a notice.
 
 ### FTB Quests chapters
-- Two chapters for ATM11: **CC: Tweaked** (computers, turtles, monitors, modems, peripherals, first programs) and **CC: Cloud** (mainframe, power, uplinks, link card, pairing a browser, bridges, relays, upgrades, tablet, display, rules). Format: the pack's `config/ftbquests/quests/chapters/*.json5` + lang files; place them in a chapter group that fits ATM11's structure, rewards in ATM style (modest). Ship them in the repo under `integration/ftbquests/` with an install script; contribution to ATM via their process (see docs/ATM_SUBMISSION.md).
+- Two chapters for ATM11: **CC: Tweaked** (computers, turtles, monitors, modems, peripherals, first programs) and **CC: Cloud** (mainframe, power, uplinks, link card, pairing a browser, bridges, relays, upgrades, tablet, display, rules). Format: the pack's `config/ftbquests/quests/chapters/*.json5` + lang files; place them in a chapter group that fits ATM11's structure, rewards in ATM style (modest). Ship them in the repo under `integration/ftbquests/` with an install script; contribution to ATM via their process (submission notes live with the website, repository `enricofranke/cccloud-website`).
 
 ### Map tiles for the 2D map (requested 2026-10-23, moved up before v0.5 C–F)
 The 2D network map gets a real top-down map of the world as background, like a Minecraft map / JourneyMap / Dynmap "flat":
@@ -1063,7 +1063,7 @@ browser.
 
 #### Voxel view – loading measurements (2026-10-30)
 Showcase world on the ATM11 test server (77 nodes/devices, 536 sections within 40 blocks, 191 of them with blocks),
-headless Chrome on the same Mac (LAN), `tools/showcase/loadbench.mjs` (cold = fresh browser profile, reload = same
+headless Chrome on the same Mac (LAN), `tools/showcase/loadbench.mjs` of the website repository (cold = fresh browser profile, reload = same
 profile again, tiles = the 2D map's 20 tiles with an empty tile cache), server numbers from `/cccloud map stats`
 (thread CPU time). Before = main + the counters, after = this branch; both on an idle machine, the "after" cold run
 right after a server start (empty server caches, JIT cold), runs 2–3 with warm server caches.
@@ -1283,12 +1283,12 @@ All routes: Bearer token, role **admin** on the mainframe (`403 {"error":"not_al
 ## Website & Script Store (requested 2026-10-23)
 
 ### Project website
-- Static site in `website/` (Astro, no client JS except islands), same visual identity as the dashboard and blocks (CC terminal look, pixel headings, gold/cyan, dark + light).
+- Static site, its own repository `enricofranke/cccloud-website` (`website/`, Astro, no client JS except islands; it reads the docs content, models, screenshots and versions from this repository and the store from `cc-cloud-scripts` at build time), same visual identity as the dashboard and blocks (CC terminal look, pixel headings, gold/cyan, dark + light).
 - Pages: landing (hero with an interactive 3D view of our real block models – reuse the art pipeline's converted geometry; feature sections with real dashboard screenshots/short looping clips; how it works; compatibility; security), **Docs** (the same DE/EN content as the in-app `/docs`, single source: move the docs content into a shared folder `docs-content/` consumed by both the dashboard and the website), **Features**, **Download** (CurseForge/Modrinth/GitHub links, version matrix), **Script Store**, Changelog, FAQ. SEO meta, OpenGraph images, sitemap, i18n routes `/de/` and `/en/`.
 - Hosting: decided later (GitHub Pages needs a public repo; Cloudflare Pages works with private repos). Build output must be a plain static folder.
 
 ### Script Store
-- **Registry** = a git repository (initially `store/` in this repo, later its own public repo `cc-cloud-scripts`): one folder per script with `manifest.json` (id, name, description DE/EN, author, license, version, tags, required peripherals/mods, uses: redstone/peripherals/http, entry file, screenshots) + Lua files. Submissions via pull request → CI validates (manifest schema, Lua syntax check with a Lua parser, size ≤ 256 KB, no obfuscation/minified blobs, license present) → human review → merge. Every release pinned by content SHA-256.
+- **Registry** = its own git repository [`enricofranke/cc-cloud-scripts`](https://github.com/enricofranke/cc-cloud-scripts) (until 2026-10-30 `store/` in this repo): one folder per script with `manifest.json` (id, name, description DE/EN, author, license, version, tags, required peripherals/mods, uses: redstone/peripherals/http, entry file, screenshots) + Lua files. Submissions via pull request → CI validates (manifest schema, Lua syntax check with a Lua parser, size ≤ 256 KB, no obfuscation/minified blobs, license present) → human review → merge. Every release pinned by content SHA-256.
 - **Index**: CI builds `index.json` (+ per-script JSON with file hashes) published with the website (static, CORS enabled for GET).
 - **Install flow** (no connection from the Minecraft server to the store needed): on the website, "Install" opens the user's own dashboard at `<dashboard>/store#install=<id>@<version>` (the dashboard URL is remembered in the website's localStorage after the first time, or entered). The dashboard fetches the script from the store index (CSP `connect-src` gets the configured store origin, config `scriptStoreUrl`, default the official site; can be disabled by server admins with `scriptStore=false`), verifies the SHA-256 against the index, **shows the full source and the manifest's "uses" list**, lets the admin pick the computer, then installs via the Script import API (admin role, PIN, audit log). Updates: the dashboard shows "update available" for installed store scripts (stored metadata per file).
 - The dashboard also gets a **Store tab** that browses the same index directly.

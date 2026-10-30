@@ -5,7 +5,9 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { compareVersions, parseIndex, readInstalled, recordInstall, sha256Hex, sha256Js, takeInstallLink, updatesFor } from "../web/src/lib/scriptstore.ts";
 
-const indexFile = fileURLToPath(new URL("../../store/dist/index.json", import.meta.url));
+// A snapshot of the real store index (the registry lives in enricofranke/cc-cloud-scripts); refresh it with
+// `node tools/build-index.mjs --out <dir>` there and copy index.json + files/ into test/fixtures/store.
+const indexFile = fileURLToPath(new URL("./fixtures/store/index.json", import.meta.url));
 
 describe("script store", () => {
   it("parses the real store index and drops malformed scripts", () => {

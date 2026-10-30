@@ -23,7 +23,8 @@ import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
 import { encodeBatch, sectionHash, type OutSection } from "./voxel-batch.ts";
 import { gzipSync } from "node:zlib";
 import { encodePng } from "./icons.ts";
-const STORE_DIST = fileURLToPath(new URL("../../store/dist/", import.meta.url));
+/** The Script Store build served at /store/: CCCLOUD_STORE_DIST (e.g. ../cc-cloud-scripts/dist after its build-index), else the test snapshot. */
+const STORE_DIST = process.env.CCCLOUD_STORE_DIST || fileURLToPath(new URL("../test/fixtures/store/", import.meta.url));
 import { ComputerFs, MAX_FILE, handleFs } from "./computer-fs.ts";
 import { MAX_LAYOUT_BYTES, layoutDoc, opValue, ICONS, type OpValue } from "./protocol.ts";
 import { EnergyTracker, StorageTracker, dayHistory, rng } from "./production-sim.ts";
@@ -216,7 +217,7 @@ export interface MockOptions {
   timezone?: string;
   /** v0.5 D config pushEnabled (default true) */
   pushEnabled?: boolean;
-  /** serve ../store/dist at /store/ and announce it in the snapshot (default true) */
+  /** serve the Script Store build (STORE_DIST) at /store/ and announce it in the snapshot (default true) */
   scriptStore?: boolean;
   /** add the underground "Deep Base" mainframe (also with extras) */
   deepBase?: boolean;
@@ -2324,7 +2325,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, scenes: scenesOn, production: prodOn, api: true, ...(opts.features ?? {}) },
       });
     }
-    // dev: the Script Store's static build (../store/dist) on the same origin, signed with a dev key
+    // dev: the Script Store's static build (STORE_DIST) on the same origin, signed with a dev key
     if (p === "/store/index.json.sig" && req.method === "GET" && opts.scriptStore !== false) {
       if (opts.storeSignature === "none") return json(res, 404, { error: "not_found" });
       const sig = storeKey.sign(readFileSync(join(STORE_DIST, "index.json")));

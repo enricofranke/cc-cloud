@@ -500,12 +500,20 @@ publishing {
     }
 }
 
+// StoreScriptsTest runs every Script Store program. The registry is its own repository (enricofranke/cc-cloud-scripts):
+// -PstoreScripts=<its scripts folder>, else a checkout next to this one (../cc-cloud-scripts); without one the test
+// is skipped.
+def storeScriptsDir = project.hasProperty('storeScripts') ? file(project.property('storeScripts').toString()) : file('../cc-cloud-scripts/scripts')
+if (project.hasProperty('storeScripts') && !storeScriptsDir.isDirectory()) throw new GradleException("-PstoreScripts: ${storeScriptsDir} is not a folder")
+
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     maxParallelForks = 1
-    // StoreScriptsTest runs every store/scripts program (the tests run in build/minecraft-junit).
-    systemProperty 'cccloud.storeScripts', file('store/scripts').absolutePath
-    inputs.dir('store/scripts').withPropertyName('storeScripts').withPathSensitivity(PathSensitivity.RELATIVE)
+    // the tests run in build/minecraft-junit, so the folder goes in as an absolute path
+    if (storeScriptsDir.isDirectory()) {
+        systemProperty 'cccloud.storeScripts', storeScriptsDir.absolutePath
+        inputs.dir(storeScriptsDir).withPropertyName('storeScripts').withPathSensitivity(PathSensitivity.RELATIVE)
+    }
     // RecipeCatalogTest compares hand-made "live" recipes with the mod's own recipe files.
     systemProperty 'cccloud.recipeDir', file('src/main/resources/data/cccloud/recipe').absolutePath
     testLogging {
