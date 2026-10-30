@@ -41,7 +41,13 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ScreenShots {
     /** One screenshot: what to open (server thread, the player is placed next to {@code at} first). */
-    private record Shot(String name, BlockPos at, Consumer<ServerPlayer> open) {
+    /** What the client does before the screenshot: nothing, open "Advanced", or press "Show in dashboard" and show the chat. */
+    private enum Extra { NONE, ADVANCED, DASHBOARD_LINK }
+
+    private record Shot(String name, BlockPos at, Consumer<ServerPlayer> open, Extra extra) {
+        Shot(String name, BlockPos at, Consumer<ServerPlayer> open) {
+            this(name, at, open, Extra.NONE);
+        }
     }
 
     private static final int SETTLE_TICKS = 140;
@@ -52,6 +58,8 @@ public final class ScreenShots {
     private static int wait;
     private static int index;
     private static volatile boolean built;
+    private static boolean toggled;
+    private static int phase;
 
     private ScreenShots() {
     }
@@ -109,9 +117,32 @@ public final class ScreenShots {
             }
             case 2 -> {
                 var shot = shots.get(index);
+                if (shot.extra() == Extra.DASHBOARD_LINK && phase < 2) {
+                    if (phase == 0 && mc.player.containerMenu instanceof ai.ezfox.cccloud.gui.UplinkMenu menu) {
+                        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(
+                            new ai.ezfox.cccloud.gui.GuiNetwork.UplinkActionPayload(menu.containerId, "dashboard", ""));
+                        wait = 20;
+                    } else {
+                        mc.player.closeContainer(); // the chat with the link
+                        wait = 10;
+                    }
+                    phase++;
+                    return;
+                }
+                if (shot.extra() == Extra.ADVANCED && !toggled && mc.screen instanceof ai.ezfox.cccloud.client.gui.UplinkScreen screen) {
+                    // Show the "Advanced" part for this shot only (the setting is remembered: closed again below).
+                    screen.setAdvancedOpen(true);
+                    screen.scrollToEnd();
+                    toggled = true;
+                    wait = 5;
+                    return;
+                }
                 CCCloud.LOGGER.info("[cccloud] Screen shot {}: screen = {}", shot.name(), mc.screen == null ? "none" : mc.screen.getClass().getSimpleName());
                 Screenshot.grab(dir(), shot.name() + ".png", mc.getMainRenderTarget(), 1,
                     msg -> CCCloud.LOGGER.info("[cccloud] Screen shot: {}", msg.getString()));
+                if (toggled && mc.screen instanceof ai.ezfox.cccloud.client.gui.UplinkScreen screen) screen.setAdvancedOpen(false);
+                toggled = false;
+                phase = 0;
                 index++;
                 step = 1;
                 wait = 5;
@@ -190,6 +221,8 @@ public final class ScreenShots {
             if (u != null) {
                 links.add(() -> u.bind(link, player));
                 shots.add(new Shot("uplink-energy-meter", u.getBlockPos(), p -> ai.ezfox.cccloud.gui.GuiNetwork.openUplink(p, u)));
+                shots.add(new Shot("uplink-energy-meter-advanced", u.getBlockPos(), p -> ai.ezfox.cccloud.gui.GuiNetwork.openUplink(p, u), Extra.ADVANCED));
+                shots.add(new Shot("uplink-dashboard-link", u.getBlockPos(), p -> ai.ezfox.cccloud.gui.GuiNetwork.openUplink(p, u), Extra.DASHBOARD_LINK));
             }
         }
 
@@ -259,7 +292,7 @@ public final class ScreenShots {
         if (relay != null) {
             relay.fillForTest();
             keepPowered = relay;
-            shots.add(new Shot("relay", relayPos, p -> relay.showStatus(p)));
+            shots.add(new Shot("relay", relayPos, p -> ai.ezfox.cccloud.gui.GuiNetwork.openRelay(p, relay)));
         }
         var behind = base.offset(-100, 0, 0);
         platform(level, behind, 5);
