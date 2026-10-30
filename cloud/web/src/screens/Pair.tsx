@@ -111,7 +111,7 @@ export function PairScreen({ initialCode, link }: { initialCode?: string; link?:
                 <span /> <span /> <span />
               </div>
               <pre class="pair-terminal-body">
-                {"> mainframe.status()\n"}
+                {"> server.status()\n"}
                 <span class="t-green">{"ONLINE"}</span>
                 {"\n> pairing code\n"}
                 <span class="t-gold">{code.length ? code.padEnd(9, "_") : "XXXX-XXXX"}</span>
