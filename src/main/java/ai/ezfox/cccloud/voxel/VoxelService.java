@@ -51,7 +51,7 @@ import org.jspecify.annotations.Nullable;
 public final class VoxelService {
     private static final int CACHE_SIZE = 8192;
     /** Bump when the build logic changes (invalidates input hashes). */
-    private static final int LOGIC_VERSION = 2;
+    private static final int LOGIC_VERSION = 3;
 
     private record Entry(long input, VoxelSection.Encoded encoded) {
     }
@@ -242,19 +242,37 @@ public final class VoxelService {
 
     private static final ThreadLocal<FriendlyByteBuf> HASH_BUFFER = ThreadLocal.withInitial(() -> new FriendlyByteBuf(Unpooled.buffer(16 * 1024)));
 
-    /** Hash of everything the section's encoding depends on: its states, the six neighbors, the nearby nodes. */
+    /**
+     * Hash of everything the section's encoding depends on: its own states, the touching layer of each of the six
+     * neighbors (only those decide exposure and the ore rule), and the nearby nodes. Activity elsewhere in a neighbor
+     * does not rebuild the section.
+     */
     @SuppressWarnings("unchecked")
     private static long inputHash(Object self, Object[] around, int[][] near) {
         var buf = HASH_BUFFER.get();
         buf.clear();
         buf.writeInt(LOGIC_VERSION);
-        for (int i = -1; i < around.length; i++) {
-            Object c = i < 0 ? self : around[i];
+        if (self == AIR) buf.writeByte(1);
+        else ((PalettedContainer<BlockState>) self).write(buf);
+        for (int f = 0; f < 6; f++) {
+            Object c = around[f];
             if (c == null) buf.writeByte(0);
             else if (c == AIR) buf.writeByte(1);
             else {
                 buf.writeByte(2);
-                ((PalettedContainer<BlockState>) c).write(buf);
+                var n = (PalettedContainer<BlockState>) c;
+                for (int a = 0; a < 16; a++) for (int b = 0; b < 16; b++) {
+                    // the neighbor's layer that touches this section: +x, -x, +y, -y, +z, -z
+                    var state = switch (f) {
+                        case 0 -> n.get(0, a, b);
+                        case 1 -> n.get(15, a, b);
+                        case 2 -> n.get(a, 0, b);
+                        case 3 -> n.get(a, 15, b);
+                        case 4 -> n.get(a, b, 0);
+                        default -> n.get(a, b, 15);
+                    };
+                    buf.writeVarInt(net.minecraft.world.level.block.Block.getId(state));
+                }
             }
         }
         for (var n : near) {

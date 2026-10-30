@@ -110,7 +110,11 @@ public final class VoxelTests {
         var owner = helper.makeMockPlayer(GameType.SURVIVAL);
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
         CloudGameTests.keepPowered(helper, mainframe);
-        var spot = new BlockPos(6, 2, 6);
+        // a quiet section above the test structures: other tests running next to this one must not change it or the
+        // touching layers of its neighbors (the cache key), so the spot is the third block of the section above
+        int originY = helper.absolutePos(BlockPos.ZERO).getY();
+        int sectionY = Math.floorDiv(originY + 13, 16) + 1;
+        var spot = new BlockPos(6, sectionY * 16 + 2 - originY, 6);
         helper.setBlock(spot, Blocks.STONE);
         var abs = helper.absolutePos(spot);
         var level = helper.getLevel();
@@ -132,16 +136,16 @@ public final class VoxelTests {
                 VoxelService.clearForTest();
                 step[0] = VoxelService.encode(level, section, mainframe.getMainframeId());
             })
-            .thenWaitUntil(() -> helper.assertTrue(step[0].isDone(), "built"))
+            .thenWaitUntil(() -> helper.assertTrue(step[0] != null && step[0].isDone(), "built"))
             .thenExecute(() -> step[1] = VoxelService.encode(level, section, mainframe.getMainframeId()))
-            .thenWaitUntil(() -> helper.assertTrue(step[1].isDone(), "asked again"))
+            .thenWaitUntil(() -> helper.assertTrue(step[1] != null && step[1].isDone(), "asked again"))
             .thenExecute(() -> {
                 helper.assertTrue(step[1].join().getFirst() == step[0].join().getFirst(), "an unchanged section comes from the cache");
                 helper.assertTrue(idAt.apply(1).equals("minecraft:stone"), "stone at the spot: " + idAt.apply(1));
                 helper.setBlock(spot, Blocks.GOLD_BLOCK); // a normal change (neighbor updates)
                 step[2] = VoxelService.encode(level, section, mainframe.getMainframeId());
             })
-            .thenWaitUntil(() -> helper.assertTrue(step[2].isDone(), "rebuilt"))
+            .thenWaitUntil(() -> helper.assertTrue(step[2] != null && step[2].isDone(), "rebuilt"))
             .thenExecute(() -> {
                 helper.assertTrue(step[2].join().getFirst() != step[1].join().getFirst(), "the changed section was rebuilt");
                 helper.assertTrue(idAt.apply(2).equals("minecraft:gold_block"), "the new block shows: " + idAt.apply(2));
@@ -149,7 +153,7 @@ public final class VoxelTests {
                 level.setBlock(abs, Blocks.DIAMOND_BLOCK.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_CLIENTS);
                 step[3] = VoxelService.encode(level, section, mainframe.getMainframeId());
             })
-            .thenWaitUntil(() -> helper.assertTrue(step[3].isDone(), "rebuilt without neighbor updates"))
+            .thenWaitUntil(() -> helper.assertTrue(step[3] != null && step[3].isDone(), "rebuilt without neighbor updates"))
             .thenExecute(() -> {
                 helper.assertTrue(idAt.apply(3).equals("minecraft:diamond_block"), "a silent change shows too: " + idAt.apply(3));
                 var access = Access.resolver(server).resolve(owner.getUUID(), mainframe.getMainframeId());
@@ -157,13 +161,14 @@ public final class VoxelTests {
                 have.add(step[3].join().getFirst().hashHex());
                 batch[0] = MinecraftBridge.voxelBatch(server, access, owner.getUUID(), mainframe.getMainframeId(), dim, section, have, false);
             })
-            .thenWaitUntil(() -> helper.assertTrue(batch[0].isDone(), "batch answered"))
+            .thenWaitUntil(() -> helper.assertTrue(batch[0] != null && batch[0].isDone(), "batch answered"))
             .thenExecute(() -> {
                 var r = batch[0].join();
                 helper.assertTrue(r.status() == 200 && r.body() != null, "batch: " + r.status() + " " + r.error());
                 var read = ai.ezfox.cccloud.voxel.VoxelBatch.read(r.body());
                 helper.assertTrue(read.size() == 1 && read.getFirst().status() == ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME,
                     "the dashboard's current hash gets same: " + read);
+                helper.setBlock(spot, Blocks.AIR); // outside the structure: not cleaned up by the framework
             })
             .thenSucceed();
     }
