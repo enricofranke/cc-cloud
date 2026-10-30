@@ -51,14 +51,16 @@ public final class PeripheralCard extends BlockCard<BlockEntity> {
     private static long budgetTick = -1;
     private static long budgetUsed;
 
-    private final IPeripheral peripheral;
-    private final PeripheralMethods.Discovery discovery;
+    private IPeripheral peripheral;
+    /** Replaced when the block hands out a new but equivalent peripheral object (read by snapshots on any thread). */
+    private volatile PeripheralMethods.Discovery discovery;
     private volatile PeripheralValues.Settings settings = PeripheralValues.Settings.EMPTY;
     private int revision;
     private int seconds;
     private int interval;
     private int nextPoll;
     private boolean stale;
+    private int rechecks;
     private final Map<String, Integer> pausedUntil = new HashMap<>();
 
     PeripheralCard(ServerLevel level, BlockPos pos, Direction side, BlockEntity be, IPeripheral peripheral, PeripheralMethods.Discovery discovery) {
@@ -111,6 +113,11 @@ public final class PeripheralCard extends BlockCard<BlockEntity> {
     @Override
     public int revision() {
         return revision;
+    }
+
+    /** How often the peripheral was looked up again (tests). */
+    public int rechecks() {
+        return rechecks;
     }
 
     /** The getters the owner may pick (tests). */
@@ -168,10 +175,21 @@ public final class PeripheralCard extends BlockCard<BlockEntity> {
                 : "Pick up to " + PeripheralValues.MAX_VALUES + ": Edit, then click this card");
         }
         if (seconds % RECHECK == 0) {
+            rechecks++;
             var now = find(level, pos, side);
-            if (now == null || !now.equals(peripheral)) {
+            if (now == null) {
                 stale = true;
                 return;
+            }
+            if (!now.equals(peripheral)) {
+                // CC builds a new generic peripheral object on every lookup; only a different set of methods is a new card
+                var fresh = PeripheralMethods.discover(level.getServer(), now);
+                if (!sameShape(fresh, discovery)) {
+                    stale = true;
+                    return;
+                }
+                peripheral = now;
+                discovery = fresh;
             }
         }
         if (seconds < nextPoll || (s.show().isEmpty() && s.toggle() == null)) return;
@@ -215,6 +233,16 @@ public final class PeripheralCard extends BlockCard<BlockEntity> {
         if (took > SLOW_NANOS) interval = Math.min(MAX_INTERVAL, interval * 2);
         else if (took < SLOW_NANOS / 4) interval = Math.max(baseInterval(), interval / 2);
         nextPoll = seconds + interval;
+    }
+
+    /** Same type and the same getters (with the same kind of result) and setters: the card's widgets still fit. */
+    static boolean sameShape(PeripheralMethods.Discovery a, PeripheralMethods.Discovery b) {
+        if (!a.type().equals(b.type()) || !a.getters().keySet().equals(b.getters().keySet()) || !a.setters().keySet().equals(b.setters().keySet())) return false;
+        for (var e : a.getters().entrySet()) {
+            var other = b.getters().get(e.getKey());
+            if (other.bool() != e.getValue().bool() || other.numeric() != e.getValue().numeric()) return false;
+        }
+        return true;
     }
 
     /** The getter that reports a setter's state ({@code isEnabled} / {@code getEnabled} for {@code setEnabled}), if any. */

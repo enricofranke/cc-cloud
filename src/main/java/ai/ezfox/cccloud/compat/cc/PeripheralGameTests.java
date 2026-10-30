@@ -40,6 +40,7 @@ public final class PeripheralGameTests {
 
     // ---- test peripheral ---------------------------------------------------------------------------------------------
 
+    private static final PeripheralCard[] CARD = {null};
     private static final Map<BlockEntity, TestPeripheral> PERIPHERALS = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** GameTest runs only ({@code -Dcccloud.gametest}): lecterns offer {@link TestPeripheral}. */
@@ -181,6 +182,13 @@ public final class PeripheralGameTests {
                 var chart = uplink(helper).getWidget("c1");
                 helper.assertTrue(chart != null && chart.type() == WidgetType.CHART, "size chart");
                 helper.assertTrue(uplink(helper).getWidget(PeripheralCard.HINT) == null, "no hint with values");
+            })
+            // CC hands out a new generic peripheral object on every lookup: the card stays (no rebuild every 10 s)
+            .thenExecute(() -> CARD[0] = card(helper))
+            .thenWaitUntil(() -> helper.assertTrue(CARD[0].rechecks() >= 2, "looked up again"))
+            .thenExecute(() -> {
+                helper.assertTrue(uplink(helper).deviceCard() == CARD[0], "same card after the lookups");
+                helper.assertTrue("27".equals(text(helper, "v1")), "values still read");
             })
             // the chest is replaced by another chest: a new card, the saved settings come back
             .thenExecute(() -> helper.setBlock(DEVICE, Blocks.STONE))
