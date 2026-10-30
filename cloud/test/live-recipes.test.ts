@@ -171,3 +171,15 @@ describe("names and icons from the server", () => {
     expect(iconItem("#c:nuggets/gold")).toBe("minecraft:gold_nugget");
   });
 });
+
+describe("pack makers section", () => {
+  it("lists every recipe id in both languages", () => {
+    for (const lang of ["en", "de"] as const) {
+      const md = CONTENT[lang].recipes;
+      for (const r of ALL_RECIPES) expect(md, `${lang} ${r.file}`).toContain(`\`cccloud:${r.file}\``);
+      expect(md).toContain("{#pack-makers}");
+      expect(md).toContain("ServerEvents.recipes");
+      expect(md).toContain("AlmostUnified");
+    }
+  });
+});

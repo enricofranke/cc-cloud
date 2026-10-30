@@ -317,11 +317,16 @@ export const RECIPE_GROUPS: { id: string; en: string; de: string; match: (r: Gen
 export function groupOf(r: GenRecipe) {
   return RECIPE_GROUPS.find((g) => g.match(r))?.id ?? "misc";
 }
-/** Markdown for one group: a heading per item, then its recipes (normal and fallback). */
 const NAMES = GEN.names as Record<string, { en: string; de: string }>;
+const EXTRA_NAMES: Record<string, { en: string; de: string }> = { "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" } };
+/** Name of a recipe result (our items from the lang files). */
+function resultName(id: string, lang: "en" | "de") {
+  return NAMES[id]?.[lang] ?? EXTRA_NAMES[id]?.[lang] ?? id.replace(/^[a-z0-9_]+:/, "").replace(/_/g, " ");
+}
+
+/** Markdown for one group: a heading per item, then its recipes (normal and fallback). */
 export function recipeSection(groupId: string, lang: "en" | "de") {
-  const EXTRA: Record<string, { en: string; de: string }> = { "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" } };
-  const name = (id: string) => NAMES[id]?.[lang] ?? EXTRA[id]?.[lang] ?? id.replace(/^[a-z0-9_]+:/, "").replace(/_/g, " ");
+  const name = (id: string) => resultName(id, lang);
   const rs = ALL_RECIPES.filter((r) => groupOf(r) === groupId);
   const results = [...new Set(rs.map((r) => r.result))];
   return results
@@ -331,6 +336,42 @@ export function recipeSection(groupId: string, lang: "en" | "de") {
     })
     .join("\n\n");
 }
+
+/** "For pack makers": every recipe id, what it makes and when it is loaded (generated, so it cannot drift). */
+export function recipeIdTable(lang: "en" | "de") {
+  const de = lang === "de";
+  const when = (r: GenRecipe) =>
+    !r.requires?.length
+      ? de ? "immer" : "always"
+      : r.requires
+          .map((c) => {
+            const mod = MOD_NAMES[c.replace(/^!?mod:/, "")] ?? c.replace(/^!?mod:/, "");
+            return c.startsWith("!") ? (de ? `ohne ${mod}` : `without ${mod}`) : de ? `mit ${mod}` : `with ${mod}`;
+          })
+          .join(", ");
+  const rows = ALL_RECIPES.map((r) => `| \`cccloud:${r.file}\` | ${resultName(r.result, lang)}${r.count ? ` ×${r.count}` : ""} | ${when(r)} |`);
+  return [de ? "| Rezept-ID | Ergebnis | Geladen |" : "| Recipe id | Makes | Loaded |", "|---|---|---|", ...rows].join("\n");
+}
+
+/** KubeJS example for the pack makers' section (comments in English: it is a script). */
+export const KUBEJS_RECIPES = `// kubejs/server_scripts/cccloud_recipes.js – then /reload
+ServerEvents.recipes(event => {
+  // Swap an ingredient: the recipe keeps its id (dashboard: "changed")
+  event.replaceInput({ id: 'cccloud:cloud_mainframe' }, '#c:ingots/gold', '#c:ingots/steel')
+
+  // Replace a recipe: remove ours, add your own
+  // (dashboard: ours "not craftable on this server", yours "added")
+  event.remove({ id: 'cccloud:cloud_core' })
+  event.shaped('2x cccloud:cloud_core', ['NPN', 'PEP', 'NPN'], {
+    N: '#c:nuggets/iron',
+    P: 'minecraft:prismarine_shard',
+    E: '#c:ender_pearls'
+  }).id('kubejs:cloud_core')
+})`;
+
+export const DATAPACK_REMOVE = `{
+  "neoforge:conditions": [{ "type": "neoforge:never" }]
+}`;
 
 export const recipe = (r: object) => `${FENCE}recipe\n${JSON.stringify(r)}\n${FENCE}`;
 export const code = (lang: string, src: string) => `${FENCE}${lang}\n${src}\n${FENCE}`;
