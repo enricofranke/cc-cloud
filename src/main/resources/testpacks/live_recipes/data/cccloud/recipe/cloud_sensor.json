@@ -1,0 +1,17 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:never"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "C": "minecraft:comparator"
+  },
+  "pattern": [
+    "C"
+  ],
+  "result": {
+    "id": "cccloud:cloud_sensor"
+  }
+}

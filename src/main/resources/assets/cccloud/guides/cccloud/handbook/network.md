@@ -42,13 +42,13 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
 
 ### Cloud Relay
-<RecipeFor id="cccloud:cloud_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Advanced Cloud Relay
-<RecipeFor id="cccloud:advanced_cloud_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:advanced_cloud_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Ender Relay
-<RecipeFor id="cccloud:ender_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:ender_relay" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 > **Tip:** If linking fails, the message names the nearest node and how far away it is. Place a relay in between.
 

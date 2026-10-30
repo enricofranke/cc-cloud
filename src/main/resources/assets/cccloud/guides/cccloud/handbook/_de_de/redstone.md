@@ -64,14 +64,14 @@ In der Welt schaltet ein Klick einen Schalter oder eine Lampe und drückt einen 
 ## Rezepte
 
 ### Cloud-Schalter
-<RecipeFor id="cccloud:cloud_switch" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_switch" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud-Taster
-<RecipeFor id="cccloud:cloud_button" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_button" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud-Lampe
-<RecipeFor id="cccloud:cloud_lamp" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_lamp" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud-Sensor
-<RecipeFor id="cccloud:cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 

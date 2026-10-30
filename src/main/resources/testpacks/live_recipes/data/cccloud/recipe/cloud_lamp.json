@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "minecraft:glowstone_dust",
+    "N": "#c:nuggets/gold",
+    "L": "minecraft:redstone_lamp"
+  },
+  "pattern": [
+    " G ",
+    "NLN"
+  ],
+  "result": {
+    "id": "cccloud:cloud_lamp"
+  }
+}

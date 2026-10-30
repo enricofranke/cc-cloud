@@ -1,6 +1,7 @@
 import { de } from "./de.ts";
 import GEN from "./recipes.gen.json" with { type: "json" };
 import { en } from "./en.ts";
+import { MOD_NAMES } from "./code.ts";
 import type { IconName } from "../../lib/layout.ts";
 
 import type { Lang } from "../../lib/lang.ts";
@@ -53,6 +54,19 @@ export const UI: Record<Lang, Record<string, string>> = {
     requires: "Needs",
     without: "Only without",
     result: "Result",
+    liveTitle: "Live recipes of this server.",
+    liveAllDefault: "All as shipped with the mod.",
+    liveChanged: "changed",
+    liveAdded: "added",
+    liveRemoved: "removed",
+    liveFallback: "The mod's default recipes – this server's live recipes could not be loaded. Modpacks can change recipes; JEI/EMI and the in-game handbook show the live ones.",
+    badgeChanged: "Changed by this server/modpack",
+    badgeAdded: "Added by this server/modpack",
+    badgeRemoved: "Not craftable on this server",
+    inactive: "not active on this server",
+    defaultRecipe: "Default recipe",
+    madeWith: "Made with",
+    addedHere: "Added by this server",
   },
   de: {
     docs: "Doku",
@@ -72,6 +86,19 @@ export const UI: Record<Lang, Record<string, string>> = {
     requires: "Braucht",
     without: "Nur ohne",
     result: "Ergebnis",
+    liveTitle: "Live-Rezepte dieses Servers.",
+    liveAllDefault: "Alle wie in der Mod.",
+    liveChanged: "geändert",
+    liveAdded: "hinzugefügt",
+    liveRemoved: "entfernt",
+    liveFallback: "Die Standard-Rezepte der Mod – die aktuellen Rezepte dieses Servers ließen sich nicht laden. Modpacks können Rezepte ändern; JEI/EMI und das Handbuch im Spiel zeigen die aktuellen.",
+    badgeChanged: "Von diesem Server/Modpack geändert",
+    badgeAdded: "Von diesem Server/Modpack hinzugefügt",
+    badgeRemoved: "Auf diesem Server nicht herstellbar",
+    inactive: "auf diesem Server nicht aktiv",
+    defaultRecipe: "Standard-Rezept",
+    madeWith: "Hergestellt mit",
+    addedHere: "Von diesem Server hinzugefügt",
   },
 };
 
@@ -123,7 +150,7 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   ...GEN.names,
 };
 /** Mod names for recipe conditions ("requires …"). */
-export const MODS: Record<string, string> = { guideme: "GuideME", allthemodium: "AllTheModium", allthetweaks: "All The Tweaks", ae2: "Applied Energistics 2", refinedstorage: "Refined Storage" };
+export const MODS: Record<string, string> = MOD_NAMES;
 
 /** Tags have no icon of their own: show a typical member. */
 const TAG_ICON: Record<string, string> = {
@@ -138,13 +165,31 @@ const TAG_ICON: Record<string, string> = {
   "#c:ingots/unobtainium": "allthemodium:unobtainium_ingot",
   "#c:gems/diamond": "minecraft:diamond",
 };
-export function iconItem(id: string) {
-  return TAG_ICON[id] ?? id.replace(/^#/, "");
+/** What the server knows on top (live recipes): a representative item per tag and English names of other mods' items. */
+export interface ServerItems {
+  icons?: Record<string, string>;
+  names?: Record<string, string>;
 }
 
-export function itemName(id: string, lang: Lang) {
-  const n = ITEMS[id]?.[lang];
-  if (n) return id.startsWith("#") ? `${n} (${UI[lang].any})` : n;
+/** The item whose icon an ingredient shows: a tag's typical member, the first of several alternatives ("a|b"). */
+export function iconItem(id: string, server?: ServerItems) {
+  const first = id.split("|")[0];
+  return server?.icons?.[first] ?? TAG_ICON[first] ?? first.replace(/^#/, "");
+}
+
+export function itemName(id: string, lang: Lang, server?: ServerItems): string {
+  if (id.includes("|")) {
+    const parts = id.split("|");
+    return parts
+      .slice(0, 3)
+      .map((p) => itemName(p, lang, server))
+      .concat(parts.length > 3 ? ["…"] : [])
+      .join(" / ");
+  }
+  const tag = id.startsWith("#");
+  const rep = tag ? server?.icons?.[id] : undefined;
+  const n = ITEMS[id]?.[lang] ?? (tag ? (rep ? ITEMS[rep]?.[lang] ?? server?.names?.[rep] : undefined) : server?.names?.[id]);
+  if (n) return tag ? `${n} (${UI[lang].any})` : n;
   return id.replace(/^#?[a-z0-9_.-]+:/, "").replace(/[_/]/g, " ");
 }
 

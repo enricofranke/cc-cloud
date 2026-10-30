@@ -24,6 +24,8 @@ public class CCCloud {
         // GameTest runs only: test machines for the Cloud Probe / side tests and a claim stand-in (ProbeTests).
         if (Boolean.getBoolean("cccloud.gametest")) {
             modEventBus.addListener(ai.ezfox.cccloud.gametest.ProbeTests::registerTestCapabilities);
+            // A datapack that overrides, removes and adds recipes like a modpack does (RecipeCatalogTests).
+            modEventBus.addListener(ai.ezfox.cccloud.gametest.RecipeCatalogTests::addTestPack);
             ai.ezfox.cccloud.gametest.ProbeTests.init();
         }
         CloudNetwork.init();
@@ -48,6 +50,8 @@ public class CCCloud {
         ai.ezfox.cccloud.web.WebHub.browserLimit = id -> ai.ezfox.cccloud.network.CloudNetwork.server() == null ? Integer.MAX_VALUE
             : ai.ezfox.cccloud.upgrade.Upgrades.effects(id).browsers();
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
+        // Live recipes for the dashboard docs (GET /api/recipes), rebuilt after /reload.
+        ai.ezfox.cccloud.recipes.RecipeCatalog.init();
         ai.ezfox.cccloud.voxel.BlockTextureService.init(modEventBus);
         // Config changes (ranges, power) change the topology.
         modEventBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> ai.ezfox.cccloud.network.NetworkService.markDirty());

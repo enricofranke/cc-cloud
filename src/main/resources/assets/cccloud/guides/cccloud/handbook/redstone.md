@@ -64,14 +64,14 @@ In the world, a click switches a switch or a lamp and presses a button. **Sneak 
 ## Recipes
 
 ### Cloud Switch
-<RecipeFor id="cccloud:cloud_switch" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_switch" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Button
-<RecipeFor id="cccloud:cloud_button" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_button" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Lamp
-<RecipeFor id="cccloud:cloud_lamp" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_lamp" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Sensor
-<RecipeFor id="cccloud:cloud_sensor" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_sensor" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 

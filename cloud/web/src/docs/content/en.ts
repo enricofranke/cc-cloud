@@ -754,7 +754,9 @@ This page is generated from the compatibility manifest (docs/COMPAT.md in the so
 `,
   recipes: `# All recipes
 
-Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). JEI or EMI show the same in-game.
+Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it).
+
+Modpacks can change recipes (datapacks, KubeJS, CraftTweaker). JEI/EMI and the in-game handbook always show the recipes of the world you play in; so do the docs in your server's dashboard, which mark what the server changed (**Changed by this server/modpack**) or removed (**Not craftable on this server**).
 
 ## Basics {#basics}
 
@@ -783,6 +785,28 @@ ${C.recipeSection("upgrades", "en")}
 ## Other {#misc}
 
 ${C.recipeSection("misc", "en")}
+
+## For pack makers {#pack-makers}
+
+The recipes are made to be changed by modpacks:
+
+- **Stable recipe ids.** Every recipe is \`cccloud:<name>\` ([list below](/docs/recipes#recipe-ids)) and keeps its id across versions. Override one with a datapack file \`data/cccloud/recipe/<name>.json\`, remove it with a file that only holds a \`neoforge:never\` condition (below), or use KubeJS / CraftTweaker.
+- **Tags instead of items.** Ingredients use the common \`c:\` tags (\`#c:ingots/gold\`, \`#c:nuggets/gold\`, \`#c:ender_pearls\`, \`#c:dusts/redstone\`, \`#c:glass_panes\`, \`#c:gems/diamond\`, \`#c:storage_blocks/gold\`, \`#c:ingots/vibranium\` …), so unification mods such as AlmostUnified swap the material without touching these recipes.
+- **Conditional AllTheModium recipes.** The mainframe upgrades and the Cloud Probe use AllTheModium metals when AllTheModium is installed (\`neoforge:mod_loaded\`); without it their \`*_fallback\` variant (diamond, netherite, nether star) loads instead (\`neoforge:not\`). Likewise the Ender Fiber Link (\`ender_fiber_link_unobtainium\` with AllTheModium, \`ender_fiber_link\` without) and the Quantum Core (the ATM Star of All The Tweaks, \`quantum_core_fallback\` without it). When you change one of them, change both ids – the table below says which one loads when.
+- **FTB Quests:** the CC: Cloud chapters use item tasks (have or craft the item), never recipe ids – they keep working whatever you change.
+- **What players see:** JEI/EMI, the in-game handbook and the server's dashboard show the live recipes; the dashboard marks changed, added and removed ones. The website shows the defaults.
+
+Remove a recipe with a datapack (\`data/cccloud/recipe/cloud_core.json\` in your pack):
+
+${code("json", C.DATAPACK_REMOVE)}
+
+### KubeJS {#kubejs}
+
+${code("js", C.KUBEJS_RECIPES)}
+
+### Recipe ids {#recipe-ids}
+
+${C.recipeIdTable("en")}
 `,
   // --------------------------------------------------------------- bridges
   bridges: `# Bridges: AE2 and Refined Storage

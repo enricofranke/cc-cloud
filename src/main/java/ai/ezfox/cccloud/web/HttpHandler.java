@@ -465,6 +465,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case API_OPENAPI -> ApiHandler.openApi(this, instance, ctx, req);
             case API_PREFLIGHT -> ApiHandler.preflight(this, instance, ctx, req);
             case ICON -> icon(ctx, req, ip, path);
+            case RECIPES -> recipes(ctx, req, ip);
             case CONFIG -> sendJson(ctx, req, HttpResponseStatus.OK, PublicConfig.json());
             case VOXEL_ATLAS -> voxelAtlas(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
@@ -539,6 +540,50 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             return;
         }
         sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("no_icon"));
+    }
+
+    // ---- /api/recipes ------------------------------------------------------------------------------------------------
+
+    /** Max recipe catalog requests per minute per IP (the docs fetch it once per visit). */
+    static final int RECIPES_RATE = 60;
+
+    /**
+     * The live recipes of CC: Cloud items (public like the docs: game data only). Built once per recipe reload off the
+     * server thread and cached; revalidated with the ETag ({@code no-cache}), since a {@code /reload} can change it.
+     */
+    private void recipes(ChannelHandlerContext ctx, FullHttpRequest req, String ip) {
+        if (instance.recipeLimits.size() > 10_000) instance.recipeLimits.clear();
+        if (!instance.recipeLimits.computeIfAbsent(ip, k -> new TokenBucket(RECIPES_RATE, RECIPES_RATE / 60.0)).tryAcquire()) {
+            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            return;
+        }
+        String ifNoneMatch = req.headers().get(HttpHeaderNames.IF_NONE_MATCH);
+        req.retain();
+        CompletableFuture.supplyAsync(instance.bridge::recipes, instance.bridge.serverExecutor())
+            .thenCompose(f -> f)
+            .orTimeout(10, TimeUnit.SECONDS)
+            .whenComplete((recipes, err) -> ctx.executor().execute(() -> {
+                try {
+                    if (err != null) {
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (recipes == null) {
+                        sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_available"));
+                    } else if (recipes.etag().equals(ifNoneMatch)) {
+                        var notModified = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_MODIFIED, Unpooled.EMPTY_BUFFER);
+                        notModified.headers().set(HttpHeaderNames.ETAG, recipes.etag());
+                        notModified.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache");
+                        write(ctx, req, notModified);
+                    } else {
+                        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(recipes.json()));
+                        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8");
+                        response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-cache");
+                        response.headers().set(HttpHeaderNames.ETAG, recipes.etag());
+                        write(ctx, req, response);
+                    }
+                } finally {
+                    req.release();
+                }
+            }));
     }
 
     // ---- /api/pair ---------------------------------------------------------------------------------------------------

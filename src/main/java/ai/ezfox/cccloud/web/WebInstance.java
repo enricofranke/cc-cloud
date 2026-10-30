@@ -34,6 +34,8 @@ final class WebInstance {
     final ConnectionLimiter limiter;
     /** /api/icon: 200 requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> iconLimits = new java.util.concurrent.ConcurrentHashMap<>();
+    /** /api/recipes: 60 requests per minute per IP. */
+    final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> recipeLimits = new java.util.concurrent.ConcurrentHashMap<>();
     final FailureLimiter pairLimiter = new FailureLimiter(5, 60_000, System::currentTimeMillis);
     /** v0.6 API: requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> apiLimits = new java.util.concurrent.ConcurrentHashMap<>();

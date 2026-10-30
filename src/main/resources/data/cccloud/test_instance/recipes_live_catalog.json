@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:recipes_live_catalog",
+  "max_ticks": 400,
+  "structure": "cccloud:test_floor"
+}

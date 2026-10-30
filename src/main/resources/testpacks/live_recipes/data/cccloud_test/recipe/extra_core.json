@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "minecraft:ender_pearl",
+    ["minecraft:oak_planks", "minecraft:spruce_planks"]
+  ],
+  "result": {
+    "id": "cccloud:cloud_core"
+  }
+}

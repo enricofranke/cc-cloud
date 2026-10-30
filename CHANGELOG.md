@@ -4,6 +4,18 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Live recipes in the dashboard docs – right grids on modpack servers
+- The dashboard's recipes now come from the server: packs that change CC: Cloud recipes with datapacks, KubeJS or
+  CraftTweaker (All the Mods, …) no longer get the mod's default grids in `/docs`. A changed recipe carries the badge
+  "Changed by this server/modpack" (the default one click away), a removed one "Not craftable on this server", a
+  recipe the pack added for one of our items "Added by this server/modpack"; conditional variants that do not load on
+  this server (AllTheModium vs. `*_fallback`) shrink to one line. Without a server (offline) the defaults show as before.
+- New read-only endpoint `GET /api/recipes`: public like the docs and item icons (game data only; LAN-only rule,
+  60 requests per minute per IP), only our items' recipes, built once per recipe reload (`/reload`, KubeJS) and cached.
+- The website's recipes page says that it shows the defaults. The recipes page ends with "For pack makers": every
+  recipe id, the `c:` tags (AlmostUnified), the AllTheModium / `*_fallback` variants, removing a recipe with a
+  datapack, a KubeJS example, and that the FTB Quests chapters use items, not recipes.
+
 ### Cloud Redstone devices – a lamp on your phone without a computer
 - Four small blocks that are linked with the Link Card like an uplink – no computer, no Lua, no channels:
   **Cloud Switch** (on any face like a lever, strong into its block and weak around; on/off or analog 0–15),
