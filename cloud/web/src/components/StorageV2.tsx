@@ -67,6 +67,9 @@ export function Sparkline({ data, label }: { data: number[]; label: string }) {
   );
 }
 
+
+/** Rows the browser loads by scrolling at most (a big ME system has tens of thousands; docs/SPEC.md "Scaling"). */
+const MAX_BROWSE_ROWS = 1000;
 function StateBadge({ state, auto }: { state?: StockState; auto?: boolean }) {
   if (!auto || !state) return null;
   return <span class={`stock-badge sb-${state}`}>{state === "idle" ? "auto" : STATE_TEXT[state]}</span>;
@@ -483,7 +486,7 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
     const el = sentinel.current;
     if (!el) return;
     const io = new IntersectionObserver((es) => {
-      if (es.some((e) => e.isIntersecting) && !loading && rows.length < total) loadPage(rows.length);
+      if (es.some((e) => e.isIntersecting) && !loading && rows.length < total && rows.length < MAX_BROWSE_ROWS) loadPage(rows.length);
     });
     io.observe(el);
     return () => io.disconnect();
@@ -554,7 +557,15 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
             </ul>
             {!loading && rows.length === 0 && !error && <p class="store-note">{filter === "favorites" ? "No favourites yet – pin items with ☆." : q ? `Nothing matches “${q}”.` : "The storage is empty."}</p>}
             <div ref={sentinel} class="sb-more">
-              {loading ? "Loading…" : rows.length < total ? `${rows.length} of ${total}` : total ? `${total} items` : ""}
+              {loading
+                ? "Loading…"
+                : rows.length >= MAX_BROWSE_ROWS && rows.length < total
+                  ? `${rows.length} of ${total} – search to find the rest`
+                  : rows.length < total
+                    ? `${rows.length} of ${total}`
+                    : total
+                      ? `${total} items`
+                      : ""}
             </div>
           </>
         )}
