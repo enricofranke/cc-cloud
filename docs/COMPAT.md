@@ -91,6 +91,20 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | JourneyMap (`journeymap`) | 6.0.10 (API 2.0.0) | client plugin (`client/compat/journeymap`, found by JourneyMap's `@JourneyMapPlugin`): nodes of every network where the player has `view.positions` as temporary (non-persistent) waypoints in one JourneyMap waypoint group "CC: Cloud" (switch the group off in JourneyMap's waypoint manager to hide them all; the group and that choice are kept). Client config `journeyMapWaypoints` (default true) and `journeyMapWaypointTypes` (default `mainframe`, `ender_relay`; also `relay`, `uplink`, `bridge`). Only mainframes get JourneyMap's in-world marker and beam, everything else shows on the map only. Names: the device's card title (computer label, Lua title, machine card) or the block's name ("Cloud Mainframe", "Ender Relay"), coloured by type. The client subscribes with the `map_nodes_subscribe` payload; the server (`map/MapNodesService`) re-checks the permission every 5 s, sends `map_nodes` only when it changed, at most 512 nodes; the client filters by type. | client config | server part yes (GameTest `map_nodes_filtering`: owner gets his network, a stranger nothing, no payload without subscription; unit tests `MapNodesTest`, `MapWaypointsTest`: default types, map-only devices, names); the JourneyMap side needs a client and is untested |
 | FTB Chunks | – | already done in v0.5 (Claims card + overlay) | – | – |
 
+**FTB Quests chapters (auto-install).** Besides the card, the standard jar (`cccloud-<version>.jar`) carries the two quest
+chapters of `integration/ftbquests` (CC: Tweaked, 24 quests; CC: Cloud, 39 quests) and adds them to
+`config/ftbquests/quests` once, on `ServerAboutToStartEvent` – before FTB Quests 26.1.2.9 reads its book on
+`ServerStartedEvent`. Backup first; foreign chapters and existing texts are never replaced; ATM11's Tech group or a new
+"CC: Cloud" group; nothing at all if one of our ids is already used; the CC: Tweaked chapter only when the book has no
+CC: Tweaked chapter of its own. A marker (`config/cccloud/quests-installed.json`) makes it once only (a deleted chapter is
+not added again) and lets later versions update only chapters and texts nobody changed (content hashes that survive
+FTB Quests re-saving the book). Config `installQuests` in `cccloud-server.toml` (default true). Modpacks use the modpack
+edition (`cccloud-<version>-modpack.jar`: no quest files, `installQuests` false) and the release zip
+`cccloud-quests-atm11-<version>.zip`. Tested: unit tests (`compat/ftbquests/install`) and the GameTests
+`ftbquests_install` (fresh book, an FTB Quests re-save then an update, a pack with its own CC: Tweaked chapter,
+`installQuests = false`, modpack edition, deleted and edited chapters – each result loaded with FTB Quests' own reader)
+and `ftbquests_install_live` (the server's own book was installed before FTB Quests loaded it).
+
 ### 9. In-game handbook
 
 | Mod (id) | Version | What | Tested |

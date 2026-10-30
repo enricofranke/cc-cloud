@@ -58,3 +58,9 @@ To keep a base running while you are away, keep its chunks loaded: **force-load*
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with `/cccloud pin set`.
 
+## No quests after installing the mod
+
+- The server needs **FTB Quests** and the standard jar `cccloud-<version>.jar` – the modpack edition never adds quests.
+- The server log says what happened: look for `FTB Quests:` (for example `installQuests = false`, an id that is already used in the quest book, or a chapter that was deleted earlier).
+- The quests are added once; a deleted chapter does not come back. To start over, delete `config/cccloud/quests-installed.json` and restart. See [Quests](index.md).
+

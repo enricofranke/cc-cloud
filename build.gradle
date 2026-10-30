@@ -484,6 +484,109 @@ tasks.register('exportIcons', JavaExec) {
     outputs.upToDateWhen { false }
 }
 
+// Release asset next to the jar: the FTB Quests chapters as a ready-to-use quest pack (integration/ftbquests/README.md).
+// The quests are not inside the jar; they belong to the pack's quest book, which a server admin installs once.
+// build/distributions/cccloud-quests-atm11-<version>.zip: one top folder with quests/, install.sh, README.txt, LICENSE.
+def questPack = tasks.register('questPack', Zip) {
+    group = 'distribution'
+    description = 'Zips the FTB Quests chapters, install.sh and README.txt into build/distributions/cccloud-quests-atm11-<version>.zip.'
+    def packName = "cccloud-quests-atm11-${mod_version}".toString()
+    def packVersion = mod_version.toString()
+    archiveFileName = "${packName}.zip"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    into(packName) {
+        from('integration/ftbquests/quests') { into 'quests' }
+        from('integration/ftbquests/install.sh') { filePermissions { unix('rwxr-xr-x') } }
+        from('integration/ftbquests/release/README.txt') { filter { String line -> line.replace('@VERSION@', packVersion) } }
+        from('LICENSE')
+    }
+}
+tasks.named('assemble') { dependsOn questPack }
+
+// Values for the neoforge.mods.toml template (src/main/templates): the standard jar (generateModMetadata) and the
+// modpack jar (generateModpackMetadata), whose description adds an edition line.
+def modMetadataProperties = [
+        minecraft_version      : minecraft_version,
+        minecraft_version_range: minecraft_version_range,
+        neo_version            : neo_version,
+        cct_version            : cct_version,
+        mod_id                 : mod_id,
+        mod_name               : mod_name,
+        mod_license            : mod_license,
+        mod_version            : mod_version,
+        mod_edition_description: '',
+]
+
+// The FTB Quests chapters (integration/ftbquests/quests stays the single source) go into the jar as /cccloud_quests/;
+// the standard edition adds them to the quest book on server start (compat/ftbquests/QuestAutoInstall).
+tasks.named('processResources', ProcessResources) {
+    from('integration/ftbquests/quests') { into 'cccloud_quests' }
+}
+
+// Modpack edition (cccloud-<version>-modpack.jar): the same classes, mod id and version as the standard jar, but no
+// quest files and /cccloud-edition.properties = "edition=modpack" (installQuests defaults to false, the installer does
+// nothing). Packs ship the chapters in their own quest book (cccloud-quests-atm11-<version>.zip). Only the mod
+// description says "Modpack Edition".
+var generateModpackMetadata = tasks.register("generateModpackMetadata", ProcessResources) {
+    var replaceProperties = modMetadataProperties + [mod_edition_description: 'Modpack Edition: without the FTB Quests chapters and their auto-install ' +
+            '(installQuests defaults to false); modpacks ship the chapters in their own quest book.\n']
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/modpackMetadata"
+}
+def modpackJar = tasks.register('modpackJar', Jar) {
+    group = 'build'
+    description = 'Builds the modpack edition: build/libs/cccloud-<version>-modpack.jar (no quest files, installQuests off).'
+    archiveClassifier = 'modpack'
+    from(zipTree(tasks.named('jar', Jar).flatMap { it.archiveFile })) {
+        exclude 'cccloud_quests/**', 'META-INF/neoforge.mods.toml', 'META-INF/MANIFEST.MF', 'cccloud-edition.properties'
+    }
+    from(generateModpackMetadata)
+    from('src/modpack') { include 'cccloud-edition.properties' }
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// Both downloads, checked after they are built: the standard jar has the quest files and no edition file; the modpack
+// jar has no quest files, edition=modpack, and the same mod id and version (packs can swap the two freely).
+def checkEditionJars = tasks.register('checkEditionJars') {
+    group = 'verification'
+    description = 'Checks the standard and the modpack jar (quest files, edition flag, mod id and version).'
+    def standardFile = tasks.named('jar', Jar).flatMap { it.archiveFile }
+    def modpackFile = modpackJar.flatMap { it.archiveFile }
+    def expectedVersion = mod_version.toString()
+    def expectedId = mod_id.toString()
+    inputs.files(standardFile, modpackFile)
+    doLast {
+        def read = { java.util.zip.ZipFile z, String name ->
+            def e = z.getEntry(name)
+            e == null ? null : new String(z.getInputStream(e).readAllBytes(), 'UTF-8')
+        }
+        def check = { boolean ok, String message -> if (!ok) throw new GradleException(message) }
+        new java.util.zip.ZipFile(standardFile.get().asFile).withCloseable { z ->
+            check(z.getEntry('cccloud_quests/chapters/cc_cloud.json5') != null, 'standard jar: quest files missing')
+            check(z.getEntry('cccloud-edition.properties') == null, 'standard jar: must not have cccloud-edition.properties')
+        }
+        new java.util.zip.ZipFile(modpackFile.get().asFile).withCloseable { z ->
+            def quests = z.entries().toList().findAll { it.name.startsWith('cccloud_quests/') || it.name.contains('ftbquests/quests') }
+            check(quests.isEmpty(), "modpack jar: contains quest files ${quests*.name}")
+            check(read(z, 'cccloud-edition.properties')?.contains('edition=modpack') == true, 'modpack jar: edition=modpack missing')
+            def toml = read(z, 'META-INF/neoforge.mods.toml')
+            check(toml != null && toml.contains("modId=\"${expectedId}\"") && toml.contains("version=\"${expectedVersion}\""), 'modpack jar: mod id/version differ')
+            check(toml.contains('Modpack Edition'), 'modpack jar: description does not name the edition')
+            check(toml.contains('displayName="CC: Cloud"'), 'modpack jar: display name changed')
+            check(z.getEntry('ai/ezfox/cccloud/CCCloud.class') != null, 'modpack jar: classes missing')
+            check(z.getEntry('META-INF/MANIFEST.MF') != null, 'modpack jar: manifest missing')
+        }
+    }
+}
+tasks.named('assemble') { dependsOn modpackJar }
+tasks.named('build') { dependsOn checkEditionJars }
+
 // The release jar carries no GameTest data (test instances reference test functions that are only registered in
 // development and on the GameTest server; testpacks/ are datapacks only GameTest runs enable); dev runs read the
 // resources directly and keep them.
@@ -492,16 +595,7 @@ tasks.named('jar', Jar) {
 }
 
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
-    var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            neo_version            : neo_version,
-            cct_version            : cct_version,
-            mod_id                 : mod_id,
-            mod_name               : mod_name,
-            mod_license            : mod_license,
-            mod_version            : mod_version,
-    ]
+    var replaceProperties = modMetadataProperties
     inputs.properties replaceProperties
     expand replaceProperties
     from "src/main/templates"
@@ -543,6 +637,8 @@ tasks.named('test', Test).configure {
     }
     // RecipeCatalogTest compares hand-made "live" recipes with the mod's own recipe files.
     systemProperty 'cccloud.recipeDir', file('src/main/resources/data/cccloud/recipe').absolutePath
+    // QuestPackTest checks that the shipped quest file list matches integration/ftbquests/quests.
+    systemProperty 'cccloud.questsDir', file('integration/ftbquests/quests').absolutePath
     testLogging {
         events "failed"
         exceptionFormat "full"

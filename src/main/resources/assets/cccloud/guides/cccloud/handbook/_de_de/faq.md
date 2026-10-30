@@ -58,3 +58,9 @@ Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: 
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit `/cccloud pin set` ändern.
 
+## Keine Quests nach der Installation
+
+- Der Server braucht **FTB Quests** und die normale Jar `cccloud-<version>.jar` – die Modpack-Edition fügt nie Quests hinzu.
+- Im Server-Log steht, was passiert ist: Suche nach `FTB Quests:` (zum Beispiel `installQuests = false`, eine ID, die im Questbuch schon vergeben ist, oder ein Kapitel, das früher gelöscht wurde).
+- Die Quests kommen nur einmal; ein gelöschtes Kapitel kommt nicht wieder. Für einen Neuanfang `config/cccloud/quests-installed.json` löschen und neu starten. Siehe [Quests](index.md).
+

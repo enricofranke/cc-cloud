@@ -11,6 +11,8 @@ public final class CloudConfig {
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue ALLOW_CLOUD;
+    /** FTB Quests: add CC: Cloud's quest chapters to the quest book once (default true; false in the modpack edition). */
+    public static final ModConfigSpec.BooleanValue INSTALL_QUESTS;
     public static final ModConfigSpec.BooleanValue WEB_ENABLED;
     public static final ModConfigSpec.ConfigValue<String> WEB_BIND;
     public static final ModConfigSpec.IntValue WEB_PORT;
@@ -136,6 +138,13 @@ public final class CloudConfig {
                 "Master switch. When false, every mainframe on this server stays offline.")
             .translation("cccloud.configuration.allowCloud")
             .define("allowCloud", true);
+        INSTALL_QUESTS = b.comment("FTB Quests: on server start, add CC: Cloud's quest chapters (CC: Tweaked, CC: Cloud) to config/ftbquests/quests",
+                "once - backup first, never replaces other quests or texts; later versions only update chapters nobody changed, and a",
+                "chapter you deleted is not added again (config/cccloud/quests-installed.json). Modpacks that ship their own quest book:",
+                "set false (defaultconfigs/cccloud-server.toml) or use the modpack edition (cccloud-<version>-modpack.jar), where false",
+                "is the default and the quest files are not inside.")
+            .translation("cccloud.configuration.installQuests")
+            .define("installQuests", Edition.current().installsQuests());
 
         b.push("mainframe");
         MAINFRAME_RETENTION_DAYS = b.comment("Days the data of a broken mainframe (devices, accounts, PIN, layout, rules, scenes, API keys, history) is kept.",

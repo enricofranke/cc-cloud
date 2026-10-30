@@ -40,7 +40,7 @@ authors="Enrico Franke"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Connect CC: Tweaked computers and your base's machines to a dashboard in the browser – phone, tablet or desktop.
+${mod_edition_description}Connect CC: Tweaked computers and your base's machines to a dashboard in the browser – phone, tablet or desktop.
 Build cards from Lua or let ready-made cards appear for computers, storage networks (AE2, Refined Storage) and many
 ATM11 machines. Rules, push notifications, a browser terminal and editor, a 2D/3D map of your network, roles and
 share links for your team, all self-hosted by the Minecraft server.

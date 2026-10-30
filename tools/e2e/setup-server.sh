@@ -59,7 +59,7 @@ if [ -z "$CCCLOUD_JAR" ] && [ "$SKIP_BUILD" = false ]; then
   git -C "$REPO_DIR" worktree add --detach "$WT" HEAD >/dev/null
   echo "Building cccloud from $(git -C "$WT" rev-parse --short HEAD) in $WT"
   (cd "$WT" && ./gradlew build --max-workers=3 >"$SCRATCH/cccloud-build.log" 2>&1) || { tail -40 "$SCRATCH/cccloud-build.log"; exit 1; }
-  CCCLOUD_JAR=$(ls -t "$WT"/build/libs/cccloud-*.jar | grep -v -e sources -e javadoc | head -1)
+  CCCLOUD_JAR=$(ls -t "$WT"/build/libs/cccloud-*.jar | grep -v -e sources -e javadoc -e modpack | head -1)
 fi
 if [ -n "$CCCLOUD_JAR" ]; then
   rm -f "$SERVER_DIR"/mods/cccloud-*.jar

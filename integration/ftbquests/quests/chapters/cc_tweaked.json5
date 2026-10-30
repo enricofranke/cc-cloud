@@ -593,7 +593,9 @@
         id: "computercraft:turtle_normal",
         count: 1,
         components: {
-          "computercraft:right_turtle_upgrade": "minecraft:diamond_pickaxe",
+          "computercraft:right_turtle_upgrade": {
+            id: "minecraft:diamond_pickaxe",
+          },
         },
       },
       x: 4.5,
@@ -611,7 +613,9 @@
             id: "computercraft:turtle_normal",
             count: 1,
             components: {
-              "computercraft:right_turtle_upgrade": "minecraft:diamond_pickaxe",
+              "computercraft:right_turtle_upgrade": {
+                id: "minecraft:diamond_pickaxe",
+              },
             },
           },
           item: {
@@ -645,7 +649,9 @@
         id: "computercraft:turtle_normal",
         count: 1,
         components: {
-          "computercraft:right_turtle_upgrade": "minecraft:crafting_table",
+          "computercraft:right_turtle_upgrade": {
+            id: "minecraft:crafting_table",
+          },
         },
       },
       x: 4.5,
@@ -663,7 +669,9 @@
             id: "computercraft:turtle_normal",
             count: 1,
             components: {
-              "computercraft:right_turtle_upgrade": "minecraft:crafting_table",
+              "computercraft:right_turtle_upgrade": {
+                id: "minecraft:crafting_table",
+              },
             },
           },
           item: {
