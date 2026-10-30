@@ -95,6 +95,32 @@ Some integration mods ship GameTests of their own (Cobblegen Galore, Productive 
 `runGameTestServer` and can fail for reasons outside CC: Cloud (e.g. Productive Farming's Agritech Two recipe check).
 `-PdevWebPort` overrides the dev dashboard port (default 18787) so two checkouts can run tests at the same time. The integration GameTests use their own test environment `cccloud:integrations` (a separate batch), so they do not run at the same time as the load test. Without `-PintegrationMods` none of these mods is loaded, which is the soft-dependency check.
 
+## Item icons for the website and the mock
+
+The website's recipe grids and mod cards and the dashboard mock (`pnpm mock`, `pnpm screenshots`) show real inventory icons. They are exported, never committed: vanilla textures belong to Mojang, mod textures to their authors.
+
+```sh
+./gradlew exportIcons --max-workers=3                       # -> build/item-icons/<namespace>/<path>.png + index.json
+./gradlew exportIcons -PiconStores=/path/a:/path/b --max-workers=3   # also use client-rendered icon stores
+```
+
+- **Which items:** `node cloud/dev/icon-ids.ts` lists them (task `iconExportIds`): every recipe result and ingredient (a tag becomes a typical member, `iconItem` in the docs content), the docs' named items, the card icon of every mod on the "Supported mods" page (`cloud/web/src/docs/content/mods-meta.ts`) and the mock's storage items.
+- **Where an icon comes from**, best first (`index.json` says which per item):
+  1. `client`: a client-rendered icon store (`<world>/cccloud/icons`, e.g. after `runClient -PiconBenchmark`). `run/saves/*/cccloud/icons` is picked up automatically, `-PiconStores` adds more (`:`-separated). The game's own renderer: tints, chests, banners, GeckoLib machines. Our own items only when the store was rendered by the current mod version.
+  2. `model`: drawn from the item's model JSON (`src/iconExport`, `ModelIcon`): `item/generated` layers, block-like models with the model's gui transform (30°/225°), back-face culling, a depth buffer and inventory lighting. Models and textures come from everything on the dev classpath: the vanilla client resources of the NeoForge toolchain (`build/moddev/artifacts/minecraft-patched-*-merged.jar`), the compile-only mod jars (CC: Tweaked, AE2, RS and every integration mod of `build.gradle`) and our own resources. No display needed (`java.awt.headless`), so it runs in CI.
+  3. `flat`: the server fallback's texture (`IconFallback`), scaled to 32×32.
+  Items with special renderers (chests, banners, beds, GeckoLib models) only come from a client store; mods that are not on the classpath (AllTheModium, All The Tweaks, Mekanism, Thermal, …) have no icon. Those keep the letter tile.
+- **Who uses them:** `website/scripts/prepare.mjs` copies the icons the docs need into `website/public/img/icons` (gitignored) and lists them in `src/generated/item-icons.json`; the mock's `/api/icon` serves `build/item-icons` before its few drawn samples. `CCCLOUD_ITEM_ICONS=<dir>` points both at another export. Without an export everything still builds: letter tiles, and our own items fall back to their flat textures.
+- **CI** (website deploy job, before the site build): JDK 25 + Gradle as in `build.yml`, then
+  ```yaml
+  - name: Item icons for the website (not committed)
+    run: ./gradlew exportIcons --max-workers=3
+  - name: Build the website
+    run: npm --prefix website ci && npm --prefix website run build
+  ```
+  The export only reads from Gradle's cache (vanilla client jar, mod jars), so it adds a few seconds after `./gradlew build`.
+- Re-take the dashboard screenshots with real icons after an export: `SHOTS='^(desktop-st|phone-s[0-9]|docs-)' pnpm --dir cloud screenshots` re-takes only the matching shots (all of them without `SHOTS`).
+
 ## Tests
 - Handbook: `node tools/gen_handbook.ts` regenerates the in-game guide (`assets/cccloud/guides/cccloud/handbook`, EN + `_de_de`) from the dashboard docs; `--check` (and `cloud/test/handbook.test.ts`) fails when the committed pages are stale. `./gradlew runClient -PintegrationMods=guideme -PguideShots=/some/dir` opens the guide on startup, saves a screenshot and quits.
 - Unit tests (`src/test`): the network graph incl. cables (wired/fiber links, air-hop routing, cable preference, capacity weight and fiber FE), upgrade effects, capacity cut-off, wireless redstone channels and the `rs_override` message, v0.5 card formatting/widget builder, team trust rule, restricted sections in the hub, the action guard (read-only devices, PIN widgets); token/PIN/pairing, rate limits, routing, message parsing (incl. `query`, `layout_set`, op values), widget validation for every widget type, the layout schema, the bridge index/watchlist logic, the WebHub snapshot/layout/chart behaviour, and the ROM Lua (`cloud.ui`, `cloud-demo`, `cloud-storage`) running on Cobalt, CC's Lua VM (`cc.tweaked:cobalt`, test-only), against a fake uplink that validates through the real `WidgetFactory`.

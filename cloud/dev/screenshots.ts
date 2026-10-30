@@ -1,6 +1,8 @@
 // Drives the built dashboard against the mock server in headless Chrome and
 // writes screenshots to cloud/screenshots/. Run `pnpm build` first.
 //   node dev/screenshots.ts            (uses the system Chrome; PW_CHANNEL=chromium to change)
+//   SHOTS='^(phone-s|docs-)' node dev/screenshots.ts   only re-takes the shots whose name matches, keeps the others
+// Item icons are the exported ones when ./gradlew exportIcons has run (docs/BUILD.md), else the mock's samples.
 import { chromium, type Page } from "playwright";
 import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -11,7 +13,9 @@ const here = fileURLToPath(new URL(".", import.meta.url));
 const out = resolve(here, "../screenshots");
 mkdirSync(out, { recursive: true });
 // the v0.10 screens have their own script (dev/scenes-shots.ts)
-for (const f of readdirSync(out)) if (f.endsWith(".png") && !/^(desktop|phone)-v10-/.test(f)) rmSync(resolve(out, f));
+const only = process.env.SHOTS ? new RegExp(process.env.SHOTS) : null;
+const wanted = (name: string) => !only || only.test(name);
+for (const f of readdirSync(out)) if (f.endsWith(".png") && !/^(desktop|phone)-v10-/.test(f) && wanted(f.slice(0, -4))) rmSync(resolve(out, f));
 const staticDir = resolve(here, "../../src/main/resources/cccloud_web");
 
 const mock = await createMockServer({ port: 0, host: "127.0.0.1", extras: true, tickMs: 700, approveDelayMs: 2500, voxelRate: 120, staticDir, log: () => {} });
@@ -33,6 +37,8 @@ const watch = (page: Page) => {
 };
 const shot = async (page: Page, name: string, fullPage = false) => {
   await page.waitForTimeout(350);
+  // a skipped shot keeps the flow's timing (later steps rely on it)
+  if (!wanted(name)) return void (await page.waitForTimeout(150));
   await page.screenshot({ path: `${out}/${name}.png`, fullPage });
   console.log("saved", `screenshots/${name}.png`);
 };
@@ -780,8 +786,10 @@ try {
       await shot(mp, `${pre}-v2-voxels-night-cut`);
       if (pre === "desktop") {
         // README hero: the canvas alone
-        await mp.locator(".net-canvas").screenshot({ path: `${out}/hero-voxel-base.png` });
-        console.log("saved screenshots/hero-voxel-base.png");
+        if (wanted("hero-voxel-base")) {
+          await mp.locator(".net-canvas").screenshot({ path: `${out}/hero-voxel-base.png` });
+          console.log("saved screenshots/hero-voxel-base.png");
+        }
       }
       await ctx.close();
     }

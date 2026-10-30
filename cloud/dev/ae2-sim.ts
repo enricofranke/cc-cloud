@@ -52,21 +52,22 @@ export function buildItems(): Map<string, Item> {
   const items = new Map<string, Item>();
   const add = (name: string, displayName: string, count: number, craftable = false) => items.set(name, { name, displayName, count, craftable });
 
-  const metals: [string, string][] = [
-    ["minecraft", "iron"], ["minecraft", "gold"], ["minecraft", "copper"], ["alltheores", "tin"], ["alltheores", "lead"],
-    ["alltheores", "silver"], ["alltheores", "nickel"], ["alltheores", "uranium"], ["alltheores", "osmium"], ["alltheores", "zinc"],
-    ["alltheores", "aluminum"], ["alltheores", "platinum"], ["alltheores", "iridium"], ["allthemodium", "allthemodium"],
-    ["allthemodium", "vibranium"], ["allthemodium", "unobtainium"], ["mekanism", "steel"], ["thermal", "bronze"],
-    ["thermal", "electrum"], ["thermal", "invar"], ["thermal", "constantan"], ["thermal", "signalum"], ["thermal", "lumium"], ["thermal", "enderium"],
+  // metals: vanilla iron/gold/copper plus Railcraft's (all items the icon export can draw, docs/BUILD.md)
+  const metals: [string, string, string[]][] = [
+    ["minecraft", "iron", ["ingot", "nugget", "block", "raw", "ore"]],
+    ["minecraft", "gold", ["ingot", "nugget", "block", "raw", "ore"]],
+    ["minecraft", "copper", ["ingot", "nugget", "block", "raw", "ore"]],
+    ["railcraft", "iron", ["plate", "gear"]],
+    ["railcraft", "gold", ["plate", "gear"]],
+    ["railcraft", "copper", ["plate", "gear"]],
+    ...["tin", "lead", "silver", "nickel", "zinc", "steel", "bronze", "brass", "invar"].map((m) => ["railcraft", m, ["ingot", "nugget", "block", "plate", "gear"]] as [string, string, string[]]),
   ];
-  const forms = ["ingot", "nugget", "block", "dust", "plate", "gear", "rod", "raw", "ore"];
-  for (const [mod, metal] of metals)
+  for (const [mod, metal, forms] of metals)
     for (const form of forms) {
       const name = form === "raw" ? `${mod}:raw_${metal}` : form === "block" ? `${mod}:${metal}_block` : `${mod}:${metal}_${form}`;
       const display = form === "raw" ? `Raw ${title(metal)}` : form === "block" ? `Block of ${title(metal)}` : `${title(metal)} ${title(form)}`;
       const scale = form === "ingot" ? 60_000 : form === "nugget" ? 9_000 : form === "block" ? 4_000 : form === "ore" ? 900 : 2_500;
-      const rare = ["allthemodium", "vibranium", "unobtainium", "iridium"].includes(metal) ? 0.02 : 1;
-      add(name, display, Math.round(rand() ** 2 * scale * rare), ["plate", "gear", "rod"].includes(form) && rand() > 0.35);
+      add(name, display, Math.round(rand() ** 2 * scale), ["plate", "gear"].includes(form) && rand() > 0.35);
     }
 
   const misc: [string, string, number, boolean?][] = [
@@ -93,17 +94,17 @@ export function buildItems(): Map<string, Item> {
     ["ae2:logic_processor", "Logic Processor", 96, true],
     ["ae2:calculation_processor", "Calculation Processor", 64, true],
     ["ae2:engineering_processor", "Engineering Processor", 51, true],
-    ["ae2:fluix_cable", "Fluix Glass Cable", 812, true],
+    ["ae2:fluix_glass_cable", "Fluix Glass Cable", 812, true],
     ["ae2:cell_component_64k", "64k ME Storage Component", 4, true],
     ["ae2:singularity", "Singularity", 0, true],
-    ["mekanism:basic_control_circuit", "Basic Control Circuit", 140, true],
-    ["mekanism:advanced_control_circuit", "Advanced Control Circuit", 32, true],
-    ["mekanism:ultimate_control_circuit", "Ultimate Control Circuit", 0, true],
-    ["mekanism:hdpe_pellet", "HDPE Pellet", 2_048],
-    ["create:andesite_alloy", "Andesite Alloy", 6_120, true],
-    ["create:brass_ingot", "Brass Ingot", 2_430],
-    ["create:cogwheel", "Cogwheel", 412, true],
-    ["create:shaft", "Shaft", 980, true],
+    ["enderio:basic_capacitor", "Basic Capacitor", 140, true],
+    ["enderio:double_layer_capacitor", "Double-Layer Capacitor", 32, true],
+    ["enderio:octadic_capacitor", "Octadic Capacitor", 0, true],
+    ["powah:dielectric_paste", "Dielectric Paste", 2_048],
+    ["railcraft:bushing_gear", "Bushing Gear", 6_120, true],
+    ["modularrouters:blank_module", "Blank Module", 2_430],
+    ["integrateddynamics:variable", "Variable Card", 412, true],
+    ["sfm:cable", "Inventory Cable", 980, true],
     ["computercraft:computer_advanced", "Advanced Computer", 6, true],
     ["computercraft:wired_modem", "Wired Modem", 18, true],
     ["computercraft:cable", "Networking Cable", 340, true],
@@ -112,6 +113,12 @@ export function buildItems(): Map<string, Item> {
     ["mysticalagriculture:prudentium_essence", "Prudentium Essence", 48_220, true],
   ];
   for (const [n, d, c, cr] of misc) add(n, d, c, cr === true);
+
+  const bulk = ["granite", "diorite", "andesite", "cobbled_deepslate", "tuff", "calcite", "netherrack", "end_stone", "basalt", "blackstone", "sand", "red_sand", "gravel",
+    "clay_ball", "flint", "bone", "bone_meal", "string", "leather", "feather", "gunpowder", "slime_ball", "glowstone_dust", "coal", "charcoal", "lapis_lazuli",
+    "amethyst_shard", "prismarine_crystals", "obsidian", "paper", "book", "ender_eye", "ghast_tear", "magma_cream", "honeycomb", "ink_sac", "rotten_flesh", "spider_eye"];
+  for (const b of bulk) add(`minecraft:${b}`, title(b), Math.round(rand() ** 1.5 * 60_000), ["paper", "book", "ender_eye", "bone_meal", "magma_cream"].includes(b));
+  for (const d of ["coal", "charcoal", "obsidian", "saltpeter", "sulfur", "ender"]) add(`railcraft:${d}_dust`, `${title(d)} Dust`, Math.round(rand() * 4_000), d !== "saltpeter" && d !== "sulfur");
 
   const food = ["wheat", "carrot", "potato", "beetroot", "melon_slice", "pumpkin", "sugar_cane", "apple", "bread", "cooked_beef", "egg", "bamboo", "kelp", "cactus", "cocoa_beans"];
   for (const f of food) add(`minecraft:${f}`, title(f), Math.round(rand() * 40_000));
@@ -165,7 +172,7 @@ export class FakeAe2 {
       { name: "minecraft:iron_ingot", min: 0, below: false },
       { name: "ae2:fluix_crystal", min: 2_000, below: true },
       { name: "minecraft:diamond", min: 1_000, below: false },
-      { name: "mekanism:basic_control_circuit", min: 256, below: true },
+      { name: "minecraft:ender_pearl", min: 512, below: true },
       { name: "minecraft:redstone", min: 10_000, below: false },
     );
     // keep iron just above its minimum so the sim crosses it soon
@@ -323,8 +330,17 @@ export class FakeAe2 {
     if (!Number.isInteger(count) || count < 1 || count > MAX_CRAFT) return { ok: false as const, error: "invalid" };
     const pool = [...this.items.values()].filter((i) => i.name !== name);
     const h = [...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-    const ings = [pool[h % pool.length], pool[(h >> 5) % pool.length]];
-    const missingAll = name === "ae2:singularity" || name === "mekanism:ultimate_control_circuit";
+    // stable picks, moved on to the next item that is in stock (or craftable) for this amount
+    const pick = (start: number, need: number, not?: Item) => {
+      for (let i = 0; i < pool.length; i++) {
+        const g = pool[(start + i) % pool.length];
+        if (g !== not && (g.craftable || g.count >= need)) return g;
+      }
+      return pool[start % pool.length];
+    };
+    const first = pick(h, count * 2);
+    const ings = [first, pick(h >>> 5, count, first)];
+    const missingAll = name === "ae2:singularity" || name === "enderio:octadic_capacitor";
     const entries = ings.map((g, i) => {
       const need = count * (i === 0 ? 2 : 1);
       const stored = Math.min(g.count, need);
@@ -353,7 +369,7 @@ export class FakeAe2 {
     if (!it) return { ok: false, error: "unknown_item" };
     if (!it.craftable) return { ok: false, error: "not_craftable" };
     if (!Number.isInteger(count) || count < 1 || count > MAX_CRAFT) return { ok: false, error: "too_many" };
-    if (name === "ae2:singularity" || name === "mekanism:ultimate_control_circuit") return { ok: false, error: "missing_resources" };
+    if (name === "ae2:singularity" || name === "enderio:octadic_capacitor") return { ok: false, error: "missing_resources" };
     if (this.jobs.filter((j) => j.status === "running" || j.status === "queued").length >= CPUS + 1) return { ok: false, error: "no_cpu" };
     const running = this.jobs.filter((j) => j.status === "running").length;
     const job: Job = {

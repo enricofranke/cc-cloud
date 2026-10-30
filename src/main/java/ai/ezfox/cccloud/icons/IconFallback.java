@@ -75,7 +75,8 @@ public final class IconFallback {
             if (json == null) break;
             if (json.get("textures") instanceof JsonObject t) {
                 for (var e : t.entrySet()) {
-                    if (e.getValue().isJsonPrimitive()) textures.putIfAbsent(e.getKey(), e.getValue().getAsString()); // child wins
+                    String ref = textureRef(e.getValue());
+                    if (ref != null) textures.putIfAbsent(e.getKey(), ref); // child wins
                 }
             }
             current = json.get("parent") != null && json.get("parent").isJsonPrimitive() ? json.get("parent").getAsString() : null;
@@ -88,6 +89,14 @@ public final class IconFallback {
             String v = deref(textures, value);
             if (v != null) return v;
         }
+        return null;
+    }
+
+    /** A model's texture value: {@code "ns:path"} / {@code "#key"}, or (26.1) {@code {"sprite": "ns:path", "force_translucent": …}}. */
+    static @Nullable String textureRef(@Nullable JsonElement value) {
+        if (value == null) return null;
+        if (value.isJsonPrimitive()) return value.getAsString();
+        if (value instanceof JsonObject o && o.get("sprite") instanceof JsonElement s && s.isJsonPrimitive()) return s.getAsString();
         return null;
     }
 

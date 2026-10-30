@@ -36,6 +36,15 @@ class IconFallbackTest {
     }
 
     @Test
+    void spriteObjectsAsTextures() {
+        // 26.1 models may write a texture as {"sprite": …, "force_translucent": true} (vanilla glass does)
+        put("assets/mod/items/pane.json", "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"mod:block/pane\"}}");
+        put("assets/mod/models/block/pane.json", "{\"parent\":\"minecraft:block/cube_all\",\"textures\":{\"all\":{\"force_translucent\":true,\"sprite\":\"mod:block/pane\"}}}");
+        files.put("assets/mod/textures/block/pane.png", png);
+        assertArrayEquals(png, IconFallback.resolve("mod", "pane", files::get));
+    }
+
+    @Test
     void missingOrBrokenData() {
         assertNull(IconFallback.resolve("mod", "nothing", files::get));
         put("assets/mod/items/bad.json", "{not json");

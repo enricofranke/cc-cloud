@@ -1,5 +1,9 @@
-// DEV-ONLY: a few tiny generated item icons for the mock's /api/icon route.
-// Drawn here from 16×16 character maps (no Mojang assets), encoded as PNG.
+// DEV-ONLY: item icons for the mock's /api/icon route. Real ones from `./gradlew exportIcons` when they exist
+// (build/item-icons, or the directory in CCCLOUD_ITEM_ICONS; Mojang/mod art, never committed), else a few tiny
+// icons drawn here from 16×16 character maps (no Mojang assets), encoded as PNG.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { crc32, deflateSync } from "node:zlib";
 
 type Rgba = [number, number, number, number];
@@ -155,3 +159,18 @@ export const SAMPLE_ICONS: Record<string, Buffer> = {
   "cccloud:cloud_uplink": draw(CHIP, palette("#e8fbff", "#3f3f3f", "#a8e6f5", "#5ec8e5")),
   "cccloud:cloud_mainframe": draw(BLOCK, palette("#ecec9c", "#2d2d2d", "#5ec8e5", "#ddd771")),
 };
+
+const EXPORT_DIR = process.env.CCCLOUD_ITEM_ICONS || fileURLToPath(new URL("../../build/item-icons/", import.meta.url));
+const exported = new Map<string, Buffer | null>();
+/** The exported icon of a (validated) item id, or the drawn sample, or undefined. */
+export function mockIcon(id: string): Buffer | undefined {
+  if (!exported.has(id)) {
+    const i = id.indexOf(":");
+    let png: Buffer | null = null;
+    try {
+      png = readFileSync(join(EXPORT_DIR, id.slice(0, i), `${id.slice(i + 1)}.png`));
+    } catch {}
+    exported.set(id, png);
+  }
+  return exported.get(id) ?? SAMPLE_ICONS[id];
+}
