@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 public final class SceneRunner {
     /** What a run reads and does. All methods run on the server thread. */
     public interface Env {
-        /** The mainframe is loaded, online and enabled. */
+        /** The mainframe is loaded and online. */
         boolean available();
 
         /** Null if the caller may run this step now, else the error (e.g. {@code not_allowed}, {@code pin_required}). */

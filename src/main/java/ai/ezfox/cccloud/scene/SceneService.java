@@ -357,7 +357,8 @@ public final class SceneService {
         var env = new SceneRunner.Env() {
             @Override
             public boolean available() {
-                return mainframe != null && !mainframe.isRemoved() && mainframe.isOnline() && mainframe.isEnabled();
+                // Online is enough: a press needs the dashboard switched on, but a step may switch it off for the rest.
+                return mainframe != null && !mainframe.isRemoved() && mainframe.isOnline();
             }
 
             @Override
