@@ -290,7 +290,8 @@ describe("API keys (mock)", () => {
     const after = await getApiKeys(base(), enrico, mf);
     const row = after.keys.find((k) => k.id === made.id)!;
     expect(row).toMatchObject({ name: "Bot 2", player: "Enrico", scopes: ["read:sections", "run:scenes"], ips: ["192.168.1.0/24"], lastUsed: null, own: true });
-    expect(row.expires! - row.created).toBe(86_400_000);
+    expect(row.expires! - row.created).toBeGreaterThanOrEqual(86_400_000); // created and expires come from two clock reads
+    expect(row.expires! - row.created).toBeLessThan(86_400_000 + 1000);
     // the key itself is never listed and only its hash is kept
     expect(JSON.stringify(after)).not.toContain(made.key);
     expect(JSON.stringify([...mock!.apiKeys.values()])).not.toContain(made.key);
