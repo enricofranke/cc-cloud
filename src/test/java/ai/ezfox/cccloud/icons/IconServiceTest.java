@@ -74,4 +74,30 @@ class IconServiceTest {
         service.clear();
         assertNull(service.store().get("minecraft:a"));
     }
+
+    @Test
+    void serverRendersStayQueuedForClientsAndAnyClientMayReplaceThem() {
+        var items = new LinkedHashMap<String, String>();
+        items.put("ae2:a", "ae2@1");
+        items.put("ae2:b", "ae2@1");
+        // The server renderer ran before (last start): both have server icons.
+        try (var store = new IconStore(dir)) {
+            var server = new int[32 * 32];
+            java.util.Arrays.fill(server, 0xFF00FF00);
+            store.putServer("ae2:a", "ae2@1", PngCodec.encode(32, 32, server));
+            store.putServer("ae2:b", "ae2@1", PngCodec.encode(32, 32, server));
+            store.flush();
+        } catch (Exception e) {
+            fail(e);
+        }
+        var service = IconService.forTest(dir, items);
+        assertEquals(2, service.status().queued(), "server renders are still handed to game clients");
+        var client = UUID.randomUUID(); // a player without any role on a mainframe
+        assertEquals(List.of("ae2:a", "ae2:b"), service.assignForTest(client, 2));
+        assertEquals(2, service.accept(client, List.of(new IconService.Icon("ae2:a", icon()), new IconService.Icon("ae2:b", icon()))),
+            "replacing a server render needs no role (first-writer-wins is only for client renders)");
+        assertEquals(IconStore.Source.CLIENT, service.store().source("ae2:a"));
+        assertArrayEquals(icon(), service.store().get("ae2:a"));
+        assertEquals(new IconService.Sources(2, 0, 0), service.sources());
+    }
 }

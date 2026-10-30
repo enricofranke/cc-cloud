@@ -221,6 +221,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("scale_test", () -> ai.ezfox.cccloud.gametest.ScaleTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
         TEST_FUNCTIONS.register("recipes_live_catalog", () -> ai.ezfox.cccloud.gametest.RecipeCatalogTests::liveRecipes);
+        TEST_FUNCTIONS.register("icons_server_render", () -> ai.ezfox.cccloud.gametest.IconTests::serverDrawsOwnIcons);
         TEST_FUNCTIONS.register("auto_computer_card", () -> ai.ezfox.cccloud.gametest.AutoModeTests::computerCard);
         TEST_FUNCTIONS.register("mainframe_power", () -> ai.ezfox.cccloud.gametest.PowerTests::power);
         TEST_FUNCTIONS.register("access_permission_nodes", () -> ai.ezfox.cccloud.gametest.AccessTests::permissionNodes);

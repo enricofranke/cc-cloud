@@ -4,8 +4,6 @@ import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.CloudConfig;
 import io.netty.buffer.ByteBuf;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -19,7 +17,6 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.ZipFile;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -53,8 +50,12 @@ import org.jspecify.annotations.Nullable;
  * uploaded icon is checked: it must belong to that client's outstanding batch and pass {@link PngCodec}'s strict
  * validation (32×32 RGBA, ≤ 16 KB). An empty upload means "cannot render" and is remembered per version.
  * <p>
- * Without a rendered icon, {@link #fallback} reads the item/block texture from the mod jar (or from a Minecraft client
- * jar configured as {@code vanillaAssetsJar}); vanilla textures are not on a dedicated server otherwise.
+ * On a dedicated server, {@link ServerIconPass} draws the simple icons (flat items, plain cubes) right at start on one
+ * low-priority background thread, so the dashboard has icons before anyone joins; client renders replace them later
+ * (they stay queued for clients). Vanilla items need a client jar for that: {@code vanillaAssetsJar} or the opt-in
+ * download ({@code downloadVanillaAssets}, {@link VanillaAssets}).
+ * <p>
+ * Without any stored icon, {@link #fallback} reads the item/block texture from the mod jar (or the vanilla source).
  */
 public final class IconService {
     public static final int BATCH = 256;
@@ -111,6 +112,13 @@ public final class IconService {
     public record Status(int total, int done, int queued, int inFlight, int renderers, IconStore.Status store) {
     }
 
+    /** Icons of the registered items by source; {@code missing} have none (the dashboard shows a letter tile). */
+    public record Sources(int client, int server, int missing) {
+    }
+
+    /** Where the server renderer gets vanilla textures from. */
+    public enum Vanilla { NOT_NEEDED, NONE, JAR, DOWNLOAD, FAILED }
+
     private record Assignment(Set<String> ids, long since) {
     }
 
@@ -130,6 +138,16 @@ public final class IconService {
         t.setDaemon(true);
         return t;
     });
+    /** The server renderer: one low-priority thread, passes run one after the other. */
+    private final java.util.concurrent.ExecutorService render = Executors.newSingleThreadExecutor(r -> {
+        var t = new Thread(r, "cccloud-icon-render");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
+    private volatile @Nullable ServerIconPass pass;
+    private volatile Vanilla vanilla = Vanilla.NOT_NEEDED;
+    private volatile String vanillaError = "";
     private long accepted, rejected;
     /** L10: 4096 icons per player and hour; replacing a current icon only by players with a role. */
     final UploadGuard guard = new UploadGuard(4096, System::currentTimeMillis, uuid -> false);
@@ -145,8 +163,10 @@ public final class IconService {
         }
         requeue(store.outdated(wanted));
         io.scheduleWithFixedDelay(this::flushQuietly, 60, 60, TimeUnit.SECONDS);
-        CCCloud.LOGGER.info("[cccloud] Item icons: {} of {} stored, {} queued for rendering by game clients ({})", wanted.size() - queue.size(),
+        CCCloud.LOGGER.info("[cccloud] Item icons: {} of {} rendered by game clients, {} queued for them ({})", wanted.size() - queue.size(),
             wanted.size(), queue.size(), dir);
+        // Singleplayer and LAN: the host's game renders every icon with the real renderer and has all textures.
+        if (net.neoforged.fml.loading.FMLEnvironment.getDist().isDedicatedServer()) startServerPass(false, true);
     }
 
     public static @Nullable IconService current() {
@@ -209,8 +229,12 @@ public final class IconService {
         var service = current;
         current = null;
         if (service == null) return;
+        var running = service.pass;
+        if (running != null) running.cancel();
+        service.render.shutdownNow();
         service.io.shutdownNow();
         service.flushQuietly();
+        ModAssets.setVanilla(null);
         try {
             service.store.close();
         } catch (IOException ignored) {
@@ -347,12 +371,127 @@ public final class IconService {
         return new Status(wanted.size(), Math.max(0, done), queue.size(), inFlight, renderers.size(), store.status());
     }
 
-    /** Re-renders every item; old icons stay available until replaced. */
+    /** Re-renders every item (server renderer and clients); old icons stay available until replaced. */
     public synchronized void rebuild() {
         assignments.clear();
         queue.clear();
         queued.clear();
         requeue(wanted.keySet());
+        if (server != null && net.neoforged.fml.loading.FMLEnvironment.getDist().isDedicatedServer()) startServerPass(true, false);
+    }
+
+    // ---- server renderer ---------------------------------------------------------------------------------------------
+
+    /**
+     * Queues a server render pass on the low-priority render thread (a running one is cancelled first). The first
+     * pass also opens the vanilla source ({@code vanillaAssetsJar}, else the opt-in download).
+     */
+    private void startServerPass(boolean force, boolean resolveVanilla) {
+        var old = pass;
+        if (old != null) old.cancel();
+        if (!CloudConfig.get(CloudConfig.RENDER_ICONS_ON_SERVER)) {
+            pass = null;
+            if (resolveVanilla) render.execute(this::resolveVanilla); // still used by the texture fallback
+            return;
+        }
+        Map<String, String> snapshot;
+        synchronized (this) {
+            snapshot = new LinkedHashMap<>(wanted);
+        }
+        var next = new ServerIconPass(snapshot, store, ModAssets::read, force);
+        pass = next;
+        render.execute(() -> {
+            if (resolveVanilla) resolveVanilla();
+            ModAssets.index();
+            CCCloud.LOGGER.info("[cccloud] Item icons: drawing the simple ones on the server (one background thread) …");
+            try {
+                next.run();
+            } catch (RuntimeException | LinkageError e) {
+                CCCloud.LOGGER.warn("[cccloud] The server icon renderer stopped", e);
+            }
+            var p = next.progress();
+            if (p.state() == ServerIconPass.State.DONE) {
+                flushQuietly();
+                CCCloud.LOGGER.info("[cccloud] Item icons drawn on the server: {} flat, {} cubes, {} left for game clients ({} items checked) in {} ms; "
+                    + "vanilla textures: {}", p.flat(), p.cube(), p.skipped(), p.total(), p.millis(), vanilla.name().toLowerCase(java.util.Locale.ROOT));
+                var reasons = next.topReasons(6);
+                if (!reasons.isEmpty()) CCCloud.LOGGER.debug("[cccloud] Most common reasons an icon was left for game clients: {}", reasons);
+            }
+        });
+    }
+
+    /** Opens the vanilla source for {@code minecraft} assets, or logs how to get one. Render thread only. */
+    private void resolveVanilla() {
+        String configured = CloudConfig.get(CloudConfig.VANILLA_ASSETS_JAR).trim();
+        if (!configured.isEmpty()) {
+            try {
+                ModAssets.setVanilla(VanillaAssets.open(Path.of(configured)));
+                vanilla = Vanilla.JAR;
+                CCCloud.LOGGER.info("[cccloud] Item icons: vanilla textures from {}", configured);
+                return;
+            } catch (IOException | RuntimeException e) {
+                vanilla = Vanilla.FAILED;
+                vanillaError = String.valueOf(e.getMessage());
+                CCCloud.LOGGER.warn("[cccloud] vanillaAssetsJar = {} could not be read: {}", configured, e.getMessage());
+            }
+        }
+        if (CloudConfig.get(CloudConfig.DOWNLOAD_VANILLA_ASSETS)) {
+            String version = SharedConstants.getCurrentVersion().id();
+            var cache = server.getServerDirectory().resolve("cccloud").resolve("cache");
+            try {
+                var jar = VanillaAssets.ensureClientJar(cache, version, VanillaAssets.https());
+                ModAssets.setVanilla(VanillaAssets.open(jar));
+                vanilla = Vanilla.DOWNLOAD;
+                CCCloud.LOGGER.info("[cccloud] Item icons: vanilla textures from the official Minecraft {} client jar (downloadVanillaAssets = true, {})",
+                    version, jar);
+                return;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            } catch (IOException | RuntimeException e) {
+                vanilla = Vanilla.FAILED;
+                vanillaError = String.valueOf(e.getMessage());
+                CCCloud.LOGGER.warn("[cccloud] Item icons: could not get the Minecraft {} client jar from Mojang: {}", version, e.getMessage());
+                return;
+            }
+        }
+        if (vanilla == Vanilla.FAILED) return;
+        if (ModAssets.read("assets/minecraft/textures/block/stone.png") != null) {
+            vanilla = Vanilla.NOT_NEEDED; // dev environments have the client resources on the classpath
+            return;
+        }
+        vanilla = Vanilla.NONE;
+        CCCloud.LOGGER.info("[cccloud] Item icons: this server has no Minecraft textures, so vanilla items get their icons once a player with CC: Cloud "
+            + "joins. To draw them at start, set downloadVanillaAssets = true in serverconfig/cccloud-server.toml (downloads the official client jar "
+            + "from Mojang, read locally only) or vanillaAssetsJar = <path to a client jar you own>.");
+    }
+
+    public ServerIconPass.@Nullable Progress serverProgress() {
+        var p = pass;
+        return p == null ? null : p.progress();
+    }
+
+    public Vanilla vanilla() {
+        return vanilla;
+    }
+
+    public String vanillaError() {
+        return vanillaError;
+    }
+
+    /** Icons of the registered items by source (for {@code /cccloud icons status}; walks every item). */
+    public Sources sources() {
+        List<String> ids;
+        synchronized (this) {
+            ids = List.copyOf(wanted.keySet());
+        }
+        int client = 0, srv = 0;
+        for (var id : ids) {
+            var source = store.source(id);
+            if (source == IconStore.Source.CLIENT) client++;
+            else if (source == IconStore.Source.SERVER) srv++;
+        }
+        return new Sources(client, srv, ids.size() - client - srv);
     }
 
     /** Deletes the store and renders everything from scratch. */
@@ -369,15 +508,15 @@ public final class IconService {
 
     /**
      * The item's flat texture from the mod jar ({@code textures/item/<path>.png}, then {@code textures/block/<path>.png});
-     * vanilla only if {@code vanillaAssetsJar} points to a Minecraft client jar. Square PNGs ≤ 64 KB only.
+     * vanilla only with a vanilla source ({@code vanillaAssetsJar} or {@code downloadVanillaAssets}). Square PNGs ≤ 64 KB only.
      */
     public static byte @Nullable [] fallback(String namespace, String path) {
-        // Item definition → model → texture, read from the jar that provides each namespace.
+        // Item definition → model → texture, read from the jars that provide each namespace.
         byte[] resolved = IconFallback.resolve(namespace, path, IconService::readResource);
         if (resolved != null) return resolved;
         for (var dir : new String[]{"item", "block"}) {
             String file = "assets/" + namespace + "/textures/" + dir + "/" + path + ".png";
-            byte[] bytes = namespace.equals("minecraft") ? fromVanillaJar(file) : fromModJar(namespace, file);
+            byte[] bytes = ModAssets.read(file);
             if (bytes == null || bytes.length > 64 * 1024) continue;
             var size = PngCodec.size(bytes);
             if (size != null && size[0] == size[1] && size[0] > 0 && size[0] <= 512) return bytes;
@@ -385,66 +524,9 @@ public final class IconService {
         return null;
     }
 
-    /** namespace → mod file that has {@code assets/<namespace>/} (namespaces need not match mod ids). */
-    private static final Map<String, java.util.Optional<net.neoforged.neoforgespi.locating.IModFile>> NAMESPACE_FILES = new java.util.concurrent.ConcurrentHashMap<>();
-
-    /** A resource from the mods' jars (any namespace) or, for minecraft, the configured client jar. */
+    /** A resource from the mods' jars (any namespace) or, for minecraft, the vanilla source (if any). */
     static byte @Nullable [] readResource(String file) {
-        String[] parts = file.split("/", 3);
-        if (parts.length < 3 || !parts[0].equals("assets")) return null;
-        String namespace = parts[1];
-        if (namespace.equals("minecraft")) return fromVanillaJar(file);
-        var modFile = NAMESPACE_FILES.computeIfAbsent(namespace, ns -> {
-            try {
-                for (var info : ModList.get().getModFiles()) {
-                    var contents = info.getFile().getContents();
-                    if (contents.findFile("assets/" + ns + "/").isPresent() || contents.findFile("assets/" + ns + "/lang/en_us.json").isPresent()
-                        || contents.findFile("assets/" + ns + "/models").isPresent() || contents.findFile("assets/" + ns + "/textures").isPresent()) {
-                        return java.util.Optional.of(info.getFile());
-                    }
-                }
-            } catch (RuntimeException ignored) {
-            }
-            return java.util.Optional.empty();
-        });
-        if (modFile.isEmpty()) return null;
-        try {
-            var contents = modFile.get().getContents();
-            if (contents.findFile(file).isEmpty()) return null;
-            try (InputStream in = contents.openFile(file)) {
-                return in == null ? null : in.readNBytes(256 * 1024 + 1);
-            }
-        } catch (IOException | RuntimeException e) {
-            return null;
-        }
-    }
-
-    private static byte @Nullable [] fromModJar(String namespace, String file) {
-        try {
-            var info = ModList.get().getModFileById(namespace);
-            if (info == null) return null;
-            var contents = info.getFile().getContents();
-            if (contents.findFile(file).isEmpty()) return null;
-            try (InputStream in = contents.openFile(file)) {
-                return in == null ? null : in.readNBytes(64 * 1024 + 1);
-            }
-        } catch (IOException | RuntimeException e) {
-            return null;
-        }
-    }
-
-    private static byte @Nullable [] fromVanillaJar(String file) {
-        String jar = CloudConfig.get(CloudConfig.VANILLA_ASSETS_JAR).trim();
-        if (jar.isEmpty() || !Files.isRegularFile(Path.of(jar))) return null;
-        try (var zip = new ZipFile(jar)) {
-            var entry = zip.getEntry(file);
-            if (entry == null) return null;
-            try (var in = zip.getInputStream(entry)) {
-                return in.readNBytes(64 * 1024 + 1);
-            }
-        } catch (IOException | RuntimeException e) {
-            return null;
-        }
+        return ModAssets.read(file);
     }
 
     /** Test hook: a service over a given store without a server (unit tests of {@link #accept}). */
