@@ -1474,26 +1474,37 @@ tick; memory is bounded per device and per series.
   DOM size. `-PscaleTestJfr=<file>` records a Java Flight Recording of the run.
 
 ### What was slow, and what changed
-Numbers from the benchmark (500 + 10 × 100 devices, 50 browsers) on a shared 10-core machine at load 50–140 (wall times
-are inflated several times; compare before and after, not absolute values). Before = main at 39ab961.
+Measured 2026-10-30 on a 10-core Apple M-series machine shared with other work (system load 10–14 during the runs,
+recorded in each report), before = main at 39ab961 with the same benchmark code, after = branch `scale`. Wall times
+include preemption by other processes; `CPU est.` is cccloud's share of the server thread's CPU time (see above).
+
+**Full benchmark** (500 + 10 × 100 devices, 1 186 sections, 100 rules, 50 browsers, ~5 500 value changes per second):
 
 | | before | after |
 |---|---|---|
-| cccloud ms/tick under load, avg / p95 (wall) | 30.2 / 108 | 5.6 / 14.2 |
-| cccloud ms/tick under load, CPU estimate avg / p95 | – | 2.5 / 5.5 |
-| whole tick under load, avg (wall) | 91.6 ms (≈ 10 TPS) | 9.5 ms (20 TPS) |
-| uplinks (block entity ticks), avg | 24.2 ms | 4.0 ms |
-| redstone cards, max | 111 ms | 10.6 ms |
-| network recompute (all 11 networks), avg | 219 ms | 33 ms (and only per changed network) |
-| link check (Link Card) on the big network | 120 ms | 12.6 ms |
-| messages / s to a browser of the big mainframe | 4 259 | 11.7 |
-| bytes / s to a browser of the big mainframe (uncompressed) | 379 KiB | 117 KiB (compressed on the wire) |
-| big snapshot: size, built under the hub lock | 1.35 MB, 126 ms under the lock | 1.08 MB, outside the lock, cached per section |
-| tablet snapshot of the big mainframe | 1.35 MB > 1 MB payload limit: never arrived | 367 messages, largest 308 KB |
-| mainframe screen view (500 devices) | 539 KB > 256 KB: empty screen | 85 KB, network only when it changed |
-| dashboard: first card / DOM nodes / JS heap | 11.1 s / 93 000 / 244 MB | 0.7–2.7 s / 7 300 / 96 MB |
-| dashboard busy while live updates arrive | 145 % (re-rendering every card per delta) | 0 % |
-| resolving a 500-card page (layout engine) | 58 s | < 0.1 s |
+| cccloud ms/tick under load, avg / p95 / max (wall) | 6.38 / 18.0 / 69.7 | 1.61 / 4.07 / 31.2 |
+| cccloud ms/tick under load, CPU est. avg / p95 / max | 4.76 / 9.44 / 43.0 | 1.27 / 2.91 / 8.9 |
+| cccloud ms/tick idle (browsers connected), avg (wall) | 4.74 | 0.78 |
+| whole tick under load, avg / p95 | 8.42 / 22.3 ms | 2.76 / 5.44 ms |
+| uplinks (block entity ticks), avg / max | 5.13 / 36.9 ms | 1.22 / 31.1 ms |
+| history, redstone cards, network: max per tick | 32.9 / 12.0 / 32.3 ms | 7.3 / 2.2 / 6.1 ms |
+| network recompute of all 11 networks / Link Card check (big network) | 56.9 / 14.6 ms | 6.1 / 3.1 ms (and per changed network only) |
+| messages / s to a browser of the big mainframe | 5 790 | 12 |
+| bytes / s to a browser of the big mainframe | 490 KiB | 129 KiB raw, ~57 KiB with compression |
+| snapshot of the big mainframe: size / time to 10 browsers at once | 1.35 MB / 932 ms | 1.09 MB (112 KB compressed) / 186 ms |
+| opening a Cloud Tablet on the big mainframe (server thread) | 127 ms, then 1.35 MB > 1 MB payload limit: never arrives | 0.4 ms; 367 messages, largest 310 KB |
+| mainframe screen view (500 devices) | 539 KB > 256 KB: empty screen | 86 KB, network only when it changed |
+| network map JSON of the big mainframe | 538 KB (2 506 links) | 278 KB (510 links) |
+| dashboard (headless Chromium): first card | never – the page stayed busy (renderer > 100 % CPU for 18 min) | 0.24–0.28 s warm, 1.5 s cold |
+| dashboard while live updates arrive | – | 0 % busy, 54–59 fps, 7 300 DOM nodes, 57–65 MB JS heap |
+| resolving a 500-card page (layout engine, Node) | 58 s | < 0.1 s |
+
+**Target configuration** (one mainframe with 500 devices, 10 browsers): cccloud 0.50–0.99 ms/tick on average (CPU est.
+0.48–0.71 ms; before 1.86 ms / 1.53 ms), p95 1.3–2.5 ms, p99 2.8–7.9 ms; the largest single ticks were the 500-device
+network recompute (6–15 ms on this machine), a burst of rules (7–12 ms when 84 thresholds are crossed in the same
+second) and wall-time stalls of up to 65 ms with under 9 ms of CPU (preemption or GC on the shared machine). Before, 2 of
+the 10 browsers were disconnected as "too slow"; after, none. Heap: about 36 KB per device (whole server, all mods'
+share; unchanged).
 
 The bottlenecks and the fixes:
 - **Hub (`web/WebHub`).** Every changed value was its own WebSocket message (`{"t":"value",…}`, 85 bytes, 4 000 per second
@@ -1522,7 +1533,8 @@ The bottlenecks and the fixes:
   devices; the rules document (all rules + log) goes out at most once a second however many rules run; mainframe power
   usage is recomputed when counts or browsers change; bridges are staggered. **Network:** a device loading, unloading or
   changing recomputes only its own network (`NetworkService.markDirty(mainframeId)`), the 10 s safety pass is spread over
-  the ticks per mainframe, the map JSON is only rebuilt when that network changed (topology, statuses, capacity, names)
+  the ticks per mainframe; when more than three rules run in one evaluation the server log gets one summary line; the map
+  JSON is only rebuilt when that network changed (topology, statuses, capacity, names)
   or once a minute, and maps of more than 200 devices leave out the links a device does not use (`unusedLinks` counts
   them; a 500-device map 538 KB → 276 KB).
 - **In-game screens.** The mainframe screen gets a compact network (short node ids, x/z only, tree links only, at most
@@ -1558,6 +1570,9 @@ shared between versions) and its serialised text, about 2–4 KB per section for
 ~1.5 KB); the benchmark reports the whole heap growth per device (all of Minecraft's and CC: Cloud's share).
 
 ### Remaining limits
+- Single ticks above 5 ms remain: recomputing a 500-device network (6–15 ms on the benchmark machine; it happens when a
+  device of that network loads, unloads or links, and once per 10 s spread over the ticks) and a burst of many rules in
+  the same second (7–12 ms). Both are per mainframe now, not for all networks at once.
 - The uplink block entity tick is still the largest part of cccloud's tick cost on a base where every value changes all
   the time (about half of it is handing ~5 000 value changes per second to the hub); it scales with the number of
   changed values, not with browsers.

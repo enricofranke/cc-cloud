@@ -6,16 +6,18 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ### Big bases and big servers
 - Hundreds of machines per mainframe, many mainframes and many browsers: on the scale benchmark (500 + 10 × 100
-  devices, 100 rules, 50 browsers) CC: Cloud's server-thread time under load went from 30 ms to under 6 ms per tick (wall
-  time on a busy machine; about 2.5 ms CPU), the server keeps 20 TPS instead of 10, and there are no 100+ ms spikes from
-  network recomputes or redstone cards any more.
-- Dashboard: one message per update batch instead of one per value (4 000 → 12 messages per second for a big base),
-  compressed WebSocket (`webCompression`), only the changed cards render again, cards far off screen render when they
-  come near, big pages lay out in milliseconds instead of a minute; a big base opens in about a second instead of 11 s.
+  devices, 100 rules, 50 browsers) CC: Cloud's server-thread time under load went from 6.4 to 1.6 ms per tick on average
+  (p95 18 → 4 ms); a single mainframe with 500 devices and 10 browsers costs about 0.5–1 ms per tick. Network
+  recomputes, redstone cards and history sampling no longer cause 30+ ms ticks.
+- Dashboard: one message per update batch instead of one per value (5 800 → 12 messages per second for a big base),
+  compressed WebSocket (`webCompression`, the 1.1 MB snapshot of a 500-device base is 112 KB on the wire), only the
+  changed cards render again, cards far off screen render when they come near, big pages lay out in milliseconds instead
+  of a minute: a 500-device mainframe shows its cards after 0.3 s (the old dashboard never finished rendering it).
 - Fixed for big bases: the mainframe screen of a big network stayed empty (its view was over the packet limit), the
   Cloud Tablet never got a big base's snapshot (over the payload limit), browsers were disconnected as "too slow" right
   after a big snapshot, layouts with more than 256 cards could not be saved, only 256 cards of an unloaded base survived
   a restart.
+- When many rules run in the same second, the server log gets one line for all of them.
 - New config: `webCompression` (on), `historyMaxTotalMB` (128 MB of long-term statistics for all mainframes together).
 - For developers: `./gradlew runGameTestServer -PscaleTest` (docs/SPEC.md "Scaling"), `tools/e2e/scale-render.mjs`.
 

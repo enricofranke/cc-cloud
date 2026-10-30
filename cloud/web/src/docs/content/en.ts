@@ -1063,11 +1063,11 @@ CC: Cloud is built for big bases: hundreds of machines on one mainframe, many ma
 
 - **Pages:** the dashboard only draws the cards near the screen, but a page with 500 cards is still a long scroll. Split big bases into pages (layout editor, or \`opts.page\` in Lua); up to about 100 cards per page is comfortable. Layouts of up to 2048 cards can be saved.
 - **Compression:** keep \`webCompression = true\` (the default). Browsers get the snapshot and the updates compressed (5–10× smaller); it costs a little CPU on the web server's own threads, never on the server thread. Reverse proxies (Caddy, nginx, Cloudflare) pass it through.
-- **Browsers:** each browser of a mainframe gets all its updates. A 500-device mainframe where everything changes all the time sends about 60–90 KB/s per browser uncompressed. The Bandwidth upgrade (or \`baseBrowsers\`) limits browsers per mainframe; share links count separately.
+- **Browsers:** each browser of a mainframe gets all its updates. A 500-device mainframe where everything changes all the time sends about 130 KB/s per browser (about 60 KB/s compressed). The Bandwidth upgrade (or \`baseBrowsers\`) limits browsers per mainframe; share links count separately.
 - **Long-term statistics:** each mainframe keeps at most 2 MB of history; \`historyMaxTotalMB\` (default 128) caps all mainframes together. Every series has a fixed size from the start (1 h ≈ 240 B, 24 h ≈ 5.6 KB, 7 days ≈ 14 KB, 30 days ≈ 20 KB).
 - **In-game screens:** the mainframe screen lists the first 600 devices (problems first) and gets the network only when it changed; the dashboard's Network page shows every device. Big network maps leave out the links a device does not use.
 - **Slow browsers:** a browser that falls more than 4 MB or 10 seconds behind is disconnected and reconnects with a fresh snapshot; nothing piles up on the server.
-- **Measuring:** \`/neoforge tps\` or spark show the server's tick time. CC: Cloud's own cost on a 500-device base is well below 1 ms per tick on a normal server CPU (developers: \`./gradlew runGameTestServer -PscaleTest\` measures it).
+- **Measuring:** \`/neoforge tps\` or spark show the server's tick time. CC: Cloud's own cost for a 500-device mainframe with 10 browsers is about 0.5–1 ms per tick (developers: \`./gradlew runGameTestServer -PscaleTest\` measures it).
 
 ## What the server logs {#logs}
 
