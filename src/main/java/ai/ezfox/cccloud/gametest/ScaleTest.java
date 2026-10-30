@@ -677,6 +677,7 @@ public final class ScaleTest {
         }
         // one owner per base: players may only place a few mainframes each (mainframeLimit)
         var owner = ai.ezfox.cccloud.ingame.InGameTestSupport.player(helper, "scale_owner");
+        long heapBefore = usedHeapAfterGc();
         long setupStart = System.nanoTime();
         var bases = new ArrayList<Base>();
         bases.add(place(helper, owner, new BlockPos(0, 20, 0), BIG, true));
@@ -735,6 +736,12 @@ public final class ScaleTest {
                     }
                     report.addProperty("readyMs", (now - setupStart) / 1_000_000);
                     report.addProperty("sections", sections);
+                    // what the bases cost in memory: blocks, block entities, hub, network, cards (all mods' share included)
+                    long heapAfter = usedHeapAfterGc();
+                    int devices = 0;
+                    for (var base : bases) devices += base.lua.size() + base.machines.size() + base.redstone.size();
+                    report.addProperty("heapForBasesMiB", round((heapAfter - heapBefore) / 1048576.0));
+                    report.addProperty("heapPerDeviceKiB", round((heapAfter - heapBefore) / 1024.0 / Math.max(1, devices)));
                     phase[0] = Phase.STATIC;
                 }
                 case STATIC -> {
@@ -1044,6 +1051,12 @@ public final class ScaleTest {
         json.add("bigValuesPerSecond", stats(bigValues));
         json.add("otherKiBps", stats(otherKbps));
         return json;
+    }
+
+    private static long usedHeapAfterGc() {
+        var rt = Runtime.getRuntime();
+        System.gc();
+        return rt.totalMemory() - rt.freeMemory();
     }
 
     private static JsonObject memory(List<Base> bases) {

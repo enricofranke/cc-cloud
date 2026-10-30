@@ -211,7 +211,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), STATUS_INTERVAL);
         statusPending = true;
         inputPending = true;
-        NetworkService.markDirty();
+        NetworkService.markDirty(link == null ? null : link.id());
     }
 
     @Override
@@ -232,7 +232,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
                 serverLevel.getServer().getTickCount());
         }
         RsDevices.unregister(this);
-        NetworkService.markDirty();
+        NetworkService.markDirty(link == null ? null : link.id());
         status = CloudStatus.OFFLINE;
     }
 

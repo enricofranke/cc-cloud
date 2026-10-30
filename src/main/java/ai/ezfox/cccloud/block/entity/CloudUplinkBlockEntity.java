@@ -307,7 +307,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         rsInputPending = true;
         mountPending = true;
         wired.onLoad();
-        ai.ezfox.cccloud.network.NetworkService.markDirty();
+        // only this device's network is computed again (a chunk of a big base loading must not recompute every network)
+        ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
     }
 
     /** Set by NeoForge before {@link #setRemoved()} when the chunk unloads (not when the block is removed). */
@@ -332,7 +333,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 serverLevel.getServer().getTickCount());
         }
         CloudNetwork.unregisterUplink(this);
-        ai.ezfox.cccloud.network.NetworkService.markDirty();
+        ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
         status = CloudStatus.OFFLINE;
         // Chunk unload: keep the section on the dashboard but show it as offline.
         if (!broken && !suppressed && link != null) {

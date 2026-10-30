@@ -146,7 +146,9 @@ public final class BridgeSection implements DashboardSection {
                 CloudNetwork.registerSection(this);
             }
             registered = true;
-            ai.ezfox.cccloud.network.NetworkService.markDirty();
+            // staggered by position: many bridges loaded together do not all refresh in the same tick
+            ticks = Math.floorMod(Long.hashCode(host.asBlockEntity().getBlockPos().asLong()), VALUE_INTERVAL);
+            ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
         }
         if (ticks % STATUS_INTERVAL == 0) updateStatus(level);
         if (ticks % VALUE_INTERVAL == 0 && link != null) refreshValues();
@@ -159,7 +161,7 @@ public final class BridgeSection implements DashboardSection {
         if (!registered) return;
         registered = false;
         CloudNetwork.unregisterSection(this);
-        ai.ezfox.cccloud.network.NetworkService.markDirty();
+        ai.ezfox.cccloud.network.NetworkService.markDirty(link == null ? null : link.id());
         status = CloudStatus.OFFLINE;
         if (!broken && link != null) {
             var cached = ai.ezfox.cccloud.network.SectionCache.unloaded(snapshot());

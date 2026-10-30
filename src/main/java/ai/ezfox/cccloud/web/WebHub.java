@@ -887,24 +887,25 @@ public final class WebHub {
         var view = view(session.mainframeId());
         var share = session.share();
         SnapshotParts parts = null;
-        JsonObject shareSnapshot = null;
+        ShareParts shareParts = null;
         synchronized (view) {
             if (share != null) {
                 int viewers = 0;
                 for (var s : view.sessions) if (s.share() != null && s.share().id().equals(share.id())) viewers++;
                 if (viewers >= share.maxViewers()) return false;
-                // Share snapshots are filtered copies (small: only the shared cards); built under the lock as before.
-                shareSnapshot = shareSnapshot(view, share);
+                // Share snapshots are filtered copies of the shared cards, built outside the lock from these references.
+                shareParts = new ShareParts(view.id, view.name, view.online, view.enabled, new LinkedHashMap<>(view.uplinks), view.layout);
             } else {
                 parts = snapshotParts(view, session);
             }
             view.awaiting.put(session, new ArrayList<>());
             view.sessions.add(session);
         }
-        var share0 = shareSnapshot;
+        var share0 = shareParts;
         var parts0 = parts;
         Runnable finish = () -> {
-            List<String> snapshot = share0 != null ? List.of(Json.GSON.toJson(share0)) : session.inGame() ? serializeSplit(view, parts0) : List.of(serialize(view, parts0));
+            List<String> snapshot = share0 != null ? List.of(Json.GSON.toJson(shareSnapshot(share0, share))) : session.inGame() ? serializeSplit(view, parts0)
+                : List.of(serialize(view, parts0));
             synchronized (view.sendLock) {
                 var later = view.awaiting.remove(session);
                 if (later == null && !view.sessions.contains(session)) return; // closed meanwhile
@@ -1006,8 +1007,12 @@ public final class WebHub {
     }
 
 
+    /** What a share snapshot is built from (immutable references taken under the view's lock). */
+    private record ShareParts(UUID id, String name, boolean online, boolean enabled, Map<String, Section> sections, @Nullable JsonObject layout) {
+    }
+
     /** v0.6 share snapshot: only the shared cards, no network, no positions, no item search. */
-    private static JsonObject shareSnapshot(View view, AccessStore.Share share) {
+    private static JsonObject shareSnapshot(ShareParts view, AccessStore.Share share) {
         var json = new JsonObject();
         json.addProperty("t", "snapshot");
         json.addProperty("role", Role.SHARE.id);
@@ -1020,29 +1025,29 @@ public final class WebHub {
         info.addProperty("hideNumbers", share.hideNumbers());
         json.add("share", info);
         var mainframe = new JsonObject();
-        mainframe.addProperty("id", view.id.toString());
-        mainframe.addProperty("name", view.name);
-        mainframe.addProperty("online", view.online);
-        mainframe.addProperty("enabled", view.enabled);
+        mainframe.addProperty("id", view.id().toString());
+        mainframe.addProperty("name", view.name());
+        mainframe.addProperty("online", view.online());
+        mainframe.addProperty("enabled", view.enabled());
         json.add("mainframe", mainframe);
         json.addProperty("canControl", false);
-        var sections = jsonSections(view).values();
-        var keys = ShareFilter.scope(sections, view.layout, share);
+        var sections = jsonSections(view.sections()).values();
+        var keys = ShareFilter.scope(sections, view.layout(), share);
         var uplinks = new JsonArray();
         for (var uplink : sections) {
             var filtered = ShareFilter.uplink(uplink, keys, share.hideNumbers());
             if (filtered != null) uplinks.add(filtered);
         }
         json.add("uplinks", uplinks);
-        var layout = ShareFilter.layout(view.layout, sections, keys);
+        var layout = ShareFilter.layout(view.layout(), sections, keys);
         json.add("layout", layout == null ? com.google.gson.JsonNull.INSTANCE : layout);
         return json;
     }
 
-    /** The sections as JSON objects (cached per section version; shared, never change them). Under the view's lock. */
-    private static Map<String, JsonObject> jsonSections(View view) {
-        var map = new LinkedHashMap<String, JsonObject>(view.uplinks.size() * 2);
-        for (var e : view.uplinks.entrySet()) map.put(e.getKey(), e.getValue().json());
+    /** The sections as JSON objects (cached per section version; shared, never change them). Any thread. */
+    private static Map<String, JsonObject> jsonSections(Map<String, Section> sections) {
+        var map = new LinkedHashMap<String, JsonObject>(sections.size() * 2);
+        for (var e : sections.entrySet()) map.put(e.getKey(), e.getValue().json());
         return map;
     }
 
@@ -1224,7 +1229,7 @@ public final class WebHub {
         JsonObject networkFull = null, networkStripped = null;
         Set<String> restricted;
         List<HubSession> targets;
-        Map<String, JsonObject> uplinks = null;
+        Map<String, Section> shareSections = null;
         @Nullable JsonObject layout = null;
         synchronized (view) {
             if (view.networkDirty && now - view.networkSentAt >= 500) {
@@ -1245,13 +1250,14 @@ public final class WebHub {
             for (var s : targets) {
                 if (s.share() != null) {
                     // Share filtering needs the sections and the layout (immutable objects; the map is copied).
-                    uplinks = jsonSections(view);
+                    shareSections = new LinkedHashMap<>(view.uplinks);
                     layout = view.layout;
                     break;
                 }
             }
         }
         if (targets.isEmpty()) return;
+        Map<String, JsonObject> uplinks = shareSections == null ? Map.of() : jsonSections(shareSections);
         String fullNet = null, strippedNet = null;
         if (networkFull != null) {
             // Serialised once per change, outside the view's lock and off the server thread.

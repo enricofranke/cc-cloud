@@ -20,11 +20,14 @@ import net.minecraft.world.level.saveddata.SavedDataType;
  * World SavedData ({@code data/cccloud/sections.dat}): the last snapshot (widgets and values) of every uplink/bridge
  * section whose chunk got unloaded, so the dashboard keeps showing it greyed out ({@code "loaded":false},
  * {@code "lastSeen"}) – also after a server restart, without loading chunks. A live snapshot replaces it on load.
- * Bounded: {@link #MAX_BYTES} per section, {@link #MAX_SECTIONS} per mainframe. Server thread only.
+ * Bounded: {@link #MAX_BYTES} per section, {@link #MAX_SECTIONS} and {@link #MAX_MAINFRAME_BYTES} per mainframe (big bases:
+ * docs/SPEC.md "Scaling"; until 0.10 at most 256 sections were kept, so the rest of a big base vanished after a restart).
+ * Server thread only.
  */
 public final class SectionCache extends SavedData {
     public static final int MAX_BYTES = 64 * 1024;
-    public static final int MAX_SECTIONS = 256;
+    public static final int MAX_SECTIONS = 2048;
+    public static final int MAX_MAINFRAME_BYTES = 16 * 1024 * 1024;
 
     private static final Codec<SectionCache> CODEC = RecordCodecBuilder.create(i -> i.group(
         Codec.unboundedMap(UUIDUtil.STRING_CODEC, Codec.unboundedMap(Codec.STRING, Codec.STRING)).optionalFieldOf("sections", Map.of())
@@ -35,12 +38,19 @@ public final class SectionCache extends SavedData {
 
     /** mainframe → section id → snapshot JSON (with loaded=false, lastSeen). */
     private final Map<UUID, Map<String, String>> sections = new HashMap<>();
+    /** mainframe → characters of its cached sections. */
+    private final Map<UUID, Long> bytes = new HashMap<>();
 
     public SectionCache() {
     }
 
     private SectionCache(Map<UUID, Map<String, String>> sections) {
-        for (var e : sections.entrySet()) this.sections.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+        for (var e : sections.entrySet()) {
+            this.sections.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+            long b = 0;
+            for (var json : e.getValue().values()) b += json.length();
+            bytes.put(e.getKey(), b);
+        }
     }
 
     public static SectionCache get(MinecraftServer server) {
@@ -63,20 +73,31 @@ public final class SectionCache extends SavedData {
         if (json.length() > MAX_BYTES) return;
         var map = sections.computeIfAbsent(mainframeId, k -> new LinkedHashMap<>());
         if (!map.containsKey(id) && map.size() >= MAX_SECTIONS) return;
+        long used = bytes.getOrDefault(mainframeId, 0L);
+        var old = map.get(id);
+        long after = used - (old == null ? 0 : old.length()) + json.length();
+        if (after > MAX_MAINFRAME_BYTES) return;
         map.put(id, json);
+        this.bytes.put(mainframeId, after);
         setDirty();
     }
 
     /** The section was unlinked or broken. */
     public void forget(UUID mainframeId, String sectionId) {
         var map = sections.get(mainframeId);
-        if (map != null && map.remove(sectionId) != null) {
-            if (map.isEmpty()) sections.remove(mainframeId);
+        String removed = map == null ? null : map.remove(sectionId);
+        if (removed != null) {
+            bytes.merge(mainframeId, -(long) removed.length(), Long::sum);
+            if (map.isEmpty()) {
+                sections.remove(mainframeId);
+                bytes.remove(mainframeId);
+            }
             setDirty();
         }
     }
 
     public void forgetMainframe(UUID mainframeId) {
+        bytes.remove(mainframeId);
         if (sections.remove(mainframeId) != null) setDirty();
     }
 
