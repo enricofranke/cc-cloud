@@ -12,6 +12,22 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 >
 > Du willst nur eine Lampe schalten? Eine **Cloud-Lampe** setzen (oder einen Cloud-Schalter neben deine Redstone-Lampen) und verbinden – sie erscheint als Schalter im Dashboard. Siehe [Redstone-Geräte](/docs/redstone).
 
+## Installation {#install}
+
+Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den \`mods\`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client.
+
+### Quests (FTB Quests) {#quests}
+
+Es gibt zwei Quest-Kapitel für **FTB Quests**: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch. Sie stecken **nicht in der Mod-Jar**: FTB Quests hält alle Quests im Questbuch des Servers (\`config/ftbquests/quests\`), die Mod allein bringt also keine Quests mit.
+
+1. \`cccloud-quests-atm11-<version>.zip\` von den [Releases](https://github.com/enricofranke/cc-cloud/releases) herunterladen, neben der Mod-Jar.
+2. Entpacken und \`./install.sh <Server-Ordner>\` ausführen – der Ordner, in dem \`config/ftbquests/quests\` liegt (im Einzelspieler: der Instanz-Ordner). Das Skript sichert das Questbuch vorher und überschreibt nie fremde Quests.
+3. Server neu starten oder \`/ftbquests reload\` ausführen.
+
+Einmal **auf dem Server** installieren; die Spieler bekommen die Quests automatisch vom Server. Die Kapitel stehen in der Gruppe **Tech**, nach Ender IO und XyCraft. Nur ein Dateimanager beim Hoster? Die \`README.txt\` im Zip beschreibt die Schritte von Hand.
+
+> **Modpack-Ersteller:** Die Kapitel sind für All the Mods 11 gemacht und ganz normale FTB-Quests-Dateien. Liefere sie unverändert in deinem Questbuch mit oder passe sie an (Layout, Belohnungen, Kapitelgruppe); die Meilenstein-Belohnungen nutzen die Belohnungstabellen von ATM11. CC: Cloud selbst schreibt nie ins Questbuch. Generator und Validator: \`integration/ftbquests\` im Repository.
+
 ## Die Blöcke {#blocks}
 
 | Block / Item | Funktion |
@@ -800,7 +816,7 @@ Die Rezepte sind darauf ausgelegt, von Modpacks geändert zu werden:
 - **Feste Rezept-IDs.** Jedes Rezept heißt \`cccloud:<name>\` ([Liste unten](/docs/recipes#recipe-ids)) und behält seine ID über Versionen hinweg. Überschreiben mit einer Datapack-Datei \`data/cccloud/recipe/<name>.json\`, entfernen mit einer Datei, die nur eine \`neoforge:never\`-Bedingung enthält (unten), oder per KubeJS / CraftTweaker.
 - **Tags statt Items.** Die Zutaten sind die üblichen \`c:\`-Tags (\`#c:ingots/gold\`, \`#c:nuggets/gold\`, \`#c:ender_pearls\`, \`#c:dusts/redstone\`, \`#c:glass_panes\`, \`#c:gems/diamond\`, \`#c:storage_blocks/gold\`, \`#c:ingots/vibranium\` …), daher tauschen Vereinheitlichungs-Mods wie AlmostUnified das Material, ohne diese Rezepte anzufassen.
 - **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades und die Cloud Probe nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (\`neoforge:mod_loaded\`); ohne lädt stattdessen die \`*_fallback\`-Variante (Diamant, Netherit, Netherstern, \`neoforge:not\`). Genauso der Ender Fiber Link (\`ender_fiber_link_unobtainium\` mit AllTheModium, \`ender_fiber_link\` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: \`quantum_core_fallback\`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
-- **FTB Quests:** Die CC: Cloud-Kapitel nutzen Item-Aufgaben (Item haben oder craften), nie Rezept-IDs – sie funktionieren also weiter, egal was du änderst.
+- **FTB Quests:** Die CC: Cloud-Kapitel nutzen Item-Aufgaben (Item haben oder craften), nie Rezept-IDs – sie funktionieren also weiter, egal was du änderst. Sie stecken nicht in der Mod-Jar: Liefere sie im Questbuch deines Packs mit ([Quests](/docs/start#quests)).
 - **Was Spieler sehen:** JEI/EMI, das Handbuch im Spiel und das Dashboard des Servers zeigen die aktuellen Rezepte; das Dashboard markiert geänderte, hinzugefügte und entfernte. Die Website zeigt die Standard-Rezepte.
 
 Ein Rezept per Datapack entfernen (\`data/cccloud/recipe/cloud_core.json\` in deinem Pack):
@@ -1158,5 +1174,9 @@ Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: 
 ## Falsche PIN / gesperrt {#pin-locked}
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit \`/cccloud pin set\` ändern.
+
+## Keine Quests nach der Installation {#no-quests}
+
+Die FTB-Quests-Kapitel stecken nicht in der Mod-Jar – Quests liegen im Questbuch des Servers. Das Quest-Zip einmal auf dem Server installieren, dann den Server neu starten oder \`/ftbquests reload\` ausführen. Siehe [Quests](/docs/start#quests).
 `,
 };

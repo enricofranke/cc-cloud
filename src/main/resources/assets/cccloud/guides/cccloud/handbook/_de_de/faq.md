@@ -58,3 +58,7 @@ Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: 
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit `/cccloud pin set` ändern.
 
+## Keine Quests nach der Installation
+
+Die FTB-Quests-Kapitel stecken nicht in der Mod-Jar – Quests liegen im Questbuch des Servers. Das Quest-Zip einmal auf dem Server installieren, dann den Server neu starten oder `/ftbquests reload` ausführen. Siehe [Quests](index.md).
+

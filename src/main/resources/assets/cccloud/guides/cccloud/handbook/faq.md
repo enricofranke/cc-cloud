@@ -58,3 +58,7 @@ To keep a base running while you are away, keep its chunks loaded: **force-load*
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with `/cccloud pin set`.
 
+## No quests after installing the mod
+
+The FTB Quests chapters are not inside the mod jar – quests live in the server's quest book. Install the quest zip once on the server, then restart it or run `/ftbquests reload`. See [Quests](index.md).
+

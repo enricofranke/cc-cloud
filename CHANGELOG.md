@@ -4,6 +4,14 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+- FTB Quests: every release now carries the two quest chapters (CC: Tweaked, CC: Cloud; English and German) as a
+  ready-to-use quest pack, `cccloud-quests-atm11-<version>.zip`, next to the jar: the chapter and lang files,
+  `install.sh` and a `README.txt` (EN/DE) with the steps for the script and for hosts with only a file manager. The
+  quests are not inside the mod jar – they belong to the pack's quest book, so adding the mod alone shows no quests.
+  Install the zip once on the server; players get the quests from the server. Explained in the README, in Getting
+  started (new "Install" section with "Quests"), in Troubleshooting and in the in-game handbook (EN/DE), with a note
+  for pack makers.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

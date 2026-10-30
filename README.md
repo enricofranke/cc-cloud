@@ -104,6 +104,20 @@ dash:run()
 
 Full reference: [cccloud.dev/en/docs](https://cccloud.dev/en/docs/), `/docs` on your own dashboard, or `help cloud` in game.
 
+### Quests (FTB Quests)
+
+Two quest chapters for FTB Quests, made for All the Mods 11: **CC: Tweaked** (24 quests) and **CC: Cloud** (39 quests),
+in English and German. They are **not inside the mod jar**: quests belong to the pack's quest book
+(`config/ftbquests/quests`), so adding the mod alone adds no quests.
+
+1. Download `cccloud-quests-atm11-<version>.zip` from the [releases](https://github.com/enricofranke/cc-cloud/releases).
+2. Unpack it and run `./install.sh <server-folder>` once on the server (backs up the quest book first, never overwrites
+   other quests), then restart the server or run `/ftbquests reload`. Players receive the quests automatically.
+
+The chapters appear in the Tech group, after Ender IO and XyCraft. Hosts with only a file manager: `README.txt` in the
+zip has the manual steps. Pack makers can ship the chapters as they are or adapt them – see
+[`integration/ftbquests`](integration/ftbquests/README.md).
+
 ## Hosting & security
 
 - The dashboard listens on port **8787** and only accepts **LAN addresses** by default (Tailscale counts as private).

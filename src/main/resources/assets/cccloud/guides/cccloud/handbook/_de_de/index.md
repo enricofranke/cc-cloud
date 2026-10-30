@@ -14,6 +14,22 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 >
 > Du willst nur eine Lampe schalten? Eine **Cloud-Lampe** setzen (oder einen Cloud-Schalter neben deine Redstone-Lampen) und verbinden – sie erscheint als Schalter im Dashboard. Siehe [Redstone-Geräte](redstone.md).
 
+## Installation
+
+Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den `mods`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client.
+
+### Quests (FTB Quests)
+
+Es gibt zwei Quest-Kapitel für **FTB Quests**: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch. Sie stecken **nicht in der Mod-Jar**: FTB Quests hält alle Quests im Questbuch des Servers (`config/ftbquests/quests`), die Mod allein bringt also keine Quests mit.
+
+1. `cccloud-quests-atm11-<version>.zip` von den [Releases](https://github.com/enricofranke/cc-cloud/releases) herunterladen, neben der Mod-Jar.
+2. Entpacken und `./install.sh <Server-Ordner>` ausführen – der Ordner, in dem `config/ftbquests/quests` liegt (im Einzelspieler: der Instanz-Ordner). Das Skript sichert das Questbuch vorher und überschreibt nie fremde Quests.
+3. Server neu starten oder `/ftbquests reload` ausführen.
+
+Einmal **auf dem Server** installieren; die Spieler bekommen die Quests automatisch vom Server. Die Kapitel stehen in der Gruppe **Tech**, nach Ender IO und XyCraft. Nur ein Dateimanager beim Hoster? Die `README.txt` im Zip beschreibt die Schritte von Hand.
+
+> **Modpack-Ersteller:** Die Kapitel sind für All the Mods 11 gemacht und ganz normale FTB-Quests-Dateien. Liefere sie unverändert in deinem Questbuch mit oder passe sie an (Layout, Belohnungen, Kapitelgruppe); die Meilenstein-Belohnungen nutzen die Belohnungstabellen von ATM11. CC: Cloud selbst schreibt nie ins Questbuch. Generator und Validator: `integration/ftbquests` im Repository.
+
 ## Die Blöcke
 
 | Block / Item | Funktion |

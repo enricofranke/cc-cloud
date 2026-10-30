@@ -14,6 +14,22 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 >
 > Only want to switch a lamp? Place a **Cloud Lamp** (or a Cloud Switch next to your redstone lamps) and link it – it shows up as a switch on the dashboard. See [Redstone devices](redstone.md).
 
+## Install
+
+Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the `mods` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need.
+
+### Quests (FTB Quests)
+
+There are two quest chapters for **FTB Quests**: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German. They are **not inside the mod jar**: FTB Quests keeps every quest in the quest book of the server (`config/ftbquests/quests`), so adding the mod alone adds no quests.
+
+1. Download `cccloud-quests-atm11-<version>.zip` from the [releases](https://github.com/enricofranke/cc-cloud/releases), next to the mod jar.
+2. Unpack it and run `./install.sh <server folder>` – the folder that contains `config/ftbquests/quests` (in singleplayer: the instance folder). It backs up the quest book first and never overwrites other quests.
+3. Restart the server or run `/ftbquests reload`.
+
+Install them **once on the server**; players get the quests from the server automatically. The chapters appear in the **Tech** group, after Ender IO and XyCraft. Only a file manager at your host? `README.txt` in the zip has the manual steps.
+
+> **Pack makers:** the chapters are made for All the Mods 11 and are plain FTB Quests files. Ship them in your pack's quest book as they are or adapt them (layout, rewards, chapter group); the milestone rewards use ATM11's reward tables. CC: Cloud itself never writes into the quest book. Generator and validator: `integration/ftbquests` in the repository.
+
 ## The blocks
 
 | Block / item | What it does |
