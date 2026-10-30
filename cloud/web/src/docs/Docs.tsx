@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { signal } from "@preact/signals";
 import type { Block, Inline, Recipe } from "./md.ts";
-import { CONTENT, MODS, PAGES, UI, detectLang, itemName, type Lang } from "./content/index.ts";
+import { CONTENT, MODS, PAGES, UI, itemName, type Lang } from "./content/index.ts";
 import { pageBlocks, search } from "./search.ts";
 import { CodeBlock } from "../components/CodeBlock.tsx";
 import { ItemIcon } from "../components/ItemIcon.tsx";
@@ -13,19 +13,11 @@ import { Logo, IconBack, IconClose, IconMoon, IconSun, IconAuto } from "../compo
 import { copyText } from "../lib/clipboard.ts";
 import { cycleTheme, themePref, pushToast } from "../lib/ui.ts";
 import { Toasts } from "../components/Overlays.tsx";
-import { getPref, setPref } from "../lib/store.ts";
+import { lang, setLang } from "../lib/i18n.ts";
 
 // ------------------------------------------------------------------ state
-const initialLang = (): Lang => {
-  const saved = getPref("lang", "");
-  return saved === "de" || saved === "en" ? saved : detectLang();
-};
-export const lang = signal<Lang>(initialLang());
-const setLang = (l: Lang) => {
-  lang.value = l;
-  setPref("lang", l);
-  document.documentElement.lang = l;
-};
+// the language preference is shared with the v0.10 screens (lib/i18n.ts)
+export { lang };
 
 /** /docs, /docs/<page>, plus #anchor */
 function current() {

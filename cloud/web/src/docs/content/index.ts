@@ -3,7 +3,8 @@ import GEN from "./recipes.gen.json" with { type: "json" };
 import { en } from "./en.ts";
 import type { IconName } from "../../lib/layout.ts";
 
-export type Lang = "de" | "en";
+import type { Lang } from "../../lib/lang.ts";
+export type { Lang };
 
 export interface DocPageMeta {
   id: string;
@@ -138,12 +139,5 @@ export function itemName(id: string, lang: Lang) {
   return id.replace(/^#?[a-z0-9_.-]+:/, "").replace(/[_/]/g, " ");
 }
 
-/** German for German browsers, otherwise English. */
-export function detectLang(languages: readonly string[] = typeof navigator === "undefined" ? [] : navigator.languages ?? [navigator.language]): Lang {
-  for (const l of languages) {
-    const p = l.toLowerCase().slice(0, 2);
-    if (p === "de") return "de";
-    if (p === "en") return "en";
-  }
-  return "en";
-}
+/** German for German browsers, otherwise English (shared with the v0.10 screens). */
+export { detectLang } from "../../lib/lang.ts";
