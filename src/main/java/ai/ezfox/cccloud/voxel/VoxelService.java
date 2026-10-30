@@ -113,12 +113,16 @@ public final class VoxelService {
         int[][] nodes = mainframeId == null ? new int[0][] : ai.ezfox.cccloud.map.XrayGuard.nodes(mainframeId, dim);
         var cached = CACHE.get(key);
         Long changed = DIRTY.get(area);
+        var stats = ai.ezfox.cccloud.map.MapStats.VOXELS;
         if (cached != null && (changed == null || changed <= cached.renderedAt() || System.currentTimeMillis() - changed < DEBOUNCE_MS)) {
+            stats.hits.increment();
             return CompletableFuture.completedFuture(cached.json());
         }
         if (cy < level.getMinSectionY() || cy > level.getMaxSectionY() || level.getChunkSource().getChunkNow(cx, cz) == null) {
+            stats.empty.increment();
             return CompletableFuture.completedFuture(null);
         }
+        stats.misses.increment();
         // Copy the block states (section + 1-block border) on the server thread; unloaded neighbor chunks stay unknown.
         var states = new BlockState[18 * 18 * 18];
         var known = new boolean[18 * 18 * 18];
@@ -143,8 +147,10 @@ public final class VoxelService {
         }
         long started = System.currentTimeMillis();
         return CompletableFuture.supplyAsync(() -> {
+            long t0 = System.nanoTime();
             var json = encode(dim, cx, cy, cz, states, known, nodes);
             CACHE.put(key, new Entry(json, started));
+            stats.workerNanos.add(System.nanoTime() - t0);
             return json;
         }, executor());
     }

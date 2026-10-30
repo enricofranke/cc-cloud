@@ -130,7 +130,11 @@ public final class MapTileService {
         if (cached != null) {
             Long changedAt = DIRTY.get(key.area());
             boolean stale = changedAt != null && changedAt > cached.renderedAt() && System.currentTimeMillis() - changedAt >= DEBOUNCE_MS;
-            if (!stale) return CompletableFuture.completedFuture(new Tile(cached.png(), cached.etag()));
+            if (!stale) {
+                MapStats.TILES.hits.increment();
+                if (cached.png() == null) MapStats.TILES.empty.increment();
+                return CompletableFuture.completedFuture(new Tile(cached.png(), cached.etag()));
+            }
         }
         var level = level(server, key.dim());
         if (level == null) return CompletableFuture.completedFuture(new Tile(null, "\"none\""));
@@ -138,6 +142,7 @@ public final class MapTileService {
             var running = JOBS.get(key);
             if (running != null) return running.future;
             var job = new Job(key);
+            MapStats.TILES.misses.increment();
             if (key.mainframe() != null) job.nodes = XrayGuard.nodes(key.mainframe(), key.dim());
             JOBS.put(key, job);
             QUEUE.add(job);
@@ -154,12 +159,19 @@ public final class MapTileService {
 
     private static void tick(MinecraftServer server) {
         long start = System.nanoTime();
+        if (sample(server, start)) MapStats.TILES.mainNanos.add(System.nanoTime() - start);
+    }
+
+    /** Samples queued tiles within the tick budget; true if there was work. */
+    private static boolean sample(MinecraftServer server, long start) {
+        boolean worked = false;
         while (System.nanoTime() - start < TICK_BUDGET_NANOS) {
             Job job;
             synchronized (JOBS) {
                 job = QUEUE.peek();
             }
-            if (job == null) return;
+            if (job == null) return worked;
+            worked = true;
             var level = level(server, job.key.dim());
             if (level == null) {
                 finish(server, job, null);
@@ -181,6 +193,7 @@ public final class MapTileService {
                 render(server, job);
             }
         }
+        return worked;
     }
 
     private static void sampleChunk(ServerLevel level, LevelChunk chunk, Job job) {
@@ -271,6 +284,7 @@ public final class MapTileService {
             encoder = executor;
         }
         executor.execute(() -> {
+            long t0 = System.nanoTime();
             try {
                 var samples = job.samples;
                 for (int x = 0; x < MapTileRenderer.SIZE; x++) if (job.northRow[x] == Integer.MIN_VALUE) job.northRow[x] = samples.height[x];
@@ -284,6 +298,8 @@ public final class MapTileService {
                 CACHE.put(job.key, entry);
                 if (Boolean.getBoolean("cccloud.gametest")) SAMPLES_FOR_TEST.put(job.key, samples);
                 if (png != null) save(server, job.key, png);
+                if (png == null) MapStats.TILES.empty.increment();
+                MapStats.TILES.workerNanos.add(System.nanoTime() - t0);
                 finish(server, job, new Tile(png, entry.etag()));
             } catch (RuntimeException e) {
                 CCCloud.LOGGER.warn("[cccloud] Map tile {} failed", job.key, e);

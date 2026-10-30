@@ -169,8 +169,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.UNAUTHORIZED, error("unauthorized"));
             return;
         }
+        var stats = route.id() == Router.Id.VOXELS ? ai.ezfox.cccloud.map.MapStats.VOXELS : route.id() == Router.Id.MAP_TILE ? ai.ezfox.cccloud.map.MapStats.TILES : null;
+        if (stats != null) stats.requests.increment();
         if (instance.apiLimits.size() > 10_000) instance.apiLimits.clear();
         if (!instance.apiLimits.computeIfAbsent(ip, k -> new TokenBucket(API_RATE, API_RATE / 60.0)).tryAcquire()) {
+            if (stats != null) stats.rateLimited.increment();
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
@@ -229,13 +232,23 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             return;
         }
         if (instance.mapLimits.size() > 10_000) instance.mapLimits.clear();
+        var stats = ai.ezfox.cccloud.map.MapStats.TILES;
+        stats.items.increment();
         if (!instance.mapLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(MAP_RATE, MAP_RATE / 60.0)).tryAcquire()) {
+            stats.rateLimited.increment();
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
         String ifNoneMatch = req.headers().get(HttpHeaderNames.IF_NONE_MATCH);
         req.retain();
-        CompletableFuture.supplyAsync(() -> instance.bridge.mapTile(device, mainframeId, dim, slice, y, tx, tz), instance.bridge.serverExecutor())
+        CompletableFuture.supplyAsync(() -> {
+                long t0 = System.nanoTime();
+                try {
+                    return instance.bridge.mapTile(device, mainframeId, dim, slice, y, tx, tz);
+                } finally {
+                    stats.mainNanos.add(System.nanoTime() - t0);
+                }
+            }, instance.bridge.serverExecutor())
             .thenCompose(f -> f)
             .orTimeout(15, TimeUnit.SECONDS)
             .whenComplete((result, err) -> ctx.executor().execute(() -> {
@@ -255,6 +268,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                         write(ctx, req, notModified);
                     } else {
                         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(result.png()));
+                        stats.bytes.add(result.png().length);
                         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "image/png");
                         response.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=60");
                         if (result.etag() != null) response.headers().set(HttpHeaderNames.ETAG, result.etag());
@@ -298,13 +312,23 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
             return;
         }
+        var stats = ai.ezfox.cccloud.map.MapStats.VOXELS;
+        stats.items.increment();
         if (instance.voxelLimits.size() > 10_000) instance.voxelLimits.clear();
         if (!instance.voxelLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(VOXEL_RATE, VOXEL_RATE)).tryAcquire()) {
+            stats.rateLimited.increment();
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
         req.retain();
-        CompletableFuture.supplyAsync(() -> instance.bridge.voxels(device, mainframeId, dim, cx, cy, cz), instance.bridge.serverExecutor())
+        CompletableFuture.supplyAsync(() -> {
+                long t0 = System.nanoTime();
+                try {
+                    return instance.bridge.voxels(device, mainframeId, dim, cx, cy, cz);
+                } finally {
+                    stats.mainNanos.add(System.nanoTime() - t0);
+                }
+            }, instance.bridge.serverExecutor())
             .thenCompose(f -> f)
             .orTimeout(10, TimeUnit.SECONDS)
             .whenComplete((result, err) -> ctx.executor().execute(() -> {
@@ -319,6 +343,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                         write(ctx, req, empty);
                     } else {
                         var response = json(HttpResponseStatus.OK, result.json());
+                        stats.bytes.add(response.content().readableBytes());
                         response.headers().set(HttpHeaderNames.CACHE_CONTROL, "private, max-age=5");
                         write(ctx, req, response);
                     }
