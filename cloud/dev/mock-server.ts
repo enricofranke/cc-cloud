@@ -1868,7 +1868,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
           const type =
-            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
+            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "card_settings" ? "card_settings_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -2077,6 +2077,23 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} pinned ${pin.label} (audit)`);
           publishProduction(m);
           return pres(true, { data: { id: pin.id } });
+        }
+        if (msg.t === "card_settings") {
+          // wave 4: the Peripheral card's values (layout.edit); the mock keeps them on the sample card
+          const cres = (ok: boolean, error?: string) => sendTo(ws, { t: "card_settings_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          const cd = denied(c, "layout.edit");
+          if (cd) return cres(false, cd);
+          const cu = m.uplinks.get(msg.uplinkId) as (Uplink & { cardSettings?: { getters: { name: string }[]; setters: { name: string }[]; settings: unknown } }) | undefined;
+          if (!cu?.cardSettings) return cres(false, cu ? "unsupported" : "unknown_uplink");
+          const st = msg.settings ?? {};
+          const getters = new Set(cu.cardSettings.getters.map((g) => g.name));
+          const show: unknown[] = Array.isArray(st.show) ? st.show : [];
+          if (show.length > 6) return cres(false, "too_many");
+          if (!show.every((n) => typeof n === "string" && getters.has(n))) return cres(false, "unknown_method");
+          if (st.toggle != null && !cu.cardSettings.setters.some((x) => x.name === st.toggle)) return cres(false, "unknown_method");
+          cu.cardSettings.settings = { show, charts: Array.isArray(st.charts) ? st.charts : [], toggle: st.toggle ?? null, pin: st.pin !== false };
+          log(`${c.user} changed the settings of card ${cu.title}`);
+          return cres(true);
         }
         if (msg.t === "rs_device") {
           // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown

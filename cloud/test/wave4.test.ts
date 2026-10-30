@@ -1,5 +1,7 @@
 // Wave 4: dimension names/icons/ranges on the network map and the Peripheral card's settings data.
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { createMockServer, type MockServer } from "../dev/mock-server.ts";
+import { TestSocket } from "./helpers.ts";
 import { dimHasCeiling, dimIcon, dimLabel, dimRange } from "../web/src/lib/dims.ts";
 import { normalizeCardSettings, normalizeNetwork } from "../web/src/lib/conn.ts";
 import { dimsOf } from "../web/src/lib/network.ts";
@@ -76,5 +78,37 @@ describe("peripheral card settings", () => {
     expect(info.unknown).toBe(2);
     expect(normalizeCardSettings({ getters: [] })).toBeUndefined();
     expect(normalizeCardSettings({ kind: "peripheral", getters: [], setters: [], settings: {} })!.settings.pin).toBe(true);
+  });
+});
+
+describe("card_settings in the mock", () => {
+  let mock: MockServer | undefined;
+  const sockets: TestSocket[] = [];
+  afterEach(async () => {
+    for (const s of sockets.splice(0)) s.close();
+    await mock?.close();
+    mock = undefined;
+  });
+
+  it("needs layout.edit and answers card_settings_result", async () => {
+    mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, log: () => {} });
+    const base = `http://127.0.0.1:${mock.port}`;
+    const token = async (body: object) => (await (await fetch(`${base}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Vitest", ...body }) })).json()).token;
+    const open = async (body: object) => {
+      const c = new TestSocket(`ws://127.0.0.1:${mock!.port}/ws/client`);
+      sockets.push(c);
+      await c.opened();
+      c.send({ t: "auth", token: await token(body) });
+      await c.next("snapshot");
+      return c;
+    };
+    const admin = await open({ role: "admin" });
+    admin.send({ t: "card_settings", reqId: "a", uplinkId: "no-such-card", settings: { show: [] } });
+    expect(await admin.next("card_settings_result")).toMatchObject({ reqId: "a", ok: false, error: "unknown_uplink" });
+    const operator = await open({ role: "operator" });
+    operator.send({ t: "card_settings", reqId: "o", uplinkId: "no-such-card", settings: { show: [] } });
+    const denied = await operator.next("card_settings_result");
+    expect(denied.ok).toBe(false);
+    expect(["read_only", "not_allowed"]).toContain(denied.error);
   });
 });
