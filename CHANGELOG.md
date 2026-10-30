@@ -4,6 +4,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Fixes and follow-ups
+- Cloud Redstone devices placed by `/setblock`, a structure or a schematic paste with their link in the block data now
+  show on the dashboard at once; before, they only appeared after their first state change.
+
 ### Security review before the release
 - API keys end with the browser that created them: revoking a browser (in game, `/cccloud devices revoke`, the Account
   page) also revokes the API keys made with it, so a lost phone cannot keep control through a key. The key list no longer

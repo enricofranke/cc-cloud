@@ -260,6 +260,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("rsdevice_rule_scene", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::ruleAndScene);
         TEST_FUNCTIONS.register("rsdevice_permissions", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::permissions);
         TEST_FUNCTIONS.register("rsdevice_capacity_power", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::capacityAndPower);
+        TEST_FUNCTIONS.register("rsdevice_setblock_card", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::placedBySetblock);
     }
 
     private ModRegistry() {

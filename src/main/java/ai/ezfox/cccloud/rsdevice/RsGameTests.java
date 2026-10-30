@@ -389,6 +389,51 @@ public final class RsGameTests {
             .thenSucceed();
     }
 
+    /**
+     * A device that arrives with its link in the block entity data ({@code /setblock}, a structure, a schematic paste)
+     * shows on its mainframe's card at once, not only after its first state change.
+     */
+    public static void placedBySetblock(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var s = mainframe(helper);
+        var lamp = s.base().north(2).above(1);
+        var sw = s.base().south(2).above(1);
+        level.setBlock(sw.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+        var placed = new ArrayList<>(List.of(lamp, sw, sw.below()));
+        helper.startSequence()
+            .thenWaitUntil(() -> mainframeReady(helper, s))
+            .thenExecute(() -> {
+                String link = MainframeLink.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, s.link()).getOrThrow().toString();
+                var commands = List.of(
+                    "setblock %d %d %d cccloud:cloud_lamp{link:%s,name:\"Porch\"}".formatted(lamp.getX(), lamp.getY(), lamp.getZ(), link),
+                    "setblock %d %d %d cccloud:cloud_switch[facing=down]{link:%s,name:\"Gate\",group:\"Yard\"}".formatted(sw.getX(), sw.getY(), sw.getZ(), link));
+                for (var command : commands) {
+                    try {
+                        int result = server.getCommands().getDispatcher().execute(command, server.createCommandSourceStack().withSuppressedOutput());
+                        helper.assertTrue(result > 0, "placed: " + command);
+                    } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                        throw helper.assertionException(command + ": " + e.getMessage());
+                    }
+                }
+                helper.assertTrue(at(helper, lamp).getLink() != null && at(helper, sw).getLink() != null, "the link came with the block entity data");
+            })
+            .thenWaitUntil(() -> {
+                // nothing switched, no input: the devices are on their cards without any state change
+                helper.assertTrue(ready(s, at(helper, lamp)) && ready(s, at(helper, sw)), "both on a card");
+                var auto = WebHub.INSTANCE.sectionSnapshot(s.id(), RsCards.sectionId(s.id(), "", 0).toString());
+                helper.assertTrue(auto != null && ids(auto).contains(RsCards.widgetId(at(helper, lamp).deviceId())), "the lamp is on the automatic card: " + auto);
+                var yard = WebHub.INSTANCE.sectionSnapshot(s.id(), RsCards.sectionId(s.id(), "yard", 0).toString());
+                helper.assertTrue(yard != null && "Yard".equals(yard.get("title").getAsString())
+                    && ids(yard).contains(RsCards.widgetId(at(helper, sw).deviceId())), "the switch is on its group's card: " + yard);
+                var copy = RsDevices.device(s.id(), at(helper, lamp).deviceId());
+                helper.assertTrue(copy != null && "Porch".equals(copy.name()), "the dashboard copy has the lamp's name: " + copy);
+                helper.assertTrue(at(helper, lamp).signalLevel() == 0 && at(helper, sw).output() == 0, "still off");
+            })
+            .thenExecute(() -> clear(level, placed))
+            .thenSucceed();
+    }
+
     private static List<String> ids(JsonObject snapshot) {
         var list = new ArrayList<String>();
         for (var w : snapshot.getAsJsonArray("widgets")) list.add(w.getAsJsonObject().get("id").getAsString());
