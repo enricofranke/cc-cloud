@@ -212,6 +212,41 @@ public final class ScaleTest {
         }
     }
 
+    static final class State {
+        volatile boolean finished;
+        volatile @Nullable String failure;
+    }
+
+    private static volatile @Nullable Runnable ACTIVE;
+    private static volatile @Nullable State STATE;
+    private static volatile @Nullable Runnable CLEANUP;
+
+    /** Runs the active scale test's step; a failure ends it (the GameTest sequence reports it). */
+    private static void onTickRun(ServerTickEvent.Post event) {
+        var step = ACTIVE;
+        if (step == null) return;
+        try {
+            step.run();
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] SCALE TEST failed", e);
+            ACTIVE = null;
+            var cleanup = CLEANUP;
+            if (cleanup != null) {
+                try {
+                    cleanup.run();
+                } catch (RuntimeException ignored) {
+                }
+            }
+            var state = STATE;
+            if (state != null) {
+                state.failure = String.valueOf(e.getMessage());
+                state.finished = true;
+            }
+        }
+        var state = STATE;
+        if (state != null && state.finished) ACTIVE = null;
+    }
+
     private static void startMeasuring() {
         wholeTicks.clear();
         ownTicks.clear();
@@ -597,6 +632,7 @@ public final class ScaleTest {
         if (!listening) {
             listening = true;
             NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, ScaleTest::onTickPre);
+            NeoForge.EVENT_BUS.addListener(EventPriority.NORMAL, ScaleTest::onTickRun);
             NeoForge.EVENT_BUS.addListener(EventPriority.LOW, ScaleTest::onTickPost);
             NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, ScaleTest::onTickSleep);
         }
@@ -634,12 +670,6 @@ public final class ScaleTest {
         }
         report.addProperty("placeMs", (System.nanoTime() - setupStart) / 1_000_000);
         var big = bases.getFirst();
-        helper.onEachTick(() -> {
-            for (var base : bases) {
-                if (!base.mainframe.isRemoved()) base.mainframe.energy().set(base.mainframe.energy().capacity());
-                for (var relay : base.relays) if (!relay.isRemoved()) relay.fillForTest();
-            }
-        });
 
         var phase = new Phase[]{Phase.LINK};
         var phaseStart = new long[]{System.nanoTime()};
@@ -650,7 +680,14 @@ public final class ScaleTest {
         var counters = new long[4];
         var groupToggles = new int[]{0};
 
-        helper.onEachTick(() -> {
+        var state = new State();
+        // Not helper.onEachTick: that registers one task per tick up to max_ticks, which the GameTest framework walks
+        // every tick (hundreds of thousands of entries, more than everything measured here). One tick listener instead.
+        ACTIVE = () -> {
+            for (var base : bases) {
+                if (!base.mainframe.isRemoved()) base.mainframe.energy().set(base.mainframe.energy().capacity());
+                for (var relay : base.relays) if (!relay.isRemoved()) relay.fillForTest();
+            }
             ticks[0]++;
             long now = System.nanoTime();
             switch (phase[0]) {
@@ -678,7 +715,7 @@ public final class ScaleTest {
                         for (var m : base.machines) if (m.deviceCard() == null) ready = false;
                     }
                     if (!ready) {
-                        if (now - phaseStart[0] > 120_000_000_000L) throw helper.assertionException("bases not ready after 120 s");
+                        if (now - phaseStart[0] > 120_000_000_000L) throw new IllegalStateException("bases not ready after 120 s");
                         return;
                     }
                     report.addProperty("readyMs", (now - setupStart) / 1_000_000);
@@ -703,7 +740,7 @@ public final class ScaleTest {
                     int done = 0;
                     for (var c : clients) if (c.snapshotMs >= 0 || c.closed != null) done++;
                     if (done < clients.size()) {
-                        if (now - phaseStart[0] > 120_000_000_000L) throw helper.assertionException("only " + done + " snapshots after 120 s");
+                        if (now - phaseStart[0] > 120_000_000_000L) throw new IllegalStateException("only " + done + " snapshots after 120 s");
                         return;
                     }
                     var snapshots = new JsonObject();
@@ -761,7 +798,7 @@ public final class ScaleTest {
                     } else {
                         phase[0] = Phase.DONE;
                         cleanup(helper, bases, forced, clients, load);
-                        verdict(helper, report, clients);
+                        state.finished = true;
                     }
                 }
                 case HOLD -> {
@@ -769,12 +806,22 @@ public final class ScaleTest {
                     if (now - phaseStart[0] < HOLD_S * 1_000_000_000L) return;
                     phase[0] = Phase.DONE;
                     cleanup(helper, bases, forced, clients, load);
-                    verdict(helper, report, clients);
+                    state.finished = true;
                 }
                 case DONE -> {
                 }
             }
-        });
+        };
+        STATE = state;
+        CLEANUP = () -> cleanup(helper, bases, forced, clients, load);
+        helper.startSequence()
+            .thenWaitUntil(() -> {
+                if (!state.finished) throw helper.assertionException("scale test running");
+            })
+            .thenExecute(() -> {
+                if (state.failure != null) helper.fail(state.failure);
+                verdict(helper, report, clients);
+            });
     }
 
     /** Every 5 s "All on"/"All off" on two redstone groups (a scene or a player). */
@@ -854,8 +901,8 @@ public final class ScaleTest {
         views.addProperty("limitUpdate", ai.ezfox.cccloud.gui.CloudMenu.MAX_VIEW);
         report.add("views", views);
 
-        // What a tablet/display session (in-game payloads ≤ MAX_DATA) and a browser get on login
-        var capture = new CaptureSession(big.id());
+        // What a browser and a tablet (in-game payloads ≤ MAX_DATA) get on login
+        var capture = new CaptureSession(big.id(), false);
         long t = System.nanoTime();
         WebHub.INSTANCE.addSession(capture);
         long snapshotNanos = System.nanoTime() - t;
@@ -864,8 +911,22 @@ public final class ScaleTest {
         int chars = capture.messages.stream().mapToInt(String::length).sum();
         snap.addProperty("chars", chars);
         snap.addProperty("messages", capture.messages.size());
-        snap.addProperty("largestMessage", capture.messages.stream().mapToInt(String::length).max().orElse(0));
         snap.addProperty("buildMs", round(snapshotNanos / 1e6));
+        var tablet = new CaptureSession(big.id(), true);
+        t = System.nanoTime();
+        WebHub.INSTANCE.addSession(tablet);
+        snap.addProperty("tabletCallerMs", round((System.nanoTime() - t) / 1e6));
+        long until = System.currentTimeMillis() + 30_000;
+        while (tablet.messages.isEmpty() && System.currentTimeMillis() < until) {
+            try {
+                Thread.sleep(5);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+        WebHub.INSTANCE.removeSession(tablet);
+        snap.addProperty("tabletMessages", tablet.messages.size());
+        snap.addProperty("largestMessage", tablet.messages.stream().mapToInt(String::length).max().orElse(0));
         snap.addProperty("tabletLimit", ai.ezfox.cccloud.ingame.InGamePayloads.MAX_DATA);
         report.add("bigSnapshot", snap);
 
@@ -902,10 +963,17 @@ public final class ScaleTest {
     /** A hub session that only records what it is sent (snapshot size without a socket). */
     static final class CaptureSession implements ai.ezfox.cccloud.web.HubSession {
         final UUID mainframeId;
+        final boolean inGame;
         final List<String> messages = java.util.Collections.synchronizedList(new ArrayList<>());
 
-        CaptureSession(UUID mainframeId) {
+        CaptureSession(UUID mainframeId, boolean inGame) {
             this.mainframeId = mainframeId;
+            this.inGame = inGame;
+        }
+
+        @Override
+        public boolean inGame() {
+            return inGame;
         }
 
         @Override

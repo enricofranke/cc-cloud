@@ -170,6 +170,8 @@ neoForge {
                     if (project.hasProperty(name)) systemProperty "cccloud.scaleTest.${key}", project.property(name).toString()
                 }
                 programArguments.addAll '--tests', 'cccloud:scale_test'
+                // -PscaleTestJfr=/some/file.jfr: a Java Flight Recording of the whole run (where the time goes)
+                if (project.hasProperty("scaleTestJfr")) jvmArguments.add("-XX:StartFlightRecording=filename=${project.property('scaleTestJfr')},settings=profile,dumponexit=true".toString())
             }
             // A free port per run (parallel checkouts never collide) and hub flushes on the server tick (load-independent tests).
             systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '0'

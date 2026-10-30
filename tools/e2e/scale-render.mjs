@@ -28,7 +28,9 @@ const RUNS = Number(opt("runs", 3));
 const WATCH_S = Number(opt("watch", 15));
 const WIDTH = Number(opt("width", 1440));
 
-const browser = await chromium.launch({ headless: true });
+// --chrome <path>: a Chromium/Chrome binary when Playwright's own browser is not installed (e.g. Google Chrome)
+const executablePath = opt("chrome", process.env.SCALE_CHROME);
+const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 const results = [];
 for (let run = 0; run < RUNS; run++) {
   const context = await browser.newContext({ viewport: { width: WIDTH, height: 900 } });
@@ -57,7 +59,16 @@ for (let run = 0; run < RUNS; run++) {
   const url = `${session.url}#/m/${encodeURIComponent(session.mainframeId)}`;
   const t0 = Date.now();
   await page.goto(url, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("[data-card]", { timeout: 60_000 });
+  const consoleErrors = [];
+  page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 300)); });
+  page.on("pageerror", (e) => consoleErrors.push(String(e).slice(0, 300)));
+  try {
+    await page.waitForSelector("[data-card]", { timeout: Number(opt("timeout", 60)) * 1000 });
+  } catch (e) {
+    const diag = await page.evaluate(() => ({ ws: window.__ws, text: document.body.innerText.slice(0, 500), longTaskMs: Math.round(window.__long.reduce((a, [, d]) => a + d, 0)) }));
+    console.error(JSON.stringify({ error: "no card rendered", consoleErrors, ...diag }, null, 2));
+    throw e;
+  }
   const firstCardMs = Date.now() - t0;
   // all cards of the first page: the count stops growing for 500 ms
   let last = -1, stableSince = Date.now(), cards = 0;
