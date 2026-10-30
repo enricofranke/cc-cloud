@@ -18,7 +18,22 @@ export const TYPE_LABEL: Record<NodeType, string> = {
   device: "Linked device",
   me_bridge: "ME Cloud Bridge",
   rs_bridge: "RS Cloud Bridge",
+  cloud_switch: "Cloud Switch",
+  cloud_button: "Cloud Button",
+  cloud_lamp: "Cloud Lamp",
+  cloud_sensor: "Cloud Sensor",
 };
+
+export const isRedstoneDevice = (t: NodeType) => t === "cloud_switch" || t === "cloud_button" || t === "cloud_lamp" || t === "cloud_sensor";
+
+/** Widget id of a Cloud Redstone device on its card: d_ + the first 12 hex digits of its id. */
+export const redstoneWidgetId = (deviceId: string) => `d_${deviceId.replace(/-/g, "").slice(0, 12).toLowerCase()}`;
+
+/** The card (section) a Cloud Redstone device sits on right now, if any. */
+export function redstoneCardOf(uplinks: Uplink[], deviceId: string): Uplink | undefined {
+  const wid = redstoneWidgetId(deviceId);
+  return uplinks.find((u) => u.template === "redstone" && u.widgets.some((w) => w.id === wid));
+}
 
 export const STATUS_LABEL: Record<NodeStatus, string> = {
   online: "Online",
@@ -35,7 +50,7 @@ export const STATUS_LABEL: Record<NodeStatus, string> = {
 
 export const STATUS_HINT: Partial<Record<NodeStatus, string>> = {
   no_power: "This relay has no FE. Everything behind it re-routes over another path, if there is one.",
-  no_route: "No node within range is online. Place a relay closer, or power the relay it used.",
+  no_route: "No node within range is online. Place a relay closer, or power the relay it used. Cloud Redstone devices reach 32 blocks.",
   unloaded: "The chunk is not loaded. Relays never force-load chunks.",
   legacy_out_of_range:
     "Linked before v0.4 and out of range under the new rules. It keeps working for now – place a relay nearby or re-link it.",

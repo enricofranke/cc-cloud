@@ -15,6 +15,10 @@ export const MODEL_OF: Record<NodeType, string> = {
   bridge: "bridge",
   me_bridge: "bridge",
   rs_bridge: "bridge",
+  cloud_switch: "cloud_switch",
+  cloud_button: "cloud_button",
+  cloud_lamp: "cloud_lamp",
+  cloud_sensor: "cloud_sensor",
 };
 
 /** Block textures only know online/connecting/offline (+ no_power on relays). */

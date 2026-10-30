@@ -40,7 +40,7 @@ export const PERM_INFO: Record<Perm, { label: string; help: string; group: strin
   view: { label: "View the dashboard", help: "Values, cards and alerts. Without it the player has no access at all.", group: "view" },
   "view.positions": { label: "See coordinates", help: "Network map, 2D/3D world view and the server/claims/backup cards.", group: "view" },
   "act.buttons": { label: "Use controls", help: "Buttons, toggles, sliders and inputs on cards.", group: "act" },
-  "act.redstone": { label: "Switch redstone", help: "Redstone sides and computer power (turn on, reboot, shut down).", group: "act" },
+  "act.redstone": { label: "Switch redstone", help: "Redstone sides, computer power (turn on, reboot, shut down) and Cloud Redstone devices (switches, buttons, lamps).", group: "act" },
   "power.toggle": { label: "Turn the dashboard on/off", help: "The switch on the mainframe block.", group: "act" },
   "storage.search": { label: "Search storage", help: "Find items and see amounts in ME/RS networks.", group: "storage" },
   "storage.craft": { label: "Craft", help: "Start and cancel crafting jobs (uses your resources).", group: "storage" },

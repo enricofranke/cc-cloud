@@ -109,6 +109,8 @@ export interface Uplink {
   widgets: Widget[];
   /** v0.3: "auto" = automatic Computer card, "lua" = script widgets, "direct" = bridge template */
   mode?: "auto" | "lua" | "direct";
+  /** ready-made cards: "storage", "scenes", "redstone" (Cloud Redstone group card), device card kinds … */
+  template?: string;
   /** false = the chunk is unloaded: the mod sends the cached last snapshot (values may be old) */
   loaded?: boolean;
   /** ms since epoch, with loaded:false */
@@ -179,7 +181,7 @@ export interface PowerInfo {
 }
 
 export interface PowerItem {
-  /** base | uplinks | advanced_uplinks | bridges | clients | hops | anchor | efficiency (negative) | other */
+  /** base | uplinks | advanced_uplinks | bridges | redstone | clients | hops | anchor | efficiency (negative) | other */
   key: string;
   count?: number;
   fe: number;
@@ -189,7 +191,22 @@ export interface PowerItem {
 
 // ---- v0.4 network map -------------------------------------------------------
 /** "device" = a linked device whose chunk is not loaded (type unknown). me_bridge/rs_bridge: older drafts. */
-export type NodeType = "mainframe" | "relay" | "advanced_relay" | "ender_relay" | "uplink" | "advanced_uplink" | "bridge" | "device" | "me_bridge" | "rs_bridge";
+export type NodeType =
+  | "mainframe"
+  | "relay"
+  | "advanced_relay"
+  | "ender_relay"
+  | "uplink"
+  | "advanced_uplink"
+  | "bridge"
+  | "device"
+  | "me_bridge"
+  | "rs_bridge"
+  // Cloud Redstone devices (no card of their own: they sit on a group card of the mainframe)
+  | "cloud_switch"
+  | "cloud_button"
+  | "cloud_lamp"
+  | "cloud_sensor";
 /** legacy_out_of_range is derived from flags (the device itself is connected). */
 export type NodeStatus = "online" | "offline" | "connecting" | "no_power" | "no_route" | "unloaded" | "redstone" | "cloud_disabled" | "legacy_out_of_range" | "over_capacity";
 
@@ -229,6 +246,9 @@ export interface NetNode {
   via?: "cable" | "fiber";
   /** v0.7: mainframe node only */
   capacity?: NetCapacity;
+  /** Cloud Redstone devices: true, plus their group ("" = the automatic "Redstone" card) */
+  redstone?: boolean;
+  group?: string;
 }
 
 export interface NetLink {
