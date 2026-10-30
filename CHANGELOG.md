@@ -135,6 +135,11 @@ in, and who it was: a player's name or the kind of mob.
 - The CC: Tweaked chapter writes its turtle-upgrade components as FTB Quests writes them back, so an FTB Quests re-save
   no longer counts as a change.
 
+### Fix: layout editor side panel
+- The accent colours of cards and widgets all showed grey and did not wrap (a scene-editor style leaked into the
+  editor), and the icon grid was wider than a narrow side panel – the panel scrolled sideways and jumped when an icon
+  near the edge was clicked.
+
 ### Fix: the pairing request showed up twice in chat
 - Reading the code on the mainframe screen and closing it to click [Allow] sent the request (and the internet
   warning) into chat a second time. Closing the screen now only sends it to players who have not had it in chat yet.

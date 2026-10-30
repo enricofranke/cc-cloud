@@ -3160,7 +3160,7 @@ pre {
 .sw-gray { background: var(--gray); }
 .icon-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
   gap: 6px;
 }
 .icon-cell {
@@ -8396,13 +8396,14 @@ body.rz-nwse * {
   grid-template-columns: 1fr auto;
   align-items: start;
 }
-.swatches {
+/* Scoped: unscoped, these overrode the layout editor's accent swatches (all grey, no wrap). */
+.scene-editor .swatches {
   display: flex;
   gap: 6px;
   min-height: 44px;
   align-items: center;
 }
-.swatch {
+.scene-editor .swatch {
   width: 34px;
   height: 34px;
   border: 2px solid transparent;
@@ -8410,12 +8411,8 @@ body.rz-nwse * {
   background: var(--sc, #6b747d);
   box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.25), inset -2px -2px 0 rgba(0, 0, 0, 0.3);
 }
-.swatch.sc-gray {
+.scene-editor .swatch.sc-gray {
   --sc: #6b747d;
-}
-.swatch.on {
-  outline: 2px solid var(--text);
-  outline-offset: 2px;
 }
 .scene-editor .icon-grid {
   grid-template-columns: repeat(auto-fill, minmax(40px, 46px));
