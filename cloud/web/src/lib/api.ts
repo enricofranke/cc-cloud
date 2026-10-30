@@ -134,7 +134,7 @@ async function authed<T>(path: string, token: string, init: RequestInit = {}, ba
   if (res.status === 403 && b?.error === "remote_locked")
     throw new ApiError("server", "Control from the internet needs the mainframe PIN: open the dashboard, use any control and enter the PIN, then try again.");
   if (res.status === 403 && b?.error === "remote_no_pin")
-    throw new ApiError("server", "This mainframe has no PIN, so its settings can't be changed from the internet over plain HTTP. The owner sets one in game: /cccloud pin set.");
+    throw new ApiError("server", "Set a PIN for this mainframe to control it from outside your home network (in game: look at it and /cccloud pin set, or the Security tab).");
   if (res.status === 403) throw new ApiError("server", b?.error === "not_allowed" ? "not_allowed" : b?.error ?? "forbidden");
   if (!res.ok) throw new ApiError("server", b?.error ?? `HTTP ${res.status}`);
   return b as T;

@@ -38,13 +38,15 @@ class InternetAdviceTest {
     void switchingToHttpSaysWhatToDo() {
         var lines = InternetAdvice.switched(facts(InternetMode.HTTP, InternetMode.OFF, "", "203.0.113.5", List.of()));
         String text = render(EN, lines);
-        assertTrue(text.contains("plain HTTP – INSECURE"), text);
+        assertTrue(text.contains("plain HTTP (easy mode)"), text);
         assertTrue(text.contains("Not active yet"), "the running mode is not the configured one: " + text);
         assertTrue(text.contains("1. Open from anywhere: http://203.0.113.5:8787"), text);
         assertTrue(text.contains("asked at https://api.ipify.org): 203.0.113.5"), text);
         assertTrue(text.contains("forward TCP port 8787 to 192.168.1.20 port 8787"), text);
         assertTrue(text.contains("phone with Wi-Fi switched off"), "the self-test without third-party port checkers: " + text);
-        assertTrue(text.contains("can read logins and the PIN"), text);
+        assertTrue(text.contains("can be read on the network path"), "one honest sentence on the risk: " + text);
+        assertTrue(text.contains("internetRequirePin"), text);
+        assertFalse(text.contains("No PIN yet"), "without internetRequirePin PIN-less mainframes are no topic: " + text);
         assertTrue(text.contains("unused for 24 h"), text);
         assertEquals(InternetAdvice.Style.LINK, lines.stream().filter(l -> l.key().endsWith("step.open")).findFirst().orElseThrow().style());
         assertTrue(render(DE, lines).contains("Leite im Router den TCP-Port 8787 an 192.168.1.20 Port 8787 weiter"), render(DE, lines));
@@ -64,12 +66,13 @@ class InternetAdviceTest {
     }
 
     @Test
-    void refusedWithoutAPin() {
-        String text = render(EN, InternetAdvice.refusedNoPin(List.of("Base (1 64 2)", "Alex/1a2b3c4d"), 3));
-        assertTrue(text.startsWith("Refused: plain HTTP needs a dashboard PIN on every mainframe"), text);
-        assertTrue(text.contains("Without a PIN: Base (1 64 2), Alex/1a2b3c4d."), text);
-        assertTrue(text.contains("Set a PIN: /cccloud pin set <4-8 digits>"), text);
-        assertTrue(render(EN, InternetAdvice.refusedNoPin(List.of(), 0)).contains("place a Cloud Mainframe and set its PIN first"));
+    void strictModeNamesTheOwnersWithoutAPin() {
+        var lines = InternetAdvice.switched(facts(InternetMode.HTTP, InternetMode.HTTP, "", "203.0.113.5", List.of("Alex (2)", "Steve")));
+        String text = render(EN, lines);
+        assertTrue(text.contains("No PIN yet (view-only from the internet, no control) – mainframes of: Alex (2), Steve"), text);
+        assertTrue(text.contains("Owners set one in game: look at the mainframe, then /cccloud pin set <4-8 digits>"), text);
+        assertEquals(InternetAdvice.Style.INFO, lines.stream().filter(l -> l.key().endsWith("without_pin")).findFirst().orElseThrow().style(),
+            "information, not an error");
         assertEquals("a, b, c, d, e +2", InternetAdvice.names(List.of("a", "b", "c", "d", "e", "f", "g")));
     }
 
@@ -85,7 +88,7 @@ class InternetAdviceTest {
             "http://203.0.113.5:8787"));
         assertTrue(status.contains("Internet access: http"), status);
         assertTrue(status.contains("Link from the internet: http://203.0.113.5:8787"), status);
-        assertTrue(status.contains("Without a PIN (only watching from the internet, no control): Base (1 64 2)"), status);
+        assertTrue(status.contains("No PIN yet (view-only from the internet, no control) – mainframes of: Base (1 64 2)"), status);
         String pending = render(EN, InternetAdvice.status(facts(InternetMode.HTTP, InternetMode.OFF, "", null, List.of()), ""));
         assertTrue(pending.contains("Configured: http – not active yet"), pending);
         assertTrue(pending.contains("Only the local network"), pending);

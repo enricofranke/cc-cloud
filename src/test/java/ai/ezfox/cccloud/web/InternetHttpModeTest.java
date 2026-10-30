@@ -29,9 +29,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@code internetAccess = http} over a real {@link WebSocketSession} and {@link HttpHandler}: every write from an
- * internet address needs the PIN (unlock or with the action), a mainframe without a PIN cannot be controlled from the
- * internet, idle tokens expire there, share links stay read-only, and the LAN is unaffected.
+ * {@code internetAccess = http} over a real {@link WebSocketSession} and {@link HttpHandler}. By default control from
+ * the internet just works (no PIN); with {@code internetRequirePin} (most tests here) every write from an internet
+ * address needs the PIN (unlock or with the action) and a mainframe without a PIN is view-only from there. Idle tokens
+ * expire on the internet, share links stay read-only, and the LAN is unaffected either way.
  */
 class InternetHttpModeTest {
     private static final String PUBLIC = "203.0.113.9";
@@ -47,7 +48,45 @@ class InternetHttpModeTest {
     private final WebInstance instance = new WebInstance(bridge, auth, access, null, List.of(), true, "http://localhost", 8787);
 
     InternetHttpModeTest() {
-        instance.internet.update(InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24)));
+        instance.internet.update(STRICT);
+    }
+
+    private static final InternetSettings STRICT = InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24, true));
+    private static final InternetSettings DEFAULT = InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24));
+
+    @Test
+    void byDefaultControlFromTheInternetJustWorks() throws Exception {
+        instance.internet.update(DEFAULT);
+        publish();
+        var phone = login(PUBLIC, token()); // no PIN on this mainframe at all
+        assertNull(error(ask(phone, action(1))), "no PIN needed");
+        assertNull(error(ask(phone, "{\"t\":\"rs_override\",\"reqId\":\"r1\",\"channel\":\"door\",\"level\":15}")));
+        assertEquals(List.of("action:lamp", "rs_override:door=15"), bridge.dispatched);
+        // the other plain-HTTP rules stay: idle tokens and the API
+        assertEquals("http", body(http(PUBLIC, HttpMethod.GET, "/api/config", null, "")).getAsJsonObject("internet").get("mode").getAsString());
+        assertFalse(body(http(PUBLIC, HttpMethod.GET, "/api/config", null, "")).getAsJsonObject("internet").get("remote").getAsBoolean(),
+            "no unlock needed");
+        String token = token();
+        var device = auth.authenticate(token);
+        auth.deviceMap().put(device.tokenHash(), new AuthStore.Device(device.tokenHash(), device.mainframeId(), device.name(), true, device.created(),
+            System.currentTimeMillis() - 25 * InternetSettings.HOUR_MS, device.player(), device.playerName(), device.type(), device.lastIp()));
+        assertEquals("token_expired", error(drain(session(PUBLIC, "{\"t\":\"auth\",\"token\":\"" + token + "\"}"), null).getFirst()));
+    }
+
+    @Test
+    void readOnlyFromOutsideIsAnnouncedInStrictMode() throws Exception {
+        publish();
+        var phone = session(PUBLIC, "{\"t\":\"auth\",\"token\":\"" + token() + "\"}");
+        var answers = drain(phone, null);
+        var notice = answers.stream().filter(a -> a.get("t").getAsString().equals("internet")).findFirst().orElseThrow();
+        assertTrue(notice.get("remote").getAsBoolean());
+        assertFalse(notice.get("pin").getAsBoolean(), "the dashboard shows 'read-only from outside'");
+        pin();
+        CloudWebServer.recheckForTest(instance, mainframe);
+        var update = drain(phone, null).stream().filter(a -> a.get("t").getAsString().equals("internet")).findFirst().orElseThrow();
+        assertTrue(update.get("pin").getAsBoolean(), "set a PIN: the next re-check says so");
+        var lan = session(LAN, "{\"t\":\"auth\",\"token\":\"" + token() + "\"}");
+        assertTrue(drain(lan, null).stream().noneMatch(a -> a.get("t").getAsString().equals("internet")), "nothing for the LAN");
     }
 
     @AfterEach

@@ -1138,23 +1138,16 @@ The chat answers with the **link** to open, the **port** to forward in your rout
 | Mode | Easy | Secure | Needs |
 |---|---|---|---|
 | \`off\` (default) | nothing to do | yes – only your local network | – |
-| \`http\` – easy mode | one command, one port | **no**, see below | a PIN on every mainframe, TCP port 8787 forwarded |
+| \`http\` – easy mode | one command, one port | **no**, see below | TCP port 8787 forwarded |
 | HTTPS (Caddy, Cloudflare Tunnel, own certificate) | some setup | yes | a domain, see [Advanced](#advanced) |
 
 ### Plain HTTP: what can happen {#http-mode}
 
-> **Warning:** In \`http\` mode nothing is encrypted. Anyone on the same Wi-Fi (café, school, hotel) or on the way (provider, VPN) can read your login and your PIN – and then control your base like you. Use it to try things out, or when you accept that risk.
+> **Warning:** Plain HTTP is not encrypted: anyone on the network path (the same Wi-Fi, a hotspot, your provider) can read your login and PIN and then use the dashboard like you.
 
-What CC: Cloud does to keep the damage small:
+It just works: controls behave like on the LAN, PIN-protected controls still ask for their PIN. What stays in place: new browsers need **[Allow]** in game, a browser unused for 24 hours is logged out when it comes from the internet (\`publicTokenIdleHours\`), wrong pairing codes and logins block an address for a while, share links stay read-only and API keys can't control anything over plain HTTP.
 
-- **PIN for every control action from the internet.** \`/cccloud internet http\` is refused until every mainframe has a PIN (\`/cccloud pin set <digits>\`). The dashboard asks for the PIN once; then the controls work for 10 minutes in that browser. A mainframe without a PIN can only be watched from the internet.
-- **Short logins:** a browser that was not used for 24 hours is logged out when it comes from the internet (\`publicTokenIdleHours\`); on the LAN the usual 30 days apply.
-- **New browsers still need [Allow] in game;** requests from the internet are marked in chat.
-- **Stricter limits for internet addresses:** 5 wrong codes, logins or PINs in 15 minutes block the address; half the actions and API requests.
-- **Share links stay read-only,** and API keys can't control anything over plain HTTP from the internet.
-- **Warnings everywhere:** in the server log, in chat for ops when they join, and as a banner in the dashboard that can't be closed.
-
-**Upgrade to HTTPS:** set up one of the [advanced](#advanced) ways (Caddy is the easiest with your own domain), then \`/cccloud internet off\` – the advanced settings keep working on their own.
+Stricter: \`internetRequirePin = true\` in the server config makes every control action from the internet ask for the mainframe PIN (once, then 10 minutes per browser); mainframes without a PIN are then view-only from outside. Safer: HTTPS – see [Advanced](#advanced); built-in HTTPS and Connect are coming.
 
 ## Advanced: your own HTTPS setup {#advanced}
 

@@ -10,13 +10,16 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   `internetAccess = "http"` (optionally `internetDomain`) in the server config. `/cccloud internet` shows the state,
   `/cccloud internet off` closes it again. It applies at once (live config). The old `[web]` keys keep working as
   advanced settings.
-- **Plain HTTP is easy mode and insecure** – logins and the PIN can be read on the way – so CC: Cloud protects what it
-  can: it is refused until every mainframe has a PIN, every control action from the internet asks for the PIN (once,
-  then 10 minutes in that browser), mainframes without a PIN can only be watched from the internet, browsers unused for
-  24 hours are logged out there (`publicTokenIdleHours`), stricter limits for internet addresses, new browsers still
-  need [Allow] in game (requests from the internet are marked), share links stay read-only, and the public API can't
-  control anything over plain HTTP from the internet.
-- Warnings in the server log, in chat for ops when they join and as a dashboard banner that can't be closed.
+- **Plain HTTP just works** (easy mode): no PIN needed; PIN-protected controls keep their PIN. It can be read on the
+  network path, so: new browsers still need [Allow] in game (requests from the internet are marked), browsers unused
+  for 24 hours are logged out when they come from the internet (`publicTokenIdleHours`), stricter limits and a lockout
+  after wrong codes for internet addresses, share links stay read-only, and API keys can't control anything over plain
+  HTTP from the internet.
+- **Stricter, optional:** `internetRequirePin = true` – every control action from the internet asks for the mainframe
+  PIN (once, then 10 minutes per browser); mainframes without a PIN are view-only from outside, and their owners are
+  told when they join.
+- A warning line in the server log, a short line for ops when they join and a small dashboard banner (dismissible per
+  browser session).
 
 ### Every CC peripheral shows up: the Peripheral card
 - A block without a card of its own still gets one if CC: Tweaked can talk to it: put an uplink or a Cloud Probe on it

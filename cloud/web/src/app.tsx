@@ -66,19 +66,8 @@ function TopBar() {
 function InsecureBanner() {
   const [hidden, setHidden] = useState(() => sessionStorage.getItem("cccloud.httpwarn") === "1");
   const internet = publicConfig.value.internet;
-  // internetAccess = http: the warning stays (no dismiss button), for every browser of this dashboard
-  if (internet.mode === "http")
-    return (
-      <div class="banner banner-insecure" role="alert">
-        <span class="banner-icon">
-          <IconAlert size={18} />
-        </span>
-        <div class="banner-text">
-          <b>Insecure: plain HTTP over the internet.</b> Anyone on the same Wi-Fi or on the way can read your login and PIN.{" "}
-          {internet.remote ? "Controls ask for the mainframe PIN first. " : ""}Ask the server admin to switch to HTTPS.
-        </div>
-      </div>
-    );
+  // internetAccess = http: the same small warning (opened from outside over plain HTTP), dismissible for this session
+  const plainHttp = internet.mode === "http";
   if (!insecureContext() || hidden) return null;
   return (
     <div class="banner banner-insecure" role="alert">
@@ -86,7 +75,17 @@ function InsecureBanner() {
         <IconAlert size={18} />
       </span>
       <div class="banner-text">
-        <b>Unencrypted connection.</b> This dashboard is served over plain HTTP from a public address, so your access token and actions can be read on the way. Ask the server admin to enable TLS or put it behind an HTTPS proxy.
+        {plainHttp ? (
+          <>
+            <b>Plain HTTP over the internet.</b> Your login and PIN can be read on the network path (same Wi-Fi, provider).
+            {internet.remote ? " Controls here ask for the mainframe PIN first." : ""} HTTPS is safer.
+          </>
+        ) : (
+          <>
+            <b>Unencrypted connection.</b> This dashboard is served over plain HTTP from a public address, so your access token and actions can be read on the
+            way. Ask the server admin to enable TLS or put it behind an HTTPS proxy.
+          </>
+        )}
       </div>
       <button
         type="button"

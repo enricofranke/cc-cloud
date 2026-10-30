@@ -259,6 +259,17 @@ export function Dashboard({ id }: { id: string }) {
             </div>
           </div>
         )}
+        {conn.remoteNoPin.value && !readOnly && (
+          <div class="banner banner-readonly" role="status">
+            <span class="banner-icon">
+              <IconLock size={18} />
+            </span>
+            <div class="banner-text">
+              <b>Read-only from outside: this mainframe has no PIN.</b> Set a PIN for this mainframe to control it from outside your home network
+              (in game: look at it and <code>/cccloud pin set</code>, or the Security tab).
+            </div>
+          </div>
+        )}
         {readOnly && st.kind === "online" && (
           <div class="banner banner-readonly" role="status">
             <span class="banner-icon">

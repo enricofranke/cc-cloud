@@ -16,13 +16,15 @@ import org.jspecify.annotations.Nullable;
  * @param allowInternet     whether addresses outside the LAN may connect at all
  * @param publicUrl         the URL shown to players ("" = computed from the server's addresses)
  * @param domain            the host name or IP players use from the internet ({@code internetDomain}), or null
- * @param strictPublic      plain-HTTP easy mode: PIN for every write from an internet address, short token expiry there,
- *                          stricter rate limits ({@link InternetGuard})
- * @param publicTokenIdleMs strict mode: a device token unused this long is refused (and dropped) from an internet address
+ * @param strictPublic      plain-HTTP mode: short token expiry for internet addresses, stricter rate limits, no control
+ *                          through API keys ({@link InternetGuard})
+ * @param requirePin        plain-HTTP mode with {@code internetRequirePin}: control from internet addresses only after
+ *                          the mainframe PIN; mainframes without a PIN are view-only from there
+ * @param publicTokenIdleMs a device token unused this long is refused (and dropped) from an internet address
  * @param notes             explanations for the server log (overrides that apply, conflicts)
  */
 public record InternetSettings(InternetMode mode, boolean allowInternet, String publicUrl, @Nullable String domain, boolean strictPublic,
-                               long publicTokenIdleMs, List<String> notes) {
+                               boolean requirePin, long publicTokenIdleMs, List<String> notes) {
     public static final long HOUR_MS = 60 * 60 * 1000L;
     /** LAN only, nothing strict (unit tests and servers without the setting). */
     public static final InternetSettings OFF = new InternetSettings(InternetMode.OFF, false, "", null, false, 24 * HOUR_MS, List.of());
@@ -31,8 +33,18 @@ public record InternetSettings(InternetMode mode, boolean allowInternet, String 
         notes = List.copyOf(notes);
     }
 
+    /** Without the PIN requirement. */
+    public InternetSettings(InternetMode mode, boolean allowInternet, String publicUrl, @Nullable String domain, boolean strictPublic,
+                            long publicTokenIdleMs, List<String> notes) {
+        this(mode, allowInternet, publicUrl, domain, strictPublic, false, publicTokenIdleMs, notes);
+    }
+
     /** The raw config values the mapping reads. */
-    public record Inputs(String mode, String domain, int port, boolean allowInternet, String publicUrl, boolean tls, int publicTokenIdleHours) {
+    public record Inputs(String mode, String domain, int port, boolean allowInternet, String publicUrl, boolean tls, int publicTokenIdleHours,
+                         boolean requirePin) {
+        public Inputs(String mode, String domain, int port, boolean allowInternet, String publicUrl, boolean tls, int publicTokenIdleHours) {
+            this(mode, domain, port, allowInternet, publicUrl, tls, publicTokenIdleHours, false);
+        }
     }
 
     private static final Pattern LABEL = Pattern.compile("[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?");
@@ -55,9 +67,9 @@ public record InternetSettings(InternetMode mode, boolean allowInternet, String 
             case OFF -> new InternetSettings(mode, in.allowInternet(), configuredUrl, domain, false, idle, notes);
             case HTTP -> {
                 if (in.tls()) notes.add("internetAccess = http with tlsCertPath/tlsKeyPath: connections are encrypted with your certificate, "
-                    + "the plain-HTTP protections (PIN for remote control, short token expiry) still apply");
-                String url = !configuredUrl.isEmpty() ? configuredUrl : domain != null ? url(in.tls() ? "https" : "http", domain, in.port()) : "";
-                yield new InternetSettings(mode, true, url, domain, true, idle, notes);
+                    + "the plain-HTTP rules (short token expiry for internet addresses, stricter limits) still apply");
+                String url = !configuredUrl.isEmpty() ? configuredUrl : domain != null && in.port() > 0 ? url(in.tls() ? "https" : "http", domain, in.port()) : "";
+                yield new InternetSettings(mode, true, url, domain, true, in.requirePin(), idle, notes);
             }
         };
     }

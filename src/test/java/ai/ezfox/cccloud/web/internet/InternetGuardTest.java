@@ -16,6 +16,22 @@ class InternetGuardTest {
         return new InternetGuard(InternetSettings.resolve(new InternetSettings.Inputs(mode, "", 8787, false, "", false, 24)), now::get);
     }
 
+    /** internetAccess = http with internetRequirePin = true. */
+    private InternetGuard strictGuard() {
+        return new InternetGuard(InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24, true)), now::get);
+    }
+
+    @Test
+    void byDefaultNoPinIsNeeded() {
+        var http = guard("http");
+        assertTrue(http.strict("203.0.113.9"), "the other plain-HTTP rules apply");
+        assertFalse(http.pinRequired("203.0.113.9"));
+        assertTrue(http.unlocked("hash", mainframe, "203.0.113.9"), "control works without a PIN");
+        assertEquals(0, http.unlock("hash", mainframe, "203.0.113.9"));
+        assertTrue(strictGuard().pinRequired("203.0.113.9"));
+        assertFalse(strictGuard().pinRequired("192.168.1.20"), "never on the LAN");
+    }
+
     private AuthStore.Device device(long lastUsed) {
         return new AuthStore.Device("hash", mainframe, "Phone", true, 0, lastUsed, UUID.randomUUID(), "Steve");
     }
@@ -36,7 +52,7 @@ class InternetGuardTest {
 
     @Test
     void thePinUnlocksForTenMinutesPerBrowserMainframeAndAddress() {
-        var http = guard("http");
+        var http = strictGuard();
         String ip = "203.0.113.9";
         assertFalse(http.unlocked("hash", mainframe, ip));
         assertEquals(600, http.unlock("hash", mainframe, ip));
@@ -83,14 +99,14 @@ class InternetGuardTest {
 
     @Test
     void aReloadKeepsUnlocksAndFailures() {
-        var guard = guard("http");
+        var guard = strictGuard();
         String ip = "203.0.113.9";
         guard.unlock("hash", mainframe, ip);
         for (int i = 0; i < InternetGuard.PUBLIC_FAILURES; i++) guard.failure(ip);
         guard.update(InternetSettings.OFF);
         assertFalse(guard.strict(ip), "off now");
         assertTrue(guard.unlocked("hash", mainframe, ip));
-        guard.update(InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24)));
+        guard.update(InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24, true)));
         assertTrue(guard.blocked(ip), "no fresh budget after a reload");
         assertTrue(guard.unlocked("hash", mainframe, ip));
     }

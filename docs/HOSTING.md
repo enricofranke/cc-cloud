@@ -21,14 +21,14 @@ mobile data. It applies at once (live config); the file works the same way.
 | Mode | Easy | Secure | Needs |
 |---|---|---|---|
 | `off` (default) | – | LAN only | – |
-| `http` | one command, one forwarded port | **no**: logins and PIN can be read on the way | a PIN on every mainframe |
+| `http` | one command, one forwarded port | **no**: logins and PIN can be read on the way | – |
 | your own HTTPS (sections 3–5 below) | some setup | yes | a domain, a proxy/tunnel or certificate files |
 
-`http` mode protects what it can: every control action from an internet address needs the mainframe PIN (one unlock
-lasts 10 minutes per browser), mainframes without a PIN can only be watched from the internet, tokens unused for
-`publicTokenIdleHours` (24) are logged out there, stricter rate limits, new browsers still need [Allow] in game, share
-links stay read-only, and there are warnings in the log, in game for ops and in the dashboard. Details:
-[`docs/SECURITY.md`](SECURITY.md) "Internet access modes".
+`http` mode just works (no PIN needed) and keeps what does not get in the way: new browsers need [Allow] in game,
+tokens unused for `publicTokenIdleHours` (24) are logged out when they come from the internet, stricter rate limits,
+share links stay read-only, API keys cannot control over plain HTTP, and there are warnings in the log, for ops in game
+and in the dashboard. `internetRequirePin = true` adds the PIN for every control action from the internet (PIN-less
+mainframes are view-only from outside). Details: [`docs/SECURITY.md`](SECURITY.md) "Internet access modes".
 
 The other `[web]` keys below stay advanced overrides: `publicUrl` always wins, TLS files keep working in every mode,
 and with `internetAccess = "off"` the keys decide everything as before (an older `webAllowInternet = true` setup keeps
@@ -42,6 +42,7 @@ working).
 | `web.internetAccess` | `"off"` | `off` (LAN only, the keys below decide) or `http` (plain HTTP over the internet, easy mode with the protections above). |
 | `web.internetDomain` | `""` | Host name or IP players use from the internet (shown in game, allowed as Host). Empty: the public IP. |
 | `web.publicTokenIdleHours` | `24` | `http` mode: browsers unused this long are logged out when they come from the internet. |
+| `web.internetRequirePin` | `false` | `http` mode, stricter: control from the internet only after the mainframe PIN (10 minutes per browser); PIN-less mainframes view-only from outside. |
 | `web.webEnabled` | `true` | Run the embedded HTTP/WebSocket server. |
 | `web.webBind` | `0.0.0.0` | Bind address. Use `127.0.0.1` behind a reverse proxy/tunnel on the same host. |
 | `web.webPort` | `8787` | TCP port. |
