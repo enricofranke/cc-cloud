@@ -236,13 +236,13 @@ public final class CloudConfig {
                 "fetches them; the server never connects to the store). false hides the store and keeps the URL out of the dashboard's CSP.")
             .translation("cccloud.configuration.scriptStore")
             .define("scriptStore", true);
-        SCRIPT_STORE_URL = b.comment("Base URL of the Script Store index (https, ending with /). Placeholder until the official store is online.")
+        SCRIPT_STORE_URL = b.comment("Base URL of the Script Store index (https, ending with /).")
             .translation("cccloud.configuration.scriptStoreUrl")
-            .define("scriptStoreUrl", "https://cccloud.example/store/", o -> o instanceof String s && ai.ezfox.cccloud.web.PublicConfig.validStoreUrl(s) != null);
+            .define("scriptStoreUrl", "https://cccloud.dev/store/", o -> o instanceof String s && ai.ezfox.cccloud.web.PublicConfig.validStoreUrl(s) != null);
         SCRIPT_STORE_KEY = b.comment("Ed25519 public key of the store (base64 of the 32 raw bytes). The server checks every store install against the",
                 "signed index (index.json + index.json.sig). Empty = store installs are refused (store_not_configured).")
             .translation("cccloud.configuration.scriptStoreKey")
-            .define("scriptStoreKey", "", o -> o instanceof String s && (s.isEmpty() || ai.ezfox.cccloud.script.StoreVerifier.publicKey(s) != null));
+            .define("scriptStoreKey", "pNjw/iu9DD70yC8WPSOZd8zXAwbnC4nYLT7wQUFVbds=", o -> o instanceof String s && (s.isEmpty() || ai.ezfox.cccloud.script.StoreVerifier.publicKey(s) != null));
         b.pop();
 
         b.push("terminal");
