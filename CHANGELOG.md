@@ -4,6 +4,21 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Big bases and big servers
+- Hundreds of machines per mainframe, many mainframes and many browsers: on the scale benchmark (500 + 10 × 100
+  devices, 100 rules, 50 browsers) CC: Cloud's server-thread time under load went from 30 ms to under 6 ms per tick (wall
+  time on a busy machine; about 2.5 ms CPU), the server keeps 20 TPS instead of 10, and there are no 100+ ms spikes from
+  network recomputes or redstone cards any more.
+- Dashboard: one message per update batch instead of one per value (4 000 → 12 messages per second for a big base),
+  compressed WebSocket (`webCompression`), only the changed cards render again, cards far off screen render when they
+  come near, big pages lay out in milliseconds instead of a minute; a big base opens in about a second instead of 11 s.
+- Fixed for big bases: the mainframe screen of a big network stayed empty (its view was over the packet limit), the
+  Cloud Tablet never got a big base's snapshot (over the payload limit), browsers were disconnected as "too slow" right
+  after a big snapshot, layouts with more than 256 cards could not be saved, only 256 cards of an unloaded base survived
+  a restart.
+- New config: `webCompression` (on), `historyMaxTotalMB` (128 MB of long-term statistics for all mainframes together).
+- For developers: `./gradlew runGameTestServer -PscaleTest` (docs/SPEC.md "Scaling"), `tools/e2e/scale-render.mjs`.
+
 ### Cloud Redstone devices – a lamp on your phone without a computer
 - Four small blocks that are linked with the Link Card like an uplink – no computer, no Lua, no channels:
   **Cloud Switch** (on any face like a lever, strong into its block and weak around; on/off or analog 0–15),

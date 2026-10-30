@@ -86,7 +86,7 @@ class HistoryTest {
             var mf = UUID.randomUUID();
             for (int i = 0; i < fits; i++) if (store.record(mf, "w:u/" + i, HistorySeries.Range.D30, 720, T0, 1)) created++;
         }
-        assertEquals(3 * fits, created, "three mainframes' worth, then no new series anywhere");
+        assertEquals(3 * HistoryStore.MAX_BYTES / perSeries, created, "three mainframes' worth, then no new series anywhere");
         assertTrue(store.totalBytes() <= 3L * HistoryStore.MAX_BYTES);
         var copy = new HistoryStore(() -> { });
         copy.load(store.save());
