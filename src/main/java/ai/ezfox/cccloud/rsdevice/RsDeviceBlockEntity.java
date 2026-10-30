@@ -441,10 +441,9 @@ public class RsDeviceBlockEntity extends BlockEntity {
     // ---- dashboard, rules, scenes, API ---------------------------------------------------------------------------------
 
     private TokenBucket changes() {
-        if (changes == null) {
-            double perSecond = CloudConfig.get(CloudConfig.RS_DEVICE_CHANGES_PER_SECOND);
-            changes = new TokenBucket(Math.max(1, perSecond * 2), perSecond);
-        }
+        // the limit follows the config (reload): a bucket in use keeps what was used, capped at the new burst
+        double perSecond = CloudConfig.get(CloudConfig.RS_DEVICE_CHANGES_PER_SECOND);
+        changes = TokenBucket.ensure(changes, Math.max(1, perSecond * 2), perSecond);
         return changes;
     }
 

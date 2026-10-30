@@ -118,6 +118,14 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         return effects;
     }
 
+    /** The base limits ({@code [upgrades]} base*) changed in the config: recompute and publish the effects. */
+    public void refreshEffects() {
+        effects = upgrades.effects(ai.ezfox.cccloud.upgrade.Upgrades.base());
+        ai.ezfox.cccloud.upgrade.Upgrades.publish(mainframeId, effects);
+        anchorDirty = true;
+        ai.ezfox.cccloud.network.NetworkService.markDirty();
+    }
+
     private void upgradesChanged() {
         effects = upgrades.effects(ai.ezfox.cccloud.upgrade.Upgrades.base());
         ai.ezfox.cccloud.upgrade.Upgrades.publish(mainframeId, effects);
@@ -377,6 +385,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private void tickPower() {
         int capacity = CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE);
         if (capacity != energy.capacity()) energy.setCapacity(capacity);
+        int maxInput = CloudConfig.get(CloudConfig.MAINFRAME_MAX_INPUT_FE);
+        if (maxInput != energy.maxPerTick()) energy.setMaxPerTick(maxInput);
         // v0.4: base + per connected device type + per client + per extra hop (counts come from the network service).
         // Recomputed when the device counts or the browsers change, else once a second (upgrades, config).
         var counts = ai.ezfox.cccloud.network.NetworkService.counts(mainframeId);

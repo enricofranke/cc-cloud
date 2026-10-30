@@ -144,12 +144,13 @@ public final class PushService {
             record(target, "queue_full");
             return false;
         }
-        Set<String> hosts = allowedHosts();
-        pool.execute(() -> attempt(target, message, hosts, 1));
+        pool.execute(() -> attempt(target, message, 1));
         return true;
     }
 
-    private static void attempt(PushTarget target, PushMessage message, Set<String> hosts, int n) {
+    private static void attempt(PushTarget target, PushMessage message, int n) {
+        // read for every attempt: a host removed from pushAllowedHosts by a config reload gets no further retries
+        Set<String> hosts = allowedHosts();
         var h = http;
         var pool = executor;
         if (h == null || pool == null) {
@@ -165,7 +166,7 @@ public final class PushService {
         if (!result.ok() && result.retryable() && n < ATTEMPTS) {
             long delay = n == 1 ? 2 : 6;
             try {
-                pool.schedule(() -> attempt(target, message, hosts, n + 1), delay, TimeUnit.SECONDS);
+                pool.schedule(() -> attempt(target, message, n + 1), delay, TimeUnit.SECONDS);
                 return;
             } catch (java.util.concurrent.RejectedExecutionException ignored) {
                 // shutting down

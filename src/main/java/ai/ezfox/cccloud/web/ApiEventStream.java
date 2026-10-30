@@ -46,7 +46,7 @@ final class ApiEventStream implements HubSession {
     static final int HEARTBEAT_S = 20;
     static final int RECHECK_S = 5;
 
-    private final WebInstance instance;
+    final WebInstance instance;
     private final Channel channel;
     private final ApiKeys.Key key;
     private final String ip;
@@ -108,7 +108,7 @@ final class ApiEventStream implements HubSession {
         response.headers().set("X-Accel-Buffering", "no");
         HttpUtil.setTransferEncodingChunked(response, true);
         if (origin != null) ApiHandler.cors(response, origin);
-        HttpHandler.addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), instance.ssl != null);
+        HttpHandler.addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), http.policy.ssl() != null);
         ctx.writeAndFlush(response);
         // The connection now only carries events: no read timeout (the client sends nothing), heartbeats instead.
         if (ctx.pipeline().get("idle") != null) ctx.pipeline().remove("idle");

@@ -51,6 +51,8 @@ public final class ProductionService {
     private static final Map<UUID, ProductionSection> SECTIONS = new HashMap<>();
     private static long tick;
     private static int window = -1;
+    /** Config {@code trackedItemsPerStorage} the storage trackers were made with. */
+    private static int tracked = -1;
 
     private static final class Storage {
         final UUID mainframeId;
@@ -133,10 +135,15 @@ public final class ProductionService {
                 return;
             }
             int w = CloudConfig.get(CloudConfig.PRODUCTION_WINDOW);
+            int t = CloudConfig.get(CloudConfig.PRODUCTION_TRACKED_ITEMS);
             if (w != window) { // a new window size starts every series fresh
                 window = w;
+                tracked = t;
                 STORAGES.clear();
                 ENERGY.clear();
+            } else if (t != tracked) { // config reload: storage trackers start again with the new item cap
+                tracked = t;
+                STORAGES.clear();
             }
             if (tick % 20 == 0) refresh(server);
             sampleOneStorage(server);

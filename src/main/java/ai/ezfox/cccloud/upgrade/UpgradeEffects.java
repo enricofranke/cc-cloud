@@ -49,6 +49,13 @@ public record UpgradeEffects(int devices, int browsers, int rules, int historyHo
         return new UpgradeEffects(devices, browsers, rules, history, range, fe, quantum, chunkAnchor, Map.copyOf(tiers), quantum);
     }
 
+    /** The same cards on other base limits (config reload of {@code [upgrades]} base*). */
+    public UpgradeEffects withBase(Base base) {
+        var cards = new java.util.ArrayList<Card>();
+        for (var e : tiers.entrySet()) cards.add(new Card(e.getKey(), e.getValue()));
+        return of(base, cards, quantum, chunkAnchor);
+    }
+
     public static UpgradeEffects none(Base base) {
         return of(base, java.util.List.of(), false, false);
     }

@@ -39,7 +39,8 @@ final class ConnectionLimiter extends ChannelInboundHandlerAdapter {
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         String ip = peerIp(ctx.channel());
-        boolean proxy = IpUtil.matches(instance.trustedProxies, ip);
+        var policy = ctx.channel().attr(WebInstance.POLICY).get();
+        boolean proxy = IpUtil.matches((policy != null ? policy : instance.policy).trustedProxies(), ip);
         if (!proxy && instance.bannedIps.contains(ip)) {
             ctx.close();
             return;

@@ -3,7 +3,9 @@ package ai.ezfox.cccloud;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
- * Server config ({@code serverconfig/cccloud-server.toml} in the world folder).
+ * Server config ({@code serverconfig/cccloud-server.toml} in the world folder). Every value's comment ends with
+ * "(applies live)" or "(restart required)" ({@link ai.ezfox.cccloud.config.MarkedBuilder}); changed values are applied by
+ * {@link ai.ezfox.cccloud.config.ConfigReload} when NeoForge reloads the file or on {@code /cccloud config reload}.
  */
 public final class CloudConfig {
     public static final ModConfigSpec SPEC;
@@ -110,9 +112,18 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAINFRAME_BUFFER_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_MAX_INPUT_FE;
 
+    /** Top of the file (the comment of its first value, allowCloud): how changes take effect. */
+    static final String[] HEADER = {
+        "CC: Cloud server config. Changes apply while the server runs: save this file (NeoForge reloads it) or run",
+        "/cccloud config reload, which also lists what changed and what was applied. The last comment line of every setting",
+        "says whether it applies live or needs a restart. [web] changes restart only the dashboard's web server (open",
+        "browsers reconnect; after a port, address or TLS change open the new address). Docs: \"Changing settings without a restart\".",
+        "----"};
+
     static {
-        var b = new ModConfigSpec.Builder();
-        ALLOW_CLOUD = b.comment("Master switch. When false, every mainframe on this server stays offline.")
+        var b = new ai.ezfox.cccloud.config.MarkedBuilder();
+        ALLOW_CLOUD = b.comment(HEADER[0], HEADER[1], HEADER[2], HEADER[3], HEADER[4],
+                "Master switch. When false, every mainframe on this server stays offline.")
             .translation("cccloud.configuration.allowCloud")
             .define("allowCloud", true);
 
@@ -287,7 +298,7 @@ public final class CloudConfig {
             .translation("cccloud.configuration.voxelRadius")
             .defineInRange("voxelRadius", 64, 16, 128);
         MAP_TILE_MAX_AGE_DAYS = b.comment("2D map tiles cached on disk (<world>/cccloud/maptiles): a tile that was neither drawn nor shown for this many",
-                "days is deleted (checked at server start and once a day). 0 keeps them forever. A purged mainframe's cave slices are",
+                "days is deleted (checked at server start, once a day and when this value changes). 0 keeps them forever. A purged mainframe's cave slices are",
                 "deleted at once.")
             .translation("cccloud.configuration.mapTileMaxAgeDays")
             .defineInRange("mapTileMaxAgeDays", 30, 0, 3650);

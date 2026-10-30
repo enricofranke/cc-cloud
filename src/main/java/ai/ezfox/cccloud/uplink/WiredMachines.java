@@ -53,6 +53,8 @@ public final class WiredMachines {
     private final Set<UUID> saved = new HashSet<>();
     private @Nullable UUID publishedTo;
     private int refreshes;
+    /** Config reload: detect every machine's card again on the next refresh (server thread). */
+    private boolean redetect;
 
     public WiredMachines(CloudUplinkBlockEntity uplink) {
         this.uplink = uplink;
@@ -109,9 +111,17 @@ public final class WiredMachines {
         return reach;
     }
 
+    /** After a config reload ({@code [cards]}): the next refresh detects every card again with the new settings. */
+    public void redetect() {
+        redetect = true;
+    }
+
     /** Once a second: follows the computer's modems, adds and removes cards, reads the machines. */
     public void refresh(ServerLevel level) {
         refreshes++;
+        boolean again = redetect;
+        redetect = false;
+        if (again) noCard.clear();
         var link = uplink.getLink();
         UUID mainframe = link == null ? null : link.id();
         if (publishedTo != null && !publishedTo.equals(mainframe)) removeAll(true); // unlinked or linked elsewhere
@@ -137,7 +147,7 @@ public final class WiredMachines {
         for (var c : all.isEmpty() ? List.<WiredCards.Candidate>of() : WiredCards.candidates(all, taken(mainframe, dim))) {
             if (wanted.size() >= limit) break;
             var existing = sections.get(c.pos());
-            if (existing != null && !existing.failed() && DeviceCards.isValid(existing.card())) {
+            if (existing != null && !again && !existing.failed() && DeviceCards.isValid(existing.card())) {
                 wanted.put(c.pos(), Map.entry(c.name(), existing.card()));
                 continue;
             }

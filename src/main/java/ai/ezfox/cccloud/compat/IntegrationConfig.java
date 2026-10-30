@@ -23,8 +23,10 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue QUESTS_CARD;
 
     static {
-        var b = new ModConfigSpec.Builder();
-        b.push("cards");
+        var b = new ai.ezfox.cccloud.config.MarkedBuilder();
+        b.comment("CC: Cloud integrations. Changes apply while the server runs: save this file or run /cccloud config reload",
+                "(ready-made cards are detected again with the new settings within a second). The last comment line of every",
+                "setting says whether it applies live or needs a restart.").push("cards");
         DEVICE_CARDS = b.comment("An uplink attached directly to a supported machine (any FE block, Powah, Ender IO, Energy Meter, MFFS, ...) shows a ready-made card.")
             .translation("cccloud.configuration.deviceCards")
             .define("deviceCards", true);

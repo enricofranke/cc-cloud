@@ -57,6 +57,24 @@ class StoreVerifierTest {
     }
 
     @Test
+    void aRotatedKeyIsNeverAnsweredFromTheCache() throws Exception {
+        // A key rotation (store/CONTRIBUTING.md) applied by a config reload: the index verified with the old key must not
+        // be trusted for the rest of the cache time; the new key checks the store's signature again.
+        String sha = ScriptFiles.sha256(LUA.getBytes(StandardCharsets.UTF_8));
+        var s = store(sha);
+        var other = store(sha);
+        var fetches = new AtomicInteger();
+        var verifier = new StoreVerifier(url -> {
+            fetches.incrementAndGet();
+            return s.files().get(url);
+        }, () -> 0);
+        assertTrue(verifier.check(URL, s.publicKey(), "reactor-guard", "1.2.0", "main.lua", sha).ok());
+        assertEquals("store_bad_signature", verifier.check(URL, other.publicKey(), "reactor-guard", "1.2.0", "main.lua", sha).error(),
+            "the new key does not accept the old signature, even within the cache time");
+        assertEquals(4, fetches.get(), "fetched again for the new key");
+    }
+
+    @Test
     void tamperedIndexOrWrongKeyIsRefused() throws Exception {
         String sha = ScriptFiles.sha256(LUA.getBytes(StandardCharsets.UTF_8));
         var s = store(sha);

@@ -12,6 +12,12 @@ import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneIn
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
+/**
+ * Bumped when a server says its feature switches changed (`{"t":"config"}` after a config reload without a restart):
+ * the app fetches `GET /api/config` again.
+ */
+export const configChanged = signal(0);
+
 /** Outcome of an action as reported by action_result (plus extras like attemptsLeft/retryAfter). */
 /** Storage card v2 (docs/SPEC.md "Storage card v2 – protocol"). */
 export interface StorageRow {
@@ -448,6 +454,9 @@ export class MainframeConn {
         break;
       case "ping":
         this.send({ t: "pong" });
+        break;
+      case "config":
+        configChanged.value++;
         break;
       case "snapshot": {
         if (!msg.mainframe || !Array.isArray(msg.uplinks)) return;

@@ -29,6 +29,14 @@ public final class Upgrades {
         EFFECTS.put(mainframeId, effects);
     }
 
+    /**
+     * The base limits changed (config reload): every known mainframe's effects are recomputed on the new base, also for
+     * unloaded ones (rules and the dashboard read them). Loaded mainframes publish theirs again as well.
+     */
+    public static void rebase(UpgradeEffects.Base base) {
+        EFFECTS.replaceAll((id, effects) -> effects.withBase(base));
+    }
+
     public static void forget(UUID mainframeId) {
         EFFECTS.remove(mainframeId);
     }

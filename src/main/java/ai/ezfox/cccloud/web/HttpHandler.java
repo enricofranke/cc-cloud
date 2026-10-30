@@ -61,8 +61,17 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     /** The connection became a public API event stream: nothing else is served on it. */
     volatile boolean streaming;
 
+    /** The rules this connection was accepted under (kept until it closes; a reload with new rules closes it). */
+    final WebPolicy policy;
+
+    /** A handler under the instance's current rules (unit tests). */
     HttpHandler(WebInstance instance) {
+        this(instance, instance.policy);
+    }
+
+    HttpHandler(WebInstance instance, WebPolicy policy) {
         this.instance = instance;
+        this.policy = policy;
     }
 
     @Override
@@ -80,7 +89,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
     String clientIp(ChannelHandlerContext ctx, FullHttpRequest req) {
-        return IpUtil.clientIp(ConnectionLimiter.peerIp(ctx.channel()), instance.trustedProxies, instance.trustCloudflare,
+        return IpUtil.clientIp(ConnectionLimiter.peerIp(ctx.channel()), policy.trustedProxies(), policy.trustCloudflare(),
             req.headers().get("CF-Connecting-IP"), req.headers().getAll("X-Forwarded-For"));
     }
 
@@ -113,7 +122,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendText(ctx, req, HttpResponseStatus.FORBIDDEN, "Forbidden");
             return;
         }
-        if (!instance.allowInternet && !IpUtil.isLan(ip)) {
+        if (!policy.allowInternet() && !IpUtil.isLan(ip)) {
             var body = error("lan_only");
             body.addProperty("message", LAN_ONLY_MESSAGE);
             sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, body);
@@ -121,7 +130,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
 
         // DNS rebinding: only IP addresses, localhost, LAN names and configured names as Host (security review L5)
-        if (!HostCheck.allowed(req.headers().get(HttpHeaderNames.HOST), instance.allowedHosts)) {
+        if (!HostCheck.allowed(req.headers().get(HttpHeaderNames.HOST), policy.allowedHosts())) {
             sendJson(ctx, req, HttpResponseStatus.MISDIRECTED_REQUEST, error("bad_host"));
             return;
         }
@@ -827,7 +836,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("bad_origin"));
             return;
         }
-        String scheme = instance.ssl != null ? "wss://" : "ws://";
+        String scheme = policy.ssl() != null ? "wss://" : "ws://";
         String host = req.headers().get(HttpHeaderNames.HOST, "localhost");
         // RSV bits only when permessage-deflate was negotiated (the ws-deflate handler answers the offer in the 101)
         boolean deflate = ctx.pipeline().get("ws-deflate") != null && WebSocketCompression.offered(req.headers().get("Sec-WebSocket-Extensions"));
@@ -928,7 +937,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
     void write(ChannelHandlerContext ctx, FullHttpRequest req, FullHttpResponse response) {
-        addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), instance.ssl != null);
+        addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), policy.ssl() != null);
         if (!response.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) HttpUtil.setContentLength(response, response.content().readableBytes());
         boolean keepAlive = HttpUtil.isKeepAlive(req) && response.status().code() < 400;
         response.headers().set(HttpHeaderNames.CONNECTION, keepAlive ? HttpHeaderValues.KEEP_ALIVE : HttpHeaderValues.CLOSE);

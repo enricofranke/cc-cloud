@@ -523,6 +523,11 @@ public final class MapTileService {
         }
     }
 
+    /** Config reload of {@code mapTileMaxAgeDays}: sweeps with the new age right away (background thread). */
+    public static void sweepNow(MinecraftServer server) {
+        sweepLater(server);
+    }
+
     /** Sweeps the disk cache by age ({@code mapTileMaxAgeDays}) on the background thread. */
     private static void sweepLater(MinecraftServer server) {
         int days = ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.MAP_TILE_MAX_AGE_DAYS);

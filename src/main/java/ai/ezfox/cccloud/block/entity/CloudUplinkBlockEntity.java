@@ -104,6 +104,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private volatile @Nullable String routeState;
     /** v0.5 device card (compat/card): direct mode on a supported machine. {@code deviceKind} is saved; both guarded by this. */
     private ai.ezfox.cccloud.compat.card.@Nullable DeviceCard deviceCard;
+    /** Set by a config reload: the next card update detects the device card again (server thread). */
+    private boolean redetectCards;
     private String deviceKind = "";
     private int deviceRevision;
     /**
@@ -167,6 +169,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     @Override
     public @Nullable MainframeLink getLink() {
         return link;
+    }
+
+    /** Config reload ({@code [cards]} of the integrations config): the device card and wired machine cards are detected again. */
+    public void redetectCards() {
+        redetectCards = true;
+        wiredMachines.redetect();
     }
 
     public ai.ezfox.cccloud.uplink.WiredMachines wiredMachines() {
@@ -655,8 +663,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private void updateDeviceCard(ServerLevel level) {
         ai.ezfox.cccloud.compat.card.DeviceCard card;
         boolean free;
+        boolean again = redetectCards;
+        redetectCards = false;
         synchronized (this) {
-            card = deviceCard;
+            // after a config reload ([cards]): detect again, so switched-off kinds disappear and widgets (PIN) are rebuilt
+            card = again ? null : deviceCard;
             free = !deviceKind.isEmpty() || (!template && !auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty());
         }
         if (isProbe() && !checkRemoteTarget(level)) card = null;

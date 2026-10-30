@@ -1171,6 +1171,17 @@ public final class WebHub {
         if (view.sessions.remove(session)) view.lastClientSeen = System.currentTimeMillis();
     }
 
+    /**
+     * A feature switch of {@code GET /api/config} changed (config reload): open dashboards fetch it again
+     * ({@code {"t":"config"}}). Only browser WebSockets; tablets and API streams do not use it.
+     */
+    public void broadcastConfigChanged() {
+        var message = List.of("{\"t\":\"config\"}");
+        for (var session : sessions()) {
+            if (session instanceof WebSocketSession) session.send(message);
+        }
+    }
+
     /** All connected sessions (for periodic rights checks). */
     public List<HubSession> sessions() {
         var list = new ArrayList<HubSession>();
