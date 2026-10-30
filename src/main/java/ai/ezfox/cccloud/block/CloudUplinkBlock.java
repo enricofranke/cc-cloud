@@ -35,8 +35,9 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * A small module stuck to the face of another block. {@code facing} points from the uplink towards the block it is
- * attached to (like a CC modem). {@code mount} picks the 14x14 plate or, on faces that cannot carry it (slab sides,
- * solar panels, the top of low blocks), the compact puck; it follows the attached block's shape (see {@link UplinkMount}).
+ * attached to (like a CC modem). {@code mount} picks the 14x14 plate or, on side faces that cannot carry it (slab sides,
+ * solar panels), the compact puck; it follows the attached block's shape (see {@link UplinkMount}).
+ * New uplinks are refused on top / bottom faces that do not carry the plate (action bar hint).
  */
 public class CloudUplinkBlock extends Block implements EntityBlock {
     public static final MapCodec<CloudUplinkBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -88,7 +89,16 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
         if (!state.canSurvive(level, pos)) return null;
-        return withMount(state.setValue(DIRECT, isDirect(level.getBlockState(pos.relative(facing)))), level, pos);
+        BlockPos attached = pos.relative(facing);
+        if (facing.getAxis() == Direction.Axis.Y && !UplinkMount.platesFit(level.getBlockState(attached), level, attached, facing)) {
+            // Top / bottom faces only take the plate (no posts or antennas): e.g. the top of a slab or solar panel.
+            if (!level.isClientSide() && context.getPlayer() != null) {
+                context.getPlayer().sendOverlayMessage(net.minecraft.network.chat.Component.translatable("cccloud.uplink.side_only")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            }
+            return null;
+        }
+        return withMount(state.setValue(DIRECT, isDirect(level.getBlockState(attached))), level, pos);
     }
 
     /** {@code state} with the mount (plate / compact puck) that fits the face it is attached to. */

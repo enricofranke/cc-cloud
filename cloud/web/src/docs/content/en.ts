@@ -15,7 +15,7 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module, on top of a low machine it stands on a short post. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
 | **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
 | **Cloud Link Card** | Links uplinks and bridges to a mainframe. |
 | **ME / RS Cloud Bridge** | Joins an Applied Energistics 2 or Refined Storage network. With an uplink on it you get a ready-made storage card (search, craft, watchlist). Only exists when AE2 / RS is installed. |

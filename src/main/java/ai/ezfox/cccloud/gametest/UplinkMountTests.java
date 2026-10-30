@@ -15,8 +15,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 
 /**
  * Compact uplinks (docs/MODELS.md "Compact uplink"): an uplink on the side of a slab-height block gets the 8x6 puck on
- * the visible part instead of the 14x14 plate, with a matching hitbox; on top of a tray-height block it stands on a
- * post; the mount follows the attached block and fixes itself after loading.
+ * the visible part instead of the 14x14 plate, with a matching hitbox; the top of a tray-height block refuses new
+ * uplinks; the mount follows the attached block and fixes itself after loading, also from unknown saved values.
  */
 public final class UplinkMountTests {
     /** Sculk sensor: slab height (8 px) and a block entity, so an uplink may stick to its side. */
@@ -45,11 +45,24 @@ public final class UplinkMountTests {
         helper.assertTrue(box.minX == 4 / 16.0 && box.maxX == 12 / 16.0 && box.minY == 1 / 16.0 && box.maxY == 7 / 16.0
             && box.minZ == 13.75 / 16.0 && box.maxZ == 1.0, "Compact hitbox on the sensor's side: " + box);
 
-        // on top of the 6 px detector: the face is 10 px below the uplink's cell -> puck on a 12 px post
+        // on top of the 6 px detector the plate would float 10 px above it: refused (side faces only)
         place(helper, player, DETECTOR, Direction.UP);
-        expect(helper, DETECTOR.above(), Direction.DOWN, UplinkMount.POST12);
-        var post = shape(helper, DETECTOR.above()).bounds();
-        helper.assertTrue(post.minY == -12 / 16.0 && post.maxY == 2.25 / 16.0, "Post reaches the detector: " + post);
+        helper.assertBlockNotPresent(ModRegistry.CLOUD_UPLINK.get(), DETECTOR.above());
+
+        // a saved state with a mount this version does not know (the removed post mounts of a dev build) loads as the
+        // plate: uplinks that older versions let sit on such a top stay and keep the plate
+        var tag = new net.minecraft.nbt.CompoundTag();
+        tag.putString("Name", "cccloud:cloud_uplink");
+        var props = new net.minecraft.nbt.CompoundTag();
+        props.putString("facing", "down");
+        props.putString("mount", "post12");
+        props.putString("status", "offline");
+        props.putString("direct", "true");
+        tag.put("Properties", props);
+        var legacy = net.minecraft.world.level.block.state.BlockState.CODEC.parse(net.minecraft.nbt.NbtOps.INSTANCE, tag).getOrThrow();
+        helper.assertTrue(legacy.getValue(CloudUplinkBlock.MOUNT) == UplinkMount.FULL && legacy.getValue(CloudUplinkBlock.FACING) == Direction.DOWN,
+            "Unknown mount loads as the plate: " + legacy);
+        helper.setBlock(DETECTOR.above(), legacy);
 
         // a plain slab still cannot hold an uplink (no block entity, side not sturdy): the placement rule is unchanged
         place(helper, player, SLAB, Direction.NORTH);
@@ -65,7 +78,10 @@ public final class UplinkMountTests {
         helper.setBlock(OLD, Blocks.SCULK_SENSOR);
         helper.setBlock(OLD.north(), ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.SOUTH));
         helper.assertBlockProperty(OLD.north(), CloudUplinkBlock.MOUNT, UplinkMount.FULL);
-        helper.succeedWhen(() -> expect(helper, OLD.north(), Direction.SOUTH, UplinkMount.LOW));
+        helper.succeedWhen(() -> {
+            expect(helper, OLD.north(), Direction.SOUTH, UplinkMount.LOW);
+            expect(helper, DETECTOR.above(), Direction.DOWN, UplinkMount.FULL);
+        });
     }
 
     private static void place(GameTestHelper helper, Player player, BlockPos against, Direction face) {

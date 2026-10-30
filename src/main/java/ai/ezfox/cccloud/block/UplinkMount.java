@@ -17,29 +17,24 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * How an uplink sits on the face it is attached to (blockstate {@code mount}, docs/MODELS.md "Compact uplink"): the
- * 14x14 plate on faces that carry it, otherwise an 8x6 puck placed on the visible part of the face (slab sides,
- * tray-height machines such as solar panels, carpet-height blocks), or a puck on a post when the face lies further
- * back than 1 px (the top of a solar panel or slab is below the uplink's cell). Computed on the server from the
- * attached block's outline shape; the models come from tools/gen_models.py and use the same boxes as
- * {@link #northShape()}.
+ * 14x14 plate on faces that carry it, otherwise (side faces only) an 8x6 puck placed on the visible part of the face
+ * (slab sides, tray-height machines such as solar panels, carpet-height blocks). Top and bottom faces only take the
+ * plate; {@link CloudUplinkBlock} refuses new uplinks on top / bottom faces where it does not fit. Computed on the
+ * server from the attached block's outline shape; the models come from tools/gen_models.py and use the same boxes as
+ * {@link #northShape()}. Unknown saved values (the removed post mounts of a dev build) load as {@link #FULL}.
  */
 public enum UplinkMount implements StringRepresentable {
-    FULL("full", 0, 0),
-    BOTTOM("bottom", 0, 0),
-    LOW("low", 1, 0),
-    CENTER("center", 5, 0),
-    HIGH("high", 9, 0),
-    TOP("top", 10, 0),
-    POST4("post4", 5, 4),
-    POST8("post8", 5, 8),
-    POST12("post12", 5, 12),
-    POST16("post16", 5, 16);
+    FULL("full", 0),
+    BOTTOM("bottom", 0),
+    LOW("low", 1),
+    CENTER("center", 5),
+    HIGH("high", 9),
+    TOP("top", 10);
 
     public static final EnumProperty<UplinkMount> PROPERTY = EnumProperty.create("mount", UplinkMount.class);
 
     /** Flush positions, tried in this order (ties go to the one nearest the face's centre, then the earlier one). */
     private static final UplinkMount[] SIDES = {BOTTOM, LOW, CENTER, HIGH, TOP};
-    private static final UplinkMount[] POSTS = {POST4, POST8, POST12, POST16};
     /** A face set back by at most this many pixels counts as flush (chests are 1 px in). */
     static final double FLUSH_PX = 1;
     /** Share of the plate area (or of its 1 px outline, e.g. a hopper rim) a flush face must cover for the plate. */
@@ -54,14 +49,11 @@ public enum UplinkMount implements StringRepresentable {
     private final String name;
     /** Bottom edge of the puck in model pixels. */
     private final int y;
-    /** Post length in pixels (0 = flush). */
-    private final int post;
     private Map<Direction, VoxelShape> shapes;
 
-    UplinkMount(String name, int y, int post) {
+    UplinkMount(String name, int y) {
         this.name = name;
         this.y = y;
-        this.post = post;
     }
 
     @Override
@@ -73,20 +65,9 @@ public enum UplinkMount implements StringRepresentable {
         return this != FULL;
     }
 
-    /** How far the post reaches back into the attached block's cell, in pixels (0 = flush). */
-    public int post() {
-        return post;
-    }
-
-    /**
-     * Shape when attached to the block to the north (model space, +Z away from that block): the plate, the puck, or
-     * the puck with its post and foot (which reach into the attached block's cell).
-     */
+    /** Shape when attached to the block to the north (model space, +Z away from that block): the plate or the puck. */
     public VoxelShape northShape() {
-        if (this == FULL) return Block.box(1, 1, 0, 15, 15, 2.25);
-        VoxelShape puck = Block.box(4, y, 0, 12, y + 6, 2.25);
-        if (post == 0) return puck;
-        return Shapes.or(puck, Block.box(7, 7, 1 - post, 9, 9, 0), Block.box(6, 6, -post, 10, 10, 1 - post));
+        return this == FULL ? Block.box(1, 1, 0, 15, 15, 2.25) : Block.box(4, y, 0, 12, y + 6, 2.25);
     }
 
     public VoxelShape shape(Direction facing) {
@@ -104,6 +85,20 @@ public enum UplinkMount implements StringRepresentable {
     }
 
     public static UplinkMount compute(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
+        // Top and bottom faces only take the plate (new uplinks are refused where it does not fit, see platesFit).
+        if (facing.getAxis() == Direction.Axis.Y) return FULL;
+        return fit(attached, level, attachedPos, facing);
+    }
+
+    /**
+     * Whether the face the uplink would stick to carries the plate (sturdy, or flush and covering the plate or its
+     * rim). Top and bottom faces need this; side faces get the compact puck otherwise.
+     */
+    public static boolean platesFit(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
+        return fit(attached, level, attachedPos, facing) == FULL;
+    }
+
+    private static UplinkMount fit(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
         if (attached.isAir()) return FULL;
         try {
             if (attached.isFaceSturdy(level, attachedPos, facing.getOpposite())) return FULL;
@@ -126,15 +121,14 @@ public enum UplinkMount implements StringRepresentable {
         return out;
     }
 
-    /** Pure rule on model-space boxes (see {@link #modelBoxes}); unit tested. */
+    /**
+     * Pure rule on model-space boxes (see {@link #modelBoxes}); unit tested. A face set back further than
+     * {@link #FLUSH_PX} never gets the plate; the puck then goes where the nearest layer of the shape is.
+     */
     static UplinkMount choose(List<double[]> boxes) {
         if (boxes.isEmpty()) return CENTER;
         double gap = Double.MAX_VALUE;
         for (var b : boxes) gap = Math.min(gap, depth(b));
-        if (gap > FLUSH_PX) {
-            for (var m : POSTS) if (m.post >= gap - 1e-6) return m;
-            return POST16;
-        }
         // footprint of the front layer (everything within FLUSH_PX of the nearest part) on the 16x16 pixel grid
         boolean[] cover = new boolean[256];
         for (var b : boxes) {
@@ -146,7 +140,7 @@ public enum UplinkMount implements StringRepresentable {
         }
         int plate = count(cover, 1, 1, 15, 15);
         int ring = plate - count(cover, 2, 2, 14, 14);
-        if (plate >= FULL_COVERAGE * 14 * 14 || ring >= FULL_COVERAGE * (14 * 14 - 12 * 12)) return FULL;
+        if (gap <= FLUSH_PX && (plate >= FULL_COVERAGE * 14 * 14 || ring >= FULL_COVERAGE * (14 * 14 - 12 * 12))) return FULL;
         double sum = 0;
         int n = 0;
         for (int i = 0; i < 256; i++) {

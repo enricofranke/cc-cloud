@@ -7,9 +7,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 ### Visual polish: compact uplinks, quieter JourneyMap
 - **Compact uplink**: on faces that cannot carry the 14x14 plate – slab sides, tray-height machines such as Energized
   Power solar panels, carpet-height blocks – the uplink becomes a small module on the visible part of the face instead
-  of a plate sticking out like a sign; on top of a low machine it stands on a short post. Chosen automatically from the
-  attached block's shape, follows it when that block changes, and fixes itself in existing worlds after loading. The
-  hitbox matches. Placement rules are unchanged.
+  of a plate sticking out like a sign. Chosen automatically from the attached block's shape, follows it when that block
+  changes, and fixes itself in existing worlds after loading. The hitbox matches. Top and bottom faces only take the
+  plate: placing an uplink on top of a slab or solar panel is refused with a hint ("Attach the uplink to the side of
+  this block"); uplinks that already sit there keep working.
 - **JourneyMap**: by default only mainframes and Ender Relays become waypoints (client config
   `journeyMapWaypointTypes` adds relays, uplinks, bridges), all in one waypoint group "CC: Cloud" that JourneyMap can
   hide at once; only mainframes get the in-world marker and beam; names are the card title (computer label) or the

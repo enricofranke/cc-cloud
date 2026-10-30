@@ -15,7 +15,7 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul, oben auf einer flachen Maschine steht er auf einem kurzen Mast. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
 | **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
 | **Cloud Link Card** | Verbindet Uplinks und Bridges mit einem Mainframe. |
 | **ME / RS Cloud Bridge** | Hängt sich in ein Applied-Energistics-2- oder Refined-Storage-Netzwerk. Mit einem Uplink darauf bekommst du eine fertige Lager-Karte (Suche, Craften, Merkliste). Gibt es nur, wenn AE2 / RS installiert ist. |

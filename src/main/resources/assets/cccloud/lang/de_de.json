@@ -558,6 +558,7 @@
   "item.cccloud.handbook": "CC: Cloud-Handbuch",
   "item.cccloud.handbook.tooltip": "Mainframes, Uplinks, das Dashboard, Lua und mehr",
   "cccloud.configuration.journeyMapWaypoints": "JourneyMap: Netzwerk-Wegpunkte (Gruppe „CC: Cloud“)",
+  "cccloud.uplink.side_only": "Setz den Uplink an die Seite dieses Blocks",
   "cccloud.journeymap.bridge": "Cloud-Bridge",
   "cccloud.journeymap.group": "Deine CC: Cloud-Netzwerke (temporäre Wegpunkte vom Server)",
   "cccloud.configuration.journeyMapWaypointTypes": "JourneyMap: Wegpunkt-Typen",

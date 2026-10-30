@@ -13,7 +13,6 @@ import java.nio.file.Path;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -63,19 +62,19 @@ class UplinkMountTest {
     }
 
     @Test
-    void insetFacesGetAPost() {
-        // the uplink sits in the cell above (facing down): the face is 16 - height px below it
-        assertEquals(UplinkMount.POST8, mount(Block.box(0, 0, 0, 16, 8, 16), Direction.DOWN));
-        assertEquals(UplinkMount.POST12, mount(Block.box(0, 0, 0, 16, 4, 16), Direction.DOWN));
-        assertEquals(UplinkMount.POST12, mount(Block.box(0, 0, 0, 16, 6, 16), Direction.DOWN));
-        assertEquals(UplinkMount.POST16, mount(Block.box(0, 0, 0, 16, 1, 16), Direction.DOWN));
-        // under a top slab (facing up) and the slab's flush faces
-        assertEquals(UplinkMount.POST8, mount(Block.box(0, 8, 0, 16, 16, 16), Direction.UP));
+    void topAndBottomFacesOnlyTakeThePlate() {
+        // no posts: on top of low blocks the plate does not fit (CloudUplinkBlock refuses the placement)
+        for (var low : new VoxelShape[]{Block.box(0, 0, 0, 16, 8, 16), Block.box(0, 0, 0, 16, 4, 16), Block.box(0, 0, 0, 16, 6, 16),
+            Block.box(0, 0, 0, 16, 1, 16), Block.box(1, 0, 1, 15, 14, 15)}) {
+            assertNotEquals(UplinkMount.FULL, mount(low, Direction.DOWN), low.toString());
+        }
+        assertNotEquals(UplinkMount.FULL, mount(Block.box(0, 8, 0, 16, 16, 16), Direction.UP));
+        // full or flush faces: the plate
         assertEquals(UplinkMount.FULL, mount(Block.box(0, 8, 0, 16, 16, 16), Direction.DOWN));
         assertEquals(UplinkMount.FULL, mount(Block.box(0, 0, 0, 16, 8, 16), Direction.UP));
-        // a 12x12 machine standing 2 px back from this side
-        assertEquals(UplinkMount.POST4, mount(Block.box(2, 0, 2, 14, 16, 14), Direction.EAST));
-        assertEquals(4, UplinkMount.POST4.post());
+        // a face set back more than 1 px never gets the plate; on a side the puck sits where the shape is nearest
+        assertEquals(UplinkMount.CENTER, mount(Block.box(2, 0, 2, 14, 16, 14), Direction.EAST));
+        assertEquals(UplinkMount.BOTTOM, mount(Block.box(0, 0, 3, 16, 4, 16), Direction.SOUTH));
     }
 
     @Test
@@ -110,8 +109,6 @@ class UplinkMountTest {
             }
             AABB shape = m.northShape().bounds();
             assertEquals(new AABB(min[0] / 16, min[1] / 16, min[2] / 16, max[0] / 16, max[1] / 16, max[2] / 16), shape, model);
-            // the post (if any) is part of the hitbox, not just its bounding box
-            if (m.post() > 0) assertTrue(m.northShape().toAabbs().stream().anyMatch(b -> b.contains(new Vec3(0.5, 0.5, -m.post() / 32.0))), model);
             for (var d : Direction.values()) assertFalse(m.shape(d).isEmpty());
         }
     }
