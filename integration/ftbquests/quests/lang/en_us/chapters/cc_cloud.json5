@@ -81,6 +81,16 @@
   "quest.5EB94D9F9310C3CD.quest_desc": [
     "The &eAdvanced Cloud Uplink&r reaches much further than the normal one. For other dimensions, use Ender Relays or an Ender Fiber Link.",
   ],
+  "task.5F4CB4E662EBAD43.title": "Point a probe at a machine",
+  "quest.31D7D41D0D6A285A.title": "Cloud Probe",
+  "quest.31D7D41D0D6A285A.quest_subtitle": "&7For machines built into walls",
+  "quest.31D7D41D0D6A285A.quest_desc": [
+    "A machine built into a wall, or with every face taken by pipes and cables, has no free side for an uplink. The &eCloud Probe&r reads &bone&r machine up to &b8 blocks&r away as if an uplink were attached to it.",
+    "",
+    "&aSneak + right-click&r the machine with the &eLink Card&r, then right-click the probe. The probe's screen shows what it reads and can clear it; the &eCloud Analyzer&r draws a line to the machine.",
+    "",
+    "&7It is expensive and counts as two devices on the mainframe – normal uplinks stay the everyday choice.",
+  ],
   "quest.76E6FE5638261F68.title": "ME Cloud Bridge",
   "quest.76E6FE5638261F68.quest_subtitle": "&7Your AE2 network online",
   "quest.76E6FE5638261F68.quest_desc": [

@@ -799,6 +799,25 @@ CLOUD = [
       [item("cccloud:advanced_cloud_uplink")], [xp(100), give("minecraft:ender_pearl", 2)],
       deps=["cloud.linkcard"]),
 
+    Q("cloud.probe", 9.25, 1.75,
+      T("Cloud Probe", "Cloud-Sonde"),
+      T("&7For machines built into walls", "&7Für eingebaute Maschinen"),
+      T([
+          "A machine built into a wall, or with every face taken by pipes and cables, has no free side for an uplink. The &eCloud Probe&r reads &bone&r machine up to &b8 blocks&r away as if an uplink were attached to it.",
+          "",
+          "&aSneak + right-click&r the machine with the &eLink Card&r, then right-click the probe. The probe's screen shows what it reads and can clear it; the &eCloud Analyzer&r draws a line to the machine.",
+          "",
+          "&7It is expensive and counts as two devices on the mainframe – normal uplinks stay the everyday choice.",
+      ], [
+          "Eine in die Wand gebaute Maschine, oder eine, deren Seiten alle mit Rohren und Kabeln belegt sind, hat keinen Platz für einen Uplink. Die &eCloud-Sonde&r liest &beine&r Maschine bis zu &b8 Blöcke&r entfernt, als säße ein Uplink daran.",
+          "",
+          "&aSchleichen + Rechtsklick&r mit der &eVerbindungskarte&r auf die Maschine, dann Rechtsklick auf die Sonde. Ihr Bildschirm zeigt, was sie liest, und kann das Ziel löschen; der &eCloud-Analysator&r zeichnet eine Linie zur Maschine.",
+          "",
+          "&7Sie ist teuer und zählt am Mainframe wie zwei Geräte – im Alltag bleibt der normale Uplink die Wahl.",
+      ]),
+      [item("cccloud:cloud_probe"), check("Point a probe at a machine", "Eine Sonde auf eine Maschine richten")],
+      [xp(200), give("minecraft:ender_eye", 1)], deps=["cloud.advuplink"], optional=True),
+
     Q("cloud.mebridge", 7.75, -1.5,
       T("ME Cloud Bridge", "ME-Cloud-Bridge"),
       T("&7Your AE2 network online", "&7Dein AE2-Netz online"),

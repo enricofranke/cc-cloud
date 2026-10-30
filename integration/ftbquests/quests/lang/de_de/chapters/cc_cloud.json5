@@ -81,6 +81,16 @@
   "quest.5EB94D9F9310C3CD.quest_desc": [
     "Der &eErweiterte Cloud-Uplink&r reicht viel weiter als der normale. Für andere Dimensionen nimmst du Ender-Relais oder eine Ender-Glasfaserbrücke.",
   ],
+  "task.5F4CB4E662EBAD43.title": "Eine Sonde auf eine Maschine richten",
+  "quest.31D7D41D0D6A285A.title": "Cloud-Sonde",
+  "quest.31D7D41D0D6A285A.quest_subtitle": "&7Für eingebaute Maschinen",
+  "quest.31D7D41D0D6A285A.quest_desc": [
+    "Eine in die Wand gebaute Maschine, oder eine, deren Seiten alle mit Rohren und Kabeln belegt sind, hat keinen Platz für einen Uplink. Die &eCloud-Sonde&r liest &beine&r Maschine bis zu &b8 Blöcke&r entfernt, als säße ein Uplink daran.",
+    "",
+    "&aSchleichen + Rechtsklick&r mit der &eVerbindungskarte&r auf die Maschine, dann Rechtsklick auf die Sonde. Ihr Bildschirm zeigt, was sie liest, und kann das Ziel löschen; der &eCloud-Analysator&r zeichnet eine Linie zur Maschine.",
+    "",
+    "&7Sie ist teuer und zählt am Mainframe wie zwei Geräte – im Alltag bleibt der normale Uplink die Wahl.",
+  ],
   "quest.76E6FE5638261F68.title": "ME-Cloud-Bridge",
   "quest.76E6FE5638261F68.quest_subtitle": "&7Dein AE2-Netz online",
   "quest.76E6FE5638261F68.quest_desc": [

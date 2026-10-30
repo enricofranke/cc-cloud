@@ -307,6 +307,45 @@
       ],
     },
     {
+      x: 9.25,
+      y: 1.75,
+      dependencies: [
+        "5EB94D9F9310C3CD",
+      ],
+      size: 1.0,
+      optional: true,
+      id: "31D7D41D0D6A285A",
+      tasks: [
+        {
+          id: "2204617854C37589",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_probe",
+            count: 1,
+          },
+        },
+        {
+          id: "5F4CB4E662EBAD43",
+          type: "checkmark",
+        },
+      ],
+      rewards: [
+        {
+          id: "39B8CC769D7350D1",
+          type: "xp",
+          xp: 200,
+        },
+        {
+          id: "6B14DCE6212C4662",
+          type: "item",
+          item: {
+            id: "minecraft:ender_eye",
+            count: 1,
+          },
+        },
+      ],
+    },
+    {
       x: 7.75,
       y: -1.5,
       dependencies: [
