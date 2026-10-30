@@ -41,9 +41,10 @@ public final class ApiKeys {
      *
      * @param expires ms since epoch, 0 = never
      * @param ips     allowed client IPs or CIDRs, empty = any
+     * @param device  token hash of the browser that created the key ("" = unknown): revoking that browser revokes the key
      */
     public record Key(String id, String hash, String name, UUID player, String playerName, UUID mainframeId, Set<ApiScope> scopes, long created,
-                      long expires, List<String> ips, long lastUsed, String lastIp) {
+                      long expires, List<String> ips, long lastUsed, String lastIp, String device) {
         public Key {
             scopes = scopes.isEmpty() ? Set.of() : Set.copyOf(EnumSet.copyOf(scopes));
             ips = List.copyOf(ips);
@@ -54,7 +55,7 @@ public final class ApiKeys {
         }
 
         Key used(long time, String ip) {
-            return new Key(id, hash, name, player, playerName, mainframeId, scopes, created, expires, ips, time, ip);
+            return new Key(id, hash, name, player, playerName, mainframeId, scopes, created, expires, ips, time, ip, device);
         }
     }
 
@@ -139,19 +140,26 @@ public final class ApiKeys {
         return list;
     }
 
+    /** {@link #create(UUID, String, UUID, String, Set, long, List, String)} without a creating browser (tests). */
+    public Created create(UUID player, String playerName, UUID mainframeId, String name, Set<ApiScope> scopes, long expiresIn, List<String> ips) {
+        return create(player, playerName, mainframeId, name, scopes, expiresIn, ips, "");
+    }
+
     /**
      * Creates a key. The caller validated name, scopes, lifetime and IPs and checked the per-player limit.
      *
      * @param expiresIn seconds, 0 = never
+     * @param device    token hash of the browser that creates it (the key ends when that browser is revoked)
      */
-    public synchronized Created create(UUID player, String playerName, UUID mainframeId, String name, Set<ApiScope> scopes, long expiresIn, List<String> ips) {
+    public synchronized Created create(UUID player, String playerName, UUID mainframeId, String name, Set<ApiScope> scopes, long expiresIn, List<String> ips,
+                                       String device) {
         byte[] raw = new byte[32];
         random.nextBytes(raw);
         String secret = PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
         String hash = AuthStore.hash(secret);
         long now = clock.getAsLong();
         var key = new Key(hash.substring(0, 16), hash, name, player, playerName, mainframeId, scopes, now, expiresIn > 0 ? now + expiresIn * 1000 : 0,
-            ips, 0, "");
+            ips, 0, "", device);
         keys.put(hash, key);
         onChange.run();
         return new Created(secret, key);
@@ -168,6 +176,33 @@ public final class ApiKeys {
             return key;
         }
         return null;
+    }
+
+    /**
+     * The browser that created keys was revoked (lost phone, stolen token): its keys are revoked with it, so revoking a
+     * browser ends everything it could do. Keys outlive the browser's 30-day expiry (that is not a revocation). Returns
+     * the removed keys.
+     */
+    public synchronized List<Key> revokeCreatedBy(String deviceHash) {
+        var removed = new ArrayList<Key>();
+        if (deviceHash.isEmpty()) return removed;
+        for (var key : List.copyOf(keys.values())) {
+            if (!key.device().equals(deviceHash)) continue;
+            keys.remove(key.hash());
+            removed.add(key);
+        }
+        if (!removed.isEmpty()) onChange.run();
+        return removed;
+    }
+
+    /**
+     * Revokes the keys of every browser {@code auth} revokes (in game, {@code /cccloud devices revoke}, the Account page)
+     * and reports each one to {@code audit}. Called once per server start.
+     */
+    public void followRevocations(AuthStore auth, java.util.function.BiConsumer<AuthStore.Device, Key> audit) {
+        auth.onRevoke(device -> {
+            for (var key : revokeCreatedBy(device.tokenHash())) audit.accept(device, key);
+        });
     }
 
     /** Records a use (saved at most once a minute per key, or when the IP changed). */

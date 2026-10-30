@@ -144,4 +144,71 @@ class ApiKeysTest {
         assertEquals(400, ApiKeysApi.post(keys, ON, mainframe, admin, "{\"op\":\"revoke\",\"id\":\"xyz\"}", now[0], audit::add).status());
         assertTrue(audit.getLast().contains("revoked the API key 'read' of Alex"), audit.getLast());
     }
+
+    /**
+     * Security review 2026-10-30: a stolen browser could mint an API key that kept working after the browser was
+     * revoked. A key now ends with the browser that created it, on every revocation path; expiry is not a revocation.
+     */
+    @Test
+    void revokingTheCreatingBrowserRevokesItsKeys() {
+        var auth = new AuthStore(() -> now[0], () -> {
+        });
+        var revoked = new ArrayList<String>();
+        keys.followRevocations(auth, (device, key) -> revoked.add(key.name() + "@" + device.name()));
+        String phone = browser(auth, "Phone"), laptop = browser(auth, "Laptop"), tablet = browser(auth, "Tablet");
+        var admin = new ApiKeysApi.Caller(steve, "Steve", EnumSet.copyOf(Perm.preset(Role.ADMIN)), AuthStore.hash(phone));
+        String stolen = ApiKeysApi.post(keys, ON, mainframe, admin, "{\"op\":\"create\",\"name\":\"thief\",\"scopes\":[\"action:widgets\"]}", now[0], line -> {
+        }).body().get("key").getAsString();
+        assertEquals(AuthStore.hash(phone), keys.authenticate(stolen).key().device());
+        var other = keys.create(steve, "Steve", mainframe, "ha", EnumSet.of(ApiScope.READ_SECTIONS), 0, List.of(), AuthStore.hash(laptop));
+        // The account page / DELETE /api/devices/<id>
+        assertNotNull(auth.revokeDevice(AuthStore.hash(phone).substring(0, 16), d -> true));
+        assertEquals(ApiKeys.Status.UNKNOWN, keys.authenticate(stolen).status(), "revoked with its browser");
+        assertEquals(ApiKeys.Status.OK, keys.authenticate(other.secret()).status(), "other browsers' keys stay");
+        assertEquals(List.of("thief@Phone"), revoked);
+        // In game: the device list (by id) and /cccloud devices revoke <name|all>
+        var byId = keys.create(steve, "Steve", mainframe, "t", EnumSet.of(ApiScope.READ_SECTIONS), 0, List.of(), AuthStore.hash(tablet));
+        assertNotNull(auth.revokeById(mainframe, AuthStore.hash(tablet).substring(0, 16)));
+        assertEquals(ApiKeys.Status.UNKNOWN, keys.authenticate(byId.secret()).status());
+        assertEquals(1, auth.revoke(mainframe, "all").size());
+        assertEquals(ApiKeys.Status.UNKNOWN, keys.authenticate(other.secret()).status());
+        // A browser that merely expired after 30 days without use does not take the key with it.
+        String old = browser(auth, "Old");
+        var kept = keys.create(steve, "Steve", mainframe, "kept", EnumSet.of(ApiScope.READ_SECTIONS), 0, List.of(), AuthStore.hash(old));
+        now[0] += AuthStore.DEVICE_EXPIRY_MS + 1;
+        assertEquals(1, auth.expireDevices());
+        assertEquals(ApiKeys.Status.OK, keys.authenticate(kept.secret()).status());
+        // Keys without a known browser (created before 0.10 shipped, tests) are never matched by an empty hash.
+        assertTrue(keys.revokeCreatedBy("").isEmpty());
+    }
+
+    private String browser(AuthStore auth, String name) {
+        var code = auth.currentCode(mainframe, steve);
+        var pending = auth.pair(AuthStore.formatCode(code.code()), name, "192.168.1.5");
+        return auth.approve(pending.id(), steve, "Steve", true).token();
+    }
+
+    /** Moderators see other players' keys to revoke them, but not those players' IP addresses. */
+    @Test
+    void otherPlayersAddressesAreNotListed() {
+        var mine = keys.create(steve, "Steve", mainframe, "mine", EnumSet.of(ApiScope.READ_SECTIONS), 0, List.of("192.168.1.0/24"));
+        var theirs = keys.create(alex, "Alex", mainframe, "theirs", EnumSet.of(ApiScope.READ_SECTIONS), 0, List.of("203.0.113.7"));
+        keys.touch(mine.key().hash(), "192.168.1.20");
+        keys.touch(theirs.key().hash(), "203.0.113.7");
+        var admin = new ApiKeysApi.Caller(steve, "Steve", EnumSet.copyOf(Perm.preset(Role.ADMIN)));
+        var list = ApiKeysApi.get(keys, ON, mainframe, admin, now[0]).body().getAsJsonArray("keys");
+        assertEquals(2, list.size());
+        for (var e : list) {
+            var k = e.getAsJsonObject();
+            if (k.get("own").getAsBoolean()) {
+                assertEquals("192.168.1.20", k.get("lastIp").getAsString());
+                assertEquals(1, k.getAsJsonArray("ips").size());
+            } else {
+                assertTrue(k.get("lastIp").isJsonNull(), k.toString());
+                assertTrue(k.getAsJsonArray("ips").isEmpty(), k.toString());
+                assertTrue(k.has("lastUsed") && !k.get("lastUsed").isJsonNull(), "when it was used still shows");
+            }
+        }
+        assertFalse(list.toString().contains("203.0.113.7"));
+    }
 }
