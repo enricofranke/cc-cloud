@@ -60,6 +60,8 @@ import org.jspecify.annotations.Nullable;
 public final class IconService {
     public static final int BATCH = 256;
     public static final int MAX_UPLOAD_ICONS = 64;
+    /** The smallest hourly upload quota per player (security review L10 had 4096 for every pack size). */
+    static final int MIN_QUOTA = 4096;
     /** Outstanding batches older than this go back to the queue. */
     private static final long BATCH_TIMEOUT_MS = 10 * 60 * 1000L;
 
@@ -149,8 +151,14 @@ public final class IconService {
     private volatile Vanilla vanilla = Vanilla.NOT_NEEDED;
     private volatile String vanillaError = "";
     private long accepted, rejected;
-    /** L10: 4096 icons per player and hour; replacing a current icon only by players with a role. */
-    final UploadGuard guard = new UploadGuard(4096, System::currentTimeMillis, uuid -> false);
+    /**
+     * L10: a quota per player and hour, big enough for one full render of the pack ({@link #quotaFor}); replacing a
+     * current client icon only by players with a role. Used up = no more batches for that player (nothing is dropped).
+     */
+    final UploadGuard guard = new UploadGuard(MIN_QUOTA, System::currentTimeMillis, uuid -> false);
+    /** Players already told that they reached the quota this hour. */
+    private final Set<UUID> quotaLogged = new java.util.HashSet<>();
+    private final java.util.concurrent.atomic.AtomicBoolean checkpointQueued = new java.util.concurrent.atomic.AtomicBoolean();
 
     private IconService(MinecraftServer server, Path dir) {
         this.server = server;
@@ -161,8 +169,11 @@ public final class IconService {
             var key = BuiltInRegistries.ITEM.getKey(item);
             wanted.put(key.toString(), version(key.getNamespace()));
         }
+        guard.setPerHour(quotaFor(wanted.size()));
         requeue(store.outdated(wanted));
         io.scheduleWithFixedDelay(this::flushQuietly, 60, 60, TimeUnit.SECONDS);
+        // Journal: what arrived is on disk within a second or two, also if the server is killed instead of stopped.
+        io.scheduleWithFixedDelay(this::checkpointQuietly, 2, 2, TimeUnit.SECONDS);
         CCCloud.LOGGER.info("[cccloud] Item icons: {} of {} rendered by game clients, {} queued for them ({})", wanted.size() - queue.size(),
             wanted.size(), queue.size(), dir);
         // Singleplayer and LAN: the host's game renders every icon with the real renderer and has all textures.
@@ -193,8 +204,23 @@ public final class IconService {
 
     /** Version key of a namespace: mod id + mod version (game version for minecraft), so updates re-render. */
     static String version(String namespace) {
-        if (namespace.equals("minecraft")) return "minecraft@" + SharedConstants.getCurrentVersion().name();
-        return ModList.get().getModContainerById(namespace).map(c -> namespace + "@" + c.getModInfo().getVersion()).orElse(namespace + "@?");
+        return versionKey(namespace, SharedConstants.getCurrentVersion().name(),
+            ns -> ModList.get().getModContainerById(ns).map(c -> c.getModInfo().getVersion().toString()));
+    }
+
+    /**
+     * The version key stored per icon: {@code <namespace>@<mod version>}, the game version for {@code minecraft} and
+     * {@code <namespace>@?} for namespaces that are not a mod id. Only declared versions: no file hashes, dates or
+     * paths, so a restart, a moved server folder or re-downloaded identical jars never re-render anything.
+     */
+    static String versionKey(String namespace, String gameVersion, java.util.function.Function<String, java.util.Optional<String>> modVersion) {
+        if (namespace.equals("minecraft")) return "minecraft@" + gameVersion;
+        return namespace + "@" + modVersion.apply(namespace).orElse("?");
+    }
+
+    /** One full render of the pack per player and hour (plus a quarter for retries), at least {@link #MIN_QUOTA}. */
+    static int quotaFor(int items) {
+        return Math.max(MIN_QUOTA, items + items / 4);
     }
 
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
@@ -232,7 +258,13 @@ public final class IconService {
         var running = service.pass;
         if (running != null) running.cancel();
         service.render.shutdownNow();
-        service.io.shutdownNow();
+        // Let a running checkpoint or compaction finish (the store's write lock does the rest), then compact once more.
+        service.io.shutdown();
+        try {
+            service.io.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         service.flushQuietly();
         ModAssets.setVanilla(null);
         try {
@@ -246,6 +278,25 @@ public final class IconService {
             store.flush();
         } catch (IOException | RuntimeException e) {
             CCCloud.LOGGER.warn("[cccloud] Could not write the item icon store", e);
+        }
+    }
+
+    private void checkpointQuietly() {
+        checkpointQueued.set(false);
+        try {
+            store.checkpoint();
+        } catch (IOException | RuntimeException e) {
+            CCCloud.LOGGER.warn("[cccloud] Could not write the item icon journal", e);
+        }
+    }
+
+    /** Writes the uploads of the last batch to the journal soon (at most one queued checkpoint). */
+    private void requestCheckpoint() {
+        if (server == null || !checkpointQueued.compareAndSet(false, true)) return;
+        try {
+            io.schedule(this::checkpointQuietly, 250, TimeUnit.MILLISECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            checkpointQueued.set(false); // stopping: the final compaction writes everything
         }
     }
 
@@ -280,16 +331,35 @@ public final class IconService {
                 renderers.remove(uuid);
                 continue;
             }
-            var batch = new ArrayList<String>(BATCH);
-            while (batch.size() < BATCH && !queue.isEmpty()) {
-                var id = queue.pollFirst();
-                queued.remove(id);
-                batch.add(id);
+            var batch = takeBatch(uuid, BATCH, now);
+            if (batch.isEmpty()) {
+                if (quotaLogged.add(uuid)) {
+                    CCCloud.LOGGER.info("[cccloud] Item icons: {} reached the upload limit ({} per hour); the rest goes to other players or waits",
+                        player.getGameProfile().name(), quotaFor(wanted.size()));
+                }
+                continue;
             }
-            assignments.put(uuid, new Assignment(new LinkedHashSet<>(batch), now));
-            lastRequest.put(uuid, now);
             PacketDistributor.sendToPlayer(player, new RequestPayload(batch));
         }
+    }
+
+    /**
+     * Hands the next ids to a client: at most {@code max} and never more than its remaining upload quota, so nothing it
+     * renders is thrown away. Empty if its quota is used up.
+     */
+    synchronized List<String> takeBatch(UUID client, int max, long now) {
+        int size = Math.min(max, guard.remaining(client));
+        var batch = new ArrayList<String>(Math.max(0, size));
+        while (batch.size() < size && !queue.isEmpty()) {
+            var id = queue.pollFirst();
+            queued.remove(id);
+            batch.add(id);
+        }
+        if (batch.isEmpty()) return batch;
+        quotaLogged.remove(client);
+        assignments.put(client, new Assignment(new LinkedHashSet<>(batch), now));
+        lastRequest.put(client, now);
+        return batch;
     }
 
     private static void onClientState(ClientStatePayload payload, IPayloadContext context) {
@@ -336,6 +406,7 @@ public final class IconService {
             return 0;
         }
         int ok = 0;
+        boolean changed = false;
         for (var icon : icons) {
             if (!assignment.ids().remove(icon.id())) {
                 rejected++;
@@ -343,10 +414,17 @@ public final class IconService {
             }
             var version = wanted.get(icon.id());
             if (version == null) continue;
-            if (!guard.take(client) || (store.isCurrent(icon.id(), version) && store.hasIcon(icon.id()) && !guard.mayReplace(client))) {
-                rejected++;
+            if (store.isCurrent(icon.id(), version) && store.hasIcon(icon.id()) && !guard.mayReplace(client)) {
+                rejected++; // first writer wins for client renders
                 continue;
             }
+            if (!guard.take(client)) {
+                // Quota used up: the item goes back to the queue (for another player, or this one in an hour).
+                rejected++;
+                requeue(List.of(icon.id()));
+                continue;
+            }
+            changed = true;
             if (icon.png().length == 0) {
                 store.markFailed(icon.id(), version);
             } else if (PngCodec.isValid(icon.png(), PngCodec.ICON_SIZE, PngCodec.ICON_SIZE)) {
@@ -359,6 +437,7 @@ public final class IconService {
             }
         }
         if (assignment.ids().isEmpty()) assignments.remove(client);
+        if (changed) requestCheckpoint();
         return ok;
     }
 
@@ -555,19 +634,13 @@ public final class IconService {
         this.server = null;
         this.store = new IconStore(dir);
         wanted.putAll(items);
+        guard.setPerHour(quotaFor(wanted.size()));
         requeue(store.outdated(wanted));
     }
 
-    /** Test hook: assign a batch to a client as {@link #assign()} would. */
+    /** Test hook: assign a batch to a client as {@link #assign()} would (quota included). */
     synchronized List<String> assignForTest(UUID client, int max) {
-        var batch = new ArrayList<String>();
-        while (batch.size() < max && !queue.isEmpty()) {
-            var id = queue.pollFirst();
-            queued.remove(id);
-            batch.add(id);
-        }
-        assignments.put(client, new Assignment(new LinkedHashSet<>(batch), System.currentTimeMillis()));
-        return batch;
+        return takeBatch(client, max, System.currentTimeMillis());
     }
 
     synchronized long rejectedCount() {

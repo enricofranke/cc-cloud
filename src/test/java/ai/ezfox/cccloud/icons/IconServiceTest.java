@@ -100,4 +100,74 @@ class IconServiceTest {
         assertArrayEquals(icon(), service.store().get("ae2:a"));
         assertEquals(new IconService.Sources(2, 0, 0), service.sources());
     }
+
+    /**
+     * Enrico's hosted server: icons were rendered again after every start. A restart after a kill (no stopping event,
+     * no compaction) must hand out nothing that was uploaded before the last checkpoint.
+     */
+    @Test
+    void aRestartAfterAKillRendersNothingAgain() throws Exception {
+        var items = new LinkedHashMap<String, String>();
+        for (var id : List.of("minecraft:a", "minecraft:b", "minecraft:c", "ae2:d")) items.put(id, id.substring(0, id.indexOf(':')) + "@1");
+        var first = IconService.forTest(dir, items);
+        var client = UUID.randomUUID();
+        assertEquals(4, first.assignForTest(client, 4).size());
+        for (var id : items.keySet()) first.accept(client, List.of(new IconService.Icon(id, icon())));
+        first.store().checkpoint(); // what the io thread does within a second of the upload
+        // killed here: no onStopping, no flush, no close
+
+        var second = IconService.forTest(dir, items);
+        assertEquals(0, second.status().queued(), "nothing is queued for rendering again");
+        assertEquals(4, second.status().done());
+        assertArrayEquals(icon(), second.store().get("ae2:d"));
+
+        // Only a real mod update re-renders, and only that mod's items.
+        var updated = new LinkedHashMap<>(items);
+        updated.put("ae2:d", "ae2@2");
+        assertEquals(1, IconService.forTest(dir, updated).status().queued());
+    }
+
+    @Test
+    void aUsedUpQuotaPausesTheClientAndLosesNothing() {
+        var service = service();
+        var client = UUID.randomUUID();
+        service.guard.setPerHour(2);
+        assertEquals(List.of("minecraft:a", "minecraft:b"), service.assignForTest(client, 4), "never more than the quota left");
+        assertEquals(2, service.accept(client, List.of(new IconService.Icon("minecraft:a", icon()), new IconService.Icon("minecraft:b", icon()))));
+        assertEquals(List.of(), service.assignForTest(client, 4), "quota used up: no batch, so no wasted renders");
+        assertEquals(2, service.status().queued(), "the rest waits for another player or the next hour");
+
+        // The quota shrank while a batch was out (e.g. a config change): what is over goes back to the queue.
+        var other = UUID.randomUUID();
+        service.guard.setPerHour(3);
+        assertEquals(List.of("minecraft:c", "ae2:d"), service.assignForTest(other, 4));
+        service.guard.setPerHour(1);
+        assertEquals(1, service.accept(other, List.of(new IconService.Icon("minecraft:c", icon()), new IconService.Icon("ae2:d", icon()))));
+        assertEquals(1, service.status().queued(), "ae2:d was not dropped");
+        assertEquals(3, service.status().done());
+    }
+
+    @Test
+    void theQuotaFitsOneFullRenderOfThePack() {
+        assertEquals(4096, IconService.quotaFor(100));
+        assertEquals(45_942, IconService.quotaFor(36_754), "ATM11: all items in one hour, plus retries");
+    }
+
+    @Test
+    void versionKeysAreStableAndOnlyFollowTheDeclaredModVersion() {
+        java.util.function.Function<String, java.util.Optional<String>> mods = ns -> switch (ns) {
+            case "ae2" -> java.util.Optional.of("26.1.13-beta");
+            case "cccloud" -> java.util.Optional.of("1.0.0-beta.1");
+            default -> java.util.Optional.empty();
+        };
+        assertEquals("minecraft@26.1.2", IconService.versionKey("minecraft", "26.1.2", mods));
+        assertEquals("ae2@26.1.13-beta", IconService.versionKey("ae2", "26.1.2", mods));
+        assertEquals("c@?", IconService.versionKey("c", "26.1.2", mods), "a namespace that is no mod id");
+        for (int i = 0; i < 3; i++) {
+            assertEquals(IconService.versionKey("ae2", "26.1.2", mods), IconService.versionKey("ae2", "26.1.2", mods), "the same on every start");
+        }
+        assertNotEquals(IconService.versionKey("ae2", "26.1.2", mods), IconService.versionKey("ae2", "26.1.2", ns -> java.util.Optional.of("26.1.14")),
+            "a mod update changes it");
+        assertEquals(IconService.versionKey("ae2", "26.1.2", mods), IconService.versionKey("ae2", "26.1.3", mods), "a game update does not touch mods");
+    }
 }

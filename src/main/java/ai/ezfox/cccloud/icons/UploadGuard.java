@@ -13,7 +13,7 @@ import java.util.function.Predicate;
  */
 public final class UploadGuard {
     public static final long WINDOW_MS = 60 * 60 * 1000L;
-    private final int perHour;
+    private volatile int perHour;
     private final LongSupplier clock;
     private volatile Predicate<UUID> trusted;
     private final Map<UUID, long[]> counts = new ConcurrentHashMap<>();
@@ -26,6 +26,26 @@ public final class UploadGuard {
 
     public void setTrusted(Predicate<UUID> trusted) {
         this.trusted = trusted;
+    }
+
+    /** Changes the hourly quota (item icons size it to the pack once the registry is known). */
+    public void setPerHour(int perHour) {
+        this.perHour = perHour;
+    }
+
+    public int perHour() {
+        return perHour;
+    }
+
+    /** How many uploads the player has left in the current hour. */
+    public int remaining(UUID player) {
+        long now = clock.getAsLong();
+        var c = counts.get(player);
+        if (c == null) return perHour;
+        synchronized (c) {
+            if (now - c[0] > WINDOW_MS) return perHour;
+            return (int) Math.max(0, perHour - c[1]);
+        }
     }
 
     /** Takes one upload from the player's quota; false when it is used up. */

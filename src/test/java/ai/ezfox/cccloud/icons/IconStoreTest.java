@@ -149,4 +149,65 @@ class IconStoreTest {
             assertEquals(1, store.status().failed());
         }
     }
+
+    /** A hosting panel kills the server: no flush, no close. What was checkpointed is all there after the restart. */
+    @Test
+    void survivesAKillWithoutCleanShutdown() throws Exception {
+        var a = icon(0xFFAA0000);
+        var b = icon(0xFF00AA00);
+        var lost = icon(0xFF0000AA);
+        var store = new IconStore(dir); // never flushed or closed: the process "dies"
+        store.put("minecraft:stone", "minecraft@26.1.2", a);
+        store.putServer("ae2:fluix", "ae2@1", b);
+        store.markFailed("weird:thing", "weird@1");
+        assertEquals(3, store.checkpoint(), "one journal segment with all three");
+        store.put("ae2:fluix", "ae2@1", a); // a client render replaces the server render: second segment
+        assertEquals(1, store.checkpoint());
+        store.put("minecraft:dirt", "minecraft@26.1.2", lost); // after the last checkpoint: lost with the kill
+        assertEquals(2, store.journalSegments());
+        assertFalse(Files.exists(dir.resolve("manifest.json")), "never compacted");
+        // The kill hit a compaction and a checkpoint halfway: their temp files stay behind.
+        Files.writeString(dir.resolve("manifest.json.tmp"), "{\"version\":2,\"ite");
+        Files.write(dir.resolve("journal-000000000099.zip.tmp"), new byte[]{1, 2, 3});
+
+        try (var restarted = new IconStore(dir)) {
+            var wanted = Map.of("minecraft:stone", "minecraft@26.1.2", "ae2:fluix", "ae2@1", "weird:thing", "weird@1");
+            assertEquals(java.util.Set.of(), restarted.outdated(wanted), "nothing is rendered again");
+            assertArrayEquals(a, restarted.get("minecraft:stone"));
+            assertArrayEquals(a, restarted.get("ae2:fluix"), "segments apply in order: the client render wins");
+            assertEquals(IconStore.Source.CLIENT, restarted.source("ae2:fluix"));
+            assertTrue(restarted.isCurrent("weird:thing", "weird@1"));
+            assertNull(restarted.get("minecraft:dirt"), "only what came after the last checkpoint is lost");
+            assertFalse(Files.exists(dir.resolve("manifest.json.tmp")), "half-written files are removed, never read");
+            assertFalse(Files.exists(dir.resolve("journal-000000000099.zip.tmp")));
+
+            restarted.flush(); // compaction: namespace zips + manifest, then the segments go
+            assertEquals(0, restarted.journalSegments());
+            assertTrue(Files.isRegularFile(dir.resolve("ae2.zip")));
+        }
+        try (var again = new IconStore(dir)) {
+            assertArrayEquals(a, again.get("ae2:fluix"), "and from the compacted files");
+            assertTrue(again.isCurrent("minecraft:stone", "minecraft@26.1.2"));
+            again.put("minecraft:dirt", "minecraft@26.1.2", lost);
+            again.checkpoint(); // numbering goes on after the deleted segments
+        }
+        try (var third = new IconStore(dir)) {
+            assertArrayEquals(lost, third.get("minecraft:dirt"));
+            assertArrayEquals(a, third.get("minecraft:stone"));
+        }
+    }
+
+    @Test
+    void aCheckpointAfterACompactionOnlyWritesWhatIsNew() throws Exception {
+        try (var store = new IconStore(dir)) {
+            store.put("minecraft:a", "v1", icon(0xFF111111));
+            store.flush();
+            assertEquals(0, store.checkpoint(), "everything is compacted already");
+            assertFalse(store.hasUnjournaled());
+            store.put("minecraft:b", "v1", icon(0xFF222222));
+            assertTrue(store.hasUnjournaled());
+            assertEquals(1, store.checkpoint());
+            assertEquals(0, store.checkpoint(), "nothing twice");
+        }
+    }
 }

@@ -89,6 +89,16 @@ in, and who it was: a player's name or the kind of mob.
   for up to 5 minutes; push retries used the allow-list of the first attempt; cave slices (`mapSlices = auto`) now count
   the dashboard as internet-facing while the running server allows the internet, even if a reload could not apply yet.
 
+### Fix: item icons were rendered again after every server start
+- On big packs only about 4,000 icons per player and hour were kept: the upload limit dropped everything over it
+  silently, while the mainframe screen counted those icons as done – after a restart they were missing and rendered
+  again ("Item icons: 9.472 / 36.754" climbing on a hosted server). The limit now fits one full render of the pack per
+  player and hour, players at the limit get no further batches, and nothing over it is lost (it waits in the queue).
+  The same fix for block textures of the 3D view.
+- The icon store is written to disk within about a second of every upload (a small journal file, renamed into place),
+  not only every minute and at a clean stop, so a hosting panel that kills the server loses at most the last second.
+  Only items whose mod version really changed are rendered again.
+
 ### Item icons right after server start
 - A dedicated server now draws the simple item icons itself at start, so the dashboard has icons before anyone joins:
   flat items (ingots, tools, most modded items, tinted like in the inventory) and plain cube blocks (stone, ores, logs,

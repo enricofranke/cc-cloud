@@ -24,4 +24,20 @@ class UploadGuardTest {
         assertFalse(guard.mayReplace(p));
         assertTrue(guard.mayReplace(trusted));
     }
+
+    @Test
+    void remainingFollowsTheQuotaAndTheHour() {
+        var now = new AtomicLong(0);
+        var guard = new UploadGuard(3, now::get, uuid -> false);
+        var p = UUID.randomUUID();
+        assertEquals(3, guard.remaining(p));
+        guard.take(p);
+        assertEquals(2, guard.remaining(p));
+        guard.setPerHour(10);
+        assertEquals(9, guard.remaining(p), "a bigger quota counts what was used");
+        guard.setPerHour(1);
+        assertEquals(0, guard.remaining(p), "never negative");
+        now.addAndGet(UploadGuard.WINDOW_MS + 1);
+        assertEquals(1, guard.remaining(p), "a new hour");
+    }
 }
