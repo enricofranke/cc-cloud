@@ -22,6 +22,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Railcraft Reborn: new cards for iron and steel tanks, coke ovens and blast furnaces. Like the steam boiler, an uplink
   or a Cloud Probe on any block of the formed multiblock shows the whole structure (fill and fluid; cooking progress,
   creosote and output; smelting progress, fuel, output and slag).
+- Dashboard: buttons take the colour picked for them in the layout editor, also the buttons of Cloud Buttons (which
+  were always cyan); purple and orange work as button colours too, readable in the dark and the light theme.
 - Discord bot deployment: a NetworkPolicy (nothing in; out only DNS and HTTPS to public addresses) and how to pin the
   image by digest (`discord-bot/README.md`); the image workflow shows the digest in its summary.
 

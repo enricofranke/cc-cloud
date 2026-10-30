@@ -56,7 +56,8 @@ export type Color = "cyan" | "green" | "yellow" | "red" | "gray";
 export type AlertLevel = "info" | "warn" | "crit";
 
 export interface WidgetOpts {
-  color?: Color;
+  /** from the script or device; a colour picked in the layout editor (also gold, purple, orange) replaces it on buttons */
+  color?: Color | "gold" | "purple" | "orange";
   /** v0.5 F: the server records long-term history for this range */
   history?: string;
   confirm?: boolean;
