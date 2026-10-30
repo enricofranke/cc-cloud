@@ -393,7 +393,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
         serverLevel.setBlock(getBlockPos(), pressed, Block.UPDATE_ALL);
         RsPlateBlock.updateNeighbours(pressed, serverLevel, getBlockPos());
         serverLevel.scheduleTick(getBlockPos(), pressed.getBlock(), pulse);
-        serverLevel.playSound(player, getBlockPos(), SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS);
+        // null: everybody hears it (the click is handled on the server only, the client plays nothing itself)
+        serverLevel.playSound(null, getBlockPos(), SoundEvents.STONE_BUTTON_CLICK_ON, SoundSource.BLOCKS);
         setChanged();
         RsDevices.changed(this);
     }
@@ -415,11 +416,11 @@ public class RsDeviceBlockEntity extends BlockEntity {
         switch (kind()) {
             case SWITCH -> {
                 setSwitch(output == 0);
-                click(player, output > 0);
+                click(output > 0);
             }
             case LAMP -> {
                 setLamp(!lampOn);
-                click(player, lampOn);
+                click(lampOn);
             }
             case BUTTON -> press(player);
             case SENSOR -> {
@@ -427,8 +428,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
         }
     }
 
-    private void click(@Nullable Player player, boolean on) {
-        if (level != null) level.playSound(player, getBlockPos(), SoundEvents.LEVER_CLICK, SoundSource.BLOCKS, 0.3f, on ? 0.6f : 0.5f);
+    private void click(boolean on) {
+        if (level != null) level.playSound(null, getBlockPos(), SoundEvents.LEVER_CLICK, SoundSource.BLOCKS, 0.3f, on ? 0.6f : 0.5f);
     }
 
     // ---- dashboard, rules, scenes, API ---------------------------------------------------------------------------------
