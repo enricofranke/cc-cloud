@@ -30,6 +30,8 @@ final class WebInstance {
     final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> proxiedClients = new java.util.concurrent.ConcurrentHashMap<>();
     /** Config {@code webTrustCloudflareHeader}. */
     volatile boolean trustCloudflare;
+    /** permessage-deflate for dashboard WebSockets (config webCompression). */
+    volatile boolean compression = true;
     final boolean allowInternet;
     final ConnectionLimiter limiter;
     /** /api/icon: 200 requests per minute per IP. */
@@ -100,6 +102,8 @@ final class WebInstance {
         p.addLast("body-limit", new BodyLimit()); // per connection: 4 KB unless an authenticated script upload
         // Script uploads may be 256 KB; every other route rejects bodies over 4 KB in HttpHandler.
         p.addLast("aggregator", new HttpObjectAggregator(ai.ezfox.cccloud.script.ScriptFiles.MAX_FILE + 1024));
+        // permessage-deflate for the dashboard WebSocket (docs/SPEC.md "Scaling"): only answers an upgrade that offers it
+        if (compression) p.addLast("ws-deflate", WebSocketCompression.handler());
         p.addLast("handler", new HttpHandler(this));
     }
 

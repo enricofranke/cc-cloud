@@ -643,7 +643,9 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         String scheme = instance.ssl != null ? "wss://" : "ws://";
         String host = req.headers().get(HttpHeaderNames.HOST, "localhost");
-        var config = WebSocketDecoderConfig.newBuilder().maxFramePayloadLength(ClientMessages.MAX_LAYOUT_FRAME).allowExtensions(false).build();
+        // RSV bits only when permessage-deflate was negotiated (the ws-deflate handler answers the offer in the 101)
+        boolean deflate = ctx.pipeline().get("ws-deflate") != null && WebSocketCompression.offered(req.headers().get("Sec-WebSocket-Extensions"));
+        var config = WebSocketDecoderConfig.newBuilder().maxFramePayloadLength(ClientMessages.MAX_LAYOUT_FRAME).allowExtensions(deflate).build();
         var handshaker = new WebSocketServerHandshakerFactory(scheme + host + "/ws/client", null, config).newHandshaker(req);
         if (handshaker == null) {
             WebSocketServerHandshakerFactory.sendUnsupportedVersionResponse(ctx.channel());

@@ -76,6 +76,24 @@ class HistoryTest {
     }
 
     @Test
+    void globalCapOverAllMainframes() {
+        var store = new HistoryStore(() -> { });
+        store.setMaxTotalBytes(3L * HistoryStore.MAX_BYTES);
+        int perSeries = HistorySeries.bytes(HistorySeries.Range.D30);
+        int fits = HistoryStore.MAX_BYTES / perSeries;
+        int created = 0;
+        for (int m = 0; m < 5; m++) {
+            var mf = UUID.randomUUID();
+            for (int i = 0; i < fits; i++) if (store.record(mf, "w:u/" + i, HistorySeries.Range.D30, 720, T0, 1)) created++;
+        }
+        assertEquals(3 * fits, created, "three mainframes' worth, then no new series anywhere");
+        assertTrue(store.totalBytes() <= 3L * HistoryStore.MAX_BYTES);
+        var copy = new HistoryStore(() -> { });
+        copy.load(store.save());
+        assertEquals(store.totalBytes(), copy.totalBytes(), "the total is counted again after loading");
+    }
+
+    @Test
     void capPruneAndPersistence() {
         var store = new HistoryStore(() -> { });
         var mf = UUID.randomUUID();
