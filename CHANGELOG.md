@@ -4,6 +4,19 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### CC: Cloud Connect – an HTTPS address with one command
+- **`/cccloud internet connect mybase`** gives your dashboard the address **https://mybase.cccloud.dev**: HTTPS, from
+  anywhere, with no port forwarding, no domain and no proxy (server owner, op level 4). The server keeps one outbound
+  connection to the CC: Cloud relay; `/cccloud internet connect` suggests a free name, `/cccloud internet connect release`
+  gives it back. Or set `internetAccess = "connect"` and `[connect] connectName`. Applies at once.
+- **Just works, safe by design:** new browsers still need [Allow] in game, PIN-protected controls keep their PIN (all
+  control from the internet only with the PIN: `internetRequirePin = true`), the dashboard port stays LAN only. The relay serves the official dashboard of your mod version itself and passes
+  only data through the tunnel, so nobody can put a fake page on a cccloud.dev address. The name belongs to a key the
+  mod keeps next to the server (`cccloud/connect/`); unused names are freed after 90 days.
+- The mainframe screen shows the Connect address first and whether it is online; pairing links in chat use it.
+- The relay could technically read dashboard traffic (HTTPS ends at Cloudflare); it is run by the mod author, stores
+  nothing and keeps no request logs. Prefer your own HTTPS? Keep `off` and use a reverse proxy or tunnel.
+
 ### Internet access in one setting
 - **`/cccloud internet http`** opens the dashboard to the internet with one command (server owner, op level 4): the chat
   shows the link to open, the port to forward in the router and how to test it from a phone on mobile data. Or set

@@ -16,6 +16,8 @@ It is reviewed before every release.
 | API keys (v0.10) | 256-bit bearer keys for external tools. Each one acts for one player on one mainframe, within its scopes. |
 | Scenes and schedules (v0.10) | One press or one clock tick runs several actions; a scene must never do more than its presser (or owner) may. |
 | Player names (Advanced Cloud Sensor) | Who was seen where and when. Personal data on a shared server: only operators and up see names. |
+| Connect server key (CC: Cloud Connect) | Ed25519 key that owns the server's `<name>.cccloud.dev`. Whoever holds it can take the name over (not the dashboard: tokens, approvals and the PIN stay on the server). |
+| `*.cccloud.dev` addresses | Visitors trust pages on them. A server must never be able to put its own HTML or scripts there (phishing). |
 
 ## Attackers
 
@@ -27,6 +29,8 @@ It is reviewed before every release.
 5. **A stolen browser or token.** For example a lost phone.
 6. **Cross-site attackers.** Web pages that try to use a victim's browser: CSRF, WebSocket hijacking, Referer leaks.
 7. **Leaked API keys and third-party tools (v0.10).** A key copied into a bot, a Home Assistant config or a script repository can leak; the tool itself may be buggy or hostile.
+9. **The Connect relay (CC: Cloud Connect).** Its operator, or whoever compromises it or the Cloudflare account behind it, sees the dashboard traffic of servers that use Connect.
+10. **A server owner abusing Connect.** A malicious Minecraft server could try to use its `*.cccloud.dev` address for phishing, malware or as a free proxy.
 
 ## Mitigations
 
@@ -217,6 +221,7 @@ can switch it in game (`/cccloud internet`); everyone else can only edit the con
 |---|---|---|---|
 | `off` (default) | LAN only (loopback, private, CGNAT ranges); an older `webAllowInternet = true` setup as configured | as configured | as before |
 | `http` | everyone who reaches the port | **plain text**: device tokens, pairing codes, share secrets, the PIN and every value | anyone on the same Wi-Fi or on the network path (hotspot, provider, VPN) can read logins and the PIN and replay them; control needs no PIN by default |
+| `connect` | everyone, at `https://<name>.cccloud.dev` (the port stays LAN only) | HTTPS to Cloudflare; the relay passes it on in one outbound WebSocket (TLS) | the relay could read the traffic (see "CC: Cloud Connect" below); control needs no PIN by default |
 
 **Threat model of `http` (easy mode).** It is explicitly insecure: an on-path attacker can read a device token and the
 PIN once they are used and then act as that browser, also from elsewhere. TLS is the only real fix. By default `http`
@@ -248,6 +253,68 @@ Enabling `http` is never refused (a server-wide switch must not depend on every 
 - Privacy: in `http` mode without `internetDomain` the server asks a "what is my IP" service (api.ipify.org, then
   checkip.amazonaws.com, then ipv4.icanhazip.com) for its public address once at start and when `/cccloud internet`
   runs. Nothing else is sent; there is no outside port check (it would need a third-party service).
+
+### CC: Cloud Connect (`internetAccess = connect`, 2026-10-30)
+The dashboard gets `https://<name>.cccloud.dev` through one outbound WebSocket from the mod to a relay run by the mod's
+author (Cloudflare Worker + Durable Objects, website repository `connect/`). Design: docs/SPEC.md "CC: Cloud Connect".
+
+**What is the same as on the LAN.** Browser requests and WebSockets reach the dashboard server as in-memory connections
+into the same pipeline as TCP connections (`TunnelBridge`): pairing needs [Allow] in game, tokens, roles, sizes,
+rate and connection limits, IP bans and the route table apply unchanged. The client IP is the one Cloudflare reported to
+the relay; it is trusted only on those connections (an attribute set when the tunnel opens them, never a header) and a
+LAN or malformed address is replaced by a public placeholder, so tunnel traffic is never "local". The Host must be the
+server's own Connect name (421 otherwise). Browsers through Connect are internet addresses (`strictPublic`: stricter
+rate limits, the lockout after wrong logins, codes and PINs). Like `http`, control needs no PIN by default (PIN-protected
+controls keep their PIN; Enrico's decision 2026-10-30: internet access must just work); `internetRequirePin = true` adds
+the PIN unlock for every write from the internet, PIN-less mainframes are then view-only from outside, and API keys
+cannot control through Connect (they cannot carry the PIN). Without it, API keys may control through Connect (HTTPS,
+unlike plain HTTP). The tunnel only runs while the dashboard server's running mode is `connect`, so these rules are
+always active for it. Logins keep the usual 30 days (HTTPS; `publicTokenIdleHours` is a plain-HTTP rule).
+
+**Names and keys.** A name is first come, first served and bound to an Ed25519 key made by the mod (private key mode 600
+next to the server, never in the world). The tunnel logs in with a signature over a fresh relay nonce, the name and the
+key, so a recorded login cannot be replayed and nobody without the key can take a name over. The relay stores only the
+public key, when the name was claimed and last connected, and a daily byte counter. Names: `[a-z0-9-]{3,32}`, no `--`,
+reserved names (relay, website, infrastructure, the project, game and platform brands) and impersonation words
+(`login`, `mojang`, `support`/`admin`/`verify` as a word, …) are refused. 3 names per key, 5 new names per IP per day,
+names expire after 90 days without a connection, `/cccloud internet connect release` frees a name at once.
+
+**No phishing on `*.cccloud.dev`.** The relay serves every page itself: the official dashboard bundle of the mod version
+the tunnel announced (a hash of the files, published per release); unknown versions get an "Update CC: Cloud" page.
+From a server only `/api/*` answers pass, and only as data: JSON, PNG images (signature and IHDR checked, ≤ 4 MB, only on
+icon, map and atlas paths), binary voxel batches (only on the voxel path), CSV and plain text (as downloads). HTML,
+scripts, SVG, XML, event streams, redirects and anything else are refused (502). Response headers are rebuilt from an
+allow-list: no `Set-Cookie` (cookies are dropped both ways, so no cookie tossing onto the website), no `Location`,
+`Link`, `Refresh`, CSP or `Service-Worker-Allowed`; every answer gets `Content-Security-Policy: default-src 'none';
+sandbox`, `nosniff` and the other headers. Dashboard pages get the same strict CSP as from the mod (`script-src 'self'`,
+`connect-src` only the dashboard's own WebSocket and the Script Store origin), HSTS, `frame-ancestors 'none'`. Every
+`<name>.cccloud.dev` is its own origin, so one dashboard cannot read another's storage. What a server can still show is
+text inside the official dashboard (card titles, values), rendered as text.
+
+**What the relay can and cannot do.**
+- It can: see dashboard traffic while it passes (TLS ends at Cloudflare): device tokens, the PIN when entered, share
+  secrets in the first WebSocket message, values; refuse or drop traffic; serve the official dashboard (a compromised
+  relay could serve a modified one to visitors of `*.cccloud.dev`).
+- It cannot: approve a browser (that is done in game), act without a token it saw, get around the PIN lockouts, reach
+  anything on the server except the dashboard routes (the tunnel ends in the dashboard pipeline, not on the network),
+  or read the server key. With a token it saw it could act like that browser (without `internetRequirePin` no PIN
+  stands in the way, except on PIN-protected controls).
+- It does not: store or log traffic. No request logs (Workers invocation logs are off); only events with a name and a
+  key fingerprint (claimed, released, expired, revoked) and counters. The operator's admin calls (revoke, restore,
+  status) need a secret token.
+- Opt out: `/cccloud internet off`, or self-host with your own HTTPS (`https`/`proxy`, docs/HOSTING.md), which needs no
+  trust in the relay.
+
+**Abuse handling.** Reports go to the CC: Cloud Discord or GitHub. The operator revokes a name (`scripts/admin.mjs
+revoke`): the tunnel is closed at once, browsers see "This address was disabled", and the name cannot be claimed again
+until it is restored. Limits keep the relay from being a free proxy: 20 browser tabs, 64 requests in flight, 257 KB
+requests, 16 MB answers, 500 tunnel messages per second, 2 GB per name per day; public API event streams are not
+forwarded.
+
+**Residual.** Trust in the relay operator and Cloudflare (above). A malicious server can still show misleading text in
+its own dashboard or images through its icon route; names can be squatted until they expire; the relay is a single
+service (if it is down, Connect dashboards are down, the LAN keeps working). The `*.cccloud.dev` subdomains are not yet on
+the Public Suffix List; cookies are dropped instead.
 
 ### Removed mainframes: retention and ownership
 - Breaking a mainframe deletes nothing at once: devices, accounts, PIN, layout, rules, scenes, API keys and push targets are kept for `mainframeRetentionDays` (default 7) and then deleted; `/cccloud mainframe purge <id>` (owner or `cccloud.admin.manage`) deletes them earlier. While a mainframe is removed, its devices stay paired but cannot act (it is offline), and relinking its devices elsewhere still needs `network.link` on it.
@@ -395,7 +462,7 @@ Follow-ups done after the review (2026-10-30, branch `followups`):
   image is checked and pinned. Checked with `test/deploy.test.ts` and a strict schema validation (no cluster).
 
 ## Residual risks and operator advice
-- Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md). `internetAccess = http` is easy mode: see "Internet access modes" for what it does and does not protect.
+- Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: CC: Cloud Connect (`internetAccess = connect`, which trusts the relay), the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md). `internetAccess = http` is easy mode: see "Internet access modes" for what it does and does not protect.
 - Server admins with `cccloud.admin.*` can see every mainframe by design (moderation). This is logged, but not prevented.
 - Anyone a share link is forwarded to can view it until it expires or is revoked. Prefer short expiries and low `maxViewers`.
 - A player who gets someone else's in-game account can approve new browsers for it. That is outside the scope of this mod.

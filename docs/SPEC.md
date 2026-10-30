@@ -2061,3 +2061,87 @@ trusted-proxy rules); the LAN works as before. `InternetGuard` holds them (pure 
 
 Tests: `InternetSettingsTest`, `InternetGuardTest`, `InternetAdviceTest`, `InternetHttpModeTest` (real WebSocket
 sessions and HTTP routes from internet and LAN addresses), GameTest `internet_mode_switch`.
+
+## CC: Cloud Connect (requested 2026-10-30)
+
+One switch gives a server's dashboard a secure address `https://<name>.cccloud.dev`: no port forwarding, no domain, no
+proxy. Approved as "so sicher wie möglich und so einfach wie möglich". The relay lives in the website repository
+(`connect/`, Cloudflare Worker `cccloud-connect` with Durable Objects); this section is the mod side and the contract.
+
+### How it works
+1. `internetAccess = "connect"` and `[connect] connectName = "<name>"` (or `/cccloud internet connect <name>`, op level
+   4 or the console). The command writes both keys, applies them through the live config and reports the result
+   (online with the link, or why the relay refused).
+2. The mod makes an Ed25519 key pair once (`<server folder>/cccloud/connect/server-key.pem`, PKCS#8, mode 600 in a
+   700 folder; `server-key.pub`, the raw public key in base64). Next to the server, not in the world, so a shared world
+   download does not carry it; moving a server means copying the folder. A missing half or a mismatched pair is an
+   error, never a silent new key (that would lose the name).
+3. `ConnectClient` opens one outbound WebSocket `wss://connect.cccloud.dev/tunnel/<name>` (Netty, JDK TLS with
+   hostname verification, `User-Agent: CCCloud/<version> (Connect)`). The relay sends `{"t":"challenge","nonce"}`; the mod
+   answers `{"t":"auth","name","key","sig","version","bundle","store"}` with an Ed25519 signature over
+   `cccloud-connect-v1\n<name>\n<nonce>\n<key>`. The first key that signs for a free name owns it. The relay answers
+   `{"t":"ready","url","bundle":known,"limits"}` or `{"t":"error","code"}` (`name_taken`, `reserved`, `invalid_name`,
+   `revoked`, `key_limit`, `ip_limit`, `bad_signature`, `protocol`); a refusal stops the client until the config changes
+   (`/cccloud internet connect` tries again). Network losses reconnect with 1, 2, 4 … 60 s (±20 %); a reconnect replaces
+   the relay's old tunnel. Keep-alive: text `ping` every 25 s, answered `pong` by the relay without waking it up; no
+   frame for 75 s closes the tunnel.
+4. `bundle` is `BundleId`: sha256 over `"<path>\0<sha256 hex>\n"` of every file of `cccloud_web/` sorted by path, first
+   16 hex digits (same as the release script; a shared test vector). The relay serves the official dashboard files of
+   that bundle itself; a server never serves pages, scripts, styles or the service worker on `*.cccloud.dev`.
+5. Browser requests to `/api/*` and the WebSocket `/ws/client` arrive as binary frames `[u8 type][u32 stream][payload]`
+   (`TunnelProtocol`; relay → mod: `HTTP_REQUEST` head JSON + body, `WS_OPEN`, `WS_TEXT`, `WS_BINARY`, `WS_CLOSE`,
+   `CANCEL`; mod → relay: `HTTP_HEAD`, `HTTP_BODY` (64 KB chunks), `HTTP_END`, `HTTP_ERROR`, `WS_ACCEPTED`,
+   `WS_REJECTED`, `WS_*`). `TunnelStreams` turns each into an in-memory Netty connection (`LocalChannel`) through
+   `TunnelBridge` into `WebInstance.initPipeline` – the same pipeline as TCP, so pairing, tokens, roles, PIN, sizes, rate
+   and connection limits and the route table apply unchanged. The local side speaks HTTP/1.1 (`Connection: close`, one
+   request per connection) and does the WebSocket handshake like a browser (the browser's `Origin` is passed on, none
+   is invented); the server's cross-site check compares it with the Host.
+6. Tunnel connections (`TunnelBridge.PEER`, set only on the server side of the in-memory connection when it is opened):
+   - client IP = the relay's (from Cloudflare's `CF-Connecting-IP`); a LAN or malformed address becomes `192.0.2.0`, so
+     tunnel traffic never counts as local; `X-Forwarded-For`/`CF-Connecting-IP` headers are never read on them;
+   - the Host must be the server's own Connect host (from the relay's `ready` URL), else 421;
+   - the LAN-only rule of the port does not apply (the port keeps its own rule);
+   - rules = the server's `WebPolicy` without TLS (in-memory; TLS ends at the relay), without trusted proxies and without
+     compression.
+   Per client IP at most 12 requests run at once, more wait (up to 256), so a browser's burst of icon requests does not
+   hit the 24-connections-per-IP limit. When the tunnel's send queue exceeds 8 MB, dashboard WebSockets are closed with
+   1013 like a slow browser (they reconnect with a fresh snapshot).
+7. `internetAccess = connect` maps (`InternetSettings`) to: the port as the advanced keys say (LAN only by default),
+   `strictPublic` on (stricter limits and the lockout after wrong codes for internet addresses), `requirePin` from
+   `internetRequirePin` (default off, as for `http`: control needs no PIN, PIN-protected controls keep theirs; on: every
+   write needs the PIN unlock and PIN-less mainframes are view-only from outside), and logins keep the usual 30 days
+   (HTTPS, unlike `http`). API keys may control through Connect unless `internetRequirePin` is on (`pin_required`); over
+   plain HTTP they cannot (`insecure_transport`). The tunnel only runs while the dashboard server's running mode is
+   `connect`, so the rules are always active for it.
+8. Status (`ConnectStatus`: off, no_name, connecting, connected, retrying, failed + error, browsers): `/cccloud
+   internet` (status lines), the mainframe screen (address first, state row; the LAN-only warning is not shown while
+   Connect is on), the right-click chat (an extra "Internet (CC: Cloud Connect)" line), pairing links (`/cccloud link`,
+   mainframe chat) use the Connect address while it is online. With `internetRequirePin`, the dashboard's PIN dialog says
+   "CC: Cloud Connect" instead of the plain-HTTP warning.
+9. `/cccloud internet connect release`: gives the name back (online: `{"t":"release"}`; offline: a short connection
+   with `"release":true` that proves the key and frees the name without claiming it) and switches Connect off.
+
+### Config (`[connect]`, live)
+| Key | Default | Meaning |
+|---|---|---|
+| `connectName` | `""` | The name (`[a-z0-9-]{3,32}`, letter/digit at both ends, no `--`). |
+| `connectRelay` | `wss://connect.cccloud.dev` | The relay (`ws://` only for localhost, for development). |
+
+### Relay (website repository, `connect/README.md`)
+Worker + one SQLite Durable Object per name (hibernating WebSockets) + a registry object for name limits. Serves the
+official bundle per bundle id (`connect/bundles.json`, published per release with `scripts/add-bundle.mjs`), unknown ids
+get an "Update CC: Cloud" page; forwards only `/api/*` (JSON, PNG checked by signature and IHDR on icon/map/atlas paths,
+voxel batches, CSV/text as downloads; HTML, scripts, SVG, XML, event streams and redirects are refused; response
+headers rebuilt from an allow-list, cookies dropped both ways) and the WebSocket (Origin checked). Limits: 20 browser
+tabs, 64 requests in flight, 257 KB request bodies and browser messages, 16 MB answers and server messages, 500 tunnel
+messages/s, 30/s per tab, 20 requests/s per client IP, 2 GB per day per name, 3 names per key, 5 new names per IP per
+day. Names expire after 90 days without a connection; reserved and impersonation names are refused; the operator can
+revoke a name. No request logs.
+
+Tests: `ConnectBasicsTest` (frames incl. the relay's vector, bundle id vector, keys, names, relay URIs),
+`ConnectTunnelTest` (a fake relay end to end through the real dashboard pipeline: key proof, LAN-only port still answered
+through the tunnel, auth refused like on the LAN, control without a PIN by default and with the PIN unlock under
+`internetRequirePin`, 60 parallel requests of one browser, WebSocket incl. a foreign Origin,
+refusal stops retrying, reconnect, Host and IP rules), `ConnectDevRelayTest` (opt-in: against the real relay under
+`wrangler dev`); relay: 27 vitest tests in the Workers runtime (pages, claim/replace/release/revoke/expiry, filtering,
+WebSocket, hibernation, limits).

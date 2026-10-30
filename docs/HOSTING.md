@@ -1,13 +1,17 @@
 # Hosting the CC: Cloud dashboard
 
 The dashboard is served by the mod itself, on the Minecraft server (dedicated server, or the integrated
-server in singleplayer/LAN). There is no external service. All settings live in the **server config**
+server in singleplayer/LAN). There is no external service – unless you choose CC: Cloud Connect, the optional relay
+that gives the dashboard an HTTPS address without port forwarding. All settings live in the **server config**
 `<world>/serverconfig/cccloud-server.toml` (created on first start). Changes apply without a restart – see
 [Changing settings without a restart](#changing-settings-without-a-restart).
 
 ## Internet access in one setting
 
 ```
+/cccloud internet connect mybase             # CC: Cloud Connect: https://mybase.cccloud.dev (recommended)
+/cccloud internet connect                    # status, or a suggested free name
+/cccloud internet connect release            # give the name back, Connect off
 /cccloud internet http                       # plain HTTP, easy mode (insecure)
 /cccloud internet http mybase.duckdns.org    # with your own (DynDNS) name
 /cccloud internet off                        # LAN only again (default)
@@ -20,9 +24,38 @@ mobile data. It applies at once (live config); the file works the same way.
 
 | Mode | Easy | Secure | Needs |
 |---|---|---|---|
+| `connect` (**recommended**) | one command, nothing in the router | yes: HTTPS; trusts the CC: Cloud relay | outgoing HTTPS (TCP 443) |
 | `off` (default) | – | LAN only | – |
 | `http` | one command, one forwarded port | **no**: logins and PIN can be read on the way | – |
 | your own HTTPS (sections 3–5 below) | some setup | yes | a domain, a proxy/tunnel or certificate files |
+
+### CC: Cloud Connect (`connect`)
+
+The server opens one outbound WebSocket to `wss://connect.cccloud.dev` and keeps it open (reconnects by itself). Browsers
+open `https://<name>.cccloud.dev`: the relay serves the official dashboard of your mod version and passes the
+dashboard's API calls and WebSocket through the tunnel into the mod, where they go through the same checks as on the
+LAN. Nothing has to be opened in the router or the host's firewall; the dashboard port stays LAN only.
+
+- **Name:** 3–32 characters `a–z`, `0–9`, `-` (no `--`), first come, first served. `/cccloud internet connect` without a
+  name suggests one from the world name. Reserved and look-alike names (`www`, `admin`, `minecraft-login`, …) are
+  refused.
+- **Key:** the mod makes `<server folder>/cccloud/connect/server-key.pem` (mode 600) and `server-key.pub` once; the name
+  is bound to it. **Moving the server: copy that folder.** Lost the key? Pick a new name; the old one expires after 90
+  days without a connection.
+- **Just works, like `http`:** new browsers need [Allow] in game as always; control from the internet needs no PIN by
+  default (PIN-protected controls keep their PIN). `internetRequirePin = true` makes every control action from the
+  internet need the mainframe PIN (one unlock per browser for 10 minutes; PIN-less mainframes are view-only from
+  outside). Browsers through Connect count as internet addresses: stricter rate limits and the lockout after wrong
+  codes apply; logins keep the usual 30 days (HTTPS).
+- **Status:** `/cccloud internet`, the mainframe screen (the Connect address comes first, with its state), and pairing
+  links in chat use the Connect address while it is online.
+- **Limits:** 20 open dashboard tabs, 2 GB per day; public API event streams are not forwarded.
+- **Dashboard versions:** the relay serves dashboards of released versions. A development build gets an "Update
+  CC: Cloud" page on its Connect address; its LAN address works.
+- **Trust:** HTTPS ends at Cloudflare, where the relay runs; it is operated by the mod author, stores nothing and keeps
+  no request logs, but it could technically read the traffic. Details and what it can and cannot do: docs/SECURITY.md
+  "CC: Cloud Connect". To avoid it, use `off` plus your own HTTPS (sections 3–5).
+- **Firewall on the server:** only outgoing TCP 443 to `connect.cccloud.dev` (Cloudflare) is needed.
 
 `http` mode just works (no PIN needed) and keeps what does not get in the way: new browsers need [Allow] in game,
 tokens unused for `publicTokenIdleHours` (24) are logged out when they come from the internet, stricter rate limits,
@@ -39,7 +72,7 @@ working).
 | Key | Default | Meaning |
 |---|---|---|
 | `allowCloud` | `true` | Master switch for the blocks. `false` keeps every mainframe offline. |
-| `web.internetAccess` | `"off"` | `off` (LAN only, the keys below decide) or `http` (plain HTTP over the internet, easy mode with the protections above). |
+| `web.internetAccess` | `"off"` | `off` (LAN only, the keys below decide), `connect` (CC: Cloud Connect, see above) or `http` (plain HTTP over the internet, easy mode with the protections above). |
 | `web.internetDomain` | `""` | Host name or IP players use from the internet (shown in game, allowed as Host). Empty: the public IP. |
 | `web.publicTokenIdleHours` | `24` | `http` mode: browsers unused this long are logged out when they come from the internet. |
 | `web.internetRequirePin` | `false` | `http` mode, stricter: control from the internet only after the mainframe PIN (10 minutes per browser); PIN-less mainframes view-only from outside. |
@@ -52,6 +85,8 @@ working).
 | `web.webTrustCloudflareHeader` | `false` | Use `CF-Connecting-IP` from a listed proxy. Only for Cloudflare Tunnel (cloudflared sets the header); Caddy, nginx and others pass a client-supplied `CF-Connecting-IP` through unchanged, which would let anyone fake their IP (rate limits, bans, LAN-only check). |
 | `web.publicUrl` | `""` | URL shown in chat. Empty = `http://<server-ip>:<port>`. |
 | `web.tlsCertPath`, `web.tlsKeyPath` | `""` | Optional HTTPS directly in the mod (PEM certificate chain + PKCS#8 PEM key). |
+| `connect.connectName` | `""` | The Connect name: `https://<name>.cccloud.dev`. |
+| `connect.connectRelay` | `wss://connect.cccloud.dev` | The relay the tunnel connects to (only for a self-hosted relay). |
 | `uplinks.uplinkRange` | `128` | Range of normal uplinks (advanced: unlimited, cross-dimension). |
 | `uplinks.maxWidgetsPerUplink` | `32` | Widget limit per uplink (max. 32). |
 
@@ -172,6 +207,15 @@ applies live.
   `/cccloud config reload` to start it without a restart.
 
 ## FAQ
+
+**Connect says "name taken" / "reserved" / "revoked".**
+Taken: another server key owns the name (moved the server? copy `<server folder>/cccloud/connect/` from the old one);
+otherwise pick another name. Reserved: the name is on the relay's list. Revoked: the CC: Cloud team switched the name off
+after an abuse report; contact us on Discord or GitHub.
+
+**Connect stays "retrying".**
+The server cannot reach `connect.cccloud.dev` on TCP 443 (a firewall that blocks outgoing connections, no internet,
+a proxy). `/cccloud internet` shows the reason; it keeps trying by itself.
 
 **I paired a browser but no approval request shows up.**
 The request appears in chat as `[Allow] [Deny]`, with the time left; you have about 2 minutes. If the mainframe screen is open, the request is also shown at the top of the screen. Type `/cccloud approve` to approve the newest request addressed to you; if several are waiting, it lists them so you can pick one. Type `/cccloud` on its own to see all commands.

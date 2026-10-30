@@ -30,7 +30,14 @@ Du hast Lua-Code in die **Shell** getippt. Die Shell startet nur Programme. Schr
 - Das Gerät mit dem Browser und der Minecraft-Server müssen im selben Netzwerk sein (z. B. im selben WLAN, nicht mobile Daten) – oder siehe [Zugriff aus dem Internet](security.md).
 - Erlaube Java in der PC-Firewall für private Netzwerke.
 - Port 8787 muss frei sein; sonst steht es im Server-Log und ein Admin kann `webPort` ändern.
-- Auf einem gemieteten Server muss der Port freigegeben sein – oder Reverse Proxy / Tunnel nutzen.
+- Auf einem gemieteten Server muss der Port freigegeben sein – oder Reverse Proxy / Tunnel nutzen – oder ganz ohne Port mit [CC: Cloud Connect](security.md).
+
+## Eine cccloud.dev-Adresse zeigt „offline“, „aktualisieren“ oder „kein Dashboard“
+
+- **Offline:** Der Minecraft-Server ist nicht mit dem Relay verbunden. Er kommt von selbst wieder (die Seite lädt alle 30 Sekunden neu). Server-Admins: `/cccloud internet` zeigt den Grund (kein Internet, Name abgelehnt, …).
+- **CC: Cloud aktualisieren:** Der Server nutzt einen CC: Cloud-Build, dessen Dashboard auf cccloud.dev nicht veröffentlicht ist (ein Entwicklungs-Build). Veröffentlichte Versionen funktionieren immer; die LAN-Adresse funktioniert weiter.
+- **Kein Dashboard:** Kein Server nutzt diesen Namen (Tippfehler, freigegeben oder 90 Tage unbenutzt).
+- **Zu viel Verkehr:** Der Server hat ein Connect-Limit erreicht (Tabs oder Tagesvolumen); versuch es später noch einmal.
 
 ## „Mainframe has no power“
 

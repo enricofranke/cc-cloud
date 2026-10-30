@@ -140,6 +140,8 @@ lua> exit()`;
 export const TOML_LAN = `[web]
 internetAccess = "off"   # default: only LAN addresses may connect (in game: /cccloud internet)`;
 
+export const INTERNET_CONNECT = `/cccloud internet connect mybase`;
+
 export const INTERNET_HTTP = `/cccloud internet http
 /cccloud internet http mybase.duckdns.org`;
 

@@ -30,7 +30,14 @@ You typed Lua code into the **shell**. The shell only runs programs. Put the cod
 - The browser's device and the Minecraft server must be in the same network (e.g. the same Wi-Fi, not mobile data) – or see [internet access](security.md).
 - Allow Java through the PC firewall for private networks.
 - Port 8787 must be free; if not, the server log says so and an admin can change `webPort`.
-- On a hosted server the port must be opened, or use a reverse proxy / tunnel.
+- On a hosted server the port must be opened, or use a reverse proxy / tunnel – or no port at all with [CC: Cloud Connect](security.md).
+
+## A cccloud.dev address says "offline", "update" or "no dashboard here"
+
+- **Offline:** the Minecraft server is not connected to the relay. It comes back by itself (the page reloads every 30 seconds). Server admins: `/cccloud internet` shows why (no internet, name refused, …).
+- **Update CC: Cloud:** the server runs a CC: Cloud build whose dashboard is not published on cccloud.dev (a development build). Released versions always work; the LAN address keeps working.
+- **No dashboard here:** no server uses that name (typo, released, or unused for 90 days).
+- **Too much traffic:** the server reached a Connect limit (tabs or daily traffic); try again later.
 
 ## "Mainframe has no power"
 

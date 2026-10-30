@@ -130,7 +130,7 @@ in English and German.
 ## Hosting & security
 
 - The dashboard listens on port **8787** and only accepts **LAN addresses** by default (Tailscale counts as private).
-- Internet access is opt-in (`webAllowInternet = true` in `cccloud-server.toml`). Use TLS or a reverse proxy / tunnel – see [`docs/HOSTING.md`](docs/HOSTING.md).
+- Internet access is opt-in. Easiest and secure: **`/cccloud internet connect <name>`** gives the dashboard `https://<name>.cccloud.dev` with no port forwarding (CC: Cloud Connect). Or your own TLS, reverse proxy or tunnel – see [`docs/HOSTING.md`](docs/HOSTING.md).
 - Every new browser needs in-game approval by a player with the right role. Tokens are hashed, bound to a player and re-checked live (bans, role changes).
 - Server permissions via the NeoForge PermissionAPI (`cccloud.*` nodes) – works with LuckPerms and FTB Ranks.
 - Threat model and reviews: [`docs/SECURITY.md`](docs/SECURITY.md) · Found a vulnerability? See [SECURITY.md](SECURITY.md) – please report privately.
