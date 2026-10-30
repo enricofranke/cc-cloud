@@ -30,6 +30,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Script Store: `door-controller` 1.0.1 no longer passes `icon` to `cloud.group()` (groups take `page` and `cols`; the
   card shows its first widget's icon), which the mod refused at start. A unit test now runs every store script on CC's
   Lua VM against the mod's real widget validation, with one dashboard action per control.
+- Wireless redstone: a transmitter samples its input on its first tick after loading, so a channel driven by a lever
+  that is already on is correct after a world load (it stayed at 0 until something changed next to the transmitter).
 
 ## 0.9.0 – first public release candidate
 

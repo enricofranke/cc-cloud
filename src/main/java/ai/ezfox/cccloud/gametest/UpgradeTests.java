@@ -271,4 +271,60 @@ public final class UpgradeTests {
             })
             .thenSucceed();
     }
+
+    /**
+     * A transmitter whose input was already on before it existed (lever placed first) and after its chunk reloads: the
+     * input is not saved and a lever that stays on sends no neighbour update, so the transmitter has to sample it on
+     * load. The reload is simulated like a chunk unload/load of the block entity (saved tag → new block entity, onLoad).
+     */
+    public static void wirelessRedstoneAfterLoad(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var s = mainframe(helper);
+        var id = s.mainframe().getMainframeId();
+        var tx = s.base().east(4).above(2);
+        var rx = s.base().west(4).above(2);
+        var lever = tx.east();
+        java.util.function.IntSupplier channel = () -> {
+            var c = RedstoneService.channels(id).get("gate");
+            return c == null ? -1 : c.level();
+        };
+        // Fresh placement order: the lever is on before the transmitter is placed.
+        level.setBlock(lever.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(net.minecraft.world.level.block.LeverBlock.FACE,
+            net.minecraft.world.level.block.state.properties.AttachFace.FLOOR).setValue(net.minecraft.world.level.block.LeverBlock.POWERED, true), Block.UPDATE_ALL);
+        uplink(level, tx);
+        uplink(level, rx);
+
+        helper.startSequence()
+            .thenExecute(() -> {
+                for (var pos : List.of(tx, rx)) uplinkAt(helper, level, pos).bind(s.link(), s.owner());
+                uplinkAt(helper, level, tx).setRedstone(RedstoneMode.TRANSMIT, "gate");
+                uplinkAt(helper, level, rx).setRedstone(RedstoneMode.RECEIVE, "gate");
+            })
+            .thenWaitUntil(() -> {
+                helper.assertTrue(channel.getAsInt() == 15, "channel follows the lever that was on first: " + channel.getAsInt());
+                helper.assertTrue(uplinkAt(helper, level, rx).redstoneOutput() == 15, "receiver on");
+            })
+            .thenExecute(() -> {
+                // Chunk unload: the block entity is saved and dropped, the lever stays on.
+                var old = uplinkAt(helper, level, tx);
+                var tag = old.saveWithFullMetadata(level.registryAccess());
+                old.onChunkUnloaded();
+                level.removeBlockEntity(tx);
+                // Chunk load: a new block entity from the saved data (input 0 until it samples), onLoad on the next tick.
+                var loaded = net.minecraft.world.level.block.entity.BlockEntity.loadStatic(tx, level.getBlockState(tx), tag, level.registryAccess());
+                helper.assertTrue(loaded instanceof CloudUplinkBlockEntity u && u.redstoneInput() == 0 && u.redstoneMode() == RedstoneMode.TRANSMIT,
+                    "reloaded transmitter starts without input");
+                level.setBlockEntity(loaded);
+            })
+            .thenWaitUntil(() -> {
+                helper.assertTrue(uplinkAt(helper, level, tx).redstoneInput() == 15, "transmitter sampled its input after loading");
+                helper.assertTrue(channel.getAsInt() == 15, "channel after the reload: " + channel.getAsInt());
+                helper.assertTrue(uplinkAt(helper, level, rx).redstoneOutput() == 15, "receiver still on");
+            })
+            .thenExecute(() -> level.setBlock(lever, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL))
+            .thenWaitUntil(() -> helper.assertTrue(uplinkAt(helper, level, rx).redstoneOutput() == 0, "lever gone → receiver off"))
+            .thenExecute(() -> clear(level, List.of(tx, rx, lever)))
+            .thenSucceed();
+    }
 }

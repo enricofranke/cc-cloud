@@ -820,7 +820,7 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 
 **Wireless redstone** (`redstone/*`)
 - Uplink screen section "Wireless redstone": Off / Transmitter / Receiver and a channel name (`[A-Za-z0-9_.-]{1,32}`); needs `network.link` on the linked mainframe (screen action `redstone`, arg `<off|transmit|receive>:<channel>`). Bridges have no redstone mode.
-- Transmitters read the strongest neighbour signal (e.g. a computer's redstone output into the uplink), receivers emit their channel's level on every side (weak power, analog 0–15). Only uplinks with a route to their mainframe take part, so it works over radio, relays, CC cables, fiber and ender links (also across dimensions). Max 64 channels per network (alphabetically first ones), next tick after a change, receivers change at most every 2 ticks.
+- Transmitters read the strongest neighbour signal (e.g. a computer's redstone output into the uplink) on every neighbour update and once on their first tick after loading (the input is not saved, and a lever that stays on sends no update after a world load or when it was placed before the transmitter), receivers emit their channel's level on every side (weak power, analog 0–15). Only uplinks with a route to their mainframe take part, so it works over radio, relays, CC cables, fiber and ender links (also across dimensions). Max 64 channels per network (alphabetically first ones), next tick after a change, receivers change at most every 2 ticks.
 
 ### v0.7 web protocol: wireless redstone channels (for the dashboard)
 - Snapshot field `redstone` (not for share viewers) and delta `{"t":"redstone","channels":[…],"limit":64}` whenever a channel changes:

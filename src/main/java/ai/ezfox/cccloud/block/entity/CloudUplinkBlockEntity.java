@@ -91,6 +91,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private int rsInput;
     private int rsOutput;
     private long rsLastChange = Long.MIN_VALUE / 2;
+    /** The input is not saved: a transmitter samples it on its first tick after loading (neighbours are loaded then). */
+    private boolean rsInputPending;
     /** "no_route", "over_capacity", "legacy_out_of_range" or null (for the screen). */
     private volatile @Nullable String routeState;
     /** v0.5 device card (compat/card): direct mode on a supported machine. {@code deviceKind} is saved; both guarded by this. */
@@ -249,6 +251,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         // Staggered by position: many uplinks loaded together do not all run their checks in the same tick.
         tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), 2 * BRIDGE_INTERVAL);
         statusPending = true;
+        rsInputPending = true;
         wired.onLoad();
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -313,6 +316,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     }
 
     private void tick(ServerLevel level) {
+        if (rsInputPending) {
+            // A lever that was already on when the chunk loaded sends no neighbour update; afterwards neighborChanged does.
+            rsInputPending = false;
+            onNeighborChanged();
+        }
         if (statusPending || tickCounter % STATUS_INTERVAL == 0) {
             statusPending = false; // right after loading, then every STATUS_INTERVAL ticks
             updateStatus(level);
