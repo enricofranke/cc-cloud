@@ -704,6 +704,7 @@
   "cccloud.probe.unloaded": "Die Maschine ist nicht geladen",
   "cccloud.probe.not_a_machine": "Eine Cloud-Sonde liest Maschinen (Blöcke mit Block-Entity), keine CC: Cloud-Blöcke",
   "cccloud.probe.no_access": "Du darfst diese Maschine hier nicht benutzen (Claim oder Spawn-Schutz)",
+  "cccloud.probe.stale": "Diese Maschine wurde vor mehr als 10 Minuten gewählt – wähle sie mit deiner Verbindungskarte neu",
   "cccloud.gui.what.reads_remote": "Liest (fern):",
   "cccloud.gui.what.probe_none": "Noch keine Maschine gewählt",
   "cccloud.gui.probe.heading": "Ferne Maschine",

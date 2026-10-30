@@ -113,6 +113,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private volatile @Nullable BlockPos remoteTarget;
     private volatile Direction remoteSide = Direction.UP;
     /**
+     * Where the probe stood, in which dimension, and who set the target (security review 2026-10-30): a probe moved with
+     * its data (contraptions, block movers) forgets the target instead of reading the same coordinates elsewhere, and
+     * the target is only read while that player may use its chunk (claims of other teams).
+     */
+    private volatile @Nullable BlockPos remoteOrigin;
+    private volatile String remoteDim = "";
+    private volatile @Nullable UUID remoteBy;
+    /**
      * The block it reads has no card although another face of it exposes energy, items or fluids: that face (screen
      * hint "this side exposes nothing"), else null. Updated with the card detection, once per second.
      */
@@ -180,7 +188,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
      * its remote target (null without one).
      */
     public @Nullable BlockPos readPos() {
-        if (isProbe()) return remoteTarget;
+        if (isProbe()) return usableTarget();
         return getBlockPos().relative(getBlockState().getValue(CloudUplinkBlock.FACING));
     }
 
@@ -221,6 +229,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         rsOutput = Math.max(0, Math.min(15, input.getIntOr("rs_output", 0)));
         remoteTarget = input.read("remote_target", BlockPos.CODEC).orElse(null);
         remoteSide = input.read("remote_side", Direction.CODEC).orElse(Direction.UP);
+        remoteOrigin = input.read("remote_origin", BlockPos.CODEC).orElse(null);
+        remoteDim = input.getStringOr("remote_dim", "");
+        remoteBy = input.read("remote_by", UUIDUtil.STRING_CODEC).orElse(null);
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
@@ -255,6 +266,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         output.putInt("rs_output", rsOutput);
         output.storeNullable("remote_target", BlockPos.CODEC, remoteTarget);
         output.store("remote_side", Direction.CODEC, remoteSide);
+        output.storeNullable("remote_origin", BlockPos.CODEC, remoteOrigin);
+        output.putString("remote_dim", remoteDim);
+        output.storeNullable("remote_by", UUIDUtil.STRING_CODEC, remoteBy);
         synchronized (this) {
             output.putString("title", title);
             output.putBoolean("template", template);
@@ -712,6 +726,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             player.sendSystemMessage(Component.translatable("cccloud.probe.other_player").withStyle(ChatFormatting.RED));
             return false;
         }
+        if (!target.fresh(System.currentTimeMillis())) {
+            player.sendSystemMessage(Component.translatable("cccloud.probe.stale").withStyle(ChatFormatting.RED));
+            return false;
+        }
         if (link != null) {
             var mainframe = CloudNetwork.mainframe(link.id());
             if (mainframe == null || !mainframe.has(player, ai.ezfox.cccloud.access.Perm.NETWORK_LINK)) {
@@ -723,12 +741,21 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var targetLevel = serverLevel.getServer().getLevel(target.pos().dimension());
         var pos = target.pos().pos();
         String problem = targetLevel == null ? "cccloud.probe.other_dimension" : targetProblem(serverLevel, getBlockPos(), targetLevel, pos);
+        // The rights of the pick are checked again now (claims change, team members leave; a creative client can make a
+        // card without picking): spawn protection and the world border, and claims of other teams.
+        if (problem == null && (!serverLevel.mayInteract(player, pos)
+            || ai.ezfox.cccloud.map.XrayGuard.claimedByOther(serverLevel, pos.getX() >> 4, pos.getZ() >> 4, player.getUUID()))) {
+            problem = "cccloud.probe.no_access";
+        }
         if (problem != null) {
             player.sendSystemMessage(Component.translatable(problem, CloudConfig.get(CloudConfig.PROBE_RANGE)).withStyle(ChatFormatting.RED));
             return false;
         }
         remoteTarget = pos.immutable();
         remoteSide = target.side();
+        remoteOrigin = getBlockPos().immutable();
+        remoteDim = serverLevel.dimension().identifier().toString();
+        remoteBy = player.getUUID();
         synchronized (this) {
             showDeviceCard(null);
         }
@@ -746,6 +773,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (remoteTarget == null || !(level instanceof ServerLevel serverLevel)) return;
         var old = remoteTarget;
         remoteTarget = null;
+        remoteOrigin = null;
+        remoteDim = "";
+        remoteBy = null;
         exposedElsewhere = null;
         synchronized (this) {
             showDeviceCard(null);
@@ -762,12 +792,51 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private boolean checkRemoteTarget(ServerLevel level) {
         var target = remoteTarget;
         if (target == null) return false;
+        if (remoteOrigin != null && "moved".equals(remoteProblem(getBlockPos(), level.dimension().identifier().toString(), remoteOrigin, remoteDim, target,
+            Integer.MAX_VALUE))) {
+            clearRemoteTarget("moved probe");
+            return false;
+        }
         if (!level.isLoaded(target)) return false;
         if (level.getBlockEntity(target) == null || level.getBlockState(target).isAir()) {
             clearRemoteTarget("removed machine");
             return false;
         }
-        return Math.sqrt(getBlockPos().distSqr(target)) <= CloudConfig.get(CloudConfig.PROBE_RANGE) + 1e-9;
+        return usableTarget() != null;
+    }
+
+    /**
+     * A probe's target if it may be read now, else null (security review 2026-10-30). Every read and action of a probe
+     * goes through {@link #readPos()} and so through here: the machine card, the Computer card, the Storage card and
+     * the screens. The probe still stands where the target was set, in that dimension; the target is within the
+     * current {@code probeRange}, loaded, not a CC: Cloud block, and not in a chunk another team claimed for the player
+     * who set it. Server only.
+     */
+    private @Nullable BlockPos usableTarget() {
+        var target = remoteTarget;
+        if (target == null || !(level instanceof ServerLevel serverLevel)) return null;
+        String dim = serverLevel.dimension().identifier().toString();
+        if (remoteOrigin == null) {
+            // set before the origin was stored (development worlds): adopted where the probe stands
+            remoteOrigin = getBlockPos().immutable();
+            remoteDim = dim;
+        }
+        if (remoteProblem(getBlockPos(), dim, remoteOrigin, remoteDim, target, CloudConfig.get(CloudConfig.PROBE_RANGE)) != null) return null;
+        if (!serverLevel.isLoaded(target)) return null;
+        var state = serverLevel.getBlockState(target);
+        if (ai.ezfox.cccloud.CCCloud.MODID.equals(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace())) return null;
+        if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(serverLevel, target.getX() >> 4, target.getZ() >> 4, remoteBy)) return null;
+        return target;
+    }
+
+    /**
+     * The position part of a probe's read check (pure, unit tested): {@code moved} when the probe no longer stands where
+     * its target was set or is in another dimension, {@code too_far} beyond the range, else null.
+     */
+    public static @Nullable String remoteProblem(BlockPos probe, String dim, BlockPos origin, String originDim, BlockPos target, int range) {
+        if (!probe.equals(origin) || !dim.equals(originDim)) return "moved";
+        if (Math.sqrt(probe.distSqr(target)) > range + 1e-9) return "too_far";
+        return null;
     }
 
     private void setDirect(ServerLevel level, boolean direct) {
@@ -1306,6 +1375,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         synchronized (this) {
             card = deviceCard;
         }
+        // A probe whose target may not be read now (range, claim, moved) does nothing until the card is gone.
+        if (card != null && isProbe() && readPos() == null) return ActionResult.done("unavailable");
         if (card != null) return ActionResult.done(ai.ezfox.cccloud.compat.card.DeviceCards.action(card, widgetId, result.value(), user));
         if (isAuto()) return ActionResult.done(runComputerAction(widgetId, result.value(), result.op(), user));
         if (result.op() != null) return handleOp(widget, result.op(), user);

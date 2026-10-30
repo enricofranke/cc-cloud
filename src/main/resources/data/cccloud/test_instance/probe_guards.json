@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:ingame",
+  "function": "cccloud:probe_guards",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}

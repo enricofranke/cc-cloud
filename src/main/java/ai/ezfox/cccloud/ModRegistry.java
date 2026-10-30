@@ -209,6 +209,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("uplink_mount_slab_side", () -> ai.ezfox.cccloud.gametest.UplinkMountTests::slabSide);
         TEST_FUNCTIONS.register("probe_remote_target", () -> ai.ezfox.cccloud.gametest.ProbeTests::remoteTarget);
         TEST_FUNCTIONS.register("uplink_side_fallback_hint", () -> ai.ezfox.cccloud.gametest.ProbeTests::sideFallbackAndHint);
+        TEST_FUNCTIONS.register("probe_guards", () -> ai.ezfox.cccloud.gametest.ProbeTests::guards);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("scale_test", () -> ai.ezfox.cccloud.gametest.ScaleTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
