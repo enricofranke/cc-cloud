@@ -102,6 +102,8 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "computercraft:wireless_modem_advanced": { en: "Ender Modem", de: "Ender Modem" },
   "minecraft:chest": { en: "Chest", de: "Truhe" },
   "minecraft:diamond": { en: "Diamond", de: "Diamant" },
+  "#c:gems/diamond": { en: "Diamond", de: "Diamant" },
+  "minecraft:netherite_scrap": { en: "Netherite Scrap", de: "Netheritschrott" },
   "minecraft:ender_pearl": { en: "Ender Pearl", de: "Enderperle" },
   "minecraft:lodestone": { en: "Lodestone", de: "Leitstein" },
   "minecraft:nether_star": { en: "Nether Star", de: "Netherstern" },
@@ -134,6 +136,7 @@ const TAG_ICON: Record<string, string> = {
   "#c:ingots/allthemodium": "allthemodium:allthemodium_ingot",
   "#c:ingots/vibranium": "allthemodium:vibranium_ingot",
   "#c:ingots/unobtainium": "allthemodium:unobtainium_ingot",
+  "#c:gems/diamond": "minecraft:diamond",
 };
 export function iconItem(id: string) {
   return TAG_ICON[id] ?? id.replace(/^#/, "");

@@ -23,6 +23,10 @@ Every crafting recipe of CC: Cloud, generated from the mod's own recipe files â€
 ### Cloud Mainframe
 <RecipeFor id="cccloud:cloud_mainframe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
+### Cloud Probe
+<RecipeFor id="cccloud:cloud_probe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipeFor id="cccloud:cloud_probe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
 ### Cloud Uplink
 <RecipeFor id="cccloud:cloud_uplink" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 

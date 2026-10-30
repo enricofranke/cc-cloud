@@ -272,6 +272,7 @@ export const RECIPES = {
   mainframe: byFile("cloud_mainframe"),
   uplink: byFile("cloud_uplink"),
   advancedUplink: byFile("advanced_cloud_uplink"),
+  probe: byFile("cloud_probe"),
   linkCard: byFile("cloud_link_card"),
   meBridge: byFile("me_cloud_bridge"),
   relay: byFile("cloud_relay"),
@@ -296,7 +297,7 @@ export interface GenRecipe {
 
 /** Groups for the "All recipes" page (by result id). */
 export const RECIPE_GROUPS: { id: string; en: string; de: string; match: (r: GenRecipe) => boolean }[] = [
-  { id: "basics", en: "Basics", de: "Grundlagen", match: (r) => /cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink/.test(r.result) },
+  { id: "basics", en: "Basics", de: "Grundlagen", match: (r) => /cloud_core|cloud_link_card|cloud_mainframe|cloud_uplink|cloud_probe/.test(r.result) },
   { id: "network", en: "Relays and cables", de: "Relays und Kabel", match: (r) => /relay|fiber/.test(r.result) },
   { id: "bridges", en: "Bridges", de: "Bridges", match: (r) => /bridge/.test(r.result) },
   { id: "devices", en: "Tablet, display, analyzer", de: "Tablet, Display, Analyzer", match: (r) => /tablet|display|analyzer/.test(r.result) },

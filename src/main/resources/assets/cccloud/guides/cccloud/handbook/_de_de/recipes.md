@@ -23,6 +23,10 @@ Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbs
 ### Cloud-Mainframe
 <RecipeFor id="cccloud:cloud_mainframe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
+### Cloud-Sonde
+<RecipeFor id="cccloud:cloud_probe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipeFor id="cccloud:cloud_probe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
 ### Cloud-Uplink
 <RecipeFor id="cccloud:cloud_uplink" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 

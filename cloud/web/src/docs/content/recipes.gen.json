@@ -151,6 +151,43 @@
    }
   },
   {
+   "file": "cloud_probe",
+   "result": "cccloud:cloud_probe",
+   "grid": [
+    "VEV",
+    "VAV",
+    "VCV"
+   ],
+   "key": {
+    "V": "#c:ingots/vibranium",
+    "E": "minecraft:ender_eye",
+    "A": "cccloud:advanced_cloud_uplink",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "mod:allthemodium"
+   ]
+  },
+  {
+   "file": "cloud_probe_fallback",
+   "result": "cccloud:cloud_probe",
+   "grid": [
+    "DED",
+    "NAN",
+    "DCD"
+   ],
+   "key": {
+    "D": "#c:gems/diamond",
+    "N": "minecraft:netherite_scrap",
+    "E": "minecraft:ender_eye",
+    "A": "cccloud:advanced_cloud_uplink",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:allthemodium"
+   ]
+  },
+  {
    "file": "cloud_relay",
    "result": "cccloud:cloud_relay",
    "grid": [
@@ -1023,6 +1060,10 @@
   "cccloud:handbook": {
    "en": "CC: Cloud Handbook",
    "de": "CC: Cloud-Handbuch"
+  },
+  "cccloud:cloud_probe": {
+   "en": "Cloud Probe",
+   "de": "Cloud-Sonde"
   },
   "cccloud:cloud_switch": {
    "en": "Cloud Switch",

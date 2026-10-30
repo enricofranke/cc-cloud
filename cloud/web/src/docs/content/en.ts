@@ -19,6 +19,7 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
 | **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
 | **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
+| **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
 | **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](/docs/redstone) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
 | **ME / RS Cloud Bridge** | Joins an Applied Energistics 2 or Refined Storage network. With an uplink on it you get a ready-made storage card (search, craft, watchlist). Only exists when AE2 / RS is installed. |
@@ -39,6 +40,10 @@ ${recipe(R.uplink)}
 
 ### Advanced Cloud Uplink
 ${recipe(R.advancedUplink)}
+
+### Cloud Probe
+${recipe(R.probe)}
+Without Allthemodium the vibranium ingots are 4 diamonds and 2 netherite scrap (all recipes: JEI/EMI or the recipes page).
 
 ### Cloud Link Card
 ${recipe(R.linkCard)}
@@ -85,6 +90,18 @@ Without power the mainframe goes offline (after 5 seconds on an empty buffer) an
 3. Right-click the **uplink** (or bridge) with the card. Done – its status light turns green.
 
 Sneak + right-click into the air clears the card. Only the owner and trusted players can link.
+
+### Machines without a free face: Cloud Probe {#probe}
+
+An uplink reads the block it sits on. If a machine is built into a wall, or every face is taken by pipes and cables, use a **Cloud Probe** somewhere within 8 blocks (same dimension):
+
+1. Place the probe on any full face nearby and link it to the mainframe like an uplink.
+2. **Sneak + right-click the machine** with the Link Card – the card remembers it (and the face you clicked).
+3. **Right-click the probe** with the card. It now shows the machine's card, exactly as an uplink on that face would.
+
+Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer draws a thin line to the machine. If the machine is removed, the probe forgets it.
+
+If an uplink shows no card and the screen says *"This side exposes nothing"*, the machine offers its energy, items or fluids on another face – move the uplink there (the screen names one) or use a probe.
 
 ## Pair a browser {#pairing}
 

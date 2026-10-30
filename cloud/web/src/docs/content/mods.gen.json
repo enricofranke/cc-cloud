@@ -276,7 +276,7 @@
    "mod": "Productive Metalworks",
    "id": "productivemetalworks",
    "version": "1.17.1",
-   "what": "**Foundry** card on the controller: formed + coil type, fuel, power (energy coil), items melting, molten metals (up to 4)",
+   "what": "**Foundry** card on the controller (also from an uplink on a foundry tank, drain or capacitor): formed + coil type, fuel, power (energy coil), items melting, molten metals (up to 4)",
    "controls": "none",
    "tested": "yes (lone controller, \"Not formed\")",
    "skipped": false
@@ -306,7 +306,7 @@
    "mod": "Productive Farming",
    "id": "productivefarming",
    "version": "0.13.0",
-   "what": "**Farm** card on the farm controller: formed, water, output slots used, output full + warn alert",
+   "what": "**Farm** card on the farm controller (also from an uplink on a hatch or other auxiliary part): formed, water, output slots used, output full + warn alert",
    "controls": "none",
    "tested": "yes (lone controller). Note: Productive Farming's own GameTest `agritech_compat_recipes_present` fails in a dev run without Agritech Two; ours passes.",
    "skipped": false

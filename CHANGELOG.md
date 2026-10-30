@@ -20,6 +20,19 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Cheap recipes from a lever / stone button / comparator / redstone lamp and prismarine crystals; new dashboard icons
   lever, button, lamp and sensor. Docs page "Redstone devices" (EN/DE), FTB Quests quests.
 
+### Cloud Probe – read machines built into walls
+- **Cloud Probe** (new block): reads exactly one machine up to 8 blocks away (server config `probeRange`, max 16) as
+  if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables.
+  Link Card: sneak + right-click the machine, then right-click the probe; claims and spawn protection are respected
+  (the click is a normal interaction), only the picking player can use it, the uplink screen shows what it reads and
+  can clear it, the Cloud Analyzer draws a line to the machine. Expensive on purpose: Advanced Cloud Uplink, Cloud Core,
+  an eye of ender and 6 vibranium ingots (without Allthemodium: diamonds and netherite scrap); counts as 2 devices and costs
+  24 FE/t (config). Normal uplinks stay adjacent-only.
+- The uplink screen says when a machine exposes nothing on the touched face but does on another ("attach to another
+  side (e.g. top) or use a Cloud Probe"). Cards already read side-configured machines through their internal view.
+- Uplinks on a Productive Metalworks foundry part (tank, drain, capacitor) or a Productive Farming hatch show the
+  controller's card, like Powah reactor parts, Advanced AE and Railcraft boilers already did.
+
 ### Visual polish: compact uplinks, quieter JourneyMap
 - **Compact uplink**: on faces that cannot carry the 14x14 plate – slab sides, tray-height machines such as Energized
   Power solar panels, carpet-height blocks – the uplink becomes a small module on the visible part of the face instead
