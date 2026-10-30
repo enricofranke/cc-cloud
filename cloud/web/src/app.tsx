@@ -132,19 +132,27 @@ export function App() {
       {effective.name === "devices" && <DevicesScreen />}
       {effective.name === "access" && <AccessScreen id={effective.id} />}
       {effective.name === "shares" && <SharesScreen id={effective.id} />}
-      {(effective.name === "rules" || effective.name === "push") && <LazyScreen which={effective.name} id={effective.id} />}
+      {(effective.name === "rules" || effective.name === "push" || effective.name === "scenes" || effective.name === "apikeys") && <LazyScreen which={effective.name} id={effective.id} />}
       <Toasts />
     </div>
   );
 }
 
-/** Rules and push screens are separate chunks (most users never open them). */
-const lazyScreens: Partial<Record<"rules" | "push", ComponentType<{ id: string }>>> = {};
-function LazyScreen({ which, id }: { which: "rules" | "push"; id: string }) {
+/** Rules, push, scenes and API key screens are separate chunks (most users never open them). */
+type Lazy = "rules" | "push" | "scenes" | "apikeys";
+const lazyScreens: Partial<Record<Lazy, ComponentType<{ id: string }>>> = {};
+const loaders: Record<Lazy, () => Promise<{ default: ComponentType<{ id: string }> }>> = {
+  rules: () => import("./screens/Rules.tsx"),
+  push: () => import("./screens/Push.tsx"),
+  scenes: () => import("./screens/Scenes.tsx"),
+  apikeys: () => import("./screens/ApiKeys.tsx"),
+};
+function LazyScreen({ which, id }: { which: Lazy; id: string }) {
   const [C, setC] = useState<ComponentType<{ id: string }> | null>(() => lazyScreens[which] ?? null);
   useEffect(() => {
     if (lazyScreens[which]) return setC(() => lazyScreens[which]!);
-    (which === "rules" ? import("./screens/Rules.tsx") : import("./screens/Push.tsx")).then((m) => setC(() => (lazyScreens[which] = m.default)));
+    setC(null);
+    loaders[which]().then((m) => setC(() => (lazyScreens[which] = m.default)));
   }, [which]);
   return C ? <C id={id} /> : null;
 }
