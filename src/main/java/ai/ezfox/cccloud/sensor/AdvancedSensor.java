@@ -64,6 +64,11 @@ public final class AdvancedSensor {
     private static final Map<UUID, LongSupplier> TEST_CLOCKS = new ConcurrentHashMap<>();
     /** GameTests: fake players are not in the world's entity list; tests hand them to the scan here. */
     public static final List<Entity> TEST_ENTITIES = new CopyOnWriteArrayList<>();
+    /**
+     * GameTests: chunks (packed) claimed by another team for a player, on top of the real claims – a hook of its own, so
+     * tests that swap {@code XrayGuard.claims} at the same time do not interfere.
+     */
+    public static final Map<UUID, java.util.Set<Long>> TEST_CLAIMS = new ConcurrentHashMap<>();
 
     private final RsDeviceBlockEntity device;
     private SensorSettings settings = SensorSettings.DEFAULT;
@@ -264,9 +269,7 @@ public final class AdvancedSensor {
     /** Checks a zone for the player who sets it (in game) or for the owner (dashboard, rules). Null = fine. */
     @Nullable String checkZone(ServerLevel level, SensorZone zone, @Nullable ServerPlayer actor) {
         UUID who = actor != null ? actor.getUUID() : effectiveOwner();
-        for (var chunk : zone.chunks()) {
-            if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, chunk.x(), chunk.z(), who)) return "zone_claimed";
-        }
+        for (var chunk : zone.chunks()) if (claimedByOther(level, chunk.x(), chunk.z(), who)) return "zone_claimed";
         for (var corner : zone.corners()) if (!level.getWorldBorder().isWithinBounds(corner)) return "zone_protected";
         var spawn = level.getRespawnData().pos();
         var closest = zone.closestTo(spawn);
@@ -474,10 +477,16 @@ public final class AdvancedSensor {
     /** Claims of other teams on the zone (checked every few seconds; spawn protection is checked when the zone is set). */
     private @Nullable String claimProblem(ServerLevel level, SensorZone zone) {
         UUID who = effectiveOwner();
-        for (var chunk : zone.chunks()) {
-            if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, chunk.x(), chunk.z(), who)) return "zone_claimed";
-        }
+        for (var chunk : zone.chunks()) if (claimedByOther(level, chunk.x(), chunk.z(), who)) return "zone_claimed";
         return null;
+    }
+
+    /** A chunk claimed by a team {@code who} is not a member or ally of (FTB Chunks, like the Cloud Probe). */
+    static boolean claimedByOther(ServerLevel level, int chunkX, int chunkZ, @Nullable UUID who) {
+        if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, chunkX, chunkZ, who)) return true;
+        if (who == null || TEST_CLAIMS.isEmpty()) return false;
+        var test = TEST_CLAIMS.get(who);
+        return test != null && test.contains(net.minecraft.world.level.ChunkPos.pack(chunkX, chunkZ));
     }
 
     // ---- alerts --------------------------------------------------------------------------------------------------------

@@ -7,7 +7,6 @@ import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
 import ai.ezfox.cccloud.gametest.CloudGameTests;
 import ai.ezfox.cccloud.ingame.InGameTestSupport;
 import ai.ezfox.cccloud.item.MainframeLink;
-import ai.ezfox.cccloud.map.XrayGuard;
 import ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity;
 import ai.ezfox.cccloud.rsdevice.RsPlateBlock;
 import ai.ezfox.cccloud.rules.RuleData;
@@ -354,10 +353,9 @@ public final class SensorGameTests {
         var level = helper.getLevel();
         var s = setup(helper, "sensor_claim_owner");
         var owner = s.owner();
+        // claims of other teams for this test's owner only (the sensor's own test hook: other tests swap XrayGuard.claims)
         var claimed = ConcurrentHashMap.<Long>newKeySet();
-        var previous = XrayGuard.claims;
-        XrayGuard.claims = (l, cx, cz, p) -> p.equals(owner.getUUID()) && claimed.contains(net.minecraft.world.level.ChunkPos.pack(cx, cz))
-            || previous != null && previous.claimedByOther(l, cx, cz, p);
+        AdvancedSensor.TEST_CLAIMS.put(owner.getUUID(), claimed);
         var zombie = mob(helper, EntityType.ZOMBIE, OUTSIDE);
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(ready(s), "sensor online"))
@@ -385,7 +383,7 @@ public final class SensorGameTests {
                 helper.assertTrue(card != null && card.toString().contains("zone_claimed"), "the card says so: " + card);
             })
             .thenExecute(() -> {
-                XrayGuard.claims = previous;
+                AdvancedSensor.TEST_CLAIMS.remove(owner.getUUID());
                 cleanup(helper, s, List.of(zombie));
             })
             .thenSucceed();
