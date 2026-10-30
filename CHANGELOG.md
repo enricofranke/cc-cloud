@@ -4,6 +4,22 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Cloud Redstone devices – a lamp on your phone without a computer
+- Four small blocks that are linked with the Link Card like an uplink – no computer, no Lua, no channels:
+  **Cloud Switch** (on any face like a lever, strong into its block and weak around; on/off or analog 0–15),
+  **Cloud Button** (a pulse of 2–40 ticks), **Cloud Lamp** (light 0–15 set from the dashboard, optionally also lit by
+  redstone) and **Cloud Sensor** (reads 0–15, also right after a world load). Right-click switches, sneak + right-click
+  opens a small screen (name, group, mode, pulse, PIN/confirm, connection).
+- Devices with the same group share one card (e.g. "Hall" with six lamp switches and All on / All off); devices without
+  a group go to the mainframe's automatic "Redstone" card. The cards are normal cards: layout editor, Cloud Tablet,
+  Cloud Display, share links, rules (e.g. "when the door sensor is on → push"), scenes, the public API and history
+  (lamp light, sensor level). Rules and scenes follow a device to its new card when its group changes.
+- Controls need "Switch redstone"; PIN and confirmation per device; at most 4 dashboard changes per second and device.
+  A device counts 0.25 of the mainframe's capacity and costs 1 FE/t (range 32 blocks, radio only; all in the config).
+  Shown on the network map (rename/regroup there), in the 3D view, the Cloud Analyzer and Jade.
+- Cheap recipes from a lever / stone button / comparator / redstone lamp and prismarine crystals; new dashboard icons
+  lever, button, lamp and sensor. Docs page "Redstone devices" (EN/DE), FTB Quests quests.
+
 ### v0.10 – Scenes, schedules, production statistics, public API
 - **Scenes**: one named button that runs several actions in order (widgets on any card, redstone, crafting, alerts,
   the dashboard switch) with delays counted in server ticks, optional confirmation and PIN. Every step is checked
