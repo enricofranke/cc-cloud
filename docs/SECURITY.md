@@ -282,9 +282,49 @@ Enabling `http` is never refused (a server-wide switch must not depend on every 
 - Residual: anyone holding a key can do what its scopes and its owner's rights allow until it is revoked or expires. Prefer short expiries, narrow scopes and an IP allow-list; serve the API over HTTPS when it leaves the LAN.
 
 ### Cloud Probe and Cloud Redstone devices (v0.10)
-- **Cloud Probe** (reads and controls one machine up to `probeRange` blocks away, default 8, at most 16 by the config's range): picking the machine is a real block interaction (claim mods cancel it, spawn protection, adventure mode); a pick is valid for 10 minutes and only for the picking player. Linking needs `network.link` on the probe's mainframe and checks spawn protection and FTB Chunks claims of other teams again. Every read and action checks the target again: the current `probeRange`, loaded, not a CC: Cloud block, not in a chunk claimed by another team for the player who set it, and the probe still standing where (and in the dimension where) it was set; a probe moved with its data forgets the target. Nothing is force-loaded.
+- **Cloud Probe** (reads and controls one machine up to `probeRange` blocks away, default 8, at most 16 by the config's range): picking the machine is a real block interaction (claim mods cancel it, spawn protection, adventure mode); a pick is valid for 10 minutes and only for the picking player. Linking needs `network.link` on the probe's mainframe and checks spawn protection and FTB Chunks claims of other teams again. Every read and action checks the target again: the current `probeRange`, loaded, not a CC: Cloud block, and the probe still standing where (and in the dimension where) it was set; a probe moved with its data forgets the target. Claims of other teams are the claim guard's part (see "Claims" below; the owners of a probe are the player who set its target and the mainframe's owner). Nothing is force-loaded.
 - **Cloud Redstone devices**: dashboard controls need `act.redstone` (every control of a Redstone card, "All on/off" included) and are limited to 4 changes per second per device (dashboard, rules, scenes and API alike); PIN and confirmation per device, "All on/off" asks for the PIN when any device of the card has one. Cards and groups belong to one mainframe (groups never merge across mainframes); linking needs `network.link` and the relink rule; rename and regroup from the dashboard check that the device belongs to that mainframe. The device screen needs the menu open and the player near the device; its settings need `network.link`, switching it by hand is like a lever.
-- Residual: claim mods other than FTB Chunks are only asked when the machine is picked; a sensor reads the redstone signal at its own position, which its placer could read anyway.
+- Redstone devices in another team's claim are blocked by the claim guard (below): no reads (a sensor's level, a lamp's light) and no switching from the dashboard; clicking them in the world is the claim mod's business, like a lever.
+- Residual: claim mods other than FTB Chunks are only asked when the machine is picked (see "Claims").
+
+### Claims: the claim guard (2026-10-30)
+A device placed in unclaimed land (or next to a claim, touching a machine inside it) used to keep reading and
+controlling its machine after another team claimed the chunk; only the Cloud Probe re-checked claims. Now one guard
+(`claims/ClaimGuard`) covers every device that reads or controls a block:
+- **What is checked:** an uplink – the block it sticks to (on a computer: the computer); a Cloud Probe – its target; a
+  Cloud Bridge – its own block; a Cloud Redstone device – its own block (where it reads or writes redstone); the card of
+  a wired machine behind a computer's modem – that machine.
+- **Rule:** a device is *blocked* while that block is in a chunk claimed by a team that none of its owners belongs to or
+  is allied with (members and allies count as the same team). The owners are the player who linked it (a probe: who set
+  its target; an unlinked uplink: who placed it) and the owner of its mainframe. Unclaimed land and claims of the owners'
+  own or allied teams are fine. Operators and `cccloud.admin.*` get no bypass, as for the probe's pick and the map. A
+  claim mod that throws fails closed (blocked, logged once). No owner known (an unlinked uplink placed by a command)
+  and a claim: blocked.
+- **Blocked:** nothing is read and nothing is controlled. The machine card, the Computer card and the Storage card go
+  (the card keeps its title), wired machine cards and bridges stop refreshing, a linked bridge pauses auto-stock and its
+  watchlist alerts, statistics, production, rules and the storage view get no storage from it, a Lua program's widgets
+  and values are not sent (the program itself keeps running on its computer, as in CC), and the terminal and script
+  import refuse a computer in such a claim. Every action and query is refused with `claim_blocked` – from the dashboard,
+  rules, scenes, the public API (409) and the storage operations. The card shows "Blocked – this machine is in
+  <team>'s claim" instead of values (`"blocked":{"reason":"claim","team"}` in the section; a redstone device's widgets are
+  listed in `"blockedWidgets"`, keep their last value and record no history). The team's name only reaches dashboard
+  sessions with `view.positions`; other sessions, share links, Cloud Displays, the public API and in-game screens of
+  players without it get "another team's claim". The uplink, bridge and redstone device screens show the same. It
+  unblocks by itself when the claim goes or the teams become allies. Each transition of a linked device writes one
+  audit line (server log and the mainframe's audit log).
+- **When:** when a device is linked, placed (uplinks), loaded, gets a probe target or a wired machine card; before every
+  action and query (a fresh check); at once for the devices that read a block in a chunk FTB Chunks reports claimed or
+  unclaimed (`ChunkChange.Post`), and for the devices of a player whose team or allies changed (FTB Teams events) plus
+  every blocked device; and in a safety pass that checks every device once per 10 s, spread over the ticks. Claim lookups
+  are cached per chunk for 10 s (a claim event clears its chunk); the work per tick is capped at 512 checks and 2 ms.
+- **Claim mods:** only FTB Chunks is integrated (`compat/ftbchunks/FtbClaims`) behind the neutral `ClaimProvider`
+  interface, which another claim mod can implement (who claimed a chunk, is a player a member or ally; events optional,
+  the safety pass finds changes anyway). With other claim mods (Open Parties and Claims, …) the mod itself still protects
+  placing blocks and picking a probe target, but claims made later are not seen by CC: Cloud.
+- Tests: `ClaimRuleTest` (own team, ally, foreign team, unclaimed, no owner, no operator bypass, pass budget, team names),
+  `WebHubClaimTeamTest` (team name only with `view.positions`), GameTests `claim_guard` (uplink, wired machine card and
+  redstone device with a test claim mod), `probe_guards`, and with `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard`
+  (real FTB Chunks claims and FTB Teams allies).
 
 ### Advanced Cloud Sensor: player names and zones
 The Advanced Cloud Sensor reports who enters a zone – on a shared server, player names and where and when they were seen
@@ -352,7 +392,7 @@ are personal data. Rules:
 
 ### Dependencies
 - The mod uses only Minecraft, NeoForge, Netty and Gson.
-- Integrations are soft dependencies (`compileOnly`), loaded only when the mod is present. They are reached through neutral interfaces (`TeamProvider`, `TeamSource`, `StorageAdapter`).
+- Integrations are soft dependencies (`compileOnly`), loaded only when the mod is present. They are reached through neutral interfaces (`TeamProvider`, `TeamSource`, `StorageAdapter`, `ClaimProvider`).
 - The web bundle keeps a short, audited dependency list (`pnpm audit` in CI).
 
 ## Security review 2026-10-23 (main@aa4557f)
@@ -385,9 +425,8 @@ Follow-ups done after the review (2026-10-30, branch `followups`):
   modems. They expose nothing the computer could not already read and control from Lua over the same cable; the cards
   are published like device cards, so every action needs the same permission as on an uplink attached to the machine
   (`act.buttons`, `act.redstone` for redstone controls, PIN/confirm as the card says), and the uplink must be linked
-  with `network.link`. The listener node puts no peripheral on the network. Residual: like CC itself, claims are only
-  enforced when the modem and cable are placed and switched on (in-world interactions), not checked again on every read
-  as for the Cloud Probe.
+  with `network.link`. The listener node puts no peripheral on the network. Each machine card is checked by the claim
+  guard (see "Claims"): a machine in a chunk another team claims later is blocked like an uplink on it.
 - **Discord bot pod** (the bot lives in the website repository): a NetworkPolicy (`discord-bot/deploy/networkpolicy.yaml`) denies all ingress (the kubelet's probe
   comes from the node, which policies never block) and allows egress only to the cluster DNS and TCP 443 on public IPv4
   addresses (private, link-local/metadata, loopback and CGNAT ranges excluded). Pinning the image by digest is documented
