@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Help and questions
+    url: https://discord.gg/4fnQcvbzg6
+    about: Ask in the #help forum on the CC: Cloud Discord – most setup questions are answered there within hours.
+  - name: Documentation
+    url: https://cccloud.dev/en/docs/
+    about: Getting started, the Lua API, hosting, security and the FAQ.
+  - name: Report a security issue
+    url: https://github.com/enricofranke/cc-cloud/security/advisories/new
+    about: Please report vulnerabilities privately, never as a public issue.

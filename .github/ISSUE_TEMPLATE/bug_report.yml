@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in CC: Cloud does not work as documented.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time! Please check the [FAQ](https://cccloud.dev/en/faq/) first. Security issues go to
+        [a private advisory](https://github.com/enricofranke/cc-cloud/security/advisories/new), not here.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Minecraft, NeoForge, CC: Tweaked, CC: Cloud – and the modpack if you play one.
+      placeholder: "MC 26.1.2 · NeoForge 26.1.2.109 · CC: Tweaked 1.120.0 · CC: Cloud 1.0.0-beta.1 · ATM11 0.12.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: side
+    attributes:
+      label: Where does it happen?
+      options:
+        - Singleplayer
+        - Dedicated server
+        - Hosted server (e.g. Apex, BisectHosting)
+        - Server behind a proxy / tunnel
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Place a Cloud Mainframe …
+        2. …
+  - type: input
+    id: log
+    attributes:
+      label: Log
+      description: Upload your `latest.log` (and the crash report, if any) to https://mclo.gs and paste the link.
+      placeholder: https://mclo.gs/…
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Dashboard or in-game screenshots, if they help. Hide your pairing codes and public IP addresses.

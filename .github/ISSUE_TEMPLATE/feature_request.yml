@@ -1,0 +1,19 @@
+name: Feature or mod integration
+description: Suggest a feature or a card for a mod you play.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Smaller ideas are also welcome in the #ideas forum on [Discord](https://discord.gg/4fnQcvbzg6), where others can vote on them.
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: For a mod integration, name the mod, the block, and what the card should show or control.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What would it let you do in your base?

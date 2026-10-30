@@ -1,71 +1,57 @@
 <div align="center">
 
-<img src="src/main/resources/cccloud_web/icon-512.png" width="96" alt="CC: Cloud icon">
+<a href="https://cccloud.dev"><img src="docs/readme/hero.png" width="100%" alt="CC: Cloud – your base, in any browser. A CC: Tweaked addon: build a Cloud Mainframe, stick uplinks on your computers and machines, and your Minecraft server serves a live dashboard to your phone or PC."></a>
 
-# CC: Cloud
+**[Website](https://cccloud.dev)** &nbsp;·&nbsp; **[Docs](https://cccloud.dev/en/docs/)** &nbsp;·&nbsp; **[Download](https://cccloud.dev/en/download/)** &nbsp;·&nbsp; **[Script Store](https://cccloud.dev/en/store/)** &nbsp;·&nbsp; **[Discord](https://discord.gg/4fnQcvbzg6)**
 
-**Control your Minecraft base from any browser.**
-A [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) addon that ships its own web dashboard, running inside your Minecraft server.
-
-![Minecraft 26.1.2](https://img.shields.io/badge/Minecraft-26.1.2-5fd35f?style=flat-square)
-![NeoForge](https://img.shields.io/badge/NeoForge-26.1.2.109%2B-e8c547?style=flat-square)
-![CC: Tweaked](https://img.shields.io/badge/CC%3A%20Tweaked-1.120.0%2B-5ec8e5?style=flat-square)
-![License](https://img.shields.io/badge/license-MPL--2.0-lightgrey?style=flat-square)
-![Status](https://img.shields.io/badge/status-alpha-d34f4f?style=flat-square)
+[![Minecraft 26.1.2](https://img.shields.io/badge/Minecraft-26.1.2-5fd35f?style=for-the-badge&labelColor=161b21)](https://cccloud.dev/en/download/)
+[![NeoForge](https://img.shields.io/badge/NeoForge-26.1.2.109%2B-ddd771?style=for-the-badge&labelColor=161b21)](https://neoforged.net)
+[![CC: Tweaked](https://img.shields.io/badge/needs-CC%3A%20Tweaked%201.120%2B-5ec8e5?style=for-the-badge&labelColor=161b21)](https://modrinth.com/mod/cc-tweaked)
+[![License MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-8d99a6?style=for-the-badge&labelColor=161b21)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=161b21)](https://discord.gg/4fnQcvbzg6)
 
 </div>
 
-<p align="center">
-  <img src="preview/side_by_side.png" width="760" alt="CC: Cloud blocks next to CC: Tweaked blocks">
-</p>
+**Your whole Minecraft base, always in your pocket.** Build a **Cloud Mainframe**, attach **Uplinks** to your
+computers and machines, open the dashboard on your phone or PC – and flip switches, watch your reactor, search your ME
+system or start a craft from anywhere in your home network. No external service, no account, no relay: the dashboard
+is served by the mod itself.
 
-Build a **Cloud Mainframe**, attach **Uplinks** to your computers and machines, open the dashboard on your phone or PC – and flip switches, watch your reactor, search your ME system or start a craft from anywhere in your home network.
+> [!IMPORTANT]
+> CC: Cloud is an addon: it needs **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked) 1.120.0+** installed next to
+> it, on the client and the server. On CurseForge it is a required dependency, so the CurseForge app installs it for you.
 
-No external service, no account, no relay: the dashboard is served by the mod itself.
-
-Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Discord](https://discord.gg/4fnQcvbzg6)
+<p align="center"><img src="docs/readme/how.png" width="100%" alt="How it works: 1. Place a Cloud Mainframe – it hosts your dashboard and shows its address and a pairing code. 2. Stick on an Uplink and link it with the Link Card – it shows up as a card. 3. Pair your browser: open the address, type the code, click Allow in game."></p>
 
 ## Features
 
+<a href="https://cccloud.dev/en/features/"><img src="docs/readme/feature-1.png" width="100%" alt="Zero code: cards that build themselves. An uplink on a computer shows power and redstone sides; an uplink on a machine gets a ready-made card for 40+ mods."></a>
+<a href="https://cccloud.dev/en/features/"><img src="docs/readme/feature-2.png" width="100%" alt="AE2 and Refined Storage: search every item, start crafting jobs and watch stock levels with alerts from your phone."></a>
+<a href="https://cccloud.dev/en/features/"><img src="docs/readme/feature-3.png" width="100%" alt="A real network: ranges, relays, Ender Relays across dimensions, and your base as topology, terrain map and 3D view."></a>
+<a href="https://cccloud.dev/en/features/"><img src="docs/readme/feature-4.png" width="100%" alt="For scripters: your own dashboard in a few lines of Lua with the cloud.ui helper, then arrange it in the browser's edit mode."></a>
+<a href="https://cccloud.dev/en/features/"><img src="docs/readme/feature-5.png" width="100%" alt="Secure by default: LAN-only, in-game approval for every browser, hashed tokens, PINs, roles, teams and permission mods."></a>
+
 | | |
 |---|---|
-| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11, plus generic Energy and Tank cards for everything else. |
-| 💡 **Redstone devices** | Cloud Switch, Button, Lamp and Sensor: place, link with the Link Card, done – switch lamps and doors from your phone, react to a sensor in rules. Devices with the same group share one card. |
-| 📦 **AE2 & Refined Storage** | ME / RS Cloud Bridges: browse and search the whole network, item details with history, craft previews with missing items, CPUs and jobs, auto-stock rules that craft when stock runs low. |
-| 🧩 **Custom dashboards** | A Lua API (`cloud.button`, `cloud.gauge`, `cloud.chart`, pages, groups …) and the `cloud.ui` helper library. Arrange the live cards in the WYSIWYG layout editor – drag, resize, styles, undo. |
-| ⚙️ **Automation** | No-code rules (when → if → then) that run on the server, push notifications to Discord, ntfy or webhooks, long-term history charts with CSV export. |
-| 🎬 **Scenes, schedules & production** | One button for several actions (checked against the presser's rights), weekday / interval / in-game-time schedules, items and energy per minute for AE2 and RS with "what is eating my iron", and an opt-in REST API with scoped keys for bots and Home Assistant. |
-| ⌨️ **For scripters** | A browser terminal for any computer, a Lua editor with highlighting and a file tree, script upload and a community **Script Store** with signed, verified installs. |
-| 📡 **Real network** | Ranges, relays, Ender Relays across dimensions, CC cables and fiber, wireless redstone channels, mainframe upgrades up to the Quantum Core, and topology, 2D map and a 3D voxel view of your base. |
-| 🔐 **Secure by default** | LAN-only by default, in-game approval for every new browser, roles with fine-grained permissions, PINs for critical controls, LuckPerms / FTB Ranks / FTB Teams support, read-only share links. |
-| 🎮 **In-game** | Mainframe and uplink screens in the CC: Tweaked look, the Cloud Tablet and Cloud Display, the Cloud Analyzer overlay, a GuideME handbook, JEI, Jade and JourneyMap support. |
-| 🧭 **Docs built in** | Bilingual (EN/DE) documentation at `/docs` on your own dashboard – works offline. |
+| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11 (Powah, Mekanism, Ender IO, Oritech, Railcraft, Productive Bees, …), plus generic Energy and Tank cards for everything else. Machines behind CC wired modems get cards too. |
+| 💡 **Redstone devices** | Cloud Switch, Button, Lamp and Sensor: place, link with the Link Card, done – switch lamps and doors from your phone, get a push when someone steps into a room. |
+| 🔎 **Cloud Probe** | Reads machines whose sides are all built in, from up to 8 blocks away – deliberately expensive, so it stays special. |
+| 📦 **AE2 & Refined Storage** | Browse and search the whole network, item details with history, craft previews with missing items, CPUs and jobs, auto-stock rules that craft when stock runs low. |
+| 🧩 **Custom dashboards** | A Lua API (`cloud.button`, `cloud.gauge`, `cloud.chart`, pages, groups …) and the `cloud.ui` helper. Arrange the live cards in the layout editor – drag, resize, styles, undo. |
+| ⚙️ **Automation** | No-code rules (when → if → then), scenes (one button, many actions), schedules, push notifications to Discord, ntfy or webhooks, long-term history with CSV export. |
+| 📈 **Production stats** | Items and energy per minute for AE2 and RS – and "what is eating my iron". |
+| 🔌 **Public API** | Opt-in REST API with scoped keys for bots and Home Assistant (off by default). |
+| ⌨️ **For scripters** | A browser terminal for any computer, a Lua editor with a file tree, and the community **[Script Store](https://cccloud.dev/en/store/)** with signed, verified installs. |
+| 📡 **Real network** | Ranges, relays, Ender Relays across dimensions, CC cables and fiber, mainframe upgrades up to the Quantum Core, topology, 2D map and a 3D view of your base. |
+| 🔐 **Secure by default** | LAN-only, in-game approval for every new browser, roles with fine-grained permissions, PINs for critical controls, LuckPerms / FTB Ranks / FTB Teams, read-only share links. |
+| 🎮 **In-game** | Mainframe and uplink screens in the CC: Tweaked look, Cloud Tablet, Cloud Display, Cloud Analyzer, a GuideME handbook, JEI, Jade and JourneyMap support. |
+| 🧭 **Docs built in** | Bilingual (EN/DE) documentation at `/docs` on your own dashboard – works offline, shows your modpack's real recipes. |
 
-<p align="center">
-  <img src="cloud/screenshots/hero-voxel-base.png" width="760" alt="3D voxel view of an underground base">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/desktop-01-dashboard.png" width="760" alt="Dashboard on desktop">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/desktop-e2-dragged-resized.png" width="760" alt="Layout editor: dragging and resizing live cards">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/desktop-st1-browse.png" width="760" alt="Storage browser for an ME network">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/phone-s3-item-detail.png" width="240" alt="Item details with history on a phone">
-  &nbsp;
-  <img src="cloud/screenshots/phone-t1-terminal.png" width="240" alt="Browser terminal on a phone">
-  &nbsp;
-  <img src="cloud/screenshots/phone-n1-topology.png" width="240" alt="Network topology on a phone">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/desktop-c9b-mod-showcase-top.png" width="760" alt="Ready-made cards for many mods">
-</p>
-<p align="center">
-  <img src="cloud/screenshots/desktop-x6-editor.png" width="760" alt="Lua editor in the browser">
-</p>
+<p align="center"><a href="https://cccloud.dev/en/docs/mods/"><img src="docs/readme/integrations.png" width="100%" alt="Integrations: works with the mods you already play – built and tested in All the Mods 11."></a></p>
+
+<p align="center"><a href="https://cccloud.dev/en/store/"><img src="docs/readme/store.png" width="100%" alt="Script Store: install a dashboard with one click – reviewed community scripts you can check before installing."></a></p>
+
+<p align="center"><a href="https://discord.gg/4fnQcvbzg6"><img src="docs/readme/app.png" width="100%" alt="Coming soon: the CC: Cloud app for iPhone and Android with push alerts straight from your Minecraft server."></a></p>
 
 ## Blocks
 
@@ -76,10 +62,11 @@ Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Disc
 | Block | What it does |
 |---|---|
 | **Cloud Mainframe** | 2 blocks tall. The heart of your network: hosts your dashboard section, needs FE power, has a redstone kill switch and a hologram that tells you its state. |
-| **Cloud Uplink / Advanced Cloud Uplink** | Flat plate like a CC modem. Stick it on a computer (Lua or automatic card) or directly on a machine. |
+| **Cloud Uplink / Advanced Cloud Uplink** | A flat plate like a CC modem. Stick it on a computer (Lua or automatic card) or directly on a machine. |
 | **ME / RS Cloud Bridge** | Joins your AE2 or Refined Storage network (only registered when the mod is installed). |
 | **Cloud Relay / Advanced / Ender Relay** | Extend the range of your network; Ender Relays link dimensions. |
-| **Cloud Switch / Button / Lamp / Sensor** | Small redstone devices without a computer: a lever, a button, a dimmable lamp and a signal reader on the dashboard. |
+| **Cloud Switch / Button / Lamp / Sensor** | Small redstone devices without a computer: a lever, a button, a dimmable lamp and a signal reader. |
+| **Cloud Probe** | Reads a machine a few blocks away when every side of it is built in. |
 
 <p align="center">
   <img src="preview/renders/uplinks.png" width="760" alt="Cloud Uplinks">
@@ -90,11 +77,13 @@ Made by **[Enrico Franke](https://github.com/enricofranke)** · Community: [Disc
 
 ## Quick start
 
-1. Install **CC: Tweaked** and **CC: Cloud** (client and server).
+1. Install **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked)** and **CC: Cloud** (client and server) – from
+   [the download page](https://cccloud.dev/en/download/) or the [releases](https://github.com/enricofranke/cc-cloud/releases).
 2. Place a **Cloud Mainframe** and give it power (any FE source).
 3. Place a computer, stick a **Cloud Uplink** on it, and link it with the **Link Card** (right-click the mainframe, then the uplink).
 4. Right-click the mainframe: it shows the dashboard address (e.g. `http://192.168.1.20:8787`) and a pairing code.
-5. Open the address in your browser, enter the code and click **Allow** in the in-game chat or screen. Done – your computer shows up as a card.
+5. Open the address in your browser, enter the code and click **Allow** in the in-game chat or screen. Done – your
+   computer shows up as a card.
 
 Want your own dashboard? Run `cloud-demo` on the computer, or start from this:
 
@@ -112,7 +101,7 @@ dash:every(1, function() temp:set(reactor.getTemperature()) end)
 dash:run()
 ```
 
-Full reference: `/docs` on your dashboard, or `help cloud` in-game.
+Full reference: [cccloud.dev/en/docs](https://cccloud.dev/en/docs/), `/docs` on your own dashboard, or `help cloud` in game.
 
 ## Hosting & security
 
@@ -120,15 +109,22 @@ Full reference: `/docs` on your dashboard, or `help cloud` in-game.
 - Internet access is opt-in (`webAllowInternet = true` in `cccloud-server.toml`). Use TLS or a reverse proxy / tunnel – see [`docs/HOSTING.md`](docs/HOSTING.md).
 - Every new browser needs in-game approval by a player with the right role. Tokens are hashed, bound to a player and re-checked live (bans, role changes).
 - Server permissions via the NeoForge PermissionAPI (`cccloud.*` nodes) – works with LuckPerms and FTB Ranks.
-- Threat model and details: [`docs/SECURITY.md`](docs/SECURITY.md) · Report security issues privately, not as public issues.
+- Threat model and reviews: [`docs/SECURITY.md`](docs/SECURITY.md) · Found a vulnerability? See [SECURITY.md](SECURITY.md) – please report privately.
 
 ## Compatibility
 
-- Minecraft **26.1.2**, NeoForge **26.1.2.109+**, CC: Tweaked **1.120.0+**
-- Built and tested against **All the Mods 11** (0.12.0-beta) with ~290 mods.
+- Minecraft **26.1.2**, NeoForge **26.1.2.109+**, CC: Tweaked **1.120.0+**, Java **25**
+- Built and tested against **All the Mods 11** (0.12.0-beta) with ~290 mods, and with 500 devices on one mainframe.
 - Optional integrations activate automatically when the mod is present; nothing breaks without them.
 
-## Development
+## Community & contributing
+
+- Help, ideas and showcases: the **[Discord](https://discord.gg/4fnQcvbzg6)**.
+- Bugs and feature requests: [issues](https://github.com/enricofranke/cc-cloud/issues/new/choose).
+- Code, docs, translations and scripts: see [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
+
+<details>
+<summary><b>Development</b></summary>
 
 ```bash
 ./gradlew build                     # mod jar in build/libs/
@@ -142,21 +138,29 @@ cd cloud && npx pnpm@10 install && npx pnpm@10 dev   # dashboard with a mock ser
 - Art is generated pixel by pixel: `tools/gen_textures.py`, `tools/gen_models.py`, 3D preview in `preview/viewer.html`
 - Spec: [`docs/SPEC.md`](docs/SPEC.md) · Build notes: [`docs/BUILD.md`](docs/BUILD.md) · FTB Quests chapters: [`integration/ftbquests/`](integration/ftbquests/)
 
-## Roadmap
+</details>
+
+<details>
+<summary><b>Roadmap</b></summary>
 
 - [x] Mainframe, uplinks, Lua API, dashboard, in-game screens
 - [x] AE2 / Refined Storage bridges, item icons, power, storage browser and auto-stock
 - [x] Network ranges, relays, topology, 2D map and 3D voxel view
 - [x] Roles, accounts, fine-grained permissions, teams, share links
 - [x] Mod integrations: energy, machines, farms, quarries, spawners, storage controllers, waystones, quests (40+ mods)
-- [x] No-code rules, push notifications (Discord / ntfy / webhooks), browser terminal & Lua editor, long-term history
-- [x] Mainframe upgrades (Allthemodium → Unobtainium, Quantum Core, Chunk Anchor), CC cables and fiber, wireless redstone
-- [x] Cloud Tablet, Cloud Display, Cloud Analyzer, GuideME handbook, KubeJS bindings
-- [x] Script Store with signed index (dashboard side)
-- [ ] Public Script Store website with community scripts
-- [ ] All the Mods pack submission (see [`docs/ATM_SUBMISSION.md`](docs/ATM_SUBMISSION.md))
+- [x] No-code rules, push notifications, browser terminal & Lua editor, long-term history
+- [x] Scenes, schedules, production statistics, public REST API
+- [x] Cloud Redstone devices, Cloud Probe, live modpack recipes, big-server performance
+- [x] Script Store with signed index and website
+- [ ] Mobile app for iPhone and Android with push notifications
+- [ ] Dashboard templates to import and share
+- [ ] All the Mods pack submission
+
+</details>
 
 ## Credits & license
 
-CC: Cloud is created by [Enrico Franke](https://github.com/enricofranke) and licensed under the [Mozilla Public License 2.0](LICENSE). All textures and models are original work.
-Built on [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) by SquidDev and contributors – not affiliated with or endorsed by the CC: Tweaked team, Mojang or Microsoft.
+CC: Cloud is made by **[Enrico Franke](https://enricofranke.com)** ([GitHub](https://github.com/enricofranke)) and
+licensed under the [Mozilla Public License 2.0](LICENSE). All textures and models are original work.
+Built on [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) by SquidDev and contributors – not affiliated with or
+endorsed by the CC: Tweaked team, Mojang or Microsoft.
