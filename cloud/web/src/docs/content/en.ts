@@ -1127,11 +1127,38 @@ ${code("", C.COMMANDS)}
 
 Critical widgets (\`pin=true\`) need a 4–8 digit PIN. 5 wrong tries lock that device for 5 minutes and notify the owner.
 
-## Internet access {#internet}
+## Internet access in 2 minutes {#internet}
 
-> **Warning:** Plain HTTP over the internet sends your access token and PIN unencrypted. Use HTTPS (Caddy, Cloudflare Tunnel or TLS in the mod).
+One command in game (server owner, op level 4, or the server console):
 
-Set \`webAllowInternet = true\` and pick one of the setups below. The dashboard shows a warning when it runs over plain HTTP from a public address.
+${code("", C.INTERNET_HTTP)}
+
+The chat answers with the **link** to open, the **port** to forward in your router and **how to test it** (a phone with Wi-Fi off). It applies at once, no restart. \`/cccloud internet\` shows the current state, \`/cccloud internet off\` closes it again. The same in \`serverconfig/cccloud-server.toml\`: \`internetAccess = "http"\` (optionally \`internetDomain = "mybase.duckdns.org"\` for a fixed name).
+
+| Mode | Easy | Secure | Needs |
+|---|---|---|---|
+| \`off\` (default) | nothing to do | yes – only your local network | – |
+| \`http\` – easy mode | one command, one port | **no**, see below | a PIN on every mainframe, TCP port 8787 forwarded |
+| HTTPS (Caddy, Cloudflare Tunnel, own certificate) | some setup | yes | a domain, see [Advanced](#advanced) |
+
+### Plain HTTP: what can happen {#http-mode}
+
+> **Warning:** In \`http\` mode nothing is encrypted. Anyone on the same Wi-Fi (café, school, hotel) or on the way (provider, VPN) can read your login and your PIN – and then control your base like you. Use it to try things out, or when you accept that risk.
+
+What CC: Cloud does to keep the damage small:
+
+- **PIN for every control action from the internet.** \`/cccloud internet http\` is refused until every mainframe has a PIN (\`/cccloud pin set <digits>\`). The dashboard asks for the PIN once; then the controls work for 10 minutes in that browser. A mainframe without a PIN can only be watched from the internet.
+- **Short logins:** a browser that was not used for 24 hours is logged out when it comes from the internet (\`publicTokenIdleHours\`); on the LAN the usual 30 days apply.
+- **New browsers still need [Allow] in game;** requests from the internet are marked in chat.
+- **Stricter limits for internet addresses:** 5 wrong codes, logins or PINs in 15 minutes block the address; half the actions and API requests.
+- **Share links stay read-only,** and API keys can't control anything over plain HTTP from the internet.
+- **Warnings everywhere:** in the server log, in chat for ops when they join, and as a banner in the dashboard that can't be closed.
+
+**Upgrade to HTTPS:** set up one of the [advanced](#advanced) ways (Caddy is the easiest with your own domain), then \`/cccloud internet off\` – the advanced settings keep working on their own.
+
+## Advanced: your own HTTPS setup {#advanced}
+
+These setups use the advanced \`[web]\` keys and \`internetAccess = "off"\`.
 
 ### Caddy reverse proxy (recommended) {#caddy}
 
@@ -1155,9 +1182,9 @@ ${code("toml", C.TOML_TLS)}
 
 Convert the Let's Encrypt key first: \`${C.PKCS8}\`. If the files cannot be loaded the dashboard does not start – it never falls back to plain HTTP silently.
 
-### Port opened directly {#open-port}
+### Port opened by hand {#open-port}
 
-Only for quick tests: set \`webAllowInternet = true\`, \`publicUrl = "http://mc.example.com:8787"\` and open TCP 8787 in your host's panel.
+Older setups: \`webAllowInternet = true\` with \`publicUrl = "http://mc.example.com:8787"\` opens the port without the protections of \`http\` mode. Prefer \`/cccloud internet http\`.
 
 ## Big servers {#big-servers}
 
@@ -1233,7 +1260,7 @@ The device was removed (in the mainframe screen or with \`/cccloud revoke\`), it
 
 ## "LAN only" {#lan-only}
 
-The server only allows local addresses. An admin can enable \`webAllowInternet\` – preferably behind HTTPS. See [security](/docs/security#internet).
+The server only allows local addresses. The server owner can open it with \`/cccloud internet\` – see [internet access](/docs/security#internet).
 
 ## Controls are greyed out {#locked}
 

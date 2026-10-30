@@ -42,8 +42,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Pattern SAFE_HOST = Pattern.compile("[A-Za-z0-9.\\-:\\[\\]]{1,255}");
     private static final int MAX_TOKENS_PER_REQUEST = 16;
     static final String LAN_ONLY_MESSAGE = "This CC: Cloud dashboard only accepts connections from the local network. "
-        + "Server admins can allow internet access with webAllowInternet=true in serverconfig/cccloud-server.toml "
-        + "(use HTTPS, see docs/HOSTING.md).";
+        + "Server admins can allow internet access in game with /cccloud internet, or with internetAccess in "
+        + "serverconfig/cccloud-server.toml (docs: Security & hosting).";
 
     private final WebInstance instance;
     /** Counts a connection of a forwarded client; false if it has more than the per-IP limit (L7). */
@@ -153,6 +153,14 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             return;
         }
 
+        // Plain-HTTP internet access: an internet address with too many failed logins, codes or PINs waits (15 min).
+        if ((route.access() == Router.Access.DEVICE || route.id() == Router.Id.PAIR || route.id() == Router.Id.WEBSOCKET) && instance.internet.blocked(ip)) {
+            var response = json(HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            response.headers().set(HttpHeaderNames.RETRY_AFTER, String.valueOf(ai.ezfox.cccloud.web.internet.InternetGuard.FAILURE_WINDOW_MS / 1000));
+            write(ctx, req, response);
+            return;
+        }
+
         // Central access check (deny by default).
         switch (route.access()) {
             case PUBLIC -> dispatch(ctx, req, route, ip, List.of());
@@ -175,17 +183,44 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             if (device != null) devices.add(device);
         }
         if (devices.isEmpty()) {
+            instance.internet.failure(ip);
             sendJson(ctx, req, HttpResponseStatus.UNAUTHORIZED, error("unauthorized"));
+            return;
+        }
+        // Plain-HTTP internet access: tokens unused for publicTokenIdleHours are dropped when they show up from the internet.
+        for (var it = devices.iterator(); it.hasNext(); ) {
+            var device = it.next();
+            if (!instance.internet.tooIdle(device, ip)) continue;
+            instance.auth.expire(device.tokenHash());
+            CloudLog.LOGGER.info("[cccloud] Device '{}' of {} logged out: used from internet address {} over plain HTTP after more than {} h without use",
+                device.name(), device.playerName(), ip, instance.internet.settings().publicTokenIdleMs() / 3_600_000L);
+            it.remove();
+        }
+        if (devices.isEmpty()) {
+            var body = error("unauthorized");
+            body.addProperty("reason", "token_expired");
+            sendJson(ctx, req, HttpResponseStatus.UNAUTHORIZED, body);
             return;
         }
         var stats = route.id() == Router.Id.VOXELS || route.id() == Router.Id.VOXEL_BATCH ? ai.ezfox.cccloud.map.MapStats.VOXELS
             : route.id() == Router.Id.MAP_TILE ? ai.ezfox.cccloud.map.MapStats.TILES : null;
         if (stats != null) stats.requests.increment();
         if (instance.apiLimits.size() > 10_000) instance.apiLimits.clear();
-        if (!instance.apiLimits.computeIfAbsent(ip, k -> new TokenBucket(API_RATE, API_RATE / 60.0)).tryAcquire()) {
+        int rate = instance.internet.apiPerMinute(ip); // 120, from an internet address in plain-HTTP mode 60
+        if (!instance.apiLimits.computeIfAbsent(ip, k -> new TokenBucket(rate, rate / 60.0)).tryAcquire()) {
             if (stats != null) stats.rateLimited.increment();
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
+        }
+        // Plain-HTTP internet access: management writes from the internet need the PIN unlock (done over the WebSocket).
+        if (route.id().isManagementWrite() && instance.internet.strict(ip)) {
+            var mainframeId = ClientMessages.parseUuid(new QueryStringDecoder(req.uri()).path().split("/")[3]);
+            String locked = mainframeId == null ? "not_found" : !instance.auth.hasPin(mainframeId) ? "remote_no_pin"
+                : devices.stream().anyMatch(d -> instance.internet.unlocked(d.tokenHash(), mainframeId, ip)) ? null : "remote_locked";
+            if (locked != null) {
+                sendJson(ctx, req, locked.equals("not_found") ? HttpResponseStatus.NOT_FOUND : HttpResponseStatus.FORBIDDEN, error(locked));
+                return;
+            }
         }
         if (route.id().isScript()) {
             script(ctx, req, route, ip, devices.getFirst());
@@ -505,8 +540,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
+        boolean remote = instance.internet.strict(ip);
         if (!instance.auth.hasPin(mainframeId)) {
-            runScript(ctx, req, request);
+            // plain-HTTP internet access: no script changes from the internet without a PIN
+            if (remote) sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("remote_no_pin"));
+            else runScript(ctx, req, request);
             return;
         }
         String pin = req.headers().get("X-Cloud-Pin");
@@ -528,8 +566,16 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                 ctx.executor().execute(() -> {
                     try {
                         switch (check.result()) {
-                            case OK, NOT_SET -> runScript(ctx, req, request);
+                            case OK -> {
+                                if (remote) instance.internet.unlock(device.tokenHash(), mainframeId, ip);
+                                runScript(ctx, req, request);
+                            }
+                            case NOT_SET -> {
+                                if (remote) sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("remote_no_pin"));
+                                else runScript(ctx, req, request);
+                            }
                             case WRONG -> {
+                                instance.internet.failure(ip);
                                 var e = error("wrong_pin");
                                 e.addProperty("attemptsLeft", check.attemptsLeft());
                                 sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, e);
@@ -616,7 +662,16 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case API_PREFLIGHT -> ApiHandler.preflight(this, instance, ctx, req);
             case ICON -> icon(ctx, req, ip, path);
             case RECIPES -> recipes(ctx, req, ip);
-            case CONFIG -> sendJson(ctx, req, HttpResponseStatus.OK, PublicConfig.json());
+            case CONFIG -> {
+                var config = PublicConfig.json();
+                // internetAccess (the dashboard shows a permanent warning in plain-HTTP mode) and whether this client is
+                // treated as an internet address there (its writes need the PIN unlock)
+                var internet = new JsonObject();
+                internet.addProperty("mode", instance.internet.mode().id());
+                internet.addProperty("remote", instance.internet.strict(ip));
+                config.add("internet", internet);
+                sendJson(ctx, req, HttpResponseStatus.OK, config);
+            }
             case VOXEL_ATLAS -> voxelAtlas(ctx, req, ip, path);
             case WEBSOCKET -> upgrade(ctx, req, ip);
             case STATIC -> {
@@ -748,6 +803,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         var request = ClientMessages.parsePair(req.content().toString(StandardCharsets.UTF_8));
         if (request == null) {
             instance.pairLimiter.recordFailure(ip);
+            instance.internet.failure(ip);
             sendJson(ctx, req, HttpResponseStatus.BAD_REQUEST, error("invalid_request"));
             return;
         }
@@ -765,6 +821,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                         sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
                     } else if (pending == null) {
                         instance.pairLimiter.recordFailure(ip);
+                        instance.internet.failure(ip);
                         sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("invalid_code"));
                     } else {
                         var json = new JsonObject();

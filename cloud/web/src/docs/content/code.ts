@@ -138,7 +138,10 @@ lua> peripheral.find("cloud_uplink").getClients()
 lua> exit()`;
 
 export const TOML_LAN = `[web]
-webAllowInternet = false   # default: only LAN addresses may connect`;
+internetAccess = "off"   # default: only LAN addresses may connect (in game: /cccloud internet)`;
+
+export const INTERNET_HTTP = `/cccloud internet http
+/cccloud internet http mybase.duckdns.org`;
 
 export const TOML_CADDY = `[web]
 webBind = "127.0.0.1"

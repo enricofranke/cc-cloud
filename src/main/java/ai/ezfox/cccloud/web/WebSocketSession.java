@@ -39,7 +39,10 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private final WebInstance instance;
     private final WebSocketServerHandshaker handshaker;
     private final String ip;
-    private final TokenBucket actionLimit = new TokenBucket(10, 10);
+    /** Actions per second: 10, from an internet address in plain-HTTP mode 5 ({@link ai.ezfox.cccloud.web.internet.InternetGuard}). */
+    private final TokenBucket actionLimit;
+    /** PIN unlocks (plain-HTTP internet access): one per second. */
+    private final TokenBucket unlockLimit = new TokenBucket(1, 1);
     /** Item searches: 5 per second (docs/SPEC.md). */
     private final TokenBucket queryLimit = new TokenBucket(5, 5);
     /** Terminal input: 20 messages per second (each up to 32 events). */
@@ -77,6 +80,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         this.handshaker = handshaker;
         this.ip = ip;
         this.sizeGuard = sizeGuard;
+        int actions = instance.internet.actionsPerSecond(ip);
+        this.actionLimit = new TokenBucket(actions, actions);
     }
 
     @Override
@@ -147,6 +152,17 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             close(4401, "revoked");
             return;
         }
+        // Plain-HTTP internet access: writes from an internet address need the PIN first (actions and opening a terminal
+        // carry the PIN themselves and are checked in their handlers).
+        if (instance.internet.strict(ip) && ClientMessages.isWrite(message) && !(message instanceof ClientMessages.Action)
+            && !(message instanceof ClientMessages.Terminal t && t.op().equals("term_open"))) {
+            String locked = remoteLock(current, mainframeId);
+            if (locked != null) {
+                String deny = AccessGate.deny(text, locked);
+                if (deny != null) send(List.of(deny));
+                return;
+            }
+        }
         switch (message) {
             case ClientMessages.Pong pong -> {
             }
@@ -175,14 +191,105 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.Storage storage -> storage(current, storage);
             case ClientMessages.CraftPreview preview -> craftPreview(current, preview);
             case ClientMessages.Terminal terminal -> terminal(current, terminal);
+            case ClientMessages.Unlock unlock -> unlock(current, unlock);
         }
     }
 
+    /**
+     * Plain-HTTP internet access: why a write from this (internet) session is refused, or null if it may go ahead.
+     * {@code remote_no_pin}: the mainframe has no PIN, so nothing can be controlled from the internet;
+     * {@code remote_locked}: enter the PIN first ({@code unlock}, or with the action itself).
+     */
+    private @Nullable String remoteLock(AuthStore.Device current, UUID mainframe) {
+        if (!instance.internet.strict(ip)) return null;
+        if (!instance.auth.hasPin(mainframe)) return "remote_no_pin";
+        return instance.internet.unlocked(current.tokenHash(), mainframe, ip) ? null : "remote_locked";
+    }
+
+    /** A correct PIN from an internet address in plain-HTTP mode: writes are unlocked for a while (logged and audited). */
+    private long remoteUnlocked(AuthStore.Device current, UUID mainframe) {
+        if (!instance.internet.strict(ip)) return 0;
+        boolean was = instance.internet.unlocked(current.tokenHash(), mainframe, ip);
+        long seconds = instance.internet.unlock(current.tokenHash(), mainframe, ip);
+        if (!was) {
+            String text = "Remote control unlocked with the PIN from " + ip + " (plain HTTP) by device '" + current.name() + "' (" + current.playerName() + ")";
+            instance.access.audit(mainframe, text);
+            CloudLog.LOGGER.info("[cccloud] {} on {}", text, mainframe);
+        }
+        return seconds;
+    }
+
+    /**
+     * {@code unlock {reqId, pin}} → {@code unlock_result {ok, seconds}}: plain-HTTP internet access needs the mainframe
+     * PIN before writes from an internet address. Same lockouts as every PIN; wrong PINs also count against the address.
+     */
+    private void unlock(AuthStore.Device current, ClientMessages.Unlock unlock) {
+        UUID mainframe = mainframeId;
+        if (!instance.internet.strict(ip)) {
+            sendUnlockResult(unlock.reqId(), null, "seconds", 0);
+            return;
+        }
+        if (!instance.auth.hasPin(mainframe)) {
+            sendUnlockResult(unlock.reqId(), "remote_no_pin", null, 0);
+            return;
+        }
+        if (instance.internet.blocked(ip) || !unlockLimit.tryAcquire()) {
+            sendUnlockResult(unlock.reqId(), "rate_limited", null, 0);
+            return;
+        }
+        long lockedFor = instance.auth.pinLockedFor(current.tokenHash());
+        if (lockedFor > 0) {
+            sendUnlockResult(unlock.reqId(), "pin_locked", "retryAfter", lockedFor);
+            return;
+        }
+        try {
+            instance.pinExecutor.execute(() -> {
+                var check = instance.auth.checkPin(mainframe, current.tokenHash(), unlock.pin());
+                switch (check.result()) {
+                    case OK -> sendUnlockResult(unlock.reqId(), null, "seconds", remoteUnlocked(current, mainframe));
+                    case NOT_SET -> sendUnlockResult(unlock.reqId(), "remote_no_pin", null, 0);
+                    case WRONG -> {
+                        instance.internet.failure(ip);
+                        sendUnlockResult(unlock.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                    }
+                    case LOCKED -> {
+                        sendUnlockResult(unlock.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
+                        instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));
+                    }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            sendUnlockResult(unlock.reqId(), "busy", null, 0);
+        }
+    }
+
+    private void sendUnlockResult(String reqId, @Nullable String error, @Nullable String extraKey, long extraValue) {
+        var json = new JsonObject();
+        json.addProperty("t", "unlock_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", error == null);
+        if (error != null) json.addProperty("error", error);
+        if (extraKey != null) json.addProperty(extraKey, extraValue);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
     private void authenticate(String token, @Nullable UUID requested) {
+        if (instance.internet.blocked(ip)) {
+            deny("rate_limited", 4429);
+            return;
+        }
         var candidate = instance.auth.authenticate(token);
         if (candidate == null) {
+            instance.internet.failure(ip);
             CloudLog.LOGGER.info("[cccloud] Rejected WebSocket login with an invalid or expired token from {}", ip);
             deny("unauthorized", 4401);
+            return;
+        }
+        if (instance.internet.tooIdle(candidate, ip)) {
+            instance.auth.expire(candidate.tokenHash());
+            CloudLog.LOGGER.info("[cccloud] Device '{}' of {} logged out: used from internet address {} over plain HTTP after more than {} h without use",
+                candidate.name(), candidate.playerName(), ip, instance.internet.settings().publicTokenIdleMs() / 3_600_000L);
+            deny("token_expired", 4401);
             return;
         }
         // Account tokens must name the mainframe; mainframe-limited tokens may only open their own.
@@ -246,6 +353,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         switch (check.status()) {
             case INVALID -> {
                 instance.shareLimiter.recordFailure(ip);
+                instance.internet.failure(ip);
                 CloudLog.LOGGER.info("[cccloud] Rejected share link login from {}", ip);
                 deny("share_invalid", 4401);
                 return;
@@ -291,8 +399,20 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
         UUID mainframe = mainframeId;
         boolean needsPin = WebHub.INSTANCE.widgetNeedsPin(mainframe, action.uplinkId().toString(), action.id());
-        if (!needsPin) {
+        // Plain-HTTP internet access: every action from an internet address needs the PIN (once per unlock period; a PIN
+        // sent with the action unlocks too). A mainframe without a PIN cannot be controlled from the internet at all.
+        boolean remote = instance.internet.strict(ip);
+        if (remote && !instance.auth.hasPin(mainframe)) {
+            sendResult(action.reqId(), "remote_no_pin");
+            return;
+        }
+        boolean remoteLocked = remote && !instance.internet.unlocked(current.tokenHash(), mainframe, ip);
+        if (!needsPin && !remoteLocked) {
             runOnServer(current, action, false);
+            return;
+        }
+        if (remote && instance.internet.blocked(ip)) {
+            sendResult(action.reqId(), "rate_limited");
             return;
         }
         long lockedFor = instance.auth.pinLockedFor(current.tokenHash());
@@ -301,16 +421,22 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             return;
         }
         if (action.pin() == null) {
-            sendResult(action.reqId(), "pin_required");
+            sendResult(action.reqId(), needsPin ? "pin_required" : "remote_locked");
             return;
         }
         try {
             instance.pinExecutor.execute(() -> {
                 var check = instance.auth.checkPin(mainframe, current.tokenHash(), action.pin());
                 switch (check.result()) {
-                    case OK -> runOnServer(current, action, true);
-                    case NOT_SET -> sendResult(action.reqId(), "pin_not_set");
-                    case WRONG -> sendResult(action.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                    case OK -> {
+                        remoteUnlocked(current, mainframe);
+                        runOnServer(current, action, true);
+                    }
+                    case NOT_SET -> sendResult(action.reqId(), remote ? "remote_no_pin" : "pin_not_set");
+                    case WRONG -> {
+                        instance.internet.failure(ip);
+                        sendResult(action.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                    }
                     case LOCKED -> {
                         sendResult(action.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
                         instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));
@@ -739,8 +865,15 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     sendTermResult(terminal.reqId(), "rate_limited", null, null);
                     return;
                 }
+                boolean remote = instance.internet.strict(ip);
                 if (!instance.auth.hasPin(mainframe)) {
-                    onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                    // plain-HTTP internet access: no terminal from the internet without a PIN
+                    if (remote) sendTermResult(terminal.reqId(), "remote_no_pin", null, null);
+                    else onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                    return;
+                }
+                if (remote && instance.internet.blocked(ip)) {
+                    sendTermResult(terminal.reqId(), "rate_limited", null, null);
                     return;
                 }
                 long lockedFor = instance.auth.pinLockedFor(current.tokenHash());
@@ -756,9 +889,18 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     instance.pinExecutor.execute(() -> {
                         var check = instance.auth.checkPin(mainframe, current.tokenHash(), terminal.pin());
                         switch (check.result()) {
-                            case OK -> onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
-                            case NOT_SET -> onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
-                            case WRONG -> sendTermResult(terminal.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                            case OK -> {
+                                remoteUnlocked(current, mainframe);
+                                onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                            }
+                            case NOT_SET -> {
+                                if (remote) sendTermResult(terminal.reqId(), "remote_no_pin", null, null);
+                                else onServer(terminal.reqId(), () -> instance.bridge.terminalOpen(current, mainframe, terminal.uplinkId(), terminalViewer));
+                            }
+                            case WRONG -> {
+                                instance.internet.failure(ip);
+                                sendTermResult(terminal.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                            }
                             case LOCKED -> {
                                 sendTermResult(terminal.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
                                 instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));

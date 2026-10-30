@@ -49,6 +49,7 @@ public final class CloudCommand {
 
     public static void init() {
         NeoForge.EVENT_BUS.addListener(RegisterCommandsEvent.class, CloudCommand::onRegister);
+        InternetCommand.init();
     }
 
     private static void onRegister(RegisterCommandsEvent event) {
@@ -108,6 +109,8 @@ public final class CloudCommand {
                         .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.List.of("viewer", "operator", "admin", "none"), b))
                         .executes(CloudCommand::role))))
             .then(Commands.literal("link").executes(CloudCommand::link))
+            // internetAccess in one setting: status for admins, switching for the server owner
+            .then(InternetCommand.node())
             // Removed mainframes (docs/SPEC.md "Mainframe removal"): list, hand out the item again, delete the data now.
             .then(Commands.literal("mainframe")
                 .then(Commands.literal("recover").executes(CloudCommand::listRemoved)
@@ -218,7 +221,8 @@ public final class CloudCommand {
         String[][] entries = {
             {"status", "/cccloud status"}, {"link", "/cccloud link"}, {"devices", "/cccloud devices"}, {"approve", "/cccloud approve"},
             {"deny", "/cccloud deny"}, {"role", "/cccloud role "}, {"trust", "/cccloud trust "}, {"pin", "/cccloud pin set "},
-            {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}, {"recover", "/cccloud mainframe recover"}};
+            {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}, {"recover", "/cccloud mainframe recover"},
+            {"internet", "/cccloud internet"}};
         for (var e : entries) {
             String command = e[1];
             source.sendSystemMessage(Component.literal(command.trim()).withStyle(style -> style.withColor(ChatFormatting.GOLD)

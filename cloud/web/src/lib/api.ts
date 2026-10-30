@@ -19,7 +19,7 @@ export function unreachableText() {
 }
 
 export const LAN_ONLY_TEXT =
-  "This Minecraft server only allows dashboard access from its local network. A server admin can allow internet access with webAllowInternet=true in the cccloud server config (ideally behind HTTPS).";
+  "This Minecraft server only allows dashboard access from its local network. A server admin can allow internet access in game with /cccloud internet (docs: Security & hosting).";
 
 async function request(path: string, init: RequestInit = {}, base = "") {
   try {
@@ -130,6 +130,11 @@ async function authed<T>(path: string, token: string, init: RequestInit = {}, ba
   const b = await body(res);
   if (isLanOnly(res.status, b)) throw new ApiError("lan_only", LAN_ONLY_TEXT);
   if (res.status === 401) throw new ApiError("unauthorized", "This browser is not linked any more.");
+  // plain-HTTP internet access: settings changes from the internet need the PIN unlock (done on the dashboard)
+  if (res.status === 403 && b?.error === "remote_locked")
+    throw new ApiError("server", "Control from the internet needs the mainframe PIN: open the dashboard, use any control and enter the PIN, then try again.");
+  if (res.status === 403 && b?.error === "remote_no_pin")
+    throw new ApiError("server", "This mainframe has no PIN, so its settings can't be changed from the internet over plain HTTP. The owner sets one in game: /cccloud pin set.");
   if (res.status === 403) throw new ApiError("server", b?.error === "not_allowed" ? "not_allowed" : b?.error ?? "forbidden");
   if (!res.ok) throw new ApiError("server", b?.error ?? `HTTP ${res.status}`);
   return b as T;

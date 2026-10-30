@@ -16,7 +16,7 @@ Ab Werk können nur Geräte im lokalen Netzwerk des Servers (und der Host selbst
 
 ```toml
 [web]
-webAllowInternet = false   # default: only LAN addresses may connect
+internetAccess = "off"   # default: only LAN addresses may connect (in game: /cccloud internet)
 ```
 
 Die Konfigurationsdatei ist `<welt>/serverconfig/cccloud-server.toml`; Änderungen greifen ohne Neustart (siehe [unten](security.md)).
@@ -52,11 +52,41 @@ Schau den Mainframe an und gib ein:
 
 Kritische Widgets (`pin=true`) brauchen eine 4- bis 8-stellige PIN. 5 Fehlversuche sperren das Gerät für 5 Minuten und benachrichtigen den Besitzer.
 
-## Zugriff aus dem Internet
+## Zugriff aus dem Internet in 2 Minuten
 
-> **Achtung:** Unverschlüsseltes HTTP über das Internet überträgt Zugangstoken und PIN im Klartext. Nutze HTTPS (Caddy, Cloudflare Tunnel oder TLS im Mod).
+Ein Befehl im Spiel (Serverbetreiber, OP-Level 4, oder die Server-Konsole):
 
-Setze `webAllowInternet = true` und wähle eine der folgenden Varianten. Läuft das Dashboard per HTTP über eine öffentliche Adresse, zeigt es eine Warnung.
+```
+/cccloud internet http
+/cccloud internet http mybase.duckdns.org
+```
+
+Der Chat antwortet mit dem **Link** zum Öffnen, dem **Port**, den du im Router weiterleitest, und **wie du es testest** (Handy mit ausgeschaltetem WLAN). Es gilt sofort, ohne Neustart. `/cccloud internet` zeigt den aktuellen Stand, `/cccloud internet off` schließt es wieder. Dasselbe in `serverconfig/cccloud-server.toml`: `internetAccess = "http"` (optional `internetDomain = "meinebasis.duckdns.org"` für einen festen Namen).
+
+| Modus | Einfach | Sicher | Braucht |
+|---|---|---|---|
+| `off` (Standard) | nichts zu tun | ja – nur dein lokales Netz | – |
+| `http` – Einfach-Modus | ein Befehl, ein Port | **nein**, siehe unten | eine PIN an jedem Mainframe, TCP-Port 8787 weitergeleitet |
+| HTTPS (Caddy, Cloudflare Tunnel, eigenes Zertifikat) | etwas Einrichtung | ja | eine Domain, siehe [Erweitert](#advanced) |
+
+### Einfaches HTTP: was passieren kann
+
+> **Achtung:** Im Modus `http` ist nichts verschlüsselt. Jeder im selben WLAN (Café, Schule, Hotel) oder auf dem Weg (Provider, VPN) kann deine Anmeldung und deine PIN mitlesen – und deine Basis dann wie du steuern. Nutze es zum Ausprobieren oder wenn du dieses Risiko in Kauf nimmst.
+
+Was CC: Cloud tut, um den Schaden klein zu halten:
+
+- **PIN für jede Steuer-Aktion aus dem Internet.** `/cccloud internet http` wird abgelehnt, bis jedes Mainframe eine PIN hat (`/cccloud pin set <Ziffern>`). Das Dashboard fragt einmal nach der PIN; danach funktionieren die Steuerelemente 10 Minuten lang in diesem Browser. Ein Mainframe ohne PIN kann aus dem Internet nur angesehen werden.
+- **Kurze Anmeldungen:** Ein Browser, der 24 Stunden nicht benutzt wurde, wird abgemeldet, wenn er aus dem Internet kommt (`publicTokenIdleHours`); im LAN gelten die üblichen 30 Tage.
+- **Neue Browser brauchen weiter [Erlauben] im Spiel;** Anfragen aus dem Internet sind im Chat markiert.
+- **Strengere Grenzen für Internet-Adressen:** 5 falsche Codes, Anmeldungen oder PINs in 15 Minuten sperren die Adresse; halb so viele Aktionen und API-Anfragen.
+- **Freigabe-Links bleiben nur lesend,** und API-Schlüssel können über einfaches HTTP aus dem Internet nichts steuern.
+- **Warnungen überall:** im Server-Log, im Chat für OPs beim Betreten und als Banner im Dashboard, das sich nicht schließen lässt.
+
+**Auf HTTPS umsteigen:** Richte einen der [erweiterten](#advanced) Wege ein (mit eigener Domain ist Caddy am einfachsten), dann `/cccloud internet off` – die erweiterten Einstellungen funktionieren für sich weiter.
+
+## Erweitert: eigenes HTTPS
+
+Diese Varianten nutzen die erweiterten `[web]`-Schlüssel und `internetAccess = "off"`.
 
 ### Caddy als Reverse Proxy (empfohlen)
 
@@ -108,9 +138,9 @@ publicUrl = "https://mc.example.com:8787"
 
 Den Let's-Encrypt-Schlüssel vorher umwandeln: `openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
 
-### Port direkt freigeben
+### Port von Hand freigeben
 
-Nur für schnelle Tests: `webAllowInternet = true`, `publicUrl = "http://mc.example.com:8787"` setzen und TCP 8787 im Panel deines Hosters freigeben.
+Ältere Einrichtungen: `webAllowInternet = true` mit `publicUrl = "http://mc.example.com:8787"` öffnet den Port ohne die Schutzmaßnahmen des Modus `http`. Besser `/cccloud internet http`.
 
 ## Große Server
 

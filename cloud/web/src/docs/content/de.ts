@@ -1129,11 +1129,38 @@ ${code("", C.COMMANDS)}
 
 Kritische Widgets (\`pin=true\`) brauchen eine 4- bis 8-stellige PIN. 5 Fehlversuche sperren das Gerät für 5 Minuten und benachrichtigen den Besitzer.
 
-## Zugriff aus dem Internet {#internet}
+## Zugriff aus dem Internet in 2 Minuten {#internet}
 
-> **Achtung:** Unverschlüsseltes HTTP über das Internet überträgt Zugangstoken und PIN im Klartext. Nutze HTTPS (Caddy, Cloudflare Tunnel oder TLS im Mod).
+Ein Befehl im Spiel (Serverbetreiber, OP-Level 4, oder die Server-Konsole):
 
-Setze \`webAllowInternet = true\` und wähle eine der folgenden Varianten. Läuft das Dashboard per HTTP über eine öffentliche Adresse, zeigt es eine Warnung.
+${code("", C.INTERNET_HTTP)}
+
+Der Chat antwortet mit dem **Link** zum Öffnen, dem **Port**, den du im Router weiterleitest, und **wie du es testest** (Handy mit ausgeschaltetem WLAN). Es gilt sofort, ohne Neustart. \`/cccloud internet\` zeigt den aktuellen Stand, \`/cccloud internet off\` schließt es wieder. Dasselbe in \`serverconfig/cccloud-server.toml\`: \`internetAccess = "http"\` (optional \`internetDomain = "meinebasis.duckdns.org"\` für einen festen Namen).
+
+| Modus | Einfach | Sicher | Braucht |
+|---|---|---|---|
+| \`off\` (Standard) | nichts zu tun | ja – nur dein lokales Netz | – |
+| \`http\` – Einfach-Modus | ein Befehl, ein Port | **nein**, siehe unten | eine PIN an jedem Mainframe, TCP-Port 8787 weitergeleitet |
+| HTTPS (Caddy, Cloudflare Tunnel, eigenes Zertifikat) | etwas Einrichtung | ja | eine Domain, siehe [Erweitert](#advanced) |
+
+### Einfaches HTTP: was passieren kann {#http-mode}
+
+> **Achtung:** Im Modus \`http\` ist nichts verschlüsselt. Jeder im selben WLAN (Café, Schule, Hotel) oder auf dem Weg (Provider, VPN) kann deine Anmeldung und deine PIN mitlesen – und deine Basis dann wie du steuern. Nutze es zum Ausprobieren oder wenn du dieses Risiko in Kauf nimmst.
+
+Was CC: Cloud tut, um den Schaden klein zu halten:
+
+- **PIN für jede Steuer-Aktion aus dem Internet.** \`/cccloud internet http\` wird abgelehnt, bis jedes Mainframe eine PIN hat (\`/cccloud pin set <Ziffern>\`). Das Dashboard fragt einmal nach der PIN; danach funktionieren die Steuerelemente 10 Minuten lang in diesem Browser. Ein Mainframe ohne PIN kann aus dem Internet nur angesehen werden.
+- **Kurze Anmeldungen:** Ein Browser, der 24 Stunden nicht benutzt wurde, wird abgemeldet, wenn er aus dem Internet kommt (\`publicTokenIdleHours\`); im LAN gelten die üblichen 30 Tage.
+- **Neue Browser brauchen weiter [Erlauben] im Spiel;** Anfragen aus dem Internet sind im Chat markiert.
+- **Strengere Grenzen für Internet-Adressen:** 5 falsche Codes, Anmeldungen oder PINs in 15 Minuten sperren die Adresse; halb so viele Aktionen und API-Anfragen.
+- **Freigabe-Links bleiben nur lesend,** und API-Schlüssel können über einfaches HTTP aus dem Internet nichts steuern.
+- **Warnungen überall:** im Server-Log, im Chat für OPs beim Betreten und als Banner im Dashboard, das sich nicht schließen lässt.
+
+**Auf HTTPS umsteigen:** Richte einen der [erweiterten](#advanced) Wege ein (mit eigener Domain ist Caddy am einfachsten), dann \`/cccloud internet off\` – die erweiterten Einstellungen funktionieren für sich weiter.
+
+## Erweitert: eigenes HTTPS {#advanced}
+
+Diese Varianten nutzen die erweiterten \`[web]\`-Schlüssel und \`internetAccess = "off"\`.
 
 ### Caddy als Reverse Proxy (empfohlen) {#caddy}
 
@@ -1157,9 +1184,9 @@ ${code("toml", C.TOML_TLS)}
 
 Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${C.PKCS8}\`. Lassen sich die Dateien nicht laden, startet das Dashboard nicht – es fällt nie heimlich auf HTTP zurück.
 
-### Port direkt freigeben {#open-port}
+### Port von Hand freigeben {#open-port}
 
-Nur für schnelle Tests: \`webAllowInternet = true\`, \`publicUrl = "http://mc.example.com:8787"\` setzen und TCP 8787 im Panel deines Hosters freigeben.
+Ältere Einrichtungen: \`webAllowInternet = true\` mit \`publicUrl = "http://mc.example.com:8787"\` öffnet den Port ohne die Schutzmaßnahmen des Modus \`http\`. Besser \`/cccloud internet http\`.
 
 ## Große Server {#big-servers}
 
@@ -1235,7 +1262,7 @@ Das Gerät wurde entfernt (im Mainframe-Bildschirm oder mit \`/cccloud revoke\`)
 
 ## „LAN only“ {#lan-only}
 
-Der Server erlaubt nur lokale Adressen. Ein Admin kann \`webAllowInternet\` einschalten – am besten hinter HTTPS. Siehe [Sicherheit](/docs/security#internet).
+Der Server erlaubt nur lokale Adressen. Der Serverbetreiber kann ihn mit \`/cccloud internet\` öffnen – siehe [Zugriff aus dem Internet](/docs/security#internet).
 
 ## Bedienelemente sind ausgegraut {#locked}
 

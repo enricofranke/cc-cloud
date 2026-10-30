@@ -49,6 +49,11 @@ final class ApiHandler {
                 return;
             }
         }
+        // Plain-HTTP internet access: a key cannot carry the PIN, so nothing is controlled through the API from the internet.
+        if ((route.id() == Router.Id.API_WIDGET || route.id() == Router.Id.API_SCENE_RUN) && instance.internet.strict(ip)) {
+            respond(http, ctx, req, 403, error("insecure_transport"), origin, 0);
+            return;
+        }
         var tokens = HttpHandler.bearerTokens(req);
         if (tokens.size() != 1 || !ApiKeys.looksLikeKey(tokens.getFirst())) {
             respond(http, ctx, req, 401, error("unauthorized"), origin, 0);

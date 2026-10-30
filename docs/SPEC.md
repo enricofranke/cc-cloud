@@ -1983,3 +1983,63 @@ compression alone keeps them), `StoreVerifierTest` (rotated key), `UpgradeEffect
 `config_live_reload` (environment `cccloud:config`, its own batch): edits three cached values, fires the real
 `ModConfigEvent.Reloading`, checks the running web server, a loaded mainframe and the report, then `/cccloud config
 reload`'s re-read restores the file's values.
+
+## Internet access in one setting (requested 2026-10-30)
+
+Opening the dashboard to the internet took four keys (`webBind`, `webAllowInternet`, `webTrustedProxies`, `publicUrl`)
+plus a reverse proxy. Now one server setting, `[web] internetAccess`, and one command do it; the old keys stay as
+advanced overrides.
+
+### Config (`[web]`, one block)
+| Key | Default | Meaning |
+|---|---|---|
+| `internetAccess` | `off` | `off` = LAN only, the advanced keys decide (also `webAllowInternet = true` of older setups); `http` = plain HTTP over the internet with the protections below. (`https` with built-in certificates and `proxy` follow.) |
+| `internetDomain` | `""` | Host name or IP players use from the internet (e.g. a DuckDNS name). Empty: the public IP. Added to the Host allow-list. |
+| `publicTokenIdleHours` | 24 | `http`: a device token unused this long is refused (and dropped) when it comes from an internet address. |
+
+Mapping (`InternetSettings.resolve`, unit tested): `off` → exactly the configured keys. `http` → `webAllowInternet`
+on; `publicUrl` = `http://<internetDomain>:<webPort>` unless `publicUrl` is set (it always wins); TLS files keep
+working (then `https://…`, the protections stay); with neither domain nor `publicUrl` the public IP is looked up once
+in the background at start ("what is my IP": api.ipify.org, then checkip.amazonaws.com, then ipv4.icanhazip.com; only
+in internet modes without a domain, never in GameTests) and shown in game.
+
+### Command
+`/cccloud internet [status]` (op level 2): the running mode, the internet link, mainframes without a PIN, a pending change.
+`/cccloud internet off` and `/cccloud internet http [domain|auto]` (op level 4 or the console): write the config
+(`ModConfigSpec` set + save) and print the next steps: the link, "forward TCP port <webPort> to <LAN IP> port <webPort>"
+with the router menu names, and the self-test. There is no port test from outside: that would need a third-party
+service, so the text says to open the link on a phone with Wi-Fi off. The change applies at once through the live config
+(`ConfigReload.apply`: the `[web]` keys are reconfigured all or nothing; the mode joins `WebSettings`, so a mode or
+domain change closes the connections of the old rules); if it could not switch, the errors and "not active yet" are
+shown (the running mode is compared with the configured one). `http` is refused while no mainframe exists
+or any standing mainframe (removed ones in retention left out) has no PIN; the refusal names them. Text in
+`InternetAdvice` (unit tested with the real en_us/de_de files), chat components in `InternetCommand`.
+
+### Plain-HTTP mode (`internetAccess = http`)
+All rules apply only to clients with an internet address (not loopback/private/CGNAT, after the trusted-proxy rules);
+the LAN works as before. `InternetGuard` holds them (pure Java, thread-safe):
+- **Writes need the PIN.** `ClientMessages.isWrite` classifies every message type (exhaustive switch over the sealed
+  interface): actions, layout, card settings, net unlink, redstone overrides/devices, rules, scenes, production pins,
+  storage cancel/favorite/autostock, terminal open/input are writes; item search, storage browsing, statistics, craft
+  plans, term_close, pong and auth are not. A write is refused with its own result type and `remote_locked` until the
+  session sent `{"t":"unlock","reqId","pin"}` → `unlock_result {ok, seconds}` (or an action carried the `pin`); a
+  correct PIN unlocks writes for 10 minutes for that token, mainframe and address. A mainframe without a PIN answers
+  `remote_no_pin` (watching only). Opening a terminal needs the PIN anyway; a PIN entered for a PIN widget or the
+  terminal also unlocks. Over HTTP: access, shares, push and API-key changes need the unlock (`403 remote_locked`);
+  script writes need the PIN header as before (and `remote_no_pin` without a PIN); revoking a device stays possible.
+  Public API keys cannot carry a PIN: widget and scene writes from the internet answer `403 insecure_transport`.
+  Every unlock is written to the mainframe's audit log.
+- **Short token life:** a token whose last use is older than `publicTokenIdleHours` is dropped when it shows up from an
+  internet address (WebSocket: `token_expired`, 4401; HTTP: 401 `unauthorized`/`token_expired`). It is an expiry,
+  not a revocation (API keys stay). Open sessions keep working.
+- **Stricter limits:** 5 failed logins, pairing codes, share secrets or PINs per address in 15 minutes block pairing,
+  logins, device API calls and WebSocket upgrades from it (429); 5 actions per second per socket (LAN 10), 60 device
+  API requests per minute per address (LAN 120), one unlock per second.
+- **Pairing** still needs the in-game approval; requests from internet addresses get an extra line in chat.
+- **Share links** stay read-only (hard deny before the unlock gate; `unlock` from a share session is `forbidden`).
+- **Warnings:** a framed WARN block in the server log at start (plus the mainframes without a PIN), a red chat warning
+  for ops (level 2) on join, and in the dashboard a banner without a close button (`GET /api/config` returns
+  `internet {mode, remote}`). The dashboard opens a PIN dialog when a write comes back with `remote_locked`.
+
+Tests: `InternetSettingsTest`, `InternetGuardTest`, `InternetAdviceTest`, `InternetHttpModeTest` (real WebSocket
+sessions and HTTP routes from internet and LAN addresses), GameTest `internet_mode_switch`.

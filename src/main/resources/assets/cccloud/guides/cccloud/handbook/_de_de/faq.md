@@ -42,7 +42,7 @@ Das Gerät wurde entfernt (im Mainframe-Bildschirm oder mit `/cccloud revoke`), 
 
 ## „LAN only“
 
-Der Server erlaubt nur lokale Adressen. Ein Admin kann `webAllowInternet` einschalten – am besten hinter HTTPS. Siehe [Sicherheit](security.md).
+Der Server erlaubt nur lokale Adressen. Der Serverbetreiber kann ihn mit `/cccloud internet` öffnen – siehe [Zugriff aus dem Internet](security.md).
 
 ## Bedienelemente sind ausgegraut
 

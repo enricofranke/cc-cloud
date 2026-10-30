@@ -105,8 +105,10 @@ public final class CloudWebServer {
         if (expired > 0) CloudLog.LOGGER.info("[cccloud] {} dashboard device(s) expired after 30 days without use", expired);
 
         var instance = new WebInstance(new MinecraftBridge(server, auth), auth, WebAuthData.access(server), policy,
-            computeUrl(server, settings.bind(), settings.port(), policy.ssl() != null), settings.port());
+            computeUrl(server, settings.bind(), settings.port(), policy.ssl() != null, settings.publicUrl()), settings.port());
         instance.settings = settings;
+        instance.internet.update(settings.internet());
+        instance.publicUrl = settings.publicUrl();
         instance.bannedIps = bannedIps(server);
         instance.apiKeys = ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys();
         instance.api = MinecraftBridge.apiSettings();
@@ -126,7 +128,7 @@ public final class CloudWebServer {
         if (settings.port() == 0 && instance.channel.localAddress() instanceof InetSocketAddress bound) {
             // dev/GameTest runs: an ephemeral port, so parallel test runs never collide (a failed bind would keep every mainframe offline)
             instance.port = bound.getPort();
-            instance.url = computeUrl(server, settings.bind(), bound.getPort(), policy.ssl() != null);
+            instance.url = computeUrl(server, settings.bind(), bound.getPort(), policy.ssl() != null, settings.publicUrl());
         }
         instance.flushTask = group.next().scheduleAtFixedRate(() -> {
             try {
@@ -135,7 +137,10 @@ public final class CloudWebServer {
                 CloudLog.LOGGER.error("[cccloud] Error while flushing dashboard updates", t);
             }
         }, 100, 100, TimeUnit.MILLISECONDS);
-        instance.cleanupTask = group.next().scheduleAtFixedRate(instance.pairLimiter::cleanup, 1, 1, TimeUnit.MINUTES);
+        instance.cleanupTask = group.next().scheduleAtFixedRate(() -> {
+            instance.pairLimiter.cleanup();
+            instance.internet.cleanup();
+        }, 1, 1, TimeUnit.MINUTES);
         current = instance;
         announce(instance);
     }
@@ -153,6 +158,7 @@ public final class CloudWebServer {
         for (var h : settings.allowedHosts()) hosts.add(h.trim().toLowerCase(java.util.Locale.ROOT));
         String publicHost = HostCheck.hostOfUrl(settings.publicUrl());
         if (publicHost != null) hosts.add(publicHost);
+        if (settings.internet().domain() != null) hosts.add(settings.internet().domain());
         return new WebPolicy(ssl, proxies, settings.allowInternet(), settings.trustCloudflare(), hosts, settings.compression());
     }
 
@@ -183,12 +189,60 @@ public final class CloudWebServer {
         CloudLog.LOGGER.info("[cccloud] Dashboard web server listening on {}:{} ({}, {}) – open {}", settings.bind().isEmpty() ? "*" : settings.bind(), instance.port,
             tls ? "HTTPS" : "plain HTTP", settings.allowInternet() ? "internet allowed" : "LAN only", instance.url);
         for (var warning : warnings(settings, tls)) CloudLog.LOGGER.warn(warning);
+        if (settings.internet().mode() == ai.ezfox.cccloud.web.internet.InternetMode.HTTP) plainHttp(instance, tls);
+    }
+
+    /**
+     * {@code internetAccess = http}: a big warning in the log, the mainframes that cannot be controlled from the internet
+     * (no PIN), and the internet link (public IP looked up in the background when no domain or publicUrl is set).
+     */
+    private static void plainHttp(WebInstance instance, boolean tls) {
+        String line = "[cccloud] ************************************************************************";
+        CloudLog.LOGGER.warn(line);
+        CloudLog.LOGGER.warn("[cccloud] * INSECURE: the CC: Cloud dashboard is open to the internet over plain HTTP");
+        CloudLog.LOGGER.warn("[cccloud] * (internetAccess = http). Anyone on the same Wi-Fi or on the network path");
+        CloudLog.LOGGER.warn("[cccloud] * can read logins and the PIN. Every control action from the internet needs");
+        CloudLog.LOGGER.warn("[cccloud] * the mainframe PIN; browsers unused for {} h are logged out there.",
+            instance.internet.settings().publicTokenIdleMs() / 3_600_000L);
+        CloudLog.LOGGER.warn("[cccloud] * Switch it off with /cccloud internet off (docs: Security & hosting).");
+        CloudLog.LOGGER.warn(line);
+        if (tls) CloudLog.LOGGER.info("[cccloud] internetAccess = http uses your TLS certificate (tlsCertPath), so connections are encrypted");
+        var server = ai.ezfox.cccloud.network.CloudNetwork.server();
+        if (server != null) {
+            var missing = ai.ezfox.cccloud.command.InternetCommand.mainframesWithoutPin(server);
+            if (!missing.isEmpty()) {
+                CloudLog.LOGGER.warn("[cccloud] {} mainframe(s) have no PIN and can only be watched from the internet, not controlled: {}. "
+                    + "Set one in game: look at the mainframe and run /cccloud pin set <4-8 digits>.", missing.size(), String.join(", ", missing));
+            }
+        }
+        if (instance.publicUrl.isEmpty()) {
+            int port = instance.port;
+            ai.ezfox.cccloud.web.internet.PublicIp.lookup().thenAccept(ip -> {
+                if (ip == null || current != instance || !instance.publicUrl.isEmpty()) return;
+                instance.publicUrl = ai.ezfox.cccloud.web.internet.InternetSettings.url(tls ? "https" : "http", ip, port);
+                CloudLog.LOGGER.info("[cccloud] Dashboard from the internet: {} (TCP port {} must be forwarded to this machine)", instance.publicUrl, port);
+            });
+        }
+    }
+
+    /** The {@code internetAccess} mode of the running dashboard (OFF when it does not run). */
+    public static ai.ezfox.cccloud.web.internet.InternetMode internetMode() {
+        var instance = current;
+        return instance == null ? ai.ezfox.cccloud.web.internet.InternetMode.OFF : instance.internet.mode();
+    }
+
+    /** The internet link of the running dashboard ({@code publicUrl}, the domain or the looked-up public IP), or "". */
+    public static String publicUrl() {
+        var instance = current;
+        return instance == null ? "" : instance.publicUrl;
     }
 
     /** The warnings of a configuration (the same at start and after a reload). */
     static List<String> warnings(WebSettings settings, boolean tls) {
         var list = new ArrayList<String>();
-        if (!tls && settings.allowInternet()) {
+        for (String note : settings.internet().notes()) list.add("[cccloud] " + note);
+        // plain-HTTP mode has its own, bigger warning (announce)
+        if (!tls && settings.allowInternet() && settings.internet().mode() != ai.ezfox.cccloud.web.internet.InternetMode.HTTP) {
             list.add("[cccloud] webAllowInternet=true with plain HTTP: tokens and PINs travel unencrypted. Configure TLS "
                 + "(tlsCertPath/tlsKeyPath) or put the dashboard behind an HTTPS reverse proxy or tunnel (see docs/HOSTING.md).");
         }
@@ -226,7 +280,7 @@ public final class CloudWebServer {
             return started != null ? new WebChange(true, true, "web server started on " + started.url)
                 : WebChange.failed("the web server could not start (see the server log); the dashboard stays off");
         }
-        var change = reconfigure(instance, next, (settings, port) -> computeUrl(server, settings.bind(), port, instance.policy.ssl() != null));
+        var change = reconfigure(instance, next, (settings, port) -> computeUrl(server, settings.bind(), port, instance.policy.ssl() != null, settings.publicUrl()));
         if (!change.ok()) CloudLog.LOGGER.error("[cccloud] {}", change.message());
         else if (change.changed()) announce(instance);
         return change;
@@ -288,6 +342,8 @@ public final class CloudWebServer {
         // Swap: new connections from here on get the new rules.
         instance.policy = policy;
         instance.settings = next;
+        instance.internet.update(next.internet());
+        instance.publicUrl = next.publicUrl();
         instance.channel = listening;
         if (moved) {
             int port = next.port() == 0 && listening != null && listening.localAddress() instanceof InetSocketAddress bound ? bound.getPort() : next.port();
@@ -445,8 +501,8 @@ public final class CloudWebServer {
         return Collections.unmodifiableSet(new HashSet<>(java.util.Arrays.asList(list)));
     }
 
-    private static String computeUrl(MinecraftServer server, String bind, int port, boolean tls) {
-        String configured = CloudConfig.get(CloudConfig.PUBLIC_URL).trim();
+    private static String computeUrl(MinecraftServer server, String bind, int port, boolean tls, String publicUrl) {
+        String configured = publicUrl.trim();
         if (!configured.isEmpty()) return configured.endsWith("/") ? configured.substring(0, configured.length() - 1) : configured;
         String host;
         if (!bind.isEmpty() && !bind.equals("0.0.0.0") && !bind.equals("::")) {
@@ -467,7 +523,7 @@ public final class CloudWebServer {
         if (instance == null) return List.of();
         var settings = instance.settings;
         // the running server's settings (a reload that could not be applied leaves the file ahead of them)
-        return LanAddresses.urls(settings != null ? settings.publicUrl() : CloudConfig.get(CloudConfig.PUBLIC_URL),
+        return LanAddresses.urls(settings != null ? instance.publicUrl : CloudConfig.get(CloudConfig.PUBLIC_URL),
             settings != null ? settings.bind() : CloudConfig.get(CloudConfig.WEB_BIND), instance.port, instance.policy.ssl() != null,
             LanAddresses.select(LanAddresses.scan()));
     }

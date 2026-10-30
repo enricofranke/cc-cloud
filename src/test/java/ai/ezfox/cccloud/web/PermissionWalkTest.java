@@ -197,8 +197,10 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"term_open\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\"}", Perm.TERMINAL);
         cases.put("{\"t\":\"term_input\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"events\":[{\"type\":\"char\",\"c\":\"a\"}]}", Perm.TERMINAL);
         cases.put("{\"t\":\"craft_preview\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:stick\",\"count\":4}", Perm.STORAGE_CRAFT);
-        // Message types that need no mainframe permission beyond the login itself.
-        var free = Set.of(ClientMessages.Auth.class, ClientMessages.AuthShare.class, ClientMessages.Pong.class, ClientMessages.Invalid.class);
+        // Message types that need no mainframe permission beyond the login itself. Unlock (plain-HTTP internet access) only
+        // checks the PIN: every write it unlocks still needs its own permission.
+        var free = Set.of(ClientMessages.Auth.class, ClientMessages.AuthShare.class, ClientMessages.Pong.class, ClientMessages.Invalid.class,
+            ClientMessages.Unlock.class);
         var covered = new java.util.HashSet<Class<?>>(free);
         for (var text : cases.keySet()) covered.add(ClientMessages.parse(text).getClass());
         for (var type : ClientMessages.Message.class.getPermittedSubclasses()) assertTrue(covered.contains(type), "covered: " + type.getSimpleName());

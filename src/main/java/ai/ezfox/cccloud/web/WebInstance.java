@@ -40,6 +40,9 @@ final class WebInstance {
     final ChannelGroup connections = new DefaultChannelGroup("cccloud-web", GlobalEventExecutor.INSTANCE);
     /** Connections per resolved client IP behind a trusted proxy (security review L7). */
     final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.atomic.AtomicInteger> proxiedClients = new java.util.concurrent.ConcurrentHashMap<>();
+    /** {@code internetAccess} rules for internet addresses (plain-HTTP mode: PIN for writes, token expiry, limits); survives reloads. */
+    final ai.ezfox.cccloud.web.internet.InternetGuard internet = new ai.ezfox.cccloud.web.internet.InternetGuard(
+        ai.ezfox.cccloud.web.internet.InternetSettings.OFF, System::currentTimeMillis);
     final ConnectionLimiter limiter;
     /** /api/icon: 200 requests per minute per IP. */
     final java.util.concurrent.ConcurrentHashMap<String, TokenBucket> iconLimits = new java.util.concurrent.ConcurrentHashMap<>();
@@ -74,6 +77,8 @@ final class WebInstance {
         new DefaultThreadFactory("cccloud-store", true));
     final ThreadPoolExecutor pinExecutor = new ThreadPoolExecutor(1, 1, 30, TimeUnit.SECONDS, new ArrayBlockingQueue<>(32),
         new DefaultThreadFactory("cccloud-pin", true));
+    /** The internet link ({@code publicUrl}, from {@code internetDomain} or the looked-up public IP); "" = LAN addresses only. */
+    volatile String publicUrl = "";
     /** Set again after binding when the requested port was 0 (GameTests: a free port). */
     volatile String url;
     volatile int port;

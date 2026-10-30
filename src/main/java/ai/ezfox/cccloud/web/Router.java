@@ -42,6 +42,15 @@ public final class Router {
             return this == SCRIPT_PUT || this == SCRIPT_DELETE || this == SCRIPT_RUN || this == SCRIPT_MOVE;
         }
 
+        /**
+         * Mainframe settings changed over HTTP (access, shares, push targets, API keys). Plain-HTTP internet access asks for
+         * the PIN unlock before these from an internet address; script writes check the PIN themselves; revoking a device
+         * stays possible (it only protects).
+         */
+        public boolean isManagementWrite() {
+            return this == ACCESS_POST || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_POST || this == APIKEYS_POST;
+        }
+
         public boolean isScript() {
             return isScriptWrite() || this == SCRIPT_LIST || this == SCRIPT_GET;
         }

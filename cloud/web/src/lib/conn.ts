@@ -18,6 +18,16 @@ import { normalizeLayout, type LayoutDoc } from "./layout.ts";
  */
 export const configChanged = signal(0);
 
+/** Outcome of a PIN unlock (plain-HTTP internet access). */
+export interface UnlockOutcome {
+  ok: boolean;
+  error?: string;
+  attemptsLeft?: number;
+  retryAfter?: number;
+  /** how long the unlock lasts (0: the session needs none) */
+  seconds: number;
+}
+
 /** Outcome of an action as reported by action_result (plus extras like attemptsLeft/retryAfter). */
 /** Storage card v2 (docs/SPEC.md "Storage card v2 – protocol"). */
 export interface StorageRow {
@@ -156,6 +166,9 @@ export const REJECT_TEXT: Record<string, string> = {
   pin_locked: "Too many wrong PINs – this device is locked for a few minutes.",
   access_revoked: "Your access to this mainframe was revoked.",
   forbidden: "This device is read-only.",
+  remote_locked: "Control from the internet needs the mainframe PIN – enter it, then try again.",
+  remote_no_pin: "This mainframe has no PIN, so it can't be controlled from the internet over plain HTTP. The owner sets one in game: /cccloud pin set.",
+  insecure_transport: "Not over plain HTTP from the internet.",
   zone_claimed: "The zone may not reach into another team's claim.",
   zone_protected: "The zone may not reach into spawn protection or beyond the world border.",
   not_allowed: "Your role on this mainframe does not allow this.",
@@ -203,6 +216,14 @@ export class MainframeConn {
   readonly lanOnly = signal(false);
   /** Set after too many wrong PINs: PIN-protected controls are locked until then (ms epoch). */
   readonly pinLockedUntil = signal(0);
+  /**
+   * Plain-HTTP internet access (internetAccess = http): the server refused a write from this internet session.
+   * "locked" = enter the mainframe PIN first (unlock()), "no_pin" = the mainframe has no PIN (nothing can be controlled).
+   */
+  readonly remoteLock = signal<"locked" | "no_pin" | null>(null);
+  /** Until when a PIN unlock lasts (ms epoch, 0 = not unlocked / not needed). */
+  readonly remoteUnlockedUntil = signal(0);
+  private unlockReqs = new Map<string, { resolve: (r: UnlockOutcome) => void; timer: ReturnType<typeof setTimeout> }>();
   /** Shared dashboard layout of this mainframe (null = defaults). */
   readonly layout = signal<LayoutDoc | null>(null);
   /** v0.6 role on this mainframe (null = server without roles: canControl decides) */
@@ -346,6 +367,11 @@ export class MainframeConn {
       }
       if (!msg || typeof msg !== "object") return;
       if (msg.t === "error" && typeof msg.error === "string") this.lastError.value = msg.error.slice(0, 32);
+      // any refused write of a plain-HTTP internet session (every result type carries the error)
+      if (msg.error === "remote_locked" || msg.error === "remote_no_pin") {
+        this.remoteUnlockedUntil.value = 0;
+        this.remoteLock.value = msg.error === "remote_locked" ? "locked" : "no_pin";
+      }
       if (isAuthError(msg)) {
         this.authFailed = true;
         return;
@@ -490,6 +516,9 @@ export class MainframeConn {
           this.status.value = "open";
           this.lanOnly.value = false;
           this.attempts = 0;
+          // back after a reconnect (e.g. a config reload changed internetAccess): the public config may have changed
+          if (this.everOpened && !this.isShare) configChanged.value++;
+          this.remoteLock.value = null;
           this.everOpened = true;
         });
         break;
@@ -609,6 +638,25 @@ export class MainframeConn {
         const { [id]: _gone, ...rest } = this.terminals.value;
         this.terminals.value = rest;
         this.termClosed.value = { ...this.termClosed.value, [id]: typeof msg.reason === "string" ? msg.reason.slice(0, 32) : "closed" };
+        break;
+      }
+      case "unlock_result": {
+        const r = this.unlockReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.unlockReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        const outcome: UnlockOutcome = {
+          ok: msg.ok === true,
+          error: typeof msg.error === "string" ? msg.error : undefined,
+          attemptsLeft: typeof msg.attemptsLeft === "number" ? msg.attemptsLeft : undefined,
+          retryAfter: typeof msg.retryAfter === "number" ? msg.retryAfter : undefined,
+          seconds: typeof msg.seconds === "number" ? msg.seconds : 0,
+        };
+        if (outcome.ok) {
+          this.remoteLock.value = null;
+          this.remoteUnlockedUntil.value = outcome.seconds ? Date.now() + outcome.seconds * 1000 : 0;
+        } else if (outcome.error === "pin_locked") this.pinLockedUntil.value = Date.now() + (outcome.retryAfter ?? 300) * 1000;
+        r.resolve(outcome);
         break;
       }
       case "term_result": {
@@ -834,6 +882,22 @@ export class MainframeConn {
   }
 
   /** v0.5 E: opens (or refreshes) the terminal of the computer behind a card. Frames arrive in `terminals`. */
+  /**
+   * Plain-HTTP internet access: unlocks writes from this internet session with the mainframe PIN for a while
+   * ({"t":"unlock"} → unlock_result {ok, seconds}). Never rejects; the outcome says why it failed.
+   */
+  unlock(pin: string, timeoutMs = 8000): Promise<UnlockOutcome> {
+    return new Promise((resolve) => {
+      const reqId = newReqId();
+      if (!this.send({ t: "unlock", reqId, pin })) return resolve({ ok: false, error: "disconnected", seconds: 0 });
+      const timer = setTimeout(() => {
+        this.unlockReqs.delete(reqId);
+        resolve({ ok: false, error: "timeout", seconds: 0 });
+      }, timeoutMs);
+      this.unlockReqs.set(reqId, { resolve, timer });
+    });
+  }
+
   termOpen(uplinkId: string, pin?: string, timeoutMs = 8000): Promise<void> {
     const reqId = newReqId();
     return new Promise((resolve, reject) => {

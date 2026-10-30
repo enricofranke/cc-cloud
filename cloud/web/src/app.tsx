@@ -10,7 +10,7 @@ import type { ComponentType } from "preact";
 import { saved } from "./lib/store.ts";
 import { syncConns } from "./lib/conns.ts";
 import { insecureContext } from "./lib/security.ts";
-import { loadPublicConfig } from "./lib/config.ts";
+import { loadPublicConfig, publicConfig } from "./lib/config.ts";
 import { configChanged } from "./lib/conn.ts";
 import { MainframeList } from "./screens/MainframeList.tsx";
 import { PairScreen } from "./screens/Pair.tsx";
@@ -65,6 +65,20 @@ function TopBar() {
 
 function InsecureBanner() {
   const [hidden, setHidden] = useState(() => sessionStorage.getItem("cccloud.httpwarn") === "1");
+  const internet = publicConfig.value.internet;
+  // internetAccess = http: the warning stays (no dismiss button), for every browser of this dashboard
+  if (internet.mode === "http")
+    return (
+      <div class="banner banner-insecure" role="alert">
+        <span class="banner-icon">
+          <IconAlert size={18} />
+        </span>
+        <div class="banner-text">
+          <b>Insecure: plain HTTP over the internet.</b> Anyone on the same Wi-Fi or on the way can read your login and PIN.{" "}
+          {internet.remote ? "Controls ask for the mainframe PIN first. " : ""}Ask the server admin to switch to HTTPS.
+        </div>
+      </div>
+    );
   if (!insecureContext() || hidden) return null;
   return (
     <div class="banner banner-insecure" role="alert">

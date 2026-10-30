@@ -14,6 +14,7 @@ import { PixelIcon } from "../components/PixelIcon.tsx";
 import type { PowerInfo } from "../lib/types.ts";
 import { PERMISSIONS, presetHas, type MainframeConn } from "../lib/conn.ts";
 import { SetupGuide } from "./SetupGuide.tsx";
+import { RemoteUnlock } from "../components/RemoteUnlock.tsx";
 import { CapacityLine } from "../components/Capacity.tsx";
 import { feature } from "../lib/config.ts";
 import { lang, setLang, t } from "../lib/i18n.ts";
@@ -187,6 +188,7 @@ export function Dashboard({ id }: { id: string }) {
 
   return (
     <>
+      <RemoteUnlock conn={conn} />
       <header class="dash-head">
         <button type="button" class="icon-btn" aria-label="Back to mainframes" onClick={() => navigate("/")}>
           <IconBack />

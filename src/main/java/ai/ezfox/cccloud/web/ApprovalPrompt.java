@@ -31,5 +31,9 @@ public final class ApprovalPrompt {
         message.append(Component.literal(" ")).append(Component.translatable("cccloud.approval.expires", String.format("%d:%02d", seconds / 60, seconds % 60))
             .withStyle(ChatFormatting.GRAY));
         player.sendSystemMessage(message);
+        // A browser from outside the LAN (internet access on): say so, so nobody clicks [Allow] for a stranger.
+        if (!IpUtil.isLan(pending.ip())) {
+            player.sendSystemMessage(Component.translatable("cccloud.approval.internet", pending.ip()).withStyle(ChatFormatting.GOLD));
+        }
     }
 }

@@ -20,7 +20,8 @@ It is reviewed before every release.
 ## Attackers
 
 1. **Other players on the server.** They may try to see or control someone else's mainframe, raise their own role, or abuse team membership.
-2. **Internet scanners and random clients.** These matter as soon as the port is reachable, for example with `webAllowInternet=true` or behind a proxy.
+2. **Internet scanners and random clients.** These matter as soon as the port is reachable, for example with `internetAccess = http`, `webAllowInternet=true` or behind a proxy.
+8. **Eavesdroppers on the network path (plain HTTP).** Someone on the same Wi-Fi, a hotspot or a provider reads what travels unencrypted (`internetAccess = http`).
 3. **Share-link holders.** Anyone the link was forwarded to, including people who find it later in a chat log.
 4. **Malicious mod clients.** Modified game clients sending crafted GUI payloads, such as screen actions or Link Card use.
 5. **A stolen browser or token.** For example a lost phone.
@@ -207,6 +208,45 @@ never weaker than the old one in between:
 - Residual: whoever can write the config file can change these settings live – the same person could before, with a
   restart. Open dashboards on an old port or scheme must be reopened at the new address.
 
+### Internet access modes (`internetAccess`, 2026-10-30)
+One setting decides how the dashboard is reachable from the internet; the advanced `[web]` keys stay overrides
+(`InternetSettings`, docs/SPEC.md "Internet access in one setting"). Only the server owner (op level 4 or the console)
+can switch it in game (`/cccloud internet`); everyone else can only edit the config file on the server.
+
+| Mode | Who can reach the dashboard | On the wire | Main risks |
+|---|---|---|---|
+| `off` (default) | LAN only (loopback, private, CGNAT ranges); an older `webAllowInternet = true` setup as configured | as configured | as before |
+| `http` | everyone who reaches the port | **plain text**: device tokens, pairing codes, share secrets, the PIN and every value | anyone on the same Wi-Fi or on the network path (hotspot, provider, VPN) can read logins and the PIN and replay them |
+
+**Threat model of `http` (easy mode).** It is explicitly insecure: an on-path attacker can read a device token and the
+PIN once they are used and then act as that browser, also from elsewhere. TLS is the only real fix; `http` mode limits
+what a passive or later attacker gets and what a random scanner can do. The rules apply to clients with an internet
+address (after the trusted-proxy rules); the LAN works as before (`InternetGuard`):
+- **PIN for every write from the internet.** `/cccloud internet http` is refused until every standing mainframe has a
+  PIN; at runtime a mainframe without a PIN cannot be controlled from the internet at all (`remote_no_pin`), only
+  watched. Every write message (classified by `ClientMessages.isWrite`, exhaustive over the sealed message interface)
+  and every management route (access, shares, push, API keys) needs a PIN unlock: a correct PIN unlocks writes for 10
+  minutes for that token, mainframe and address (a token stolen and used from another address needs the PIN again).
+  Script writes and the terminal need the PIN as before. The unlock uses the normal PIN lockouts (device and
+  mainframe) and is written to the audit log. Public API keys cannot carry the PIN: control through the API from the
+  internet is refused (`insecure_transport`).
+- **Short token life on the internet:** a token unused for `publicTokenIdleHours` (24) is dropped when it shows up from
+  an internet address, so a token sniffed long ago does not work any more once its browser went quiet (on the LAN: 30
+  days as before).
+- **Stricter limits:** 5 failed logins, pairing codes, share secrets or PINs per internet address in 15 minutes block
+  pairing, logins, device API calls and WebSocket upgrades from it; 5 actions per second per socket and 60 device API
+  requests per minute per address (half the LAN limits); one unlock per second.
+- **Pairing** still needs [Allow] in game; requests from internet addresses get an extra warning line.
+- **Share links** never gain control: share sessions are hard-denied before the unlock gate, `unlock` included.
+- **Visibility:** a framed warning in the server log at every start (with the mainframes that have no PIN), a red chat
+  warning for ops on join, a dashboard banner without a close button.
+- Residual: a token and the PIN read on the way can be used right away (within 10 minutes the unlock does not even need
+  the PIN); everything a dashboard shows can be read on the way; the protections only start when a mainframe has a PIN.
+  The answer is HTTPS (a reverse proxy, a tunnel or TLS files).
+- Privacy: in `http` mode without `internetDomain` the server asks a "what is my IP" service (api.ipify.org, then
+  checkip.amazonaws.com, then ipv4.icanhazip.com) for its public address once at start and when `/cccloud internet`
+  runs. Nothing else is sent; there is no outside port check (it would need a third-party service).
+
 ### Removed mainframes: retention and ownership
 - Breaking a mainframe deletes nothing at once: devices, accounts, PIN, layout, rules, scenes, API keys and push targets are kept for `mainframeRetentionDays` (default 7) and then deleted; `/cccloud mainframe purge <id>` (owner or `cccloud.admin.manage`) deletes them earlier. While a mainframe is removed, its devices stay paired but cannot act (it is offline), and relinking its devices elsewhere still needs `network.link` on it.
 - Ownership is stored on the server. The dropped item only names the mainframe; whoever places it restores the original owner's mainframe and gets no rights from that. A second item of a mainframe that stands is refused.
@@ -342,7 +382,7 @@ Follow-ups done after the review (2026-10-30, branch `followups`):
   image is checked and pinned. Checked with `test/deploy.test.ts` and a strict schema validation (no cluster).
 
 ## Residual risks and operator advice
-- Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md).
+- Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md). `internetAccess = http` is easy mode: see "Internet access modes" for what it does and does not protect.
 - Server admins with `cccloud.admin.*` can see every mainframe by design (moderation). This is logged, but not prevented.
 - Anyone a share link is forwarded to can view it until it expires or is revoked. Prefer short expiries and low `maxViewers`.
 - A player who gets someone else's in-game account can approve new browsers for it. That is outside the scope of this mod.
