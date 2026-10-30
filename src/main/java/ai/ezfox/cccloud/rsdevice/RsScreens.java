@@ -129,6 +129,7 @@ public final class RsScreens {
 
     private static void onAction(ActionPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
+        if (!ai.ezfox.cccloud.ingame.PacketLimiter.SCREEN_ACTIONS.allow(player.getUUID())) return;
         if (!(player.containerMenu instanceof RsDeviceMenu menu) || menu.containerId != payload.containerId() || !menu.stillValid(player)
             || !(player.level().getBlockEntity(menu.pos()) instanceof RsDeviceBlockEntity device)) {
             return;
