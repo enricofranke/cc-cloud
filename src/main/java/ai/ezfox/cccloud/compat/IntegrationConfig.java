@@ -13,6 +13,8 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
     public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
     public static final ModConfigSpec.IntValue WIRED_MACHINE_CARDS;
+    public static final ModConfigSpec.BooleanValue PERIPHERAL_CARD;
+    public static final ModConfigSpec.IntValue PERIPHERAL_POLL_SECONDS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> GENERIC_CARD_EXCLUDES;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
@@ -21,6 +23,7 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue GATEWAYS_CARD;
     public static final ModConfigSpec.BooleanValue WAYSTONES_CARD;
     public static final ModConfigSpec.BooleanValue QUESTS_CARD;
+    public static final ModConfigSpec.BooleanValue WARPS_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -44,6 +47,13 @@ public final class IntegrationConfig {
                 "an uplink or probe of their own keep that one.")
             .translation("cccloud.configuration.wiredMachineCards")
             .defineInRange("wiredMachineCards", 8, 0, 32);
+        PERIPHERAL_CARD = b.comment("Blocks without a card of their own that CC: Tweaked offers as a peripheral get the Peripheral card: the owner picks",
+                "up to 6 getters (methods without arguments) in the dashboard's card settings, and optionally a set...(boolean) method as switch.")
+            .translation("cccloud.configuration.peripheralCard")
+            .define("peripheralCard", true);
+        PERIPHERAL_POLL_SECONDS = b.comment("How often the Peripheral card calls the picked getters (seconds). Slow methods are called less often automatically.")
+            .translation("cccloud.configuration.peripheralPollSeconds")
+            .defineInRange("peripheralPollSeconds", 2, 1, 60);
         b.pop();
 
         b.push("server");
@@ -71,6 +81,9 @@ public final class IntegrationConfig {
         QUESTS_CARD = b.comment("FTB Quests: a Quests card with the quest progress of the owner's team (needs view.positions).")
             .translation("cccloud.configuration.questsCard")
             .define("questsCard", true);
+        WARPS_CARD = b.comment("FTB Essentials: a read-only Warps card with the server's warps, their dimension and coordinates (needs view.positions).")
+            .translation("cccloud.configuration.warpsCard")
+            .define("warpsCard", true);
         b.pop();
         SPEC = b.build();
     }

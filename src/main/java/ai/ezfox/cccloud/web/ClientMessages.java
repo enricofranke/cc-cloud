@@ -23,8 +23,19 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, CardSettings, Pong, Invalid {
     }
+
+    /**
+     * Wave 4: the dashboard's card settings of a device card ({@code layout.edit}), e.g. the methods a Peripheral card
+     * shows: {@code {"t":"card_settings","reqId","uplinkId","settings":{...}}} → {@code card_settings_result}. The
+     * settings object is checked by the card itself; here only its shape and size.
+     */
+    public record CardSettings(String reqId, UUID uplinkId, JsonObject settings) implements Message {
+    }
+
+    /** Card settings are small: at most this many characters of JSON. */
+    static final int MAX_CARD_SETTINGS = 2048;
 
     /**
      * v0.10 scenes: {@code scene_set {reqId, scene}} and {@code scene_delete {reqId, id}} (both {@code rules.edit}),
@@ -227,6 +238,15 @@ public final class ClientMessages {
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);
             case "query" -> parseQuery(obj);
+            case "card_settings" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+                var settings = obj.get("settings");
+                boolean extra = obj.keySet().stream().anyMatch(k -> !java.util.Set.of("t", "reqId", "uplinkId", "settings").contains(k));
+                yield uplinkId == null || extra || settings == null || !settings.isJsonObject() || settings.toString().length() > MAX_CARD_SETTINGS
+                    ? new Invalid("invalid_message", reqId) : new CardSettings(reqId, uplinkId, settings.getAsJsonObject());
+            }
             case "layout_set" -> parseLayoutSet(obj);
             default -> new Invalid("invalid_message", null);
         };

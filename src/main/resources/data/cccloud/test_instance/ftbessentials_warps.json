@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ftbessentials"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:ftbessentials_warps",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

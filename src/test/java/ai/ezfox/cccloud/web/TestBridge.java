@@ -79,6 +79,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String cardSettings(AuthStore.Device device, UUID mainframeId, ClientMessages.CardSettings message) {
+        dispatched.add("card_settings:" + message.uplinkId());
+        return null;
+    }
+
+    @Override
     public @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
         dispatched.add("rs_device:" + message.deviceId() + "=" + message.name() + "/" + message.group());
         return null;

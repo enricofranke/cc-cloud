@@ -693,7 +693,15 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     ) : panel === "settings" && selectedWidget ? (
       <WidgetSettings key={selectedWidget.widget.key} found={selectedWidget} pages={current(hist)} conn={conn} onChange={(next, key) => commit(next, key, false)} />
     ) : panel === "settings" && selectedCard ? (
-      <CardSettings key={selectedCard.key} card={selectedCard} pages={current(hist)} onChange={(next, key) => commit(next, key, false)} onPage={props.onPage} />
+      <CardSettings
+        key={selectedCard.key}
+        card={selectedCard}
+        pages={current(hist)}
+        onChange={(next, key) => commit(next, key, false)}
+        onPage={props.onPage}
+        conn={conn}
+        uplink={props.uplinks.find((u) => u.uplinkId === selectedCard.uplink.uplinkId)}
+      />
     ) : panel === "settings" ? (
       <div class="ed-empty">
         <b>Nothing selected</b>

@@ -120,6 +120,8 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("production"), reqId: z.string().min(1).max(64), op: z.enum(["overview", "item", "pin", "unpin"]) }).passthrough(),
   // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
+  // wave 4: a device card's settings (the Peripheral card's values; layout.edit), the card checks the names
+  z.object({ t: z.literal("card_settings"), reqId: z.string().min(1).max(64), uplinkId: entityId, settings: z.record(z.string(), z.unknown()) }).strict(),
   // Cloud Redstone devices: rename / regroup (network.link); plain text ≤ 32, at least one of name/group
   z.object({ t: z.literal("rs_device"), reqId: z.string().min(1).max(64), deviceId: entityId, name: z.string().max(32).optional(), group: z.string().max(32).optional() }).strict(),
   z.object({

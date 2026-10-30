@@ -33,6 +33,10 @@ public final class Integrations {
         DeviceCards.register(ai.ezfox.cccloud.compat.card.FluidTankCard.KIND, DeviceCards.GENERIC - 1, ai.ezfox.cccloud.compat.card.FluidTankCard::detect);
         test("tank_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericTank);
         test("energy_card_generic", () -> ai.ezfox.cccloud.compat.card.CardGameTests::genericEnergy);
+        // Wave 4: the Peripheral card for every other block CC: Tweaked offers as a peripheral (uplinks and probes only).
+        DeviceCards.register(ai.ezfox.cccloud.compat.cc.PeripheralCard.KIND, DeviceCards.FALLBACK, ai.ezfox.cccloud.compat.cc.PeripheralCard::detect);
+        test("peripheral_card_generic", () -> ai.ezfox.cccloud.compat.cc.PeripheralGameTests::chest);
+        test("peripheral_card_own_methods", () -> ai.ezfox.cccloud.compat.cc.PeripheralGameTests::ownMethods);
         optional("powah", () -> ai.ezfox.cccloud.compat.powah.PowahCompat::init);
         optional("enderio", () -> ai.ezfox.cccloud.compat.enderio.EnderIoCards::init);
         optional("oritech", () -> ai.ezfox.cccloud.compat.oritech.OritechCards::init);
@@ -88,6 +92,17 @@ public final class Integrations {
         optional("forbidden_arcanus", () -> ai.ezfox.cccloud.compat.forbiddenarcanus.HephaestusForgeCards::init);
         optional("pylons", () -> ai.ezfox.cccloud.compat.pylons.PylonCards::init);
         optional("arsmagicalegacy", () -> ai.ezfox.cccloud.compat.arsmagica.EtheriumCards::init);
+
+        // Wave 4: more ATM11 mods.
+        optional("justdirethings", () -> ai.ezfox.cccloud.compat.justdirethings.JustDireCards::init);
+        optional("productivetrees", () -> ai.ezfox.cccloud.compat.productivetrees.TreeMachineCards::init);
+        optional("rangedpumps", () -> ai.ezfox.cccloud.compat.rangedpumps.PumpCards::init);
+        optional("charginggadgets", () -> ai.ezfox.cccloud.compat.charginggadgets.ChargingStationCards::init);
+        optional("selling_bin", () -> ai.ezfox.cccloud.compat.sellingbin.SellingBinCards::init);
+        optional("cookingforblockheads", () -> ai.ezfox.cccloud.compat.cookingforblockheads.KitchenCards::init);
+        optional("farmingforblockheads", () -> ai.ezfox.cccloud.compat.farmingforblockheads.ShippingBinCards::init);
+        optional("trainingdummy", () -> ai.ezfox.cccloud.compat.trainingdummy.DummiesCard::init);
+        optional("ftbessentials", () -> ai.ezfox.cccloud.compat.ftbessentials.WarpsCard::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

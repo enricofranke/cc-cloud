@@ -122,6 +122,36 @@ export interface Uplink {
   /** map overlays of mainframe cards (FTB Chunks claims, Waystones) */
   claims?: ClaimsOverlay;
   waystones?: WaystonesOverlay;
+  /** wave 4: what the card's settings offer (the Peripheral card's methods); only device cards with settings */
+  cardSettings?: CardSettingsInfo;
+}
+
+/** A getter or setter a Peripheral card may use. `value`: how its result is shown. */
+export interface PeripheralMethod {
+  name: string;
+  caption: string;
+  value?: "bool" | "number" | "text";
+}
+
+/** The Peripheral card's settings: the getters shown (in order), which of them get a chart, the switch. */
+export interface PeripheralSettings {
+  show: string[];
+  charts?: string[];
+  toggle?: string | null;
+  pin?: boolean;
+}
+
+export interface CardSettingsInfo {
+  kind: "peripheral" | string;
+  type?: string;
+  types?: string[];
+  getters: PeripheralMethod[];
+  setters: PeripheralMethod[];
+  /** methods that do not declare their arguments (never offered) */
+  unknown?: number;
+  maxValues?: number;
+  maxCharts?: number;
+  settings: PeripheralSettings;
 }
 
 export interface ClaimsOverlay {
@@ -277,6 +307,14 @@ export interface NetworkInfo {
   links: NetLink[];
   /** node id -> node ids from the mainframe to that node (both ends included) */
   routes: Record<string, string[]>;
+  /** wave 4: height range of each dimension on the map and whether it has a roof (Nether, Undergarden) */
+  dims?: Record<string, DimInfo>;
+}
+
+export interface DimInfo {
+  minY: number;
+  maxY: number;
+  ceiling?: boolean;
 }
 
 export interface MainframeInfo {

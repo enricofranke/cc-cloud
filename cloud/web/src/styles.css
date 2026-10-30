@@ -4355,8 +4355,17 @@ button.pwr:hover {
 .dim-tabs {
   display: flex;
   gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .dim-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
   min-height: 34px;
   padding: 0 12px;
   border: 1px solid var(--line-2);
@@ -8799,4 +8808,36 @@ body.rz-nwse * {
     width: auto;
     margin-left: auto;
   }
+}
+
+/* Wave 4: Peripheral card values in the card settings */
+.ed-methods {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.ed-methods .check-row {
+  min-height: 36px;
+  font-size: 14px;
+}
+.ed-methods .check-row code {
+  overflow-wrap: anywhere;
+}
+.ed-methods .check-row.sub {
+  min-height: 30px;
+  padding-left: 30px;
+  font-size: 13px;
+}
+.ed-peripheral .ed-row {
+  margin-top: 8px;
+}
+
+.dim-tab .dim-icon {
+  opacity: 0.8;
+}
+.dim-tab.on .dim-icon {
+  opacity: 1;
+  color: var(--gold);
 }

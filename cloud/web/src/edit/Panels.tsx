@@ -181,9 +181,147 @@ export function WidgetSettings({ found, pages, conn, onChange }: { found: Found;
   );
 }
 
-export function CardSettings({ card, pages, onChange, onPage }: { card: ResolvedCard; pages: ResolvedPage[]; onChange: (p: ResolvedPage[], key?: string) => void; onPage: (id: string) => void }) {
+const SETTINGS_ERRORS: Record<string, string> = {
+  unknown_method: "This block does not offer one of the picked methods any more.",
+  too_many: "Too many values or charts.",
+  invalid_settings: "These settings are not valid.",
+  unsupported: "This card has no settings.",
+  uplink_offline: "The uplink is offline.",
+  not_allowed: "You may not change this dashboard's layout.",
+  read_only: "You may not change this dashboard's layout.",
+  rate_limited: "Too many changes at once – try again in a moment.",
+  timeout: "No answer from the server.",
+  disconnected: "Not connected.",
+};
+
+/**
+ * Wave 4: the Peripheral card's values – which getters (methods without arguments) the card shows, which of them
+ * also get a chart, and an optional set…(true/false) method as the card's switch (confirm, PIN by default).
+ */
+export function PeripheralCardSettings({ conn, uplink }: { conn: MainframeConn; uplink: Uplink }) {
+  const info = uplink.cardSettings!;
+  const maxValues = info.maxValues ?? 6;
+  const maxCharts = info.maxCharts ?? 2;
+  const [show, setShow] = useState<string[]>(info.settings.show);
+  const [charts, setCharts] = useState<string[]>(info.settings.charts ?? []);
+  const [toggle, setToggle] = useState<string>(info.settings.toggle ?? "");
+  const [pin, setPin] = useState(info.settings.pin !== false);
+  const [state, setState] = useState<{ busy?: boolean; ok?: boolean; error?: string }>({});
+  const numeric = new Set(info.getters.filter((g) => g.value === "number").map((g) => g.name));
+  const pick = (name: string, on: boolean) => {
+    setState({});
+    setShow((s) => (on ? (s.includes(name) || s.length >= maxValues ? s : [...s, name]) : s.filter((n) => n !== name)));
+    if (!on) setCharts((c) => c.filter((n) => n !== name));
+  };
+  const chart = (name: string, on: boolean) => {
+    setState({});
+    setCharts((c) => (on ? (c.includes(name) || c.length >= maxCharts ? c : [...c, name]) : c.filter((n) => n !== name)));
+  };
+  const save = async () => {
+    setState({ busy: true });
+    try {
+      await conn.cardSettings(uplink.uplinkId, { show, charts: charts.filter((c) => show.includes(c)), toggle: toggle || null, pin });
+      setState({ ok: true });
+    } catch (e) {
+      const code = (e as Error).message;
+      setState({ error: SETTINGS_ERRORS[code] ?? `Not saved (${code}).` });
+    }
+  };
+  const canEdit = conn.can("layout.edit");
+  return (
+    <div class="field ed-peripheral">
+      <span class="field-label">Values ({show.length} of {maxValues})</span>
+      <span class="field-hint">
+        Methods of this {info.type ?? "peripheral"} that take no arguments. Only the ones you pick are read, every few seconds.
+      </span>
+      {info.getters.length === 0 && <p class="muted small">This block offers no such methods.</p>}
+      <ul class="ed-methods" role="list">
+        {info.getters.map((g) => {
+          const on = show.includes(g.name);
+          return (
+            <li key={g.name}>
+              <label class="check-row">
+                <input type="checkbox" checked={on} disabled={!canEdit || (!on && show.length >= maxValues)} onChange={(e) => pick(g.name, (e.target as HTMLInputElement).checked)} />
+                <span>
+                  {g.caption} <code class="mono muted small">{g.name}()</code>
+                </span>
+              </label>
+              {on && numeric.has(g.name) && (
+                <label class="check-row sub">
+                  <input
+                    type="checkbox"
+                    checked={charts.includes(g.name)}
+                    disabled={!canEdit || (!charts.includes(g.name) && charts.length >= maxCharts)}
+                    onChange={(e) => chart(g.name, (e.target as HTMLInputElement).checked)}
+                  />
+                  Also as a chart
+                </label>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {(info.unknown ?? 0) > 0 && (
+        <p class="muted small">
+          {info.unknown} method{info.unknown === 1 ? " does" : "s do"} not say which arguments {info.unknown === 1 ? "it takes" : "they take"} and {info.unknown === 1 ? "is" : "are"} not offered – a Lua program can still call {info.unknown === 1 ? "it" : "them"}.
+        </p>
+      )}
+      {info.setters.length > 0 && (
+        <>
+          <label class="field">
+            <span class="field-label">Switch</span>
+            <select class="select" value={toggle} disabled={!canEdit} onChange={(e) => setToggle((e.target as HTMLSelectElement).value)}>
+              <option value="">No switch</option>
+              {info.setters.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.caption} – {s.name}(true/false)
+                </option>
+              ))}
+            </select>
+            <span class="field-hint">Operators can switch it on the card (with a confirm step).</span>
+          </label>
+          {toggle && (
+            <label class="check-row">
+              <input type="checkbox" checked={pin} disabled={!canEdit} onChange={(e) => setPin((e.target as HTMLInputElement).checked)} />
+              Ask for the dashboard PIN
+            </label>
+          )}
+        </>
+      )}
+      <div class="ed-row">
+        <button type="button" class="btn btn-small" disabled={!canEdit || state.busy} onClick={save}>
+          {state.busy ? "Saving…" : "Save values"}
+        </button>
+      </div>
+      {state.ok && <p class="muted small" role="status">Saved. The card shows the new values when you leave the editor.</p>}
+      {state.error && (
+        <p class="form-error" role="alert">
+          {state.error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function CardSettings({
+  card,
+  pages,
+  onChange,
+  onPage,
+  conn,
+  uplink,
+}: {
+  card: ResolvedCard;
+  pages: ResolvedPage[];
+  onChange: (p: ResolvedPage[], key?: string) => void;
+  onPage: (id: string) => void;
+  conn?: MainframeConn;
+  /** the card's uplink as the server sends it now (the editor keeps the state it was opened with) */
+  uplink?: Uplink;
+}) {
   const k = card.key;
   const [title, setTitle] = useState(card.title);
+  const live = uplink ?? card.uplink;
   return (
     <div class="ed-form">
       <label class="field">
@@ -255,6 +393,7 @@ export function CardSettings({ card, pages, onChange, onPage }: { card: Resolved
         )}
       </div>
       {card.custom && <p class="muted small">Deleting your own card sends its widgets back to their computers' cards.</p>}
+      {!card.custom && conn && live.cardSettings?.kind === "peripheral" && <PeripheralCardSettings key={live.uplinkId} conn={conn} uplink={live} />}
     </div>
   );
 }

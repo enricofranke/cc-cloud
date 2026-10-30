@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "productivetrees"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:productivetrees_sawmill",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

@@ -27,7 +27,12 @@ public final class StorageControllers {
             "storage_controller_dark", "Dimensional Storage Actuator",
             "storage_controller_stabilized", "Dimensional Storage Actuator",
             "storage_controller_stabilized_dark", "Dimensional Storage Actuator"),
-        "dimstorage", Map.of("dimensional_chest", "Dimensional Chest"));
+        "dimstorage", Map.of("dimensional_chest", "Dimensional Chest"),
+        // wave 4: kitchen storage, plain and in 16 colours ("*_fridge" = any colour)
+        "cookingforblockheads", Map.of(
+            "fridge", "Fridge", "*_fridge", "Fridge",
+            "cabinet", "Kitchen Cabinet", "*_cabinet", "Kitchen Cabinet",
+            "counter", "Kitchen Counter", "*_counter", "Kitchen Counter"));
 
     static final Map<String, Map<String, String>> FLUID_BLOCKS = Map.of(
         "dimstorage", Map.of("dimensional_tank", "Dimensional Tank"));
@@ -46,7 +51,7 @@ public final class StorageControllers {
             if (be == null) return null;
             var id = BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock());
             if (!modId.equals(id.getNamespace())) return null;
-            String itemTitle = items.get(id.getPath());
+            String itemTitle = title(items, id.getPath());
             if (itemTitle != null && ItemStorageCard.handler(level, pos, side) != null) {
                 return new ItemStorageCard(modId + "_storage", itemTitle, level, pos, side, be);
             }
@@ -56,6 +61,16 @@ public final class StorageControllers {
             }
             return null;
         });
+    }
+
+    /** The title for a block path: an exact key, else a {@code *_suffix} key (colour variants). */
+    static @org.jspecify.annotations.Nullable String title(Map<String, String> titles, String path) {
+        String exact = titles.get(path);
+        if (exact != null) return exact;
+        for (var e : titles.entrySet()) {
+            if (e.getKey().startsWith("*") && path.endsWith(e.getKey().substring(1))) return e.getValue();
+        }
+        return null;
     }
 
     /** Mods with a storage card (for Integrations and docs/COMPAT.md). */

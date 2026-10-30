@@ -24,6 +24,8 @@ public class CCCloud {
         // GameTest runs only: test machines for the Cloud Probe / side tests and a claim stand-in (ProbeTests).
         if (Boolean.getBoolean("cccloud.gametest")) {
             modEventBus.addListener(ai.ezfox.cccloud.gametest.ProbeTests::registerTestCapabilities);
+            // Wave 4: a test peripheral on lecterns for the Peripheral card (PeripheralGameTests).
+            modEventBus.addListener(ai.ezfox.cccloud.compat.cc.PeripheralGameTests::registerTestCapabilities);
             // A datapack that overrides, removes and adds recipes like a modpack does (RecipeCatalogTests).
             modEventBus.addListener(ai.ezfox.cccloud.gametest.RecipeCatalogTests::addTestPack);
             ai.ezfox.cccloud.gametest.ProbeTests.init();

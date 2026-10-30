@@ -35,6 +35,11 @@ public final class DeviceCards {
     /** Priority of mod-specific cards; the generic FE card uses {@link #GENERIC}. */
     public static final int SPECIFIC = 100;
     public static final int GENERIC = 0;
+    /**
+     * Fallback cards (wave 4: the Peripheral card) at this priority or below are only offered to an uplink or probe on
+     * the block ({@link #detect(ServerLevel, BlockPos, Direction, boolean)}), never to wired machine cards.
+     */
+    public static final int FALLBACK = -100;
 
     private static final List<Entry> PROVIDERS = new CopyOnWriteArrayList<>();
     private static final java.util.Set<String> DISABLED = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -55,11 +60,17 @@ public final class DeviceCards {
         return PROVIDERS.stream().map(Entry::name).toList();
     }
 
-    /** The card for the block at {@code pos}, or null. */
+    /** The card for the block at {@code pos}, or null. Fallback cards are not included. */
     public static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side) {
+        return detect(level, pos, side, false);
+    }
+
+    /** The card for the block at {@code pos}, or null; with {@code fallback} also the fallback cards (uplinks, probes). */
+    public static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side, boolean fallback) {
         if (!level.isLoaded(pos)) return null;
         for (var entry : PROVIDERS) {
             if (DISABLED.contains(entry.name())) continue;
+            if (!fallback && entry.priority() <= FALLBACK) continue;
             try {
                 var card = entry.provider().create(level, pos, side);
                 if (card != null) return card;
@@ -138,6 +149,36 @@ public final class DeviceCards {
         } catch (LinkageError | RuntimeException e) {
             disable(providerOf(card), e);
             return ai.ezfox.cccloud.web.QueryResult.fail("unavailable");
+        }
+    }
+
+    /** The card's settings info for the dashboard, or null (none, or the call failed). */
+    public static com.google.gson.@Nullable JsonObject settingsInfo(DeviceCard card) {
+        try {
+            return card.settingsInfo();
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return null;
+        }
+    }
+
+    /** The card's settings to save, or null. */
+    public static com.google.gson.@Nullable JsonObject settings(DeviceCard card) {
+        try {
+            return card.settings();
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return null;
+        }
+    }
+
+    /** Applies settings; a failing card answers "unavailable" and is disabled. */
+    public static @Nullable String applySettings(DeviceCard card, com.google.gson.JsonObject settings, boolean saved) {
+        try {
+            return card.applySettings(settings, saved);
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return "unavailable";
         }
     }
 

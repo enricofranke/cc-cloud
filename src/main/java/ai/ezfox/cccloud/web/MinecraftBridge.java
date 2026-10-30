@@ -200,6 +200,15 @@ public final class MinecraftBridge implements GameBridge {
         });
     }
 
+    @Override
+    public @Nullable String cardSettings(AuthStore.Device device, UUID mainframeId, ClientMessages.CardSettings message) {
+        String error = check(device, mainframeId, AccessGate.Kind.CARD_SETTINGS.perm);
+        if (error == null) error = checkUplink(mainframeId, message.uplinkId());
+        if (error != null) return error;
+        var section = CloudNetwork.section(message.uplinkId());
+        return section == null ? "unknown_uplink" : section.handleCardSettings(message.settings(), device.name() + " (" + device.playerName() + ")");
+    }
+
     /** Mainframe online + enabled, uplink loaded and linked to that mainframe. Null if all is fine. */
     private static @Nullable String checkUplink(UUID mainframeId, UUID uplinkId) {
         return SectionChecks.check(mainframeId, uplinkId);

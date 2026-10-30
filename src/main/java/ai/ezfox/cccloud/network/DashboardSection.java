@@ -23,4 +23,13 @@ public interface DashboardSection {
     CompletableFuture<ActionResult> handleAction(String widgetId, JsonElement value, @Nullable Op op, String user, boolean pinVerified);
 
     QueryResult handleQuery(String widgetId, String query);
+
+    /**
+     * Wave 4: the dashboard's card settings ({@code card_settings}, needs {@code layout.edit}), e.g. the methods a
+     * Peripheral card shows. Server thread. Null on success, else an error code; sections without settings answer
+     * {@code unsupported}.
+     */
+    default @Nullable String handleCardSettings(com.google.gson.JsonObject settings, String user) {
+        return "unsupported";
+    }
 }

@@ -168,6 +168,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RedstoneDevice device -> redstoneDevice(current, device);
+            case ClientMessages.CardSettings settings -> cardSettings(current, settings);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
             case ClientMessages.Production request -> production(current, request);
@@ -642,6 +643,33 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             });
         } catch (RejectedExecutionException e) {
             sendTypedResult("rs_result", message.reqId(), "offline");
+        }
+    }
+
+    /** Wave 4: a device card's settings (the Peripheral card's methods); layout.edit, rate limited like actions. */
+    private void cardSettings(AuthStore.Device current, ClientMessages.CardSettings message) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.CARD_SETTINGS);
+        if (denied != null) {
+            sendTypedResult("card_settings_result", message.reqId(), denied);
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendTypedResult("card_settings_result", message.reqId(), "rate_limited");
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.cardSettings(current, mainframeId, message);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while changing card settings from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendTypedResult("card_settings_result", message.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendTypedResult("card_settings_result", message.reqId(), "offline");
         }
     }
 

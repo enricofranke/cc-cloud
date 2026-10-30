@@ -4,6 +4,46 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Every CC peripheral shows up: the Peripheral card
+- A block without a card of its own still gets one if CC: Tweaked can talk to it: put an uplink or a Cloud Probe on it
+  and the **Peripheral card** appears. In the layout editor, click the card and pick up to 6 of its values (methods that
+  take no arguments, like `getEnergy`, `isRunning` or a storage's `size`), up to 2 of them also as a chart, and – if the
+  block has one – a `set…(true/false)` method as an on/off switch.
+- Safe by design: only the methods you picked are ever called, every 2 seconds and less often if they are slow; methods
+  that need arguments are never offered; texts are cut to 64 characters; the switch needs the "Use controls" right, a
+  confirm step and, unless you turn it off, the PIN. Choosing values needs the right to edit the layout.
+- New server settings `peripheralCard` (on) and `peripheralPollSeconds` (2).
+
+### More mods from All the Mods 11
+- **Just Dire Things:** generators (output, energy, burn or fuel tank), every machine with a redstone mode (breakers,
+  placers, clickers, droppers, swappers, fluid machines, item collector, experience holder, paradox machine, energy
+  transmitter) and sensors. Generators and machines can switch their redstone mode from the dashboard.
+- **Productive Trees:** Sawmill, Pollen Sifter and Stripper (progress, input, output, by-products, axe).
+- **Ranged Pumps:** what the pump is doing, its tank, energy and how far it has scanned.
+- **Charging Gadgets:** the Charging Station's energy, fuel and the item it charges, with that item's charge.
+- **wd's Selling Bin:** what is waiting to be sold and what it is worth, the bin's credit, auto-sell on/off and a
+  "Sell now" button.
+- **Cooking for Blockheads:** fridges, cabinets and counters as searchable storage cards, the oven (what is cooking, fuel,
+  output) and the toaster with its switch.
+- **Farming for Blockheads:** the Shipping Bin (next shipment, goods, emeralds paid out).
+- **Training Dummy:** a DPS meter – the dummies near your mainframe with damage per second, last hit, streak total, who
+  hit them and a DPS chart.
+- **FTB Essentials:** a Warps card with the server's warps, their dimension and coordinates (read-only; homes stay
+  private). New server setting `warpsCard`.
+- Checked and left out, with the reasons in the compatibility list: Mystical Agradditions (no machines), Item Collectors
+  (nothing to count, no switch), the Elevator mod (no cabin to call – it would mean teleporting players from the
+  dashboard), Refined Flow Analytics (no public API yet), AE2 Network Analyser, LaserIO, More Red, Iron Jetpacks and
+  Mining Gadgets; Power Armor's machines use the Energy card.
+
+### Network map: modded dimensions
+- The dimension tabs show the real names and an icon for the Aether, the Undergarden, All the Modium's Mining Dimension,
+  The Other and The Beyond, Stellaris' Moon and Earth Orbit, Witchery's dream worlds and more; unknown dimensions get a
+  name and an icon from their id. The tabs scroll on phones.
+- The Y sliders of the 2D slice and the 3D cut cover each dimension's own height (the Aether starts at −32, The Beyond
+  at −128).
+- Dimensions with a roof – the Nether, the Undergarden – open the 2D map on a slice at your network's height instead of
+  showing the bedrock roof.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

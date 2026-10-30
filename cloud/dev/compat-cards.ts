@@ -749,6 +749,188 @@ export const COMPAT_CARDS: SampleCard[] = [
     widgets: [percent("etherium_neutral", "Neutral etherium", { color: "cyan" }, 46.9), label("etherium_neutral_text", "Neutral stored", "2.35 k / 5.00 k")],
   },
 
+  // ---- wave 4 ----
+  // Peripheral card (any CC peripheral without a card of its own; values picked in the card's settings)
+  {
+    key: "peripheral",
+    mod: "generic",
+    title: "Chest",
+    template: "peripheral",
+    widgets: [
+      label("type", "Peripheral", "minecraft:chest, inventory"),
+      label("v1", "Size", "27", { span: 2 }),
+      label("v2", "List", "14 entries", { span: 2 }),
+      chart("c1", "Size", null, null, null, series(60, 27, 0, 40, 3)),
+    ],
+    extra: {
+      cardSettings: {
+        kind: "peripheral",
+        type: "minecraft:chest",
+        types: ["minecraft:chest", "inventory"],
+        getters: [
+          { name: "list", caption: "List", value: "text" },
+          { name: "size", caption: "Size", value: "number" },
+        ],
+        setters: [],
+        unknown: 0,
+        maxValues: 6,
+        maxCharts: 2,
+        settings: { show: ["size", "list"], charts: ["size"], pin: true },
+      },
+    },
+  },
+
+  // Just Dire Things
+  {
+    key: "justdirethings_generator",
+    mod: "justdirethings",
+    title: "Simple Coal Generator",
+    template: "justdirethings_generator",
+    widgets: [
+      label("status", "Status", "Generating", { span: 2 }),
+      label("output", "Output", "120 FE/t", { span: 2 }),
+      percent("energy", "Energy", { color: "green", icon: "bolt" }, 64.2),
+      progress("fuel", "Burn left", 0, 100, "%", {}, 58),
+      label("extra", "Fuel", "12× Coal"),
+      select("redstone", "Redstone mode", ["Always on", "On without signal", "On with signal", "One step per pulse"], { confirm: true }, "Always on"),
+    ],
+  },
+  {
+    key: "justdirethings_machine",
+    mod: "justdirethings",
+    title: "Advanced Block Breaker",
+    template: "justdirethings_machine",
+    widgets: [
+      label("status", "Status", "Active", { span: 2 }),
+      label("speed", "Speed", "Every 20 ticks", { span: 2 }),
+      percent("energy", "Energy", { color: "green", icon: "bolt" }, 81.0),
+      select("redstone", "Redstone mode", ["Always on", "On without signal", "On with signal", "One step per pulse"], { confirm: true }, "On with signal"),
+    ],
+  },
+
+  // Productive Trees
+  {
+    key: "productivetrees_machine",
+    mod: "productivetrees",
+    title: "Sawmill",
+    template: "productivetrees_machine",
+    widgets: [
+      label("status", "Status", "Working"),
+      progress("progress", "Progress", 0, 100, "%", {}, 45),
+      label("input", "Input", "23× Oak Log", { span: 2 }),
+      label("output", "Output", "36× Oak Planks", { span: 2 }),
+      label("extra", "By-products", "9× Sawdust, 4× Oak Bark"),
+    ],
+  },
+
+  // Ranged Pumps
+  {
+    key: "rangedpumps_pump",
+    mod: "rangedpumps",
+    title: "Pump",
+    template: "rangedpumps_pump",
+    widgets: [
+      label("status", "Status", "Pumping"),
+      percent("tank", "Tank", { color: "cyan", icon: "drop" }, 31.3),
+      percent("energy", "Energy", { color: "green", icon: "bolt" }, 88.0),
+      label("fluid", "Fluid", "10.0 k / 32.0 k mB Lava"),
+      label("range", "Scan range", "17 of 64"),
+    ],
+  },
+
+  // Charging Gadgets
+  {
+    key: "charginggadgets_station",
+    mod: "charginggadgets",
+    title: "Charging Station",
+    template: "charginggadgets_station",
+    widgets: [
+      label("status", "Status", "Charging"),
+      percent("energy", "Station energy", { color: "green", icon: "bolt" }, 42.0),
+      percent("charge", "Item charge", { color: "cyan", icon: "bolt" }, 73.5),
+      label("item", "Charging", "1× Building Gadget", { span: 2 }),
+      label("fuel", "Fuel", "48× Coal", { span: 2 }),
+      progress("burn", "Burn left", 0, 100, "%", {}, 66),
+    ],
+  },
+
+  // Selling Bin
+  {
+    key: "sellingbin_bin",
+    mod: "selling_bin",
+    title: "Selling Bin",
+    template: "sellingbin_bin",
+    widgets: [
+      label("selling", "To sell", "32× Baked Potato", { span: 2 }),
+      label("worth", "Worth", "96", { span: 2 }),
+      label("credit", "Credit", "40", { span: 2 }),
+      label("payout", "Paid out", "7× Emerald", { span: 2 }),
+      toggle("auto", "Auto-sell", { icon: "star" }, true),
+      button("sell", "Sell now", { confirm: true, color: "green" }),
+    ],
+  },
+
+  // Cooking for Blockheads
+  {
+    key: "cookingforblockheads_oven",
+    mod: "cookingforblockheads",
+    title: "Oven",
+    template: "cookingforblockheads_oven",
+    widgets: [
+      label("status", "Status", "Cooking 4 items"),
+      progress("cooking", "Cooking", 0, 100, "%", {}, 62),
+      progress("burn", "Fuel burning", 0, 100, "%", {}, 35),
+      label("input", "Input", "12× Raw Beef, 6× Potato"),
+      label("fuel", "Fuel", "21× Charcoal", { span: 2 }),
+      label("output", "Output", "18× Steak", { span: 2 }),
+    ],
+  },
+
+  // Farming for Blockheads
+  {
+    key: "farmingforblockheads_shipping_bin",
+    mod: "farmingforblockheads",
+    title: "Shipping Bin",
+    template: "farmingforblockheads_shipping_bin",
+    widgets: [
+      percent("shipment", "Next shipment", { color: "yellow", icon: "box" }, 68.8),
+      label("value", "Value", "88 / 128"),
+      label("goods", "Goods", "64× Wheat, 24× Carrot"),
+      label("payout", "Paid out", "3× Emerald"),
+    ],
+  },
+
+  // Training Dummy (mainframe card: a DPS meter)
+  {
+    key: "dummies",
+    mod: "trainingdummy",
+    title: "Training dummies",
+    template: "dummies",
+    restricted: true,
+    widgets: [
+      indicator("hit", "Being hit", "red", "gray", true),
+      label("best", "Best DPS", "48.6 DPS"),
+      { ...widget("chart", "dps", "DPS", { points: 120, interval: 1 }, 31.2), history: series(120, 26, 14, 30, 21, 0) },
+      label("dummy1", "Dummy 1", "Dummy: 31.2 DPS, last 9.5, total 412 (Enrico) – 6 m"),
+    ],
+  },
+
+  // FTB Essentials (mainframe card)
+  {
+    key: "warps",
+    mod: "ftbessentials",
+    title: "Warps",
+    template: "warps",
+    restricted: true,
+    widgets: [
+      label("count", "Warps", "4"),
+      label("warp1", "Warp 1", "spawn – Overworld -12, 70, 4"),
+      label("warp2", "Warp 2", "shop – Overworld 151, 66, 87"),
+      label("warp3", "Warp 3", "nether_hub – Nether 18, 72, -12"),
+      label("warp4", "Warp 4", "mining – Mining Dimension 0, 253, 0"),
+    ],
+  },
+
   // Server (mainframe card, with the spark extras appended when spark is installed)
   {
     key: "server",

@@ -231,6 +231,8 @@ configurations {
     productiveBeesJar { transitive = false }
     // JourneyMap ships its API only inside its jar (META-INF/jarjar); we extract it to compile the client plugin.
     journeyMapJar { transitive = false }
+    // Selling Bin ships tiny-multiblock-lib only inside its jar (META-INF/jarjar); its block entity extends it.
+    sellingBinJar { transitive = false }
 }
 
 // The optional integration mods (v0.5). Compile-only; -PintegrationMods puts them (or a comma-separated subset of the
@@ -307,6 +309,20 @@ def integrationMods = [
                            "curse.maven:patchouli-306770:${patchouli_curse_file}"],
     pylons              : ["curse.maven:pylons-518211:${pylons_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
+    // Wave 4.
+    justdirethings      : ["curse.maven:justdirethings-1002348:${justdirethings_curse_file}"],
+    // Productive Trees jar-in-jars productivelib (compiled against the one extracted from Productive Bees).
+    productivetrees     : ["curse.maven:productivetrees-867074:${productivetrees_curse_file}"],
+    rangedpumps         : ["curse.maven:rangedpumps-247496:${rangedpumps_curse_file}"],
+    charginggadgets     : ["curse.maven:charginggadgets-399757:${charginggadgets_curse_file}"],
+    // Selling Bin jar-in-jars tiny-multiblock-lib (extracted for compiling by extractSellingBinLibs).
+    sellingbin          : ["curse.maven:sellingbin-1483881:${sellingbin_curse_file}"],
+    trainingdummy       : ["curse.maven:trainingdummy-1650278:${trainingdummy_curse_file}"],
+    cookingforblockheads: ["curse.maven:cookingforblockheads-231484:${cookingforblockheads_curse_file}", "curse.maven:balm-531761:${balm_curse_file}",
+                           "curse.maven:shogi-1475746:${shogi_curse_file}"],
+    farmingforblockheads: ["curse.maven:farmingforblockheads-261924:${farmingforblockheads_curse_file}", "curse.maven:balm-531761:${balm_curse_file}",
+                           "curse.maven:shogi-1475746:${shogi_curse_file}"],
+    ftbessentials       : ["dev.ftb.mods:ftb-essentials-neoforge:${ftbessentials_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],
@@ -315,6 +331,15 @@ def integrationMods = [
 def extractJourneyMapApi = tasks.register('extractJourneyMapApi', Copy) {
     from({ zipTree(configurations.journeyMapJar.singleFile) }) {
         include 'META-INF/jarjar/journeymap-api-neoforge-*.jar'
+        eachFile { it.path = it.name }
+    }
+    includeEmptyDirs = false
+    into layout.buildDirectory.dir('jarjar')
+}
+
+def extractSellingBinLibs = tasks.register('extractSellingBinLibs', Copy) {
+    from({ zipTree(configurations.sellingBinJar.singleFile) }) {
+        include 'META-INF/jarjar/tiny-multiblock-lib-*.jar'
         eachFile { it.path = it.name }
     }
     includeEmptyDirs = false
@@ -352,6 +377,8 @@ dependencies {
     compileOnly("com.enderio:endercore:${enderio_version}") { transitive = false }
     productiveBeesJar "curse.maven:productivebees-377897:${productivebees_curse_file}"
     journeyMapJar "curse.maven:journeymap-32274:${journeymap_curse_file}"
+    sellingBinJar "curse.maven:sellingbin-1483881:${sellingbin_curse_file}"
+    compileOnly files(layout.buildDirectory.file("jarjar/tiny-multiblock-lib-${tinymultiblocklib_version}.jar")).builtBy(extractSellingBinLibs)
     compileOnly files(layout.buildDirectory.file("jarjar/journeymap-api-neoforge-${journeymap_api_version}.jar")).builtBy(extractJourneyMapApi)
     compileOnly files(layout.buildDirectory.file("jarjar/productivelib-${productivelib_version}.jar")).builtBy(extractProductiveLib)
     if (project.hasProperty("integrationMods")) {

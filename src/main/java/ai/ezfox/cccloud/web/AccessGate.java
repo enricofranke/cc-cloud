@@ -20,6 +20,8 @@ public final class AccessGate {
         QUERY(Perm.STORAGE_SEARCH),
         /** Layout editing. */
         LAYOUT(Perm.LAYOUT_EDIT),
+        /** Wave 4: a device card's settings (the Peripheral card's methods): part of arranging the dashboard. */
+        CARD_SETTINGS(Perm.LAYOUT_EDIT),
         /** Unlinking from the network map. */
         NET_UNLINK(Perm.NETWORK_LINK),
         /** Rules: create, edit, delete. */
@@ -149,6 +151,7 @@ public final class AccessGate {
             case "action" -> "action_result";
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
+            case "card_settings" -> "card_settings_result";
             case "net_unlink" -> "net_result";
             case "rs_override", "rs_device" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
