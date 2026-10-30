@@ -33,7 +33,7 @@ is served by the mod itself.
 
 | | |
 |---|---|
-| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11 (Powah, Mekanism, Ender IO, Oritech, Railcraft, Productive Bees, …), plus generic Energy and Tank cards for everything else. Machines behind CC wired modems get cards too. |
+| 🖥️ **Zero-code cards** | An uplink on a computer shows power and all six redstone sides instantly. An uplink on a machine shows a ready-made card – for [40+ mods](docs/COMPAT.md) of All the Mods 11 (Powah, Ender IO, Oritech, Mystical Agriculture, Railcraft, Productive Bees, …), plus generic Energy and Tank cards for everything else. Machines behind CC wired modems get cards too. |
 | 💡 **Redstone devices** | Cloud Switch, Button, Lamp and Sensor: place, link with the Link Card, done – switch lamps and doors from your phone, get a push when someone steps into a room. |
 | 🔎 **Cloud Probe** | Reads machines whose sides are all built in, from up to 8 blocks away – deliberately expensive, so it stays special. |
 | 📦 **AE2 & Refined Storage** | Browse and search the whole network, item details with history, craft previews with missing items, CPUs and jobs, auto-stock rules that craft when stock runs low. |
