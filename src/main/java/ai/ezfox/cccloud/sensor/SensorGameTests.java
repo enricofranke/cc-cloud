@@ -120,7 +120,9 @@ public final class SensorGameTests {
 
     private static void move(GameTestHelper helper, net.minecraft.world.entity.Entity e, BlockPos to) {
         var p = helper.absolutePos(to).getBottomCenter();
-        e.teleportTo(p.x, p.y, p.z);
+        // fake players have no real connection to teleport through: place them directly
+        if (e instanceof ServerPlayer) e.setPos(p.x, p.y, p.z);
+        else e.teleportTo(p.x, p.y, p.z);
     }
 
     private static List<SensorLog.Event> entered(Setup s) {
