@@ -12,7 +12,7 @@ navigation:
 
 ## Karten und Widgets
 
-Jeder Uplink wird zu einer **Karte**. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
+Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](redstone.md) teilen sich eine Karte pro Gruppe. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
 
 | Widget | Zeigt / macht |
 |---|---|

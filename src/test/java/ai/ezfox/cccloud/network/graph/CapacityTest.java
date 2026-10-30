@@ -52,18 +52,18 @@ class CapacityTest {
         var devices = List.of(new Device("p", DeviceType.PROBE, OW, 10, 0, 0, 128, false), new Device("u", DeviceType.UPLINK, OW, 12, 0, 0, 48, false));
         var r = NetworkGraph.compute("mf", nodes, devices, true);
         assertTrue(r.route("p").connected(), "a probe links like an advanced uplink");
-        assertTrue(Capacity.overCapacity(r, "mf", 3, 0.5, 2, java.util.Map.of()).isEmpty(), "probe 2 + uplink 1 fit into 3");
-        assertEquals(Set.of("p"), Capacity.overCapacity(r, "mf", 2, 0.5, 2, java.util.Map.of("p", 1, "u", 0)), "the probe does not fit into 2");
-        var counts = NetworkPower.counts(r, 0.5, 2);
+        assertTrue(Capacity.overCapacity(r, "mf", 3, 0.5, 0.25, 2, java.util.Map.of()).isEmpty(), "probe 2 + uplink 1 fit into 3");
+        assertEquals(Set.of("p"), Capacity.overCapacity(r, "mf", 2, 0.5, 0.25, 2, java.util.Map.of("p", 1, "u", 0)), "the probe does not fit into 2");
+        var counts = NetworkPower.counts(r, 0.5, 0.25, 2);
         assertEquals(1, counts.probes());
         assertEquals(2, counts.devices());
         assertEquals(3, counts.capacityUsed(), 1e-9);
-        var p = NetworkPower.breakdown(new NetworkPower.Rates(40, 4, 8, 10, 2, 1, 24), counts, 0, 0.5);
+        var p = NetworkPower.breakdown(new NetworkPower.Rates(40, 4, 8, 10, 2, 1, 1, 24), counts, 0, 0.5);
         assertEquals(24, p.get("probes"));
         assertEquals(40 + 4 + 24, p.get("total"));
         // networks without probes keep their breakdown keys
         var plain = NetworkGraph.compute("mf", nodes, List.of(devices.get(1)), true);
-        assertFalse(NetworkPower.breakdown(new NetworkPower.Rates(40, 4, 8, 10, 2, 1, 24), NetworkPower.counts(plain, 0.5, 2), 0, 0.5).containsKey("probes"));
+        assertFalse(NetworkPower.breakdown(new NetworkPower.Rates(40, 4, 8, 10, 2, 1, 1, 24), NetworkPower.counts(plain, 0.5, 0.25, 2), 0, 0.5).containsKey("probes"));
     }
 
     @Test

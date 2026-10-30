@@ -18,7 +18,8 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 
 /**
- * Right-click a mainframe to store it, right-click an uplink to bind the uplink to the stored mainframe.
+ * Right-click a mainframe to store it, right-click an uplink (or a bridge, a Cloud Redstone device, …) to bind it to
+ * the stored mainframe.
  * Sneak + right-click a mainframe revokes all dashboard tokens of that mainframe; sneak + right-click in the air
  * clears the card. Cloud Probe: sneak + right-click a machine stores it as a probe target (this click went through
  * NeoForge's interaction event like any right-click, so claim mods can refuse it), then right-click the probe.
@@ -63,6 +64,18 @@ public class CloudLinkCardItem extends Item {
                 return InteractionResult.FAIL;
             }
             uplink.bind(link, player);
+            return InteractionResult.SUCCESS;
+        }
+
+        if (level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity device) {
+            if (level.isClientSide()) return InteractionResult.SUCCESS;
+            if (player == null) return InteractionResult.FAIL;
+            var link = stack.get(ModRegistry.LINKED_MAINFRAME.get());
+            if (link == null) {
+                player.sendSystemMessage(Component.translatable("cccloud.link_card.empty").withStyle(ChatFormatting.RED));
+                return InteractionResult.FAIL;
+            }
+            device.bind(link, player);
             return InteractionResult.SUCCESS;
         }
 

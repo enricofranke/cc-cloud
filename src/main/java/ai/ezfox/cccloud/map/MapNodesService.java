@@ -72,8 +72,8 @@ public final class MapNodesService {
             var names = new HashMap<String, String>();
             names.put(id.toString(), mainframe.getDisplayName());
             for (var device : result.devices()) {
-                var section = CloudNetwork.section(UUID.fromString(device.id()));
-                if (section != null && !section.getTitle().isEmpty()) names.put(device.id(), section.getTitle());
+                String name = NetworkService.deviceName(id, device.id(), null);
+                if (!name.isEmpty()) names.put(device.id(), name);
             }
             networks.add(new MapNodes.Network(id, mainframe.getDisplayName(), result, names));
         }

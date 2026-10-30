@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "C": "minecraft:comparator",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
+  },
+  "pattern": [
+    " C ",
+    "SPS"
+  ],
+  "result": {
+    "id": "cccloud:cloud_sensor"
+  }
+}

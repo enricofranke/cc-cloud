@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Regeln, Szenen & Benachrichtigungen"
-  position: 7
+  position: 8
 ---
 
 # Regeln, Szenen, Benachrichtigungen und Verlauf
@@ -27,6 +27,8 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 - Lua: `cloud_mainframe.getRules()` und `setRuleEnabled(id, enabled)`.
 
 **Beispiel:** Wenn *Core temperature (Fission Reactor)* über 900 – dann Redstone hinten am *Reaktor-Computer* auf 15 und Meldung „Reaktor heiß“ (Warnung).
+
+**Ohne Computer:** ein [Cloud-Sensor](redstone.md) neben einer Druckplatte – wenn *Türsensor* über 0, dann *Verandalicht* an und eine Push-Nachricht „Jemand ist an der Tür“.
 
 ## Szenen
 

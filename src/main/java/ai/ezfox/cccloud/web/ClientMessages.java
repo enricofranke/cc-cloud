@@ -23,7 +23,7 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, Pong, Invalid {
     }
 
     /**
@@ -101,6 +101,14 @@ public final class ClientMessages {
      * Answered with {@code rs_result}.
      */
     public record RedstoneOverride(String reqId, String channel, @Nullable Integer level, @Nullable Integer seconds) implements Message {
+    }
+
+    /**
+     * Cloud Redstone devices: {@code {"t":"rs_device","reqId","deviceId","name?","group?"}} – rename a device or move it to
+     * another group (= card; "" = the automatic card). Plain text, at most 32 characters each, at least one of them.
+     * Needs {@code network.link}; answered with {@code rs_result}.
+     */
+    public record RedstoneDevice(String reqId, UUID deviceId, @Nullable String name, @Nullable String group) implements Message {
     }
 
     /** Only the type and request id of a message (for the hard deny of share sessions). */
@@ -203,6 +211,18 @@ public final class ClientMessages {
                 yield channel == null || !ai.ezfox.cccloud.redstone.RedstoneChannels.validName(channel) || !levelOk || !secondsOk
                     || (level != null && (level < 0 || level > 15)) || (seconds != null && (seconds < 1 || seconds > 86_400))
                     ? new Invalid("invalid_message", reqId) : new RedstoneOverride(reqId, channel, level, seconds);
+            }
+            case "rs_device" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                UUID deviceId = parseUuid(string(obj, "deviceId"));
+                String name = string(obj, "name");
+                String group = string(obj, "group");
+                boolean extra = obj.keySet().stream().anyMatch(k -> !java.util.Set.of("t", "reqId", "deviceId", "name", "group").contains(k));
+                yield deviceId == null || extra || (name == null && group == null)
+                    || (name != null && !ai.ezfox.cccloud.rsdevice.RsDevice.validText(name.strip()))
+                    || (group != null && !ai.ezfox.cccloud.rsdevice.RsDevice.validText(group.strip()))
+                    ? new Invalid("invalid_message", reqId) : new RedstoneDevice(reqId, deviceId, name == null ? null : name.strip(), group == null ? null : group.strip());
             }
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);

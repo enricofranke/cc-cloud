@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Network, relays & range"
-  position: 5
+  position: 6
   icon: cccloud:cloud_relay
 ---
 
@@ -23,6 +23,7 @@ Right-click an uplink, bridge or relay to see what it is connected to, the card 
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
+| Cloud Switch / Button / Lamp / Sensor | – | 32 |
 
 **Node range** = how far a relay or the mainframe reaches **other relays and the mainframe**. **Device range** = how far it reaches **uplinks and bridges**. On the map the node range is the **solid circle**, the device range the **dashed circle**; click a relay to see both labelled, and the **?** on the map explains how to plan relays.
 

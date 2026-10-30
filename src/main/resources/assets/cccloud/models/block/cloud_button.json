@@ -1,0 +1,188 @@
+{
+  "parent": "cccloud:block/rs_plate_display",
+  "textures": {
+    "particle": "cccloud:block/redstone_plate",
+    "atlas": "cccloud:block/redstone_plate",
+    "status": "cccloud:block/uplink_status_online"
+  },
+  "elements": [
+    {
+      "from": [
+        5,
+        5,
+        0
+      ],
+      "to": [
+        11,
+        11,
+        1
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            5.25,
+            1.25,
+            6.75,
+            2.75
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            12,
+            1.25,
+            12.25,
+            2.75
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            15.75,
+            1.25,
+            16,
+            2.75
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            13.25,
+            0,
+            14.75,
+            0.25
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            13.25,
+            3.75,
+            14.75,
+            4
+          ],
+          "texture": "#atlas"
+        }
+      }
+    },
+    {
+      "from": [
+        7,
+        5.25,
+        1
+      ],
+      "to": [
+        9,
+        5.75,
+        1.25
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            0,
+            8,
+            2,
+            9
+          ],
+          "texture": "#status"
+        },
+        "west": {
+          "uv": [
+            0,
+            8,
+            2,
+            9
+          ],
+          "texture": "#status"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            2,
+            9
+          ],
+          "texture": "#status"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            2,
+            9
+          ],
+          "texture": "#status"
+        },
+        "down": {
+          "uv": [
+            0,
+            8,
+            2,
+            9
+          ],
+          "texture": "#status"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        6,
+        1
+      ],
+      "to": [
+        10,
+        10,
+        2.5
+      ],
+      "faces": {
+        "south": {
+          "uv": [
+            4,
+            8,
+            5,
+            9
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            4.25,
+            5.5,
+            4.625,
+            6.5
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            7.375,
+            5.5,
+            7.75,
+            6.5
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            5.5,
+            4.25,
+            6.5,
+            4.625
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            5.5,
+            7.375,
+            6.5,
+            7.75
+          ],
+          "texture": "#atlas"
+        }
+      }
+    }
+  ]
+}

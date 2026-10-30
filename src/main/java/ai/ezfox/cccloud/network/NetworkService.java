@@ -121,6 +121,7 @@ public final class NetworkService {
             case UPLINK -> CloudConfig.RANGE_UPLINK;
             case ADVANCED_UPLINK, PROBE -> CloudConfig.RANGE_ADVANCED_UPLINK;
             case BRIDGE -> CloudConfig.RANGE_BRIDGE;
+            case REDSTONE -> CloudConfig.RANGE_REDSTONE_DEVICE;
         });
     }
 
@@ -214,6 +215,15 @@ public final class NetworkService {
                 NetworkGraph.DeviceType.BRIDGE, dim(be.getLevel()), p.getX() + .5, p.getY() + .5, p.getZ() + .5,
                 deviceRange(NetworkGraph.DeviceType.BRIDGE), bridge.isLegacyLink(), cables(bridge.host().cloudWired()), fibers(id)));
         }
+        // Cloud Redstone devices: radio only (no cables), a fraction of a device in capacity and FE.
+        for (var device : ai.ezfox.cccloud.rsdevice.RsDevices.loadedDevices()) {
+            var link = device.getLink();
+            if (link == null || device.getLevel() == null || device.isRemoved()) continue;
+            var p = device.getBlockPos();
+            devicesByMainframe.computeIfAbsent(link.id(), k -> new ArrayList<>()).add(new NetworkGraph.Device(device.deviceId().toString(),
+                NetworkGraph.DeviceType.REDSTONE, dim(device.getLevel()), p.getX() + .5, p.getY() + .5, p.getZ() + .5,
+                deviceRange(NetworkGraph.DeviceType.REDSTONE), false));
+        }
         for (var mainframe : CloudNetwork.mainframes()) {
             if (mainframe.getLevel() == null || mainframe.isRemoved()) continue;
             var id = mainframe.getMainframeId();
@@ -223,12 +233,13 @@ public final class NetworkService {
             var limit = mainframe.effects().devices();
             var over = limit == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? Set.<String>of()
                 : ai.ezfox.cccloud.network.graph.Capacity.overCapacity(computed, id.toString(), limit, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
-                    CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), linkOrder(mainframe));
+                    CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), linkOrder(mainframe));
             for (var o : over) OVER_CAPACITY.add(UUID.fromString(o));
             var result = ai.ezfox.cccloud.network.graph.Capacity.without(computed, over);
             RESULTS.put(id, result);
             for (var device : devices) ROUTES.put(UUID.fromString(device.id()), result.route(device.id()));
-            COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS)));
+            COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT),
+                CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS)));
             for (var node : result.nodes()) {
                 if (node.type() != NetworkGraph.NodeType.MAINFRAME && result.reachable(node.id())) SERVING.add(UUID.fromString(node.id()));
             }
@@ -317,7 +328,7 @@ public final class NetworkService {
             boolean counted = deviceId != null && ROUTES.containsKey(UUID.fromString(deviceId)) && route(UUID.fromString(deviceId)) != null
                 && route(UUID.fromString(deviceId)).connected();
             double weight = ai.ezfox.cccloud.network.graph.Capacity.weight(device, route, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
-                CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS));
+                CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS));
             if (limit != ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED && !counted && capacityUsed(mainframe.getMainframeId()) + weight > limit + 1e-9) {
                 return Component.translatable("cccloud.network.capacity_full", limit);
             }
@@ -351,6 +362,7 @@ public final class NetworkService {
                 case "uplinks" -> counts.uplinks();
                 case "advanced_uplinks" -> counts.advancedUplinks();
                 case "bridges" -> counts.bridges();
+                case "redstone" -> counts.redstone();
                 case "probes" -> counts.probes();
                 case "clients" -> Math.max(0, clients);
                 case "hops" -> counts.extraHops();
@@ -374,7 +386,8 @@ public final class NetworkService {
     public static NetworkPower.Rates rates() {
         return new NetworkPower.Rates(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
             CloudConfig.get(CloudConfig.MAINFRAME_PER_ADVANCED_UPLINK_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_BRIDGE_FE),
-            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_HOP_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_PROBE_FE));
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_HOP_FE),
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_REDSTONE_DEVICE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_PROBE_FE));
     }
 
     // ---- JSON (snapshot, deltas, Lua, in-game map) -------------------------------------------------------------------
@@ -456,10 +469,11 @@ public final class NetworkService {
             var n = new JsonObject();
             n.addProperty("id", device.id());
             var section = CloudNetwork.section(UUID.fromString(device.id()));
-            String type = deviceTypeId(device, section);
+            String type = deviceTypeId(mainframe.getMainframeId(), device, section);
             LAST_TYPE.put(device.id(), type);
             n.addProperty("type", type);
-            n.addProperty("name", section != null ? section.getTitle() : "");
+            n.addProperty("name", deviceName(mainframe.getMainframeId(), device.id(), section));
+            redstoneFields(n, mainframe.getMainframeId(), device.id());
             String status = OVER_CAPACITY.contains(UUID.fromString(device.id())) ? "over_capacity"
                 : route == null || !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range"
                 : mainframe.isOnline() ? "online" : "offline";
@@ -486,8 +500,10 @@ public final class NetworkService {
             if (loaded.contains(id)) continue;
             var n = new JsonObject();
             n.addProperty("id", id);
-            n.addProperty("type", LAST_TYPE.getOrDefault(id, NetworkGraph.DeviceType.UPLINK.id));
-            n.addProperty("name", "");
+            var rsType = ai.ezfox.cccloud.rsdevice.RsDevices.typeId(mainframe.getMainframeId(), e.getKey());
+            n.addProperty("type", rsType != null ? rsType : LAST_TYPE.getOrDefault(id, NetworkGraph.DeviceType.UPLINK.id));
+            n.addProperty("name", deviceName(mainframe.getMainframeId(), id, null));
+            redstoneFields(n, mainframe.getMainframeId(), id);
             n.addProperty("status", "unloaded");
             n.addProperty("uplinkId", id);
             lastSeen(n, id, "unloaded");
@@ -533,11 +549,31 @@ public final class NetworkService {
         return json;
     }
 
-    private static String deviceTypeId(NetworkGraph.Device device, @Nullable DashboardSection section) {
+    private static String deviceTypeId(UUID mainframeId, NetworkGraph.Device device, @Nullable DashboardSection section) {
+        if (device.type() == NetworkGraph.DeviceType.REDSTONE) {
+            var type = ai.ezfox.cccloud.rsdevice.RsDevices.typeId(mainframeId, UUID.fromString(device.id()));
+            return type != null ? type : device.type().id;
+        }
         // The dashboard (and its 3D view) know no probe type: a Cloud Probe shows as an advanced uplink with its card title.
         if (device.type() == NetworkGraph.DeviceType.PROBE) return NetworkGraph.DeviceType.ADVANCED_UPLINK.id;
         if (device.type() != NetworkGraph.DeviceType.BRIDGE) return device.type().id;
         return section instanceof BridgeSection bridge && "rs".equals(bridge.host().bridgeCore().kind()) ? "rs_bridge" : "me_bridge";
+    }
+
+    /** A device's name on the map: its section title, or a redstone device's name. */
+    public static String deviceName(UUID mainframeId, String deviceId, @Nullable DashboardSection section) {
+        if (section == null) section = CloudNetwork.section(UUID.fromString(deviceId));
+        if (section != null) return section.getTitle();
+        var name = ai.ezfox.cccloud.rsdevice.RsDevices.name(mainframeId, UUID.fromString(deviceId));
+        return name == null ? "" : name;
+    }
+
+    /** Redstone devices: the card (group) they are on, so the dashboard can rename/regroup them from the map. */
+    private static void redstoneFields(JsonObject node, UUID mainframeId, String deviceId) {
+        var group = ai.ezfox.cccloud.rsdevice.RsDevices.group(mainframeId, UUID.fromString(deviceId));
+        if (group == null) return;
+        node.addProperty("group", group);
+        node.addProperty("redstone", true);
     }
 
     /** Remembers when a node was online; adds {@code lastSeen} (ms) to nodes that are not online. */

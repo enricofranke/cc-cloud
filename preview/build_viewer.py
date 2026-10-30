@@ -72,6 +72,7 @@ TEMPLATE = r"""<!doctype html>
     <button data-g="show" data-v="relays">Relays</button>
     <button data-g="show" data-v="cables">Cables</button>
     <button data-g="show" data-v="display">Display</button>
+    <button data-g="show" data-v="redstone">Redstone</button>
     <button data-g="show" data-v="items">Items</button>
   </div>
   <div class="row"><span>Status</span>
@@ -339,6 +340,20 @@ function rebuild() {
     cableRun([[0, 0, -2]], [[1, 0, -2], [-1, 0, -2], [0, 1, -2]], "cccloud:block/fiber_cable_core", "cccloud:block/fiber_cable_arm");
   }
   if (show === "display") displayWall(3, 2, -1, 0, 0);
+  if (show === "redstone") {
+    // Cloud Switch / Button / Sensor (off in front, on/pressed/lit behind) on grey blocks, a switch on top and one
+    // hanging below a block, and the Cloud Lamp at every light step
+    const plates = [["cloud_switch_off", "cloud_switch_on"], ["cloud_button", "cloud_button_pressed"], ["cloud_sensor", "cloud_sensor_lit"]];
+    plates.forEach(([off, on], i) => {
+      dummyBlock(i - 1, 0, 0, 0x7f7f7f);
+      placed(`cccloud:block/${off}_${s}`, i - 1, 0, 1, "north");
+      placed(`cccloud:block/${on}_${s}`, i - 1, 0, -1, "south");
+    });
+    placed(`cccloud:block/cloud_switch_on_${s}`, -1, 1, 0, "down");
+    dummyBlock(1, 2, 0, 0x7f7f7f);
+    placed(`cccloud:block/cloud_switch_off_${s}`, 1, 1, 0, "up");
+    ["off", "dim", "mid", "on"].forEach((step, i) => placed(`cccloud:block/cloud_lamp_${step}`, i - 1.5, 0, 3, "north"));
+  }
   if (show === "items") {
     const cols = 6;
     ITEM_TEXTURES.forEach((t, i) => flatItem(t, (i % cols) - 1, 2 - Math.floor(i / cols), 0));

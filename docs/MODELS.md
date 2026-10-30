@@ -65,6 +65,17 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_compact_ring_high` | 4 |
 | `block/uplink_compact_top` | 2 |
 | `block/uplink_compact_ring_top` | 4 |
+| `block/rs_plate_display` | 0 |
+| `block/cloud_switch_off` | 3 |
+| `block/cloud_switch_on` | 3 |
+| `block/cloud_button` | 3 |
+| `block/cloud_button_pressed` | 3 |
+| `block/cloud_sensor` | 3 |
+| `block/cloud_sensor_lit` | 3 |
+| `block/cloud_lamp_off` | 13 |
+| `block/cloud_lamp_dim` | 13 |
+| `block/cloud_lamp_mid` | 13 |
+| `block/cloud_lamp_on` | 13 |
 
 
 ## Compact uplink (non-full faces)
@@ -158,6 +169,24 @@ Blockstate properties (the cables code must use exactly these):
 Fiber geometry: 4x4 jacket (6..10) in two halves around a 1 px slit (y 7.5..8.5), emissive cyan core
 inset to 6.25..9.75 so it glows through the slit without coplanar faces. Items: `item/fiber_cable`
 (straight 12 px piece with closed ends, like CC's cable item), the junction and link use their block models. No BER.
+
+## Cloud Redstone devices
+
+`cloud_switch`, `cloud_button`, `cloud_sensor`: plates on any of the 6 faces. Model space = attached to
+the north face (like the uplink), +Z away from the block; blockstate `facing` (direction towards the
+block it sits on, rotations as the uplink) x `powered` x `status` = 36 variants. Base models per
+`powered` (`cloud_switch_off/_on`, `cloud_button/_pressed`, `cloud_sensor/_lit`) with
+`_online/_connecting/_offline` children that swap `uplink_status_*` (2 px LED = the start of the
+uplink LED strip). Atlas `textures/block/redstone_plate.png` (plate faces designed at their block
+position). Switch: 8x10 plate, rocker rotated +-22.5 deg around X (on = cyan top out, glowing);
+button: 6x6 plate, 4x4 cap 1.5 px out (0.5 px and glowing while pressed); sensor: 8x8 plate with a
+redstone lens (glows while a signal comes in). Shapes in `RsPlateBlock` match the plates. Items use
+the `_online` model of the off state with `block/rs_plate_display` (GUI scale 1, re-centred).
+
+`cloud_lamp`: full block, 12 frame bars (2 px, atlas `textures/block/cloud_lamp.png`) around a glass
+core recessed by 1 px; `level` 0..15 maps to `cloud_lamp_off` (0), `_dim` (1-5, emission 7),
+`_mid` (6-10, emission 11), `_on` (11-15, emission 15) with `cloud_lamp_glass_<step>.png`. The block's
+light level is the `level` itself. No BER.
 
 ## Render types / translucency (MC 26.1)
 

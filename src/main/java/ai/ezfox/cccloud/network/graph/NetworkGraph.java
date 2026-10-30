@@ -41,7 +41,9 @@ public final class NetworkGraph {
     public enum DeviceType {
         UPLINK("uplink"), ADVANCED_UPLINK("advanced_uplink"), BRIDGE("bridge"),
         /** Cloud Probe: links like an advanced uplink, counts {@code probeCapacityUnits} devices and costs more FE. */
-        PROBE("probe");
+        PROBE("probe"),
+        /** Cloud Switch / Button / Lamp / Sensor: radio only, a fraction of a device in capacity and FE. */
+        REDSTONE("redstone");
 
         public final String id;
 

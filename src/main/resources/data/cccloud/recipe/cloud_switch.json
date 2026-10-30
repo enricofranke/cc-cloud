@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "L": "minecraft:lever",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
+  },
+  "pattern": [
+    " L ",
+    "SPS"
+  ],
+  "result": {
+    "id": "cccloud:cloud_switch"
+  }
+}

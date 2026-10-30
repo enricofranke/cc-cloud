@@ -201,7 +201,8 @@ public final class AnalyzerOverlay {
         String kind = item == ModRegistry.CLOUD_UPLINK_ITEM.get() ? "uplink" : item == ModRegistry.ADVANCED_CLOUD_UPLINK_ITEM.get() ? "advanced_uplink"
             : item == ModRegistry.CLOUD_PROBE_ITEM.get() ? "probe"
             : item == ModRegistry.CLOUD_RELAY_ITEM.get() ? "relay" : item == ModRegistry.ADVANCED_CLOUD_RELAY_ITEM.get() ? "advanced_relay"
-            : item == ModRegistry.ENDER_RELAY_ITEM.get() ? "ender_relay" : isBridge(item) ? "bridge" : null;
+            : item == ModRegistry.ENDER_RELAY_ITEM.get() ? "ender_relay" : isBridge(item) ? "bridge"
+            : AnalyzerService.isRedstoneDevice(item) ? "redstone" : null;
         if (kind == null || !ranges.has(kind)) return null;
         var r = ranges.getAsJsonArray(kind);
         boolean node = kind.endsWith("relay");

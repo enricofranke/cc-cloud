@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Troubleshooting"
-  position: 14
+  position: 15
   icon: cccloud:cloud_analyzer
 ---
 

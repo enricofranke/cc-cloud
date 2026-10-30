@@ -40,6 +40,9 @@ public class CCCloud {
         ai.ezfox.cccloud.voxel.VoxelService.init();
         ai.ezfox.cccloud.access.TeamProviders.setDisabled(() -> java.util.Set.copyOf(CloudConfig.get(CloudConfig.DISABLED_TEAM_PROVIDERS)));
         ai.ezfox.cccloud.gui.GuiNetwork.init(modEventBus);
+        // Cloud Redstone devices: cards per group, the device screen.
+        ai.ezfox.cccloud.rsdevice.RsDevices.init();
+        ai.ezfox.cccloud.rsdevice.RsScreens.init(modEventBus);
         ai.ezfox.cccloud.upgrade.ChunkAnchor.init(modEventBus);
         // Bandwidth upgrade: browsers per mainframe (only while a game server runs; the web unit tests have none).
         ai.ezfox.cccloud.web.WebHub.browserLimit = id -> ai.ezfox.cccloud.network.CloudNetwork.server() == null ? Integer.MAX_VALUE

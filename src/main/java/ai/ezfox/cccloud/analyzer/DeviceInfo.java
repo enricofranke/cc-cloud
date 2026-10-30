@@ -60,6 +60,10 @@ public record DeviceInfo(UUID mainframeId, String kind, String status, double si
             deviceId = bridge.bridgeSection().sectionId();
             mainframeId = bridge.bridgeSection().getLink().id();
             kind = "bridge";
+        } else if (be instanceof ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity device && device.getLink() != null) {
+            deviceId = device.deviceId();
+            mainframeId = device.getLink().id();
+            kind = device.kind().block;
         }
         if (deviceId == null || !visible(player, mainframeId)) return null;
         var result = NetworkService.result(mainframeId);

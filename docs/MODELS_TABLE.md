@@ -64,3 +64,14 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_compact_ring_high` | 4 |
 | `block/uplink_compact_top` | 2 |
 | `block/uplink_compact_ring_top` | 4 |
+| `block/rs_plate_display` | 0 |
+| `block/cloud_switch_off` | 3 |
+| `block/cloud_switch_on` | 3 |
+| `block/cloud_button` | 3 |
+| `block/cloud_button_pressed` | 3 |
+| `block/cloud_sensor` | 3 |
+| `block/cloud_sensor_lit` | 3 |
+| `block/cloud_lamp_off` | 13 |
+| `block/cloud_lamp_dim` | 13 |
+| `block/cloud_lamp_mid` | 13 |
+| `block/cloud_lamp_on` | 13 |

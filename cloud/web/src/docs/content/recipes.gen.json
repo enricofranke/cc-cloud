@@ -69,6 +69,19 @@
    ]
   },
   {
+   "file": "cloud_button",
+   "result": "cccloud:cloud_button",
+   "grid": [
+    " B ",
+    "SPS"
+   ],
+   "key": {
+    "B": "minecraft:stone_button",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
+   }
+  },
+  {
    "file": "cloud_core",
    "result": "cccloud:cloud_core",
    "count": 2,
@@ -96,6 +109,19 @@
     "G": "#c:ingots/gold",
     "M": "computercraft:monitor_advanced",
     "K": "cccloud:cloud_core"
+   }
+  },
+  {
+   "file": "cloud_lamp",
+   "result": "cccloud:cloud_lamp",
+   "grid": [
+    " P ",
+    "NLN"
+   ],
+   "key": {
+    "P": "minecraft:prismarine_crystals",
+    "N": "#c:nuggets/gold",
+    "L": "minecraft:redstone_lamp"
    }
   },
   {
@@ -137,6 +163,32 @@
     "M": "computercraft:wired_modem",
     "K": "cccloud:cloud_core",
     "R": "#c:dusts/redstone"
+   }
+  },
+  {
+   "file": "cloud_sensor",
+   "result": "cccloud:cloud_sensor",
+   "grid": [
+    " C ",
+    "SPS"
+   ],
+   "key": {
+    "C": "minecraft:comparator",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
+   }
+  },
+  {
+   "file": "cloud_switch",
+   "result": "cccloud:cloud_switch",
+   "grid": [
+    " L ",
+    "SPS"
+   ],
+   "key": {
+    "L": "minecraft:lever",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
    }
   },
   {
@@ -971,6 +1023,22 @@
   "cccloud:handbook": {
    "en": "CC: Cloud Handbook",
    "de": "CC: Cloud-Handbuch"
+  },
+  "cccloud:cloud_switch": {
+   "en": "Cloud Switch",
+   "de": "Cloud-Schalter"
+  },
+  "cccloud:cloud_button": {
+   "en": "Cloud Button",
+   "de": "Cloud-Taster"
+  },
+  "cccloud:cloud_lamp": {
+   "en": "Cloud Lamp",
+   "de": "Cloud-Lampe"
+  },
+  "cccloud:cloud_sensor": {
+   "en": "Cloud Sensor",
+   "de": "Cloud-Sensor"
   }
  }
 }

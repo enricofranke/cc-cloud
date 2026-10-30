@@ -9,6 +9,8 @@ export const en: Record<string, string> = {
 CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
 
 > **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
+>
+> Only want to switch a lamp? Place a **Cloud Lamp** (or a Cloud Switch next to your redstone lamps) and link it – it shows up as a switch on the dashboard. See [Redstone devices](/docs/redstone).
 
 ## The blocks {#blocks}
 
@@ -17,7 +19,8 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
 | **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
 | **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
-| **Cloud Link Card** | Links uplinks and bridges to a mainframe. |
+| **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
+| **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](/docs/redstone) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
 | **ME / RS Cloud Bridge** | Joins an Applied Energistics 2 or Refined Storage network. With an uplink on it you get a ready-made storage card (search, craft, watchlist). Only exists when AE2 / RS is installed. |
 | **Cloud Core** | Crafting ingredient. |
 
@@ -156,7 +159,7 @@ Open the URL shown by the mainframe. One browser can hold several mainframes; ta
 
 ## Cards and widgets {#widgets}
 
-Every uplink becomes a **card**. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
+Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one card per group. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
 
 | Widget | Shows / does |
 |---|---|
@@ -205,6 +208,77 @@ Widgets with \`pin=true\` ask for the mainframe PIN on a keypad before they act.
 | Uplink offline | that uplink is unloaded or out of range |
 | Read-only device | this device may watch but not control |
 | Server not reachable | see [troubleshooting](/docs/faq#not-reachable) |
+`,
+
+  // ------------------------------------------------------------- redstone
+  redstone: `# Redstone devices
+
+Switch a lamp from your phone without a computer, Lua or channels: **place it, link it with the Link Card, done.** Four small blocks, each cheaper than an uplink.
+
+| Block | What it does | On the dashboard |
+|---|---|---|
+| **Cloud Switch** | Sticks to any face like a lever – on a wall, on the floor or under a ceiling. Powers like a lever: strong into the block it sits on, weak around it. On/off (0 or 15) or analog (0–15). | a switch, or a slider in analog mode |
+| **Cloud Button** | Like a button: a short pulse, 2–40 ticks (default 10 = half a second). | a button |
+| **Cloud Lamp** | A lamp block that lights up by itself – no redstone needed. Brightness 1–15; can also light up on a redstone signal. | a switch and a brightness slider |
+| **Cloud Sensor** | Reads the redstone signal it gets (the strongest neighbour, 0–15). | a light (on/off) and the level |
+
+## Set up {#setup}
+
+1. Craft and place the device (recipes [below](/docs/redstone#recipes)).
+2. Right-click the mainframe with a **Cloud Link Card**, then the device – like an uplink, and with the same rights (owner, admins, “Link devices”).
+3. It shows up on the dashboard by itself: on the card **Redstone**, or on the card of its group.
+
+In the world, a click switches a switch or a lamp and presses a button. **Sneak + right-click** (any click on a sensor) opens the device's screen: what it is, its state, name and group, mode or pulse length, PIN and confirmation, and how it is connected.
+
+## Groups and cards {#groups}
+
+- Every device has a **name** and an optional **group**. Devices with the same group on the same mainframe share **one card** – for example “Hall” with six lamp switches. Upper and lower case do not matter.
+- Devices without a group share the automatic card **Redstone** (one per mainframe).
+- A card with two or more switches or lamps gets **All on** and **All off**.
+- At most 32 devices per card; more continue on “Hall (2)”.
+- Name and group are set in the device's screen, or on the dashboard: **Network** → tap the device → **Dashboard** (needs “Link devices”).
+- The cards are normal cards: arrange them in the [layout editor](/docs/dashboard#edit-mode), move single controls onto your own cards, show them on a Cloud Tablet or Cloud Display and share them read-only.
+
+## Rules, scenes and the API {#automation}
+
+- **Rules:** pick a sensor under **When** → “a widget value” (e.g. *above 0* = on) and send a push notification, run a scene or switch a lamp. Example: when *Door sensor* is above 0 – then *Porch light* on and an alert “Someone is at the door”.
+- **Scenes:** a step “use a control” on a switch, a lamp (also its brightness) or a button.
+- Rules and scenes keep working when a device moves to another group.
+- **[Public API](/docs/api):** the cards are ordinary sections – read them with \`read:sections\`, switch with \`action:widgets\` (\`POST …/sections/<card>/widgets/<id>\` with \`{"value": true}\`). Devices with a PIN are not reachable through the API.
+- **History:** the lamp's light and the sensor's level are recorded (24 h, limited by the mainframe's Memory upgrade) – tap the chart symbol.
+
+## Rights and protection {#rights}
+
+- Using the controls needs **“Switch redstone”** (operators have it). Viewers and share links only watch.
+- Per device: **Ask for the mainframe PIN** and **Ask before switching** (in its screen, needs “Link devices”). “All on / All off” asks if any device of the card does.
+- Linking, renaming and the settings need **“Link devices”** on the mainframe; anyone who may use the block can still click it by hand, like a lever.
+- Each device takes at most 4 changes per second from the dashboard, rules, scenes and the API (\`redstoneDeviceChangesPerSecond\`, short bursts of 8); clicks in the world are not limited.
+
+## Range, capacity and power {#network}
+
+| | Redstone device | Cloud Uplink |
+|---|---|---|
+| Range to the nearest node | 32 blocks (\`redstoneDeviceRange\`) | 48 |
+| Device capacity | 0.25 (\`redstoneDeviceCapacityWeight\`) | 1 |
+| Mainframe power | 1 FE/t (\`mainframePerRedstoneDeviceFE\`) | 4 FE/t |
+
+- Radio only (no cables); [relays](/docs/network) extend the range as for uplinks. Out of range or over capacity, its controls answer “no connection to the mainframe”.
+- A device in an unloaded chunk stays on its card with its last state; its controls answer “not loaded”.
+- The devices show on the network map, in the Cloud Analyzer and in Jade.
+
+## Recipes {#recipes}
+
+### Cloud Switch
+${recipe(R.cloudSwitch)}
+
+### Cloud Button
+${recipe(R.cloudButton)}
+
+### Cloud Lamp
+${recipe(R.cloudLamp)}
+
+### Cloud Sensor
+${recipe(R.cloudSensor)}
 `,
 
   // ------------------------------------------------------------------ lua
@@ -282,7 +356,7 @@ ${code("lua", C.LUA_LAYOUT)}
 - \`cloud.page(id, title, {icon=})\` – a tab. With pages an uplink may hold 64 widgets instead of 32.
 - \`cloud.group(id, title, {page=, cols=1..4})\` – a card; widgets join it with \`group=\`.
 - Every widget also accepts \`page\`, \`group\`, \`span\` (1–4), \`order\` (0–10000), \`color\` and \`icon\`.
-- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick.
+- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
 ## Alerts and status {#alerts}
 
@@ -419,6 +493,7 @@ Right-click an uplink, bridge or relay to see what it is connected to, the card 
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
+| Cloud Switch / Button / Lamp / Sensor | – | 32 |
 
 **Node range** = how far a relay or the mainframe reaches **other relays and the mainframe**. **Device range** = how far it reaches **uplinks and bridges**. On the map the node range is the **solid circle**, the device range the **dashed circle**; click a relay to see both labelled, and the **?** on the map explains how to plan relays.
 
@@ -571,6 +646,8 @@ Open **Rules** in the dashboard settings (⚙). A rule reads like a sentence: **
 
 **Example:** When *Core temperature (Fission Reactor)* is above 900 – then set redstone back of *Reactor computer* to 15 and alert “Reactor hot” (warning).
 
+**Without a computer:** a [Cloud Sensor](/docs/redstone#automation) next to a pressure plate – when *Door sensor* is above 0, then *Porch light* on and a push “Someone is at the door”.
+
 ## Scenes {#scenes}
 
 A scene is **one button that runs several steps in order** – “Night mode”: lights off, wait 2 s, door closed, reactor slider to 3, a notice. Open **Scenes** in the dashboard settings (⚙).
@@ -677,6 +754,10 @@ ${C.recipeSection("bridges", "en")}
 ## Tablet, display, analyzer {#devices}
 
 ${C.recipeSection("devices", "en")}
+
+## Redstone devices {#redstone}
+
+${C.recipeSection("redstone", "en")}
 
 ## Mainframe upgrades {#upgrades}
 

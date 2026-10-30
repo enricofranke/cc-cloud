@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "P": "minecraft:prismarine_crystals",
+    "N": "#c:nuggets/gold",
+    "L": "minecraft:redstone_lamp"
+  },
+  "pattern": [
+    " P ",
+    "NLN"
+  ],
+  "result": {
+    "id": "cccloud:cloud_lamp"
+  }
+}

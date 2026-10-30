@@ -11,6 +11,8 @@ navigation:
 CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
 
 > **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
+>
+> Only want to switch a lamp? Place a **Cloud Lamp** (or a Cloud Switch next to your redstone lamps) and link it – it shows up as a switch on the dashboard. See [Redstone devices](redstone.md).
 
 ## The blocks
 
@@ -19,7 +21,8 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
 | **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
 | **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
-| **Cloud Link Card** | Links uplinks and bridges to a mainframe. |
+| **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
+| **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](redstone.md) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
 | **ME / RS Cloud Bridge** | Joins an Applied Energistics 2 or Refined Storage network. With an uplink on it you get a ready-made storage card (search, craft, watchlist). Only exists when AE2 / RS is installed. |
 | **Cloud Core** | Crafting ingredient. |
 

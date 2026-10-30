@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Bridges (AE2 / RS)"
-  position: 10
+  position: 11
   icon: cccloud:cloud_core
 ---
 

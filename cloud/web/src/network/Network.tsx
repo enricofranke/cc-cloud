@@ -14,7 +14,7 @@ function cached(ref: { current?: Cache }, deps: unknown[], make: () => Component
   ref.current = { deps, el };
   return el;
 }
-import type { MainframeConn } from "../lib/conn.ts";
+import { rejectText, type MainframeConn } from "../lib/conn.ts";
 import type { NetNode, NetworkInfo, NodeType } from "../lib/types.ts";
 import { CapacityLine, fmtCap } from "../components/Capacity.tsx";
 import { RedstonePanel } from "./Redstone.tsx";
@@ -40,6 +40,7 @@ import {
   parentOf,
   pathOf,
   placeLabels,
+  redstoneCardOf,
   signalBars,
   signalClass,
   statusCounts,
@@ -166,7 +167,57 @@ const ICON: Record<NodeType, string> = {
   device: "uplink",
   me_bridge: "bridge",
   rs_bridge: "bridge",
+  cloud_switch: "lever",
+  cloud_button: "button",
+  cloud_lamp: "lamp",
+  cloud_sensor: "sensor",
 };
+
+/** Cloud Redstone device: its name and group (= the card it sits on), editable with network.link. */
+function RedstoneDeviceForm({ node, conn }: { node: NetNode; conn: MainframeConn }) {
+  const [name, setName] = useState(node.name);
+  const [group, setGroup] = useState(node.group ?? "");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setName(node.name);
+    setGroup(node.group ?? "");
+  }, [node.id, node.name, node.group]);
+  const groups = [...new Set(conn.uplinks.value.filter((u) => u.template === "redstone" && u.title && u.title !== "Redstone").map((u) => u.title.replace(/ \(\d+\)$/, "")))];
+  const save = async (e: Event) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await conn.redstoneDevice(node.id, { name: name.trim(), group: group.trim() });
+      pushToast({ level: "info", title: "Saved", text: group.trim() ? `${name.trim() || node.name} is on the card "${group.trim()}" now.` : `${name.trim() || node.name} is on the card "Redstone" now.` });
+    } catch (err) {
+      pushToast({ level: "warn", title: "Not saved", text: rejectText({ ok: false, error: (err as Error).message }) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form class="nd-rsform" onSubmit={save}>
+      <label>
+        <span>Name</span>
+        <input class="input" type="text" maxLength={32} value={name} onInput={(e) => setName((e.target as HTMLInputElement).value)} />
+      </label>
+      <label>
+        <span>Group</span>
+        <input class="input" type="text" maxLength={32} list={`rsgroups-${node.id}`} placeholder="none (card Redstone)" value={group}
+          onInput={(e) => setGroup((e.target as HTMLInputElement).value)} />
+        <datalist id={`rsgroups-${node.id}`}>
+          {groups.map((g) => (
+            <option key={g} value={g} />
+          ))}
+        </datalist>
+      </label>
+      <p class="muted small">Devices with the same group share one card on the dashboard.</p>
+      <button type="submit" class="btn" disabled={busy || (name.trim() === node.name && group.trim() === (node.group ?? ""))}>
+        Save
+      </button>
+    </form>
+  );
+}
 
 function useIsPhone() {
   const mq = useMemo(() => matchMedia("(max-width: 899px)"), []);
@@ -564,7 +615,11 @@ function Detail(props: DetailProps) {
   const hops = hopsOf(net, node.id);
   const route = pathOf(net, node.id);
   const byId = new Map(net.nodes.map((n) => [n.id, n]));
-  const uplink = node.uplinkId ? conn.uplinks.value.find((u) => u.uplinkId === node.uplinkId) : undefined;
+  const uplink = node.redstone
+    ? redstoneCardOf(conn.uplinks.value, node.id)
+    : node.uplinkId
+      ? conn.uplinks.value.find((u) => u.uplinkId === node.uplinkId)
+      : undefined;
   const behind = net.nodes.filter((n) => n.id !== node.id && pathOf(net, n.id)?.includes(node.id));
   const enderPeers = node.type === "ender_relay" ? net.links.filter((l) => l.kind === "ender" && (l.a === node.id || l.b === node.id)) : [];
   const [busy, setBusy] = useState(false);
@@ -694,6 +749,14 @@ function Detail(props: DetailProps) {
             <>
               <dt>Last seen</dt>
               <dd>{timeAgo(node.lastSeen)}</dd>
+            </>
+          )}
+          {node.redstone && conn.can("network.link") && (
+            <>
+              <dt>Dashboard</dt>
+              <dd>
+                <RedstoneDeviceForm node={node} conn={conn} />
+              </dd>
             </>
           )}
         </dl>

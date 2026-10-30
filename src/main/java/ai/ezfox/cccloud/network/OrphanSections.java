@@ -79,7 +79,7 @@ public final class OrphanSections {
             UUID id = e.getKey();
             var s = e.getValue();
             if (!missing(server, id, s.pos())) {
-                if (CloudNetwork.section(id) != null || !loaded(server, s.pos())) it.remove();
+                if (CloudNetwork.section(id) != null || ai.ezfox.cccloud.rsdevice.RsDevices.loaded(id) != null || !loaded(server, s.pos())) it.remove();
                 continue;
             }
             if (now - s.since() < grace) continue;
@@ -93,13 +93,14 @@ public final class OrphanSections {
 
     /** True if the section is registered nowhere and its (loaded) position holds no block entity with that id. */
     static boolean missing(MinecraftServer server, UUID id, GlobalPos pos) {
-        if (CloudNetwork.section(id) != null) return false;
+        if (CloudNetwork.section(id) != null || ai.ezfox.cccloud.rsdevice.RsDevices.loaded(id) != null) return false;
         if (!loaded(server, pos)) return false;
         var level = server.getLevel(pos.dimension());
         // CHECK: never creates a block entity as a side effect of looking
         var be = level == null ? null : level.getChunkAt(pos.pos()).getBlockEntity(pos.pos(), net.minecraft.world.level.chunk.LevelChunk.EntityCreationType.CHECK);
         if (be instanceof CloudUplinkBlockEntity uplink && id.equals(uplink.getUplinkId())) return false;
         if (be instanceof BridgeHost host && id.equals(host.bridgeSection().sectionId())) return false;
+        if (be instanceof ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity device && id.equals(device.deviceId())) return false;
         return true;
     }
 

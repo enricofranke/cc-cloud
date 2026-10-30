@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Lua reference"
-  position: 3
+  position: 4
   icon: computercraft:computer_advanced
 ---
 
@@ -114,7 +114,7 @@ cloud.indicator("running", "Running", {value=true, onColor="green", page="power"
 - `cloud.page(id, title, {icon=})` – a tab. With pages an uplink may hold 64 widgets instead of 32.
 - `cloud.group(id, title, {page=, cols=1..4})` – a card; widgets join it with `group=`.
 - Every widget also accepts `page`, `group`, `span` (1–4), `order` (0–10000), `color` and `icon`.
-- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick.
+- Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
 ## Alerts and status
 

@@ -36,6 +36,7 @@ const BREAKDOWN_LABEL: Record<string, (n?: number) => string> = {
   advanced_uplinks: (n) => `${n ?? 0} advanced uplink${n === 1 ? "" : "s"}`,
   bridges: (n) => `${n ?? 0} bridge${n === 1 ? "" : "s"}`,
   probes: (n) => `${n ?? 0} Cloud Probe${n === 1 ? "" : "s"}`,
+  redstone: (n) => `${n ?? 0} redstone device${n === 1 ? "" : "s"}`,
   clients: (n) => `${n ?? 0} dashboard${n === 1 ? "" : "s"} connected`,
   hops: (n) => `${n ?? 0} extra hop${n === 1 ? "" : "s"}`,
   anchor: (n) => `Chunk Anchor${n ? ` (${n} chunk${n === 1 ? "" : "s"})` : ""}`,

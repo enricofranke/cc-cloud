@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:rsdevice_switch_faces",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

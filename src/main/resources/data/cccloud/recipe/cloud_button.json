@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "B": "minecraft:stone_button",
+    "S": "minecraft:stone",
+    "P": "minecraft:prismarine_crystals"
+  },
+  "pattern": [
+    " B ",
+    "SPS"
+  ],
+  "result": {
+    "id": "cccloud:cloud_button"
+  }
+}

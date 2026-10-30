@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/cloud_switch_on",
+  "textures": {
+    "status": "cccloud:block/uplink_status_connecting"
+  }
+}

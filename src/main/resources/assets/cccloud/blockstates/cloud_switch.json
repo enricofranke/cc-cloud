@@ -1,0 +1,142 @@
+{
+  "variants": {
+    "facing=north,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online"
+    },
+    "facing=north,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting"
+    },
+    "facing=north,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline"
+    },
+    "facing=north,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online"
+    },
+    "facing=north,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting"
+    },
+    "facing=north,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline"
+    },
+    "facing=east,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online",
+      "y": 90
+    },
+    "facing=east,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting",
+      "y": 90
+    },
+    "facing=east,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline",
+      "y": 90
+    },
+    "facing=east,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online",
+      "y": 90
+    },
+    "facing=east,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting",
+      "y": 90
+    },
+    "facing=east,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline",
+      "y": 90
+    },
+    "facing=south,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online",
+      "y": 180
+    },
+    "facing=south,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting",
+      "y": 180
+    },
+    "facing=south,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline",
+      "y": 180
+    },
+    "facing=south,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online",
+      "y": 180
+    },
+    "facing=south,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting",
+      "y": 180
+    },
+    "facing=south,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline",
+      "y": 180
+    },
+    "facing=west,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online",
+      "y": 270
+    },
+    "facing=west,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting",
+      "y": 270
+    },
+    "facing=west,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline",
+      "y": 270
+    },
+    "facing=west,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online",
+      "y": 270
+    },
+    "facing=west,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting",
+      "y": 270
+    },
+    "facing=west,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline",
+      "y": 270
+    },
+    "facing=up,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online",
+      "x": 270
+    },
+    "facing=up,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting",
+      "x": 270
+    },
+    "facing=up,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline",
+      "x": 270
+    },
+    "facing=up,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online",
+      "x": 270
+    },
+    "facing=up,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting",
+      "x": 270
+    },
+    "facing=up,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline",
+      "x": 270
+    },
+    "facing=down,powered=false,status=online": {
+      "model": "cccloud:block/cloud_switch_off_online",
+      "x": 90
+    },
+    "facing=down,powered=false,status=connecting": {
+      "model": "cccloud:block/cloud_switch_off_connecting",
+      "x": 90
+    },
+    "facing=down,powered=false,status=offline": {
+      "model": "cccloud:block/cloud_switch_off_offline",
+      "x": 90
+    },
+    "facing=down,powered=true,status=online": {
+      "model": "cccloud:block/cloud_switch_on_online",
+      "x": 90
+    },
+    "facing=down,powered=true,status=connecting": {
+      "model": "cccloud:block/cloud_switch_on_connecting",
+      "x": 90
+    },
+    "facing=down,powered=true,status=offline": {
+      "model": "cccloud:block/cloud_switch_on_offline",
+      "x": 90
+    }
+  }
+}

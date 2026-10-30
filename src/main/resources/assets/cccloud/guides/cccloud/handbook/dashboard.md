@@ -12,7 +12,7 @@ Open the URL shown by the mainframe. One browser can hold several mainframes; ta
 
 ## Cards and widgets
 
-Every uplink becomes a **card**. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
+Every uplink becomes a **card**; [redstone devices](redstone.md) share one card per group. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
 
 | Widget | Shows / does |
 |---|---|
