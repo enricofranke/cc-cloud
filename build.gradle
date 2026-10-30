@@ -286,6 +286,8 @@ def integrationMods = [
     pylons              : ["curse.maven:pylons-518211:${pylons_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
+    // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
+    jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],
 ]
 
 def extractJourneyMapApi = tasks.register('extractJourneyMapApi', Copy) {

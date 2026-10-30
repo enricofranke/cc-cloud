@@ -41,9 +41,9 @@ public final class CloudJadePlugin implements IWailaPlugin {
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(TooltipProvider.INSTANCE, CloudMainframeBlock.class);
-        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.block.CloudUplinkBlock.class);
-        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.relay.CloudRelayBlock.class);
-        registration.registerBlockComponent(NetworkJadeProvider.INSTANCE, ai.ezfox.cccloud.bridge.CloudBridgeBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.Tooltip.INSTANCE, ai.ezfox.cccloud.block.CloudUplinkBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.Tooltip.INSTANCE, ai.ezfox.cccloud.relay.CloudRelayBlock.class);
+        registration.registerBlockComponent(NetworkJadeProvider.Tooltip.INSTANCE, ai.ezfox.cccloud.bridge.CloudBridgeBlock.class);
         registration.addRayTraceCallback((hit, accessor, original) -> {
             if (!(accessor instanceof BlockAccessor block) || !(block.getBlock() instanceof CloudMainframeBlock)) return accessor;
             if (block.getBlockState().getValue(CloudMainframeBlock.HALF) != DoubleBlockHalf.UPPER) return accessor;

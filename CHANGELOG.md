@@ -38,6 +38,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Dashboard: Chrome sometimes got an empty response on the first load. A tab alone opens 7–8 connections, and the
   9th connection from an IP was closed without an answer. The limits are now 24 connections per IP and 256 in total,
   and a connection slightly over a limit gets `503` with `Retry-After` instead of an empty response (docs/SECURITY.md).
+- Jade: the tooltip plugin failed to load with Jade 26.1.12 ("Data providers cannot implement IComponentProvider since
+  Minecraft 1.21.6"). The network lines now come from a separate server data provider and client tooltip provider; a
+  unit test checks that rule on the compiled classes. `-PintegrationMods=jade` puts Jade into the dev runs.
 
 ## 0.9.0 – first public release candidate
 
