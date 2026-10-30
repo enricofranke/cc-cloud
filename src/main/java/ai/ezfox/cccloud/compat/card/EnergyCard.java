@@ -45,6 +45,14 @@ public class EnergyCard extends BlockCard<BlockEntity> {
     private long lastTime;
     private @Nullable RedstoneControl redstone;
     private boolean redstoneResolved;
+    private @Nullable Reading reading;
+
+    /**
+     * The last refresh in numbers (v0.10 production statistics): FE and FE/t; {@code measured} = in/out are the net flow
+     * measured from the stored amount (the mod reports no rates).
+     */
+    public record Reading(long stored, long capacity, double in, double out, boolean measured) {
+    }
 
     public EnergyCard(String kind, @Nullable String title, ServerLevel level, BlockPos pos, Direction side, BlockEntity be) {
         super(level, pos, side, be);
@@ -171,14 +179,22 @@ public class EnergyCard extends BlockCard<BlockEntity> {
             var outRate = outputRate();
             out.text(INPUT, in == null ? "–" : Fmt.flow(in));
             out.text(OUTPUT, outRate == null ? "–" : Fmt.flow(outRate));
+            reading = new Reading(stored, capacity, in == null ? 0 : Math.max(0, in), outRate == null ? 0 : Math.max(0, outRate), false);
         } else if (lastStored != Long.MIN_VALUE && now > lastTime) {
-            out.text(FLOW, Fmt.rate((double) (stored - lastStored) / (now - lastTime)));
+            double flow = (double) (stored - lastStored) / (now - lastTime);
+            out.text(FLOW, Fmt.rate(flow));
+            reading = new Reading(stored, capacity, Math.max(0, flow), Math.max(0, -flow), true);
         }
         lastStored = stored;
         lastTime = now;
         var rs = redstone();
         if (rs != null) out.text(REDSTONE, rs.current());
         refreshExtra(out);
+    }
+
+    /** The numbers of the last refresh, or null before the second refresh of a card without rates. Server thread. */
+    public @Nullable Reading reading() {
+        return reading;
     }
 
     @Override

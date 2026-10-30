@@ -44,6 +44,15 @@ public final class ItemIndex {
         return rows.size();
     }
 
+    /** Every row (count descending); immutable. */
+    public List<ItemRow> rows() {
+        return rows;
+    }
+
+    public boolean truncated() {
+        return truncated;
+    }
+
     public @Nullable ItemRow get(String name) {
         return byName.get(name);
     }
