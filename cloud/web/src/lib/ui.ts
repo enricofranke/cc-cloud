@@ -9,7 +9,7 @@ import { takeInstallLink } from "./scriptstore.ts";
 export type Route =
   | { name: "list" }
   | { name: "pair"; code?: string; link?: PairLink }
-  | { name: "mainframe"; id: string; tab?: "production" }
+  | { name: "mainframe"; id: string; tab?: "production"; card?: string }
   | { name: "devices" }
   | { name: "access"; id: string }
   | { name: "shares"; id: string }
@@ -52,7 +52,11 @@ function parseRoute(): Route {
   if (parts[0] === "m" && parts[1] && parts[2] === "scenes") return { name: "scenes", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "apikeys") return { name: "apikeys", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "production") return { name: "mainframe", id: decodeURIComponent(parts[1]), tab: "production" };
-  if (parts[0] === "m" && parts[1]) return { name: "mainframe", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1]) {
+    // ?card=<uplinkId>: the in-game "Show in dashboard" link scrolls to that card
+    const card = new URLSearchParams(query).get("card") ?? "";
+    return { name: "mainframe", id: decodeURIComponent(parts[1]), ...(/^[0-9a-f-]{36}$/.test(card) ? { card } : {}) };
+  }
   return { name: "list" };
 }
 

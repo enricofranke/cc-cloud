@@ -10,6 +10,8 @@ navigation:
 
 Jeder Uplink und jede Bridge verbindet sich mit dem **nächsten erreichbaren Knoten** – dem Mainframe oder einem Relay – und das Netzwerk leitet ihn über den besten Weg zum Mainframe (wenigste Sprünge, dann bestes Signal; höchstens 8 Sprünge). Wie ein WLAN-Mesh: Mit Relays erreichst du weit entfernte Basen.
 
+Ein Rechtsklick auf Uplink, Bridge oder Relay zeigt, womit der Block verbunden ist, welche Karte er ins Dashboard stellt (als Live-Vorschau), sein Signal und – wenn etwas nicht stimmt – eine Zeile, wie man es behebt. **Im Dashboard zeigen** schickt einen Chat-Link, der genau diese Karte öffnet; **Umbenennen** ändert den Titel der Karte für alle.
+
 ## Reichweiten
 
 | Block | Reichweite zu Knoten | Reichweite für Geräte |
