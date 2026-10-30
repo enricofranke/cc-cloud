@@ -54,7 +54,53 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/fiber_junction_stub` | 3 |
 | `block/ender_fiber_link` | 11 |
 | `item/fiber_cable` | 3 |
+| `block/uplink_compact_bottom` | 2 |
+| `block/uplink_compact_ring_bottom` | 4 |
+| `block/uplink_compact_low` | 2 |
+| `block/uplink_compact_ring_low` | 4 |
+| `block/uplink_compact_center` | 2 |
+| `block/uplink_compact_ring_center` | 4 |
+| `block/uplink_compact_high` | 2 |
+| `block/uplink_compact_ring_high` | 4 |
+| `block/uplink_compact_top` | 2 |
+| `block/uplink_compact_ring_top` | 4 |
+| `block/uplink_compact_post4` | 4 |
+| `block/uplink_compact_ring_post4` | 4 |
+| `block/uplink_compact_post8` | 4 |
+| `block/uplink_compact_ring_post8` | 4 |
+| `block/uplink_compact_post12` | 4 |
+| `block/uplink_compact_ring_post12` | 4 |
+| `block/uplink_compact_post16` | 4 |
+| `block/uplink_compact_ring_post16` | 4 |
 
+
+## Compact uplink (non-full faces)
+
+The 14x14 plate only fits faces that carry it. On a slab side, a tray-height machine (Energized Power
+solar panel, 4 px), a carpet-height block or an inset face it stuck out like a floating sign, so the
+uplink blockstates have a `mount` property (`full | bottom | low | center | high | top | post4 | post8 | post12 | post16`) that the server computes
+from the attached block's outline shape (`UplinkMount.compute`, on placement, when that neighbour
+changes and once after loading, so older worlds fix themselves):
+
+- `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area -> the plate.
+- `bottom|low|center|high|top`: flush but smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
+  x 4..12, z 0..2, bottom edge at model y bottom 0, low 1, center 5, high 9, top 10).
+  The position with the largest overlap with the face wins (ties: nearest to the face's centre), so it
+  sits on the visible part: solar panel / carpet side -> `bottom`, slab side -> `low`, top slab -> `high`.
+- `post4|post8|post12|post16`: the face is inset by more than 1 px (top of a solar panel or slab: the
+  face lies below the uplink's cell) -> the centred puck on a 2x2 post with a 4x4x1 foot, reaching
+  N px back into the attached block's cell (N = the inset rounded up to 4, so the foot may sit up to
+  3 px inside the block; exact for slabs and 4 px solar panels). Post and foot are part of the
+  selection shape (`UplinkMount#northShape`).
+
+Front: 8x6 region `front` of `textures/block/uplink{,_advanced}_compact.png` (32x32: same outline, lower
+band, mini cloud, screws; gold for advanced), status LED = first 4 px of the status strip (`strip4`,
+emissive, proud to z 2.25). No moving part (the BER skips compact mounts). Direct mode:
+`block/uplink_compact_ring_<mount>` (0.5 px emissive ring around the puck, flush). Tiers share the
+geometry: `uplink_advanced_compact_<mount>` only swaps the atlas; `_<status>` children swap the LED.
+`validate()` checks that every facing x mount x status has one body and every facing x mount one ring
+(with the plate's rotations), that pucks match the Java shapes, and that body + ring have no coplanar
+overlaps. The item and the dashboard's 3D view use `mount=full`.
 
 ## Cloud bridges (v0.2)
 

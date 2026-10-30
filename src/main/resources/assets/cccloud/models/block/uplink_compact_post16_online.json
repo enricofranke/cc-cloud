@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/uplink_compact_post16",
+  "textures": {
+    "status": "cccloud:block/uplink_status_online"
+  }
+}

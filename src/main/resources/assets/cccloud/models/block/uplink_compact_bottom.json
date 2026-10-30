@@ -1,0 +1,140 @@
+{
+  "parent": "cccloud:block/uplink_display",
+  "textures": {
+    "particle": "cccloud:block/uplink_compact",
+    "atlas": "cccloud:block/uplink_compact",
+    "status": "cccloud:block/uplink_status_online"
+  },
+  "elements": [
+    {
+      "from": [
+        4,
+        0,
+        0
+      ],
+      "to": [
+        12,
+        6,
+        2
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            10,
+            13,
+            14,
+            16
+          ],
+          "texture": "#atlas",
+          "cullface": "north"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            4,
+            3
+          ],
+          "texture": "#atlas"
+        },
+        "west": {
+          "uv": [
+            8,
+            5,
+            9,
+            8
+          ],
+          "texture": "#atlas"
+        },
+        "east": {
+          "uv": [
+            15,
+            5,
+            16,
+            8
+          ],
+          "texture": "#atlas"
+        },
+        "up": {
+          "uv": [
+            10,
+            0,
+            14,
+            1
+          ],
+          "texture": "#atlas"
+        },
+        "down": {
+          "uv": [
+            10,
+            7,
+            14,
+            8
+          ],
+          "texture": "#atlas",
+          "cullface": "down"
+        }
+      }
+    },
+    {
+      "from": [
+        6,
+        1,
+        2
+      ],
+      "to": [
+        10,
+        2,
+        2.25
+      ],
+      "light_emission": 15,
+      "faces": {
+        "south": {
+          "uv": [
+            0,
+            8,
+            4,
+            9
+          ],
+          "texture": "#status"
+        },
+        "west": {
+          "uv": [
+            0,
+            8,
+            4,
+            9
+          ],
+          "texture": "#status"
+        },
+        "east": {
+          "uv": [
+            0,
+            8,
+            4,
+            9
+          ],
+          "texture": "#status"
+        },
+        "up": {
+          "uv": [
+            0,
+            8,
+            4,
+            9
+          ],
+          "texture": "#status"
+        },
+        "down": {
+          "uv": [
+            0,
+            8,
+            4,
+            9
+          ],
+          "texture": "#status"
+        }
+      }
+    }
+  ]
+}

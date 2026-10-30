@@ -1,0 +1,7 @@
+{
+  "parent": "cccloud:block/uplink_compact_post4",
+  "textures": {
+    "particle": "cccloud:block/uplink_advanced_compact",
+    "atlas": "cccloud:block/uplink_advanced_compact"
+  }
+}

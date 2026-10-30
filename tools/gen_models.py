@@ -522,6 +522,65 @@ def uplink_direct_ring():
     return m
 
 
+# Compact uplink ("puck") for faces that cannot carry the 14x14 plate: slab sides, tray-height
+# machines (solar panels), carpet-height blocks, inset faces. Blockstate property `mount` (the Java
+# side computes it from the attached block's outline shape, see CloudUplinkBlock / UplinkMount):
+#   full                    the 14x14 plate (above)
+#   bottom|low|center|high|top   8x6 puck flush on the face, bottom edge at model y COMPACT_Y
+#   post4|post8|post12|post16    centred puck on a 2x2 post with a 4x4x1 foot that reaches N px back
+#                           into the attached block's cell (top of a solar panel / slab: the face is
+#                           N px below the uplink's cell); the foot may end up to 3 px inside the block.
+# Puck: x 4..12, y v..v+6, z 0..2, LED 4x1 proud to z 2.25; post x/y 7..9, foot x/y 6..10, z -N..-N+1.
+# The shapes in UplinkMount (Java) use exactly these boxes.
+MOUNTS = ("full", "bottom", "low", "center", "high", "top", "post4", "post8", "post12", "post16")
+COMPACT_Y = {"bottom": 0, "low": 1, "center": 5, "high": 9, "top": 10,
+             "post4": 5, "post8": 5, "post12": 5, "post16": 5}
+POST = {"post4": 4, "post8": 8, "post12": 12, "post16": 16}
+UC = "uplink_compact"
+
+
+def uct(name):
+    return Tile("atlas", UC, name)
+
+
+def uplink_compact(mount):
+    """8x6x2 puck (front = the compact atlas' 8x6 region), 4 px status LED, optional post."""
+    v = COMPACT_Y[mount]
+    tex = f"{NS}:block/uplink_compact"
+    m = Model(parent=f"{NS}:block/uplink_display", textures={
+        "particle": tex, "atlas": tex, "status": f"{NS}:block/uplink_status_online"})
+    m.box([4, v, 0], [12, v + 6, 2], {"*": uct("body_l"), "south": Region("atlas", UC, "front"),
+                                      "north": uct("body")})
+    m.box([6, v + 1, 2], [10, v + 2, 2.25], st("strip4"), emit=15, skip=("north",))
+    if mount in POST:
+        n = POST[mount]
+        m.box([7, 7, 1 - n], [9, 9, 0], uct("post"), only=("west", "east", "up", "down"))
+        m.box([6, 6, -n], [10, 10, 1 - n], uct("post"), skip=("north",))   # foot on the attached face
+    return m
+
+
+def uplink_compact_ring(mount):
+    """Direct-mode ring around the puck: like the plate's ring, 0.5 px wide, flush, emissive."""
+    v = COMPACT_Y[mount]
+    tex = f"{NS}:block/uplink"
+    m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
+    for (a, b) in (([3.5, v - 0.5, 0], [12.5, v, 2]), ([3.5, v + 6, 0], [12.5, v + 6.5, 2]),
+                   ([3.5, v, 0], [4, v + 6, 2]), ([12, v, 0], [12.5, v + 6, 2])):
+        m.box(a, b, ut("ring"), emit=15, skip=("north",))
+    return m
+
+
+def uplink_body_model(advanced, mount, status):
+    """Model id the blockstate uses for a tier / mount / status."""
+    if mount == "full":
+        return f"{NS}:block/{'uplink_advanced' if advanced else 'uplink'}_{status}"
+    return f"{NS}:block/{'uplink_advanced_compact' if advanced else 'uplink_compact'}_{mount}_{status}"
+
+
+def uplink_ring_model(mount):
+    return f"{NS}:block/uplink_direct_ring" if mount == "full" else f"{NS}:block/uplink_compact_ring_{mount}"
+
+
 # --------------------------------------------------------------------------- cloud bridges (v0.2)
 def bridge(kind):
     """Full-block ME / RS cloud bridge (front = north). CC casing, 2 px deep 8x8 port with a
@@ -805,6 +864,9 @@ def main():
         "block/ender_fiber_link": ender_fiber_link(),
         "item/fiber_cable": fiber_cable_item(),
     }
+    for mt_ in MOUNTS[1:]:
+        models[f"block/uplink_compact_{mt_}"] = uplink_compact(mt_)
+        models[f"block/uplink_compact_ring_{mt_}"] = uplink_compact_ring(mt_)
     counts = {}
     for name, m in models.items():
         write(f"models/{name}.json", m.json())
@@ -819,6 +881,15 @@ def main():
               variant_child(f"{NS}:block/uplink", {"status": f"{NS}:block/uplink_status_{s}"}))
         write(f"models/block/uplink_advanced_{s}.json",
               variant_child(f"{NS}:block/uplink_advanced", {"status": f"{NS}:block/uplink_status_{s}"}))
+    # compact uplinks: the advanced tier only swaps the atlas; status children swap the LED
+    for mt_ in MOUNTS[1:]:
+        write(f"models/block/uplink_advanced_compact_{mt_}.json",
+              variant_child(f"{NS}:block/uplink_compact_{mt_}", {"particle": f"{NS}:block/uplink_advanced_compact",
+                                                                   "atlas": f"{NS}:block/uplink_advanced_compact"}))
+        for s in STATES:
+            for base in ("uplink_compact", "uplink_advanced_compact"):
+                write(f"models/block/{base}_{mt_}_{s}.json",
+                      variant_child(f"{NS}:block/{base}_{mt_}", {"status": f"{NS}:block/uplink_status_{s}"}))
 
     for kind in ("me", "rs"):
         for st_ in STATES:
@@ -884,13 +955,17 @@ def main():
                 variants[f"facing={f},half={half},status={s}"] = {"model": f"{NS}:block/mainframe_{half}_{s}", **r}
     write("blockstates/cloud_mainframe.json", {"variants": variants})
 
-    for block, base in (("cloud_uplink", "uplink"), ("advanced_cloud_uplink", "uplink_advanced")):
+    for block, advanced in (("cloud_uplink", False), ("advanced_cloud_uplink", True)):
         parts = []
-        for f, r in ALL6.items():
-            for s in STATES:
-                parts.append({"when": {"facing": f, "status": s}, "apply": {"model": f"{NS}:block/{base}_{s}", **r}})
-        for f, r in ALL6.items():
-            parts.append({"when": {"facing": f, "direct": "true"}, "apply": {"model": f"{NS}:block/uplink_direct_ring", **r}})
+        for mt_ in MOUNTS:
+            for f, r in ALL6.items():
+                for s in STATES:
+                    parts.append({"when": {"facing": f, "mount": mt_, "status": s},
+                                  "apply": {"model": uplink_body_model(advanced, mt_, s), **r}})
+        for mt_ in MOUNTS:
+            for f, r in ALL6.items():
+                parts.append({"when": {"direct": "true", "facing": f, "mount": mt_},
+                              "apply": {"model": uplink_ring_model(mt_), **r}})
         write(f"blockstates/{block}.json", {"multipart": parts})
 
     # item model definitions (26.1 items/*.json)
@@ -1042,6 +1117,58 @@ def validate():
         bv = data.get(f"blockstates/{kind}_cloud_bridge.json", {}).get("variants", {})
         if len(bv) != 4 * 3:
             problems.append(f"{kind}_cloud_bridge: {len(bv)} variants, expected 12")
+    problems.extend(validate_uplinks(data))
+    return problems
+
+
+def validate_uplinks(data):
+    """Uplink blockstates cover facing x mount x status (one body each) and facing x mount (one direct
+    ring each) with the plate's rotations; compact pucks stay in the cell, posts only reach back into
+    the attached block, and body + ring of every mount are free of coplanar overlaps."""
+    problems = []
+    for blk, adv in (("cloud_uplink", False), ("advanced_cloud_uplink", True)):
+        body, ring = {}, {}
+        for p in data.get(f"blockstates/{blk}.json", {}).get("multipart", []):
+            w, a = p.get("when", {}), p["apply"]
+            rot = {k: a[k] for k in ("x", "y") if k in a}
+            if set(w) == {"facing", "mount", "status"}:
+                body.setdefault((w["facing"], w["mount"], w["status"]), []).append((a["model"], rot))
+            elif set(w) == {"direct", "facing", "mount"} and w["direct"] == "true":
+                ring.setdefault((w["facing"], w["mount"]), []).append((a["model"], rot))
+            else:
+                problems.append(f"{blk}: unexpected multipart condition {w}")
+        for f, r in ALL6.items():
+            for mt_ in MOUNTS:
+                got = ring.get((f, mt_), [])
+                if got != [(uplink_ring_model(mt_), r)]:
+                    problems.append(f"{blk}: facing={f} mount={mt_} direct ring {got}")
+                for s in STATES:
+                    got = body.get((f, mt_, s), [])
+                    if got != [(uplink_body_model(adv, mt_, s), r)]:
+                        problems.append(f"{blk}: facing={f} mount={mt_} status={s} body {got}")
+        if len(body) != len(ALL6) * len(MOUNTS) * len(STATES) or len(ring) != len(ALL6) * len(MOUNTS):
+            problems.append(f"{blk}: {len(body)} body / {len(ring)} ring entries, expected "
+                            f"{len(ALL6) * len(MOUNTS) * len(STATES)} / {len(ALL6) * len(MOUNTS)}")
+
+    def elements(rid):
+        return data.get(f"models/{rid.split(':', 1)[1]}.json", {}).get("elements", [])
+
+    pairs = [("full", elements(f"{NS}:block/uplink"))]
+    for mt_ in MOUNTS[1:]:
+        els = elements(f"{NS}:block/uplink_compact_{mt_}")
+        v, post = COMPACT_Y[mt_], POST.get(mt_, 0)
+        pairs.append((mt_, els))
+        if not els or els[0]["from"] != [4, v, 0] or els[0]["to"] != [12, v + 6, 2]:
+            problems.append(f"uplink_compact_{mt_}: puck must be [4,{v},0]..[12,{v + 6},2] (CloudUplinkBlock shapes)")
+        for i, el in enumerate(els):
+            lo, hi = el["from"], el["to"]
+            if min(lo[0], lo[1]) < 0 or max(hi[0], hi[1]) > 16 or lo[2] < -post or hi[2] > 2.25:
+                problems.append(f"uplink_compact_{mt_} element {i}: outside x/y 0..16, z {-post}..2.25")
+        if mt_ in POST and not any(el["from"][2] == -post for el in els):
+            problems.append(f"uplink_compact_{mt_}: post must reach z {-post}")
+    for mt_, els in pairs:
+        ring_els = elements(uplink_ring_model(mt_))
+        problems.extend(f"uplink {mt_} body + direct ring: {msg}" for msg in coplanar_faces(els + ring_els))
     return problems
 
 
@@ -1094,6 +1221,34 @@ Generated by `tools/gen_models.py` + `tools/gen_textures.py`. Source of truth fo
 `LAYOUTS` in `gen_textures.py`.
 
 {readme.split('## Moving parts', 1)[1].join(['## Moving parts', ''])}
+
+## Compact uplink (non-full faces)
+
+The 14x14 plate only fits faces that carry it. On a slab side, a tray-height machine (Energized Power
+solar panel, 4 px), a carpet-height block or an inset face it stuck out like a floating sign, so the
+uplink blockstates have a `mount` property (`{" | ".join(MOUNTS)}`) that the server computes
+from the attached block's outline shape (`UplinkMount.compute`, on placement, when that neighbour
+changes and once after loading, so older worlds fix themselves):
+
+- `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area -> the plate.
+- `bottom|low|center|high|top`: flush but smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
+  x 4..12, z 0..2, bottom edge at model y {", ".join(f"{k} {v}" for k, v in COMPACT_Y.items() if k not in POST)}).
+  The position with the largest overlap with the face wins (ties: nearest to the face's centre), so it
+  sits on the visible part: solar panel / carpet side -> `bottom`, slab side -> `low`, top slab -> `high`.
+- `post4|post8|post12|post16`: the face is inset by more than 1 px (top of a solar panel or slab: the
+  face lies below the uplink's cell) -> the centred puck on a 2x2 post with a 4x4x1 foot, reaching
+  N px back into the attached block's cell (N = the inset rounded up to 4, so the foot may sit up to
+  3 px inside the block; exact for slabs and 4 px solar panels). Post and foot are part of the
+  selection shape (`UplinkMount#northShape`).
+
+Front: 8x6 region `front` of `textures/block/uplink{{,_advanced}}_compact.png` (32x32: same outline, lower
+band, mini cloud, screws; gold for advanced), status LED = first 4 px of the status strip (`strip4`,
+emissive, proud to z 2.25). No moving part (the BER skips compact mounts). Direct mode:
+`block/uplink_compact_ring_<mount>` (0.5 px emissive ring around the puck, flush). Tiers share the
+geometry: `uplink_advanced_compact_<mount>` only swaps the atlas; `_<status>` children swap the LED.
+`validate()` checks that every facing x mount x status has one body and every facing x mount one ring
+(with the plate's rotations), that pucks match the Java shapes, and that body + ring have no coplanar
+overlaps. The item and the dashboard's 3D view use `mount=full`.
 
 ## Cloud bridges (v0.2)
 
