@@ -8841,3 +8841,88 @@ body.rz-nwse * {
   opacity: 1;
   color: var(--gold);
 }
+/* ---------------------------------------------------------------- Advanced Cloud Sensor (sensor_log) */
+.sensor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.sensor-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sensor-today {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sensor-today b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.sensor-inside {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.sensor-chip {
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-size: 12px;
+  background: var(--panel-3);
+  border: 1px solid var(--line-2);
+  overflow-wrap: anywhere;
+}
+.sensor-chip.k-player {
+  border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
+}
+.sensor-chip.k-hostile {
+  border-color: color-mix(in srgb, var(--red) 60%, transparent);
+}
+.sensor-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.sensor-event {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+.sensor-event.out {
+  color: var(--muted);
+}
+.sensor-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--line-2);
+}
+.sensor-event.in .sensor-dot {
+  background: var(--cyan);
+}
+.sensor-event.in.k-hostile .sensor-dot {
+  background: var(--red);
+}
+.sensor-what {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sensor-when {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sensor-zone {
+  margin: 0;
+}

@@ -9,8 +9,8 @@ import java.util.Set;
 
 /**
  * Device capacity of a mainframe (docs/SPEC.md "Mainframe upgrades"): relays on device routes count 1, routed devices 1 (by
- * fiber {@code fiberWeight}, Cloud Redstone devices {@code redstoneWeight}, Cloud Probes {@code probeUnits} times their
- * route weight). Above the limit the devices with the most
+ * fiber {@code fiberWeight}, Cloud Redstone devices {@code redstoneWeight}, Advanced Cloud Sensors {@code sensorWeight},
+ * Cloud Probes {@code probeUnits} times their route weight). Above the limit the devices with the most
  * hops, then the most recently linked, go {@code over_capacity} and stop until capacity returns. Pure Java, unit tested.
  */
 public final class Capacity {
@@ -47,13 +47,19 @@ public final class Capacity {
     /** @param probeUnits how many devices a Cloud Probe counts as (config {@code probeCapacityUnits}) */
     public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, double redstoneWeight,
                                            double probeUnits, Map<String, Integer> linkOrder) {
+        return overCapacity(result, mainframeId, limit, fiberWeight, redstoneWeight, probeUnits, DEFAULT_SENSOR_WEIGHT, linkOrder);
+    }
+
+    /** @param sensorWeight what an Advanced Cloud Sensor counts (config {@code advancedSensorCapacityWeight}) */
+    public static Set<String> overCapacity(NetworkGraph.Result result, String mainframeId, int limit, double fiberWeight, double redstoneWeight,
+                                           double probeUnits, double sensorWeight, Map<String, Integer> linkOrder) {
         double used = relays(result, mainframeId);
         var connected = new ArrayList<NetworkGraph.Device>();
         for (var device : result.devices()) {
             var route = result.route(device.id());
             if (route == null || !route.connected()) continue;
             connected.add(device);
-            used += weight(device, route, fiberWeight, redstoneWeight, probeUnits);
+            used += weight(device, route, fiberWeight, redstoneWeight, probeUnits, sensorWeight);
         }
         var over = new LinkedHashSet<String>();
         if (used <= limit + 1e-9) return over;
@@ -62,7 +68,7 @@ public final class Capacity {
         for (var device : connected) {
             if (used <= limit + 1e-9) break;
             over.add(device.id());
-            used -= weight(device, result.route(device.id()), fiberWeight, redstoneWeight, probeUnits);
+            used -= weight(device, result.route(device.id()), fiberWeight, redstoneWeight, probeUnits, sensorWeight);
         }
         return over;
     }
@@ -71,9 +77,21 @@ public final class Capacity {
         return weight(device, route, fiberWeight, redstoneWeight, 1);
     }
 
-    /** Capacity units of one routed device: 1 (fiber: {@code fiberWeight}), a redstone device {@code redstoneWeight}, a Cloud Probe {@code probeUnits} times its route weight. */
+    /** Default of {@code advancedSensorCapacityWeight}. */
+    public static final double DEFAULT_SENSOR_WEIGHT = 0.5;
+
     public static double weight(NetworkGraph.Device device, NetworkGraph.Route route, double fiberWeight, double redstoneWeight, double probeUnits) {
+        return weight(device, route, fiberWeight, redstoneWeight, probeUnits, DEFAULT_SENSOR_WEIGHT);
+    }
+
+    /**
+     * Capacity units of one routed device: 1 (fiber: {@code fiberWeight}), a redstone device {@code redstoneWeight}, an
+     * Advanced Cloud Sensor {@code sensorWeight}, a Cloud Probe {@code probeUnits} times its route weight.
+     */
+    public static double weight(NetworkGraph.Device device, NetworkGraph.Route route, double fiberWeight, double redstoneWeight, double probeUnits,
+                                double sensorWeight) {
         if (device.type() == NetworkGraph.DeviceType.REDSTONE) return Math.max(0, redstoneWeight);
+        if (device.type() == NetworkGraph.DeviceType.ADVANCED_SENSOR) return Math.max(0, sensorWeight);
         double w = route.fiber() ? Math.max(0, fiberWeight) : 1;
         return device.type() == NetworkGraph.DeviceType.PROBE ? w * Math.max(1, probeUnits) : w;
     }

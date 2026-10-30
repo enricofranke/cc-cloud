@@ -18,6 +18,9 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
     private final EditBox name;
     private final EditBox group;
+    /** Advanced Cloud Sensor: the allow ("only") and deny ("never") lists of player names. */
+    private final EditBox allow;
+    private final EditBox deny;
     private boolean loaded;
 
     public RsDeviceScreen(RsDeviceMenu menu, Inventory inventory, Component title) {
@@ -31,6 +34,19 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
             box.setFilter(s -> s.chars().noneMatch(Character::isISOControl));
             editBoxes.add(box);
         }
+        allow = new EditBox(font, 0, 0, 80, 10, Component.translatable("cccloud.gui.sensor.allow"));
+        deny = new EditBox(font, 0, 0, 80, 10, Component.translatable("cccloud.gui.sensor.deny"));
+        for (var box : new EditBox[]{allow, deny}) {
+            box.setMaxLength(ai.ezfox.cccloud.rsdevice.RsScreenActions.MAX_SENSOR_ARG);
+            box.setBordered(false);
+            box.setFilter(s -> s.chars().noneMatch(Character::isISOControl));
+            editBoxes.add(box);
+        }
+    }
+
+    /** The position of the device whose screen is open (the zone outline of an Advanced Cloud Sensor). */
+    public net.minecraft.core.BlockPos devicePos() {
+        return menu.pos();
     }
 
     private void send(String action, String arg) {
@@ -41,6 +57,8 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
     protected void onEnter(EditBox box) {
         if (box == name) send("name", name.getValue());
         if (box == group) send("group", group.getValue());
+        if (box == allow) send("s_allow", allow.getValue());
+        if (box == deny) send("s_deny", deny.getValue());
     }
 
     @Override
@@ -63,6 +81,10 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
         if (!loaded && view.has("kind")) {
             name.setValue(str(view, "name"));
             group.setValue(str(view, "group"));
+            if (view.has("sensor")) {
+                allow.setValue(str(view.getAsJsonObject("sensor"), "allow"));
+                deny.setValue(str(view.getAsJsonObject("sensor"), "deny"));
+            }
             loaded = true;
         }
         String kind = str(view, "kind");
@@ -74,6 +96,7 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
             case "switch" -> switchRows();
             case "button" -> buttonRows();
             case "lamp" -> lampRows();
+            case "advanced_sensor" -> advancedSensorRows();
             default -> sensorRows();
         }
 
@@ -226,6 +249,7 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
         textRow(card.isEmpty() ? Component.translatable("cccloud.gui.rsdevice.no_card")
             : Component.translatable("cccloud.gui.rsdevice.card", card), card.isEmpty() ? CloudGui.TEXT_DIM : CloudGui.TEXT);
         if (!kind.equals("sensor")) {
+            // the Advanced Cloud Sensor: PIN and confirmation protect arming and disarming on its card
             toggleRow("cccloud.gui.rsdevice.pin", bool(view, "pin"), manage, () -> send("pin", String.valueOf(!bool(view, "pin"))));
             if (!(kind.equals("switch") && bool(view, "analog"))) {
                 toggleRow("cccloud.gui.rsdevice.confirm", bool(view, "confirm"), manage, () -> send("confirm", String.valueOf(!bool(view, "confirm"))));
@@ -283,5 +307,79 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
             c.text(label, x + 2, y + 2, CloudGui.TEXT_DIM);
             c.text(value, x + 2 + lw, y + 2, CloudGui.TEXT, w - lw - 4);
         }));
+    }
+
+    // ---- Advanced Cloud Sensor -----------------------------------------------------------------------------------------
+
+    /** A row of choice buttons ("Detect: Everyone Players Mobs Hostile"); the current one is highlighted. */
+    private void choiceRow(String labelKey, String current, String[] ids, String keyPrefix, boolean enabled, java.util.function.Consumer<String> pick) {
+        rows.add(new Row(20, (c, x, y, w) -> {
+            var label = Component.translatable(labelKey);
+            c.text(label, x + 2, y + 6, CloudGui.TEXT_DIM);
+            int bx = x + 8 + font.width(label);
+            for (var id : ids) {
+                var text = Component.translatable(keyPrefix + id);
+                if (bx + c.buttonWidth(text) > x + w) break;
+                bx += c.button(bx, y + 3, text, id.equals(current) ? CloudGui.ButtonStyle.ACCENT : CloudGui.ButtonStyle.NORMAL, enabled, () -> pick.accept(id)) + 3;
+            }
+        }));
+    }
+
+    private void advancedSensorRows() {
+        if (!view.has("sensor")) return;
+        var s = view.getAsJsonObject("sensor");
+        boolean manage = bool(view, "canManage");
+        boolean armed = bool(s, "armed");
+        toggleRow("cccloud.gui.sensor.armed", armed, bool(s, "canArm"), () -> send("s_armed", String.valueOf(!armed)));
+        textRow(Component.translatable(bool(s, "canArm") ? "cccloud.gui.sensor.armed_hint" : "cccloud.gui.sensor.no_arm_rights"), CloudGui.TEXT_DIM);
+        if (s.has("problem")) warningRow(Component.translatable("cccloud.gui.sensor.problem." + str(s, "problem")));
+        String inside = str(s, "inside");
+        kv("cccloud.gui.sensor.inside", inside.isEmpty() ? Component.translatable("cccloud.gui.sensor.nobody").getString() : inside);
+        kv("cccloud.gui.sensor.today", String.valueOf(num(s, "today")));
+
+        heading("cccloud.gui.sensor.events");
+        var events = s.has("events") ? s.getAsJsonArray("events") : new JsonArray();
+        if (events.isEmpty()) textRow(Component.translatable("cccloud.gui.sensor.no_events"), CloudGui.TEXT_DIM);
+        var time = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault());
+        for (var e : events) {
+            var ev = e.getAsJsonObject();
+            boolean in = bool(ev, "in");
+            String line = time.format(java.time.Instant.ofEpochMilli(num(ev, "t"))) + "  "
+                + Component.translatable(in ? "cccloud.gui.sensor.entered" : "cccloud.gui.sensor.left", str(ev, "n")).getString();
+            rows.add(new Row(12, (c, x, y, w) -> c.text(line, x + 4, y + 2, in ? CloudGui.TEXT : CloudGui.TEXT_DIM, w - 8)));
+        }
+
+        heading("cccloud.gui.sensor.zone");
+        var zone = s.getAsJsonArray("zone");
+        var max = s.getAsJsonArray("max");
+        String[] axes = {"cccloud.gui.sensor.size_x", "cccloud.gui.sensor.size_y", "cccloud.gui.sensor.size_z"};
+        for (int i = 0; i < 3; i++) {
+            int axis = i;
+            int v = zone.get(i).getAsInt();
+            int m = max.get(i).getAsInt();
+            valueRow(Component.translatable(axes[i]), String.valueOf(v), CloudGui.TEXT, new String[]{"cccloud.gui.rsdevice.minus", "cccloud.gui.rsdevice.plus"},
+                new Runnable[]{() -> sendZone(zone, axis, v - 1), () -> sendZone(zone, axis, v + 1)}, new boolean[]{manage && v > 1, manage && v < m});
+        }
+        choiceRow("cccloud.gui.sensor.place", str(s, "place"), new String[]{"front", "around"}, "cccloud.gui.sensor.place.", manage, id -> send("s_place", id));
+        textRow(Component.translatable("cccloud.gui.sensor.zone_hint"), CloudGui.TEXT_DIM);
+
+        heading("cccloud.gui.sensor.detect");
+        choiceRow("cccloud.gui.sensor.detect", str(s, "detect"), new String[]{"all", "players", "mobs", "hostile"}, "cccloud.gui.sensor.mode.", manage,
+            id -> send("s_detect", id));
+        toggleRow("cccloud.gui.sensor.team", bool(s, "team"), manage, () -> send("s_team", String.valueOf(!bool(s, "team"))));
+        toggleRow("cccloud.gui.sensor.output", bool(s, "output"), manage, () -> send("s_output", String.valueOf(!bool(s, "output"))));
+        choiceRow("cccloud.gui.sensor.notify", str(s, "notify"), new String[]{"off", "info", "warn", "crit"}, "cccloud.gui.sensor.alert.", manage,
+            id -> send("s_notify", id));
+        if (s.has("allow")) {
+            editRow("cccloud.gui.sensor.allow", allow, manage, () -> send("s_allow", allow.getValue()));
+            editRow("cccloud.gui.sensor.deny", deny, manage, () -> send("s_deny", deny.getValue()));
+            textRow(Component.translatable("cccloud.gui.sensor.lists_hint"), CloudGui.TEXT_DIM);
+        }
+    }
+
+    private void sendZone(JsonArray zone, int axis, int value) {
+        int[] v = {zone.get(0).getAsInt(), zone.get(1).getAsInt(), zone.get(2).getAsInt()};
+        v[axis] = value;
+        send("s_zone", v[0] + "," + v[1] + "," + v[2]);
     }
 }

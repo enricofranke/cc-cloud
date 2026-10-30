@@ -1,0 +1,25 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "allthemodium"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "E": "minecraft:ender_eye",
+    "A": "#c:ingots/allthemodium",
+    "S": "cccloud:cloud_sensor",
+    "O": "minecraft:observer",
+    "C": "cccloud:cloud_core"
+  },
+  "pattern": [
+    "AEA",
+    "OSO",
+    "ACA"
+  ],
+  "result": {
+    "id": "cccloud:advanced_cloud_sensor"
+  }
+}

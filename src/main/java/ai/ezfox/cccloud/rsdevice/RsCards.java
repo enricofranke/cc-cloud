@@ -132,6 +132,9 @@ public final class RsCards {
                 widget(WidgetType.INDICATOR, id, name, opts("value", d.active(), "onColor", "green", "icon", d.kind().icon, "order", order)),
                 widget(WidgetType.GAUGE, id + LEVEL, name + " level", opts("min", 0, "max", 15, "value", d.level(), "history", HISTORY,
                     "icon", d.kind().icon, "order", order + 1)));
+            // its details are on its own card (SensorCards); the group card shows whether something is inside
+            case ADVANCED_SENSOR -> List.of(
+                widget(WidgetType.INDICATOR, id, name, opts("value", d.active(), "onColor", "red", "icon", d.kind().icon, "order", order)));
         };
     }
 

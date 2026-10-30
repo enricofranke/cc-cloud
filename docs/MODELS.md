@@ -72,6 +72,8 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/cloud_button_pressed` | 3 |
 | `block/cloud_sensor` | 3 |
 | `block/cloud_sensor_lit` | 3 |
+| `block/advanced_cloud_sensor` | 4 |
+| `block/advanced_cloud_sensor_lit` | 4 |
 | `block/cloud_lamp_off` | 13 |
 | `block/cloud_lamp_dim` | 13 |
 | `block/cloud_lamp_mid` | 13 |
@@ -182,6 +184,13 @@ position). Switch: 8x10 plate, rocker rotated +-22.5 deg around X (on = cyan top
 button: 6x6 plate, 4x4 cap 1.5 px out (0.5 px and glowing while pressed); sensor: 8x8 plate with a
 redstone lens (glows while a signal comes in). Shapes in `RsPlateBlock` match the plates. Items use
 the `_online` model of the off state with `block/rs_plate_display` (GUI scale 1, re-centred).
+
+`advanced_cloud_sensor` (same 36 variants; `powered` = something matching is inside its zone; base models
+`advanced_cloud_sensor` / `_lit`): a 10x10 grey plate (x 3..13, 1.5 px) with two cyan signal ticks, a raised
+6x6 gold rim (1 px, advanced tier) and a 4x4 glass eye standing 1.5 px proud (z up to 3): dark teal iris, black
+pupil, one glint; lit = glowing cyan iris (emission 12). Tiles `adv_face`, `gold`, `eye_side` and regions
+`adv_ring`, `eye_off`, `eye_on` in the same `redstone_plate` atlas. Bounds [3,3,0]..[13,13,3] = the shape in
+`RsPlateBlock` (checked by gen_models.py).
 
 `cloud_lamp`: full block, 12 frame bars (2 px, atlas `textures/block/cloud_lamp.png`) around a glass
 core recessed by 1 px; `level` 0..15 maps to `cloud_lamp_off` (0), `_dim` (1-5, emission 7),

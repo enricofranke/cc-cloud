@@ -89,6 +89,12 @@ public final class CardPreview {
                 if (opts.has("unit") && opts.get("unit").isJsonPrimitive()) p.addProperty("u", cut(opts.get("unit").getAsString(), 8));
             }
             case "item_search", "watchlist", "jobs" -> p.addProperty("c", value instanceof JsonArray rows ? rows.size() : 0);
+            // Advanced Cloud Sensor: its one-line summary, shown like a label
+            case "sensor_log" -> {
+                p.addProperty("t", "label");
+                p.addProperty("s", cut(value instanceof JsonObject o && o.get("summary") != null && o.get("summary").isJsonPrimitive()
+                    ? o.get("summary").getAsString() : "", MAX_TEXT));
+            }
             case "redstone_sides" -> {
                 var sides = new JsonArray();
                 if (value instanceof JsonArray rows) {

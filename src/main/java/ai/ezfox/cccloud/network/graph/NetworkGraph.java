@@ -43,7 +43,9 @@ public final class NetworkGraph {
         /** Cloud Probe: links like an advanced uplink, counts {@code probeCapacityUnits} devices and costs more FE. */
         PROBE("probe"),
         /** Cloud Switch / Button / Lamp / Sensor: radio only, a fraction of a device in capacity and FE. */
-        REDSTONE("redstone");
+        REDSTONE("redstone"),
+        /** Advanced Cloud Sensor: a redstone device (radio only, its range) with its own capacity weight and FE while armed. */
+        ADVANCED_SENSOR("advanced_sensor");
 
         public final String id;
 

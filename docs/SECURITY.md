@@ -15,6 +15,7 @@ It is reviewed before every release.
 | Server availability | The web server runs inside the Minecraft server process. It must never stall the server thread. |
 | API keys (v0.10) | 256-bit bearer keys for external tools. Each one acts for one player on one mainframe, within its scopes. |
 | Scenes and schedules (v0.10) | One press or one clock tick runs several actions; a scene must never do more than its presser (or owner) may. |
+| Player names (Advanced Cloud Sensor) | Who was seen where and when. Personal data on a shared server: only operators and up see names. |
 
 ## Attackers
 
@@ -200,6 +201,44 @@ It is reviewed before every release.
 - **Cloud Probe** (reads and controls one machine up to `probeRange` blocks away, default 8, at most 16 by the config's range): picking the machine is a real block interaction (claim mods cancel it, spawn protection, adventure mode); a pick is valid for 10 minutes and only for the picking player. Linking needs `network.link` on the probe's mainframe and checks spawn protection and FTB Chunks claims of other teams again. Every read and action checks the target again: the current `probeRange`, loaded, not a CC: Cloud block, not in a chunk claimed by another team for the player who set it, and the probe still standing where (and in the dimension where) it was set; a probe moved with its data forgets the target. Nothing is force-loaded.
 - **Cloud Redstone devices**: dashboard controls need `act.redstone` (every control of a Redstone card, "All on/off" included) and are limited to 4 changes per second per device (dashboard, rules, scenes and API alike); PIN and confirmation per device, "All on/off" asks for the PIN when any device of the card has one. Cards and groups belong to one mainframe (groups never merge across mainframes); linking needs `network.link` and the relink rule; rename and regroup from the dashboard check that the device belongs to that mainframe. The device screen needs the menu open and the player near the device; its settings need `network.link`, switching it by hand is like a lever.
 - Residual: claim mods other than FTB Chunks are only asked when the machine is picked; a sensor reads the redstone signal at its own position, which its placer could read anyway.
+
+### Advanced Cloud Sensor: player names and zones
+The Advanced Cloud Sensor reports who enters a zone – on a shared server, player names and where and when they were seen
+are personal data. Rules:
+- **Who sees names.** Only sessions with `view.positions` on the sensor's mainframe (the operator preset and up; the
+  same right as coordinates and the restricted cards) get player names: on the card, in its alerts, in the in-game screen
+  and through API keys of such players. Everyone else – viewers, share links, Cloud Displays (they stand in the world),
+  API keys without that right – gets **"a player"**; mobs keep their type. The names travel as *private values*: the
+  card publishes a public form next to every value that contains a name (the activity, the allow/deny lists), and
+  `WebHub` picks the form per session class for snapshots, section messages, value deltas and alerts; share filtering
+  and `sectionText` (displays) work on the public form only. The public form is never derived from the full one in the
+  browser – a viewer's browser never receives a name. `WebHubPrivateValuesTest` and the GameTest `sensor_names_hidden`
+  check snapshot, deltas, alerts, displays and the API form.
+- **Push** targets get names: they are set up by admins (`push.manage`) and receive what the dashboard shows an operator.
+  Rule alerts with `{who}` follow the same split (names for operators and push, "a player" for the others).
+- **Server switch.** `advancedSensorPlayerNames = false` turns names off for the whole server: nothing reports or stores
+  a name (the log keeps "a player"), push included; rules for one player by name never fire. The allow/deny lists still
+  work: they are matched at scan time against the live player and never reported.
+- **Where it may look.** The zone must lie in the owner's claim or unclaimed land: every chunk it touches is checked
+  against FTB Chunks claims of other teams (members and allies count as the own team, as for the Cloud Probe), when the
+  zone is set (with the player who sets it; from the dashboard, rules and scenes with the sensor's owner) and again every
+  5 seconds while it scans, so a zone claimed later stops being watched. Spawn protection and the world border are
+  checked when the zone is set. Claim mods other than FTB Chunks are only asked through the normal block placement. The
+  zone size is bounded by the server (`advancedSensorMaxZoneX/Y/Z`, hard caps 32/16/32).
+- **Who may change it.** Arming and disarming need `act.redstone` (dashboard, rules, scenes, the screen – an intruder
+  cannot walk up and disarm a linked sensor; PIN/confirmation possible); every other setting needs `network.link`; at most
+  `redstoneDeviceChangesPerSecond` changes per second from the dashboard, rules, scenes and the API.
+- **Bounded memory and CPU.** The event log keeps 20 events (saved with the block), the tracker at most 64 entities and
+  its per-entity cooldown at most 256, the alert summary at most 64 entries, the team cache 64 players. A scan is one
+  AABB entity query of the zone (loaded chunks only, at most 256 entities looked at), every 10 ticks per sensor, spread
+  over the ticks, and at most `advancedSensorScansPerTick` scans per tick on the whole server; a disarmed sensor without
+  redstone output does not scan. Alerts are rate-limited per sensor (one per `advancedSensorAlertCooldown`, the rest as a
+  summary) on top of the mainframe's push limit.
+- **No player text in alerts.** Mobs are named by their type, items by the item's name (never an anvil name or a name
+  tag), players by their profile name; Discord/ntfy formatting is escaped by the push formatter as before.
+- Residual: players who may see positions on a mainframe learn when named players were in the zone, as an in-game
+  guard at the door would. Vanish mods are only detected through the common `vanished` flag/tag or invisibility without
+  the potion effect; a vanish mod that hides players in another way is not detected.
 
 ### Map, voxels and X-ray
 - The surface map shows what is visible from above. Cave **slices** are configurable (`mapSlices`: auto = on in singleplayer and for LAN-only dashboards, off when `webAllowInternet` is set) and limited to ±32 blocks (Y) around the mainframe's own nodes.

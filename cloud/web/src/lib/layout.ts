@@ -26,7 +26,7 @@ export const ACCENTS = ["gold", "cyan", "green", "yellow", "red", "purple", "ora
 export type Accent = (typeof ACCENTS)[number];
 export const ICON_NAMES = [
   "home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick",
-  "lever", "button", "lamp", "sensor",
+  "lever", "button", "lamp", "sensor", "eye",
 ] as const;
 export type IconName = (typeof ICON_NAMES)[number];
 export const CARD_STYLES = ["comfortable", "compact"] as const;
@@ -160,12 +160,12 @@ export function cardKeyOf(uplinkId: string, w: Widget) {
 /** Default widget order inside a card when nobody customised it: readouts first, buttons last. */
 const TYPE_RANK: Record<string, number> = {
   gauge: 0, indicator: 1, chart: 2, progress: 3, label: 4, item_search: 5, watchlist: 6, jobs: 7,
-  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10, redstone_sides: 11,
+  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10, redstone_sides: 11, sensor_log: 2,
 };
 /** Smallest readable width (of 12): cards on the page, widgets inside their card. */
 export const MIN_CARD_W = 3;
 export function minWidgetW(type: string) {
-  if (type === "item_search" || type === "watchlist" || type === "jobs" || type === "redstone_sides") return 6;
+  if (type === "item_search" || type === "watchlist" || type === "jobs" || type === "redstone_sides" || type === "sensor_log") return 6;
   if (type === "chart") return 4;
   if (type === "gauge") return 2;
   return 3;
@@ -183,7 +183,7 @@ export function defaultWidgetH(type: string, display?: Display) {
   if (type === "chart") return display === "sparkline" ? 3 : 5;
   if (type === "indicator") return display === "lamp" ? 3 : 2;
   // rows grow with their content, so these are minimums rather than exact heights
-  const H: Record<string, number> = { progress: 2, item_search: 3, watchlist: 4, jobs: 3, toggle: 1, slider: 2, select: 1, number: 1, text: 1, buttons: 1, button: 2, redstone_sides: 6 };
+  const H: Record<string, number> = { progress: 2, item_search: 3, watchlist: 4, jobs: 3, toggle: 1, slider: 2, select: 1, number: 1, text: 1, buttons: 1, button: 2, redstone_sides: 6, sensor_log: 6 };
   return H[type] ?? 2;
 }
 /** Card rows for the header and padding around the widget grid. */
@@ -253,7 +253,7 @@ function luaPages(uplinks: Uplink[]): LayoutPage[] {
 
 const hasBox = (p: Partial<Box>) => p.x !== undefined && p.y !== undefined && p.w !== undefined && p.h !== undefined;
 
-const REDSTONE_ICONS = new Set(["lamp", "lever", "button", "sensor"]);
+const REDSTONE_ICONS = new Set(["lamp", "lever", "button", "sensor", "eye"]);
 /** A guess for a card icon from its title when nobody chose one (view-mode polish). */
 export function guessIcon(title: string, widgets: Widget[]): IconName | undefined {
   // Cloud Redstone cards: the icon of their devices (lamps, switches, buttons, sensors)

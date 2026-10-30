@@ -51,7 +51,7 @@ public final class InGameClients {
 
     /** The published snapshot of one section ({uplinkId,title,online,widgets,...}), or null. Any thread. */
     public static @Nullable JsonObject section(UUID mainframeId, String sectionId) {
-        return WebHub.INSTANCE.sectionSnapshot(mainframeId, sectionId);
+        return WebHub.INSTANCE.sectionSnapshot(mainframeId, sectionId, false); // in-world: never player names
     }
 
     /** Ids and titles of the sections of a mainframe (for pickers); restricted ones are flagged. Any thread. */

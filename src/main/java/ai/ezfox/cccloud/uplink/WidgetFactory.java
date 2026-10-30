@@ -194,6 +194,7 @@ public final class WidgetFactory {
             }
             case WATCHLIST, JOBS -> allowKeys(type, o, "bridge");
             case REDSTONE_SIDES -> throw new WidgetException("redstone_sides is only used by the automatic Computer card");
+            case SENSOR_LOG -> throw new WidgetException("sensor_log is only used by the Advanced Cloud Sensor");
         }
         common(opts, o);
 
@@ -210,6 +211,7 @@ public final class WidgetFactory {
             case BUTTON, BUTTONS, ITEM_SEARCH -> throw new WidgetException(widget.type().id() + " '" + widget.id() + "' has no value");
             case WATCHLIST, JOBS -> throw new WidgetException(widget.type().id() + " '" + widget.id() + "' gets its value from the bridge");
             case REDSTONE_SIDES -> throw new WidgetException("redstone_sides '" + widget.id() + "' is managed by the Computer card");
+            case SENSOR_LOG -> throw new WidgetException("sensor_log '" + widget.id() + "' is managed by the Advanced Cloud Sensor");
             case TOGGLE, INDICATOR -> {
                 if (!(value instanceof Boolean b)) throw new WidgetException(widget.type().id() + " '" + widget.id() + "' expects a boolean, got " + describe(value));
                 yield new JsonPrimitive(b);

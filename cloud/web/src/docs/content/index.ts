@@ -145,6 +145,7 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "minecraft:stone_button": { en: "Stone Button", de: "Steinknopf" },
   "minecraft:comparator": { en: "Redstone Comparator", de: "Redstone-Komparator" },
   "minecraft:redstone_lamp": { en: "Redstone Lamp", de: "Redstone-Lampe" },
+  "minecraft:observer": { en: "Observer", de: "Beobachter" },
   "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" },
   // every CC: Cloud item, from the mod's lang files (build step dev/build-recipes.ts)
   ...GEN.names,

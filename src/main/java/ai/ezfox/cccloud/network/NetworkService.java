@@ -157,7 +157,7 @@ public final class NetworkService {
             case UPLINK -> CloudConfig.RANGE_UPLINK;
             case ADVANCED_UPLINK, PROBE -> CloudConfig.RANGE_ADVANCED_UPLINK;
             case BRIDGE -> CloudConfig.RANGE_BRIDGE;
-            case REDSTONE -> CloudConfig.RANGE_REDSTONE_DEVICE;
+            case REDSTONE, ADVANCED_SENSOR -> CloudConfig.RANGE_REDSTONE_DEVICE;
         });
     }
 
@@ -269,9 +269,9 @@ public final class NetworkService {
             var link = device.getLink();
             if (link == null || device.getLevel() == null || device.isRemoved() || (only != null && !only.contains(link.id()))) continue;
             var p = device.getBlockPos();
+            var type = device.graphType();
             devicesByMainframe.computeIfAbsent(link.id(), k -> new ArrayList<>()).add(new NetworkGraph.Device(device.deviceId().toString(),
-                NetworkGraph.DeviceType.REDSTONE, dim(device.getLevel()), p.getX() + .5, p.getY() + .5, p.getZ() + .5,
-                deviceRange(NetworkGraph.DeviceType.REDSTONE), false));
+                type, dim(device.getLevel()), p.getX() + .5, p.getY() + .5, p.getZ() + .5, deviceRange(type), false));
         }
         for (var mainframe : CloudNetwork.mainframes()) {
             if (mainframe.getLevel() == null || mainframe.isRemoved()) continue;
@@ -283,7 +283,8 @@ public final class NetworkService {
             var limit = mainframe.effects().devices();
             var over = limit == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? Set.<String>of()
                 : ai.ezfox.cccloud.network.graph.Capacity.overCapacity(computed, id.toString(), limit, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
-                    CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), linkOrder(mainframe));
+                    CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS),
+                    CloudConfig.get(CloudConfig.ADVANCED_SENSOR_CAPACITY_WEIGHT), linkOrder(mainframe));
             var overIds = new HashSet<UUID>();
             for (var o : over) overIds.add(UUID.fromString(o));
             OVER_CAPACITY.addAll(overIds);
@@ -292,7 +293,7 @@ public final class NetworkService {
             RESULTS.put(id, result);
             for (var device : devices) ROUTES.put(UUID.fromString(device.id()), result.route(device.id()));
             COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT),
-                CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS)));
+                CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), CloudConfig.get(CloudConfig.ADVANCED_SENSOR_CAPACITY_WEIGHT), NetworkService::sensorArmed));
             // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
             // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
             var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
@@ -405,7 +406,8 @@ public final class NetworkService {
             boolean counted = deviceId != null && ROUTES.containsKey(UUID.fromString(deviceId)) && route(UUID.fromString(deviceId)) != null
                 && route(UUID.fromString(deviceId)).connected();
             double weight = ai.ezfox.cccloud.network.graph.Capacity.weight(device, route, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
-                CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS));
+                CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS),
+                CloudConfig.get(CloudConfig.ADVANCED_SENSOR_CAPACITY_WEIGHT));
             if (limit != ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED && !counted && capacityUsed(mainframe.getMainframeId()) + weight > limit + 1e-9) {
                 return Component.translatable("cccloud.network.capacity_full", limit);
             }
@@ -441,6 +443,7 @@ public final class NetworkService {
                 case "bridges" -> counts.bridges();
                 case "redstone" -> counts.redstone();
                 case "probes" -> counts.probes();
+                case "sensors" -> counts.sensors();
                 case "clients" -> Math.max(0, clients);
                 case "hops" -> counts.extraHops();
                 default -> null;
@@ -460,11 +463,22 @@ public final class NetworkService {
         return array;
     }
 
+    /** An Advanced Cloud Sensor that is armed (its FE rate); anything else (and unloaded sensors) is not. */
+    private static boolean sensorArmed(String deviceId) {
+        try {
+            var device = ai.ezfox.cccloud.rsdevice.RsDevices.loaded(UUID.fromString(deviceId));
+            return device != null && device.sensorArmed();
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     public static NetworkPower.Rates rates() {
         return new NetworkPower.Rates(CloudConfig.get(CloudConfig.MAINFRAME_BASE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_UPLINK_FE),
             CloudConfig.get(CloudConfig.MAINFRAME_PER_ADVANCED_UPLINK_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_BRIDGE_FE),
             CloudConfig.get(CloudConfig.MAINFRAME_PER_CLIENT_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_HOP_FE),
-            CloudConfig.get(CloudConfig.MAINFRAME_PER_REDSTONE_DEVICE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_PROBE_FE));
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_REDSTONE_DEVICE_FE), CloudConfig.get(CloudConfig.MAINFRAME_PER_PROBE_FE),
+            CloudConfig.get(CloudConfig.MAINFRAME_PER_ADVANCED_SENSOR_FE));
     }
 
     // ---- JSON (snapshot, deltas, Lua, in-game map) -------------------------------------------------------------------
@@ -801,7 +815,7 @@ public final class NetworkService {
     }
 
     private static String deviceTypeId(UUID mainframeId, NetworkGraph.Device device, @Nullable DashboardSection section) {
-        if (device.type() == NetworkGraph.DeviceType.REDSTONE) {
+        if (device.type() == NetworkGraph.DeviceType.REDSTONE || device.type() == NetworkGraph.DeviceType.ADVANCED_SENSOR) {
             var type = ai.ezfox.cccloud.rsdevice.RsDevices.typeId(mainframeId, UUID.fromString(device.id()));
             return type != null ? type : device.type().id;
         }

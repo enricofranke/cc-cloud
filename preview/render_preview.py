@@ -887,7 +887,8 @@ if __name__ == "__main__" and os.environ.get("PROBE"):
 
 # --------------------------------------------------------------------------- Cloud Redstone devices preview
 RS_PLATE_MODELS = {"switch": ("cloud_switch_off", "cloud_switch_on"), "button": ("cloud_button", "cloud_button_pressed"),
-                   "sensor": ("cloud_sensor", "cloud_sensor_lit")}
+                   "sensor": ("cloud_sensor", "cloud_sensor_lit"),
+                   "advanced sensor": ("advanced_cloud_sensor", "advanced_cloud_sensor_lit")}
 
 
 def stone_quads(a, pos):
@@ -918,14 +919,15 @@ def redstone_preview(a):
                                f"{kind} {'on' if on else 'off'}"))
     for kind in RS_PLATE_MODELS:
         shots.append(label(render(rs_plate_quads(a, kind, True), S, yaw=330, pitch=25, night=True, **close), f"{kind} on, night"))
-    for kind, st in (("switch", "connecting"), ("sensor", "offline"), ("button", "connecting")):
+    for kind, st in (("switch", "connecting"), ("sensor", "offline"), ("button", "connecting"), ("advanced sensor", "online")):
         shots.append(label(render(rs_plate_quads(a, kind, False, st), S, yaw=0, pitch=0, night=True, **close), f"{kind} {st} (LED), night"))
     for step in ("off", "dim", "mid", "on"):
         shots.append(label(render(model_quads(a, f"cccloud:block/cloud_lamp_{step}"), S, yaw=200, pitch=25), f"lamp {step}"))
     for step in ("off", "dim", "mid", "on"):
         shots.append(label(render(model_quads(a, f"cccloud:block/cloud_lamp_{step}"), S, yaw=200, pitch=25, night=True), f"lamp {step}, night"))
     for item, models in (("switch", ["cccloud:block/cloud_switch_off_online"]), ("button", ["cccloud:block/cloud_button_online"]),
-                         ("sensor", ["cccloud:block/cloud_sensor_online"]), ("lamp", ["cccloud:block/cloud_lamp_on"])):
+                         ("sensor", ["cccloud:block/cloud_sensor_online"]), ("advanced sensor", ["cccloud:block/advanced_cloud_sensor_online"]),
+                         ("lamp", ["cccloud:block/cloud_lamp_on"])):
         shots.append(label(item_render(a, models, S), f"{item} item (GUI)"))
     grid(shots, 6).save(os.path.join(HERE, "renders", "redstone.png"))
 
@@ -938,12 +940,13 @@ def redstone_preview(a):
     q += rs_plate_quads(a, "switch", True, facing="north", pos=(0, 0, 1))
     q += rs_plate_quads(a, "button", False, facing="north", pos=(1, 0, 1))
     q += rs_plate_quads(a, "sensor", True, facing="north", pos=(2, 0, 1))
+    q += rs_plate_quads(a, "advanced sensor", True, facing="north", pos=(1, 2, 1))
     q += rs_plate_quads(a, "switch", False, facing="down", pos=(0, 1, 0))
     q += rs_plate_quads(a, "switch", True, facing="up", pos=(1, 1, 0))
     wall = list(q)
     for i, step in enumerate(("off", "dim", "mid", "on")):
         q += model_quads(a, f"cccloud:block/cloud_lamp_{step}", blockstate_transform(offset=(-1.5 + 1.5 * i, 0, 3)))
-    scene = [label(render(q, 640, yaw=25, pitch=24), "switch / button / sensor on a wall, a switch on top, lamps off..on"),
+    scene = [label(render(q, 640, yaw=25, pitch=24), "switch / button / sensor on a wall, an advanced sensor above, a switch on top, lamps off..on"),
              label(render(q, 640, yaw=25, pitch=24, night=True), "night"),
              label(render(wall, 640, yaw=25, pitch=-25), "from below: a switch hanging under a block"),
              label(render(wall, 640, yaw=25, pitch=-25, night=True), "from below, night")]

@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:sensor_rule_who",
+  "max_ticks": 1200,
+  "structure": "cccloud:test_floor"
+}

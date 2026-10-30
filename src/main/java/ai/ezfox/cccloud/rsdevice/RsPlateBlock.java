@@ -60,6 +60,8 @@ public class RsPlateBlock extends Block implements EntityBlock, RsDeviceBlock {
     private static final Map<Direction, VoxelShape> BUTTON = Shapes.rotateAll(Block.box(5, 5, 0, 11, 11, 2.5));
     private static final Map<Direction, VoxelShape> BUTTON_PRESSED = Shapes.rotateAll(Block.box(5, 5, 0, 11, 11, 1.75));
     private static final Map<Direction, VoxelShape> SENSOR = Shapes.rotateAll(Block.box(4, 4, 0, 12, 12, 2.25));
+    /** Advanced Cloud Sensor: 10x10 plate with the gold-rimmed eye (bounds checked by tools/gen_models.py). */
+    private static final Map<Direction, VoxelShape> ADVANCED_SENSOR = Shapes.rotateAll(Block.box(3, 3, 0, 13, 13, 3));
 
     private final RsKind kind;
 
@@ -90,6 +92,7 @@ public class RsPlateBlock extends Block implements EntityBlock, RsDeviceBlock {
         return switch (kind) {
             case SWITCH -> SWITCH.get(facing);
             case BUTTON -> (state.getValue(POWERED) ? BUTTON_PRESSED : BUTTON).get(facing);
+            case ADVANCED_SENSOR -> ADVANCED_SENSOR.get(facing);
             default -> SENSOR.get(facing);
         };
     }
@@ -126,14 +129,18 @@ public class RsPlateBlock extends Block implements EntityBlock, RsDeviceBlock {
 
     @Override
     protected boolean isSignalSource(BlockState state) {
-        return kind == RsKind.SWITCH || kind == RsKind.BUTTON;
+        return kind == RsKind.SWITCH || kind == RsKind.BUTTON || kind == RsKind.ADVANCED_SENSOR;
     }
 
-    /** What the plate emits (0–15): the switch's level, 15 while the button is pressed, nothing for the sensor. */
+    /**
+     * What the plate emits (0–15): the switch's level, 15 while the button is pressed, 15 while something matching is
+     * in the Advanced Cloud Sensor's zone (when its output is on), nothing for the basic sensor.
+     */
     private int output(BlockState state, BlockGetter level, BlockPos pos) {
         return switch (kind) {
             case SWITCH -> level.getBlockEntity(pos) instanceof RsDeviceBlockEntity device ? device.output() : state.getValue(POWERED) ? 15 : 0;
             case BUTTON -> state.getValue(POWERED) ? 15 : 0;
+            case ADVANCED_SENSOR -> state.getValue(POWERED) && level.getBlockEntity(pos) instanceof RsDeviceBlockEntity device ? device.output() : 0;
             default -> 0;
         };
     }
@@ -175,6 +182,18 @@ public class RsPlateBlock extends Block implements EntityBlock, RsDeviceBlock {
     }
 
     // ---- interaction -------------------------------------------------------------------------------------------------
+
+    /** Advanced Cloud Sensor: the player who places it is its owner ("ignore my team", claims of the zone). */
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, net.minecraft.world.entity.@Nullable LivingEntity placer,
+                            net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (level.isClientSide() || kind != RsKind.ADVANCED_SENSOR || !(placer instanceof Player player)) return;
+        if (level.getBlockEntity(pos) instanceof RsDeviceBlockEntity device && device.sensor() != null) {
+            device.sensor().setOwner(player);
+            device.setChanged();
+        }
+    }
 
     @Override
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {

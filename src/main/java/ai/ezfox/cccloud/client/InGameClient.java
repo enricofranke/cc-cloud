@@ -80,6 +80,7 @@ public final class InGameClient {
         }
         while (ANALYZER_MODE.consumeClick()) ai.ezfox.cccloud.client.analyzer.AnalyzerOverlay.cycleMode();
         ai.ezfox.cccloud.client.analyzer.AnalyzerOverlay.tick();
+        ai.ezfox.cccloud.client.SensorZoneOverlay.tick();
         if (++ticks % 20 == 0) DisplayTextures.cleanup();
     }
 

@@ -75,6 +75,9 @@ Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und 
 
 ## Redstone-Geräte
 
+### Erweiterter Cloud-Sensor
+<RecipesFor id="cccloud:advanced_cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
 ### Cloud-Taster
 <RecipesFor id="cccloud:cloud_button" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
@@ -151,7 +154,7 @@ Die Rezepte sind darauf ausgelegt, von Modpacks geändert zu werden:
 
 - **Feste Rezept-IDs.** Jedes Rezept heißt `cccloud:<name>` ([Liste unten](recipes.md)) und behält seine ID über Versionen hinweg. Überschreiben mit einer Datapack-Datei `data/cccloud/recipe/<name>.json`, entfernen mit einer Datei, die nur eine `neoforge:never`-Bedingung enthält (unten), oder per KubeJS / CraftTweaker.
 - **Tags statt Items.** Die Zutaten sind die üblichen `c:`-Tags (`#c:ingots/gold`, `#c:nuggets/gold`, `#c:ender_pearls`, `#c:dusts/redstone`, `#c:glass_panes`, `#c:gems/diamond`, `#c:storage_blocks/gold`, `#c:ingots/vibranium` …), daher tauschen Vereinheitlichungs-Mods wie AlmostUnified das Material, ohne diese Rezepte anzufassen.
-- **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades und die Cloud Probe nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (`neoforge:mod_loaded`); ohne lädt stattdessen die `*_fallback`-Variante (Diamant, Netherit, Netherstern, `neoforge:not`). Genauso der Ender Fiber Link (`ender_fiber_link_unobtainium` mit AllTheModium, `ender_fiber_link` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: `quantum_core_fallback`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
+- **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades, die Cloud Probe und der Erweiterte Cloud-Sensor nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (`neoforge:mod_loaded`); ohne lädt stattdessen die `*_fallback`-Variante (Gold, Diamant, Netherit, Netherstern, `neoforge:not`). Genauso der Ender Fiber Link (`ender_fiber_link_unobtainium` mit AllTheModium, `ender_fiber_link` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: `quantum_core_fallback`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
 - **FTB Quests:** Die CC: Cloud-Kapitel nutzen Item-Aufgaben (Item haben oder craften), nie Rezept-IDs – sie funktionieren also weiter, egal was du änderst.
 - **Was Spieler sehen:** JEI/EMI, das Handbuch im Spiel und das Dashboard des Servers zeigen die aktuellen Rezepte; das Dashboard markiert geänderte, hinzugefügte und entfernte. Die Website zeigt die Standard-Rezepte.
 
@@ -187,6 +190,8 @@ ServerEvents.recipes(event => {
 | Rezept-ID | Ergebnis | Geladen |
 |---|---|---|
 | `cccloud:advanced_cloud_relay` | Erweitertes Cloud-Relais | immer |
+| `cccloud:advanced_cloud_sensor` | Erweiterter Cloud-Sensor | mit AllTheModium |
+| `cccloud:advanced_cloud_sensor_fallback` | Erweiterter Cloud-Sensor | ohne AllTheModium |
 | `cccloud:advanced_cloud_tablet` | Erweitertes Cloud-Tablet | immer |
 | `cccloud:advanced_cloud_tablet_upgrade` | Erweitertes Cloud-Tablet | immer |
 | `cccloud:advanced_cloud_uplink` | Erweiterter Cloud-Uplink | immer |

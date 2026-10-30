@@ -388,7 +388,9 @@ public final class ScaleTest {
                         set(level, base, at.above(), ModRegistry.CLOUD_LAMP.get().defaultBlockState());
                     } else {
                         set(level, base, at, Blocks.STONE.defaultBlockState());
-                        Block plate = r < 7 ? ModRegistry.CLOUD_SWITCH.get() : r < 9 ? ModRegistry.CLOUD_SENSOR.get() : ModRegistry.CLOUD_BUTTON.get();
+                        // one in ten redstone devices is an Advanced Cloud Sensor (its zone scans show up as "advanced sensors")
+                        Block plate = r < 7 ? ModRegistry.CLOUD_SWITCH.get() : r == 7 ? ModRegistry.CLOUD_SENSOR.get() : r == 8 ? ModRegistry.ADVANCED_CLOUD_SENSOR.get()
+                            : ModRegistry.CLOUD_BUTTON.get();
                         set(level, base, at.above(), plate.defaultBlockState().setValue(RsPlateBlock.FACING, Direction.DOWN));
                     }
                 }

@@ -4,6 +4,7 @@
 import type { Uplink, Widget } from "./types.ts";
 import { clockToTicks, describeWhen, isTimeTrigger, ticksToClock, validAt, validDays, type Day, type SchedulesInfo } from "./schedules.ts";
 import type { Lang } from "./lang.ts";
+import { TRIGGER_KINDS, TRIGGER_KIND_TEXT, type TriggerKind } from "./sensor.ts";
 
 export { clockToTicks, ticksToClock };
 
@@ -21,7 +22,9 @@ export type Trigger =
   | { type: "offline"; uplinkId: string }
   | { type: "interval"; minutes: number }
   | { type: "time"; time: number }
-  | { type: "schedule"; days: Day[]; at: string };
+  | { type: "schedule"; days: Day[]; at: string }
+  /** an Advanced Cloud Sensor reports something entering its zone; `player` only with kind player/any */
+  | { type: "sensor"; uplinkId: string; kind?: TriggerKind; player?: string };
 export type Condition = Check | { type: "online"; uplinkId: string };
 export type Action =
   | { type: "redstone"; uplinkId: string; side: Side; value: number }
@@ -126,6 +129,7 @@ export const redstoneUplinks = (ups: Uplink[]) => ups.filter((u) => u.mode === "
 
 // ------------------------------------------------------------ validation
 const ITEM = /^[a-z0-9_.-]+:[a-z0-9_./-]+$/;
+const PLAYER_NAME = /^[A-Za-z0-9_]{1,16}$/;
 /** v0.10 context for validation: the schedules limits and the mainframe's scenes. */
 export interface RuleContext {
   minInterval?: number;
@@ -160,6 +164,12 @@ export function validateRule(r: Rule, uplinks: Uplink[], maxCraft = 4096, ctx: R
       case "schedule":
         if (!validDays(c.days)) return `${where}: pick at least one day.`;
         return validAt(c.at) ? null : `${where}: the time looks like 07:30 (24 h).`;
+      case "sensor":
+        if (!up(c.uplinkId)) return `${where}: pick an Advanced Cloud Sensor.`;
+        if (c.kind && !TRIGGER_KINDS.includes(c.kind)) return `${where}: pick what it should detect.`;
+        if (c.player && !PLAYER_NAME.test(c.player)) return `${where}: player names are 1–16 letters, digits or _.`;
+        if (c.player && c.kind && c.kind !== "any" && c.kind !== "player") return `${where}: a player name only works with "a player".`;
+        return null;
     }
   };
   const w = check(r.when, "When");
@@ -225,6 +235,8 @@ export function describeCheck(c: Trigger | Condition, uplinks: Uplink[]): string
       return `${card(c.uplinkId)} goes offline`;
     case "online":
       return `${card(c.uplinkId)} is online`;
+    case "sensor":
+      return `${card(c.uplinkId)} detects ${c.player ? `the player ${c.player}` : TRIGGER_KIND_TEXT[c.kind ?? "any"]}`;
   }
 }
 const ACTION_TEXT = {

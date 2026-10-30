@@ -9,7 +9,16 @@ import org.jspecify.annotations.Nullable;
  * (on/off, level, press) needs nothing more than standing at it, like flipping it by hand. Pure Java, unit tested.
  */
 public final class RsScreenActions {
-    public sealed interface Action permits Rename, Regroup, Mode, Level, Power, Press, Pulse, Follow, Pin, Confirm, Unlink {
+    public sealed interface Action permits Rename, Regroup, Mode, Level, Power, Press, Pulse, Follow, Pin, Confirm, Unlink, Sensor {
+    }
+
+    /**
+     * Advanced Cloud Sensor settings ({@code s_<key>}: armed, team, output, detect, notify, place, allow, deny, zone); the
+     * argument is checked by {@code SensorActions.screen}. Arming needs {@code act.redstone} on its mainframe, the rest
+     * {@code network.link}.
+     */
+    public record Sensor(String key, String arg) implements Action {
+        public static final java.util.Set<String> KEYS = java.util.Set.of("armed", "team", "output", "detect", "notify", "place", "allow", "deny", "zone");
     }
 
     public record Rename(String name) implements Action {
@@ -48,6 +57,9 @@ public final class RsScreenActions {
     public record Unlink() implements Action {
     }
 
+    /** Longest argument of a sensor action (16 player names with separators). */
+    public static final int MAX_SENSOR_ARG = 300;
+
     private RsScreenActions() {
     }
 
@@ -71,13 +83,22 @@ public final class RsScreenActions {
             case "pin" -> bool(arg) == null ? null : new Pin(bool(arg));
             case "confirm" -> bool(arg) == null ? null : new Confirm(bool(arg));
             case "unlink" -> arg.isEmpty() ? new Unlink() : null;
-            default -> null;
+            default -> {
+                if (!action.startsWith("s_") || !Sensor.KEYS.contains(action.substring(2))) yield null;
+                if (arg.length() > MAX_SENSOR_ARG || arg.chars().anyMatch(Character::isISOControl)) yield null;
+                yield new Sensor(action.substring(2), arg);
+            }
         };
     }
 
     /** Settings (everything except operating the device) need {@code network.link} on its mainframe. */
     public static boolean needsManage(Action action) {
-        return !(action instanceof Level || action instanceof Power || action instanceof Press);
+        return !(action instanceof Level || action instanceof Power || action instanceof Press || action instanceof Sensor s && s.key().equals("armed"));
+    }
+
+    /** Arming or disarming an Advanced Cloud Sensor: {@code act.redstone} on its mainframe (an intruder cannot just disarm it). */
+    public static boolean needsOperate(Action action) {
+        return action instanceof Sensor s && s.key().equals("armed");
     }
 
     /** Whether the action makes sense for this kind of device. */
@@ -91,6 +112,7 @@ public final class RsScreenActions {
             case Follow f -> kind == RsKind.LAMP;
             case Pin p -> kind != RsKind.SENSOR;
             case Confirm c -> kind != RsKind.SENSOR;
+            case Sensor s -> kind == RsKind.ADVANCED_SENSOR;
             case Rename r -> true;
             case Regroup r -> true;
             case Unlink u -> true;

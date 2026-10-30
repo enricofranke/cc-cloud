@@ -150,6 +150,9 @@ export const REJECT_TEXT: Record<string, string> = {
   pin_locked: "Too many wrong PINs – this device is locked for a few minutes.",
   access_revoked: "Your access to this mainframe was revoked.",
   forbidden: "This device is read-only.",
+  zone_claimed: "The zone may not reach into another team's claim.",
+  zone_protected: "The zone may not reach into spawn protection or beyond the world border.",
+  not_allowed: "Your role on this mainframe does not allow this.",
 };
 
 export function rejectText(r: ActionOutcome) {
@@ -1130,7 +1133,7 @@ export function normalizePower(p: any): PowerInfo | undefined {
 }
 
 const ROLES = ["viewer", "operator", "admin", "owner", "share"];
-const RS_TYPES = ["cloud_switch", "cloud_button", "cloud_lamp", "cloud_sensor"];
+const RS_TYPES = ["cloud_switch", "cloud_button", "cloud_lamp", "cloud_sensor", "advanced_cloud_sensor"];
 const NODE_TYPES = ["mainframe", "relay", "advanced_relay", "ender_relay", "uplink", "advanced_uplink", "probe", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
 const NODE_STATUS = ["online", "offline", "connecting", "no_power", "no_route", "unloaded", "redstone", "cloud_disabled", "legacy_out_of_range", "over_capacity"];
 const DEVICE_TYPES = ["uplink", "advanced_uplink", "probe", "bridge", "device", "me_bridge", "rs_bridge", ...RS_TYPES];
@@ -1150,6 +1153,7 @@ const FALLBACK_NAME: Record<string, string> = {
   cloud_button: "Cloud Button",
   cloud_lamp: "Cloud Lamp",
   cloud_sensor: "Cloud Sensor",
+  advanced_cloud_sensor: "Advanced Cloud Sensor",
 };
 
 export function normalizeNetwork(raw: any): NetworkInfo | null {

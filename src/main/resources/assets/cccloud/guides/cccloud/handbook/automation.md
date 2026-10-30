@@ -15,7 +15,7 @@ Open **Rules** in the dashboard settings (⚙). A rule reads like a sentence: **
 
 | Part | Choices |
 |---|---|
-| When | a widget value crosses a number, an item count in a storage card, mainframe power in %, a card goes offline, every N minutes, on days at a time, an in-game time of day ([schedules](automation.md)) |
+| When | a widget value crosses a number, an item count in a storage card, mainframe power in %, a card goes offline, an [Advanced Cloud Sensor](redstone.md) detects someone or something, every N minutes, on days at a time, an in-game time of day ([schedules](automation.md)) |
 | If (optional, all must hold) | widget value, item count, power, a card is online |
 | Then (1–10, in order) | set a redstone side of a computer, use a control (button, toggle, slider, select, number, text), craft an item, send an alert, turn the dashboard on/off, run a [scene](automation.md) |
 
@@ -29,6 +29,8 @@ Open **Rules** in the dashboard settings (⚙). A rule reads like a sentence: **
 **Example:** When *Core temperature (Fission Reactor)* is above 900 – then set redstone back of *Reactor computer* to 15 and alert “Reactor hot” (warning).
 
 **Without a computer:** a [Cloud Sensor](redstone.md) next to a pressure plate – when *Door sensor* is above 0, then *Porch light* on and a push “Someone is at the door”.
+
+**Who was it?** When *Reactor room* (an [Advanced Cloud Sensor](redstone.md)) detects a player – then alert “\{who\} entered the reactor room” (warning) and the alarm lamp on. `{who}` becomes the player's name (operators and push) or “a player” (viewers), or the mobs (“2 Zombies”).
 
 ## Scenes
 

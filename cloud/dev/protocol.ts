@@ -26,7 +26,7 @@ export type OpValue = z.infer<typeof opValue>;
 
 // ---- layout document (docs/SPEC.md "Layout schema") ----
 export const ACCENTS = ["gold", "cyan", "green", "yellow", "red", "purple", "orange", "gray"] as const;
-export const ICONS = ["home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick", "lever", "button", "lamp", "sensor"] as const;
+export const ICONS = ["home", "bolt", "flame", "drop", "box", "fan", "lock", "warning", "gear", "chart", "star", "leaf", "heart", "cpu", "shield", "pick", "lever", "button", "lamp", "sensor", "eye"] as const;
 const layoutKey = z.string().min(1).max(160);
 const pagesSchema = z
   .array(z.strictObject({ id: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/), title: z.string().min(1).max(48), icon: z.enum(ICONS).optional() }))

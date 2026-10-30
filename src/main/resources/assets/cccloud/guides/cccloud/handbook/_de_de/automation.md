@@ -15,7 +15,7 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 
 | Teil | Möglichkeiten |
 |---|---|
-| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, alle N Minuten, an Tagen zu einer Uhrzeit, eine Uhrzeit im Spiel ([Zeitpläne](automation.md)) |
+| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, ein [Erweiterter Cloud-Sensor](redstone.md) erkennt jemanden oder etwas, alle N Minuten, an Tagen zu einer Uhrzeit, eine Uhrzeit im Spiel ([Zeitpläne](automation.md)) |
 | Falls (optional, alle müssen gelten) | Widget-Wert, Itemanzahl, Strom, eine Karte ist online |
 | Dann (1–10, der Reihe nach) | eine Redstone-Seite eines Computers setzen, ein Bedienelement nutzen (Button, Schalter, Regler, Auswahl, Zahl, Text), ein Item craften, eine Meldung senden, das Dashboard ein-/ausschalten, eine [Szene](automation.md) starten |
 
@@ -29,6 +29,8 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 **Beispiel:** Wenn *Core temperature (Fission Reactor)* über 900 – dann Redstone hinten am *Reaktor-Computer* auf 15 und Meldung „Reaktor heiß“ (Warnung).
 
 **Ohne Computer:** ein [Cloud-Sensor](redstone.md) neben einer Druckplatte – wenn *Türsensor* über 0, dann *Verandalicht* an und eine Push-Nachricht „Jemand ist an der Tür“.
+
+**Wer war es?** Wenn *Reaktorraum* (ein [Erweiterter Cloud-Sensor](redstone.md)) einen Spieler erkennt – dann Meldung „\{who\} betritt den Reaktorraum“ (Warnung) und die Alarmlampe an. `{who}` wird zum Namen des Spielers (Operatoren und Push) oder „a player“ (Betrachter), oder zu den Mobs („2 Zombies“).
 
 ## Szenen
 

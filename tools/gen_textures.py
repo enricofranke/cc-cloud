@@ -1358,11 +1358,14 @@ LAYOUTS["rsplate"] = {
         # button x5..11 y5..11, sensor x4..12 y4..12 (all seen from the front)
         "switch_face": (0, 0), "button_face": (1, 0), "sensor_face": (2, 0), "body": (3, 0),
         "body_d": (0, 1), "cyan_d": (1, 1), "lens_side": (2, 1),
+        # Advanced Cloud Sensor: 10x10 plate x3..13 y3..13 (at its block position), gold rim sides, eye glass sides
+        "adv_face": (3, 1), "gold": (0, 3), "eye_side": (1, 3),
     },
     "regions": {
         "rocker_off": (0, 32, 5, 6), "rocker_on": (8, 32, 5, 6),
         "cap": (16, 32, 4, 4), "cap_lit": (24, 32, 4, 4),
         "lens_off": (32, 32, 4, 4), "lens_on": (40, 32, 4, 4),
+        "adv_ring": (48, 32, 6, 6), "eye_off": (56, 32, 4, 4), "eye_on": (56, 40, 4, 4),
     },
 }
 LAYOUTS["rslamp"] = {
@@ -1442,7 +1445,47 @@ def gen_redstone_plates():
     cv.ascii(x, y, ["dmmd", "mhmm", "mmmm", "dmmd"], {"d": hx("3a0d0a"), "m": REDSTONE_D, "h": hx("a8433a")})
     x, y, _, _ = R["lens_on"]
     cv.ascii(x, y, ["mRRm", "RWLR", "RLLR", "mRRm"], {"m": REDSTONE, "R": REDSTONE_L, "L": hx("ffb39a"), "W": hx("fff0e8")})
+    gen_advanced_sensor(cv, T, R)
     cv.save(os.path.join(TEX, "block", "redstone_plate.png"))
+
+
+def gen_advanced_sensor(cv, T, R):
+    """Advanced Cloud Sensor (tiles of the redstone_plate atlas): a 10x10 CC plate with two cyan signal ticks, a
+    raised 6x6 gold rim (advanced tier) and a 4x4 glass eye: dark teal iris, black pupil, one glint; lit = cyan iris."""
+    ox, oy = T("adv_face")
+    _rs_plate_face(cv, ox, oy, 3, 3, 10, 10, 660)
+    for y in range(5, 11):                      # shadow under the rim (only seen at grazing angles)
+        cv.hline(ox + 5, oy + y, 6, RECESS, 661)
+    # two cyan "signal" ticks at the top corners (like the Cloud Sensor), dark screws at the bottom corners
+    cv.set(ox + 4, oy + 4, CYAN)
+    cv.set(ox + 11, oy + 4, CYAN)
+    cv.set(ox + 4, oy + 11, grey(0x2b))
+    cv.set(ox + 11, oy + 11, grey(0x2b))
+    cv.hline(ox + 7, oy + 11, 2, SLOT, 663)     # LED slot under the rim
+    for name, shades, seed in (("gold", GOLD, 664), ("eye_side", [hx("16262b"), hx("182a30"), hx("14232a")], 665)):
+        ox, oy = T(name)
+        cv.noise(ox, oy, 16, 16, shades, seed)
+    # gold rim: light top/left edge, chamfered corners, dark seat under the eye
+    x, y, _, _ = R["adv_ring"]
+    cv.ascii(x, y, ["eHHHHe",
+                    "HddddG",
+                    "HddddG",
+                    "GddddG",
+                    "GddddG",
+                    "eGGGGe"], {"e": EDGE_L, "H": GOLD_L, "G": GOLD, "d": RECESS}, 666)
+    # eye (4x4): iris ring around a 2x2 pupil, a glint top left
+    x, y, _, _ = R["eye_off"]
+    cv.ascii(x, y, ["dwid",
+                    "iKkI",
+                    "iKKi",
+                    "diid"], {"d": hx("142429"), "i": hx("1f4e5c"), "I": hx("2a6577"), "w": hx("7fa9b5"),
+                              "K": hx("111111"), "k": FLUIX_D}, 667)
+    x, y, _, _ = R["eye_on"]
+    cv.ascii(x, y, ["dWLd",
+                    "LDpC",
+                    "CDDc",
+                    "dccd"], {"d": CYAN_D, "c": CYAN, "C": hx("7fd8ee"), "L": CYAN_L, "W": hx("f2fdff"),
+                              "D": hx("1f5f73"), "p": FLUIX_L}, 668)
 
 
 def gen_redstone_lamp():

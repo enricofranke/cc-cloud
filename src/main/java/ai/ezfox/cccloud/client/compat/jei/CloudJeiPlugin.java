@@ -27,6 +27,7 @@ public final class CloudJeiPlugin implements IModPlugin {
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addGuiContainerHandler(MainframeScreen.class, new Handler<>());
         registration.addGuiContainerHandler(UplinkScreen.class, new Handler<>());
+        registration.addGuiContainerHandler(ai.ezfox.cccloud.client.gui.RsDeviceScreen.class, new Handler<>());
     }
 
     private static final class Handler<T extends CloudScreen<?>> implements IGuiContainerHandler<T> {

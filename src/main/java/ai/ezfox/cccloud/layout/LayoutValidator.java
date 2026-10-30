@@ -141,7 +141,7 @@ public final class LayoutValidator {
     public static int minWidgetW(@Nullable String type) {
         if (type == null) return 1;
         return switch (type) {
-            case "item_search", "watchlist", "jobs", "redstone_sides" -> 6;
+            case "item_search", "watchlist", "jobs", "redstone_sides", "sensor_log" -> 6;
             case "chart" -> 4;
             case "gauge" -> 2;
             default -> 3;

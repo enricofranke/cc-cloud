@@ -262,6 +262,7 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
                 }
             }
             case "redstone_sides" -> redstone(uplinkId, id, label, value, opts, enabled);
+            case "sensor_log" -> sensorLog(label, value);
             default -> textRow(Component.literal(label + " (" + type + ")"), CloudGui.TEXT_DIM);
         }
     }
@@ -509,5 +510,21 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
             case "gray" -> 0xFF8C8C8C;
             default -> fallback;
         };
+    }
+
+    /** Advanced Cloud Sensor activity: the summary line and the five newest events ("12:04 Steve entered"). */
+    private void sensorLog(String label, @org.jspecify.annotations.Nullable JsonElement value) {
+        var o = value != null && value.isJsonObject() ? value.getAsJsonObject() : new JsonObject();
+        label(label, str(o, "summary"));
+        if (!(o.get("events") instanceof JsonArray events)) return;
+        var time = java.time.format.DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.systemDefault());
+        int n = 0;
+        for (var e : events) {
+            if (n++ >= 5 || !(e instanceof JsonObject ev)) break;
+            String who = ev.has("n") ? str(ev, "n") : "A player";
+            boolean in = ev.has("in") && ev.get("in").getAsBoolean();
+            String line = time.format(java.time.Instant.ofEpochMilli(ev.has("t") ? ev.get("t").getAsLong() : 0)) + "  " + who + (in ? " entered" : " left");
+            rows.add(new Row(11, (c, x, y, w) -> c.text(line, x + 10, y + 1, in ? CloudGui.TEXT : CloudGui.TEXT_DIM, w - 14)));
+        }
     }
 }

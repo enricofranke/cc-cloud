@@ -270,6 +270,7 @@ export const KINDS: Record<string, { block: string; props: Record<string, string
   cloud_switch: { block: "cloud_switch", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },
   cloud_button: { block: "cloud_button", props: { facing: "down", powered: "false" }, statuses: ["online", "connecting", "offline"] },
   cloud_sensor: { block: "cloud_sensor", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },
+  advanced_cloud_sensor: { block: "advanced_cloud_sensor", props: { facing: "down", powered: "true" }, statuses: ["online", "connecting", "offline"] },
   cloud_lamp: { block: "cloud_lamp", props: { level: "15" }, statuses: ["online"] },
 };
 

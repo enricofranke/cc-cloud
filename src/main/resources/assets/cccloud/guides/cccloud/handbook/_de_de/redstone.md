@@ -8,7 +8,7 @@ navigation:
 
 # Redstone-Geräte
 
-Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstellen, mit der Link Card verbinden, fertig.** Vier kleine Blöcke, jeder günstiger als ein Uplink.
+Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstellen, mit der Link Card verbinden, fertig.** Vier kleine Blöcke, jeder günstiger als ein Uplink – und der [Erweiterte Cloud-Sensor](redstone.md), der dir sagt, wer oder was in eine Zone kommt.
 
 | Block | Funktion | Im Dashboard |
 |---|---|---|
@@ -16,6 +16,7 @@ Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstel
 | **Cloud-Taster** | Wie ein Knopf: ein kurzer Impuls, 2–40 Ticks (Standard 10 = eine halbe Sekunde). | ein Knopf |
 | **Cloud-Lampe** | Ein Lampenblock, der von selbst leuchtet – ganz ohne Redstone. Helligkeit 1–15; kann zusätzlich auf ein Redstone-Signal reagieren. | ein Schalter und ein Helligkeitsregler |
 | **Cloud-Sensor** | Liest das Redstone-Signal, das er bekommt (der stärkste Nachbar, 0–15). | eine Leuchte (an/aus) und die Stufe |
+| **Erweiterter Cloud-Sensor** | Überwacht eine Zone vor sich: wer hereinkommt (der Name eines Spielers) oder was (die Art des Mobs). Schickt eine Push-Nachricht und gibt Redstone aus, solange etwas drin ist. | eine eigene Karte: wer gerade drin ist, die letzten Ereignisse, heute, scharf/unscharf und die Filter |
 
 ## Einrichten
 
@@ -74,4 +75,48 @@ In der Welt schaltet ein Klick einen Schalter oder eine Lampe und drückt einen 
 
 ### Cloud-Sensor
 <RecipesFor id="cccloud:cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+### Erweiterter Cloud-Sensor
+<RecipesFor id="cccloud:advanced_cloud_sensor" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+## Erweiterter Cloud-Sensor
+
+Du hast einen Raum, in den niemand rein soll? Platzier einen **Erweiterten Cloud-Sensor** – und du bekommst eine Push-Nachricht, sobald jemand reinkommt, und **wer** es war: den Namen eines Spielers oder die Art des Mobs.
+
+1. Craften (Rezept [oben](redstone.md)), an Wand, Boden oder Decke setzen und mit der Link Card verbinden wie jedes Redstone-Gerät.
+2. Anklicken öffnet sein Fenster: die Zone, was er erkennt, Meldungen. Solange du einen Erweiterten Cloud-Sensor oder eine Link Card hältst oder das Fenster offen ist, wird die Zone in der Welt umrandet (cyan = überwacht, grau = überwacht nicht).
+3. Im Dashboard bekommt er **eine eigene Karte** – und auf der Redstone-Karte seiner Gruppe eine „besetzt“-Leuchte.
+
+**Die Zone** ist ein Quader vor dem Sensor (ab dem Sensor, weg vom Block, an dem er hängt) oder um ihn herum: Breite × Höhe × Tiefe entlang X, Y und Z der Welt, standardmäßig 3 × 3 × 3, höchstens 9 × 5 × 9 (Server-Config `advancedSensorMaxZoneX/Y/Z`). Sie muss in deinem eigenen Claim oder auf freiem Land liegen – nicht im Claim eines anderen Teams (FTB Chunks), nicht im Spawnschutz und nicht jenseits der Weltgrenze. Claimt ein anderes Team später einen Teil davon, überwacht der Sensor nicht mehr, bis sich das ändert (seine Karte sagt es).
+
+**Was er sieht:** Spieler (mit Namen), feindliche Mobs, friedliche Mobs (Tiere, Dorfbewohner, Golems), fallen gelassene Items und anderes, das sich bewegt (Loren, Boote, Rüstungsständer) – jeweils mit Art, z. B. „Zombie“ oder „Villager“. Er schaut zweimal pro Sekunde, nur in geladenen Chunks. Zuschauer und Spieler, die ein Vanish-Mod versteckt, werden nie gemeldet.
+
+| Einstellung | Wirkung |
+|---|---|
+| Erkennen | alle, nur Spieler, nur Mobs oder nur feindliche Mobs |
+| Mich und mein Team ignorieren | standardmäßig an: du (wer ihn gesetzt hat) und die Mitglieder deiner Teams (Scoreboard-Team, FTB Teams) werden nicht gemeldet |
+| Nur diese Spieler | wenn gesetzt, werden nur diese Spieler gemeldet – auch aus deinem Team |
+| Nie diese Spieler | werden nie gemeldet |
+| Scharf | unscharf: nichts wird protokolliert, gemeldet oder an Regeln gegeben – der Redstone-Ausgang funktioniert weiter. Scharfschalten meldet nicht, wer schon drin ist. |
+| Redstone-Ausgang | solange etwas Passendes drin ist, gibt er Strom wie ein Hebel: stark in den Block, an dem er hängt, schwach rundherum – auch ohne Mainframe |
+| Melden | Aus, Info, Warnung (Standard) oder Kritisch: die Stufe seiner Meldungen |
+
+**Die Karte** zeigt, wer gerade drin ist, die letzten 20 Ereignisse („Steve came in · 2m ago“) und wie viele heute hereingekommen sind, dazu die Regler oben und die Zone. *Occupied* („besetzt“) speichert einen 24-h-Verlauf.
+
+**Meldungen:** jeder Zutritt wird eine Meldung im Dashboard und geht an deine [Push-Ziele](automation.md) (Discord, ntfy, Webhook) ab ihrer Stufe: „Steve entered Reactor room“. Kein Spam: die erste Meldung geht sofort raus, was in den nächsten 10 Sekunden hereinkommt, folgt als **eine** Zusammenfassung („3 Zombies entered Reactor room“), und ein Wesen, das binnen 60 Sekunden hinaus- und wieder hereinläuft, wird nicht erneut gemeldet (`advancedSensorAlertCooldown`, `advancedSensorEntityCooldown`).
+
+**Regeln:** unter **Wenn** „ein Erweiterter Sensor erkennt …“ wählen – jemand oder etwas, ein Spieler (optional ein bestimmter Spieler), ein Mob, ein feindlicher oder friedlicher Mob, ein Item oder etwas anderes. Schreib `{who}` in eine Meldung: „\{who\} betritt den Reaktorraum“ wird zu „Steve betritt den Reaktorraum“ oder „2 Zombies betritt …“. Siehe [Regeln](automation.md).
+
+### Wer Namen sieht
+
+Spielernamen sind auf einem gemeinsamen Server persönliche Daten, deshalb:
+
+- Nur Spieler mit der Rolle **Operator** oder höher am Mainframe (das Recht „Koordinaten sehen“) sehen Namen – auf der Karte, in Meldungen und in der API. Betrachter, Freigabe-Links und Cloud Displays sehen immer **„a player“**; Mobs behalten ihre Art.
+- Push-Ziele bekommen Namen (Admins richten sie ein).
+- Der Server kann Namen ganz abschalten: `advancedSensorPlayerNames = false` – dann sehen alle „a player“, es werden keine Namen gespeichert, und Regeln für einen bestimmten Spieler lösen nie aus. Die Listen *Nur* und *Nie* funktionieren weiter.
+
+### Rechte, Reichweite und Strom
+
+- Scharf- und Unscharfschalten braucht **„Redstone schalten“** (Operatoren) – auf der Karte und in seinem Fenster; PIN und Nachfrage aus seinem Fenster schützen den Schalter. Alle anderen Einstellungen brauchen **„Geräte verbinden“** (Admins).
+- Reichweite 32 Blöcke wie die anderen Redstone-Geräte; er zählt **0,5** Geräte gegen die Kapazität des Mainframes (`advancedSensorCapacityWeight`) und kostet **4 FE/t, solange er scharf ist** (`mainframePerAdvancedSensorFE`), unscharf 1 FE/t.
 

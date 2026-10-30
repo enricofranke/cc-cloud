@@ -62,10 +62,10 @@ public final class AnalyzerService {
         return isRedstoneDevice(item);
     }
 
-    /** Cloud Switch / Button / Lamp / Sensor items (placement preview with the redstone device range). */
+    /** Cloud Switch / Button / Lamp / Sensor / Advanced Cloud Sensor items (placement preview with the redstone device range). */
     public static boolean isRedstoneDevice(net.minecraft.world.item.Item item) {
         return item == ModRegistry.CLOUD_SWITCH_ITEM.get() || item == ModRegistry.CLOUD_BUTTON_ITEM.get() || item == ModRegistry.CLOUD_LAMP_ITEM.get()
-            || item == ModRegistry.CLOUD_SENSOR_ITEM.get();
+            || item == ModRegistry.CLOUD_SENSOR_ITEM.get() || item == ModRegistry.ADVANCED_CLOUD_SENSOR_ITEM.get();
     }
 
     static boolean holding(ServerPlayer player) {

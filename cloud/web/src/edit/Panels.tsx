@@ -416,6 +416,7 @@ const LUA: Record<WidgetType, string> = {
   watchlist: "-- added by an ME/RS Cloud Bridge card",
   jobs: "-- added by an ME/RS Cloud Bridge card",
   redstone_sides: "-- the automatic Computer card",
+  sensor_log: "-- an Advanced Cloud Sensor's card",
 };
 const DEMO: Widget[] = [
   { id: "gauge", type: "gauge", label: "Gauge", value: 72, opts: { min: 0, max: 100, unit: "%", warn: 80 } },

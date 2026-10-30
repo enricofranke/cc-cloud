@@ -77,11 +77,14 @@ public final class AccessGate {
 
     /**
      * As above, with the section's {@code template}: every control of a Cloud Redstone card ({@code redstone}: switches,
-     * buttons, lamps, "All on/off") needs {@code act.redstone}.
+     * buttons, lamps, "All on/off") needs {@code act.redstone}; on an Advanced Cloud Sensor's card ({@code sensor})
+     * arming needs {@code act.redstone} and every setting (filter, notifications, lists, zone) {@code network.link}.
      */
     public static Perm actionPerm(@Nullable String widgetType, @Nullable String uplinkMode, String widgetId, @Nullable String template) {
         if (widgetType == null) return Perm.ACT_BUTTONS;
         if ("redstone".equals(template) && "direct".equals(uplinkMode)) return Perm.ACT_REDSTONE;
+        // Advanced Cloud Sensor card: arming is operating it (like a redstone control); what it watches is a setting
+        if ("sensor".equals(template) && "direct".equals(uplinkMode)) return "armed".equals(widgetId) ? Perm.ACT_REDSTONE : Perm.NETWORK_LINK;
         return switch (widgetType) {
             case "item_search" -> Perm.STORAGE_CRAFT;
             case "watchlist" -> Perm.STORAGE_AUTOSTOCK;

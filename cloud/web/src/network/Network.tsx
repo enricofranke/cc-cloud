@@ -174,6 +174,7 @@ const ICON: Record<NodeType, string> = {
   cloud_button: "button",
   cloud_lamp: "lamp",
   cloud_sensor: "sensor",
+  advanced_cloud_sensor: "eye",
 };
 
 /** What a Cloud Probe reads (only shown with positions; the server leaves out a target it may not read now). */

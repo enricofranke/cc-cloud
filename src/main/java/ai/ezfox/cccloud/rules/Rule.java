@@ -80,7 +80,33 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
     public record OnlineCheck(String uplinkId) implements Check {
     }
 
-    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger, ScheduleTrigger {
+    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger, ScheduleTrigger, SensorTrigger {
+    }
+
+    /**
+     * Fires when an Advanced Cloud Sensor reports something entering its zone (docs/SPEC.md "Advanced Cloud Sensor").
+     *
+     * @param uplinkId the sensor's card (its device id)
+     * @param kind     {@code any}, {@code player}, {@code mob} (hostile or passive), {@code hostile}, {@code passive},
+     *                 {@code item} or {@code other}
+     * @param player   only this player (case-insensitive; needs player names on the server), or null
+     */
+    public record SensorTrigger(String uplinkId, String kind, @Nullable String player) implements Trigger {
+        public static final java.util.List<String> KINDS = java.util.List.of("any", "player", "mob", "hostile", "passive", "item", "other");
+
+        /** Whether an entry of this kind (and player name, null when names are off) matches. */
+        public boolean matches(ai.ezfox.cccloud.sensor.SensorEntry entry) {
+            var k = entry.kind();
+            boolean kindOk = switch (kind) {
+                case "player" -> k == ai.ezfox.cccloud.sensor.SensorKind.PLAYER;
+                case "mob" -> k.mob();
+                case "any" -> true;
+                default -> k.id.equals(kind);
+            };
+            if (!kindOk) return false;
+            if (player == null) return true;
+            return k == ai.ezfox.cccloud.sensor.SensorKind.PLAYER && entry.name() != null && entry.name().equalsIgnoreCase(player);
+        }
     }
 
 

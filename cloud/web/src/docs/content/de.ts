@@ -234,7 +234,7 @@ Widgets mit \`pin=true\` fragen vor dem Auslösen die Mainframe-PIN über ein Zi
   // ------------------------------------------------------------- redstone
   redstone: `# Redstone-Geräte
 
-Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstellen, mit der Link Card verbinden, fertig.** Vier kleine Blöcke, jeder günstiger als ein Uplink.
+Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstellen, mit der Link Card verbinden, fertig.** Vier kleine Blöcke, jeder günstiger als ein Uplink – und der [Erweiterte Cloud-Sensor](/docs/redstone#advanced-sensor), der dir sagt, wer oder was in eine Zone kommt.
 
 | Block | Funktion | Im Dashboard |
 |---|---|---|
@@ -242,6 +242,7 @@ Eine Lampe vom Handy aus schalten – ohne Computer, Lua oder Kanäle: **hinstel
 | **Cloud-Taster** | Wie ein Knopf: ein kurzer Impuls, 2–40 Ticks (Standard 10 = eine halbe Sekunde). | ein Knopf |
 | **Cloud-Lampe** | Ein Lampenblock, der von selbst leuchtet – ganz ohne Redstone. Helligkeit 1–15; kann zusätzlich auf ein Redstone-Signal reagieren. | ein Schalter und ein Helligkeitsregler |
 | **Cloud-Sensor** | Liest das Redstone-Signal, das er bekommt (der stärkste Nachbar, 0–15). | eine Leuchte (an/aus) und die Stufe |
+| **Erweiterter Cloud-Sensor** | Überwacht eine Zone vor sich: wer hereinkommt (der Name eines Spielers) oder was (die Art des Mobs). Schickt eine Push-Nachricht und gibt Redstone aus, solange etwas drin ist. | eine eigene Karte: wer gerade drin ist, die letzten Ereignisse, heute, scharf/unscharf und die Filter |
 
 ## Einrichten {#setup}
 
@@ -300,6 +301,51 @@ ${recipe(R.cloudLamp)}
 
 ### Cloud-Sensor
 ${recipe(R.cloudSensor)}
+
+### Erweiterter Cloud-Sensor
+${recipe(R.advancedSensor)}
+${recipe(R.advancedSensorFallback)}
+
+## Erweiterter Cloud-Sensor {#advanced-sensor}
+
+Du hast einen Raum, in den niemand rein soll? Platzier einen **Erweiterten Cloud-Sensor** – und du bekommst eine Push-Nachricht, sobald jemand reinkommt, und **wer** es war: den Namen eines Spielers oder die Art des Mobs.
+
+1. Craften (Rezept [oben](/docs/redstone#recipes)), an Wand, Boden oder Decke setzen und mit der Link Card verbinden wie jedes Redstone-Gerät.
+2. Anklicken öffnet sein Fenster: die Zone, was er erkennt, Meldungen. Solange du einen Erweiterten Cloud-Sensor oder eine Link Card hältst oder das Fenster offen ist, wird die Zone in der Welt umrandet (cyan = überwacht, grau = überwacht nicht).
+3. Im Dashboard bekommt er **eine eigene Karte** – und auf der Redstone-Karte seiner Gruppe eine „besetzt“-Leuchte.
+
+**Die Zone** ist ein Quader vor dem Sensor (ab dem Sensor, weg vom Block, an dem er hängt) oder um ihn herum: Breite × Höhe × Tiefe entlang X, Y und Z der Welt, standardmäßig 3 × 3 × 3, höchstens 9 × 5 × 9 (Server-Config \`advancedSensorMaxZoneX/Y/Z\`). Sie muss in deinem eigenen Claim oder auf freiem Land liegen – nicht im Claim eines anderen Teams (FTB Chunks), nicht im Spawnschutz und nicht jenseits der Weltgrenze. Claimt ein anderes Team später einen Teil davon, überwacht der Sensor nicht mehr, bis sich das ändert (seine Karte sagt es).
+
+**Was er sieht:** Spieler (mit Namen), feindliche Mobs, friedliche Mobs (Tiere, Dorfbewohner, Golems), fallen gelassene Items und anderes, das sich bewegt (Loren, Boote, Rüstungsständer) – jeweils mit Art, z. B. „Zombie“ oder „Villager“. Er schaut zweimal pro Sekunde, nur in geladenen Chunks. Zuschauer und Spieler, die ein Vanish-Mod versteckt, werden nie gemeldet.
+
+| Einstellung | Wirkung |
+|---|---|
+| Erkennen | alle, nur Spieler, nur Mobs oder nur feindliche Mobs |
+| Mich und mein Team ignorieren | standardmäßig an: du (wer ihn gesetzt hat) und die Mitglieder deiner Teams (Scoreboard-Team, FTB Teams) werden nicht gemeldet |
+| Nur diese Spieler | wenn gesetzt, werden nur diese Spieler gemeldet – auch aus deinem Team |
+| Nie diese Spieler | werden nie gemeldet |
+| Scharf | unscharf: nichts wird protokolliert, gemeldet oder an Regeln gegeben – der Redstone-Ausgang funktioniert weiter. Scharfschalten meldet nicht, wer schon drin ist. |
+| Redstone-Ausgang | solange etwas Passendes drin ist, gibt er Strom wie ein Hebel: stark in den Block, an dem er hängt, schwach rundherum – auch ohne Mainframe |
+| Melden | Aus, Info, Warnung (Standard) oder Kritisch: die Stufe seiner Meldungen |
+
+**Die Karte** zeigt, wer gerade drin ist, die letzten 20 Ereignisse („Steve came in · 2m ago“) und wie viele heute hereingekommen sind, dazu die Regler oben und die Zone. *Occupied* („besetzt“) speichert einen 24-h-Verlauf.
+
+**Meldungen:** jeder Zutritt wird eine Meldung im Dashboard und geht an deine [Push-Ziele](/docs/automation#push) (Discord, ntfy, Webhook) ab ihrer Stufe: „Steve entered Reactor room“. Kein Spam: die erste Meldung geht sofort raus, was in den nächsten 10 Sekunden hereinkommt, folgt als **eine** Zusammenfassung („3 Zombies entered Reactor room“), und ein Wesen, das binnen 60 Sekunden hinaus- und wieder hereinläuft, wird nicht erneut gemeldet (\`advancedSensorAlertCooldown\`, \`advancedSensorEntityCooldown\`).
+
+**Regeln:** unter **Wenn** „ein Erweiterter Sensor erkennt …“ wählen – jemand oder etwas, ein Spieler (optional ein bestimmter Spieler), ein Mob, ein feindlicher oder friedlicher Mob, ein Item oder etwas anderes. Schreib \`{who}\` in eine Meldung: „{who} betritt den Reaktorraum“ wird zu „Steve betritt den Reaktorraum“ oder „2 Zombies betritt …“. Siehe [Regeln](/docs/automation#rules).
+
+### Wer Namen sieht {#advanced-sensor-names}
+
+Spielernamen sind auf einem gemeinsamen Server persönliche Daten, deshalb:
+
+- Nur Spieler mit der Rolle **Operator** oder höher am Mainframe (das Recht „Koordinaten sehen“) sehen Namen – auf der Karte, in Meldungen und in der API. Betrachter, Freigabe-Links und Cloud Displays sehen immer **„a player“**; Mobs behalten ihre Art.
+- Push-Ziele bekommen Namen (Admins richten sie ein).
+- Der Server kann Namen ganz abschalten: \`advancedSensorPlayerNames = false\` – dann sehen alle „a player“, es werden keine Namen gespeichert, und Regeln für einen bestimmten Spieler lösen nie aus. Die Listen *Nur* und *Nie* funktionieren weiter.
+
+### Rechte, Reichweite und Strom {#advanced-sensor-rights}
+
+- Scharf- und Unscharfschalten braucht **„Redstone schalten“** (Operatoren) – auf der Karte und in seinem Fenster; PIN und Nachfrage aus seinem Fenster schützen den Schalter. Alle anderen Einstellungen brauchen **„Geräte verbinden“** (Admins).
+- Reichweite 32 Blöcke wie die anderen Redstone-Geräte; er zählt **0,5** Geräte gegen die Kapazität des Mainframes (\`advancedSensorCapacityWeight\`) und kostet **4 FE/t, solange er scharf ist** (\`mainframePerAdvancedSensorFE\`), unscharf 1 FE/t.
 `,
 
   // ------------------------------------------------------------------ lua
@@ -657,7 +703,7 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 
 | Teil | Möglichkeiten |
 |---|---|
-| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, alle N Minuten, an Tagen zu einer Uhrzeit, eine Uhrzeit im Spiel ([Zeitpläne](/docs/automation#schedules)) |
+| Wenn | ein Widget-Wert überschreitet eine Zahl, eine Itemanzahl in einer Lager-Karte, Mainframe-Strom in %, eine Karte geht offline, ein [Erweiterter Cloud-Sensor](/docs/redstone#advanced-sensor) erkennt jemanden oder etwas, alle N Minuten, an Tagen zu einer Uhrzeit, eine Uhrzeit im Spiel ([Zeitpläne](/docs/automation#schedules)) |
 | Falls (optional, alle müssen gelten) | Widget-Wert, Itemanzahl, Strom, eine Karte ist online |
 | Dann (1–10, der Reihe nach) | eine Redstone-Seite eines Computers setzen, ein Bedienelement nutzen (Button, Schalter, Regler, Auswahl, Zahl, Text), ein Item craften, eine Meldung senden, das Dashboard ein-/ausschalten, eine [Szene](/docs/automation#scenes) starten |
 
@@ -671,6 +717,8 @@ Automatisierung, die auf dem **Server** läuft – ohne Browser und ohne Compute
 **Beispiel:** Wenn *Core temperature (Fission Reactor)* über 900 – dann Redstone hinten am *Reaktor-Computer* auf 15 und Meldung „Reaktor heiß“ (Warnung).
 
 **Ohne Computer:** ein [Cloud-Sensor](/docs/redstone#automation) neben einer Druckplatte – wenn *Türsensor* über 0, dann *Verandalicht* an und eine Push-Nachricht „Jemand ist an der Tür“.
+
+**Wer war es?** Wenn *Reaktorraum* (ein [Erweiterter Cloud-Sensor](/docs/redstone#advanced-sensor)) einen Spieler erkennt – dann Meldung „{who} betritt den Reaktorraum“ (Warnung) und die Alarmlampe an. \`{who}\` wird zum Namen des Spielers (Operatoren und Push) oder „a player“ (Betrachter), oder zu den Mobs („2 Zombies“).
 
 ## Szenen {#scenes}
 
@@ -801,7 +849,7 @@ Die Rezepte sind darauf ausgelegt, von Modpacks geändert zu werden:
 
 - **Feste Rezept-IDs.** Jedes Rezept heißt \`cccloud:<name>\` ([Liste unten](/docs/recipes#recipe-ids)) und behält seine ID über Versionen hinweg. Überschreiben mit einer Datapack-Datei \`data/cccloud/recipe/<name>.json\`, entfernen mit einer Datei, die nur eine \`neoforge:never\`-Bedingung enthält (unten), oder per KubeJS / CraftTweaker.
 - **Tags statt Items.** Die Zutaten sind die üblichen \`c:\`-Tags (\`#c:ingots/gold\`, \`#c:nuggets/gold\`, \`#c:ender_pearls\`, \`#c:dusts/redstone\`, \`#c:glass_panes\`, \`#c:gems/diamond\`, \`#c:storage_blocks/gold\`, \`#c:ingots/vibranium\` …), daher tauschen Vereinheitlichungs-Mods wie AlmostUnified das Material, ohne diese Rezepte anzufassen.
-- **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades und die Cloud Probe nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (\`neoforge:mod_loaded\`); ohne lädt stattdessen die \`*_fallback\`-Variante (Diamant, Netherit, Netherstern, \`neoforge:not\`). Genauso der Ender Fiber Link (\`ender_fiber_link_unobtainium\` mit AllTheModium, \`ender_fiber_link\` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: \`quantum_core_fallback\`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
+- **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades, die Cloud Probe und der Erweiterte Cloud-Sensor nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (\`neoforge:mod_loaded\`); ohne lädt stattdessen die \`*_fallback\`-Variante (Gold, Diamant, Netherit, Netherstern, \`neoforge:not\`). Genauso der Ender Fiber Link (\`ender_fiber_link_unobtainium\` mit AllTheModium, \`ender_fiber_link\` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: \`quantum_core_fallback\`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
 - **FTB Quests:** Die CC: Cloud-Kapitel nutzen Item-Aufgaben (Item haben oder craften), nie Rezept-IDs – sie funktionieren also weiter, egal was du änderst.
 - **Was Spieler sehen:** JEI/EMI, das Handbuch im Spiel und das Dashboard des Servers zeigen die aktuellen Rezepte; das Dashboard markiert geänderte, hinzugefügte und entfernte. Die Website zeigt die Standard-Rezepte.
 
@@ -1101,6 +1149,7 @@ CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, v
 - **Kartenkacheln auf der Festplatte:** Die 2D-Karte speichert ihre Kacheln in \`<world>/cccloud/maptiles\`. Kacheln, die 30 Tage weder gezeichnet noch angesehen wurden, werden gelöscht (\`mapTileMaxAgeDays\`, 0 behält sie), und das Löschen eines Mainframes (purge) entfernt seine Höhlenschnitte.
 - **Bildschirme im Spiel:** Der Mainframe-Bildschirm listet die ersten 600 Geräte (Probleme zuerst) und bekommt das Netzwerk nur, wenn es sich geändert hat; die Netzwerk-Seite des Dashboards zeigt alle Geräte. Große Netzwerkkarten lassen Verbindungen weg, die ein Gerät nicht benutzt.
 - **Langsame Browser:** Ein Browser, der mehr als 4 MB oder 10 Sekunden zurückliegt, wird getrennt und verbindet sich mit einem frischen Snapshot neu; auf dem Server stapelt sich nichts.
+- **Erweiterte Cloud-Sensoren:** jeder schaut zweimal pro Sekunde mit einer begrenzten Entity-Abfrage in seine Zone, verteilt über die Ticks; \`advancedSensorScansPerTick\` (Standard 32) begrenzt die Scans pro Tick auf dem ganzen Server, und ein unscharfer Sensor ohne Redstone-Ausgang scannt gar nicht.
 - **Messen:** \`/neoforge tps\` oder spark zeigen die Tick-Zeit des Servers. Der eigene Anteil von CC: Cloud liegt bei einem Mainframe mit 500 Geräten und 10 Browsern bei etwa 0,5–1 ms pro Tick (Entwickler: \`./gradlew runGameTestServer -PscaleTest\` misst das).
 
 ## Was der Server protokolliert {#logs}

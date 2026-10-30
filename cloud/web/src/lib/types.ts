@@ -3,10 +3,11 @@ export type WidgetType =
   | "button" | "toggle" | "slider" | "gauge" | "label"
   | "item_search" | "watchlist" | "jobs"
   | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons"
-  | "redstone_sides";
+  | "redstone_sides"
+  | "sensor_log";
 export const WIDGET_TYPES: readonly WidgetType[] = [
   "button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs",
-  "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides",
+  "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log",
 ];
 
 export const SIDES = ["top", "bottom", "left", "right", "front", "back"] as const;
@@ -239,7 +240,9 @@ export type NodeType =
   | "cloud_switch"
   | "cloud_button"
   | "cloud_lamp"
-  | "cloud_sensor";
+  | "cloud_sensor"
+  /** Advanced Cloud Sensor: a redstone device with its own card (the card's uplinkId is its node id) */
+  | "advanced_cloud_sensor";
 /** legacy_out_of_range is derived from flags (the device itself is connected). */
 export type NodeStatus = "online" | "offline" | "connecting" | "no_power" | "no_route" | "unloaded" | "redstone" | "cloud_disabled" | "legacy_out_of_range" | "over_capacity";
 

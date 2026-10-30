@@ -75,6 +75,9 @@ Modpacks can change recipes (datapacks, KubeJS, CraftTweaker). JEI/EMI and the i
 
 ## Redstone devices
 
+### Advanced Cloud Sensor
+<RecipesFor id="cccloud:advanced_cloud_sensor" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
 ### Cloud Button
 <RecipesFor id="cccloud:cloud_button" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
@@ -151,7 +154,7 @@ The recipes are made to be changed by modpacks:
 
 - **Stable recipe ids.** Every recipe is `cccloud:<name>` ([list below](recipes.md)) and keeps its id across versions. Override one with a datapack file `data/cccloud/recipe/<name>.json`, remove it with a file that only holds a `neoforge:never` condition (below), or use KubeJS / CraftTweaker.
 - **Tags instead of items.** Ingredients use the common `c:` tags (`#c:ingots/gold`, `#c:nuggets/gold`, `#c:ender_pearls`, `#c:dusts/redstone`, `#c:glass_panes`, `#c:gems/diamond`, `#c:storage_blocks/gold`, `#c:ingots/vibranium` …), so unification mods such as AlmostUnified swap the material without touching these recipes.
-- **Conditional AllTheModium recipes.** The mainframe upgrades and the Cloud Probe use AllTheModium metals when AllTheModium is installed (`neoforge:mod_loaded`); without it their `*_fallback` variant (diamond, netherite, nether star) loads instead (`neoforge:not`). Likewise the Ender Fiber Link (`ender_fiber_link_unobtainium` with AllTheModium, `ender_fiber_link` without) and the Quantum Core (the ATM Star of All The Tweaks, `quantum_core_fallback` without it). When you change one of them, change both ids – the table below says which one loads when.
+- **Conditional AllTheModium recipes.** The mainframe upgrades, the Cloud Probe and the Advanced Cloud Sensor use AllTheModium metals when AllTheModium is installed (`neoforge:mod_loaded`); without it their `*_fallback` variant (gold, diamond, netherite, nether star) loads instead (`neoforge:not`). Likewise the Ender Fiber Link (`ender_fiber_link_unobtainium` with AllTheModium, `ender_fiber_link` without) and the Quantum Core (the ATM Star of All The Tweaks, `quantum_core_fallback` without it). When you change one of them, change both ids – the table below says which one loads when.
 - **FTB Quests:** the CC: Cloud chapters use item tasks (have or craft the item), never recipe ids – they keep working whatever you change.
 - **What players see:** JEI/EMI, the in-game handbook and the server's dashboard show the live recipes; the dashboard marks changed, added and removed ones. The website shows the defaults.
 
@@ -187,6 +190,8 @@ ServerEvents.recipes(event => {
 | Recipe id | Makes | Loaded |
 |---|---|---|
 | `cccloud:advanced_cloud_relay` | Advanced Cloud Relay | always |
+| `cccloud:advanced_cloud_sensor` | Advanced Cloud Sensor | with AllTheModium |
+| `cccloud:advanced_cloud_sensor_fallback` | Advanced Cloud Sensor | without AllTheModium |
 | `cccloud:advanced_cloud_tablet` | Advanced Cloud Tablet | always |
 | `cccloud:advanced_cloud_tablet_upgrade` | Advanced Cloud Tablet | always |
 | `cccloud:advanced_cloud_uplink` | Advanced Cloud Uplink | always |

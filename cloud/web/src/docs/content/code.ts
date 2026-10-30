@@ -292,6 +292,8 @@ export const RECIPES = {
   cloudButton: byFile("cloud_button"),
   cloudLamp: byFile("cloud_lamp"),
   cloudSensor: byFile("cloud_sensor"),
+  advancedSensor: byFile("advanced_cloud_sensor"),
+  advancedSensorFallback: byFile("advanced_cloud_sensor_fallback"),
 };
 export interface GenRecipe {
   file: string;

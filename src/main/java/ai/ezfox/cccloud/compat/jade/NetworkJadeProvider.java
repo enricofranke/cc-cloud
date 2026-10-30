@@ -42,6 +42,16 @@ enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor> {
         for (var hop : info.route()) route.add(StringTag.valueOf(hop));
         net.put("route", route);
         data.put("cccloud_net", net);
+        // Advanced Cloud Sensor: armed, how many are inside (never who), the zone
+        if (accessor.getBlockEntity() instanceof ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity device && device.sensor() != null) {
+            var sensor = device.sensor();
+            var tag = new CompoundTag();
+            tag.putBoolean("armed", sensor.settings().armed());
+            tag.putInt("inside", sensor.inside().size());
+            tag.putString("zone", sensor.settings().clamped(ai.ezfox.cccloud.sensor.AdvancedSensor.maxX(), ai.ezfox.cccloud.sensor.AdvancedSensor.maxY(),
+                ai.ezfox.cccloud.sensor.AdvancedSensor.maxZ()).zoneText());
+            data.put("cccloud_sensor", tag);
+        }
     }
 
     @Override
@@ -71,6 +81,11 @@ enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor> {
                 tooltip.add(Component.translatable("cccloud.analyzer.route", route).withStyle(ChatFormatting.GRAY));
             }
             if (!"online".equals(status)) tooltip.add(Component.translatable("cccloud.analyzer.status." + status).withStyle(ChatFormatting.RED));
+            var sensor = accessor.getServerData().getCompoundOrEmpty("cccloud_sensor");
+            if (!sensor.isEmpty()) {
+                tooltip.add(Component.translatable(sensor.getBooleanOr("armed", false) ? "cccloud.jade.sensor.armed" : "cccloud.jade.sensor.disarmed",
+                    sensor.getIntOr("inside", 0), sensor.getStringOr("zone", "")).withStyle(ChatFormatting.GRAY));
+            }
         }
 
         @Override
