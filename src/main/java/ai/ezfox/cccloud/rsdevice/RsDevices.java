@@ -92,6 +92,17 @@ public final class RsDevices {
         if (data.put(link.id(), device.record())) DIRTY.add(link.id());
     }
 
+    /**
+     * Puts a loaded device's copy on its mainframe's cards (first status pass after loading, once the mainframe is
+     * there). Also refreshes a copy that differs from the block (moved with its data, changed while the copy was
+     * missing). @return true when the mainframe now lists the copy
+     */
+    static boolean list(RsDeviceBlockEntity device) {
+        changed(device);
+        var link = device.getLink();
+        return link != null && device(link.id(), device.deviceId()) != null;
+    }
+
     /** The device was unlinked or broken. */
     static void forget(UUID mainframeId, UUID deviceId) {
         var server = CloudNetwork.server();

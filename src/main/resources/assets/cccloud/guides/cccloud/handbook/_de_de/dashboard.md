@@ -14,6 +14,8 @@ navigation:
 
 Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](redstone.md) teilen sich eine Karte pro Gruppe. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
 
+**Maschinen im Kabelnetz des Computers.** Hat der Computer ein Wired Modem mit CC-Netzwerkkabel zu anderen Maschinen (deren Modems eingeschaltet), zeigt der Uplink am Computer auch für jede dieser Maschinen eine Karte – dieselbe Karte, die ein Uplink direkt an der Maschine zeigen würde (Energie, Tanks, Lager-Controller, Mod-Maschinen), mit denselben Bedienelementen und Rechten. Bis zu 8 pro Uplink (Server-Einstellung `wiredMachineCards`); eine Maschine mit eigenem Uplink oder eigener Sonde behält diese, und gleichnamige Maschinen unterscheidet der Name, den der Computer für sie nutzt („Energy Cell (energy_cell_2)“). Normale Truhen haben keine Karte.
+
 | Widget | Zeigt / macht |
 |---|---|
 | gauge | Wert auf einem Bogen mit Warn-/Kritisch-Farben |
@@ -35,7 +37,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 - **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
 - **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
 - **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
-- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe, Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
+- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
 - **Ausblenden** mit ×. **+ Add** listet alles Ausgeblendete (zurückziehen oder Show drücken) und zeigt jeden Widget-Typ live mit der Lua-Zeile, die ihn erzeugt.
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
 - **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.

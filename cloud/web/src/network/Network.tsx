@@ -163,6 +163,7 @@ const ICON: Record<NodeType, string> = {
   ender_relay: "ender",
   uplink: "uplink",
   advanced_uplink: "uplink",
+  probe: "probe",
   bridge: "bridge",
   device: "uplink",
   me_bridge: "bridge",
@@ -172,6 +173,14 @@ const ICON: Record<NodeType, string> = {
   cloud_lamp: "lamp",
   cloud_sensor: "sensor",
 };
+
+/** What a Cloud Probe reads (only shown with positions; the server leaves out a target it may not read now). */
+function probeReads(node: NetNode): string {
+  const t = node.target;
+  if (!t || !node.pos) return "nothing right now – pick a machine with the Link Card (out of range, unloaded or claimed machines are not read)";
+  const d = Math.round(Math.hypot(t.x - node.pos.x, t.y - node.pos.y, t.z - node.pos.z));
+  return `the machine at ${t.x} ${t.y} ${t.z} · ${d} block${d === 1 ? "" : "s"} away`;
+}
 
 /** Cloud Redstone device: its name and group (= the card it sits on), editable with network.link. */
 function RedstoneDeviceForm({ node, conn }: { node: NetNode; conn: MainframeConn }) {
@@ -558,6 +567,16 @@ function MapView({ net, dim, selected, onSelect, ranges, tiles, overlays }: { ne
                   />
                 );
               })}
+            {nodes
+              .filter((n) => n.type === "probe" && n.pos && n.target)
+              .map((n) => (
+                <g key={`aim-${n.id}`} class={`probe-aim ${selected === n.id ? "sel" : ""}`}>
+                  <line x1={n.pos!.x} y1={n.pos!.z} x2={n.target!.x} y2={n.target!.z} class="probe-line" vector-effect="non-scaling-stroke" />
+                  <rect x={n.target!.x - 3 * upp} y={n.target!.z - 3 * upp} width={6 * upp} height={6 * upp} class="probe-target" vector-effect="non-scaling-stroke">
+                    <title>{`${n.name} reads the machine at ${n.target!.x} ${n.target!.y} ${n.target!.z}`}</title>
+                  </rect>
+                </g>
+              ))}
             {nodes.map((n) =>
               n.pos ? (
                 <g
@@ -735,6 +754,12 @@ function Detail(props: DetailProps) {
             <>
               <dt>Range</dt>
               <dd>{node.range} blocks (radio) · cables have no limit</dd>
+            </>
+          )}
+          {node.type === "probe" && node.pos && (
+            <>
+              <dt>Reads</dt>
+              <dd>{probeReads(node)}</dd>
             </>
           )}
           {uplink && (

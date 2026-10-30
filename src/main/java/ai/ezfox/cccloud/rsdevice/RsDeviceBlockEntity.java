@@ -61,6 +61,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
     /** "no_route", "over_capacity" or null (screen). */
     private volatile @Nullable String routeState;
     private boolean registered;
+    /** The dashboard copy is on the mainframe's cards (see {@link #updateStatus}). */
+    private boolean listed;
     private boolean broken;
     private boolean chunkUnloading;
     private int tickCounter;
@@ -208,6 +210,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
             RsDevices.register(this);
         }
         registered = true;
+        listed = false;
         tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), STATUS_INTERVAL);
         statusPending = true;
         inputPending = true;
@@ -283,6 +286,9 @@ public class RsDeviceBlockEntity extends BlockEntity {
                     link = new MainframeLink(at, link.id());
                     setChanged();
                 }
+                // A device that arrived with its link in the block entity data (/setblock, a structure, a schematic
+                // paste) has no copy on the cards yet; without this it only showed up after its first state change.
+                if (!listed) listed = RsDevices.list(this);
                 var route = NetworkService.route(deviceId);
                 if (route == null) {
                     newStatus = CloudStatus.CONNECTING; // network not computed yet
@@ -550,6 +556,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        listed = false;
         NetworkService.markDirty();
         mainframe.linkUplink(deviceId, GlobalPos.of(serverLevel.dimension(), getBlockPos()));
         setChanged();
@@ -567,6 +574,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         var old = link;
         unlinkFrom(old);
         link = null;
+        listed = false;
         NetworkService.markDirty();
         setChanged();
         updateStatus(serverLevel);
@@ -576,6 +584,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
     /** Test hook: link without the range check. */
     public void forceLinkForTest(MainframeLink newLink) {
         link = newLink;
+        listed = false;
         var mainframe = CloudNetwork.mainframe(newLink.id());
         if (mainframe != null && level != null) mainframe.linkUplink(deviceId, GlobalPos.of(level.dimension(), getBlockPos()));
         NetworkService.markDirty();

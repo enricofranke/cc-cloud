@@ -124,6 +124,7 @@ public final class SectionCache extends SavedData {
         }
         for (var section : CloudNetwork.bridgeSections()) {
             if (section instanceof ai.ezfox.cccloud.bridge.BridgeSection bridge && bridge.getLink() != null) store(bridge.getLink().id(), unloaded(bridge.snapshot()));
+            else if (section instanceof ai.ezfox.cccloud.uplink.WiredMachineSection machine) store(machine.getLink().id(), unloaded(machine.snapshot()));
         }
     }
 

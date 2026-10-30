@@ -121,6 +121,50 @@ class ProductionTrackerTest {
     }
 
     @Test
+    void aLargeStockChangeOnlyCreatesTheTrackedMaximum() {
+        int types = ai.ezfox.cccloud.bridge.ItemIndex.MAX_ENTRIES;
+        var t = new ProductionTracker(60, 256);
+        var first = new ArrayList<ItemRow>(types);
+        var second = new ArrayList<ItemRow>(types);
+        long expectedGain = 0;
+        for (int i = 0; i < types; i++) {
+            first.add(new ItemRow("m:i" + i, "Item " + i, 1_000_000, false));
+            // every type changes; i moves by i + 1 (the last 256 types move most)
+            second.add(new ItemRow("m:i" + i, "Item " + i, 1_000_000 + i + 1, false));
+            expectedGain += i + 1;
+        }
+        t.sample(new ItemIndex(first, false), Map.of(), 0);
+        assertTrue(t.sample(new ItemIndex(second, false), Map.of("m:crafted", 3L), MINUTE));
+        assertEquals(256, t.tracked(), "at most maxTracked items");
+        assertTrue(t.createdForTest() <= 256, "no entry per changed item before trimming: " + t.createdForTest());
+        var names = t.trackedNames();
+        assertEquals("m:i" + (types - 1), names.get(0), "the one that moved most first");
+        for (int i = types - 256; i < types; i++) assertTrue(names.contains("m:i" + i), "top mover tracked: m:i" + i);
+        assertEquals((double) expectedGain, t.overview().get("gained").getAsDouble(), "the totals still count every item");
+        assertEquals(3, t.overview().get("crafted").getAsDouble());
+        assertEquals("Item " + (types - 1), t.overview().getAsJsonArray("producers").get(0).getAsJsonObject().get("displayName").getAsString());
+
+        // the next big change: the tracked items stay on a tie, new bigger movers replace the weakest ones
+        var third = new ArrayList<ItemRow>(types);
+        for (int i = 0; i < types; i++) third.add(new ItemRow("m:i" + i, "Item " + i, 1_000_000 + i + 1 + (i < 10 ? 10_000_000 : 0), false));
+        t.sample(new ItemIndex(third, false), Map.of(), 2 * MINUTE);
+        assertEquals(256, t.tracked());
+        assertTrue(t.createdForTest() <= 256 + 10, "only the ten new big movers were added: " + t.createdForTest());
+        for (int i = 0; i < 10; i++) assertTrue(t.trackedNames().contains("m:i" + i), "new big mover: m:i" + i);
+        assertFalse(t.trackedNames().contains("m:i" + (types - 256)), "the weakest tracked item made room");
+    }
+
+    @Test
+    void craftedOnlyItemsStillCompeteForASlot() {
+        var t = new ProductionTracker(5, 2);
+        t.sample(index("a:x", 10, "a:y", 10, "a:z", 10), Map.of(), 0);
+        t.sample(index("a:x", 11, "a:y", 15, "a:z", 10), Map.of("a:z", 100L, "a:w", 2L), MINUTE);
+        assertEquals(List.of("a:z", "a:y"), t.trackedNames(), "crafted without stock change (z: 100) beats a small mover");
+        assertEquals(100, t.item("a:z").get("crafted").getAsDouble());
+        assertEquals(0, t.item("a:z").get("net").getAsDouble());
+    }
+
+    @Test
     void energyTotals() {
         var e = new EnergyTotals(3);
         assertTrue(e.empty());

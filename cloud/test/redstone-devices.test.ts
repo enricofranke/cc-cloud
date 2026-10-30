@@ -1,10 +1,12 @@
 // Cloud Redstone devices on the dashboard: map nodes (type, group), finding a device's card, card icons,
 // the rs_device message (mock: rights checked, devices unknown) and the share deny.
 import { afterEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { createMockServer, type MockServer } from "../dev/mock-server.ts";
 import { ICONS } from "../dev/protocol.ts";
 import { normalizeNetwork, rejectText } from "../web/src/lib/conn.ts";
-import { ICON_NAMES, guessIcon, resolveLayout } from "../web/src/lib/layout.ts";
+import { ACCENTS, ICON_NAMES, guessIcon, resolveLayout, withLayoutColor } from "../web/src/lib/layout.ts";
 import { TYPE_LABEL, isRedstoneDevice, redstoneCardOf, redstoneWidgetId } from "../web/src/lib/network.ts";
 import type { Uplink } from "../web/src/lib/types.ts";
 import { TestSocket } from "./helpers.ts";
@@ -112,5 +114,42 @@ describe("rs_device in the mock", () => {
     const denied = await viewer.next("rs_result");
     expect(denied.ok).toBe(false);
     expect(["read_only", "not_allowed"]).toContain(denied.error);
+  });
+});
+
+describe("Cloud Button colours", () => {
+  const BUTTON = "aaaaaaaa-0000-0000-0000-000000000001";
+  const button: Uplink = {
+    uplinkId: "rs-card",
+    title: "Redstone",
+    online: true,
+    mode: "direct",
+    template: "redstone",
+    widgets: [
+      { id: redstoneWidgetId(BUTTON), type: "button", label: "Doorbell", opts: { color: "cyan", icon: "button" } },
+      { id: "d_toggle", type: "toggle", label: "Gate", opts: { icon: "lever" }, value: false },
+    ],
+  };
+  const key = (id: string) => `rs-card/${id}`;
+
+  it("a colour picked for the widget in the layout editor wins over the device's cyan", () => {
+    const pages = resolveLayout([button], { v: 2, pages: [], cards: {}, widgets: { [key(redstoneWidgetId(BUTTON))]: { color: "purple" }, [key("d_toggle")]: { color: "red" } } });
+    const widgets = pages.flatMap((p) => p.cards).flatMap((c) => c.widgets);
+    const bell = widgets.find((rw) => rw.w.id === redstoneWidgetId(BUTTON))!;
+    expect(bell.color).toBe("purple");
+    expect(withLayoutColor(bell.w, bell.color).opts?.color).toBe("purple");
+    // without a layout colour the device's colour stays
+    expect(withLayoutColor(bell.w, undefined).opts?.color).toBe("cyan");
+    // other widgets only take it as their accent (their opts stay as the device sent them)
+    const gate = widgets.find((rw) => rw.w.id === "d_toggle")!;
+    expect(withLayoutColor(gate.w, gate.color)).toBe(gate.w);
+  });
+
+  it("every widget colour has a button style, readable in both themes", () => {
+    const css = readFileSync(fileURLToPath(new URL("../web/src/styles.css", import.meta.url)), "utf8");
+    for (const accent of ACCENTS) expect(css, `.pxbtn-${accent}`).toMatch(new RegExp(`\\.pxbtn-${accent}\\s*\\{[^}]*--c:`));
+    // dark text on the bright dark-theme purple/orange, white on the darker light-theme ones
+    expect(css).toMatch(/\.pxbtn-purple\s*\{[^}]*--fg:\s*var\(--on-color\)/);
+    expect(css).toMatch(/:root\[data-theme="light"\] \.pxbtn-purple,\s*:root\[data-theme="light"\] \.pxbtn-orange\s*\{\s*--fg:\s*#ffffff/);
   });
 });

@@ -84,6 +84,16 @@ describe("network protocol", () => {
     expect(ro.snap.network.routes[STORAGE]).toEqual(["mf", "relay-north"]);
   });
 
+  it("sends Cloud Probes as their own type, with the machine they read only with positions", async () => {
+    await start();
+    const { snap } = await client();
+    expect(snap.network.nodes.find((x: any) => x.id === "dev-farm")).toMatchObject({ type: "probe", name: "Tree Farm", target: { x: 124, y: 63, z: -106 } });
+    const ro = await client({ canControl: false });
+    const farm = ro.snap.network.nodes.find((x: any) => x.id === "dev-farm");
+    expect(farm.type).toBe("probe");
+    expect(farm.target).toBeUndefined();
+  });
+
   it("pushes network deltas when a relay changes and unlinks nodes (control only)", async () => {
     await start();
     const { c } = await client();

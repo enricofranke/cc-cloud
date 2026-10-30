@@ -141,6 +141,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private final UplinkPeripheral peripheral = new UplinkPeripheral(this);
     /** CC wired network membership (a member: it puts no peripheral on the cable). */
     private final ai.ezfox.cccloud.cable.CloudWired wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> uplinkId.toString(), false, () -> null);
+    /** Cards of the machines the attached computer reaches over CC wired networks (docs/SPEC.md "CC wired networks"). */
+    private final ai.ezfox.cccloud.uplink.WiredMachines wiredMachines = new ai.ezfox.cccloud.uplink.WiredMachines(this);
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private boolean registered;
     private final SpinAnimation clientAnimation = new SpinAnimation();
@@ -165,6 +167,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     @Override
     public @Nullable MainframeLink getLink() {
         return link;
+    }
+
+    public ai.ezfox.cccloud.uplink.WiredMachines wiredMachines() {
+        return wiredMachines;
     }
 
     public ai.ezfox.cccloud.cable.CloudWired wired() {
@@ -232,6 +238,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         remoteOrigin = input.read("remote_origin", BlockPos.CODEC).orElse(null);
         remoteDim = input.getStringOr("remote_dim", "");
         remoteBy = input.read("remote_by", UUIDUtil.STRING_CODEC).orElse(null);
+        wiredMachines.load(input.read("wired_cards", UUIDUtil.STRING_CODEC.listOf()).orElse(java.util.List.of()));
         synchronized (this) {
             title = input.getStringOr("title", "");
             template = input.getBooleanOr("template", false);
@@ -268,6 +275,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         output.store("remote_side", Direction.CODEC, remoteSide);
         output.storeNullable("remote_origin", BlockPos.CODEC, remoteOrigin);
         output.putString("remote_dim", remoteDim);
+        var wiredCards = wiredMachines.ids();
+        if (!wiredCards.isEmpty()) output.store("wired_cards", UUIDUtil.STRING_CODEC.listOf(), wiredCards);
         output.storeNullable("remote_by", UUIDUtil.STRING_CODEC, remoteBy);
         synchronized (this) {
             output.putString("title", title);
@@ -338,6 +347,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     public void setRemoved() {
         super.setRemoved();
         wired.onRemoved();
+        if (level instanceof ServerLevel serverLevel && !serverLevel.isClientSide()) {
+            // chunk unload: the wired machines' cards stay greyed out like this uplink's card; otherwise they go
+            if (chunkUnloading && registered) wiredMachines.unloaded(serverLevel);
+            else wiredMachines.removed();
+        }
         if (!registered) return;
         registered = false;
         // Removed without the break path (/setblock, /fill, explosions without side effects, block movers): the
@@ -403,6 +417,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (tickCounter % BRIDGE_INTERVAL == 0) updateBridges(level);
         if (tickCounter % STATUS_INTERVAL == 5) updateComputer(level);
         if (tickCounter % BRIDGE_INTERVAL == 15) updateDeviceCard(level);
+        if (tickCounter % BRIDGE_INTERVAL == 10) wiredMachines.refresh(level);
+        wiredMachines.tick(level.getGameTime());
         tickCounter++;
         sampleCharts(level.getGameTime());
         if (link == null || suppressed) {
@@ -761,6 +777,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         setDirect(serverLevel, true);
         setChanged();
+        // the network map draws a line to the target
+        if (link != null) ai.ezfox.cccloud.network.NetworkService.markDirty(link.id());
         String name = serverLevel.getBlockState(pos).getBlock().getName().getString();
         CCCloud.LOGGER.info("[cccloud] {} pointed the Cloud Probe at {} to {} at {}", player.getGameProfile().name(), getBlockPos(), name, pos);
         player.sendSystemMessage(Component.translatable("cccloud.probe.target_set", serverLevel.getBlockState(pos).getBlock().getName(),
@@ -782,6 +800,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         }
         setDirect(serverLevel, false);
         setChanged();
+        if (link != null) ai.ezfox.cccloud.network.NetworkService.markDirty(link.id());
         CCCloud.LOGGER.info("[cccloud] {} cleared the Cloud Probe target at {} (was {})", by, getBlockPos(), old);
     }
 

@@ -56,7 +56,8 @@ export type Color = "cyan" | "green" | "yellow" | "red" | "gray";
 export type AlertLevel = "info" | "warn" | "crit";
 
 export interface WidgetOpts {
-  color?: Color;
+  /** from the script or device; a colour picked in the layout editor (also gold, purple, orange) replaces it on buttons */
+  color?: Color | "gold" | "purple" | "orange";
   /** v0.5 F: the server records long-term history for this range */
   history?: string;
   confirm?: boolean;
@@ -198,6 +199,8 @@ export type NodeType =
   | "ender_relay"
   | "uplink"
   | "advanced_uplink"
+  /** Cloud Probe: an advanced uplink that reads one machine at a distance (`target`) */
+  | "probe"
   | "bridge"
   | "device"
   | "me_bridge"
@@ -248,6 +251,8 @@ export interface NetNode {
   capacity?: NetCapacity;
   /** Cloud Redstone devices: true, plus their group ("" = the automatic "Redstone" card) */
   redstone?: boolean;
+  /** Cloud Probe: the machine it reads (same dimension; only for devices that may see positions) */
+  target?: { x: number; y: number; z: number };
   group?: string;
 }
 

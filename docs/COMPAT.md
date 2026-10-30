@@ -65,7 +65,7 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | Productive Farming (`productivefarming`) | 0.13.0 | **Farm** card on the farm controller (also from an uplink on a hatch or other auxiliary part): formed, water, output slots used, output full + warn alert | none | yes (lone controller). Note: Productive Farming's own GameTest `agritech_compat_recipes_present` fails in a dev run without Agritech Two; ours passes. |
 | Mystical Agriculture (`mysticalagriculture`) | 9.0.10 | **Machine** card for Essence Furnace, Seed Reprocessor, Soul Extractor, Harvester, Ore Infuser, Soulium Spawner: status, progress, energy, fuel left, upgrade tier | none | untested (retried in wave 3): any dev server with Mystical Agriculture 9.0.10 + Cucumber 9.0.6 (also with Mystical Agradditions) crashes at start. CC: Tweaked rebuilds the creative tabs on server start (`CommonHooks.onServerStarted` → `CreativeModeTabs.tryRebuildTabContents`), and MA's own tab then adds "Inferium Essence" twice (`ModCreativeModeTabs` via Cucumber's `FeatureFlagDisplayItemGenerator`). ATM11 runs the same code with its crop/tag configuration (`config/mysticalcustomization`, `cucumber-tags.json`), so it is not our bug, but a minimal test world cannot be started; the card stays compile-checked against the exact jar. |
 | Mystical Automation (`mysticalautomation`) | 2.0.7 | no own card: its machines only expose energy, so the generic Energy card applies | – | – |
-| Railcraft Reborn (`railcraft`) | 1.4.5 | **Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode) | none | yes (lone firebox, "Not formed") |
+| Railcraft Reborn (`railcraft`) | 1.4.5 | Multiblocks are read through their master block entity, so an uplink or a Cloud Probe on **any** block of the structure shows the formed multiblock: **Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode). **Iron / Steel Tank** card on any wall, gauge or valve: status, filled %, fluid, amount. **Coke Oven** card on any brick: status (cooking X / idle / creosote tank full), progress, creosote %, input, output; warn alert once when the creosote tank is full. **Blast Furnace** card on any brick: status, progress, burning, input, fuel (+ burn time left), output, slag | none | yes (lone firebox and blast furnace brick: "Not formed"; a formed 3×3×3 coke oven and a 3×4×3 iron tank read from a corner block that is not the master: the master's output and fluid) |
 
 ### 6. Logistics
 
@@ -121,6 +121,14 @@ False positives of the generic Energy and Tank cards can be excluded by pack mak
 | Interdimensional Wireless Transmitter | 1.0.1 | skipped: an RS2 network node; the RS Cloud Bridge already shows the network | – | – |
 | Trash Cans, Item Collectors | 1.1.1a / 1.1.12a | skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range) | – | – |
 | Just Dire Things | 1.6.11 | no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined | – | – |
+
+## Follow-ups (2026-10-30)
+
+### CC: Tweaked wired networks
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| CC: Tweaked (`computercraft`) | 1.120.0 | An uplink on a computer shows a card for every machine the computer reaches through its wired modems (networking cable, modems switched on): the card an uplink on that machine would show, same controls and permissions. Up to `wiredMachineCards` (8) per uplink, one per machine and mainframe, not for machines with their own uplink or probe. Lua bridge widgets accept bridges on the computer's cable network (`me_cloud_bridge_0`) with the uplink directly on the computer. Public CC API only (a listener node on the modem's network). | the card's own | yes (`wired_machine_cards`: an energy block behind a full wired modem; a chest gets no card) |
 
 ## Not in this wave
 Nothing left from the v0.8 list.

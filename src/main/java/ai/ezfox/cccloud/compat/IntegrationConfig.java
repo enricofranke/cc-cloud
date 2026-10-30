@@ -12,6 +12,7 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue DEVICE_CARDS;
     public static final ModConfigSpec.BooleanValue MFFS_REQUIRE_PIN;
     public static final ModConfigSpec.BooleanValue STORAGE_CARDS;
+    public static final ModConfigSpec.IntValue WIRED_MACHINE_CARDS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> GENERIC_CARD_EXCLUDES;
     public static final ModConfigSpec.BooleanValue SERVER_CARD;
     public static final ModConfigSpec.BooleanValue FTB_TEAMS_TRUST;
@@ -38,6 +39,11 @@ public final class IntegrationConfig {
             .translation("cccloud.configuration.genericCardExcludes")
             .defineListAllowEmpty("genericCardExcludes", java.util.List.of(), () -> "somemod:machine",
                 o -> o instanceof String s && s.matches("[a-z0-9_.-]+:([a-z0-9_./-]+|\\*)"));
+        WIRED_MACHINE_CARDS = b.comment("An uplink on a CC computer also shows the cards of machines the computer reaches through its wired modems",
+                "(CC Networking Cable): at most this many per uplink (0 = none). One card per machine and mainframe; machines with",
+                "an uplink or probe of their own keep that one.")
+            .translation("cccloud.configuration.wiredMachineCards")
+            .defineInRange("wiredMachineCards", 8, 0, 32);
         b.pop();
 
         b.push("server");

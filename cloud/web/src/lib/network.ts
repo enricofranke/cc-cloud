@@ -14,6 +14,7 @@ export const TYPE_LABEL: Record<NodeType, string> = {
   ender_relay: "Ender Relay",
   uplink: "Cloud Uplink",
   advanced_uplink: "Advanced Cloud Uplink",
+  probe: "Cloud Probe",
   bridge: "Cloud Bridge",
   device: "Linked device",
   me_bridge: "ME Cloud Bridge",

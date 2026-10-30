@@ -138,6 +138,16 @@ const int = (v: unknown, min: number, max: number) => (typeof v === "number" && 
 const STUB: Uplink = { uplinkId: "", title: "", online: true, widgets: [] };
 
 /** Cards are: the uplink's ungrouped widgets, one card per Lua group, and ungrouped widgets that name a page. */
+/**
+ * The colour a button widget shows: a colour picked for the widget in the layout editor wins over the colour the
+ * script or device sent (`opts.color`, e.g. a Cloud Button's cyan), so every button follows its widget colour in both
+ * themes. Other widget types only take the colour as their accent (label, bars).
+ */
+export function withLayoutColor(w: Widget, color: Accent | undefined): Widget {
+  if (!color || w.type !== "button" || w.opts?.color === color) return w;
+  return { ...w, opts: { ...(w.opts ?? {}), color } };
+}
+
 export function cardKeyOf(uplinkId: string, w: Widget) {
   const o = (w.opts ?? {}) as Record<string, unknown>;
   const group = str(o.group);

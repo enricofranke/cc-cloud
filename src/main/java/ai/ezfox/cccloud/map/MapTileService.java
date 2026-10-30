@@ -30,6 +30,7 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.level.ChunkDataEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jspecify.annotations.Nullable;
@@ -119,6 +120,12 @@ public final class MapTileService {
     private static final Map<Key, Job> JOBS = new LinkedHashMap<>();
     private static final ArrayDeque<Job> QUEUE = new ArrayDeque<>();
     private static @Nullable ExecutorService encoder;
+    /** Purged mainframes: tiles of theirs that were still being drawn are not written to disk any more. */
+    private static final java.util.Set<UUID> PURGED = ConcurrentHashMap.newKeySet();
+    private static final long DAY_MS = 86_400_000L;
+    /** A tile read from disk that is older than this gets a new modification time ("last used", see {@link #sweep}). */
+    static final long TOUCH_AFTER_MS = DAY_MS;
+    private static volatile long nextSweep;
 
     private MapTileService() {
     }
@@ -127,6 +134,8 @@ public final class MapTileService {
         NeoForge.EVENT_BUS.addListener(ServerTickEvent.Post.class, e -> tick(e.getServer()));
         NeoForge.EVENT_BUS.addListener(ChunkEvent.Unload.class, e -> changed(e.getLevel(), e.getChunk().getPos().x(), e.getChunk().getPos().z()));
         NeoForge.EVENT_BUS.addListener(ChunkDataEvent.Save.class, e -> changed(e.getLevel(), e.getChunk().getPos().x(), e.getChunk().getPos().z()));
+        // the disk cache is swept at server start and then once a day
+        NeoForge.EVENT_BUS.addListener(ServerStartedEvent.class, e -> nextSweep = 0);
         NeoForge.EVENT_BUS.addListener(ServerStoppedEvent.class, e -> {
             synchronized (JOBS) {
                 JOBS.clear();
@@ -134,6 +143,7 @@ public final class MapTileService {
             }
             CACHE.clear();
             DIRTY.clear();
+            PURGED.clear();
             synchronized (MapTileService.class) {
                 if (encoder != null) encoder.shutdownNow();
                 encoder = null;
@@ -223,6 +233,11 @@ public final class MapTileService {
     private static void tick(MinecraftServer server) {
         var start = MapStats.start();
         if (copy(server, start[0])) MapStats.TILES.main(start);
+        long now = System.currentTimeMillis();
+        if (now >= nextSweep) {
+            nextSweep = now + DAY_MS;
+            sweepLater(server);
+        }
     }
 
     /**
@@ -462,6 +477,7 @@ public final class MapTileService {
     }
 
     private static void save(MinecraftServer server, Key key, byte[] png) {
+        if (key.mainframe() != null && PURGED.contains(key.mainframe())) return;
         try {
             var file = dir(server).resolve(key.file());
             Files.createDirectories(file.getParent());
@@ -478,12 +494,158 @@ public final class MapTileService {
         try {
             if (!Files.isRegularFile(file)) return null;
             byte[] png = Files.readAllBytes(file);
-            var entry = new Entry(null, png, etag(png), Files.getLastModifiedTime(file).toMillis());
+            long renderedAt = Files.getLastModifiedTime(file).toMillis();
+            var entry = new Entry(null, png, etag(png), renderedAt);
             CACHE.put(key, entry);
+            touch(file, key, renderedAt);
             return entry;
         } catch (IOException | RuntimeException e) {
             return null;
         }
+    }
+
+    // ---- disk cache housekeeping (background thread) -----------------------------------------------------------------
+
+    /**
+     * A tile read from disk counts as used: its modification time moves to now (at most once a day), so the age cap only
+     * deletes tiles nobody looked at. The modification time is also the tile's render time ({@link #fresh}), so it only
+     * moves when no chunk of the tile changed since it was drawn (a later change is newer than the new time).
+     */
+    private static void touch(Path file, Key key, long renderedAt) {
+        long now = System.currentTimeMillis();
+        if (now - renderedAt < TOUCH_AFTER_MS) return;
+        Long changedAt = DIRTY.get(key.area());
+        if (changedAt != null && changedAt > renderedAt) return;
+        try {
+            Files.setLastModifiedTime(file, java.nio.file.attribute.FileTime.fromMillis(now - 1));
+        } catch (IOException | RuntimeException e) {
+            CCCloud.LOGGER.debug("[cccloud] Could not touch map tile {}", file, e);
+        }
+    }
+
+    /** Sweeps the disk cache by age ({@code mapTileMaxAgeDays}) on the background thread. */
+    private static void sweepLater(MinecraftServer server) {
+        int days = ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.MAP_TILE_MAX_AGE_DAYS);
+        if (days <= 0) return;
+        var root = dir(server);
+        long cutoff = System.currentTimeMillis() - days * DAY_MS;
+        encoder().execute(() -> {
+            var keep = new java.util.HashSet<Path>();
+            synchronized (CACHE) {
+                for (var key : CACHE.keySet()) keep.add(root.resolve(key.file()));
+            }
+            int deleted = sweep(root, cutoff, keep);
+            if (deleted > 0) CCCloud.LOGGER.info("[cccloud] Deleted {} map tile(s) not used for {} days", deleted, days);
+        });
+    }
+
+    /**
+     * Deletes cached tiles (and left-over temp files) under {@code root} last written or read before {@code cutoff}, except
+     * {@code keep} (tiles in the memory cache), then the folders that became empty. Never follows links. @return files
+     * deleted
+     */
+    static int sweep(Path root, long cutoff, java.util.Set<Path> keep) {
+        if (!Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return 0;
+        int[] deleted = {0};
+        try {
+            Files.walkFileTree(root, new java.nio.file.SimpleFileVisitor<>() {
+                @Override
+                public java.nio.file.FileVisitResult visitFile(Path file, java.nio.file.attribute.BasicFileAttributes attrs) throws IOException {
+                    String name = file.getFileName().toString();
+                    if (attrs.isRegularFile() && (name.endsWith(".png") || name.endsWith(".tmp")) && attrs.lastModifiedTime().toMillis() < cutoff
+                        && !keep.contains(file)) {
+                        Files.deleteIfExists(file);
+                        deleted[0]++;
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult visitFileFailed(Path file, IOException e) {
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult postVisitDirectory(Path dir, @Nullable IOException e) {
+                    if (!dir.equals(root)) deleteIfEmpty(dir);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException | RuntimeException e) {
+            CCCloud.LOGGER.warn("[cccloud] Could not clean up the map tile cache", e);
+        }
+        return deleted[0];
+    }
+
+    private static void deleteIfEmpty(Path dir) {
+        try (var entries = Files.list(dir)) {
+            if (entries.findAny().isEmpty()) Files.deleteIfExists(dir);
+        } catch (IOException | RuntimeException ignored) {
+            // still in use or not empty: kept
+        }
+    }
+
+    /**
+     * Mainframe purged (docs/SPEC.md "Mainframe removal"): its cave slices go – from memory at once, the folders
+     * {@code <dim>/slice_<y>_<mainframe>_<player>} on the background thread. Surface tiles are shared and only capped by age.
+     */
+    public static void purgeMainframe(MinecraftServer server, UUID mainframeId) {
+        PURGED.add(mainframeId);
+        synchronized (CACHE) {
+            CACHE.keySet().removeIf(k -> mainframeId.equals(k.mainframe()));
+        }
+        var root = dir(server);
+        encoder().execute(() -> {
+            int deleted = deleteSlices(root, mainframeId);
+            if (deleted > 0) CCCloud.LOGGER.info("[cccloud] Deleted {} map slice tile(s) of purged mainframe {}", deleted, mainframeId);
+        });
+    }
+
+    /** Deletes every slice folder of the mainframe in every dimension folder under {@code root}. @return files deleted */
+    static int deleteSlices(Path root, UUID mainframeId) {
+        if (!Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return 0;
+        String marker = "_" + mainframeId + "_";
+        int deleted = 0;
+        try (var dims = Files.list(root)) {
+            for (var dim : (Iterable<Path>) dims::iterator) {
+                if (!Files.isDirectory(dim, java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue;
+                try (var scopes = Files.list(dim)) {
+                    for (var scope : (Iterable<Path>) scopes::iterator) {
+                        String name = scope.getFileName().toString();
+                        if (!name.startsWith("slice_") || !name.contains(marker) || !Files.isDirectory(scope, java.nio.file.LinkOption.NOFOLLOW_LINKS)) continue;
+                        deleted += deleteTree(scope);
+                    }
+                }
+                deleteIfEmpty(dim);
+            }
+        } catch (IOException | RuntimeException e) {
+            CCCloud.LOGGER.warn("[cccloud] Could not delete the map slices of {}", mainframeId, e);
+        }
+        return deleted;
+    }
+
+    private static int deleteTree(Path dir) throws IOException {
+        int[] deleted = {0};
+        Files.walkFileTree(dir, new java.nio.file.SimpleFileVisitor<>() {
+            @Override
+            public java.nio.file.FileVisitResult visitFile(Path file, java.nio.file.attribute.BasicFileAttributes attrs) throws IOException {
+                Files.deleteIfExists(file);
+                deleted[0]++;
+                return java.nio.file.FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public java.nio.file.FileVisitResult postVisitDirectory(Path d, @Nullable IOException e) throws IOException {
+                Files.deleteIfExists(d);
+                return java.nio.file.FileVisitResult.CONTINUE;
+            }
+        });
+        return deleted[0];
+    }
+
+    /** Test hook: the disk cache folder of this world. */
+    public static Path dirForTest(MinecraftServer server) {
+        return dir(server);
     }
 
     /** Test hook: the pixels of a rendered tile. */

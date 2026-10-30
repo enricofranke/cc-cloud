@@ -11,6 +11,7 @@ export const MODEL_OF: Record<NodeType, string> = {
   ender_relay: "ender_relay",
   uplink: "uplink",
   advanced_uplink: "advanced_uplink",
+  probe: "probe",
   device: "uplink",
   bridge: "bridge",
   me_bridge: "bridge",
@@ -98,6 +99,27 @@ export function linkSegments(net: NetworkInfo, dim: string): Segment[] {
   }
   return out;
 }
+/**
+ * Cloud Probes in one dimension: per probe the line to the machine it reads and the 12 edges of that block, as flat
+ * segment endpoints (x, y, z, x, y, z, …; world coordinates, block centres).
+ */
+export function probeLines(net: NetworkInfo, dim: string): { id: string; pos: number[] }[] {
+  const out: { id: string; pos: number[] }[] = [];
+  for (const n of net.nodes) {
+    if (n.type !== "probe" || !n.pos || !n.target || n.dim !== dim) continue;
+    const t = n.target;
+    const pos = [n.pos.x + 0.5, n.pos.y + 0.5, n.pos.z + 0.5, t.x + 0.5, t.y + 0.5, t.z + 0.5];
+    // the machine's outline, a hair larger than the block
+    const lo = [t.x - 0.02, t.y - 0.02, t.z - 0.02];
+    const hi = [t.x + 1.02, t.y + 1.02, t.z + 1.02];
+    const corner = (i: number) => [i & 1 ? hi[0] : lo[0], i & 2 ? hi[1] : lo[1], i & 4 ? hi[2] : lo[2]];
+    for (let i = 0; i < 8; i++)
+      for (const bit of [1, 2, 4]) if (!(i & bit)) pos.push(...corner(i), ...corner(i | bit));
+    out.push({ id: n.id, pos });
+  }
+  return out;
+}
+
 export const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
 /** A relay's subtree: the relay and everything whose route passes through it. */
@@ -214,6 +236,8 @@ export const LINK_RGB: Record<string, number> = {
   "sig-legacy": 0xe8913a,
   "sig-wired": 0x9aa4ae,
   "sig-fiber": 0x45e6f5,
+  /** a Cloud Probe's line to its machine (the Cloud Analyzer's colour) */
+  probe: 0xb48ae8,
 };
 export const STATUS_RGB: Partial<Record<NodeStatus, number>> = {
   online: 0x5fd35f,

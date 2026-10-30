@@ -238,7 +238,27 @@ Scope: what was added since 0.9.0 (public API, scenes and schedules, production 
 
 Checked and found sound: scope ∩ live rights on every API route and in the event stream (per-session filtering of restricted sections, no other mainframes), CORS only for exact origins, key hashing and constant-time compare, the API switched off (404, streams end within 5 s); scenes (rights of the presser or the scene owner per step at run time, PIN re-checked in every action path, no scene in a scene, run limits); production statistics (same mainframe, `storage.search`, `view.positions` for restricted sections, memory bounded per storage); live recipes (built once per reload off the server thread, one shared build, only our items); voxel batch (every rule per section, strict bounded body, bounded output); map tile copies (deep copies on the server thread, the background never touches live chunks); permessage-deflate inflate bounds; big-screen view decoding (vanilla string bounds, no reassembly).
 
-Open (low, recommendations): `hideNumbers` share links still send the values of charts and gauges (the dashboard hides gauge digits; consider dropping chart values too); slice tiles on disk are never deleted (delete a mainframe's slice folders on purge, cap by age); a large stock change builds a tracked entry for every changed item before trimming to the tracked maximum (pick the top items with a bounded heap first); production statistics map a storage to its mainframe from a cache refreshed every second; every per-IP limiter map is cleared once it holds 10 000 IPs (an attacker with that many addresses resets them); in a scene, the PIN flag of a step on a redstone device that moved to another card is decided by its old card (the step then fails with `pin_required` instead of asking first; no bypass, the action re-checks); the Discord bot's image tag is mutable (pin a digest) and its pod has no NetworkPolicy.
+Open (low, recommendations): `hideNumbers` share links still send the values of charts and gauges (the dashboard hides gauge digits; consider dropping chart values too); production statistics map a storage to its mainframe from a cache refreshed every second; every per-IP limiter map is cleared once it holds 10 000 IPs (an attacker with that many addresses resets them); in a scene, the PIN flag of a step on a redstone device that moved to another card is decided by its old card (the step then fails with `pin_required` instead of asking first; no bypass, the action re-checks).
+
+Follow-ups done after the review (2026-10-30, branch `followups`):
+- **Slice tiles on disk:** a purged mainframe's slice folders are deleted in every dimension (memory cache too, and tiles
+  still being drawn are not written); all tiles are capped by age (`mapTileMaxAgeDays`, default 30 days without being drawn
+  or read; 0 keeps them). The sweep never follows symbolic links (`MapTileDiskTest`, GameTest `mainframe_retention_purge`).
+- **Production statistics, large stock changes:** new items are picked with a heap of at most `trackedItemsPerStorage`
+  entries in one pass over the changes; a change of 50 000 types no longer allocates an entry with two rings for each of
+  them before trimming (`ProductionTrackerTest`).
+- **CC wired networks (new):** an uplink on a computer shows cards for machines the computer reaches through its wired
+  modems. They expose nothing the computer could not already read and control from Lua over the same cable; the cards
+  are published like device cards, so every action needs the same permission as on an uplink attached to the machine
+  (`act.buttons`, `act.redstone` for redstone controls, PIN/confirm as the card says), and the uplink must be linked
+  with `network.link`. The listener node puts no peripheral on the network. Residual: like CC itself, claims are only
+  enforced when the modem and cable are placed and switched on (in-world interactions), not checked again on every read
+  as for the Cloud Probe.
+- **Discord bot pod:** a NetworkPolicy (`discord-bot/deploy/networkpolicy.yaml`) denies all ingress (the kubelet's probe
+  comes from the node, which policies never block) and allows egress only to the cluster DNS and TCP 443 on public IPv4
+  addresses (private, link-local/metadata, loopback and CGNAT ranges excluded). Pinning the image by digest is documented
+  in `discord-bot/README.md` and the image workflow prints the digest; the Deployment still names the tag until the first
+  image is checked and pinned. Checked with `test/deploy.test.ts` and a strict schema validation (no cluster).
 
 ## Residual risks and operator advice
 - Without TLS, tokens travel in plain text on the LAN. For internet access, use HTTPS: the built-in TLS, a reverse proxy, or Tailscale (docs/HOSTING.md).

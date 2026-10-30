@@ -527,6 +527,16 @@ pre {
 .pxbtn-gray {
   --c: #6b747d;
 }
+/* every widget colour of the layout editor is a button colour too (purple and orange: dark text on the bright dark-theme
+   colours, white on the darker light-theme ones below) */
+.pxbtn-purple {
+  --c: var(--purple);
+  --fg: var(--on-color);
+}
+.pxbtn-orange {
+  --c: var(--orange);
+  --fg: var(--on-color);
+}
 .pxbtn-wide {
   width: 100%;
 }
@@ -4721,6 +4731,22 @@ button.pwr:hover {
   stroke-width: 2;
   stroke-dasharray: 4 3;
 }
+/* Cloud Probe: a thin line to the machine it reads and a frame on it (the Cloud Analyzer's colour) */
+.probe-line {
+  stroke: #b48ae8;
+  stroke-width: 1.25;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.probe-target {
+  fill: rgba(180, 138, 232, 0.18);
+  stroke: #b48ae8;
+  stroke-width: 1.25;
+}
+.probe-aim.sel .probe-line {
+  stroke-width: 2;
+  opacity: 1;
+}
 .mlabel {
   fill: #c9d1d9;
   text-anchor: middle;
@@ -8093,6 +8119,10 @@ body.rz-nwse * {
 }
 :root[data-theme="light"] .pxbtn-yellow {
   --c: #d4a514;
+}
+:root[data-theme="light"] .pxbtn-purple,
+:root[data-theme="light"] .pxbtn-orange {
+  --fg: #ffffff;
 }
 :root[data-theme="light"] .pt-discord {
   color: #4c5bd4;

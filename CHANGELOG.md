@@ -4,7 +4,28 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
-### Fixes
+### Fixes and follow-ups
+- Cloud Redstone devices placed by `/setblock`, a structure or a schematic paste with their link in the block data now
+  show on the dashboard at once; before, they only appeared after their first state change.
+- Cloud Probes are their own kind of device on the network map: own icon and label, and a thin purple line to the
+  machine they read on the 2D map, in the 3D view (with a frame on the machine) and on the mini map of the mainframe
+  screen; the detail panel says which machine and how far away. Before, a probe looked like an advanced uplink. For Lua:
+  `cloud_mainframe.getNetwork()` now reports probes as `type = "probe"` (was `"advanced_uplink"`) with `target`.
+- Map tiles on disk no longer grow forever: purging a mainframe deletes its cave slices, and tiles that were neither drawn
+  nor shown for 30 days are deleted (new config `mapTileMaxAgeDays`, 0 keeps them).
+- Production statistics: a huge stock change (thousands of item types at once, e.g. emptying a drive) no longer creates
+  a short-lived statistics entry for every changed item; only the items that will be tracked are created.
+- CC: Tweaked wired networks: an uplink on a computer now also shows cards for the machines the computer reaches through
+  its wired modems and networking cable – the same cards an uplink on each machine would show, with the same controls and
+  permissions (up to 8 per uplink, new config `wiredMachineCards`). Lua bridge widgets (`itemSearch`, `watchlist`, `jobs`)
+  accept a bridge on the computer's cable network when the uplink sits directly on the computer.
+- Railcraft Reborn: new cards for iron and steel tanks, coke ovens and blast furnaces. Like the steam boiler, an uplink
+  or a Cloud Probe on any block of the formed multiblock shows the whole structure (fill and fluid; cooking progress,
+  creosote and output; smelting progress, fuel, output and slag).
+- Dashboard: buttons take the colour picked for them in the layout editor, also the buttons of Cloud Buttons (which
+  were always cyan); purple and orange work as button colours too, readable in the dark and the light theme.
+- Discord bot deployment: a NetworkPolicy (nothing in; out only DNS and HTTPS to public addresses) and how to pin the
+  image by digest (`discord-bot/README.md`); the image workflow shows the digest in its summary.
 - Dashboard: the storage browser and the "Watch an item" sheet keep their height while you type a filter; their top edge no longer jumps up and down as the results change.
 
 ### Security review before the release

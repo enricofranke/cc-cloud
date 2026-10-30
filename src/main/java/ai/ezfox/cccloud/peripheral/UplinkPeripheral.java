@@ -270,7 +270,8 @@ public final class UplinkPeripheral implements IPeripheral {
         if (opts == null || !(opts.get("bridge") instanceof String name) || name.isEmpty() || name.length() > 64) {
             throw new LuaException(type.id() + " needs {bridge=\"<peripheral name>\"}, e.g. peripheral.getName(peripheral.find(\"me_cloud_bridge\"))");
         }
-        var peripheral = computer.getAvailablePeripheral(name);
+        // the uplink's attachment first, then the computer's own wired modems (docs/SPEC.md "CC wired networks")
+        var peripheral = ai.ezfox.cccloud.uplink.WiredCards.reachable(name, computer::getAvailablePeripheral, uplink.wiredMachines()::peripheral);
         if (!(peripheral instanceof BridgePeripheral bridge)) throw new LuaException("no Cloud Bridge named '" + name + "'");
         var be = bridge.host().asBlockEntity();
         if (be.getLevel() == null) throw new LuaException("the Cloud Bridge is not loaded");

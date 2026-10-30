@@ -210,6 +210,8 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("probe_remote_target", () -> ai.ezfox.cccloud.gametest.ProbeTests::remoteTarget);
         TEST_FUNCTIONS.register("uplink_side_fallback_hint", () -> ai.ezfox.cccloud.gametest.ProbeTests::sideFallbackAndHint);
         TEST_FUNCTIONS.register("probe_guards", () -> ai.ezfox.cccloud.gametest.ProbeTests::guards);
+        TEST_FUNCTIONS.register("probe_network_node", () -> ai.ezfox.cccloud.gametest.ProbeTests::networkNode);
+        TEST_FUNCTIONS.register("wired_machine_cards", () -> ai.ezfox.cccloud.gametest.WiredMachineTests::wiredMachineCards);
         TEST_FUNCTIONS.register("load_test", () -> ai.ezfox.cccloud.gametest.LoadTest::run);
         TEST_FUNCTIONS.register("scale_test", () -> ai.ezfox.cccloud.gametest.ScaleTest::run);
         TEST_FUNCTIONS.register("rom_contents", () -> CloudGameTests::romContents);
@@ -260,6 +262,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("rsdevice_rule_scene", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::ruleAndScene);
         TEST_FUNCTIONS.register("rsdevice_permissions", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::permissions);
         TEST_FUNCTIONS.register("rsdevice_capacity_power", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::capacityAndPower);
+        TEST_FUNCTIONS.register("rsdevice_setblock_card", () -> ai.ezfox.cccloud.rsdevice.RsGameTests::placedBySetblock);
     }
 
     private ModRegistry() {

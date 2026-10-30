@@ -99,7 +99,7 @@ An uplink reads the block it sits on. If a machine is built into a wall, or ever
 2. **Sneak + right-click the machine** with the Link Card – the card remembers it (and the face you clicked).
 3. **Right-click the probe** with the card. It now shows the machine's card, exactly as an uplink on that face would.
 
-Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe, within 10 minutes. The probe keeps checking: if another team claims the machine's chunk, or the server lowers the range, it stops reading until that changes; a probe that is moved (with a block mover or a contraption) forgets its machine. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer draws a thin line to the machine. If the machine is removed, the probe forgets it.
+Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe, within 10 minutes. The probe keeps checking: if another team claims the machine's chunk, or the server lowers the range, it stops reading until that changes; a probe that is moved (with a block mover or a contraption) forgets its machine. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer, the dashboard's network map (2D and 3D) and the mini map in the mainframe screen draw a thin purple line to the machine. If the machine is removed, the probe forgets it.
 
 If an uplink shows no card and the screen says *"This side exposes nothing"*, the machine offers its energy, items or fluids on another face – move the uplink there (the screen names one) or use a probe.
 
@@ -178,6 +178,8 @@ Open the URL shown by the mainframe. One browser can hold several mainframes; ta
 
 Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one card per group. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
 
+**Machines on the computer's cable network.** If the computer has a wired modem with CC networking cable to other machines (their modems switched on), the uplink on the computer also shows a card for each of those machines – the same card an uplink sitting on the machine would show (energy, tanks, storage controllers, mod machines), with the same controls and permissions. Up to 8 per uplink (server setting \`wiredMachineCards\`); a machine with its own uplink or probe keeps that one, and machines with the same name are told apart by the computer's name for them ("Energy Cell (energy_cell_2)"). Plain chests have no card.
+
 | Widget | Shows / does |
 |---|---|
 | gauge | value on an arc with warn/crit colours |
@@ -199,7 +201,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 - **Move:** drag a card by its header, or a widget anywhere. The others make room and glide aside; a dashed outline shows where it lands. Drop a widget on another card, on empty space (it gets its **own new card**) or on a page tab (hover a moment to open that page).
 - **Resize:** drag the right edge, the bottom edge or the corner – the badge shows the size (cards use 12 columns of the page, widgets 12 columns of their card).
 - **Select several widgets** with Shift-click and drag one of them to move them together.
-- **Settings** (⚙ or click): label, accent colour, icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style.
+- **Settings** (⚙ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style.
 - **Hide** with ×. **+ Add** lists everything hidden (drag it back or press Show) and shows every widget type live with the Lua line that creates it.
 - **Touch:** press and hold to pick up (a short vibration), then drag – a normal swipe still scrolls. **Keyboard:** Tab to a card or widget, Space picks it up, arrow keys move, Shift + arrow keys resize, Page Up/Down move a widget to the previous/next card, Space drops, Esc cancels. Press **?** for all shortcuts.
 - **Undo/redo** (Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z), **Reset** to the scripts' default, and **Save** (Ctrl/⌘ + S). Leaving with unsaved changes asks first.
@@ -332,7 +334,7 @@ Every widget takes an **id** (1–32 characters: a–z, 0–9, _), a label and a
 | \`cloud.number(id, label, opts)\` | min, max, step, value, unit |
 | \`cloud.text(id, label, opts)\` | maxLength (≤ 256), value, placeholder |
 | \`cloud.buttons(id, label, opts)\` | options = {"A","B","C"} |
-| \`cloud.itemSearch(id, label, opts)\` | bridge = peripheral name, max |
+| \`cloud.itemSearch(id, label, opts)\` | bridge = peripheral name (a side, or a bridge on the computer's cable network such as \`me_cloud_bridge_0\`), max |
 | \`cloud.watchlist(id, label, opts)\` | bridge |
 | \`cloud.jobs(id, label, opts)\` | bridge |
 
@@ -568,6 +570,8 @@ The **Network** tab shows everything that is connected, in three views:
 - **Topology** – the mainframe at the root, relays as branches, devices as leaves. Cables are solid, radio links dashed and coloured by signal (green strong, cyan ok, yellow weak), ender links purple and dotted, legacy links orange; the dot shows the status. Devices without a route are grouped under **Not connected**.
 - **Map** – a top-down x/z map per dimension on a real map of the world: **Surface** (like a Minecraft map) or **Slice** – a cut at a height you choose with the Y slider, so an underground base at y −60 shows its rooms and caves (darker = deeper). Only places near your network are shown, and only chunks that were loaded. With a coordinate grid, range circles (toggle; solid = node range, dashed = device range), links and status dots. Drag to pan, scroll or pinch to zoom, ⤢ fits everything.
 - **3D** – see below.
+
+A **Cloud Probe** has its own icon and draws a thin purple line to the machine it reads (also in 3D, where the machine gets a purple frame); its details say which machine and how far away. Like all coordinates, the line is only sent to players allowed to see positions.
 
 With FTB Chunks and Waystones installed, the map also shows your team's **claimed chunks** (team colour, force-loaded ones dashed) and your **waystones** (violet diamonds, global ones gold) – toggle them with **Claims** and **Waystones**. Waystones are also marked in the 3D view. Like all coordinates, they are only sent to players allowed to see positions.
 
@@ -1090,6 +1094,7 @@ CC: Cloud is built for big bases: hundreds of machines on one mainframe, many ma
 - **Compression:** keep \`webCompression = true\` (the default). Browsers get the snapshot and the updates compressed (5–10× smaller); it costs a little CPU on the web server's own threads, never on the server thread. Reverse proxies (Caddy, nginx, Cloudflare) pass it through.
 - **Browsers:** each browser of a mainframe gets all its updates. A 500-device mainframe where everything changes all the time sends about 130 KB/s per browser (about 60 KB/s compressed). The Bandwidth upgrade (or \`baseBrowsers\`) limits browsers per mainframe; share links count separately.
 - **Long-term statistics:** each mainframe keeps at most 2 MB of history; \`historyMaxTotalMB\` (default 128) caps all mainframes together. Every series has a fixed size from the start (1 h ≈ 240 B, 24 h ≈ 5.6 KB, 7 days ≈ 14 KB, 30 days ≈ 20 KB).
+- **Map tiles on disk:** the 2D map caches its tiles in \`<world>/cccloud/maptiles\`. Tiles nobody drew or looked at for 30 days are deleted (\`mapTileMaxAgeDays\`, 0 keeps them), and purging a mainframe deletes its cave slices.
 - **In-game screens:** the mainframe screen lists the first 600 devices (problems first) and gets the network only when it changed; the dashboard's Network page shows every device. Big network maps leave out the links a device does not use.
 - **Slow browsers:** a browser that falls more than 4 MB or 10 seconds behind is disconnected and reconnects with a fresh snapshot; nothing piles up on the server.
 - **Measuring:** \`/neoforge tps\` or spark show the server's tick time. CC: Cloud's own cost for a 500-device mainframe with 10 browsers is about 0.5–1 ms per tick (developers: \`./gradlew runGameTestServer -PscaleTest\` measures it).

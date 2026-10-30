@@ -7,9 +7,9 @@ import { computeNetwork, exampleNodes } from "../dev/network-sim.ts";
 import { MAX_BYTES, terrain } from "../dev/terrain-sim.ts";
 import { KINDS, decodePng, generate } from "../dev/build-models.ts";
 import { normalizeNetwork } from "../web/src/lib/conn.ts";
-import { signalClass } from "../web/src/lib/network.ts";
+import { TYPE_LABEL, signalClass } from "../web/src/lib/network.ts";
 import { decodeTerrain, fetchTerrain } from "../web/src/lib/api.ts";
-import { MODEL_OF, frameNodes, instanceGroups, linkSegments, pickNearest, routedThrough, searchNodes, terrainMesh, textureStatus } from "../web/src/lib/net3d.ts";
+import { LINK_RGB, MODEL_OF, frameNodes, instanceGroups, linkSegments, pickNearest, probeLines, routedThrough, searchNodes, terrainMesh, textureStatus } from "../web/src/lib/net3d.ts";
 import type { NetworkInfo } from "../web/src/lib/types.ts";
 
 const ids = { reactor: "reactor", me: "me", storage: "storage", turbine: "turbine", control: "control", computer: "computer" };
@@ -177,6 +177,51 @@ describe("3D scene helpers", () => {
     expect(searchNodes(net, "rel").map((n) => n.name)).toContain("North Relay");
     expect(searchNodes(net, "nether")[0].name).toBe("Nether Ender Relay");
     expect(searchNodes(net, "  ")).toEqual([]);
+  });
+});
+
+describe("Cloud Probe in the network views", () => {
+  const raw = (extra: object = {}) => ({
+    nodes: [
+      { id: "mf", type: "mainframe", dim: "o", status: "online", pos: { x: 0, y: 64, z: 0 } },
+      { id: "p", type: "probe", name: "", dim: "o", status: "online", parent: "mf", pos: { x: 10, y: 64, z: 0 }, target: { x: 13, y: 63, z: 4 }, ...extra },
+      { id: "u", type: "uplink", dim: "o", status: "online", parent: "mf", pos: { x: -5, y: 64, z: 0 }, target: { x: 1, y: 2, z: 3 } },
+    ],
+    links: [],
+  });
+
+  it("is its own node type with a label, a fallback name, a 3D model and the machine it reads", () => {
+    const net = normalizeNetwork(raw())!;
+    const probe = net.nodes.find((n) => n.id === "p")!;
+    expect(probe.type).toBe("probe");
+    expect(probe.name).toBe("Cloud Probe");
+    expect(probe.uplinkId).toBe("p");
+    expect(probe.target).toEqual({ x: 13, y: 63, z: 4 });
+    // only probes carry a target
+    expect(net.nodes.find((n) => n.id === "u")!.target).toBeUndefined();
+    expect(TYPE_LABEL.probe).toBe("Cloud Probe");
+    expect(MODEL_OF.probe).toBe("probe");
+    expect(generate().models.probe.parts.length).toBeGreaterThan(0);
+    expect(LINK_RGB.probe).toBeDefined();
+  });
+
+  it("draws a line to the machine and the machine's outline in 3D, per dimension", () => {
+    const net = normalizeNetwork(raw())!;
+    const lines = probeLines(net, "o");
+    expect(lines).toHaveLength(1);
+    expect(lines[0].id).toBe("p");
+    // the line + the 12 edges of the block, 6 numbers per segment
+    expect(lines[0].pos).toHaveLength(13 * 6);
+    expect(lines[0].pos.slice(0, 6)).toEqual([10.5, 64.5, 0.5, 13.5, 63.5, 4.5]);
+    // every edge of the outline is axis-aligned and one block (plus the margin) long
+    for (let i = 6; i < lines[0].pos.length; i += 6) {
+      const d = [0, 1, 2].map((k) => Math.abs(lines[0].pos[i + 3 + k] - lines[0].pos[i + k]));
+      expect(d.filter((x) => x > 0)).toHaveLength(1);
+      expect(Math.max(...d)).toBeCloseTo(1.04);
+    }
+    expect(probeLines(net, "nether")).toEqual([]);
+    // no target (none set, or no positions): nothing to draw
+    expect(probeLines(normalizeNetwork(raw({ target: undefined }))!, "o")).toEqual([]);
   });
 });
 

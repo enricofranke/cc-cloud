@@ -99,7 +99,7 @@ Ein Uplink liest den Block, an dem er sitzt. Ist eine Maschine in eine Wand geba
 2. **Schleichen + Rechtsklick auf die Maschine** mit der Link Card – die Karte merkt sie sich (und die angeklickte Seite).
 3. **Rechtsklick auf die Sonde** mit der Karte. Sie zeigt jetzt die Karte der Maschine, genau wie ein Uplink an dieser Seite.
 
-Das Auswählen ist eine normale Interaktion, Claims und Spawn-Schutz gelten also: Wo du die Maschine nicht benutzen darfst, kannst du sie nicht auswählen. Nur du kannst deine Auswahl an eine Sonde geben, innerhalb von 10 Minuten. Die Sonde prüft weiter: Claimt ein anderes Team den Chunk der Maschine oder senkt der Server die Reichweite, liest sie nichts, bis sich das ändert; wird die Sonde versetzt (mit einem Block-Mover oder einer Contraption), vergisst sie ihre Maschine. Rechtsklick auf die Sonde öffnet ihren Bildschirm: Er zeigt, was sie liest, und hat **Ziel löschen**; der Cloud-Analysator zeichnet eine dünne Linie zur Maschine. Wird die Maschine entfernt, vergisst die Sonde sie.
+Das Auswählen ist eine normale Interaktion, Claims und Spawn-Schutz gelten also: Wo du die Maschine nicht benutzen darfst, kannst du sie nicht auswählen. Nur du kannst deine Auswahl an eine Sonde geben, innerhalb von 10 Minuten. Die Sonde prüft weiter: Claimt ein anderes Team den Chunk der Maschine oder senkt der Server die Reichweite, liest sie nichts, bis sich das ändert; wird die Sonde versetzt (mit einem Block-Mover oder einer Contraption), vergisst sie ihre Maschine. Rechtsklick auf die Sonde öffnet ihren Bildschirm: Er zeigt, was sie liest, und hat **Ziel löschen**; der Cloud-Analysator, die Netzwerkkarte im Dashboard (2D und 3D) und die Minikarte im Mainframe-Bildschirm zeichnen eine dünne lila Linie zur Maschine. Wird die Maschine entfernt, vergisst die Sonde sie.
 
 Zeigt ein Uplink keine Karte und sagt der Bildschirm *„Diese Seite gibt nichts frei“*, bietet die Maschine Energie, Items oder Flüssigkeiten an einer anderen Seite an – setz den Uplink dorthin (der Bildschirm nennt eine) oder nimm eine Sonde.
 
@@ -178,6 +178,8 @@ Weiter: [Lua-Referenz](/docs/lua) oder die [cloud.ui-Bibliothek](/docs/ui-librar
 
 Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](/docs/redstone) teilen sich eine Karte pro Gruppe. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
 
+**Maschinen im Kabelnetz des Computers.** Hat der Computer ein Wired Modem mit CC-Netzwerkkabel zu anderen Maschinen (deren Modems eingeschaltet), zeigt der Uplink am Computer auch für jede dieser Maschinen eine Karte – dieselbe Karte, die ein Uplink direkt an der Maschine zeigen würde (Energie, Tanks, Lager-Controller, Mod-Maschinen), mit denselben Bedienelementen und Rechten. Bis zu 8 pro Uplink (Server-Einstellung \`wiredMachineCards\`); eine Maschine mit eigenem Uplink oder eigener Sonde behält diese, und gleichnamige Maschinen unterscheidet der Name, den der Computer für sie nutzt („Energy Cell (energy_cell_2)“). Normale Truhen haben keine Karte.
+
 | Widget | Zeigt / macht |
 |---|---|
 | gauge | Wert auf einem Bogen mit Warn-/Kritisch-Farben |
@@ -199,7 +201,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 - **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
 - **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
 - **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
-- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe, Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
+- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel.
 - **Ausblenden** mit ×. **+ Add** listet alles Ausgeblendete (zurückziehen oder Show drücken) und zeigt jeden Widget-Typ live mit der Lua-Zeile, die ihn erzeugt.
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
 - **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.
@@ -332,7 +334,7 @@ Jedes Widget bekommt eine **ID** (1–32 Zeichen: a–z, 0–9, _), eine Beschri
 | \`cloud.number(id, label, opts)\` | min, max, step, value, unit |
 | \`cloud.text(id, label, opts)\` | maxLength (≤ 256), value, placeholder |
 | \`cloud.buttons(id, label, opts)\` | options = {"A","B","C"} |
-| \`cloud.itemSearch(id, label, opts)\` | bridge = Peripheral-Name, max |
+| \`cloud.itemSearch(id, label, opts)\` | bridge = Peripheral-Name (eine Seite oder eine Bridge im Kabelnetz des Computers, z. B. \`me_cloud_bridge_0\`), max |
 | \`cloud.watchlist(id, label, opts)\` | bridge |
 | \`cloud.jobs(id, label, opts)\` | bridge |
 
@@ -568,6 +570,8 @@ Der Tab **Network** zeigt alles, was verbunden ist, in drei Ansichten:
 - **Topology** – der Mainframe als Wurzel, Relays als Äste, Geräte als Blätter. Kabel sind durchgezogen, Funkverbindungen gestrichelt und nach Signal gefärbt (grün stark, cyan ok, gelb schwach), Ender-Verbindungen lila gepunktet, Legacy orange; der Punkt zeigt den Status. Geräte ohne Weg stehen unter **Not connected**.
 - **Map** – eine Draufsicht (x/z) pro Dimension auf einer echten Karte der Welt: **Surface** (wie eine Minecraft-Karte) oder **Slice** – ein Schnitt in einer Höhe, die du mit dem Y-Regler wählst, damit eine Untergrundbasis auf y −60 ihre Räume und Höhlen zeigt (dunkler = tiefer). Gezeigt werden nur Orte in der Nähe deines Netzwerks und nur Chunks, die geladen waren. Mit Koordinatengitter, Reichweitenkreisen (umschaltbar; durchgezogen = Knoten-Reichweite, gestrichelt = Geräte-Reichweite), Verbindungen und Statuspunkten. Ziehen zum Verschieben, Scrollen oder Zwei-Finger-Zoom, ⤢ zeigt alles.
 - **3D** – siehe unten.
+
+Eine **Cloud-Sonde** hat ein eigenes Symbol und zeichnet eine dünne lila Linie zur Maschine, die sie liest (auch in 3D, dort bekommt die Maschine einen lila Rahmen); ihre Details sagen, welche Maschine und wie weit weg. Wie alle Koordinaten wird die Linie nur an Spieler geschickt, die Positionen sehen dürfen.
 
 Mit FTB Chunks und Waystones zeigt die Karte auch die **geclaimten Chunks** deines Teams (Teamfarbe, zwangsgeladene gestrichelt) und deine **Wegsteine** (lila Rauten, globale gold) – ein- und ausschaltbar mit **Claims** und **Waystones**. Wegsteine sind auch in der 3D-Ansicht markiert. Wie alle Koordinaten werden sie nur an Spieler geschickt, die Positionen sehen dürfen.
 
@@ -1092,6 +1096,7 @@ CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, v
 - **Kompression:** Lass \`webCompression = true\` (Standard). Browser bekommen Snapshot und Updates komprimiert (5–10× kleiner); das kostet etwas CPU auf den eigenen Threads des Webservers, nie auf dem Server-Thread. Reverse-Proxys (Caddy, nginx, Cloudflare) reichen das durch.
 - **Browser:** Jeder Browser eines Mainframes bekommt alle seine Updates. Ein Mainframe mit 500 Geräten, bei dem sich ständig alles ändert, schickt etwa 130 KB/s pro Browser (komprimiert etwa 60 KB/s). Das Bandbreiten-Upgrade (oder \`baseBrowsers\`) begrenzt die Browser pro Mainframe; Freigabe-Links zählen extra.
 - **Langzeit-Statistik:** Jeder Mainframe hält höchstens 2 MB Verlauf; \`historyMaxTotalMB\` (Standard 128) begrenzt alle Mainframes zusammen. Jede Reihe hat von Anfang an eine feste Größe (1 h ≈ 240 B, 24 h ≈ 5,6 KB, 7 Tage ≈ 14 KB, 30 Tage ≈ 20 KB).
+- **Kartenkacheln auf der Festplatte:** Die 2D-Karte speichert ihre Kacheln in \`<world>/cccloud/maptiles\`. Kacheln, die 30 Tage weder gezeichnet noch angesehen wurden, werden gelöscht (\`mapTileMaxAgeDays\`, 0 behält sie), und das Löschen eines Mainframes (purge) entfernt seine Höhlenschnitte.
 - **Bildschirme im Spiel:** Der Mainframe-Bildschirm listet die ersten 600 Geräte (Probleme zuerst) und bekommt das Netzwerk nur, wenn es sich geändert hat; die Netzwerk-Seite des Dashboards zeigt alle Geräte. Große Netzwerkkarten lassen Verbindungen weg, die ein Gerät nicht benutzt.
 - **Langsame Browser:** Ein Browser, der mehr als 4 MB oder 10 Sekunden zurückliegt, wird getrennt und verbindet sich mit einem frischen Snapshot neu; auf dem Server stapelt sich nichts.
 - **Messen:** \`/neoforge tps\` oder spark zeigen die Tick-Zeit des Servers. Der eigene Anteil von CC: Cloud liegt bei einem Mainframe mit 500 Geräten und 10 Browsern bei etwa 0,5–1 ms pro Tick (Entwickler: \`./gradlew runGameTestServer -PscaleTest\` misst das).

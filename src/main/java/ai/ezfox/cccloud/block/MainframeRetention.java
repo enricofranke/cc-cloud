@@ -156,7 +156,8 @@ public final class MainframeRetention extends SavedData {
 
     /**
      * Deletes everything the server keeps for a mainframe: pairing code, PIN, devices, accounts and roles, rules,
-     * scenes, production statistics, API keys, push targets, cached sections and the layout; dashboards are disconnected.
+     * scenes, production statistics, API keys, push targets, cached sections, its map slices and the layout; dashboards
+     * are disconnected.
      * Used when the retention ends, for {@code /cccloud mainframe purge} and when the retention is 0.
      */
     public static void purge(MinecraftServer server, UUID mainframeId) {
@@ -171,6 +172,7 @@ public final class MainframeRetention extends SavedData {
         ai.ezfox.cccloud.push.PushService.forget(server, mainframeId);
         ai.ezfox.cccloud.network.SectionCache.get(server).forgetMainframe(mainframeId);
         ai.ezfox.cccloud.rsdevice.RsDevices.purge(server, mainframeId);
+        ai.ezfox.cccloud.map.MapTileService.purgeMainframe(server, mainframeId);
         WebHub.INSTANCE.removeMainframe(mainframeId);
         ai.ezfox.cccloud.layout.LayoutData.get(server).remove(mainframeId);
         var data = get(server);

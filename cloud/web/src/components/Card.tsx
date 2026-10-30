@@ -4,7 +4,7 @@ import type { ComponentChildren, ComponentType } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Box, ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
-import { DISPLAYS_FOR, captionOf } from "../lib/layout.ts";
+import { DISPLAYS_FOR, captionOf, withLayoutColor } from "../lib/layout.ts";
 import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
@@ -37,10 +37,12 @@ export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget;
   // a label set in the editor wins; without any caption (resolver fell back to the id) keep none
   const caption = captionOf(rw);
   const display = rw.display !== "auto" && rw.display !== (DISPLAYS_FOR[rw.w.type]?.[0] ?? "auto") ? rw.display : undefined;
-  const w =
+  const w = withLayoutColor(
     caption !== rw.w.label || display || rw.icon
       ? { ...rw.w, label: caption, opts: { ...(rw.w.opts ?? {}), ...(display ? { display, ...(display === "sparkline" ? { style: "sparkline" as const } : display === "line" ? { style: "line" as const } : {}) } : {}), ...(rw.icon ? { wicon: rw.icon } : {}) } }
-      : rw.w;
+      : rw.w,
+    rw.color,
+  );
   const card = { uplink: rw.uplink };
   if (viewOnly) {
     if (["toggle", "slider", "select", "number", "text", "buttons"].includes(w.type)) return <StaticValue w={w} />;
