@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Productive Metalworks foundry (docs/SPEC.md v0.8 item 5; Silent Gear Metalworks only adds recipes to it): an uplink
  * on the foundry controller shows whether the multiblock is formed, the fuel (or the power of an energy coil), items
- * melting and the molten metals in the tank.
+ * melting and the molten metals in the tank. An uplink on any linked part of the foundry (tank, drain, capacitor) shows
+ * the controller's card.
  */
 public final class MetalworksCards {
     public static final String STATUS = "status";
@@ -40,7 +41,16 @@ public final class MetalworksCards {
     }
 
     static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side) {
-        return level.getBlockEntity(pos) instanceof FoundryControllerBlockEntity c ? new Foundry(level, pos, side, c) : null;
+        if (level.getBlockEntity(pos) instanceof FoundryControllerBlockEntity c) return new Foundry(level, pos, side, c);
+        // Any part of a formed foundry (tank, drain, capacitor) shows the foundry: productivelib links parts to the controller.
+        if (level.getBlockEntity(pos) instanceof cy.jdkdigital.productivelib.common.block.entity.IMultiBlockPeripheralBlockEntity part) {
+            BlockPos controller = part.getMultiblockController();
+            if (controller != null && !controller.equals(pos) && level.isLoaded(controller)
+                && level.getBlockEntity(controller) instanceof FoundryControllerBlockEntity c) {
+                return new Foundry(level, controller, side, c);
+            }
+        }
+        return null;
     }
 
     static String fluidName(Fluid fluid) {

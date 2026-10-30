@@ -33,7 +33,16 @@ public final class FarmCards {
     }
 
     static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side) {
-        return level.getBlockEntity(pos) instanceof FarmControllerBlockEntity c ? new Farm(level, pos, side, c) : null;
+        if (level.getBlockEntity(pos) instanceof FarmControllerBlockEntity c) return new Farm(level, pos, side, c);
+        // Auxiliary parts (hatches etc.) know their controller: an uplink on any of them shows the farm.
+        if (level.getBlockEntity(pos) instanceof cy.jdkdigital.productivefarming.common.block.entity.AuxiliaryFarmBlockEntity part) {
+            BlockPos controller = part.getControllerPos();
+            if (controller != null && !controller.equals(pos) && level.isLoaded(controller)
+                && level.getBlockEntity(controller) instanceof FarmControllerBlockEntity c) {
+                return new Farm(level, controller, side, c);
+            }
+        }
+        return null;
     }
 
     static final class Farm extends BlockCard<FarmControllerBlockEntity> {
