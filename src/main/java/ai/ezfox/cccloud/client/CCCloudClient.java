@@ -16,6 +16,7 @@ public class CCCloudClient {
         ai.ezfox.cccloud.client.voxel.DevTextureCheck.init();
         modEventBus.addListener(CloudModels::register);
         DevGuiScreenshot.init();
+        ai.ezfox.cccloud.client.dev.ScreenShots.init();
         modEventBus.addListener(CCCloudClient::registerRenderers);
         modEventBus.addListener(CCCloudClient::registerScreens);
         ai.ezfox.cccloud.gui.GuiNetwork.clientViewHandler = payload -> {

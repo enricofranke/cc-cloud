@@ -132,6 +132,12 @@ neoForge {
                 systemProperty 'cccloud.guiScreenshot', project.property("guiScreenshot").toString()
                 programArguments.addAll '--quickPlaySingleplayer', 'cccloud-bench'
             }
+            // Dev only: ./gradlew runClient -PscreenShots=/some/dir builds one of every device case, opens each in-game screen,
+            // saves a screenshot per case and quits (a small 960x600 window; add -PstorageMods -PintegrationMods=energymeter).
+            if (project.hasProperty("screenShots")) {
+                systemProperty 'cccloud.screenShots', project.property("screenShots").toString()
+                programArguments.addAll '--quickPlaySingleplayer', 'cccloud-bench', '--width', '960', '--height', '600'
+            }
             // The integrated server's dashboard uses the dev port (8787 may be taken by other apps).
             systemProperty 'cccloud.devWebPort', project.findProperty('devWebPort') ?: '18787'
             // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
