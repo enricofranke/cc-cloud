@@ -587,6 +587,26 @@ def checkEditionJars = tasks.register('checkEditionJars') {
 tasks.named('assemble') { dependsOn modpackJar }
 tasks.named('build') { dependsOn checkEditionJars }
 
+// Dev tool: the server-side icon renderer over a modpack's mods folder (docs/BUILD.md "Server-rendered item icons"):
+// ./gradlew serverIconBenchmark -PiconBenchMods=<mods dir> [-PiconBenchVanilla=<client jar>] [-PiconBenchNoVanillaTextures]
+// [-PiconBenchOut=<dir>] [-PiconBenchCompare=<client icon store>]. Reads the jars only.
+tasks.register('serverIconBenchmark', JavaExec) {
+    group = 'verification'
+    description = 'Measures the server-side item icon renderer on a folder of mod jars (flat / cube / skipped, time, size).'
+    classpath = sourceSets.iconExport.runtimeClasspath
+    mainClass = 'ai.ezfox.cccloud.icons.ServerIconBenchmark'
+    workingDir = projectDir
+    jvmArgs '-Djava.awt.headless=true'
+    def benchArgs = []
+    if (project.hasProperty('iconBenchMods')) benchArgs += ['--mods', project.property('iconBenchMods').toString()]
+    if (project.hasProperty('iconBenchVanilla')) benchArgs += ['--vanilla', project.property('iconBenchVanilla').toString()]
+    if (project.hasProperty('iconBenchNoVanillaTextures')) benchArgs += ['--no-vanilla-textures']
+    if (project.hasProperty('iconBenchOut')) benchArgs += ['--out', project.property('iconBenchOut').toString()]
+    if (project.hasProperty('iconBenchCompare')) benchArgs += ['--compare', project.property('iconBenchCompare').toString()]
+    args benchArgs
+    outputs.upToDateWhen { false }
+}
+
 // The release jar carries no GameTest data (test instances reference test functions that are only registered in
 // development and on the GameTest server; testpacks/ are datapacks only GameTest runs enable); dev runs read the
 // resources directly and keep them.
@@ -639,6 +659,8 @@ tasks.named('test', Test).configure {
     systemProperty 'cccloud.recipeDir', file('src/main/resources/data/cccloud/recipe').absolutePath
     // QuestPackTest checks that the shipped quest file list matches integration/ftbquests/quests.
     systemProperty 'cccloud.questsDir', file('integration/ftbquests/quests').absolutePath
+    // ServerIconRendererTest writes renders that do not match their golden image here (for review).
+    systemProperty 'cccloud.goldenOut', layout.buildDirectory.dir('test-goldens').get().asFile.absolutePath
     testLogging {
         events "failed"
         exceptionFormat "full"

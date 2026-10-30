@@ -119,6 +119,36 @@ in, and who it was: a player's name or the kind of mob.
 - The CC: Tweaked chapter writes its turtle-upgrade components as FTB Quests writes them back, so an FTB Quests re-save
   no longer counts as a change.
 
+### Fix: item icons were rendered again after every server start
+- On big packs only about 4,000 icons per player and hour were kept: the upload limit dropped everything over it
+  silently, while the mainframe screen counted those icons as done – after a restart they were missing and rendered
+  again ("Item icons: 9.472 / 36.754" climbing on a hosted server). The limit now fits one full render of the pack per
+  player and hour, players at the limit get no further batches, and nothing over it is lost (it waits in the queue).
+  The same fix for block textures of the 3D view.
+- The icon store is written to disk within about a second of every upload (a small journal file, renamed into place),
+  not only every minute and at a clean stop, so a hosting panel that kills the server loses at most the last second.
+  Only items whose mod version really changed are rendered again.
+
+### Item icons right after server start
+- A dedicated server now draws the simple item icons itself at start, so the dashboard has icons before anyone joins:
+  flat items (ingots, tools, most modded items, tinted like in the inventory) and plain cube blocks (stone, ores, logs,
+  machines with a cube model) from the textures in the mod jars, on one low-priority background thread. In All the Mods
+  11 that is about 27,000 of 38,500 items. Chests, slabs, stairs, 3D models and other shapes still come from the first
+  player with CC: Cloud, whose game renders every icon in the background as before and replaces the server's (which are
+  marked `source: "server"` in the icon manifest; client renders are never replaced by server renders). New config
+  `renderIconsOnServer` (default true). Singleplayer and LAN are unchanged: the host's game renders everything.
+- Vanilla items on a dedicated server: new opt-in config `downloadVanillaAssets` (default false) downloads the official
+  Minecraft client jar of exactly the server's version from Mojang once (HTTPS to Mojang's hosts only, SHA-1 checked,
+  cached in `<server>/cccloud/cache`) and reads only its item textures and models locally; nothing from it is passed on.
+  Turning it on means agreeing to Mojang's terms. `vanillaAssetsJar` (a client jar you own) keeps working instead.
+  Without either, the server logs one hint at start and vanilla items wait for the first player.
+- `/cccloud icons status` shows icons by source (game clients / server / missing), the server renderer's progress and
+  where vanilla textures come from; `rebuild` also redraws the server's icons.
+- The `[icons]` settings apply while the server runs like all others: after a change the server opens the vanilla
+  textures again and draws the icons that are still missing.
+- The texture fallback found mod assets only for namespaces with an English language file; it now indexes every mod
+  jar's `assets/` folder.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

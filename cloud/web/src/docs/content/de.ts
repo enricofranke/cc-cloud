@@ -1188,6 +1188,28 @@ Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${C.PKCS8}\`. Lassen sich die D
 
 Ältere Einrichtungen: \`webAllowInternet = true\` mit \`publicUrl = "http://mc.example.com:8787"\` öffnet den Port ohne die Schutzmaßnahmen des Modus \`http\`. Besser \`/cccloud internet http\`.
 
+## Item-Icons auf einem dedizierten Server {#item-icons}
+
+Das Dashboard zeigt echte Item-Icons. Die besten kommen aus dem Spiel selbst: Jeder Spieler mit CC: Cloud rendert Icons im Hintergrund (bei einem großen Pack ein paar Minuten, ohne FPS zu kosten), und der Server bewahrt sie in \`<world>/cccloud/icons\` auf.
+
+Damit ein frischer Server schon Icons hat, bevor jemand beitritt, zeichnet er die einfachen direkt nach dem Start selbst, auf einem einzigen Hintergrund-Thread mit niedriger Priorität:
+
+- **Zeichnet der Server:** flache Items (Barren, Werkzeuge, die meisten Mod-Items) und einfache Blöcke (Stein, Erze, Stämme, Speicherblöcke, Maschinen mit Würfelmodell).
+- **Bleibt für die Spieler:** Truhen, Schilde, Köpfe und andere Spezialmodelle, Stufen, Treppen, Zäune und andere Formen, 3D-Maschinenmodelle. Sie zeigen eine Buchstaben-Kachel, bis ein Spieler mit der Mod beitritt.
+
+Die Renderings der Spieler ersetzen die des Servers später; sie sehen genau wie im Inventar aus. In All the Mods 11 zeichnet der Server etwa 27.000 von 38.500 Items selbst (29.000 mit Vanilla-Texturen), mit etwa 10 Sekunden CPU-Zeit auf einem Kern, nie auf dem Haupt-Thread des Servers; die Ticks merken davon nichts.
+
+**Vanilla-Items** brauchen die Texturen von Minecraft, und ein dedizierter Server hat keine (das Server-Jar enthält keine Texturen). Beide Wege dahin entscheidest du:
+
+${code("toml", C.TOML_ICONS)}
+
+- \`downloadVanillaAssets = true\` lädt einmal das offizielle Minecraft-Client-Jar genau deiner Serverversion von Mojangs Servern (etwa 40 MB, gegen Mojangs SHA-1 geprüft, abgelegt in \`<server>/cccloud/cache\`). Es wird nur lokal für Texturen gelesen; nichts davon wird weitergegeben – Browser bekommen nur die 32×32-Icons. Mit dem Einschalten stimmst du Mojangs Bedingungen zu (der [Minecraft-EULA](https://www.minecraft.net/eula)).
+- \`vanillaAssetsJar\` zeigt auf ein Client-Jar, das du schon hast, z. B. \`.minecraft/versions/26.1.2/26.1.2.jar\`.
+
+Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit der Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt \`[icons]\` von \`<world>/serverconfig/cccloud-server.toml\` und gelten im laufenden Betrieb: Nach einer Änderung sucht der Server erneut nach fehlenden Icons (Vanilla-Items werden also gleich gezeichnet, nachdem du den Download erlaubt hast). Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
+
+\`/cccloud icons status\` zeigt, wie viele Icons von Spielern kommen, wie viele vom Server und wie viele fehlen, und wie weit der Server-Renderer ist. \`/cccloud icons rebuild\` zeichnet alles neu, \`/cccloud icons clear\` löscht alle Icons.
+
 ## Große Server {#big-servers}
 
 CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, viele Mainframes und viele Browser. Das meiste braucht keine Einstellung; das kann ein Serverbetreiber tun.
@@ -1217,6 +1239,7 @@ Was mit dem Dashboard passiert:
 - **Funktionsschalter** (API, Push, Regeln, Szenen, Terminal, Voxel, Produktionsstatistik, Script Store): gelten ab der nächsten Aktion; offene Dashboards passen ihre Menüs an.
 - **Limits** (API-Ratenlimits, Änderungen pro Sekunde der Cloud-Schalter, Grundwerte der Upgrades, Speicher der Statistik, Puffer): gelten sofort. Ein gesenktes Limit rechnet an, was schon verbraucht wurde; ein erhöhtes schenkt nichts zurück. Browser, die über einem gesenkten Browser-Limit schon offen sind, bleiben verbunden (wie nach dem Entfernen eines Bandbreiten-Upgrades).
 - **Reichweiten und Energie:** Jedes Netzwerk wird innerhalb einer Sekunde neu berechnet.
+- **Item-Icons** (\`[icons]\`): Der Server öffnet die Vanilla-Texturen neu (lädt sie einmal, wenn du den Download gerade erlaubt hast) und zeichnet die Icons, die noch fehlen; das Ausschalten des Server-Renderers stoppt ihn, die gezeichneten Icons bleiben.
 
 Eine Datei mit Syntaxfehler ersetzt NeoForge durch die Standardwerte (mit einer Sicherungskopie daneben) – die Standardwerte sind nur LAN, es öffnet sich also nichts aus Versehen.
 
@@ -1273,6 +1296,10 @@ Das Dashboard ist ausgeschaltet, der Mainframe offline oder ohne Strom, der Upli
 Minecraft lässt nur die Chunks in der Nähe von Spielern laufen. Gehst du weg, wird der Chunk eines Computers, Uplinks oder einer Bridge entladen – er steht still, und CC: Cloud erreicht ihn nicht. Das Dashboard behält seine Karte **ausgegraut mit den letzten Werten** und zeigt „last seen 12 min ago – chunk not loaded“; die Bedienelemente sind gesperrt, bis der Chunk wieder geladen ist. CC: Cloud lädt nie selbst Chunks.
 
 Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: mit FTB Chunks **force-loaden** (claimen, dann in der Karte force-load), mit einem Chunk-Loader aus einer anderen Mod, oder über die Spawn-Chunks des Servers. Dann wird die Karte von selbst wieder lebendig.
+
+## Items zeigen einen Buchstaben statt eines Icons {#letter-icons}
+
+Das Icon gibt es noch nicht. Auf einem dedizierten Server zeichnet der Server beim Start die einfachen Icons; Truhen, Stufen, Treppen, 3D-Maschinen – und Vanilla-Items, solange du die Vanilla-Texturen nicht erlaubst – warten auf den ersten Spieler mit CC: Cloud, dessen Spiel sie im Hintergrund rendert. Siehe [Item-Icons auf einem dedizierten Server](/docs/security#item-icons).
 
 ## Falsche PIN / gesperrt {#pin-locked}
 

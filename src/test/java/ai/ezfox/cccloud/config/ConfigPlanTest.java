@@ -39,6 +39,9 @@ class ConfigPlanTest {
         assertEquals(EnumSet.of(ConfigPlan.CARDS, ConfigPlan.NETWORK), ConfigPlan.of(List.of("cards.mffsRequirePin")));
         assertEquals(EnumSet.of(ConfigPlan.MAP_SWEEP, ConfigPlan.NETWORK), ConfigPlan.of(List.of("map.mapTileMaxAgeDays")));
         assertEquals(EnumSet.of(ConfigPlan.ACCESS, ConfigPlan.NETWORK), ConfigPlan.of(List.of("teams.disabledTeamProviders")));
+        for (String key : List.of("icons.renderIconsOnServer", "icons.downloadVanillaAssets", "icons.vanillaAssetsJar")) {
+            assertEquals(EnumSet.of(ConfigPlan.ICONS, ConfigPlan.NETWORK), ConfigPlan.of(List.of(key)), key + ": vanilla source and server renderer again");
+        }
         assertEquals(EnumSet.of(ConfigPlan.NETWORK), ConfigPlan.of(List.of("network.uplinkRange", "power.mainframeMaxInputFE",
             "redstoneDevices.redstoneDeviceChangesPerSecond")), "read where used (buckets and buffers follow the config on their next use)");
     }

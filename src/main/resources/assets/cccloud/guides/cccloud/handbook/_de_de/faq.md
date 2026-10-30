@@ -54,6 +54,10 @@ Minecraft lässt nur die Chunks in der Nähe von Spielern laufen. Gehst du weg, 
 
 Damit eine Basis weiterläuft, während du weg bist, halte ihre Chunks geladen: mit FTB Chunks **force-loaden** (claimen, dann in der Karte force-load), mit einem Chunk-Loader aus einer anderen Mod, oder über die Spawn-Chunks des Servers. Dann wird die Karte von selbst wieder lebendig.
 
+## Items zeigen einen Buchstaben statt eines Icons
+
+Das Icon gibt es noch nicht. Auf einem dedizierten Server zeichnet der Server beim Start die einfachen Icons; Truhen, Stufen, Treppen, 3D-Maschinen – und Vanilla-Items, solange du die Vanilla-Texturen nicht erlaubst – warten auf den ersten Spieler mit CC: Cloud, dessen Spiel sie im Hintergrund rendert. Siehe [Item-Icons auf einem dedizierten Server](security.md).
+
 ## Falsche PIN / gesperrt
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit `/cccloud pin set` ändern.

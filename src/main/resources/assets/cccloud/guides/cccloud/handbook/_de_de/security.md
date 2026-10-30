@@ -142,6 +142,33 @@ Den Let's-Encrypt-Schlüssel vorher umwandeln: `openssl pkcs8 -topk8 -nocrypt -i
 
 Ältere Einrichtungen: `webAllowInternet = true` mit `publicUrl = "http://mc.example.com:8787"` öffnet den Port ohne die Schutzmaßnahmen des Modus `http`. Besser `/cccloud internet http`.
 
+## Item-Icons auf einem dedizierten Server
+
+Das Dashboard zeigt echte Item-Icons. Die besten kommen aus dem Spiel selbst: Jeder Spieler mit CC: Cloud rendert Icons im Hintergrund (bei einem großen Pack ein paar Minuten, ohne FPS zu kosten), und der Server bewahrt sie in `<world>/cccloud/icons` auf.
+
+Damit ein frischer Server schon Icons hat, bevor jemand beitritt, zeichnet er die einfachen direkt nach dem Start selbst, auf einem einzigen Hintergrund-Thread mit niedriger Priorität:
+
+- **Zeichnet der Server:** flache Items (Barren, Werkzeuge, die meisten Mod-Items) und einfache Blöcke (Stein, Erze, Stämme, Speicherblöcke, Maschinen mit Würfelmodell).
+- **Bleibt für die Spieler:** Truhen, Schilde, Köpfe und andere Spezialmodelle, Stufen, Treppen, Zäune und andere Formen, 3D-Maschinenmodelle. Sie zeigen eine Buchstaben-Kachel, bis ein Spieler mit der Mod beitritt.
+
+Die Renderings der Spieler ersetzen die des Servers später; sie sehen genau wie im Inventar aus. In All the Mods 11 zeichnet der Server etwa 27.000 von 38.500 Items selbst (29.000 mit Vanilla-Texturen), mit etwa 10 Sekunden CPU-Zeit auf einem Kern, nie auf dem Haupt-Thread des Servers; die Ticks merken davon nichts.
+
+**Vanilla-Items** brauchen die Texturen von Minecraft, und ein dedizierter Server hat keine (das Server-Jar enthält keine Texturen). Beide Wege dahin entscheidest du:
+
+```toml
+[icons]
+renderIconsOnServer = true      # default: draw flat items and plain blocks at server start
+downloadVanillaAssets = false   # true: get Minecraft's client jar from Mojang once, for vanilla icons
+vanillaAssetsJar = ""           # or: the path to a client jar you own
+```
+
+- `downloadVanillaAssets = true` lädt einmal das offizielle Minecraft-Client-Jar genau deiner Serverversion von Mojangs Servern (etwa 40 MB, gegen Mojangs SHA-1 geprüft, abgelegt in `<server>/cccloud/cache`). Es wird nur lokal für Texturen gelesen; nichts davon wird weitergegeben – Browser bekommen nur die 32×32-Icons. Mit dem Einschalten stimmst du Mojangs Bedingungen zu (der [Minecraft-EULA](https://www.minecraft.net/eula)).
+- `vanillaAssetsJar` zeigt auf ein Client-Jar, das du schon hast, z. B. `.minecraft/versions/26.1.2/26.1.2.jar`.
+
+Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit der Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt `[icons]` von `<world>/serverconfig/cccloud-server.toml` und gelten im laufenden Betrieb: Nach einer Änderung sucht der Server erneut nach fehlenden Icons (Vanilla-Items werden also gleich gezeichnet, nachdem du den Download erlaubt hast). Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
+
+`/cccloud icons status` zeigt, wie viele Icons von Spielern kommen, wie viele vom Server und wie viele fehlen, und wie weit der Server-Renderer ist. `/cccloud icons rebuild` zeichnet alles neu, `/cccloud icons clear` löscht alle Icons.
+
 ## Große Server
 
 CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, viele Mainframes und viele Browser. Das meiste braucht keine Einstellung; das kann ein Serverbetreiber tun.
@@ -175,6 +202,7 @@ Was mit dem Dashboard passiert:
 - **Funktionsschalter** (API, Push, Regeln, Szenen, Terminal, Voxel, Produktionsstatistik, Script Store): gelten ab der nächsten Aktion; offene Dashboards passen ihre Menüs an.
 - **Limits** (API-Ratenlimits, Änderungen pro Sekunde der Cloud-Schalter, Grundwerte der Upgrades, Speicher der Statistik, Puffer): gelten sofort. Ein gesenktes Limit rechnet an, was schon verbraucht wurde; ein erhöhtes schenkt nichts zurück. Browser, die über einem gesenkten Browser-Limit schon offen sind, bleiben verbunden (wie nach dem Entfernen eines Bandbreiten-Upgrades).
 - **Reichweiten und Energie:** Jedes Netzwerk wird innerhalb einer Sekunde neu berechnet.
+- **Item-Icons** (`[icons]`): Der Server öffnet die Vanilla-Texturen neu (lädt sie einmal, wenn du den Download gerade erlaubt hast) und zeichnet die Icons, die noch fehlen; das Ausschalten des Server-Renderers stoppt ihn, die gezeichneten Icons bleiben.
 
 Eine Datei mit Syntaxfehler ersetzt NeoForge durch die Standardwerte (mit einer Sicherungskopie daneben) – die Standardwerte sind nur LAN, es öffnet sich also nichts aus Versehen.
 

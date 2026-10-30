@@ -203,8 +203,11 @@ public final class BlockTextureService {
             if (assignments.containsKey(uuid) || now - lastRequest.getOrDefault(uuid, 0L) < 1000) continue;
             var player = server.getPlayerList().getPlayer(uuid);
             if (player == null || !player.connection.hasChannel(RequestPayload.TYPE)) continue;
-            var batch = new ArrayList<String>(BATCH);
-            while (batch.size() < BATCH && !queue.isEmpty()) {
+            // Never more than the player's remaining upload quota, so nothing it renders is thrown away.
+            int size = Math.min(BATCH, guard.remaining(uuid));
+            if (size <= 0) continue;
+            var batch = new ArrayList<String>(size);
+            while (batch.size() < size && !queue.isEmpty()) {
                 var id = queue.pollFirst();
                 queued.remove(id);
                 batch.add(id);
@@ -232,8 +235,13 @@ public final class BlockTextureService {
         }
         int ok = 0;
         for (var b : upload.blocks()) {
-            if (!assignment.ids().remove(b.id()) || !guard.take(client)) {
+            if (!assignment.ids().remove(b.id())) {
                 rejected++;
+                continue;
+            }
+            if (!guard.take(client)) {
+                rejected++;
+                if (queued.add(b.id())) queue.addLast(b.id()); // quota used up: back to the queue, not lost
                 continue;
             }
             if (server != null && BuiltInRegistries.BLOCK.getOptional(Identifier.tryParse(b.id())).isEmpty()) continue;

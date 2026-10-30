@@ -121,6 +121,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue API_STREAMS_PER_KEY;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
+    public static final ModConfigSpec.BooleanValue DOWNLOAD_VANILLA_ASSETS;
+    public static final ModConfigSpec.BooleanValue RENDER_ICONS_ON_SERVER;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
     public static final ModConfigSpec.IntValue MAINFRAME_BASE_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_UPLINK_FE;
@@ -315,8 +317,20 @@ public final class CloudConfig {
         b.pop();
 
         b.push("icons");
-        VANILLA_ASSETS_JAR = b.comment("Optional path to a Minecraft client jar you own. Lets a dedicated server show vanilla item textures as icon fallback "
-                + "before a game client rendered the real icons. Nothing from Mojang is bundled with this mod.")
+        RENDER_ICONS_ON_SERVER = b.comment("Draw simple item icons (flat items and plain cube blocks) on the server at start, so the dashboard has icons",
+                "before any player joins. Runs once for new or updated items, on one low-priority background thread; players with the mod later",
+                "replace them with their game's real renders. Dedicated servers only: in singleplayer and on LAN the host's game renders every icon.")
+            .translation("cccloud.configuration.renderIconsOnServer")
+            .define("renderIconsOnServer", true);
+        DOWNLOAD_VANILLA_ASSETS = b.comment("A dedicated server has no Minecraft textures, so vanilla items have no icon until a player with the mod joins.",
+                "true = download the official Minecraft client jar of exactly this server's version from Mojang's servers (piston-meta.mojang.com,",
+                "piston-data.mojang.com; about 40 MB, once, SHA-1 checked, cached in <server>/cccloud/cache), only to read the vanilla item",
+                "textures and models locally for the dashboard's item icons. Nothing from it is redistributed; browsers only get 32x32 icon renders.",
+                "By setting this to true you agree to Mojang's terms (Minecraft EULA: https://www.minecraft.net/eula). Off by default.")
+            .translation("cccloud.configuration.downloadVanillaAssets")
+            .define("downloadVanillaAssets", false);
+        VANILLA_ASSETS_JAR = b.comment("Instead of the download: path to a Minecraft client jar you own (e.g. from your launcher's versions folder).",
+                "Lets a dedicated server draw vanilla item icons before a game client rendered them. Nothing from Mojang is bundled with this mod.")
             .translation("cccloud.configuration.vanillaAssetsJar")
             .define("vanillaAssetsJar", "");
         b.pop();

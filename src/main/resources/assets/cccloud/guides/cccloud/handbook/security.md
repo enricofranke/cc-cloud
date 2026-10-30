@@ -142,6 +142,33 @@ Convert the Let's Encrypt key first: `openssl pkcs8 -topk8 -nocrypt -in privkey.
 
 Older setups: `webAllowInternet = true` with `publicUrl = "http://mc.example.com:8787"` opens the port without the protections of `http` mode. Prefer `/cccloud internet http`.
 
+## Item icons on a dedicated server
+
+The dashboard shows real item icons. The best ones come from the game itself: every player with CC: Cloud renders icons in the background (a few minutes for a big pack, without costing FPS), and the server keeps them in `<world>/cccloud/icons`.
+
+So that a fresh server has icons before anyone joins, it also draws the simple ones itself right after start, on one low-priority background thread:
+
+- **Drawn by the server:** flat items (ingots, tools, most modded items) and plain blocks (stone, ores, logs, storage blocks, machines with a cube model).
+- **Left for the players:** chests, shields, heads and other special models, slabs, stairs, fences and other shapes, 3D machine models. They show a letter tile until a player with the mod joins.
+
+Players' renders replace the server's later; they look exactly like the inventory. In All the Mods 11 the server draws about 27,000 of 38,500 items on its own (29,000 with vanilla textures), with about 10 seconds of CPU time on one core, never on the server's main thread, so ticks are not affected.
+
+**Vanilla items** need Minecraft's textures, and a dedicated server has none (the server jar ships no textures). Both ways to get them are your choice:
+
+```toml
+[icons]
+renderIconsOnServer = true      # default: draw flat items and plain blocks at server start
+downloadVanillaAssets = false   # true: get Minecraft's client jar from Mojang once, for vanilla icons
+vanillaAssetsJar = ""           # or: the path to a client jar you own
+```
+
+- `downloadVanillaAssets = true` downloads the official Minecraft client jar of exactly your server's version from Mojang's servers, once (about 40 MB, checked against Mojang's SHA-1, kept in `<server>/cccloud/cache`). It is only read locally for textures; nothing from it is passed on – browsers only get the 32×32 icons. By turning it on you agree to Mojang's terms (the [Minecraft EULA](https://www.minecraft.net/eula)).
+- `vanillaAssetsJar` points to a client jar you already have, e.g. `.minecraft/versions/26.1.2/26.1.2.jar`.
+
+Without either, vanilla items get their icons when the first player with the mod joins; the server log says so once at start. The settings are in the `[icons]` section of `<world>/serverconfig/cccloud-server.toml` and apply while the server runs: after a change it looks for missing icons again (so vanilla items are drawn right after you allow the download). In singleplayer and on LAN the host's game renders every icon, so the server renderer stays off there.
+
+`/cccloud icons status` shows how many icons come from players, how many from the server and how many are missing, and how far the server renderer is. `/cccloud icons rebuild` draws everything again, `/cccloud icons clear` deletes all icons.
+
 ## Big servers
 
 CC: Cloud is built for big bases: hundreds of machines on one mainframe, many mainframes and many browsers. Most of it needs no settings; this is what a server owner can do.
@@ -175,6 +202,7 @@ What happens to the dashboard:
 - **Feature switches** (API, push, rules, scenes, terminal, voxels, production statistics, Script Store): apply to the next action; open dashboards update their menus.
 - **Limits** (API rate limits, Cloud Switch changes per second, upgrade base limits, history memory, buffers): apply at once. A lowered limit counts what was already used; a raised one gives nothing back. Browsers already open over a lowered browser limit stay connected (like after removing a Bandwidth upgrade).
 - **Ranges and power:** every network is recomputed within a second.
+- **Item icons** (`[icons]`): the server opens the vanilla textures again (downloading them once if you just allowed it) and draws the icons that are still missing; switching the server renderer off stops it, the icons it drew stay.
 
 A file with a syntax error is replaced by NeoForge with the defaults (it keeps a backup next to it) – the defaults are LAN only, so nothing opens up by accident.
 

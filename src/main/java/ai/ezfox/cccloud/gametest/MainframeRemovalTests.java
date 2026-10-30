@@ -179,7 +179,8 @@ public final class MainframeRemovalTests {
                 var entry = data.entry(id);
                 helper.assertTrue(entry != null, "kept as removed");
                 long removedAt = entry.removedAt();
-                helper.assertTrue(data.purgeExpired(server, removedAt + MainframeRetention.retentionMs() - 60_000).isEmpty(), "nothing expires early");
+                // Only this mainframe: other tests' removed mainframes in the shared test world may be over a minute older.
+                helper.assertTrue(!data.purgeExpired(server, removedAt + MainframeRetention.retentionMs() - 60_000).contains(id), "nothing expires early");
                 assertKept(helper, id, friend, "a minute before the end");
                 // its cave slices in the map tile cache on disk (and a shared surface tile that must stay)
                 var tiles = ai.ezfox.cccloud.map.MapTileService.dirForTest(server);

@@ -498,10 +498,37 @@ public final class CloudCommand {
         }
         if (!what.equals("status")) CCCloud.LOGGER.info("[cccloud] {} ran /cccloud icons {}", c.getSource().getTextName(), what);
         var s = service.status();
-        c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.status", String.format(java.util.Locale.ROOT, "%,d", s.done()),
-            String.format(java.util.Locale.ROOT, "%,d", s.total()), s.queued() + s.inFlight(), s.renderers(), s.store().failed(),
-            String.format(java.util.Locale.ROOT, "%.1f", s.store().bytes() / 1048576.0)));
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.status", n(s.done()), n(s.total()), s.queued() + s.inFlight(),
+            s.renderers(), s.store().failed(), String.format(java.util.Locale.ROOT, "%.1f", s.store().bytes() / 1048576.0)));
+        var sources = service.sources();
+        c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.sources", n(sources.client()), n(sources.server()), n(sources.missing())));
+        var p = service.serverProgress();
+        if (p == null) {
+            c.getSource().sendSystemMessage(Component.translatable(net.neoforged.fml.loading.FMLEnvironment.getDist().isDedicatedServer()
+                ? "cccloud.icons.server.off" : "cccloud.icons.server.client"));
+        } else {
+            String key = switch (p.state()) {
+                case WAITING -> "cccloud.icons.server.waiting";
+                case RUNNING -> "cccloud.icons.server.running";
+                case DONE -> "cccloud.icons.server.done";
+                case CANCELLED -> "cccloud.icons.server.cancelled";
+            };
+            c.getSource().sendSystemMessage(Component.translatable(key, n(p.done()), n(p.total()), n(p.flat()), n(p.cube()), n(p.skipped()),
+                String.format(java.util.Locale.ROOT, "%.1f", p.millis() / 1000.0)));
+        }
+        switch (service.vanilla()) {
+            case JAR -> c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.vanilla.jar"));
+            case DOWNLOAD -> c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.vanilla.download"));
+            case NONE -> c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.vanilla.none"));
+            case FAILED -> c.getSource().sendSystemMessage(Component.translatable("cccloud.icons.vanilla.failed", service.vanillaError()));
+            case NOT_NEEDED -> {
+            }
+        }
         return 1;
+    }
+
+    private static String n(long value) {
+        return String.format(java.util.Locale.ROOT, "%,d", value);
     }
 
     private static int status(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {

@@ -699,6 +699,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     /** Max icon requests per minute per IP. */
     static final int ICON_RATE = 200;
+    /** Cache-Control of server-rendered icons (a client's render replaces them later). */
+    static final String SERVER_ICON_CACHE = "public, max-age=600";
 
     private void icon(ChannelHandlerContext ctx, FullHttpRequest req, String ip, String path) {
         String rest = path.substring("/api/icon/".length());
@@ -724,16 +726,18 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             var crc = new java.util.zip.CRC32();
             crc.update(png);
             String etag = "\"" + Long.toHexString(crc.getValue()) + "\"";
+            // Server renders are replaced by a client's render later: cached briefly, then revalidated by ETag.
+            String cache = service.store().source(id) == ai.ezfox.cccloud.icons.IconStore.Source.SERVER ? SERVER_ICON_CACHE : "public, max-age=86400";
             if (etag.equals(req.headers().get(HttpHeaderNames.IF_NONE_MATCH))) {
                 var notModified = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_MODIFIED, Unpooled.EMPTY_BUFFER);
                 notModified.headers().set(HttpHeaderNames.ETAG, etag);
-                notModified.headers().set(HttpHeaderNames.CACHE_CONTROL, "public, max-age=86400");
+                notModified.headers().set(HttpHeaderNames.CACHE_CONTROL, cache);
                 write(ctx, req, notModified);
                 return;
             }
             var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(png));
             response.headers().set(HttpHeaderNames.CONTENT_TYPE, "image/png");
-            response.headers().set(HttpHeaderNames.CACHE_CONTROL, "public, max-age=86400");
+            response.headers().set(HttpHeaderNames.CACHE_CONTROL, cache);
             response.headers().set(HttpHeaderNames.ETAG, etag);
             write(ctx, req, response);
             return;
