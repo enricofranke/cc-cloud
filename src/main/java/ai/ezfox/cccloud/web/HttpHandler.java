@@ -548,8 +548,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     static final int RECIPES_RATE = 60;
 
     /**
-     * The live recipes of CC: Cloud items (public like the docs: game data only). Built and cached on the server thread;
-     * revalidated with the ETag ({@code no-cache}), since a {@code /reload} can change it at any time.
+     * The live recipes of CC: Cloud items (public like the docs: game data only). Built once per recipe reload off the
+     * server thread and cached; revalidated with the ETag ({@code no-cache}), since a {@code /reload} can change it.
      */
     private void recipes(ChannelHandlerContext ctx, FullHttpRequest req, String ip) {
         if (instance.recipeLimits.size() > 10_000) instance.recipeLimits.clear();
@@ -560,7 +560,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         String ifNoneMatch = req.headers().get(HttpHeaderNames.IF_NONE_MATCH);
         req.retain();
         CompletableFuture.supplyAsync(instance.bridge::recipes, instance.bridge.serverExecutor())
-            .orTimeout(5, TimeUnit.SECONDS)
+            .thenCompose(f -> f)
+            .orTimeout(10, TimeUnit.SECONDS)
             .whenComplete((recipes, err) -> ctx.executor().execute(() -> {
                 try {
                     if (err != null) {

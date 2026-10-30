@@ -22,9 +22,9 @@ class RecipeRouteTest {
         int calls;
 
         @Override
-        public GameBridge.@Nullable RecipesJson recipes() {
+        public java.util.concurrent.CompletableFuture<GameBridge.@Nullable RecipesJson> recipes() {
             calls++;
-            return new GameBridge.RecipesJson(BODY.getBytes(StandardCharsets.UTF_8), "\"r1234\"");
+            return java.util.concurrent.CompletableFuture.completedFuture(new GameBridge.RecipesJson(BODY.getBytes(StandardCharsets.UTF_8), "\"r1234\""));
         }
     }
 

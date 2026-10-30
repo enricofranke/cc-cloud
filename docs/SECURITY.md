@@ -122,7 +122,7 @@ It is reviewed before every release.
   - 120 API requests per minute per IP;
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP;
-  - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload.
+  - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread.
 - Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit.
   - 24 open connections per IP (behind a trusted proxy: per forwarded client IP) and 256 in total. Until 0.9.0 the
     limits were 8 and 64, but a single browser tab already opens 7–8 connections (6 pooled HTTP/1.1 connections per

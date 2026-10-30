@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import net.minecraft.core.Holder;
@@ -29,6 +30,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.tags.TagKey;
+import net.minecraft.util.Util;
 import net.minecraft.util.context.ContextMap;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -52,7 +54,7 @@ import org.jspecify.annotations.Nullable;
  * conditional ones that are {@code inactive} here by design (the AllTheModium variant without AllTheModium, the
  * {@code *_fallback} variant with it, the bridges without AE2 / Refined Storage).
  * <p>
- * Built on the server thread on the first request and cached until the recipe manager changes ({@code /reload}, a
+ * Built off the server thread on the first request and cached until the recipe manager changes ({@code /reload}, a
  * KubeJS reload, another world); bounded to {@link #MAX_RECIPES} recipes.
  */
 public final class RecipeCatalog {
@@ -71,7 +73,7 @@ public final class RecipeCatalog {
     public record Default(Identifier id, @Nullable RecipeShape shape, boolean active) {
     }
 
-    private record Cached(MinecraftServer server, RecipeMap recipes, Snapshot snapshot) {
+    private record Cached(MinecraftServer server, RecipeMap recipes, CompletableFuture<Snapshot> snapshot) {
     }
 
     private static volatile @Nullable Cached cache;
@@ -87,26 +89,35 @@ public final class RecipeCatalog {
         NeoForge.EVENT_BUS.addListener((ServerStoppedEvent e) -> cache = null);
     }
 
-    /** The current catalog of a server, built when the recipes changed since the last call. Server thread. */
-    public static Snapshot get(MinecraftServer server) {
-        var recipes = server.getRecipeManager().recipeMap();
-        var c = cache;
-        if (c != null && c.server == server && c.recipes == recipes) return c.snapshot;
-        long start = System.nanoTime();
+    /**
+     * The current catalog of a server, built when the recipes changed since the last call. Call on the server thread:
+     * it only takes the references there; the catalog is built on Minecraft's background executor (recipes, packs and
+     * registries are read-only once loaded; a reload in between replaces them and the next request builds again), so
+     * the first request after a reload costs the tick nothing.
+     */
+    public static CompletableFuture<Snapshot> get(MinecraftServer server) {
         var manager = server.getRecipeManager();
-        var defaults = loadDefaults(server.getResourceManager(), server.registryAccess());
+        var recipes = manager.recipeMap();
+        var c = cache;
+        if (c != null && c.server == server && c.recipes == recipes && !c.snapshot.isCompletedExceptionally()) return c.snapshot;
+        var resources = server.getResourceManager();
+        var registries = server.registryAccess();
         var context = SlotDisplayContext.fromLevel(server.overworld());
-        Function<RecipeHolder<?>, List<RecipeDisplay>> displays = holder -> {
-            var out = new ArrayList<RecipeDisplay>(1);
-            manager.listDisplaysForRecipe(holder.id(), entry -> out.add(entry.display()));
-            return out;
-        };
-        var json = build(recipes.values(), defaults, displays, context, server.registryAccess());
-        var snapshot = snapshot(json);
-        cache = new Cached(server, recipes, snapshot);
-        CloudLog.LOGGER.debug("[cccloud] Recipe catalog: {} recipes, {} bytes in {} ms", snapshot.recipes(), snapshot.json().length,
-            (System.nanoTime() - start) / 1_000_000);
-        return snapshot;
+        var future = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            var defaults = loadDefaults(resources, registries);
+            Function<RecipeHolder<?>, List<RecipeDisplay>> displays = holder -> {
+                var out = new ArrayList<RecipeDisplay>(1);
+                manager.listDisplaysForRecipe(holder.id(), entry -> out.add(entry.display()));
+                return out;
+            };
+            var snapshot = snapshot(build(recipes.values(), defaults, displays, context, registries));
+            CloudLog.LOGGER.debug("[cccloud] Recipe catalog: {} recipes, {} bytes in {} ms", snapshot.recipes(), snapshot.json().length,
+                (System.nanoTime() - start) / 1_000_000);
+            return snapshot;
+        }, Util.backgroundExecutor());
+        cache = new Cached(server, recipes, future);
+        return future;
     }
 
     static Snapshot snapshot(JsonObject json) {

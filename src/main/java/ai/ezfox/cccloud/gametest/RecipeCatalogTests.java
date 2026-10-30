@@ -55,7 +55,8 @@ public final class RecipeCatalogTests {
     public static void liveRecipes(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
         RecipeCatalog.invalidate();
-        var snapshot = RecipeCatalog.get(server);
+        // Built on the background executor; the test may wait for it (the build never needs the server thread).
+        var snapshot = RecipeCatalog.get(server).join();
         var catalog = JsonParser.parseString(new String(snapshot.json(), StandardCharsets.UTF_8)).getAsJsonObject();
 
         // The test datapack: one override, one removal, one addition.
@@ -94,9 +95,9 @@ public final class RecipeCatalogTests {
         helper.assertTrue("Glowstone Dust".equals(catalog.getAsJsonObject("names").get("minecraft:glowstone_dust").getAsString()), "server-side names");
 
         // Cached until the recipes change.
-        helper.assertTrue(RecipeCatalog.get(server) == snapshot, "the catalog is cached");
+        helper.assertTrue(RecipeCatalog.get(server).join() == snapshot, "the catalog is cached");
 
-        // And over HTTP (the handler builds it on the server thread, so the request runs while this test waits).
+        // And over HTTP (the handler asks the server thread, so the request completes while this test waits a tick).
         int port = CloudWebServer.port();
         helper.assertTrue(port > 0, "dashboard server runs");
         var http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
