@@ -95,6 +95,7 @@ public final class IconExport {
                 byte[] png = null;
                 for (var store : openStores) {
                     if (split[0].equals("cccloud") && !store.isCurrent(id, "cccloud@" + modVersion)) continue; // our art changes
+                    if (store.source(id) != IconStore.Source.CLIENT) continue; // server renders are the lower-quality stand-ins
                     png = store.get(id);
                     if (png != null && PngCodec.isValid(png, PngCodec.ICON_SIZE, PngCodec.ICON_SIZE)) {
                         source = "client";

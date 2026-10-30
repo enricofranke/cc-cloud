@@ -22,22 +22,44 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Persistent item icon store: {@code <dir>/<namespace>.zip} with one {@code <path>.png} per item, plus
- * {@code manifest.json} mapping item id → version (mod id + mod version), so only new or changed items are rendered
- * again after a modpack update. New icons are kept in memory and written per namespace by {@link #flush()} (the
- * namespace zip is rewritten atomically). Reads go through a small LRU. Thread-safe; pure Java, unit tested.
+ * {@code manifest.json} mapping item id → version (mod id + mod version) and source, so only new or changed items are
+ * rendered again after a modpack update. New icons are kept in memory and written per namespace by {@link #flush()}
+ * (the namespace zip is rewritten atomically). Reads go through a small LRU. Thread-safe; pure Java, unit tested.
+ * <p>
+ * Sources: {@link Source#CLIENT} icons come from a game client's renderer (the real inventory icon),
+ * {@link Source#SERVER} icons from {@link ServerIconRenderer} (flat items and plain cubes only). Client renders always
+ * replace server renders; a server render never replaces a client render, not even an outdated one. Manifest format
+ * 2: {@code {"version":2,"items":{"<id>":{"version":"<ns>@<mod version>","source":"client"|"server","failed":true?}}}};
+ * format 1 ({@code "<id>":"<version>"}, {@code "!<version>"} = could not render) is read as client entries.
  */
 public final class IconStore implements AutoCloseable {
     public static final Pattern NAMESPACE = Pattern.compile("[a-z0-9_.-]{1,64}");
     public static final Pattern PATH = Pattern.compile("[a-z0-9_.-]{1,128}(/[a-z0-9_.-]{1,128}){0,7}");
-    private static final String FAILED = "!";
+    private static final String FAILED_V1 = "!";
     private static final int LRU = 2000;
 
-    public record Status(int stored, int failed, long bytes) {
+    /** Who rendered a stored icon. */
+    public enum Source {
+        CLIENT("client"), SERVER("server");
+
+        public final String id;
+
+        Source(String id) {
+            this.id = id;
+        }
+    }
+
+    /** {@code stored} = client + server icons; {@code failed} = items no client could render (for their version). */
+    public record Status(int stored, int failed, long bytes, int client, int server) {
+    }
+
+    /** A manifest entry: the stored icon's version and source, or a client's "could not render" marker. */
+    private record Entry(String version, Source source, boolean failed) {
     }
 
     private final Path dir;
-    /** id → version ("!" + version for items no client could render). */
-    private final Map<String, String> manifest = new HashMap<>();
+    /** id → entry. */
+    private final Map<String, Entry> manifest = new HashMap<>();
     /** namespace → path → png (not yet flushed). */
     private final Map<String, Map<String, byte[]>> pending = new HashMap<>();
     private final Map<String, ZipFile> zips = new HashMap<>();
@@ -76,37 +98,94 @@ public final class IconStore implements AutoCloseable {
         try {
             var json = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
             for (var e : json.getAsJsonObject("items").entrySet()) {
-                if (isValidId(e.getKey())) manifest.put(e.getKey(), e.getValue().getAsString());
+                if (!isValidId(e.getKey())) continue;
+                if (e.getValue() instanceof JsonObject o) {
+                    // format 2
+                    if (o.get("version") == null || !o.get("version").isJsonPrimitive()) continue;
+                    var source = o.get("source") != null && o.get("source").isJsonPrimitive() && o.get("source").getAsString().equals(Source.SERVER.id)
+                        ? Source.SERVER : Source.CLIENT;
+                    boolean failed = o.get("failed") != null && o.get("failed").isJsonPrimitive() && o.get("failed").getAsBoolean();
+                    manifest.put(e.getKey(), new Entry(o.get("version").getAsString(), source, failed && source == Source.CLIENT));
+                } else if (e.getValue().isJsonPrimitive()) {
+                    // format 1: only client renders existed
+                    String v = e.getValue().getAsString();
+                    boolean failed = v.startsWith(FAILED_V1);
+                    manifest.put(e.getKey(), new Entry(failed ? v.substring(1) : v, Source.CLIENT, failed));
+                }
             }
         } catch (IOException | RuntimeException e) {
             manifest.clear();
         }
     }
 
-    /** True if the stored icon (or the "could not render" marker) is for this version. */
+    /**
+     * True if a game client already handled this version: its icon or its "could not render" marker. Server renders
+     * do not count, so those items stay queued for clients.
+     */
     public synchronized boolean isCurrent(String id, String version) {
-        var v = manifest.get(id);
-        return v != null && (v.equals(version) || v.equals(FAILED + version));
+        var e = manifest.get(id);
+        return e != null && e.source() == Source.CLIENT && e.version().equals(version);
     }
 
+    /** True if an icon (from any source) is stored. */
     public synchronized boolean hasIcon(String id) {
-        var v = manifest.get(id);
-        return v != null && !v.startsWith(FAILED);
+        var e = manifest.get(id);
+        return e != null && !e.failed();
     }
 
+    /** Who rendered the stored icon; null if there is none. */
+    public synchronized @Nullable Source source(String id) {
+        var e = manifest.get(id);
+        return e == null || e.failed() ? null : e.source();
+    }
+
+    /**
+     * True if the server renderer should draw this item: nothing stored, an outdated server render, or an outdated
+     * client failure. Never for a client icon (of any version) or a client failure of this version.
+     */
+    public synchronized boolean wantsServerRender(String id, String version) {
+        var e = manifest.get(id);
+        if (e == null) return true;
+        if (e.source() == Source.CLIENT) return e.failed() && !e.version().equals(version);
+        return !e.version().equals(version);
+    }
+
+    /** Stores a client render (it replaces a server render of the same item). */
     public synchronized void put(String id, String version, byte[] png) {
+        store(id, new Entry(version, Source.CLIENT, false), png);
+    }
+
+    /**
+     * Stores a server render unless a client icon (any version) or a client failure for this version is stored.
+     *
+     * @return true if stored
+     */
+    public synchronized boolean putServer(String id, String version, byte[] png) {
+        var e = manifest.get(id);
+        if (e != null && e.source() == Source.CLIENT && (!e.failed() || e.version().equals(version))) return false;
+        store(id, new Entry(version, Source.SERVER, false), png);
+        return true;
+    }
+
+    private void store(String id, Entry entry, byte[] png) {
         if (!isValidId(id)) throw new IllegalArgumentException("bad id " + id);
         int colon = id.indexOf(':');
         pending.computeIfAbsent(id.substring(0, colon), k -> new HashMap<>()).put(id.substring(colon + 1), png);
-        manifest.put(id, version);
+        manifest.put(id, entry);
         lru.put(id, png);
         manifestDirty = true;
     }
 
-    /** Remembers that no client could render this item (for this version), so it is not queued again. */
+    /**
+     * Remembers that no client could render this item (for this version), so it is not queued again. A server render
+     * stays (a client cannot wipe it); the item is offered to clients again after a restart.
+     */
     public synchronized void markFailed(String id, String version) {
         if (!isValidId(id)) return;
-        manifest.put(id, FAILED + version);
+        var e = manifest.get(id);
+        if (e != null && e.source() == Source.SERVER) return;
+        manifest.put(id, new Entry(version, Source.CLIENT, true));
+        lru.remove(id);
         manifestDirty = true;
     }
 
@@ -210,9 +289,15 @@ public final class IconStore implements AutoCloseable {
         String json;
         synchronized (this) {
             var root = new JsonObject();
-            root.addProperty("version", 1);
+            root.addProperty("version", 2);
             var items = new JsonObject();
-            manifest.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> items.addProperty(e.getKey(), e.getValue()));
+            manifest.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+                var o = new JsonObject();
+                o.addProperty("version", e.getValue().version());
+                o.addProperty("source", e.getValue().source().id);
+                if (e.getValue().failed()) o.addProperty("failed", true);
+                items.add(e.getKey(), o);
+            });
             root.add("items", items);
             json = new GsonBuilder().create().toJson(root);
             manifestDirty = false;
@@ -240,10 +325,11 @@ public final class IconStore implements AutoCloseable {
     }
 
     public synchronized Status status() {
-        int stored = 0, failed = 0;
-        for (var v : manifest.values()) {
-            if (v.startsWith(FAILED)) failed++;
-            else stored++;
+        int client = 0, server = 0, failed = 0;
+        for (var e : manifest.values()) {
+            if (e.failed()) failed++;
+            else if (e.source() == Source.SERVER) server++;
+            else client++;
         }
         long bytes = 0;
         if (Files.isDirectory(dir)) {
@@ -253,7 +339,7 @@ public final class IconStore implements AutoCloseable {
             }
         }
         for (var p : pending.values()) for (var b : p.values()) bytes += b.length;
-        return new Status(stored, failed, bytes);
+        return new Status(client + server, failed, bytes, client, server);
     }
 
     /** Ids whose stored version differs (or that are missing) for the given id → version map. */

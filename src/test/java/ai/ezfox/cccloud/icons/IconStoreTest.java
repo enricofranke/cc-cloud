@@ -86,4 +86,67 @@ class IconStoreTest {
             assertFalse(Files.exists(dir.resolve("manifest.json")));
         }
     }
+
+    @Test
+    void serverRendersNeverReplaceClientRenders() throws Exception {
+        var client = icon(0xFF0000FF);
+        var server = icon(0xFF00FF00);
+        try (var store = new IconStore(dir)) {
+            assertTrue(store.wantsServerRender("ae2:a", "ae2@1"), "nothing stored yet");
+            assertTrue(store.putServer("ae2:a", "ae2@1", server));
+            assertEquals(IconStore.Source.SERVER, store.source("ae2:a"));
+            assertFalse(store.wantsServerRender("ae2:a", "ae2@1"), "current server render");
+            assertTrue(store.wantsServerRender("ae2:a", "ae2@2"), "a mod update re-renders it");
+            assertFalse(store.isCurrent("ae2:a", "ae2@1"), "server renders stay queued for game clients");
+
+            store.put("ae2:a", "ae2@1", client);
+            assertEquals(IconStore.Source.CLIENT, store.source("ae2:a"), "a client render replaces the server render");
+            assertArrayEquals(client, store.get("ae2:a"));
+            assertFalse(store.putServer("ae2:a", "ae2@1", server), "never the other way round");
+            assertFalse(store.wantsServerRender("ae2:a", "ae2@2"), "not even when the client render is outdated");
+            assertFalse(store.putServer("ae2:a", "ae2@2", server));
+            assertArrayEquals(client, store.get("ae2:a"));
+
+            store.markFailed("ae2:b", "ae2@1");
+            assertFalse(store.wantsServerRender("ae2:b", "ae2@1"), "a client could not render this version: leave it");
+            assertFalse(store.putServer("ae2:b", "ae2@1", server));
+            assertTrue(store.wantsServerRender("ae2:b", "ae2@2"), "an old failure does not block a new version");
+            assertTrue(store.putServer("ae2:b", "ae2@2", server));
+
+            store.putServer("ae2:c", "ae2@1", server);
+            store.markFailed("ae2:c", "ae2@1");
+            assertEquals(IconStore.Source.SERVER, store.source("ae2:c"), "a failing client does not wipe a server render");
+            assertArrayEquals(server, store.get("ae2:c"));
+
+            var status = store.status();
+            assertEquals(1, status.client());
+            assertEquals(2, status.server());
+            assertEquals(3, status.stored());
+            store.flush();
+        }
+        try (var store = new IconStore(dir)) {
+            assertEquals(IconStore.Source.CLIENT, store.source("ae2:a"), "sources survive a restart");
+            assertEquals(IconStore.Source.SERVER, store.source("ae2:b"));
+            assertTrue(store.isCurrent("ae2:a", "ae2@1"));
+            assertFalse(store.wantsServerRender("ae2:b", "ae2@2"));
+            var manifest = Files.readString(dir.resolve("manifest.json"));
+            assertTrue(manifest.contains("\"version\":2"), manifest);
+            assertTrue(manifest.contains("\"ae2:b\":{\"version\":\"ae2@2\",\"source\":\"server\"}"), manifest);
+            assertTrue(manifest.contains("\"ae2:a\":{\"version\":\"ae2@1\",\"source\":\"client\"}"), manifest);
+        }
+    }
+
+    @Test
+    void readsTheFirstManifestFormatAsClientRenders() throws Exception {
+        Files.createDirectories(dir);
+        Files.writeString(dir.resolve("manifest.json"), "{\"version\":1,\"items\":{\"minecraft:a\":\"minecraft@26.1.2\",\"weird:b\":\"!weird@1\"}}");
+        try (var store = new IconStore(dir)) {
+            assertEquals(IconStore.Source.CLIENT, store.source("minecraft:a"));
+            assertTrue(store.isCurrent("minecraft:a", "minecraft@26.1.2"));
+            assertTrue(store.isCurrent("weird:b", "weird@1"), "the failure marker");
+            assertFalse(store.hasIcon("weird:b"));
+            assertFalse(store.wantsServerRender("minecraft:a", "minecraft@26.1.2"));
+            assertEquals(1, store.status().failed());
+        }
+    }
 }
