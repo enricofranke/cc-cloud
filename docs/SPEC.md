@@ -1053,7 +1053,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
   - The item is added to the watchlist if needed.
   - `min:0` together with `autoCraft:false` turns it off.
 
-**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"waiting"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`. `waiting` (with `error:"no_cpu"`) is only used by auto-stock, see below.
 
 **Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
 - The plan has these fields:
@@ -1073,7 +1073,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 - States, shown in `watch.state` and the watchlist widget rows (`state`, `target`, `autoCraft`):
   - `idle`;
   - `crafting`;
-  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted);
+  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted). The request is a job row with `status:"waiting"`, `error:"no_cpu"` – one per item: a retry plans the same job again (with the current amount), and the row disappears when the item is stocked by other means or its auto-stock is switched off. Nothing is planned while AE2 reports no idle CPU at all; a plan that finds no suitable CPU when it is submitted waits too. Same logic for both bridges (`BridgeCore`); RS2 has no CPUs, so its jobs never wait. Manual crafts (dashboard, Lua, rules) still fail with `no_cpu`;
   - `missing` (missing resources: counted as a failure);
   - `paused` (3 failures in a row; editing the entry resets it).
 - Jobs are started with the user `autostock`.

@@ -38,6 +38,7 @@ public final class Ae2Compat {
     static {
         TEST_FUNCTIONS.register("me_bridge_storage", () -> Ae2GameTests::storage);
         TEST_FUNCTIONS.register("me_bridge_crafting", () -> Ae2CraftingGameTests::crafting);
+        TEST_FUNCTIONS.register("me_bridge_autostock_cpu", () -> Ae2CraftingGameTests::autoStockWaitsForCpu);
         TEST_FUNCTIONS.register("me_bridge_production", () -> Ae2ProductionGameTests::production);
     }
 

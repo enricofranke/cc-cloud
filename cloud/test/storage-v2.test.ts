@@ -104,4 +104,25 @@ describe("auto-stock (level maintainer)", () => {
     expect(ae.autostock({ name: it.name, min: 50, target: 10, autoCraft: true })).toEqual({ ok: false, error: "invalid" });
     void iron;
   });
+
+  it("waits for a free CPU with one waiting row per item instead of failed rows", () => {
+    const ae = new FakeAe2();
+    const [filler, ...items] = [...ae.items.values()].filter((i) => i.craftable && i.name !== "ae2:singularity" && i.name !== "enderio:octadic_capacitor").slice(0, 3);
+    // Every CPU busy with long jobs (and the queue full): auto-stock gets no_cpu.
+    while (ae.craft(filler.name, 4000).ok);
+    for (const it of items) {
+      it.count = 0;
+      expect(ae.autostock({ name: it.name, min: 10, target: 20, autoCraft: true }).ok).toBe(true);
+    }
+    for (let round = 0; round < 4; round++) {
+      for (const w of ae.watch) w.cooldownUntil = 0;
+      ae.tick();
+    }
+    for (const it of items) {
+      const rows = ae.jobs.filter((j) => j.name === it.name && j.source === "autostock");
+      expect(rows.map((j) => j.status)).toEqual(["waiting"]);
+      expect(ae.watch.find((w) => w.name === it.name)).toMatchObject({ state: "waiting_cpu" });
+    }
+    expect(ae.jobs.some((j) => j.source === "autostock" && j.status === "failed")).toBe(false);
+  });
 });

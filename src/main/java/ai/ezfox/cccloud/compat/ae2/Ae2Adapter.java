@@ -189,6 +189,14 @@ final class Ae2Adapter implements StorageAdapter {
     }
 
     @Override
+    public boolean cpuAvailable() {
+        var grid = grid();
+        if (grid == null) return true; // offline: startCraft reports that
+        for (var cpu : grid.getCraftingService().getCpus()) if (!cpu.isBusy()) return true;
+        return false;
+    }
+
+    @Override
     public void preview(Item item, long count, Consumer<Plan> done) {
         var grid = grid();
         if (grid == null || be.getLevel() == null) {

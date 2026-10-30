@@ -26,7 +26,7 @@ export interface JobInfo {
   name: string;
   displayName: string;
   count: number;
-  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
   progress: number;
   error?: string;
   notify?: boolean;

@@ -118,7 +118,8 @@ public final class BridgePeripheral implements IPeripheral {
 
     /**
      * {@code craft(name, count)} → {ok=true, jobId} or {ok=false, error}. Planning happens in the background; a job that
-     * cannot be planned (missing_resources, no_cpu) shows up as failed in getCraftingJobs().
+     * cannot be planned (missing_resources, no_cpu) shows up as failed in getCraftingJobs(). Auto-stock jobs without a
+     * free CPU show up as waiting instead.
      */
     @LuaFunction(mainThread = true)
     public final Map<String, Object> craft(String name, long count) {

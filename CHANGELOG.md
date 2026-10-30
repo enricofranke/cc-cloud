@@ -32,6 +32,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   Lua VM against the mod's real widget validation, with one dashboard action per control.
 - Wireless redstone: a transmitter samples its input on its first tick after loading, so a channel driven by a lever
   that is already on is correct after a world load (it stayed at 0 until something changed next to the transmitter).
+- Auto-stock no longer fills the crafting jobs with "failed (no_cpu)" rows while every crafting CPU is busy: the request
+  waits as one "Waiting for CPU" row per item, is planned again after the 30 s cooldown and never counts as a failure.
+  While AE2 has no idle CPU nothing is planned at all. Same logic for the ME and RS bridges and in the dashboard mock.
 
 ## 0.9.0 – first public release candidate
 

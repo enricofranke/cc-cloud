@@ -49,6 +49,14 @@ public interface StorageAdapter {
      */
     void startCraft(Item item, long count, String user, Consumer<CraftOutcome> done);
 
+    /**
+     * Whether a crafting CPU is free right now (AE2). Auto-stock does not plan while this is false; the job waits. Mods
+     * without CPUs (RS2) are always available.
+     */
+    default boolean cpuAvailable() {
+        return true;
+    }
+
     /** Current state of a job started by {@link #startCraft}. */
     JobState jobState(Object handle);
 

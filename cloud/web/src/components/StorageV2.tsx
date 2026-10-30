@@ -379,7 +379,7 @@ export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; wi
   );
 }
 
-const JOB_TEXT: Record<JobInfo["status"], string> = { queued: "Queued", running: "Running", done: "Done", failed: "Failed", cancelled: "Cancelled" };
+const JOB_TEXT: Record<JobInfo["status"], string> = { queued: "Queued", running: "Running", waiting: "Waiting for CPU", done: "Done", failed: "Failed", cancelled: "Cancelled" };
 function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: MainframeConn; uplink: Uplink; widgetId?: string }) {
   const [cancelling, setCancelling] = useState<string | null>(null);
   return (
@@ -412,7 +412,7 @@ function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: Main
           <div class="job-bar" role="progressbar" aria-label={`${j.displayName ?? j.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
             <span class="job-fill" style={{ width: `${Math.round((j.status === "done" ? 1 : j.progress) * 100)}%` }} />
           </div>
-          {j.error && <p class="muted small">{j.error}</p>}
+          {j.error && j.status !== "waiting" && <p class="muted small">{j.error}</p>}
         </li>
       ))}
     </ul>

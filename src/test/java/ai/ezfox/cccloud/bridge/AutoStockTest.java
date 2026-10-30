@@ -9,7 +9,10 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-/** Auto-stock (level maintainer): requests, one job per item, cooldown, waiting for a CPU, pause after 3 failures. */
+/**
+ * Auto-stock (level maintainer): requests, one job per item, cooldown, waiting for a CPU (a waiting job, never a failure),
+ * pause after 3 failures.
+ */
 class AutoStockTest {
     static final String IRON = "minecraft:iron_ingot";
 
@@ -17,7 +20,10 @@ class AutoStockTest {
         final List<String> started = new ArrayList<>();
         final Map<String, String> status = new HashMap<>();
         final Map<String, String> errors = new HashMap<>();
+        final List<String> discarded = new ArrayList<>();
         boolean craftable = true;
+        /** No free crafting CPU: jobs wait (like BridgeCore.autoStockCraft), an item's waiting job is reused. */
+        boolean noCpu;
         @Nullable String immediateError;
         int next;
 
@@ -29,10 +35,17 @@ class AutoStockTest {
         @Override
         public String start(String name, long count) {
             if (immediateError != null) return "error:" + immediateError;
-            String id = "job" + (next++);
             started.add(name + "x" + count);
-            status.put(id, "running");
+            String id = status.entrySet().stream().filter(e -> e.getValue().equals(Watchlist.WAITING)).map(Map.Entry::getKey).findFirst()
+                .orElse("job" + (next++));
+            status.put(id, noCpu ? Watchlist.WAITING : "running");
             return id;
+        }
+
+        @Override
+        public void discard(String jobId) {
+            discarded.add(jobId);
+            status.remove(jobId);
         }
 
         @Override
@@ -83,6 +96,54 @@ class AutoStockTest {
         assertTrue(crafter.started.isEmpty(), "30 s cooldown");
         list.autoStock(Watchlist.COOLDOWN_MS, 64, crafter);
         assertEquals(List.of(IRON + "x10"), crafter.started);
+    }
+
+    @Test
+    void noFreeCpuWaitsWithOneJobAndIsRetriedAfterTheCooldown() {
+        var list = new Watchlist();
+        list.setAutoStock(IRON, 10, 20, true, n -> true);
+        list.check(n -> 0);
+        var crafter = new FakeCrafter();
+        crafter.noCpu = true;
+        var log = new ArrayList<String>(list.autoStock(0, 64, crafter));
+        assertEquals("waiting_cpu", list.info(IRON).state());
+        assertEquals(Watchlist.WAITING, crafter.status.get("job0"), "a waiting job, not a failed one");
+        list.autoStock(10_000, 64, crafter);
+        assertEquals(1, crafter.started.size(), "30 s cooldown while waiting");
+        for (int i = 1; i <= 5; i++) log.addAll(list.autoStock(i * Watchlist.COOLDOWN_MS, 64, crafter));
+        assertEquals(6, crafter.started.size(), "planned again after every cooldown");
+        assertEquals(1, crafter.status.size(), "always the same job: one row per item");
+        assertEquals("waiting_cpu", list.info(IRON).state());
+        assertEquals(0, list.info(IRON).failures(), "waiting for a CPU is never a failure");
+        assertTrue(log.isEmpty(), "nothing logged while waiting: " + log);
+        assertEquals(java.util.Set.of("job0"), list.jobIds());
+
+        crafter.noCpu = false;
+        list.autoStock(6 * Watchlist.COOLDOWN_MS, 64, crafter);
+        assertEquals("running", crafter.status.get("job0"), "the waiting job starts once a CPU is free");
+        assertEquals("crafting", list.info(IRON).state());
+    }
+
+    @Test
+    void waitingJobIsDroppedWhenTheItemIsStockedOrBusy() {
+        var list = new Watchlist();
+        list.setAutoStock(IRON, 10, 20, true, n -> true);
+        list.check(n -> 0);
+        var crafter = new FakeCrafter();
+        crafter.noCpu = true;
+        list.autoStock(0, 64, crafter);
+        // "busy" (too many plans at once) keeps the waiting job.
+        crafter.immediateError = "busy";
+        list.autoStock(Watchlist.COOLDOWN_MS, 64, crafter);
+        assertEquals("waiting_cpu", list.info(IRON).state());
+        assertEquals(java.util.Set.of("job0"), list.jobIds());
+        crafter.immediateError = null;
+        // Crafted by hand meanwhile: the waiting row goes away.
+        list.check(n -> 15);
+        list.autoStock(Watchlist.COOLDOWN_MS + 1, 64, crafter);
+        assertEquals(List.of("job0"), crafter.discarded);
+        assertEquals("idle", list.info(IRON).state());
+        assertTrue(list.jobIds().isEmpty());
     }
 
     @Test

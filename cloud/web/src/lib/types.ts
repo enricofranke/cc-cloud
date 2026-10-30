@@ -46,7 +46,7 @@ export interface JobRow {
   name: string;
   displayName?: string;
   count: number;
-  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
   progress: number;
   source?: "dashboard" | "lua" | "autostock" | "rule";
   notify?: boolean;

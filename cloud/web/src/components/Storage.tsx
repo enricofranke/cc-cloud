@@ -48,7 +48,7 @@ function jobRows(w: Widget): JobRow[] {
           name: str(r.name),
           displayName: str(r.displayName) || undefined,
           count: num(r.count),
-          status: (["queued", "running", "done", "failed", "cancelled"].includes(str(r.status)) ? r.status : "queued") as JobRow["status"],
+          status: (["queued", "running", "waiting", "done", "failed", "cancelled"].includes(str(r.status)) ? r.status : "queued") as JobRow["status"],
           progress: Math.min(1, Math.max(0, num(r.progress))),
           ...(["dashboard", "lua", "autostock", "rule"].includes(str(r.source)) ? { source: r.source as JobRow["source"] } : {}),
           ...(r.notify === true ? { notify: true } : {}),
@@ -594,7 +594,8 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
 }
 
 // --------------------------------------------------------------------- jobs
-const STATUS_TEXT: Record<JobRow["status"], string> = { queued: "Queued", running: "Running", done: "Done", failed: "Failed", cancelled: "Cancelled" };
+// "waiting": an auto-stock request that found no free crafting CPU; it is planned again later (not a failure).
+const STATUS_TEXT: Record<JobRow["status"], string> = { queued: "Queued", running: "Running", waiting: "Waiting for CPU", done: "Done", failed: "Failed", cancelled: "Cancelled" };
 
 export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: MainframeConn }) {
   const rows = jobRows(w);

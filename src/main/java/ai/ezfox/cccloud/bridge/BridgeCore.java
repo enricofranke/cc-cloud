@@ -50,6 +50,8 @@ public final class BridgeCore {
     private long tick;
     private int alertSeq;
     private final ArrayDeque<Alert> alerts = new ArrayDeque<>();
+    /** GameTests: moves the auto-stock clock forward (cooldowns are wall-clock time). */
+    private long clockOffsetForTest;
     /** Items of jobs that finished {@code done} since the last {@link #takeCrafted()} (v0.10 production statistics). */
     private final Map<String, Long> crafted = new HashMap<>();
 
@@ -64,9 +66,10 @@ public final class BridgeCore {
         final String id;
         final String name;
         final String displayName;
-        final long count;
+        /** Changes only when a waiting auto-stock job is planned again with a new amount. */
+        long count;
         final String user;
-        final long created;
+        long created;
         /** Alert when finished or failed (storage v2 "notify me"). */
         boolean notify;
         /** dashboard, lua, autostock or rule. */
@@ -149,7 +152,7 @@ public final class BridgeCore {
         }
         if (!watchlist.isEmpty() && isConnected()) {
             // Auto-stock (level maintainer): server side, no computer needed.
-            var log = watchlist.autoStock(System.currentTimeMillis(), CloudConfig.get(CloudConfig.AUTO_STOCK_BATCH), new Watchlist.Crafter() {
+            var log = watchlist.autoStock(System.currentTimeMillis() + clockOffsetForTest, CloudConfig.get(CloudConfig.AUTO_STOCK_BATCH), new Watchlist.Crafter() {
                 @Override
                 public boolean craftable(String name) {
                     return isCraftable(name);
@@ -157,7 +160,7 @@ public final class BridgeCore {
 
                 @Override
                 public String start(String name, long count) {
-                    var ticket = craft(name, count, "autostock", false, "autostock");
+                    var ticket = autoStockCraft(name, count);
                     return ticket.error() != null ? "error:" + ticket.error() : ticket.jobId();
                 }
 
@@ -172,9 +175,19 @@ public final class BridgeCore {
                     for (var job : jobs) if (job.id.equals(jobId)) return job.error;
                     return null;
                 }
+
+                @Override
+                public void discard(String jobId) {
+                    jobs.removeIf(job -> job.id.equals(jobId) && job.status.equals(Watchlist.WAITING));
+                }
             });
             for (String line : log) CCCloud.LOGGER.info("[cccloud] Auto-stock on the {} bridge: {}", kind, line);
             if (!log.isEmpty()) setChanged.run();
+        }
+        // Waiting rows of entries that were removed or switched off.
+        if (jobs.stream().anyMatch(job -> job.status.equals(Watchlist.WAITING))) {
+            var followed = watchlist.jobIds();
+            jobs.removeIf(job -> job.status.equals(Watchlist.WAITING) && !followed.contains(job.id));
         }
         if (!watchlist.isEmpty() && isConnected()) checkWatchlist();
     }
@@ -345,8 +358,56 @@ public final class BridgeCore {
         jobs.addFirst(job);
         pruneJobs();
         CCCloud.LOGGER.info("[cccloud] {} requested {}x {} on the {} bridge (job {})", user, count, job.name, kind, job.id);
-        adapter.startCraft(item, count, user, outcome -> {
-            if (outcome.error() != null) {
+        plan(job, item);
+        return new CraftTicket(null, job.id, reply);
+    }
+
+    /**
+     * Auto-stock request. Without a free crafting CPU the job waits instead of failing (one row per item, no failure
+     * counted); the next request of that item plans the same job again. Same for every bridge: AE2 reports a missing
+     * CPU before planning ({@link StorageAdapter#cpuAvailable}) or when submitting the plan ({@code no_cpu}); RS2 has no
+     * CPUs and never waits.
+     */
+    CraftTicket autoStockCraft(String name, long count) {
+        Job waiting = null;
+        for (var job : jobs) {
+            if (job.status.equals(Watchlist.WAITING) && job.name.equals(name)) {
+                waiting = job;
+                break;
+            }
+        }
+        if (waiting == null) return craft(name, count, "autostock", false, "autostock");
+        var item = ItemNames.byName(name);
+        String error = null;
+        if (!isConnected()) error = "offline";
+        else if (item == null || !adapter.isCraftable(item)) error = "not_craftable";
+        else if (count < 1 || count > maxCraftAmount()) error = "too_many";
+        if (error != null) {
+            jobs.remove(waiting);
+            return new CraftTicket(error, null, CompletableFuture.completedFuture(ActionResult.fail(error)));
+        }
+        if (jobs.stream().filter(j -> j.status.equals("queued")).count() >= MAX_PENDING_CRAFTS) {
+            return new CraftTicket("busy", null, CompletableFuture.completedFuture(ActionResult.fail("busy")));
+        }
+        waiting.count = count;
+        waiting.created = tick;
+        plan(waiting, item);
+        return new CraftTicket(null, waiting.id, CompletableFuture.completedFuture(new ActionResult(null, waiting.id)));
+    }
+
+    /** Plans and starts a queued job (or lets an auto-stock job wait when no crafting CPU is free). */
+    private void plan(Job job, Item item) {
+        boolean autoStock = job.source.equals("autostock");
+        if (autoStock && !adapter.cpuAvailable()) {
+            waitForCpu(job);
+            return;
+        }
+        job.status = "queued";
+        job.error = null;
+        adapter.startCraft(item, job.count, job.user, outcome -> {
+            if (autoStock && "no_cpu".equals(outcome.error())) {
+                waitForCpu(job);
+            } else if (outcome.error() != null) {
                 job.status = "failed";
                 job.error = outcome.error();
                 complete(job, ActionResult.fail(outcome.error()));
@@ -358,7 +419,12 @@ public final class BridgeCore {
             }
             setChanged.run();
         });
-        return new CraftTicket(null, job.id, reply);
+    }
+
+    private void waitForCpu(Job job) {
+        job.status = Watchlist.WAITING;
+        job.error = "no_cpu";
+        complete(job, ActionResult.fail("no_cpu"));
     }
 
     private static void complete(Job job, ActionResult result) {
@@ -396,7 +462,10 @@ public final class BridgeCore {
         return false;
     }
 
-    /** Rows for the jobs widget and getCraftingJobs(): newest first, own jobs plus other jobs running on the network. */
+    /**
+     * Rows for the jobs widget and getCraftingJobs(): newest first, own jobs plus other jobs running on the network. An
+     * auto-stock job without a free CPU is {@code waiting} (error {@code no_cpu}).
+     */
     public JsonArray jobRows(int limit) {
         var array = new JsonArray();
         var handles = new ArrayList<Object>();
@@ -505,6 +574,11 @@ public final class BridgeCore {
             setChanged.run();
         }
         return error;
+    }
+
+    /** GameTest hook: lets the auto-stock cooldowns pass without waiting. */
+    public void advanceClockForTest(long ms) {
+        clockOffsetForTest += ms;
     }
 
     public Watchlist.@Nullable Info watchInfo(String name) {

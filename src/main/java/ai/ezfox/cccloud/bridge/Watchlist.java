@@ -52,17 +52,27 @@ public final class Watchlist {
         }
     }
 
+    /** Job status of an auto-stock request that found no free crafting CPU: not a failure, it is planned again later. */
+    public static final String WAITING = "waiting";
+
     /** What auto-stock needs from the bridge. */
     public interface Crafter {
         boolean craftable(String name);
 
-        /** Starts a craft; returns the job id or an immediate error prefixed with "error:". */
+        /**
+         * Starts a craft (or plans the item's waiting job again); returns the job id or an immediate error prefixed with
+         * "error:".
+         */
         String start(String name, long count);
 
-        /** Status of a job: queued/running/done/failed/cancelled, or null if unknown; plus its error. */
+        /** Status of a job: queued/running/waiting/done/failed/cancelled, or null if unknown; plus its error. */
         @Nullable String status(String jobId);
 
         @Nullable String error(String jobId);
+
+        /** Drops a waiting job that is not needed any more (its row disappears). */
+        default void discard(String jobId) {
+        }
     }
 
     /** A view of an entry for the dashboard / Lua. */
@@ -149,6 +159,15 @@ public final class Watchlist {
                     entry.jobId = null;
                     fail(entry, error, name, log);
                     continue; // show the state; the next step may retry
+                } else if (status.equals(WAITING)) {
+                    // No free CPU: the job keeps its one row and is planned again after the cooldown (below).
+                    entry.state = State.WAITING_CPU;
+                    if (entry.count >= entry.min) {
+                        crafter.discard(entry.jobId); // stocked up meanwhile (e.g. crafted by hand)
+                        entry.jobId = null;
+                        entry.state = State.IDLE;
+                        continue;
+                    }
                 } else {
                     entry.state = State.CRAFTING;
                     continue;
@@ -161,6 +180,8 @@ public final class Watchlist {
             }
             if (nowMs - entry.lastRequest < COOLDOWN_MS) continue;
             if (!crafter.craftable(name)) {
+                if (entry.jobId != null) crafter.discard(entry.jobId);
+                entry.jobId = null;
                 entry.state = State.MISSING;
                 continue;
             }
@@ -168,16 +189,24 @@ public final class Watchlist {
             if (amount <= 0) amount = Math.min(entry.min - entry.count, batch);
             if (amount <= 0) continue;
             entry.lastRequest = nowMs;
+            boolean retry = entry.jobId != null;
             String result = crafter.start(name, amount);
             if (result.startsWith("error:")) {
-                fail(entry, result.substring(6), name, log);
+                fail(entry, result.substring(6), name, log); // a waiting job stays (and keeps waiting) on "busy"
             } else {
                 entry.jobId = result;
-                entry.state = State.CRAFTING;
-                log.add("requested " + amount + "x " + name + " (job " + result + ")");
+                entry.state = WAITING.equals(crafter.status(result)) ? State.WAITING_CPU : State.CRAFTING;
+                if (entry.state == State.CRAFTING) log.add((retry ? "planned again " : "requested ") + amount + "x " + name + " (job " + result + ")");
             }
         }
         return log;
+    }
+
+    /** Job ids the entries are following (requests that are queued, running or waiting for a CPU). */
+    public java.util.Set<String> jobIds() {
+        var ids = new java.util.HashSet<String>();
+        for (var entry : entries.values()) if (entry.jobId != null) ids.add(entry.jobId);
+        return ids;
     }
 
     private static void fail(Entry entry, @Nullable String error, String name, List<String> log) {
@@ -185,6 +214,7 @@ public final class Watchlist {
             entry.state = State.WAITING_CPU; // retried after the cooldown, not counted as a failure
             return;
         }
+        entry.jobId = null; // the bridge dropped a waiting job whose new plan failed
         entry.failures++;
         entry.state = entry.failures >= MAX_FAILURES ? State.PAUSED : State.MISSING;
         log.add(name + ": " + (error == null ? "failed" : error) + (entry.state == State.PAUSED ? " – paused after " + MAX_FAILURES + " failures" : ""));
