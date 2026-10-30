@@ -16,10 +16,16 @@ describe("handbook generator", () => {
     expect(rewriteLinks("[x](/docs/start#power) [y](/docs/lua) [z](https://a.b)")).toBe("[x](index.md) [y](lua.md) [z](https://a.b)");
   });
 
-  it("turns recipe blocks into RecipeFor tags and drops heading ids", () => {
+  it("turns recipe blocks into RecipesFor tags (one per item) and drops heading ids", () => {
     const md = convert("network", "en", '## Relays {#relays}\n```recipe\n{"result":"cccloud:cloud_relay"}\n```\n```lua\nlocal x = {1}\n```', 5, "Network");
     expect(md).toContain("## Relays\n");
-    expect(md).toContain('<RecipeFor id="cccloud:cloud_relay" fallbackText=');
+    expect(md).toContain('<RecipesFor id="cccloud:cloud_relay" fallbackText=');
+    // a recipe and its fallback variant right below each other: one tag shows every recipe the game loaded for the item
+    const probe = convert("recipes", "en", '### Probe\n```recipe\n{"file":"cloud_probe","result":"cccloud:cloud_probe"}\n```\n```recipe\n{"file":"cloud_probe_fallback","result":"cccloud:cloud_probe"}\n```', 1, "R");
+    expect(probe.match(/<RecipesFor id="cccloud:cloud_probe"/g)).toHaveLength(1);
+    // the GuideME guide item is shared by every guide: our recipe by its id
+    const guide = convert("recipes", "en", '```recipe\n{"file":"handbook","result":"guideme:guide"}\n```', 1, "R");
+    expect(guide).toContain('<Recipe id="cccloud:handbook" fallbackText=');
     expect(md).toContain("local x = {1}");
     expect(md).toMatch(/navigation:\n {2}title: "Network"\n {2}position: 5\n {2}icon: cccloud:cloud_relay/);
   });

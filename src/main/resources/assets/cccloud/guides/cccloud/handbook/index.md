@@ -32,27 +32,27 @@ CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any br
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
 
 ### Cloud Core
-<RecipeFor id="cccloud:cloud_core" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_core" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Mainframe
-<RecipeFor id="cccloud:cloud_mainframe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_mainframe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Uplink
-<RecipeFor id="cccloud:cloud_uplink" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_uplink" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Advanced Cloud Uplink
-<RecipeFor id="cccloud:advanced_cloud_uplink" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:advanced_cloud_uplink" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### Cloud Probe
-<RecipeFor id="cccloud:cloud_probe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_probe" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 Without Allthemodium the vibranium ingots are 4 diamonds and 2 netherite scrap (all recipes: JEI/EMI or the recipes page).
 
 ### Cloud Link Card
-<RecipeFor id="cccloud:cloud_link_card" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:cloud_link_card" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ### ME and RS Cloud Bridge
-<RecipeFor id="cccloud:me_cloud_bridge" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
-<RecipeFor id="cccloud:rs_cloud_bridge" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:me_cloud_bridge" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+<RecipesFor id="cccloud:rs_cloud_bridge" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
 ## Place the mainframe
 

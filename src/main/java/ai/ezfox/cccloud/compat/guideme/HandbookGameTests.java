@@ -32,14 +32,16 @@ import org.jspecify.annotations.Nullable;
 /**
  * The generated handbook (tools/gen_handbook.ts) parses with GuideMe's own Markdown/MDX parser in both languages:
  * every page has a navigation title, only known tags are used, recipe tags name existing items (the bridges only
- * when AE2 / RS are present) and every page link points to an existing page.
+ * when AE2 / RS are present) or, for {@code <Recipe>}, one of our recipe files, and every page link points to an
+ * existing page.
  */
 public final class HandbookGameTests {
     /** The docs pages (cloud/web/src/docs/content/index.ts PAGES); "start" is the index. */
-    static final List<String> PAGES = List.of("index", "cc-basics", "dashboard", "lua", "ui-library", "network", "upgrades", "bridges",
-        "accounts", "security", "faq");
+    static final List<String> PAGES = List.of("index", "cc-basics", "dashboard", "redstone", "lua", "ui-library", "network", "upgrades", "automation",
+        "recipes", "mods", "bridges", "accounts", "api", "security", "faq");
     static final List<String> LANGS = List.of("", "_de_de/");
-    private static final Set<String> TAGS = Set.of("RecipeFor");
+    /** RecipesFor / RecipeFor name an item, Recipe one of our recipe ids. */
+    private static final Set<String> TAGS = Set.of("RecipeFor", "RecipesFor", "Recipe");
     private static final String ROOT = "/assets/cccloud/guides/cccloud/handbook/";
 
     private HandbookGameTests() {
@@ -100,9 +102,15 @@ public final class HandbookGameTests {
                 if (!TAGS.contains(el.name())) problems.add(path + ": unknown tag " + el.name());
                 String id = el.getAttributeString("id", "");
                 var item = Identifier.tryParse(id);
-                boolean optional = id.endsWith("me_cloud_bridge") && !ModList.get().isLoaded("ae2")
-                    || id.endsWith("rs_cloud_bridge") && !ModList.get().isLoaded("refinedstorage");
-                if (!optional && (item == null || !BuiltInRegistries.ITEM.containsKey(item))) problems.add(path + ": unknown item " + id);
+                if (el.name().equals("Recipe")) {
+                    if (item == null || !item.getNamespace().equals(CCCloud.MODID) || CCCloud.class.getResource("/data/cccloud/recipe/" + item.getPath() + ".json") == null) {
+                        problems.add(path + ": unknown recipe " + id);
+                    }
+                } else {
+                    boolean optional = id.endsWith("me_cloud_bridge") && !ModList.get().isLoaded("ae2")
+                        || id.endsWith("rs_cloud_bridge") && !ModList.get().isLoaded("refinedstorage");
+                    if (!optional && (item == null || !BuiltInRegistries.ITEM.containsKey(item))) problems.add(path + ": unknown item " + id);
+                }
                 if (el.getAttributeString("fallbackText", "").isEmpty()) problems.add(path + ": recipe without fallback text");
             }
             if (node instanceof MdAstLink link && !link.url.startsWith("http")) {

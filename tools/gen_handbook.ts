@@ -6,8 +6,10 @@
 // Source: cloud/web/src/docs/content (read-only). One page per docs page; English is the default language,
 // German goes to the _de_de/ folder (GuideMe picks the page of the client language, else English).
 // Conversion: GuideMe parses MDX, so `<`, `{` and `}` outside code are escaped; custom heading ids {#x} are dropped;
-// ```recipe blocks become <RecipeFor> (the real in-game recipe, with a fallback text if the recipe is missing,
-// e.g. the ME bridge without AE2); /docs/page#anchor links become page.md links.
+// ```recipe blocks become <RecipesFor> – every recipe the game loaded for that item, so a modpack's changes and
+// additions show (a run of recipe blocks for the same item, e.g. a recipe and its *_fallback, becomes one tag) – with a
+// fallback text if there is none (e.g. the ME bridge without AE2); items of other mods (the GuideME guide item, which
+// every GuideME guide shares) use <Recipe> with our recipe id; /docs/page#anchor links become page.md links.
 
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
@@ -82,8 +84,13 @@ export function convert(id: string, lang: Lang, markdown: string, position: numb
       while (j < lines.length && !/^```\s*$/.test(lines[j])) body.push(lines[j++]);
       i = j;
       if (fence[1] === "recipe") {
-        const recipe = JSON.parse(body.join("\n")) as { result: string };
-        out.push(`<RecipeFor id="${recipe.result}" fallbackText="${FALLBACK[lang]}" />`);
+        const recipe = JSON.parse(body.join("\n")) as { result: string; file?: string };
+        const tag =
+          recipe.result.startsWith("cccloud:") || !recipe.file
+            ? `<RecipesFor id="${recipe.result}" fallbackText="${FALLBACK[lang]}" />`
+            : `<Recipe id="cccloud:${recipe.file}" fallbackText="${FALLBACK[lang]}" />`;
+        // the next recipe of the same item right below is already shown by this tag
+        if (out[out.length - 1] !== tag) out.push(tag);
       } else {
         out.push("```" + fence[1], ...body, "```");
       }

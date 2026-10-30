@@ -32,27 +32,27 @@ CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard i
 Zutaten mit „(beliebig)“ akzeptieren jede Variante aus dem Tag (z. B. jeden Goldbarren). JEI/EMI zeigen im Spiel dieselben Rezepte.
 
 ### Cloud Core
-<RecipeFor id="cccloud:cloud_core" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_core" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud Mainframe
-<RecipeFor id="cccloud:cloud_mainframe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_mainframe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud Uplink
-<RecipeFor id="cccloud:cloud_uplink" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_uplink" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Advanced Cloud Uplink
-<RecipeFor id="cccloud:advanced_cloud_uplink" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:advanced_cloud_uplink" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### Cloud-Sonde
-<RecipeFor id="cccloud:cloud_probe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_probe" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 Ohne Allthemodium ersetzen 4 Diamanten und 2 Netheritschrott die Vibranium-Barren (alle Rezepte: JEI/EMI oder die Rezeptseite).
 
 ### Cloud Link Card
-<RecipeFor id="cccloud:cloud_link_card" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:cloud_link_card" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ### ME- und RS Cloud Bridge
-<RecipeFor id="cccloud:me_cloud_bridge" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
-<RecipeFor id="cccloud:rs_cloud_bridge" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:me_cloud_bridge" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+<RecipesFor id="cccloud:rs_cloud_bridge" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
 ## Mainframe aufstellen
 
