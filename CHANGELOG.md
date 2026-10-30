@@ -15,6 +15,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   nor shown for 30 days are deleted (new config `mapTileMaxAgeDays`, 0 keeps them).
 - Production statistics: a huge stock change (thousands of item types at once, e.g. emptying a drive) no longer creates
   a short-lived statistics entry for every changed item; only the items that will be tracked are created.
+- Railcraft Reborn: new cards for iron and steel tanks, coke ovens and blast furnaces. Like the steam boiler, an uplink
+  or a Cloud Probe on any block of the formed multiblock shows the whole structure (fill and fluid; cooking progress,
+  creosote and output; smelting progress, fuel, output and slag).
 - Discord bot deployment: a NetworkPolicy (nothing in; out only DNS and HTTPS to public addresses) and how to pin the
   image by digest (`discord-bot/README.md`); the image workflow shows the digest in its summary.
 

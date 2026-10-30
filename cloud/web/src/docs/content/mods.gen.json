@@ -336,9 +336,9 @@
    "mod": "Railcraft Reborn",
    "id": "railcraft",
    "version": "1.4.5",
-   "what": "**Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode)",
+   "what": "Multiblocks are read through their master block entity, so an uplink or a Cloud Probe on **any** block of the structure shows the formed multiblock: **Steam Boiler** card on any boiler block (firebox or tank): status + °C, temperature %, water %, steam %, burning; crit alert once when the water runs low while the boiler is hot (refilling a dry hot boiler makes it explode). **Iron / Steel Tank** card on any wall, gauge or valve: status, filled %, fluid, amount. **Coke Oven** card on any brick: status (cooking X / idle / creosote tank full), progress, creosote %, input, output; warn alert once when the creosote tank is full. **Blast Furnace** card on any brick: status, progress, burning, input, fuel (+ burn time left), output, slag",
    "controls": "none",
-   "tested": "yes (lone firebox, \"Not formed\")",
+   "tested": "yes (lone firebox and blast furnace brick: \"Not formed\"; a formed 3×3×3 coke oven and a 3×4×3 iron tank read from a corner block that is not the master: the master's output and fluid)",
    "skipped": false
   },
   {
