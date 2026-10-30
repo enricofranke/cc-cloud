@@ -403,6 +403,36 @@ def checkHandbook = tasks.register('checkHandbook', Exec) {
 }
 tasks.named('check') { dependsOn checkHandbook }
 
+// Dev tool: 32×32 inventory-style item icons for the website docs and the dashboard mock (docs/BUILD.md "Item icons
+// for the website and the mock"). `./gradlew exportIcons` writes build/item-icons/<namespace>/<path>.png for every id
+// listed by cloud/dev/icon-ids.ts, from a client-rendered icon store (run/saves/*/cccloud/icons or -PiconStores=a:b),
+// else drawn from the models of the vanilla client resources and the mod jars of the dev classpath. Never committed:
+// vanilla and third-party textures belong to Mojang and the mod authors.
+sourceSets {
+    iconExport {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+def iconExportIds = tasks.register('iconExportIds', Exec) {
+    description = 'Lists the item ids the website and the dashboard mock show icons for (node cloud/dev/icon-ids.ts).'
+    workingDir = projectDir
+    commandLine 'node', 'cloud/dev/icon-ids.ts', 'build/item-icons/ids.txt'
+    outputs.upToDateWhen { false }
+}
+tasks.register('exportIcons', JavaExec) {
+    group = 'documentation'
+    description = 'Writes item icons for the website and the dashboard mock to build/item-icons (not committed).'
+    dependsOn iconExportIds
+    classpath = sourceSets.iconExport.runtimeClasspath
+    mainClass = 'ai.ezfox.cccloud.icons.IconExport'
+    workingDir = projectDir
+    jvmArgs '-Djava.awt.headless=true'
+    args '--ids', 'build/item-icons/ids.txt', '--out', 'build/item-icons', '--mod-version', mod_version, '--stores-under', 'run/saves'
+    if (project.hasProperty('iconStores')) args '--store', project.property('iconStores').toString()
+    outputs.upToDateWhen { false }
+}
+
 // The release jar carries no GameTest data (test instances reference test functions that are only registered in
 // development and on the GameTest server); dev runs read the resources directly and keep them.
 tasks.named('jar', Jar) {
