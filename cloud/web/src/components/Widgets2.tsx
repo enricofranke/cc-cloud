@@ -55,7 +55,8 @@ export function Chart({ w }: W2Props) {
         <span class="w2-label">{w.label ?? w.id}</span>
         <span class="chart-now">
           {last === undefined ? "—" : fmt(last)}
-          {o.unit && <small> {o.unit}</small>}
+          {/* a label that already says the unit ("Iron Ingot /min") does not repeat it */}
+          {o.unit && !(w.label ?? "").trim().endsWith(String(o.unit)) && <small> {o.unit}</small>}
         </span>
       </div>
       <div class="chart-box screen">

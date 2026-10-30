@@ -7,7 +7,7 @@ import type { MainframeConn } from "../lib/conn.ts";
 import { getPref, setPref } from "../lib/store.ts";
 import { pushToast } from "../lib/ui.ts";
 import { lang, locale, t, type Key } from "../lib/i18n.ts";
-import { agoText } from "../lib/schedules.ts";
+import { durationText } from "../lib/schedules.ts";
 import { fmtFE } from "../lib/format.ts";
 import {
   fmtNum,
@@ -92,7 +92,7 @@ export function SeriesChart({ series, points, unit, label, height = 120 }: { ser
       </div>
       <figcaption class="prod-legend">
         {series.map((s) => (
-          <span key={s.cls} class={`lg ${s.cls}`}>
+          <span key={s.cls} class={`plg ${s.cls}`}>
             {s.label}
           </span>
         ))}
@@ -234,7 +234,7 @@ export default function ProductionPage({ conn }: { conn: MainframeConn }) {
           <div class="net-chips">
             <span class="chip-s chip-plain">{windowText(ov.window, ov.interval, L)}</span>
             <span class="chip-s chip-plain">{t("pr.sample", { s: ov.interval })}</span>
-            {ov.since && <span class="chip-s chip-plain">{t("pr.since", { ago: agoText(ov.since, L) })}</span>}
+            {ov.since && <span class="chip-s chip-plain">{t("pr.since", { t: durationText(Date.now() - ov.since, L) })}</span>}
           </div>
         )}
       </div>
@@ -410,7 +410,7 @@ function EnergyBlock({ e, ov, pin }: { e: EnergyStats; ov: Overview; pin: Compon
             { label: t("pr.out"), data: e.series.out, cls: "s-out" },
           ]}
         />
-        <table class="acc-table prod-cards">
+        <table class="prod-table">
           <thead>
             <tr>
               <th>{t("pr.card")}</th>
