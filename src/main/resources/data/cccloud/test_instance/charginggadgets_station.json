@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "charginggadgets"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:charginggadgets_station",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

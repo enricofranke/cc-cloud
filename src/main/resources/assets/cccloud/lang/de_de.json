@@ -297,6 +297,7 @@
   "cccloud.configuration.wiredMachineCards": "Maschinenkarten über CC-Kabel",
   "cccloud.configuration.peripheralCard": "Peripherie-Karte für andere CC-Peripheriegeräte",
   "cccloud.configuration.peripheralPollSeconds": "Peripherie-Karte: Sekunden zwischen Abfragen",
+  "cccloud.configuration.warpsCard": "Warps-Karte (FTB Essentials)",
   "cccloud.configuration.mffsRequirePin": "MFFS-Feldschalter braucht die PIN",
   "cccloud.configuration.server": "Server & Team",
   "cccloud.configuration.serverCard": "Server-Karte an Mainframes",

@@ -297,6 +297,7 @@
   "cccloud.configuration.wiredMachineCards": "Machine cards over CC cable",
   "cccloud.configuration.peripheralCard": "Peripheral card for other CC peripherals",
   "cccloud.configuration.peripheralPollSeconds": "Peripheral card: seconds between reads",
+  "cccloud.configuration.warpsCard": "Warps card (FTB Essentials)",
   "cccloud.configuration.mffsRequirePin": "MFFS field toggle needs the PIN",
   "cccloud.configuration.server": "Server & team",
   "cccloud.configuration.serverCard": "Server card on mainframes",

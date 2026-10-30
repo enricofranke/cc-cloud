@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "cookingforblockheads"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:cookingforblockheads_fridge",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

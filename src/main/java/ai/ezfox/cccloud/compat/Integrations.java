@@ -93,6 +93,17 @@ public final class Integrations {
         optional("pylons", () -> ai.ezfox.cccloud.compat.pylons.PylonCards::init);
         optional("arsmagicalegacy", () -> ai.ezfox.cccloud.compat.arsmagica.EtheriumCards::init);
 
+        // Wave 4: more ATM11 mods.
+        optional("justdirethings", () -> ai.ezfox.cccloud.compat.justdirethings.JustDireCards::init);
+        optional("productivetrees", () -> ai.ezfox.cccloud.compat.productivetrees.TreeMachineCards::init);
+        optional("rangedpumps", () -> ai.ezfox.cccloud.compat.rangedpumps.PumpCards::init);
+        optional("charginggadgets", () -> ai.ezfox.cccloud.compat.charginggadgets.ChargingStationCards::init);
+        optional("selling_bin", () -> ai.ezfox.cccloud.compat.sellingbin.SellingBinCards::init);
+        optional("cookingforblockheads", () -> ai.ezfox.cccloud.compat.cookingforblockheads.KitchenCards::init);
+        optional("farmingforblockheads", () -> ai.ezfox.cccloud.compat.farmingforblockheads.ShippingBinCards::init);
+        optional("trainingdummy", () -> ai.ezfox.cccloud.compat.trainingdummy.DummiesCard::init);
+        optional("ftbessentials", () -> ai.ezfox.cccloud.compat.ftbessentials.WarpsCard::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

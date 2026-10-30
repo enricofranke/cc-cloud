@@ -23,6 +23,7 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue GATEWAYS_CARD;
     public static final ModConfigSpec.BooleanValue WAYSTONES_CARD;
     public static final ModConfigSpec.BooleanValue QUESTS_CARD;
+    public static final ModConfigSpec.BooleanValue WARPS_CARD;
 
     static {
         var b = new ModConfigSpec.Builder();
@@ -80,6 +81,9 @@ public final class IntegrationConfig {
         QUESTS_CARD = b.comment("FTB Quests: a Quests card with the quest progress of the owner's team (needs view.positions).")
             .translation("cccloud.configuration.questsCard")
             .define("questsCard", true);
+        WARPS_CARD = b.comment("FTB Essentials: a read-only Warps card with the server's warps, their dimension and coordinates (needs view.positions).")
+            .translation("cccloud.configuration.warpsCard")
+            .define("warpsCard", true);
         b.pop();
         SPEC = b.build();
     }
