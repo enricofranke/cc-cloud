@@ -1438,3 +1438,49 @@ The Cloud Core (an ender pearl per two) would make a lamp more expensive than an
 Code: `rsdevice/` – `RsKind`, `RsDevice` (the dashboard copy, pure), `RsCards` (pure card builder, unit tested), `RsPlateBlock` / `RsLampBlock`, `RsDeviceBlockEntity` (one block entity type `cccloud:redstone_device` for all four), `RsDevices` (loaded devices, copies, cards; cards rebuilt at the end of a tick when a device changed and once a second, sent as value deltas when only values changed), `RsDeviceData` (SavedData), `RsGroupSection`, `RsDeviceMenu` / `RsScreens` / `RsScreenActions` and the client `client/gui/RsDeviceScreen`. Config section `[redstoneDevices]` plus the network/power keys above.
 
 **Tests:** unit tests `RsCardsTest` (grouping, automatic card, widgets per kind, ids, chunks of 32, PIN/confirm), `RsScreenActionsTest`, `RedstoneDeviceGraphTest` (capacity weight, FE rate), `RedstoneCardPermissionTest`, the permission walk and share tests (`rs_device`); GameTests `rsdevice_switch_faces` (all six faces incl. bottom/top: strong/weak power, analog levels, clicks), `rsdevice_button_pulse`, `rsdevice_lamp_levels` (dashboard toggle/slider, follow redstone, history range), `rsdevice_sensor_load` (lever on before placing, simulated chunk reload), `rsdevice_group_cards` (case-insensitive groups, automatic card, All on, regroup, break), `rsdevice_rule_scene` (sensor triggers a rule that follows the lamp to its new card; scene dims the lamp), `rsdevice_permissions` (act.redstone, viewer/operator/deny, PIN, rate limit, link takeover), `rsdevice_capacity_power`; web tests `redstone-devices.test.ts`.
+
+## Live recipes in the dashboard docs (requested 2026-10-30)
+Modpacks (All the Mods via KubeJS, CraftTweaker, datapacks) change recipes. JEI/EMI and the in-game handbook (GuideME `<RecipeFor>`) show the recipes the server loaded, but the dashboard's `/docs` showed the defaults baked into `recipes.gen.json` – on a modpack server possibly wrong grids. Now the dashboard asks the server.
+
+### `GET /api/recipes` (mod side)
+- **Public**, decided like the docs themselves (`/docs` is a static file) and like `/api/icon` and `/api/config`: recipes are game data that JEI shows every player, no secrets. The route `RECIPES` is explicitly allow-listed in `Router`, read-only (GET only), and still behind the LAN-only rule, IP bans, the Host check and the security headers; no CORS; **60 requests per minute per IP** (`429 rate_limited`). It lists only recipes of our items and our recipe ids, nothing else of the recipe manager.
+- Answer: `application/json`, `Cache-Control: no-cache` with an `ETag` (`If-None-Match` → `304`), `404 not_available` if the catalog cannot be built, `503 unavailable` if the server thread does not answer within 5 s.
+```json
+{"v":1,
+ "recipes":[
+  {"id":"cccloud:cloud_core","file":"cloud_core","status":"default","kind":"shaped","type":"minecraft:crafting_shaped","result":"cccloud:cloud_core","count":2,
+   "grid":["ABA","BCB","ABA"],"key":{"A":"#c:nuggets/gold","B":"minecraft:prismarine_crystals","C":"#c:ender_pearls"}},
+  {"id":"kubejs:cheap_core","status":"added","kind":"shapeless","type":"minecraft:crafting_shapeless","result":"cccloud:cloud_core","shapeless":true,
+   "items":["minecraft:ender_pearl","minecraft:oak_planks|minecraft:spruce_planks"]},
+  {"id":"kubejs:smelted_core","status":"added","kind":"other","type":"minecraft:smelting","result":"cccloud:quantum_core","station":"minecraft:furnace","items":["#c:ender_pearls"]}],
+ "removed":["cccloud:cloud_sensor"],
+ "inactive":["cccloud:cloud_probe"],
+ "icons":{"#c:nuggets/gold":"minecraft:gold_nugget"},
+ "names":{"mekanism:nugget_steel":"Steel Nugget"},
+ "truncated":false}
+```
+- **Which recipes:** every recipe of the recipe manager whose id is `cccloud:*` or whose result is a `cccloud:` item (checked through the recipe manager's cached recipe-book displays, so scanning a big pack's recipes is cheap). Shaped/shapeless crafting comes with `grid` + `key` / `items` in the shape of the docs' ```` ```recipe ```` blocks (`file` = the id's path for our ids); other types with a display (smelting, stonecutting, smithing, modded types that implement `Recipe#display`) as `kind:"other"` with their inputs (`items`) and `station`; a recipe under our id without any display only with its `type`. Grids larger than 3×3 (extended crafting tables) list their distinct ingredients with `large:true`.
+- **Ingredients:** an item id, a tag `#ns:path` or alternatives `a|b` (at most 8). `icons`: a representative item per tag from the server's tag contents (a `minecraft:` member when there is one, so AlmostUnified-style packs show their material). `names`: English names (server language) of the items named, at most 512, never untranslated keys.
+- **Status**, compared with the mod's own recipe files – `data/cccloud/recipe/*.json` of the pack `mod/cccloud` in the server's resource manager, whatever datapacks put on top: `default` (same kind, result, count and ingredients; shapeless in any order; grids trimmed of empty outer rows/columns like vanilla), `changed` (same id, other content), `added` (no file of ours with that id). `removed` lists our files whose conditions hold but whose recipe is not loaded (a datapack file with the condition `neoforge:never`, KubeJS `remove`); `inactive` those whose `neoforge:conditions` do not hold here (the AllTheModium variants without AllTheModium, `*_fallback` and `ender_fiber_link` with it, the bridges without AE2/RS, the handbook without GuideME) – by design, not a pack change. NeoForge's built-in condition types (`always`, `never`, `not`, `and`, `or`, `mod_loaded`) are evaluated directly, other types through NeoForge's condition codec; an unreadable condition counts as holding.
+- **Limits and cache:** at most 256 recipes (`truncated:true`), 16 inputs of a non-crafting recipe, 9 of a shapeless one. Built on the server thread on the first request and cached until the recipe manager changes (identity check; also dropped by `OnDatapackSyncEvent` after `/reload` – which is also how KubeJS recipe changes arrive – and on server stop).
+- Code: `recipes/RecipeCatalog` (cache, defaults, conditions, build), `recipes/RecipeShape` (the normalized shape from a recipe display or from a recipe JSON), `HttpHandler.recipes`, `GameBridge.recipes()`.
+
+### Dashboard
+- `/docs` fetches `/api/recipes` once per page load (`docs/live.ts`: `parseCatalog` checks shape, ids and bounds and drops what does not fit; `applyLive` merges). Each ```` ```recipe ```` block with a `file` is matched by id `cccloud:<file>`:
+  - `default` → the server's grid (the same);
+  - `changed` → the server's grid with the badge **Changed by this server/modpack**, the default under "Default recipe";
+  - `removed` → the default greyed out with **Not craftable on this server**;
+  - `inactive` → one muted line ("Cloud Probe: Needs AllTheModium – not active on this server");
+  - after the last recipe of an item: the server's `added` recipes for it (**Added by this server/modpack**), and – if none of the page's recipes for that item works here – the server's working ones (the fallback probe on the start page of a server without AllTheModium). On "All recipes", added recipes for items without a docs recipe get a section "Added by this server" before "For pack makers".
+- The recipes page says above the grids "Live recipes of this server. 1 changed · 2 added · 1 removed" (or "All as shipped with the mod."). Without a catalog – the dev mock, offline, an older server: anything but a valid v1 answer – the generated defaults show as before, with "The mod's default recipes – this server's live recipes could not be loaded …".
+- Icons through `/api/icon` (a tag: the server's representative item, else the docs' own); names: the docs' DE/EN names, then the server's English names, then the id.
+
+### Website, handbook, pack makers
+- The website renders the same docs content without a server, so it shows the defaults, with the note "Default recipes – your modpack may change them; the in-game handbook, JEI and your dashboard show the live ones." (DE/EN) under the title of the recipes page.
+- The in-game handbook shows the live recipes by itself (GuideME reads the client's recipe map).
+- The recipes page ends with **For pack makers**: stable recipe ids (a generated table: id, result, when it loads), `c:` tags (unification mods such as AlmostUnified), the conditional AllTheModium recipes with their `*_fallback` variants, removing a recipe with a `neoforge:never` datapack file, a KubeJS example (`replaceInput` keeps the id → "changed"; `remove` + an own id → "not craftable" + "added"), and that the FTB Quests chapters use item tasks, never recipes.
+
+### Tests
+- Unit: `RecipeCatalogTest` (every recipe file of the mod normalizes and fits 3×3; conditions; a hand-made "server" with an overridden, a removed, an added and an inactive recipe, tags, alternatives and a shapeless recipe in another order; size bound and ETag; only `mod/cccloud` counts as default), `RecipeRouteTest` (public and read-only, ETag/304, 404 without a game, 60/min, LAN-only), the route and permission walks.
+- GameTest `recipes_live_catalog`: GameTest runs (`-Dcccloud.gametest=true`) enable the datapack `testpacks/live_recipes` through `AddPackFindersEvent` (excluded from the release jar) that overrides the Cloud Lamp, removes the Cloud Sensor and adds a Cloud Core recipe in its own namespace. The test checks those three, that every other loaded recipe of ours comes out `default` (the JSON comparison agrees with the decoded recipes for all of them), that the conditional variants follow the loaded mods, the tag icons and names, the cache, and the same document over HTTP.
+- Web: `live-recipes.test.ts` (parsing and hostile input, badges, merging on the recipes page and on other pages, the fallback, names and icons, the pack makers section).
