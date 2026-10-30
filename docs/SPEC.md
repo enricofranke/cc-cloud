@@ -1526,7 +1526,8 @@ The bottlenecks and the fixes:
   or once a minute, and maps of more than 200 devices leave out the links a device does not use (`unusedLinks` counts
   them; a 500-device map 538 KB → 276 KB).
 - **In-game screens.** The mainframe screen gets a compact network (short node ids, x/z only, tree links only, at most
-  1000 devices with problems first, `more` = the rest) and only when its content changed (`netV`; the screen keeps the
+  600 devices with problems first, names cut to 32 characters, `more` = the rest; a view still over the limit goes without
+  the network) and only when its content changed (`netV`; the screen keeps the
   last one). Displays read the hub's cached section text.
 - **Dashboard.** The layout is resolved only when the structure changes (`MainframeConn.structure`), value deltas swap in
   new widget objects for the cards they touch (`lib/hydrate.ts`) and only those cards render again; on pages with more
@@ -1549,7 +1550,7 @@ The bottlenecks and the fixes:
 | Browser backlog | 1 MB write buffer + 4 MB or 10 s | then 1013 `too slow`, the browser reconnects |
 | Compression | ~300 KB deflate state per open browser | inflated frames ≤ 257 KB |
 | Tablet queue | 4096 messages | then a fresh snapshot |
-| Mainframe screen | 1000 devices, view ≤ 256 KB | the dashboard's Network page shows all |
+| Mainframe screen | 600 devices (≤ ~110 KB), view ≤ 256 KB | the dashboard's Network page shows all |
 | Network map | links of devices not on their route left out above 200 devices | |
 
 Memory of the hub per section: the published section (head + one immutable state per widget, the widget definition

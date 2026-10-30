@@ -186,6 +186,40 @@ class WebHubScaleTest {
     }
 
     @Test
+    void biggestSectionsFitAnInGamePayload() throws Exception {
+        // the largest section a script can publish: 64 widgets (with pages), every one a 300-point chart with long texts
+        for (int i = 0; i < 3; i++) {
+            var json = new JsonObject();
+            json.addProperty("uplinkId", UUID.randomUUID().toString());
+            json.addProperty("title", "t".repeat(48));
+            json.addProperty("online", true);
+            var widgets = new JsonArray();
+            for (int w = 0; w < 64; w++) {
+                var widget = new JsonObject();
+                widget.addProperty("id", "w".repeat(30) + w);
+                widget.addProperty("type", "chart");
+                widget.addProperty("label", "l".repeat(48));
+                var opts = new JsonObject();
+                opts.addProperty("points", 300);
+                opts.addProperty("unit", "u".repeat(16));
+                widget.add("opts", opts);
+                var history = new JsonArray();
+                for (int p = 0; p < 300; p++) history.add(123456.789 + p);
+                widget.add("history", history);
+                widgets.add(widget);
+            }
+            json.add("widgets", widgets);
+            hub.publishUplink(mainframe, json);
+        }
+        var session = new Session(mainframe, true);
+        hub.addSession(session);
+        long until = System.currentTimeMillis() + 5000;
+        while (session.received().size() < 4 && System.currentTimeMillis() < until) Thread.sleep(5);
+        int largest = session.received().stream().mapToInt(String::length).max().orElse(0);
+        assertTrue(largest < ai.ezfox.cccloud.ingame.InGamePayloads.MAX_DATA / 4, "largest in-game message " + largest);
+    }
+
+    @Test
     void historyIndexFollowsPublishAndRemove() {
         String a = UUID.randomUUID().toString();
         var json = section(a, 1);

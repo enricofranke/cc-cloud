@@ -644,7 +644,9 @@ public final class NetworkService {
     public static final int TRIM_LINKS_ABOVE = 200;
 
     /** Device nodes the in-game mainframe screen gets at most (docs/SPEC.md "Scaling"); the rest is counted in {@code more}. */
-    public static final int SCREEN_MAX_DEVICES = 1000;
+    public static final int SCREEN_MAX_DEVICES = 600;
+    /** Names on the screen are cut to this (the tree row cannot show more). */
+    static final int SCREEN_NAME = 32;
 
     /** A compact network for the in-game screen, its content hash, and the recomputation it was built from. */
     public record ScreenNetwork(JsonObject json, long version, long builtAt) {
@@ -715,7 +717,8 @@ public final class NetworkService {
             var o = new JsonObject();
             o.addProperty("id", shortId.get(str(n, "id")));
             o.addProperty("type", str(n, "type"));
-            o.addProperty("name", str(n, "name"));
+            String name = str(n, "name");
+            o.addProperty("name", name.length() > SCREEN_NAME ? name.substring(0, SCREEN_NAME) : name);
             o.addProperty("status", str(n, "status"));
             String parent = n.has("parent") ? shortId.get(str(n, "parent")) : null;
             if (parent != null) o.addProperty("parent", parent);

@@ -120,7 +120,7 @@ public final class GuiViews {
                 json.addProperty("accountCodeSeconds", Math.max(0, (account.expiresAt() - System.currentTimeMillis()) / 1000));
             }
         }
-        if (!manage || server == null) return Json.GSON.toJson(json);
+        if (!manage || server == null) return fit(json, netV);
 
         var auth = WebAuthData.get(server);
         var id = mainframe.getMainframeId();
@@ -131,6 +131,16 @@ public final class GuiViews {
         if (resolution.has(ai.ezfox.cccloud.access.Perm.PIN_MANAGE)) json.addProperty("pinSet", auth.hasPin(id));
         if (devicesOk) devicesJson(json, auth, id, player, now);
         if (accessOk) accessJson(json, mainframe, server, id, now);
+        return fit(json, netV);
+    }
+
+    /** Last resort: a view over the update limit goes without the network (the screen shows none instead of nothing). */
+    private static String fit(JsonObject json, long @Nullable [] netV) {
+        String text = Json.GSON.toJson(json);
+        if (text.length() <= ai.ezfox.cccloud.gui.CloudMenu.MAX_VIEW || !json.has("network")) return text;
+        json.remove("network");
+        json.remove("netV");
+        if (netV != null) netV[0] = -1;
         return Json.GSON.toJson(json);
     }
 
