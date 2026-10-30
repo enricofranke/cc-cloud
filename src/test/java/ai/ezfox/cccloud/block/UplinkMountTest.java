@@ -116,8 +116,25 @@ class UplinkMountTest {
         }
     }
 
+    @Test
+    void blockstatesUseTheEnumValues() throws IOException {
+        // a value the enum does not know would only show up as a model loading error on a client
+        var expected = new java.util.TreeSet<String>();
+        for (var m : UplinkMount.values()) expected.add(m.getSerializedName());
+        for (var block : new String[]{"cloud_uplink", "advanced_cloud_uplink"}) {
+            var seen = new java.util.TreeSet<String>();
+            for (var part : json("assets/cccloud/blockstates/" + block + ".json").getAsJsonArray("multipart")) {
+                seen.add(part.getAsJsonObject().getAsJsonObject("when").get("mount").getAsString());
+            }
+            assertEquals(expected, seen, block);
+        }
+    }
+
     private static JsonObject model(String name) throws IOException {
-        String rel = "assets/cccloud/models/block/" + name + ".json";
+        return json("assets/cccloud/models/block/" + name + ".json");
+    }
+
+    private static JsonObject json(String rel) throws IOException {
         InputStream in = UplinkMountTest.class.getClassLoader().getResourceAsStream(rel);
         if (in == null) in = Files.newInputStream(Path.of("src/main/resources", rel));
         try (var reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
