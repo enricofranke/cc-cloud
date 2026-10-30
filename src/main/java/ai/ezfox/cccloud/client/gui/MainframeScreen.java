@@ -276,6 +276,8 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         }
         if (root != null) treeRows(root, 0, byParent, signals);
         for (var n : orphans) treeRow(n, 1, signals);
+        // Very big networks: the screen lists the first devices (problems first); the dashboard shows all of them.
+        if (network.has("more")) textRow(Component.translatable("cccloud.gui.network_more", network.get("more").getAsInt()), CloudGui.TEXT_DIM);
     }
 
     private void treeRows(com.google.gson.JsonObject node, int depth, java.util.Map<String, List<com.google.gson.JsonObject>> byParent,
@@ -326,17 +328,18 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         // Grid
         for (int gx = x; gx < x + w; gx += 10) g.fill(gx, y, gx + 1, y + h, 0xFF151D22);
         for (int gy = y; gy < y + h; gy += 10) g.fill(x, gy, x + w, gy + 1, 0xFF151D22);
-        String dim = null;
+        // Compact screen network: nodes in the mainframe's dimension carry no "dim" (the network's "dim" is that one).
+        String dim = str(network, "dim");
         var points = new java.util.HashMap<String, int[]>();
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
         var nodes = network.getAsJsonArray("nodes");
         for (var e : nodes) {
             var n = e.getAsJsonObject();
-            if ("mainframe".equals(str(n, "type"))) dim = str(n, "dim");
+            if (dim.isEmpty() && "mainframe".equals(str(n, "type"))) dim = str(n, "dim");
         }
         for (var e : nodes) {
             var n = e.getAsJsonObject();
-            if (!n.has("pos") || !str(n, "dim").equals(dim)) continue;
+            if (!n.has("pos") || !(n.has("dim") ? str(n, "dim") : str(network, "dim")).equals(dim)) continue;
             var p = n.getAsJsonObject("pos");
             minX = Math.min(minX, p.get("x").getAsDouble());
             maxX = Math.max(maxX, p.get("x").getAsDouble());
@@ -349,7 +352,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         double cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
         for (var e : nodes) {
             var n = e.getAsJsonObject();
-            if (!n.has("pos") || !str(n, "dim").equals(dim)) continue;
+            if (!n.has("pos") || !(n.has("dim") ? str(n, "dim") : str(network, "dim")).equals(dim)) continue;
             var p = n.getAsJsonObject("pos");
             int px = x + w / 2 + (int) Math.round((p.get("x").getAsDouble() - cx) * scale);
             int pz = y + h / 2 + (int) Math.round((p.get("z").getAsDouble() - cz) * scale);

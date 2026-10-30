@@ -29,6 +29,8 @@ public abstract class CloudMenu extends AbstractContainerMenu {
     private int viewVersion;
     /** Server side: the last view sent, to only send changes. */
     @Nullable String lastSent;
+    /** Server side: the version of the network the screen has (mainframe screen; -1 = none), see GuiViews#mainframe. */
+    long sentNetV = -1;
 
     protected CloudMenu(MenuType<?> type, int id, BlockPos pos, String view) {
         super(type, id);

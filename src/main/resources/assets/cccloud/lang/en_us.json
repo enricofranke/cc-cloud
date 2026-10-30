@@ -227,6 +227,7 @@
   "cccloud.gui.tab.network": "Network",
   "cccloud.gui.map": "Map",
   "cccloud.gui.network_empty": "Nothing connected yet.",
+  "cccloud.gui.network_more": "… and %s more devices (all of them are on the dashboard's Network page)",
   "cccloud.gui.legacy": "Out of range (legacy link) – place a relay or re-link",
   "cccloud.gui.no_route_hint": "%s device(s) have no route to the mainframe – place a Cloud Relay in between.",
   "cccloud.gui.power_breakdown": "Power",

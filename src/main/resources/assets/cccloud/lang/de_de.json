@@ -227,6 +227,7 @@
   "cccloud.gui.tab.network": "Netzwerk",
   "cccloud.gui.map": "Karte",
   "cccloud.gui.network_empty": "Noch nichts verbunden.",
+  "cccloud.gui.network_more": "… und %s weitere Geräte (alle stehen auf der Netzwerk-Seite des Dashboards)",
   "cccloud.gui.legacy": "Außer Reichweite (alte Verbindung) – Relais setzen oder neu verbinden",
   "cccloud.gui.no_route_hint": "%s Gerät(e) haben keine Route zum Mainframe – ein Cloud-Relais dazwischen setzen.",
   "cccloud.gui.power_breakdown": "Strom",

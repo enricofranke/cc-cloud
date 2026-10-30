@@ -107,12 +107,14 @@ public final class GuiNetwork {
         if (resolution.source() == ai.ezfox.cccloud.access.AccessResolver.Source.SERVER_ADMIN && player.level().getServer() != null) {
             ai.ezfox.cccloud.access.Access.auditAdmin(player.level().getServer(), mainframe.getMainframeId(), player.getGameProfile().name(), "Screen opened by admin");
         }
-        String view = GuiViews.mainframe(mainframe, player, null);
+        long[] netV = {-1};
+        String view = GuiViews.mainframe(mainframe, player, null, -1, netV);
         var pos = mainframe.getBlockPos();
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, inv, pos, view, mainframe.upgrades(),
                 who -> who instanceof ServerPlayer sp && mainframe.has(sp, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)),
                 Component.translatable("block.cccloud.cloud_mainframe")),
             buf -> writeOpen(buf, pos, view));
+        if (player.containerMenu instanceof MainframeMenu menu) menu.sentNetV = netV[0];
         sendLargeView(player, view);
     }
 
@@ -517,7 +519,13 @@ public final class GuiNetwork {
 
     private static @Nullable String view(ServerPlayer player, CloudMenu menu, @Nullable String notice) {
         var be = player.level().getBlockEntity(menu.pos());
-        if (menu instanceof MainframeMenu && be instanceof CloudMainframeBlockEntity mainframe) return GuiViews.mainframe(mainframe, player, notice);
+        if (menu instanceof MainframeMenu && be instanceof CloudMainframeBlockEntity mainframe) {
+            // The network goes along only when it changed since the screen got it (it is big on large bases).
+            long[] netV = {-1};
+            String view = GuiViews.mainframe(mainframe, player, notice, menu.sentNetV, netV);
+            menu.sentNetV = netV[0];
+            return view;
+        }
         if (menu instanceof UplinkMenu && be instanceof CloudUplinkBlockEntity uplink) return GuiViews.uplink(uplink, player, notice);
         if (menu instanceof UplinkMenu && be instanceof ai.ezfox.cccloud.bridge.BridgeHost bridge) return GuiViews.bridge(bridge, player, notice);
         if (menu instanceof UplinkMenu && be instanceof ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) return GuiViews.relay(relay, player, notice);

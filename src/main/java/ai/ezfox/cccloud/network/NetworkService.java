@@ -73,6 +73,7 @@ public final class NetworkService {
 
     public static void clear() {
         RESULTS.clear();
+        SCREEN.clear();
         ROUTES.clear();
         COUNTS.clear();
         SERVING.clear();
@@ -547,6 +548,101 @@ public final class NetworkService {
         }
         json.add("routes", routes);
         return json;
+    }
+
+    /** Device nodes the in-game mainframe screen gets at most (docs/SPEC.md "Scaling"); the rest is counted in {@code more}. */
+    public static final int SCREEN_MAX_DEVICES = 1000;
+
+    /** A compact network for the in-game screen, its content hash, and the recomputation it was built from. */
+    public record ScreenNetwork(JsonObject json, long version, long builtAt) {
+    }
+
+    private static final Map<UUID, ScreenNetwork> SCREEN = new HashMap<>();
+
+    /**
+     * The network as the in-game mainframe screen shows it (tree list and mini map): short node ids ({@code n0} is the
+     * mainframe), only name, type, status, parent, x/z and the dimension when it differs from the mainframe's, and only
+     * the links of the tree. Devices with problems come first; at most {@link #SCREEN_MAX_DEVICES} device nodes, the
+     * rest is counted in {@code more}. Rebuilt once per network recomputation and shared by every open screen;
+     * {@code version} changes only when the content does, so open screens get it again only then.
+     */
+    public static @Nullable ScreenNetwork screenNetwork(CloudMainframeBlockEntity mainframe) {
+        var result = RESULTS.get(mainframe.getMainframeId());
+        if (result == null) return null;
+        var cached = SCREEN.get(mainframe.getMainframeId());
+        if (cached != null && cached.builtAt() == recomputations) return cached;
+        var full = toJson(mainframe, result, true);
+        var json = compactForScreen(full, NetworkService.dim(mainframe.getLevel()), SCREEN_MAX_DEVICES);
+        var built = new ScreenNetwork(json, ai.ezfox.cccloud.uplink.Json.GSON.toJson(json).hashCode() & 0xffffffffL, recomputations);
+        SCREEN.put(mainframe.getMainframeId(), built);
+        return built;
+    }
+
+    /** Pure: the compact screen form of a {@link #toJson} network (unit tested). */
+    public static JsonObject compactForScreen(JsonObject full, String mainframeDim, int maxDevices) {
+        var nodes = full.getAsJsonArray("nodes");
+        var ordered = new ArrayList<JsonObject>();
+        var devices = new ArrayList<JsonObject>();
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            boolean device = n.has("uplinkId");
+            (device ? devices : ordered).add(n);
+        }
+        // problems first (they are what a player opens the screen for), then by name
+        devices.sort(java.util.Comparator.comparingInt((JsonObject n) -> "online".equals(str(n, "status")) || "unloaded".equals(str(n, "status")) ? 1 : 0)
+            .thenComparing(n -> str(n, "name")));
+        int more = Math.max(0, devices.size() - maxDevices);
+        ordered.addAll(devices.subList(0, Math.min(devices.size(), maxDevices)));
+        var shortId = new HashMap<String, String>();
+        for (int i = 0; i < ordered.size(); i++) shortId.put(str(ordered.get(i), "id"), "n" + i);
+        var outNodes = new JsonArray();
+        for (var n : ordered) {
+            var o = new JsonObject();
+            o.addProperty("id", shortId.get(str(n, "id")));
+            o.addProperty("type", str(n, "type"));
+            o.addProperty("name", str(n, "name"));
+            o.addProperty("status", str(n, "status"));
+            String parent = n.has("parent") ? shortId.get(str(n, "parent")) : null;
+            if (parent != null) o.addProperty("parent", parent);
+            if (n.has("flags")) o.add("flags", n.get("flags"));
+            if (n.get("pos") instanceof JsonObject p) {
+                var pos = new JsonObject();
+                pos.add("x", p.get("x"));
+                pos.add("z", p.get("z"));
+                o.add("pos", pos);
+            }
+            String dim = str(n, "dim");
+            if (!dim.isEmpty() && !dim.equals(mainframeDim)) o.addProperty("dim", dim);
+            outNodes.add(o);
+        }
+        // only the links of the tree: each node's link to its parent
+        var parentOf = new HashMap<String, String>();
+        for (var n : ordered) if (n.has("parent")) parentOf.put(str(n, "id"), str(n, "parent"));
+        var outLinks = new JsonArray();
+        for (var e : full.getAsJsonArray("links")) {
+            var l = e.getAsJsonObject();
+            String a = str(l, "a"), b = str(l, "b");
+            boolean tree = a.equals(parentOf.get(b)) || b.equals(parentOf.get(a));
+            if (!tree || !shortId.containsKey(a) || !shortId.containsKey(b)) continue;
+            var o = new JsonObject();
+            o.addProperty("a", shortId.get(a));
+            o.addProperty("b", shortId.get(b));
+            o.add("signal", l.get("signal"));
+            o.add("kind", l.get("kind"));
+            if (l.has("medium")) o.add("medium", l.get("medium"));
+            outLinks.add(o);
+        }
+        var json = new JsonObject();
+        json.addProperty("dim", mainframeDim);
+        json.add("nodes", outNodes);
+        json.add("links", outLinks);
+        if (more > 0) json.addProperty("more", more);
+        return json;
+    }
+
+    private static String str(JsonObject o, String key) {
+        var e = o.get(key);
+        return e != null && e.isJsonPrimitive() ? e.getAsString() : "";
     }
 
     private static String deviceTypeId(UUID mainframeId, NetworkGraph.Device device, @Nullable DashboardSection section) {
