@@ -23,6 +23,8 @@ Build a **Cloud Mainframe**, attach **Uplinks** to your computers and machines, 
 
 No external service, no account, no relay: the dashboard is served by the mod itself.
 
+Made by **[Enrico Franke](https://github.com/enricofranke)**.
+
 ## Features
 
 | | |
@@ -152,5 +154,5 @@ cd cloud && npx pnpm@10 install && npx pnpm@10 dev   # dashboard with a mock ser
 
 ## Credits & license
 
-CC: Cloud is licensed under the [Mozilla Public License 2.0](LICENSE). All textures and models are original work.
+CC: Cloud is created by [Enrico Franke](https://github.com/enricofranke) and licensed under the [Mozilla Public License 2.0](LICENSE). All textures and models are original work.
 Built on [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) by SquidDev and contributors – not affiliated with or endorsed by the CC: Tweaked team, Mojang or Microsoft.
