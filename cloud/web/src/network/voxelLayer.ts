@@ -105,8 +105,11 @@ export class VoxelLayer {
     for (let i = 0; i < n; i++) {
       const w = new Worker(new URL("./voxelWorker.ts", import.meta.url), { type: "module" });
       w.postMessage({ type: "init", index: i, count: n });
-      w.onmessage = (ev: MessageEvent<{ type: "region"; key: string; mesh: RegionMesh } | { type: "idle" }>) => {
-        if (ev.data.type === "region") this.applyRegion(ev.data.key, ev.data.mesh);
+      w.onmessage = (ev: MessageEvent<{ type: "region"; gen: number; key: string; mesh: RegionMesh } | { type: "idle" }>) => {
+        // meshes of an earlier load (another dimension) that were still in the worker are dropped
+        if (ev.data.type === "region") {
+          if (ev.data.gen === this.gen) this.applyRegion(ev.data.key, ev.data.mesh);
+        }
         else if (this.busy[i]) {
           this.busy[i] = false;
           this.onChange();
@@ -124,7 +127,7 @@ export class VoxelLayer {
     if (same) return this.pump();
     this.clear();
     const gen = ++this.gen;
-    for (const w of this.workers) w.postMessage({ type: "reset" });
+    for (const w of this.workers) w.postMessage({ type: "reset", gen });
     this.queue = sectionsAround(src.nodes, src.radius, src.focus);
     this.total = this.queue.length;
     this.loaded = 0;

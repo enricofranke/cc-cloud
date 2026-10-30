@@ -9,6 +9,7 @@ const world = new VoxelWorld();
 const dirty = new Set<string>();
 /** Regions this worker has sent a mesh for (an emptied region must be sent once more, empty). */
 const meshed = new Set<string>();
+let gen = 0;
 let index = 0;
 let count = 1;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -19,7 +20,7 @@ type In =
   | { type: "init"; index: number; count: number }
   | { type: "sections"; list: Section[] }
   | { type: "drop"; list: [number, number, number][] }
-  | { type: "reset" };
+  | { type: "reset"; gen: number };
 
 const post = (msg: unknown, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(msg, transfer);
 
@@ -31,6 +32,7 @@ self.onmessage = (ev: MessageEvent<In>) => {
     return;
   }
   if (m.type === "reset") {
+    gen = m.gen;
     world.sections.clear();
     dirty.clear();
     meshed.clear();
@@ -97,7 +99,7 @@ function flush() {
     const t0 = performance.now();
     const mesh = meshRegion(world, rx * REGION, ry * REGION, rz * REGION, REGION);
     const transfer = [mesh.opaque, mesh.light, mesh.water, mesh.glass].flatMap((d) => [d.pos.buffer, d.col.buffer, d.idx.buffer]).concat([mesh.glow.pos.buffer, mesh.glow.col.buffer]);
-    post({ type: "region", key, mesh, ms: performance.now() - t0 }, transfer);
+    post({ type: "region", gen, key, mesh, ms: performance.now() - t0 }, transfer);
   }
   dirty.clear();
   post({ type: "idle" });
