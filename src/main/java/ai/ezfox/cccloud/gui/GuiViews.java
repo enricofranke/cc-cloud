@@ -222,6 +222,7 @@ public final class GuiViews {
         card(json, section.snapshot(), section.sectionId(), link);
         link(json, player, link, be.getLevel(), be.getBlockPos(), section.sectionId(),
             ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.graph.NetworkGraph.DeviceType.BRIDGE), null);
+        claim(json, player, section.claimBlock(), link);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
     }
@@ -246,6 +247,7 @@ public final class GuiViews {
         link(json, player, link, uplink.getLevel(), uplink.getBlockPos(), uplink.getUplinkId(),
             ai.ezfox.cccloud.network.NetworkService.deviceRange(ai.ezfox.cccloud.network.NetworkService.deviceType(uplink)), uplink.routeState());
         boolean canEdit = bool(json, "canUnlink");
+        claim(json, player, uplink.claimBlock(), link);
         if (uplink.isProbe()) probe(json, uplink, !bool(json, "linked") || canEdit);
         var elsewhere = uplink.exposedElsewhere();
         if (elsewhere != null) json.addProperty("exposedElsewhere", elsewhere.getSerializedName());
@@ -262,6 +264,17 @@ public final class GuiViews {
         json.add("redstone", redstone);
         if (notice != null) json.addProperty("notice", notice);
         return Json.GSON.toJson(json);
+    }
+
+    /**
+     * Claim guard (docs/SECURITY.md "Claims"): {@code claim: {team}} while the device is blocked; the team's name only
+     * for players with {@code view.positions} on its mainframe (like the dashboard).
+     */
+    public static void claim(JsonObject json, ServerPlayer player, ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block block,
+                             ai.ezfox.cccloud.item.@Nullable MainframeLink link) {
+        if (block == null) return;
+        boolean positions = link != null && ai.ezfox.cccloud.access.Access.resolve(player, link.id()).has(ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS);
+        json.add("claim", ai.ezfox.cccloud.claims.ClaimGuard.screenJson(block, positions));
     }
 
     private static String pos(net.minecraft.core.BlockPos p) {
@@ -295,12 +308,18 @@ public final class GuiViews {
     /** What the uplink reads: the block it sticks to (a probe: its target) – the block id, and for a CC computer its id, label and power. */
     private static void attached(JsonObject json, CloudUplinkBlockEntity uplink) {
         if (!(uplink.getLevel() instanceof ServerLevel level)) return;
-        var at = uplink.readPos();
+        // blocked by the claim guard: only which block it is (the player sees it), nothing read from it
+        boolean blocked = uplink.claimBlock() != null;
+        var at = blocked ? uplink.guardPos() : uplink.readPos();
         if (at == null || !level.isLoaded(at)) return;
         var state = level.getBlockState(at);
         if (state.isAir()) return;
         var attached = new JsonObject();
         attached.addProperty("block", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+        if (blocked) {
+            json.add("attached", attached);
+            return;
+        }
         var computer = ai.ezfox.cccloud.compat.cc.CcComputers.find(level, at);
         if (computer != null) {
             attached.addProperty("computer", computer.id());

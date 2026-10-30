@@ -187,6 +187,7 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             return new State(1, CloudGui.YELLOW, Component.translatable("cccloud.gui.state.relay_idle"));
         }
         if (!bool(view, "linked")) return new State(0, CloudGui.TEXT_DIM, Component.translatable("cccloud.gui.state.not_linked"));
+        if (view.has("claim")) return new State(0, CloudGui.RED, Component.translatable("cccloud.gui.state.claim_blocked"));
         String route = str(view, "routeState");
         if (route.equals("over_capacity")) return new State(1, CloudGui.YELLOW, Component.translatable("cccloud.gui.state.over_capacity"));
         if (route.equals("no_route")) return new State(0, CloudGui.RED, Component.translatable("cccloud.gui.state.no_route"));
@@ -231,6 +232,12 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             relayRows();
         } else {
             // A problem and its fix come first.
+            if (view.get("claim") instanceof JsonObject claim) {
+                // claim guard (docs/SECURITY.md "Claims"): the team's name only with view.positions
+                String team = str(claim, "team");
+                warningRow(team.isEmpty() ? Component.translatable("cccloud.gui.claim.blocked_other") : Component.translatable("cccloud.gui.claim.blocked", team));
+                textRow(Component.translatable("cccloud.gui.claim.hint"), CloudGui.TEXT_DIM);
+            }
             var hint = hint();
             if (hint != null) warningRow(hint);
             if (view.has("exposedElsewhere")) {

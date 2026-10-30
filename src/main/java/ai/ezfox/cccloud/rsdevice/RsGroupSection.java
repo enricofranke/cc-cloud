@@ -87,6 +87,14 @@ public final class RsGroupSection implements DashboardSection {
         json.addProperty("template", TEMPLATE);
         json.addProperty("source", "mainframe");
         json.addProperty("group", card.groupKey().isEmpty() ? "" : card.title().replaceAll(" \\(\\d+\\)$", ""));
+        if (!card.blocked().isEmpty()) {
+            // claim guard: the widgets of blocked devices show the claim instead of their value
+            var blocked = new JsonObject();
+            for (var e : card.blocked().entrySet()) {
+                blocked.add(e.getKey(), ai.ezfox.cccloud.claims.ClaimGuard.json(new ai.ezfox.cccloud.claims.ClaimGuard.Block(new UUID(0, 0), e.getValue())));
+            }
+            json.add("blockedWidgets", blocked);
+        }
         return json;
     }
 

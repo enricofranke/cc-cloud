@@ -6,7 +6,7 @@
     }
   ],
   "type": "minecraft:function",
-  "environment": "cccloud:integrations",
+  "environment": "cccloud:claims_card",
   "function": "cccloud:ftbchunks_claims",
   "max_ticks": 2400,
   "structure": "cccloud:test_floor"

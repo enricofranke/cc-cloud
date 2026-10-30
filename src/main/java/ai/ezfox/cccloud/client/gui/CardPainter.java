@@ -37,7 +37,9 @@ final class CardPainter {
         var widgets = preview.get("widgets") instanceof JsonArray a ? a : new JsonArray();
         int ry = y + TITLE_H + 1;
         if (widgets.isEmpty()) {
-            g.text(font, fit(font, Component.translatable("cccloud.gui.card.empty").getString(), w - 10), x + 5, ry + 2, CloudGui.TEXT_DIM, false);
+            boolean blocked = preview.has("blocked");
+            g.text(font, fit(font, Component.translatable(blocked ? "cccloud.gui.state.claim_blocked" : "cccloud.gui.card.empty").getString(), w - 10), x + 5, ry + 2,
+                blocked ? CloudGui.RED : CloudGui.TEXT_DIM, false);
         }
         for (var e : widgets) {
             if (e instanceof JsonObject widget) row(g, font, x + 4, ry, w - 8, widget);

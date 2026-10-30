@@ -89,6 +89,13 @@ public class RsDeviceScreen extends CloudScreen<RsDeviceMenu> {
         }
         String kind = str(view, "kind");
         statusRow();
+        if (view.get("claim") instanceof com.google.gson.JsonObject claim) {
+            // claim guard (docs/SECURITY.md "Claims"): the team's name only with view.positions
+            String team = str(claim, "team");
+            warningRow(team.isEmpty() ? Component.translatable("cccloud.gui.claim.blocked_device_other")
+                : Component.translatable("cccloud.gui.claim.blocked_device", team));
+            textRow(Component.translatable("cccloud.gui.claim.hint"), CloudGui.TEXT_DIM);
+        }
         textRow(Component.translatable("cccloud.gui.rsdevice.what." + kind), CloudGui.TEXT_DIM);
 
         heading("cccloud.gui.rsdevice.control");

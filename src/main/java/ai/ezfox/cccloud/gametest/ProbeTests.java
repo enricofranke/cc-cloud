@@ -5,7 +5,6 @@ import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.ingame.InGameTestSupport;
 import ai.ezfox.cccloud.item.ProbeTarget;
-import ai.ezfox.cccloud.map.XrayGuard;
 import com.google.gson.JsonObject;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -232,29 +231,28 @@ public final class ProbeTests {
         helper.setBlock(probePos, ModRegistry.CLOUD_PROBE.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.NORTH));
         var probe = (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(probePos));
         var at = GlobalPos.of(level.dimension(), helper.absolutePos(machine));
-        // claims of other teams for this test's player only (everything else goes to the real provider)
-        var claimed = ConcurrentHashMap.<Long>newKeySet();
-        long chunk = net.minecraft.world.level.ChunkPos.pack(at.pos().getX() >> 4, at.pos().getZ() >> 4);
-        var previous = XrayGuard.claims;
-        XrayGuard.claims = (l, cx, cz, p) -> p.equals(player.getUUID()) && claimed.contains(net.minecraft.world.level.ChunkPos.pack(cx, cz))
-            || previous != null && previous.claimedByOther(l, cx, cz, p);
+        // claims of another team for this test's player only (everything else goes to the real provider); the shared
+        // claim guard blocks the probe (docs/SECURITY.md "Claims")
+        var claims = TestClaims.get();
+        var team = claims.team("probe_guard_team", java.util.Set.of(player.getUUID()));
 
         var stale = new ProbeTarget(at, Direction.UP, player.getUUID(), System.currentTimeMillis() - ProbeTarget.VALID_MS - 1_000);
         helper.assertTrue(!probe.setRemoteTarget(stale, player) && probe.remoteTarget() == null, "a machine picked more than 10 minutes ago is refused");
         helper.assertTrue(!probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID(), 0), player), "a card without a pick time is refused");
-        claimed.add(chunk);
+        claims.claim(level, at.pos(), team);
         helper.assertTrue(!probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID()), player) && probe.remoteTarget() == null,
             "a machine in a chunk another team claimed is refused when linking (also a card made without picking)");
-        claimed.clear();
+        claims.unclaim(level, at.pos());
         helper.assertTrue(probe.setRemoteTarget(new ProbeTarget(at, Direction.UP, player.getUUID()), player), "fresh and unclaimed: linked");
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue("energy".equals(probe.deviceKind()) && at.pos().equals(probe.readPos()), "reads the machine"))
-            .thenExecute(() -> claimed.add(chunk))
+            .thenExecute(() -> claims.claim(level, at.pos(), team))
             .thenWaitUntil(() -> {
                 helper.assertTrue(probe.readPos() == null, "claimed later: nothing is read");
                 helper.assertTrue(probe.deviceKind().isEmpty(), "and the card is gone: " + probe.deviceKind());
+                helper.assertTrue(probe.claimBlock() != null && probe.snapshot().has("blocked"), "the card shows the claim: " + probe.snapshot());
             })
-            .thenExecute(() -> claimed.clear())
+            .thenExecute(() -> claims.unclaim(level, at.pos()))
             .thenWaitUntil(() -> helper.assertTrue("energy".equals(probe.deviceKind()), "unclaimed again: the card is back"))
             .thenExecute(() -> {
                 // Moved with its data (a contraption, a block mover): the saved probe is placed somewhere else.
@@ -273,7 +271,7 @@ public final class ProbeTests {
                 helper.assertTrue(moved.deviceKind().isEmpty(), "no card");
             })
             .thenExecute(() -> {
-                XrayGuard.claims = previous;
+                claims.forget(level, team);
                 helper.setBlock(movedPos, Blocks.AIR);
             })
             .thenSucceed();

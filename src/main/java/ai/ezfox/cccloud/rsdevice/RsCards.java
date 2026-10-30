@@ -37,8 +37,14 @@ public final class RsCards {
     /** History of lamp light and sensor level (long-term statistics, limited by the mainframe's retention). */
     public static final String HISTORY = "24h";
 
-    /** One card: {@code groupKey} ("" = the automatic card) and {@code part} (0 = first card of the group). */
-    public record Card(String groupKey, int part, String title, List<Widget> widgets, List<UUID> devices) {
+    /**
+     * One card: {@code groupKey} ("" = the automatic card) and {@code part} (0 = first card of the group). {@code blocked}:
+     * widget id → claim team ("" = unknown) of the widgets of devices the claim guard blocks.
+     */
+    public record Card(String groupKey, int part, String title, List<Widget> widgets, List<UUID> devices, Map<String, String> blocked) {
+        public Card(String groupKey, int part, String title, List<Widget> widgets, List<UUID> devices) {
+            this(groupKey, part, title, widgets, devices, Map.of());
+        }
     }
 
     public enum Control { MAIN, BRIGHTNESS, LEVEL, ALL_ON, ALL_OFF }
@@ -76,6 +82,14 @@ public final class RsCards {
 
     /** Cards in a stable order: the automatic "Redstone" card first, then the groups by name. */
     public static List<Card> build(Collection<RsDevice> devices) {
+        return build(devices, Map.of());
+    }
+
+    /**
+     * As above; {@code blocked} maps the devices the claim guard blocks to the claim's team (docs/SECURITY.md
+     * "Claims"): their widgets record no history and the card lists them in {@link Card#blocked}.
+     */
+    public static List<Card> build(Collection<RsDevice> devices, Map<UUID, String> blocked) {
         var byGroup = new TreeMap<String, List<RsDevice>>();
         for (var device : devices) byGroup.computeIfAbsent(device.groupKey(), k -> new ArrayList<>()).add(device);
         var cards = new ArrayList<Card>();
@@ -85,13 +99,13 @@ public final class RsCards {
             String title = entry.getKey().isEmpty() ? DEFAULT_TITLE : list.getFirst().group().strip();
             for (int part = 0; part * MAX_DEVICES_PER_CARD < list.size(); part++) {
                 var chunk = list.subList(part * MAX_DEVICES_PER_CARD, Math.min(list.size(), (part + 1) * MAX_DEVICES_PER_CARD));
-                cards.add(card(entry.getKey(), part, part == 0 ? title : title + " (" + (part + 1) + ")", chunk));
+                cards.add(card(entry.getKey(), part, part == 0 ? title : title + " (" + (part + 1) + ")", chunk, blocked));
             }
         }
         return cards;
     }
 
-    private static Card card(String groupKey, int part, String title, List<RsDevice> devices) {
+    private static Card card(String groupKey, int part, String title, List<RsDevice> devices, Map<UUID, String> blocked) {
         var widgets = new ArrayList<Widget>();
         long switchable = devices.stream().filter(d -> d.kind().switchable()).count();
         if (switchable >= 2) {
@@ -102,17 +116,27 @@ public final class RsCards {
             widgets.add(widget(WidgetType.BUTTON, ALL_OFF, "All off", opts("color", "gray", "order", 1, "pin", pin ? true : null, "confirm", confirm ? true : null)));
         }
         var ids = new ArrayList<UUID>();
+        var blockedWidgets = new LinkedHashMap<String, String>();
         int order = 10;
         for (var device : devices) {
-            widgets.addAll(widgets(device, order));
+            String team = blocked.get(device.id());
+            var list = widgets(device, order, team != null);
+            widgets.addAll(list);
+            if (team != null) for (var w : list) blockedWidgets.put(w.id(), team);
             ids.add(device.id());
             order += 2;
         }
-        return new Card(groupKey, part, title, List.copyOf(widgets), List.copyOf(ids));
+        return new Card(groupKey, part, title, List.copyOf(widgets), List.copyOf(ids), blockedWidgets.isEmpty() ? Map.of() : Map.copyOf(blockedWidgets));
     }
 
     /** The widgets of one device (validated like Lua widgets). */
     static List<Widget> widgets(RsDevice d, int order) {
+        return widgets(d, order, false);
+    }
+
+    /** As above; a blocked device's widgets record no history (its value is frozen while the claim lasts). */
+    static List<Widget> widgets(RsDevice d, int order, boolean blocked) {
+        String history = blocked ? null : HISTORY;
         String id = widgetId(d.id());
         String name = d.displayName();
         Boolean pin = d.pin() ? true : null;
@@ -127,10 +151,10 @@ public final class RsCards {
             case LAMP -> List.of(
                 widget(WidgetType.TOGGLE, id, name, opts("value", d.active(), "pin", pin, "confirm", confirm, "icon", d.kind().icon, "order", order)),
                 widget(WidgetType.SLIDER, id + BRIGHTNESS, name + " brightness", opts("min", 0, "max", 15, "step", 1, "value", d.level(), "pin", pin,
-                    "history", HISTORY, "icon", d.kind().icon, "order", order + 1)));
+                    "history", history, "icon", d.kind().icon, "order", order + 1)));
             case SENSOR -> List.of(
                 widget(WidgetType.INDICATOR, id, name, opts("value", d.active(), "onColor", "green", "icon", d.kind().icon, "order", order)),
-                widget(WidgetType.GAUGE, id + LEVEL, name + " level", opts("min", 0, "max", 15, "value", d.level(), "history", HISTORY,
+                widget(WidgetType.GAUGE, id + LEVEL, name + " level", opts("min", 0, "max", 15, "value", d.level(), "history", history,
                     "icon", d.kind().icon, "order", order + 1)));
             // its details are on its own card (SensorCards); the group card shows whether something is inside
             case ADVANCED_SENSOR -> List.of(

@@ -181,6 +181,16 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     }
 
     @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, net.minecraft.world.entity.@Nullable LivingEntity placer,
+                            net.minecraft.world.item.ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        // claim guard: the placer's team may use claimed land for it until somebody links it
+        if (!level.isClientSide() && placer instanceof Player player && level.getBlockEntity(pos) instanceof CloudUplinkBlockEntity uplink) {
+            uplink.placedBy(player);
+        }
+    }
+
+    @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new CloudUplinkBlockEntity(pos, state);
     }

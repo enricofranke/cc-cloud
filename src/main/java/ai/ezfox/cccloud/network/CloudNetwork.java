@@ -40,6 +40,7 @@ public final class CloudNetwork {
         NeoForge.EVENT_BUS.addListener(CloudNetwork::onServerStopping);
         NeoForge.EVENT_BUS.addListener(CloudNetwork::onServerStopped);
         NeoForge.EVENT_BUS.addListener(CloudNetwork::onServerTick);
+        ai.ezfox.cccloud.claims.ClaimGuard.init();
     }
 
     public static @Nullable MinecraftServer server() {
@@ -156,6 +157,9 @@ public final class CloudNetwork {
         cost = TickCost.start();
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
         TickCost.end(TickCost.WEB, cost);
+        cost = TickCost.start();
+        ai.ezfox.cccloud.claims.ClaimGuard.tick(event.getServer());
+        TickCost.end(TickCost.CLAIMS, cost);
         // GameTests only: the hub flush runs on the server tick (normally the web server's thread), not counted
         if (ai.ezfox.cccloud.web.WebHub.FLUSH_EVERY_TICK) ai.ezfox.cccloud.web.WebHub.INSTANCE.flush();
     }

@@ -152,10 +152,19 @@ public final class WebHub {
         }
     }
 
-    /** A published section: head (everything but the widgets, never mutated) and its widgets. Immutable, see {@link W}. */
+    /**
+     * A published section: head (everything but the widgets, never mutated) and its widgets. Immutable, see {@link W}.
+     * <p>
+     * Private parts have a public form for sessions without {@link #seesNames} (viewers, share links, Cloud Displays, the
+     * tablet, API keys without {@code view.positions}): widget values with player names (Advanced Cloud Sensor) and the
+     * team of a claim in the head (claim guard: {@code blocked.team}, {@code blockedWidgets.*.team}).
+     */
     static final class Section {
         final JsonObject head;
         private final String headText;
+        /** The head without claim team names, or null when the head names none. */
+        private final @Nullable JsonObject publicHead;
+        private final String publicHeadText;
         final W[] widgets;
         /** widget id → index; shared by every version of the same structure. */
         final Map<String, Integer> pos;
@@ -167,12 +176,21 @@ public final class WebHub {
         private volatile @Nullable String publicText;
         private volatile @Nullable JsonObject publicJson;
 
-        private Section(JsonObject head, String headText, W[] widgets, Map<String, Integer> pos, Map<String, String> history) {
+        private Section(JsonObject head, String headText, @Nullable JsonObject publicHead, String publicHeadText, W[] widgets, Map<String, Integer> pos,
+                        Map<String, String> history) {
             this.head = head;
             this.headText = headText;
+            this.publicHead = publicHead;
+            this.publicHeadText = publicHeadText;
             this.widgets = widgets;
             this.pos = pos;
             this.history = history;
+        }
+
+        private static Section of(JsonObject head, W[] widgets, Map<String, Integer> pos, Map<String, String> history) {
+            var publicHead = ai.ezfox.cccloud.claims.ClaimGuard.withoutTeams(head);
+            String headText = open(head);
+            return new Section(head, headText, publicHead, publicHead == null ? headText : open(publicHead), widgets, pos, history);
         }
 
         private static String open(JsonObject head) {
@@ -196,15 +214,15 @@ public final class WebHub {
                     history.put(w.id, h.getAsString());
                 }
             }
-            return new Section(head, open(head), widgets, Map.copyOf(pos), history.isEmpty() ? Map.of() : java.util.Collections.unmodifiableMap(history));
+            return of(head, widgets, Map.copyOf(pos), history.isEmpty() ? Map.of() : java.util.Collections.unmodifiableMap(history));
         }
 
         Section withWidgets(W[] widgets) {
-            return new Section(head, headText, widgets, pos, history);
+            return new Section(head, headText, publicHead, publicHeadText, widgets, pos, history);
         }
 
         Section withHead(JsonObject head) {
-            return new Section(head, open(head), widgets, pos, history);
+            return of(head, widgets, pos, history);
         }
 
         @Nullable W widget(String id) {
@@ -227,8 +245,12 @@ public final class WebHub {
             return t;
         }
 
-        /** Has widgets with private values (player names): sessions that may not see them get {@link #text(boolean)} false. */
+        /**
+         * Has private parts (widget values with player names, a claim's team in the head): sessions that may not see
+         * them get {@link #text(boolean)} false.
+         */
         boolean hasPrivate() {
+            if (publicHead != null) return true;
             for (var w : widgets) if (w.pub != null) return true;
             return false;
         }
@@ -242,8 +264,9 @@ public final class WebHub {
         }
 
         private String build(boolean names) {
-            var sb = new StringBuilder(headText.length() + widgets.length * 160);
-            sb.append(headText).append(head.size() > 0 ? "," : "").append("\"widgets\":[");
+            String headPart = names ? headText : publicHeadText;
+            var sb = new StringBuilder(headPart.length() + widgets.length * 160);
+            sb.append(headPart).append(head.size() > 0 ? "," : "").append("\"widgets\":[");
             for (int i = 0; i < widgets.length; i++) {
                 if (i > 0) sb.append(',');
                 widgets[i].write(sb, names);
@@ -257,7 +280,7 @@ public final class WebHub {
             var j = publicJson;
             if (j == null) {
                 j = new JsonObject();
-                for (var e : head.entrySet()) j.add(e.getKey(), e.getValue());
+                for (var e : (publicHead != null ? publicHead : head).entrySet()) j.add(e.getKey(), e.getValue());
                 var array = new JsonArray(widgets.length);
                 for (var w : widgets) array.add(w.json(false));
                 j.add("widgets", array);

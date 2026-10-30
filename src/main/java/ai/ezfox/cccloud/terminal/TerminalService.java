@@ -71,12 +71,20 @@ public final class TerminalService {
         var section = CloudNetwork.section(uplinkId);
         if (!(section instanceof CloudUplinkBlockEntity uplink) || section.getLink() == null || !section.getLink().id().equals(mainframeId)) return null;
         if (!(uplink.getLevel() instanceof ServerLevel level)) return null;
+        if (claimBlocked(uplink)) return null;
         return CcComputers.find(level, uplink.getBlockPos().relative(uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING)));
+    }
+
+    /** Claim guard: the uplink is blocked, or its computer is in a chunk another team claimed for its owners. */
+    static boolean claimBlocked(CloudUplinkBlockEntity uplink) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(uplink) != null) return true;
+        return uplink.getLevel() instanceof ServerLevel level && ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(level, uplink.attachedPos(), uplink.guardOwners());
     }
 
     /** Opens (or re-sends) a terminal for a viewer: null, or {@code disabled}, {@code unknown_computer}, {@code too_many}. */
     public static @Nullable String open(UUID mainframeId, UUID uplinkId, Viewer viewer) {
         if (!enabled()) return "disabled";
+        if (CloudNetwork.section(uplinkId) instanceof CloudUplinkBlockEntity uplink && claimBlocked(uplink)) return ai.ezfox.cccloud.claims.ClaimGuard.ERROR;
         if (computer(mainframeId, uplinkId) == null) return "unknown_computer";
         var key = new Key(mainframeId, uplinkId);
         var open = OPEN.get(key);

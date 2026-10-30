@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ftbchunks"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:claims",
+  "function": "cccloud:ftbchunks_claim_guard",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * card ({@link RsDevices}). Holds the device's settings and state; everything that changes the state goes through
  * {@link #applyState} (block state, neighbours, the dashboard copy). Server thread only.
  */
-public class RsDeviceBlockEntity extends BlockEntity {
+public class RsDeviceBlockEntity extends BlockEntity implements ai.ezfox.cccloud.claims.ClaimGuard.Guarded {
     private static final int STATUS_INTERVAL = 10;
 
     private UUID deviceId = UUID.randomUUID();
@@ -69,6 +69,13 @@ public class RsDeviceBlockEntity extends BlockEntity {
     private boolean statusPending = true;
     /** Changes from the dashboard, rules, scenes and the API (in-world clicks are not limited, like a lever). */
     private @Nullable TokenBucket changes;
+    /** Who linked it with the Link Card (claim guard); null for links made before 0.11. */
+    private @Nullable UUID linkedBy;
+    /** Claim guard: the claim the device is in while that blocks it, else null. */
+    private ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock;
+    /** The level and lamp switch the dashboard copy keeps while blocked (nothing new is read). */
+    private int frozenLevel;
+    private boolean frozenOn;
     /** Advanced Cloud Sensor: its zone, filter, log, alerts and card (null for the other kinds). */
     private ai.ezfox.cccloud.sensor.@Nullable AdvancedSensor sensor;
     /** Client: the zone of an Advanced Cloud Sensor as its server sent it (min/max corners, scanning or not). */
@@ -187,8 +194,10 @@ public class RsDeviceBlockEntity extends BlockEntity {
     public RsDevice record() {
         var p = getBlockPos();
         String dim = level == null ? "" : level.dimension().identifier().toString();
-        return new RsDevice(deviceId, kind(), name, group, dim, p.getX(), p.getY(), p.getZ(), analog, signalLevel(), lampOn, preset, pulse, follow, pin,
-            confirm);
+        // claim guard: while blocked the copy keeps the last level it had (no new reads reach the dashboard)
+        boolean blocked = claimBlock != null;
+        return new RsDevice(deviceId, kind(), name, group, dim, p.getX(), p.getY(), p.getZ(), analog, blocked ? frozenLevel : signalLevel(),
+            blocked ? frozenOn : lampOn, preset, pulse, follow, pin, confirm);
     }
 
     // ---- persistence -------------------------------------------------------------------------------------------------
@@ -208,6 +217,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         pulse = RsDevice.clampPulse(in.getIntOr("pulse", RsDevice.PULSE_DEFAULT));
         pin = in.getBooleanOr("pin", false);
         confirm = in.getBooleanOr("confirm", false);
+        linkedBy = in.read("linked_by", UUIDUtil.STRING_CODEC).orElse(null);
         var s = sensor();
         if (s != null) {
             String saved = in.getStringOr("sensor", "");
@@ -237,6 +247,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         out.putInt("pulse", pulse);
         out.putBoolean("pin", pin);
         out.putBoolean("confirm", confirm);
+        out.storeNullable("linked_by", UUIDUtil.STRING_CODEC, linkedBy);
         if (sensor != null) out.putString("sensor", sensor.save());
     }
 
@@ -285,6 +296,8 @@ public class RsDeviceBlockEntity extends BlockEntity {
         statusPending = true;
         inputPending = true;
         NetworkService.markDirty(link == null ? null : link.id());
+        // claim guard: a device in a chunk another team claimed meanwhile is blocked from the first tick on
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         var s = sensor();
         if (s != null) s.attach();
     }
@@ -298,6 +311,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
     @Override
     public void setRemoved() {
         super.setRemoved();
+        ai.ezfox.cccloud.claims.ClaimGuard.forget(this);
         if (level != null && level.isClientSide()) ai.ezfox.cccloud.sensor.SensorZones.CLIENT.remove(this);
         if (sensor != null && level != null && !level.isClientSide()) sensor.detach(chunkUnloading && !broken && link != null);
         if (!registered) return;
@@ -540,6 +554,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
      * {@code device_offline} (no route to the mainframe), {@code rate_limited}, {@code not_interactive}.
      */
     @Nullable String apply(RsCards.Control control, JsonElement value, String user) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.check(this) != null) return ai.ezfox.cccloud.claims.ClaimGuard.ERROR;
         if (status != CloudStatus.ONLINE) return "device_offline";
         var kind = kind();
         if (kind.sensor()) return "not_interactive";
@@ -671,15 +686,18 @@ public class RsDeviceBlockEntity extends BlockEntity {
         }
         if (link != null && !link.id().equals(newLink.id())) unlinkFrom(link);
         link = newLink;
+        linkedBy = player.getUUID();
         listed = false;
         NetworkService.markDirty();
         mainframe.linkUplink(deviceId, GlobalPos.of(serverLevel.dimension(), getBlockPos()));
         setChanged();
+        var blocked = ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         RsDevices.changed(this);
         updateStatus(serverLevel);
         if (sensor != null) sensor.attach();
         CCCloud.LOGGER.info("[cccloud] {} bound the {} at {} to {}", player.getGameProfile().name(), kind().block, getBlockPos(), mainframe.getDisplayName());
         player.sendSystemMessage(Component.translatable("cccloud.rsdevice.bound", record().displayName(), newLink.describe()).withStyle(ChatFormatting.GREEN));
+        if (blocked != null) player.sendSystemMessage(ai.ezfox.cccloud.claims.ClaimGuard.linkMessage(blocked));
         ai.ezfox.cccloud.api.CloudEvents.deviceLinked(new ai.ezfox.cccloud.api.CloudEvents.DeviceLinked(newLink.id(), deviceId, "redstone:" + kind().id,
             serverLevel.dimension().identifier().toString(), getBlockPos(), player.getUUID(), player.getGameProfile().name()));
     }
@@ -690,11 +708,68 @@ public class RsDeviceBlockEntity extends BlockEntity {
         var old = link;
         unlinkFrom(old);
         link = null;
+        linkedBy = null;
         listed = false;
         NetworkService.markDirty();
         setChanged();
         updateStatus(serverLevel);
+        ai.ezfox.cccloud.claims.ClaimGuard.check(this);
         CCCloud.LOGGER.info("[cccloud] {} unlinked the {} at {} from {}", by, kind().block, getBlockPos(), old.describe());
+    }
+
+    // ---- claim guard (docs/SECURITY.md "Claims") -----------------------------------------------------------------
+
+    @Override
+    public @Nullable ServerLevel guardLevel() {
+        return level instanceof ServerLevel serverLevel ? serverLevel : null;
+    }
+
+    /** Its own block: where it reads (sensor, lamp) or writes (switch, button) redstone; null while unlinked. */
+    @Override
+    public @Nullable BlockPos guardPos() {
+        return link == null || isRemoved() ? null : getBlockPos();
+    }
+
+    @Override
+    public java.util.List<UUID> guardOwners() {
+        return ai.ezfox.cccloud.claims.ClaimGuard.owners(linkedBy, link);
+    }
+
+    @Override
+    public ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block claimBlock() {
+        return claimBlock;
+    }
+
+    /** Blocked: its widgets on the card show the claim and keep their last value; actions are refused. */
+    @Override
+    public void applyClaimBlock(ai.ezfox.cccloud.claims.ClaimGuard.@Nullable Block block) {
+        if (block != null && claimBlock == null) {
+            frozenLevel = signalLevel();
+            frozenOn = lampOn;
+            var copy = link == null ? null : RsDevices.device(link.id(), deviceId);
+            if (copy != null) {
+                // what the dashboard already shows (a level read before the claim), not the level right now
+                frozenLevel = copy.level();
+                frozenOn = copy.on();
+            }
+        }
+        claimBlock = block;
+        RsDevices.claimChanged(this);
+    }
+
+    @Override
+    public String guardLabel() {
+        return "redstone device '" + record().displayName() + "'";
+    }
+
+    @Override
+    public @Nullable UUID guardMainframe() {
+        return link == null ? null : link.id();
+    }
+
+    @Override
+    public boolean guardRemoved() {
+        return isRemoved();
     }
 
     /** Test hook: link without the range check. */
