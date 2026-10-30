@@ -89,6 +89,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
     String clientIp(ChannelHandlerContext ctx, FullHttpRequest req) {
+        // tunnel connections carry the relay's client IP; forwarding headers are never read on them
+        if (TunnelBridge.isTunnel(ctx.channel())) return ConnectionLimiter.peerIp(ctx.channel());
         return IpUtil.clientIp(ConnectionLimiter.peerIp(ctx.channel()), policy.trustedProxies(), policy.trustCloudflare(),
             req.headers().get("CF-Connecting-IP"), req.headers().getAll("X-Forwarded-For"));
     }
@@ -122,7 +124,9 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendText(ctx, req, HttpResponseStatus.FORBIDDEN, "Forbidden");
             return;
         }
-        if (!policy.allowInternet() && !IpUtil.isLan(ip)) {
+        var tunnel = TunnelBridge.peer(ctx.channel());
+        // CC: Cloud Connect traffic comes from the internet by design; the direct port keeps its own rule
+        if (!policy.allowInternet() && !IpUtil.isLan(ip) && tunnel == null) {
             var body = error("lan_only");
             body.addProperty("message", LAN_ONLY_MESSAGE);
             sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, body);
@@ -130,7 +134,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
 
         // DNS rebinding: only IP addresses, localhost, LAN names and configured names as Host (security review L5)
-        if (!HostCheck.allowed(req.headers().get(HttpHeaderNames.HOST), policy.allowedHosts())) {
+        if (tunnel != null ? !TunnelBridge.hostAllowed(tunnel, req.headers().get(HttpHeaderNames.HOST))
+            : !HostCheck.allowed(req.headers().get(HttpHeaderNames.HOST), policy.allowedHosts())) {
             sendJson(ctx, req, HttpResponseStatus.MISDIRECTED_REQUEST, error("bad_host"));
             return;
         }

@@ -545,6 +545,11 @@ public final class CloudWebServer {
         maxConnectionsPerIp = value;
     }
 
+    /** The running instance, for CC: Cloud Connect's in-memory tunnel connections ({@link TunnelBridge}); null when stopped. */
+    static @Nullable WebInstance currentInstance() {
+        return current;
+    }
+
     /** For the load test: issues a device token directly (server thread). */
     public static @Nullable String issueTestToken(MinecraftServer server, java.util.UUID mainframeId, java.util.UUID player) {
         var auth = WebAuthData.get(server);

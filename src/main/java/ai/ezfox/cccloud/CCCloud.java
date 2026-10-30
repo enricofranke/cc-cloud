@@ -55,6 +55,9 @@ public class CCCloud {
         ai.ezfox.cccloud.icons.IconService.init(modEventBus);
         // Live recipes for the dashboard docs (GET /api/recipes), rebuilt after /reload.
         ai.ezfox.cccloud.recipes.RecipeCatalog.init();
+        // CC: Cloud Connect: https://<name>.cccloud.dev through an outbound tunnel (internetAccess = connect)
+        ai.ezfox.cccloud.connect.ConnectService.init();
+        ai.ezfox.cccloud.connect.ConnectCommand.init();
         ai.ezfox.cccloud.voxel.BlockTextureService.init(modEventBus);
         // Config changes apply while the server runs (file watcher or /cccloud config reload): docs/SPEC.md "Live config".
         ai.ezfox.cccloud.config.ConfigReload.init(modEventBus);

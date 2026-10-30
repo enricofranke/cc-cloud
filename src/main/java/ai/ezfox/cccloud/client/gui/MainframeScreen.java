@@ -441,8 +441,10 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             }));
         }
         if (!bool(view, "cloudAllowed")) warningRow(Component.translatable("cccloud.gui.cloud_disabled"));
-        if (!bool(view, "internet")) warningRow(Component.translatable("cccloud.gui.lan_only"));
-        else if (!bool(view, "tls")) warningRow(Component.translatable("cccloud.gui.no_tls"));
+        boolean connect = connectRow();
+        if (!bool(view, "internet")) {
+            if (!connect) warningRow(Component.translatable("cccloud.gui.lan_only"));
+        } else if (!bool(view, "tls")) warningRow(Component.translatable("cccloud.gui.no_tls"));
 
         if (view.has("iconsTotal")) {
             long done = num(view, "iconsDone"), total = num(view, "iconsTotal");
@@ -615,6 +617,29 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             var a = e.getAsJsonObject();
             textRow(Component.literal(ago(num(a, "ago")) + "  " + str(a, "text")), CloudGui.TEXT);
         }
+    }
+
+    /**
+     * CC: Cloud Connect's state below the addresses: online (with the open browsers), connecting, retrying or refused.
+     * Returns true while Connect is on (the LAN-only warning does not apply then).
+     */
+    private boolean connectRow() {
+        if (!view.has("connect")) return false;
+        var c = view.getAsJsonObject("connect");
+        String state = str(c, "state");
+        String error = c.has("error") ? str(c, "error") : "";
+        var reason = error.isEmpty() ? Component.empty() : Component.translatable("cccloud.connect.error." + error);
+        switch (state) {
+            case "connected" -> textRow(Component.translatable("cccloud.gui.connect.online", num(c, "browsers")), CloudGui.GREEN);
+            case "connecting" -> textRow(Component.translatable("cccloud.gui.connect.connecting"), CloudGui.YELLOW);
+            case "retrying" -> warningRow(Component.translatable("cccloud.gui.connect.retrying", reason));
+            case "failed" -> warningRow(Component.translatable("cccloud.gui.connect.failed", reason));
+            case "no_name" -> warningRow(Component.translatable("cccloud.gui.connect.no_name"));
+            default -> {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** "Link this browser": an account code for the player (all mainframes where they have a role). */

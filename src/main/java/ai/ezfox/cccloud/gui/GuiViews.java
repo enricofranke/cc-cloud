@@ -79,8 +79,19 @@ public final class GuiViews {
         json.addProperty("internet", CloudWebServer.allowsInternet());
         json.addProperty("tls", CloudWebServer.usesTls());
         var urls = new JsonArray();
+        // CC: Cloud Connect: its HTTPS address first while it is online, and its state for the screen
+        var connect = ai.ezfox.cccloud.connect.ConnectService.status();
+        if (connect.online()) urls.add(connect.url());
         for (var url : CloudWebServer.dashboardUrls()) urls.add(url);
         json.add("urls", urls);
+        if (connect.state() != ai.ezfox.cccloud.connect.ConnectStatus.State.OFF) {
+            var c = new JsonObject();
+            c.addProperty("state", connect.state().id());
+            c.addProperty("url", connect.url());
+            c.addProperty("browsers", connect.browsers());
+            if (connect.error() != null) c.addProperty("error", connect.error());
+            json.add("connect", c);
+        }
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
         // Plain counts for the overview: devices that reach the mainframe, relays that carry the network.
         var counted = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());

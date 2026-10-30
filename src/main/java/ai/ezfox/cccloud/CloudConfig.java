@@ -130,6 +130,9 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAINFRAME_PER_CLIENT_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_BUFFER_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_MAX_INPUT_FE;
+    // CC: Cloud Connect (internetAccess = connect): the dashboard at https://<name>.cccloud.dev through an outbound tunnel
+    public static final ModConfigSpec.ConfigValue<String> CONNECT_NAME;
+    public static final ModConfigSpec.ConfigValue<String> CONNECT_RELAY;
 
     /** Top of the file (the comment of its first value, allowCloud): how changes take effect. */
     static final String[] HEADER = {
@@ -549,6 +552,18 @@ public final class CloudConfig {
                 + "Providers are detected automatically when their mod is installed.")
             .translation("cccloud.configuration.disabledTeamProviders")
             .defineListAllowEmpty("disabledTeamProviders", java.util.List.of(), () -> "scoreboard", o -> o instanceof String);
+        b.pop();
+
+        b.push("connect");
+        CONNECT_NAME = b.comment("CC: Cloud Connect (internetAccess = connect): the dashboard's address https://<name>.cccloud.dev. Set it in game with",
+                "/cccloud internet connect <name> (3-32 characters a-z, 0-9, -). The relay binds the name to this server's key",
+                "(<server folder>/cccloud/connect/); a name unused for 90 days is released.")
+            .translation("cccloud.configuration.connectName")
+            .define("connectName", "", o -> o instanceof String s && (s.isEmpty() || ai.ezfox.cccloud.connect.ConnectNames.valid(s)));
+        CONNECT_RELAY = b.comment("CC: Cloud Connect relay the server's tunnel connects to (outbound, wss). Only change it for a self-hosted relay.")
+            .translation("cccloud.configuration.connectRelay")
+            .define("connectRelay", ai.ezfox.cccloud.connect.ConnectSettings.DEFAULT_RELAY,
+                o -> o instanceof String s && ai.ezfox.cccloud.connect.ConnectSettings.relayUri(s) != null);
         b.pop();
 
         SPEC = b.build();

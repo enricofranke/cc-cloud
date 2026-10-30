@@ -32,6 +32,9 @@ final class ConnectionLimiter extends ChannelInboundHandlerAdapter {
     }
 
     static String peerIp(Channel channel) {
+        // CC: Cloud Connect: the browser's IP as the relay reported it (set only on in-memory tunnel connections)
+        var tunnel = TunnelBridge.peer(channel);
+        if (tunnel != null) return tunnel.ip();
         return channel.remoteAddress() instanceof InetSocketAddress address && address.getAddress() != null
             ? address.getAddress().getHostAddress() : "unknown";
     }

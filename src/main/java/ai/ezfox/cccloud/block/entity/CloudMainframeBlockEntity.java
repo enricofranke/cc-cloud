@@ -571,13 +571,17 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         } else {
             String url = CloudWebServer.dashboardUrl();
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.url", link(url)));
+            // CC: Cloud Connect: the HTTPS address that works from anywhere
+            var connect = ai.ezfox.cccloud.connect.ConnectService.status();
+            if (connect.online()) player.sendSystemMessage(Component.translatable("cccloud.mainframe.connect_url", link(connect.url())));
         }
         if (level instanceof ServerLevel serverLevel && enabled) {
             var code = WebAuthData.get(serverLevel.getServer()).currentCode(mainframeId, player.getUUID());
             long minutes = Math.max(1, (code.expiresAt() - System.currentTimeMillis() + 59_999) / 60_000);
             String formatted = AuthStore.formatCode(code.code());
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.pairing_code", ai.ezfox.cccloud.web.PairingText.code(formatted), minutes)
-                .append(ai.ezfox.cccloud.web.PairingText.pairLink(CloudWebServer.isRunning() ? CloudWebServer.dashboardUrl() : null, formatted)));
+                .append(ai.ezfox.cccloud.web.PairingText.pairLink(CloudWebServer.isRunning()
+                    ? ai.ezfox.cccloud.connect.ConnectService.preferredUrl(CloudWebServer.dashboardUrl()) : null, formatted)));
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.pairing_hint").withStyle(ChatFormatting.GRAY));
             int devices = WebAuthData.get(serverLevel.getServer()).devices(mainframeId).size();
             player.sendSystemMessage(Component.translatable("cccloud.mainframe.counts", devices, linkedUplinks.size()).withStyle(ChatFormatting.GRAY));

@@ -407,7 +407,8 @@ public final class CloudCommand {
         var code = WebAuthData.get(c.getSource().getServer()).accountCode(player.getUUID());
         long minutes = Math.max(1, (code.expiresAt() - System.currentTimeMillis() + 59_999) / 60_000);
         String formatted = AuthStore.formatCode(code.code());
-        String url = ai.ezfox.cccloud.web.CloudWebServer.isRunning() ? ai.ezfox.cccloud.web.CloudWebServer.dashboardUrl() : null;
+        String url = ai.ezfox.cccloud.web.CloudWebServer.isRunning()
+            ? ai.ezfox.cccloud.connect.ConnectService.preferredUrl(ai.ezfox.cccloud.web.CloudWebServer.dashboardUrl()) : null;
         c.getSource().sendSystemMessage(Component.translatable("cccloud.command.link_code", ai.ezfox.cccloud.web.PairingText.code(formatted), minutes)
             .append(ai.ezfox.cccloud.web.PairingText.pairLink(url, formatted)));
         return 1;
