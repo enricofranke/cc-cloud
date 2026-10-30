@@ -19,8 +19,10 @@ import snownee.jade.api.config.IPluginConfig;
 /**
  * Jade lines for uplinks, relays and bridges (Cloud Analyzer spec): signal, hops, route to the mainframe and why it is
  * not online. Only sent for networks where the looking player has a role (same check as the analyzer, no positions).
+ * Server data and tooltip are separate providers with the same id: since Minecraft 1.21.6 Jade refuses a data provider
+ * that is also a component provider (and then loads none of the plugin).
  */
-enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
+enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor> {
     INSTANCE;
 
     static final Identifier UID = Identifier.fromNamespaceAndPath(CCCloud.MODID, "network");
@@ -43,26 +45,36 @@ enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor>, IBlockCo
     }
 
     @Override
-    public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
-        var net = accessor.getServerData().getCompoundOrEmpty("cccloud_net");
-        if (net.isEmpty()) return;
-        String status = net.getStringOr("status", "offline");
-        int hops = net.getIntOr("hops", -1);
-        if (hops >= 0) {
-            tooltip.add(Component.translatable("cccloud.analyzer.signal", Math.round(net.getDoubleOr("signal", 0) * 100), hops).withStyle(ChatFormatting.GRAY));
-            MutableComponent route = Component.empty();
-            var list = net.getListOrEmpty("route");
-            for (int i = 0; i < list.size(); i++) {
-                if (i > 0) route.append(" → ");
-                route.append(Component.translatable("cccloud.analyzer.kind." + list.getStringOr(i, "")));
-            }
-            tooltip.add(Component.translatable("cccloud.analyzer.route", route).withStyle(ChatFormatting.GRAY));
-        }
-        if (!"online".equals(status)) tooltip.add(Component.translatable("cccloud.analyzer.status." + status).withStyle(ChatFormatting.RED));
-    }
-
-    @Override
     public Identifier getUid() {
         return UID;
+    }
+
+    /** The client half: the lines from the server data above. */
+    enum Tooltip implements IBlockComponentProvider {
+        INSTANCE;
+
+        @Override
+        public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
+            var net = accessor.getServerData().getCompoundOrEmpty("cccloud_net");
+            if (net.isEmpty()) return;
+            String status = net.getStringOr("status", "offline");
+            int hops = net.getIntOr("hops", -1);
+            if (hops >= 0) {
+                tooltip.add(Component.translatable("cccloud.analyzer.signal", Math.round(net.getDoubleOr("signal", 0) * 100), hops).withStyle(ChatFormatting.GRAY));
+                MutableComponent route = Component.empty();
+                var list = net.getListOrEmpty("route");
+                for (int i = 0; i < list.size(); i++) {
+                    if (i > 0) route.append(" → ");
+                    route.append(Component.translatable("cccloud.analyzer.kind." + list.getStringOr(i, "")));
+                }
+                tooltip.add(Component.translatable("cccloud.analyzer.route", route).withStyle(ChatFormatting.GRAY));
+            }
+            if (!"online".equals(status)) tooltip.add(Component.translatable("cccloud.analyzer.status." + status).withStyle(ChatFormatting.RED));
+        }
+
+        @Override
+        public Identifier getUid() {
+            return UID;
+        }
     }
 }

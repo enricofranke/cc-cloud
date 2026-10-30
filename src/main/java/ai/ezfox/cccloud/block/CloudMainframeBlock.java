@@ -1,6 +1,8 @@
 package ai.ezfox.cccloud.block;
 
 import ai.ezfox.cccloud.ModRegistry;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -76,7 +78,10 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
         BlockPos pos = context.getClickedPos();
         Level level = context.getLevel();
         if (pos.getY() >= level.getMaxY() || !level.getBlockState(pos.above()).canBeReplaced(context)) return null;
-        if (context.getPlayer() instanceof net.minecraft.server.level.ServerPlayer player && !ai.ezfox.cccloud.access.UseGuard.mayPlaceMainframe(player)) return null;
+        if (context.getPlayer() instanceof net.minecraft.server.level.ServerPlayer player
+            && !ai.ezfox.cccloud.access.UseGuard.mayPlaceMainframe(player, context.getItemInHand().get(ModRegistry.MAINFRAME_IDENTITY.get()))) {
+            return null;
+        }
         return defaultBlockState()
             .setValue(FACING, context.getHorizontalDirection().getOpposite())
             .setValue(HALF, DoubleBlockHalf.LOWER);
@@ -85,7 +90,14 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity by, ItemStack stack) {
         level.setBlock(pos.above(), state.setValue(HALF, DoubleBlockHalf.UPPER), Block.UPDATE_ALL);
-        if (!level.isClientSide() && by instanceof Player player && level.getBlockEntity(pos) instanceof CloudMainframeBlockEntity mainframe) {
+        if (level.isClientSide() || !(level.getBlockEntity(pos) instanceof CloudMainframeBlockEntity mainframe) || level.getServer() == null) return;
+        // The item of a removed mainframe restores it (with its original owner); a plain item makes a new one for the placer.
+        var identity = mainframe.takePlacedIdentity();
+        if (identity != null && mainframe.restore(level.getServer(), identity)) {
+            if (by instanceof Player player) {
+                player.sendOverlayMessage(Component.translatable("cccloud.mainframe.restored", mainframe.getOwnerName()).withStyle(ChatFormatting.GREEN));
+            }
+        } else if (by instanceof Player player) {
             mainframe.setOwner(player);
         }
     }
@@ -115,6 +127,7 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
 
     @Override
     public BlockState playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide() && getBlockEntity(level, pos, state) instanceof CloudMainframeBlockEntity mainframe) mainframe.noteBreaker(player, state);
         if (!level.isClientSide() && player.isCreative() && state.getValue(HALF) == DoubleBlockHalf.UPPER) {
             // Breaking the upper half in creative must not make the lower half drop its item: remove it silently.
             BlockPos below = pos.below();

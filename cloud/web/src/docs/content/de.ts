@@ -52,6 +52,14 @@ ${recipe(R.rsBridge)}
 
 Ein Redstone-Signal an einer der beiden Hälften ist ein **Not-Aus**: Der Mainframe geht offline, bis das Signal weg ist.
 
+### Mainframe abbauen und umziehen {#moving}
+
+Der Mainframe trägt seine Identität im Item. Abbauen (Spitzhacke) und das Item wieder platzieren – egal wo, auch in einer anderen Basis – ergibt **denselben Mainframe**: Geräte, Konten, PIN, Layout, Regeln, Szenen und API-Schlüssel sind wieder da, verknüpfte Uplinks und Bridges verbinden sich von selbst. Er gehört weiter seinem Besitzer, egal wer ihn platziert. Upgrade-Karten fallen als eigene Items heraus; setze sie wieder ein.
+
+- **Nichts wird sofort gelöscht.** Nach dem Abbauen behält der Server alles **7 Tage** lang (\`mainframeRetentionDays\`); das Dashboard zeigt den Mainframe solange als **Removed**. Erst danach oder mit \`/cccloud mainframe purge <id>\` werden seine Daten gelöscht.
+- **Item verloren?** Im Kreativmodus fällt beim Abbauen nichts heraus: \`/cccloud mainframe recover\` listet deine abgebauten Mainframes und gibt dir ihr Item (einmal pro Abbau). Ist das Item gedroppt, platziere dieses – oder frag einen Server-Admin, der kann immer wiederherstellen.
+- **Schutz vor Fehlklicks** (\`mainframeBreakProtection\`): Im Kreativmodus lässt sich der Mainframe nur **schleichend** abbauen; im Überlebensmodus nur von seinem Besitzer, seinen Admins und Server-Admins. Claim-Mods schützen ihn zusätzlich.
+
 ## Strom (FE) {#power}
 
 Der Mainframe läuft mit **FE** (Forge Energy, auch RF genannt) – der Einheit von Powah, Ender IO, Thermal, AE2 und den meisten Technik-Mods. Schließe ein beliebiges FE-Kabel oder einen Generator an eine der beiden Hälften an.
@@ -191,7 +199,8 @@ Widgets mit \`pin=true\` fragen vor dem Auslösen die Mainframe-PIN über ein Zi
 | Anzeige | Bedeutung |
 |---|---|
 | Dashboard disabled | das Dashboard ist im Mainframe-Bildschirm ausgeschaltet |
-| Offline | der Chunk des Mainframes ist nicht geladen, der Block wurde abgebaut oder der Redstone-Not-Aus ist aktiv |
+| Offline | der Chunk des Mainframes ist nicht geladen oder der Redstone-Not-Aus ist aktiv |
+| Removed | der Mainframe-Block wurde abgebaut – sein Item wieder platzieren bringt alles zurück ([wie](/docs/start#moving)) |
 | Mainframe has no power | der FE-Puffer ist leer – siehe [Strom](/docs/start#power) |
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |
@@ -710,7 +719,7 @@ Füge Items mit einer Mindestmenge hinzu (aus einem Suchergebnis oder per ID). I
 - **Browse** (neben der Suche): alle Items als Raster mit Icons – sortiert nach Menge, Name oder Mod, mit einem Tab **Craftable**, **Fluids** und ★ **Favoriten** oben angepinnt. Weiter scrollen lädt mehr.
 - **Item-Details:** Menge, ein 24-Stunden-Verlauf, letzte Aufträge, ★, **Craft…** und **Keep in stock…**.
 - **Crafting-Vorschau:** Bevor ein Auftrag startet, siehst du, was aus dem Lager genommen, was gecraftet wird und was fehlt, dazu freie CPUs. Mit **Notify me** bekommst du eine Meldung, wenn er fertig ist oder fehlschlägt.
-- **Auf Lager halten (Auto-Lager):** Minimum und Ziel festlegen – fällt die Menge unter das Minimum und es gibt ein Muster, craftet der Server in Paketen zu 64 bis zum Ziel (ein Auftrag pro Item, höchstens alle 30 s). Das Abzeichen zeigt den Zustand: crafting, waiting for a CPU, missing resources oder nach 3 Fehlschlägen pausiert. Läuft auf dem Server – kein Computer nötig. Aus Lua: \`bridge.setAutoStock(name, min, target, enabled)\`.
+- **Auf Lager halten (Auto-Lager):** Minimum und Ziel festlegen – fällt die Menge unter das Minimum und es gibt ein Muster, craftet der Server in Paketen zu 64 bis zum Ziel (ein Auftrag pro Item, höchstens alle 30 s). Das Abzeichen zeigt den Zustand: crafting, waiting for a CPU, missing resources oder nach 3 Fehlschlägen pausiert. Solange alle Crafting-CPUs belegt sind, hat das Item eine Zeile „Waiting for CPU“ in den Crafting-Aufträgen – es wird alle 30 s neu versucht und zählt nie als Fehlschlag. Läuft auf dem Server – kein Computer nötig. Aus Lua: \`bridge.setAutoStock(name, min, target, enabled)\`.
 - **CPUs & Aufträge:** jede Crafting-CPU mit ihrem aktuellen Auftrag, alle laufenden Aufträge und **Cancel** (Operatoren).
 - **Produktion:** was das Netz pro Minute dazubekommt und verbraucht und was ein Item frisst – siehe [Produktionsstatistik](/docs/automation#production).
 

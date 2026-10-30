@@ -161,7 +161,7 @@ export function normalizeOverview(raw: any): Overview {
   };
 }
 
-const JOB_STATUS = ["queued", "running", "done", "failed", "cancelled"];
+const JOB_STATUS = ["queued", "running", "waiting", "done", "failed", "cancelled"];
 /** Validates the untrusted item drill-down (`op:"item"`). */
 export function normalizeItemStats(raw: any, name: string): ItemStats {
   const r = raw && typeof raw === "object" ? raw : {};

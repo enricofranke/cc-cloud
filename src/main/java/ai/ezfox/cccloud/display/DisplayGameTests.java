@@ -85,6 +85,96 @@ public final class DisplayGameTests {
             .thenSucceed();
     }
 
+    /**
+     * A 4×2 wall across a chunk border survives reloading: every member is saved exactly like a chunk save does
+     * ({@code saveWithFullMetadata}, which writes the block position as "x"/"y"/"z" – until 0.9.0 the display's own index
+     * keys, so every reload broke the wall), dropped, and loaded again chunk by chunk in the other order (the east half
+     * first). Then the same with saves of 0.9.0 (indices lost): the wall forms again by itself.
+     */
+    public static void reload(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var start = helper.absolutePos(new BlockPos(1, 1, 2)).above(12);
+        int border = Math.round(start.getX() / 16f) * 16; // the nearest chunk border along x
+        var wall = new ArrayList<BlockPos>();
+        for (int y = 0; y < 2; y++) for (int x = 0; x < 4; x++) wall.add(new BlockPos(border - 2 + x, start.getY() + y, start.getZ()));
+        // Facing south: right() is east, so the x index runs along +x across the border, rows go up.
+        var state = InGameRegistry.CLOUD_DISPLAY.get().defaultBlockState().setValue(CloudDisplayBlock.FACING, Direction.SOUTH)
+            .setValue(CloudDisplayBlock.ORIENTATION, Direction.NORTH);
+        var mainframe = java.util.UUID.randomUUID();
+        var by = java.util.UUID.randomUUID();
+        java.util.function.Function<BlockPos, CloudDisplayBlockEntity> at = pos -> {
+            if (!(level.getBlockEntity(pos) instanceof CloudDisplayBlockEntity d)) throw helper.assertionException("no display at " + pos);
+            return d;
+        };
+        Runnable assertWall = () -> {
+            for (var pos : wall) {
+                var d = at.apply(pos);
+                int x = pos.getX() - (border - 2), y = pos.getY() - start.getY();
+                helper.assertTrue(d.width() == 4 && d.height() == 2 && d.xIndex() == x && d.yIndex() == y,
+                    "member " + x + "," + y + " is " + d.xIndex() + "," + d.yIndex() + " of " + d.width() + "x" + d.height());
+                helper.assertTrue(mainframe.equals(d.mainframeId()) && d.sectionId().equals("sec") && by.equals(d.configuredBy()), "configuration kept at " + pos);
+                helper.assertTrue(level.getBlockState(pos).getValue(CloudDisplayBlock.STATE) == DisplayEdgeState.of(y < 1, y > 0, x > 0, x < 3), "edge state at " + pos);
+            }
+        };
+        var tags = new java.util.LinkedHashMap<BlockPos, net.minecraft.nbt.CompoundTag>();
+        Runnable unload = () -> {
+            tags.clear();
+            for (var pos : wall) {
+                var d = at.apply(pos);
+                tags.put(pos, d.saveWithFullMetadata(level.registryAccess()));
+                d.onChunkUnloaded();
+                level.removeBlockEntity(pos);
+            }
+        };
+        java.util.function.Consumer<Boolean> loadHalf = east -> {
+            for (var e : tags.entrySet()) {
+                if ((e.getKey().getX() >= border) != east) continue;
+                level.setBlockEntity(net.minecraft.world.level.block.entity.BlockEntity.loadStatic(e.getKey(), level.getBlockState(e.getKey()), e.getValue(),
+                    level.registryAccess()));
+            }
+        };
+        helper.startSequence()
+            .thenExecute(() -> {
+                for (var pos : wall) {
+                    level.setBlock(pos, state, net.minecraft.world.level.block.Block.UPDATE_ALL);
+                    at.apply(pos).expand(); // what setPlacedBy does for a player
+                }
+                at.apply(wall.getFirst()).configure(mainframe, "Main", "sec", false, by);
+                assertWall.run();
+                helper.assertTrue((border - 2) >> 4 != (border + 1) >> 4, "the wall crosses a chunk border");
+            })
+            .thenExecute(() -> {
+                unload.run();
+                loadHalf.accept(true);
+                loadHalf.accept(false);
+                // Before any tick: the saved shape comes back as it was (no reset and re-forming needed).
+                for (var pos : wall) {
+                    var d = at.apply(pos);
+                    int x = pos.getX() - (border - 2), y = pos.getY() - start.getY();
+                    helper.assertTrue(d.xIndex() == x && d.yIndex() == y && d.width() == 4 && d.height() == 2,
+                        "loaded " + pos + " as " + d.xIndex() + "," + d.yIndex() + " of " + d.width() + "x" + d.height());
+                }
+            })
+            .thenIdle(5)
+            .thenExecute(assertWall)
+            // Saves of 0.9.0: the indices were stored as "x"/"y", which the chunk save overwrote with the position.
+            .thenExecute(() -> {
+                unload.run();
+                for (var tag : tags.values()) {
+                    tag.remove("index_x");
+                    tag.remove("index_y");
+                }
+                loadHalf.accept(false);
+                loadHalf.accept(true);
+            })
+            .thenIdle(5)
+            .thenExecute(assertWall)
+            .thenExecute(() -> {
+                for (var pos : wall) level.setBlock(pos, Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+            })
+            .thenSucceed();
+    }
+
     public static void content(GameTestHelper helper) {
         var setup = mainframe(helper, "display_owner");
         var viewer = player(helper, "display_viewer");

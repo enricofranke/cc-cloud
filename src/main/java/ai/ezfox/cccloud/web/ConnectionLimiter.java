@@ -4,6 +4,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import java.net.InetSocketAddress;
 import java.util.Map;
@@ -12,11 +13,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * First handler of every connection: rejects banned and (unless allowed) non-LAN peers before any parsing, and limits
- * concurrent connections per IP and in total.
+ * concurrent connections per IP and in total. A connection slightly over a limit (up to
+ * {@link CloudWebServer#OVER_LIMIT_GRACE}) is marked {@link #REFUSED}: {@link HttpHandler} answers its first request with
+ * 503 and Retry-After and closes it, and it gets a short read timeout. Closing it right away looked like an empty
+ * response to browsers. Anything further over the limit is closed at once.
  */
 @ChannelHandler.Sharable
 final class ConnectionLimiter extends ChannelInboundHandlerAdapter {
     private static final AttributeKey<String> COUNTED = AttributeKey.valueOf("cccloud_counted_ip");
+    /** Set on a connection over a limit: its first request gets 503 too_many_connections. */
+    static final AttributeKey<Boolean> REFUSED = AttributeKey.valueOf("cccloud_refused");
     private final WebInstance instance;
     private final AtomicInteger total = new AtomicInteger();
     private final Map<String, AtomicInteger> perIp = new ConcurrentHashMap<>();
@@ -47,9 +53,16 @@ final class ConnectionLimiter extends ChannelInboundHandlerAdapter {
             return counter;
         }).get();
         // Behind a trusted proxy every connection has the proxy's address, so only the total limit applies there.
-        if (all > CloudWebServer.MAX_CONNECTIONS || (!proxy && mine > CloudWebServer.maxConnectionsPerIp)) {
-            ctx.close();
-            return;
+        int overIp = proxy ? 0 : mine - CloudWebServer.maxConnectionsPerIp;
+        int overAll = all - CloudWebServer.MAX_CONNECTIONS;
+        if (overAll > 0 || overIp > 0) {
+            if (overAll > CloudWebServer.OVER_LIMIT_GRACE || overIp > CloudWebServer.OVER_LIMIT_GRACE) {
+                ctx.close();
+                return;
+            }
+            ctx.channel().attr(REFUSED).set(true);
+            var idle = ctx.pipeline().get("idle");
+            if (idle != null) ctx.pipeline().replace(idle, "idle", new IdleStateHandler(CloudWebServer.REFUSED_TIMEOUT_S, 0, 0));
         }
         super.channelActive(ctx);
     }

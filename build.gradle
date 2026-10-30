@@ -286,6 +286,8 @@ def integrationMods = [
     pylons              : ["curse.maven:pylons-518211:${pylons_curse_file}"],
     functionalstorage   : ["curse.maven:functionalstorage-556861:${functionalstorage_curse_file}", "curse.maven:titanium-287342:${titanium_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
+    // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
+    jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],
 ]
 
 def extractJourneyMapApi = tasks.register('extractJourneyMapApi', Copy) {
@@ -478,6 +480,9 @@ publishing {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
     maxParallelForks = 1
+    // StoreScriptsTest runs every store/scripts program (the tests run in build/minecraft-junit).
+    systemProperty 'cccloud.storeScripts', file('store/scripts').absolutePath
+    inputs.dir('store/scripts').withPropertyName('storeScripts').withPathSensitivity(PathSensitivity.RELATIVE)
     testLogging {
         events "failed"
         exceptionFormat "full"

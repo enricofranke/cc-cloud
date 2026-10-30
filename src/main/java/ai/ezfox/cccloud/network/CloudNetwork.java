@@ -149,6 +149,7 @@ public final class CloudNetwork {
         NetworkService.tick(event.getServer());
         ai.ezfox.cccloud.redstone.RedstoneService.tick(event.getServer());
         OrphanSections.tick(event.getServer());
+        ai.ezfox.cccloud.block.MainframeRetention.tick(event.getServer());
         if (event.getServer().getTickCount() % 100 == 0) CloudWebServer.serverTick(event.getServer());
         TickCost.end(TickCost.GLOBAL, cost);
         // GameTests only: the hub flush runs on the server tick (normally the web server's thread), not counted
@@ -175,6 +176,11 @@ public final class CloudNetwork {
             ai.ezfox.cccloud.layout.LayoutData.get(event.getServer()).publishAll();
         } catch (RuntimeException e) {
             CCCloud.LOGGER.error("[cccloud] Could not load dashboard layouts", e);
+        }
+        try {
+            ai.ezfox.cccloud.block.MainframeRetention.get(srv).publishAll(srv, System.currentTimeMillis());
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] Could not load the removed mainframes", e);
         }
         CloudWebServer.start(event.getServer());
     }

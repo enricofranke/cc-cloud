@@ -13,7 +13,7 @@ export interface Job {
   name: string;
   displayName: string;
   count: number;
-  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
   progress: number;
   /** progress per tick */
   speed: number;
@@ -425,16 +425,24 @@ export class FakeAe2 {
         w.state = "crafting";
         continue;
       }
+      // Like the mod: no free CPU is a waiting job (one row per item, retried after the cooldown), never a failure.
+      const waiting = this.jobs.find((j) => j.name === w.name && j.status === "waiting");
       if (it.count >= w.min) {
+        if (waiting) this.jobs.splice(this.jobs.indexOf(waiting), 1);
         w.state = "idle";
         continue;
       }
       if ((w.cooldownUntil ?? 0) > now) continue;
-      const r = this.craft(w.name, Math.min((w.target ?? w.min) - it.count, 64), false, "autostock");
+      const amount = Math.min((w.target ?? w.min) - it.count, 64);
+      const r = this.craft(w.name, amount, false, "autostock");
       w.cooldownUntil = now + 30_000;
+      if (r.ok && waiting) this.jobs.splice(this.jobs.indexOf(waiting), 1);
       if (r.ok) w.state = "crafting";
-      else if (r.error === "no_cpu") w.state = "waiting_cpu";
-      else {
+      else if (r.error === "no_cpu") {
+        w.state = "waiting_cpu";
+        if (waiting) waiting.count = amount;
+        else this.jobs.unshift({ jobId: String(++this.seq), name: w.name, displayName: it.displayName, count: amount, status: "waiting", progress: 0, speed: 0, source: "autostock", error: "no_cpu", started: now });
+      } else {
         w.failures = (w.failures ?? 0) + 1;
         w.state = w.failures >= 3 ? "paused" : "missing";
       }

@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:me_bridge_autostock_cpu",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

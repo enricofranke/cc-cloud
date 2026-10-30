@@ -55,7 +55,8 @@ Widgets with `pin=true` ask for the mainframe PIN on a keypad before they act. T
 | Message | Meaning |
 |---|---|
 | Dashboard disabled | the dashboard is switched off in the mainframe screen |
-| Offline | the mainframe chunk is unloaded, the block was broken or the redstone kill switch is on |
+| Offline | the mainframe chunk is unloaded or the redstone kill switch is on |
+| Removed | the mainframe block was broken – place its item again to bring everything back ([how](index.md)) |
 | Mainframe has no power | the FE buffer is empty – see [power](index.md) |
 | Uplink offline | that uplink is unloaded or out of range |
 | Read-only device | this device may watch but not control |

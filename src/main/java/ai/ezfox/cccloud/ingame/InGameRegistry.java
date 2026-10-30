@@ -57,6 +57,7 @@ public final class InGameRegistry {
         TESTS.register("tablet_actions", () -> ai.ezfox.cccloud.tablet.TabletGameTests::actions);
         TESTS.register("display_forming", () -> ai.ezfox.cccloud.display.DisplayGameTests::forming);
         TESTS.register("display_content", () -> ai.ezfox.cccloud.display.DisplayGameTests::content);
+        TESTS.register("display_reload", () -> ai.ezfox.cccloud.display.DisplayGameTests::reload);
         TESTS.register("analyzer_filtering", () -> ai.ezfox.cccloud.analyzer.AnalyzerGameTests::filtering);
         TESTS.register("analyzer_preview", () -> ai.ezfox.cccloud.analyzer.AnalyzerGameTests::preview);
         TESTS.register("map_nodes_filtering", () -> ai.ezfox.cccloud.map.MapNodesGameTests::filtering);

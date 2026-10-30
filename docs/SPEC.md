@@ -101,7 +101,7 @@ The dashboard can be reachable from the internet and can trigger things in-game 
 ### Web hardening
 - WebSocket auth: the token is sent in the first message (`{"t":"auth","token":"..."}` within 5 s), not in the URL, so it does not end up in logs. Check the `Origin` header (must match the Host) to block cross-site WebSocket hijacking.
 - No CORS. Headers on every response: strict Content-Security-Policy (self only, no inline scripts), X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy no-referrer, Cache-Control no-store for /api.
-- Limits: HTTP body ≤ 4 KB, WebSocket frame ≤ 8 KB, ≤ 8 connections per IP, ≤ 64 total, idle/read timeouts (handshake 10 s, idle 60 s without pong), 5 wrong pair attempts per IP per minute (then 429), 10 actions/s per client.
+- Limits: HTTP body ≤ 4 KB, WebSocket frame ≤ 8 KB, ≤ 24 connections per IP, ≤ 256 total (8/64 until 0.9.0, but one browser tab alone uses 7–8; up to 8 connections over a limit get `503 too_many_connections` with `Retry-After: 1` on their first request and a 2 s read timeout, further ones are closed at once), idle/read timeouts (handshake 10 s, idle 60 s without pong), 5 wrong pair attempts per IP per minute (then 429), 10 actions/s per client.
 - Plain HTTP by default. Optional TLS via config (`tlsCertPath`, `tlsKeyPath`, PEM). Document that internet-facing servers should use TLS or a reverse proxy/tunnel; show a warning in the UI when the page is not served over HTTPS and the host is not a LAN address.
 - The UI renders all Lua-supplied text as text, never as HTML (no innerHTML). Server-side length limits: title 48, label 48, string values 256, alert text 200, opts object ≤ 1 KB.
 - Audit log: every action and pairing goes to the server log (`[cccloud] <device> pressed <uplink>/<id> = <value>`).
@@ -612,7 +612,7 @@ Implemented in `history/` (`HistorySeries` = tiers + storage form, `HistoryStore
 - `viewer` – sees everything except coordinates and secrets, cannot act.
 - `operator` – viewer + buttons, toggles, sliders, crafting, rules enable/disable.
 - `admin` – operator + devices, roles, PIN, rules editing, push targets, terminal/editor, layout editing, share links.
-- `owner` – the placer; admin + transfer ownership + delete.
+- `owner` – who placed the mainframe first (a restored mainframe keeps its owner, see "Mainframe removal"); admin + transfer ownership + delete.
 - Assign per player (`/cccloud role <player> <role>`, mainframe screen, web "Access" page) and per group (see teams). The highest role from all sources wins. Every check in the code goes through one `AccessResolver` (player, mainframe) → role; canControl is derived from it.
 
 ### Server permissions (works with the permission mods hosts use)
@@ -820,7 +820,7 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 
 **Wireless redstone** (`redstone/*`)
 - Uplink screen section "Wireless redstone": Off / Transmitter / Receiver and a channel name (`[A-Za-z0-9_.-]{1,32}`); needs `network.link` on the linked mainframe (screen action `redstone`, arg `<off|transmit|receive>:<channel>`). Bridges have no redstone mode.
-- Transmitters read the strongest neighbour signal (e.g. a computer's redstone output into the uplink), receivers emit their channel's level on every side (weak power, analog 0–15). Only uplinks with a route to their mainframe take part, so it works over radio, relays, CC cables, fiber and ender links (also across dimensions). Max 64 channels per network (alphabetically first ones), next tick after a change, receivers change at most every 2 ticks.
+- Transmitters read the strongest neighbour signal (e.g. a computer's redstone output into the uplink) on every neighbour update and once on their first tick after loading (the input is not saved, and a lever that stays on sends no update after a world load or when it was placed before the transmitter), receivers emit their channel's level on every side (weak power, analog 0–15). Only uplinks with a route to their mainframe take part, so it works over radio, relays, CC cables, fiber and ender links (also across dimensions). Max 64 channels per network (alphabetically first ones), next tick after a change, receivers change at most every 2 ticks.
 
 ### v0.7 web protocol: wireless redstone channels (for the dashboard)
 - Snapshot field `redstone` (not for share viewers) and delta `{"t":"redstone","channels":[…],"limit":64}` whenever a channel changes:
@@ -850,6 +850,7 @@ Code: `ingame/` (shared: access helper, coverage, hub session, payloads, registr
 
 **Cloud Display** (`cccloud:cloud_display`, CC-monitor blockstate: `facing` × `orientation` × 16 edge states):
 - Forming exactly like CC: Tweaked monitors (expand into compatible neighbours, contract/split when a block is removed, validate after loading), up to 8×6 blocks. The configuration (mainframe, section, in-world clicks, configuring player) is copied to every block, so it survives growing and splitting.
+- Saved per block: `index_x`, `index_y`, `width`, `height` and the configuration. (Until 0.9.0 the index was saved as `x`/`y`, which the chunk save overwrites with the block position, so every reload found the wall "malformed" and reset it. Such saves start as 1×1 displays and join their neighbours again on the first tick, without a warning.) Validation after loading only checks parts in loaded chunks; parts in unloaded chunks never make a wall malformed.
 - Setup: right-click with a linked Cloud Link Card (admin) binds it; sneak + right-click opens its screen (status; for admins the card picker, which never offers restricted sections, the "in-world clicks" switch and unlink). The display only shows a section while the player who chose it still has at least viewer on the mainframe, and never a restricted one (also re-checked when reading).
 - Content: the origin block reads the section snapshot from the hub at most 4×/s and sends it in the block entity update packet when it changed (≤ 48 KB, else "too large"). The client paints it on the CPU into a cached `DynamicTexture` (64 px per block, Minecraft's `font/ascii.png` glyphs) at most 4×/s and draws one full-bright quad over the rectangle (same face transform as CC monitors); culled beyond 48 blocks, idle textures are freed after 30 s.
 - In-world clicks (if enabled): a right-click on the front is mapped to the display (CC's monitor hit mapping) and hit-tested against the same layout (`DisplayLayout`, deterministic, shared by client and server); only buttons and toggles without `pin`/`confirm` react, and only for players with operator.
@@ -1053,7 +1054,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
   - The item is added to the watchlist if needed.
   - `min:0` together with `autoCraft:false` turns it off.
 
-**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`.
+**Job rows** (in `item` and in the jobs widget value): `{"jobId","name","displayName","count","status":"queued"|"running"|"waiting"|"done"|"failed"|"cancelled","progress","error?","notify":bool,"source":"dashboard"|"lua"|"autostock"|"rule"}`. `waiting` (with `error:"no_cpu"`) is only used by auto-stock, see below.
 
 **Craft preview: `{"t":"craft_preview","reqId","uplinkId","id?","name","count"}` → `{"t":"craft_plan","reqId","ok","error?","plan":{…}}`** (`storage.craft`).
 - The plan has these fields:
@@ -1073,7 +1074,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 - States, shown in `watch.state` and the watchlist widget rows (`state`, `target`, `autoCraft`):
   - `idle`;
   - `crafting`;
-  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted);
+  - `waiting_cpu` (no free CPU: retried after the cooldown, no failure counted). The request is a job row with `status:"waiting"`, `error:"no_cpu"` – one per item: a retry plans the same job again (with the current amount), and the row disappears when the item is stocked by other means or its auto-stock is switched off. Nothing is planned while AE2 reports no idle CPU at all; a plan that finds no suitable CPU when it is submitted waits too. Same logic for both bridges (`BridgeCore`); RS2 has no CPUs, so its jobs never wait. Manual crafts (dashboard, Lua, rules) still fail with `no_cpu`;
   - `missing` (missing resources: counted as a failure);
   - `paused` (3 failures in a row; editing the entry resets it).
 - Jobs are started with the user `autostock`.
@@ -1089,6 +1090,15 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 - Actions on an unloaded section get `action_result.error = "unloaded"`.
 - Unlinking or breaking a section, or breaking the mainframe, drops its cached snapshot.
 - The network map keeps such devices as `unloaded` with their last position.
+
+### Mainframe removal: identity in the item, retention, recovery, misclick guard (2026-10-30)
+A misclick or a griefer must not wipe a whole dashboard setup.
+- **Identity in the item.** A broken mainframe drops its item with the data component `cccloud:mainframe_identity` = `{id, owner}` (loot `copy_components` from the block entity's implicit components; pick-block with data does the same). The owner name is only for the tooltip ("Mainframe 1a2b3c4d · Owner: Steve"); ownership always comes from the server. Placing it restores the **same mainframe id**, so devices, accounts and roles, PIN, layout, rules, scenes, production statistics, API keys and push targets are back, and uplinks/bridges reconnect by id (they also update the position stored in their link). The block entity data that only the block had is kept server-side with the removal record: owner, dashboard switch and the linked-device list. **Upgrade cards keep dropping** as separate items (no shulker-box inventory); the FE buffer is not kept.
+- **Ownership.** The restored mainframe belongs to its original owner, whoever places it; the placer gets no role from placing. Placing an item of a mainframe that currently stands somewhere is refused ("This mainframe already stands: …"); the placer's mainframe limit does not apply to a restore, and removed mainframes do not count against their owner's limit. An item whose data was purged (or from another server) places a new mainframe with a new id for the placer.
+- **Retention.** Removing the block (any way: player, explosion, block mover, command) records the mainframe in `data/cccloud/removed_mainframes.dat` and deletes nothing. Config `mainframeRetentionDays` (default 7, 0 = delete at once like before): when the window ends, or with `/cccloud mainframe purge <id>`, everything is deleted (pairing code, PIN, devices, accounts/roles/shares, rules, scenes, production, API keys, push targets, cached sections, layout) and dashboards are disconnected (4404). Expired entries are checked every minute and at server start. Meanwhile the dashboard keeps its sessions and shows the mainframe offline with `reason:"removed"` and `removedUntil` (ms) in the `state` message and snapshot (status "Removed" with the restore hint and the deletion date); all actions fail as for an unloaded mainframe.
+- **Recovery without an item.** `/cccloud mainframe recover` lists the removed mainframes the player owns (all of them for server admins: `cccloud.admin.manage`, op level 2), with the deletion date and a click to recover; `/cccloud mainframe recover <id>` (8-character prefix or full id) gives an item bound to it. Owners get one item per removal and only when the break dropped none (creative, or no fitting tool); when the item may have dropped (survival break with drops, explosion, machine, command) only a server admin can hand out another one, so recovering never yields an extra mainframe. `/cccloud mainframe purge <id>`: owner or server admin.
+- **Misclick guard.** Config `mainframeBreakProtection` (default true), checked in NeoForge's `BreakBlockEvent` (player breaks only): in creative the mainframe only breaks while sneaking (otherwise an action-bar hint "Sneak to break the Cloud Mainframe"); in survival only the owner, players with the admin role on it and server admins may break it (others get a hint). Claim mods (FTB Chunks, Open Parties and Claims) cancel the same event for foreign claims; this is an extra layer that also covers unclaimed land.
+- GameTests (`cccloud:ingame` batch): `mainframe_break_restore`, `mainframe_break_guard`, `mainframe_retention_purge`, `mainframe_recover_command`.
 
 ### Script import (pulled forward from v0.5 E, requested 2026-10-23)
 Push Lua programs from the browser straight onto a CC computer through the mainframe → uplink path.

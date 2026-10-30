@@ -187,6 +187,12 @@ public final class BridgeSection implements DashboardSection {
             var mainframe = CloudNetwork.mainframe(link.id());
             if (mainframe != null) {
                 mainframe.linkUplink(sectionId, GlobalPos.of(level.dimension(), host.asBlockEntity().getBlockPos()));
+                var at = GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos());
+                if (!at.equals(link.pos())) {
+                    // The mainframe was restored from its item somewhere else: follow it (the link is by id).
+                    link = new MainframeLink(at, link.id());
+                    host.asBlockEntity().setChanged();
+                }
                 var route = ai.ezfox.cccloud.network.NetworkService.route(sectionId);
                 newStatus = route == null ? CloudStatus.CONNECTING : route.connected() ? mainframe.status() : CloudStatus.OFFLINE;
             }

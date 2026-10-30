@@ -67,6 +67,13 @@ public final class StorageV2TestSupport {
                 var row = core.get().getItem(PLANKS);
                 helper.assertTrue(row != null && row.count() >= 4, "auto-stock filled planks up to the minimum: " + row);
             })
+            .thenExecute(() -> {
+                for (var e : core.get().jobRows(16)) {
+                    var row = e.getAsJsonObject();
+                    helper.assertTrue(!"autostock".equals(row.has("source") ? row.get("source").getAsString() : "")
+                        || !row.get("status").getAsString().equals("failed"), "no failed auto-stock rows: " + row);
+                }
+            })
             // 5. v0.5 F: watched items get count statistics (sampled once a minute; here straight into a store).
             .thenExecute(() -> {
                 helper.assertTrue(core.get().trackedItems().contains(PLANKS), "watched items are tracked: " + core.get().trackedItems());

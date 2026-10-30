@@ -26,6 +26,35 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Docs (EN/DE): scenes, schedules, production statistics and a Public API page with curl, Home Assistant and a
   Discord bot example; handbook regenerated.
 
+### Mainframe removal is no longer final
+- A broken Cloud Mainframe drops its item with its identity (tooltip: id and owner). Placing it again – anywhere – brings
+  back the same mainframe with its devices, accounts, PIN, layout, rules, scenes and API keys, still owned by its
+  owner; uplinks and bridges reconnect. Upgrade cards still drop separately.
+- Nothing is deleted at once: the data is kept for `mainframeRetentionDays` (default 7), the dashboard shows the
+  mainframe as "Removed" with the deletion date. `/cccloud mainframe recover` gives owners their item back after a
+  creative break (server admins always); `/cccloud mainframe purge <id>` deletes it earlier.
+- Misclick guard (`mainframeBreakProtection`, default on): in creative the mainframe only breaks while sneaking; in
+  survival only its owner, its admins and server admins can break it.
+
+### Fixes
+- Script Store: `door-controller` 1.0.1 no longer passes `icon` to `cloud.group()` (groups take `page` and `cols`; the
+  card shows its first widget's icon), which the mod refused at start. A unit test now runs every store script on CC's
+  Lua VM against the mod's real widget validation, with one dashboard action per control.
+- Wireless redstone: a transmitter samples its input on its first tick after loading, so a channel driven by a lever
+  that is already on is correct after a world load (it stayed at 0 until something changed next to the transmitter).
+- Auto-stock no longer fills the crafting jobs with "failed (no_cpu)" rows while every crafting CPU is busy: the request
+  waits as one "Waiting for CPU" row per item, is planned again after the 30 s cooldown and never counts as a failure.
+  While AE2 has no idle CPU nothing is planned at all. Same logic for the ME and RS bridges and in the dashboard mock.
+- Dashboard: Chrome sometimes got an empty response on the first load. A tab alone opens 7–8 connections, and the
+  9th connection from an IP was closed without an answer. The limits are now 24 connections per IP and 256 in total,
+  and a connection slightly over a limit gets `503` with `Retry-After` instead of an empty response (docs/SECURITY.md).
+- Jade: the tooltip plugin failed to load with Jade 26.1.12 ("Data providers cannot implement IComponentProvider since
+  Minecraft 1.21.6"). The network lines now come from a separate server data provider and client tooltip provider; a
+  unit test checks that rule on the compiled classes. `-PintegrationMods=jade` puts Jade into the dev runs.
+- Cloud Displays no longer reset to 1×1 ("was malformed") when a world loads: the block saved its position in the wall
+  as `x`/`y`, which the chunk save overwrites with the block's coordinates. The index is now saved as
+  `index_x`/`index_y`; walls saved by 0.9.0 join up again by themselves. The showcase builder writes the new keys.
+
 ## 0.9.0 – first public release candidate
 
 Minecraft 26.1.2, NeoForge 26.1.2.109+, CC: Tweaked 1.120.0+. This release bundles everything built in the

@@ -44,6 +44,8 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     private int height = 1;
     private boolean removing;
     private boolean needsValidating;
+    /** Loaded from a 0.9.0 save, whose indices were lost (see {@link #loadAdditional}): joins its neighbours again. */
+    private boolean needsReforming;
 
     // Configuration (same on every block of the rectangle).
     private @Nullable UUID mainframeId;
@@ -263,7 +265,10 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         return other != null && other.xIndex == x && other.yIndex == y && other.width == width && other.height == height;
     }
 
-    /** After loading: a malformed rectangle (e.g. a part was replaced while unloaded) becomes 1×1 and expands again. */
+    /**
+     * After loading: a malformed rectangle (e.g. a part was replaced while unloaded) becomes 1×1 and expands again. Parts
+     * in chunks that are not loaded never count as malformed (a loaded chunk always has its saved block entities).
+     */
     private void validate() {
         if (isOrigin() && width == 1 && height == 1) return;
         if (xIndex >= 0 && xIndex < width && width <= MAX_WIDTH && yIndex >= 0 && yIndex < height && height <= MAX_HEIGHT
@@ -329,7 +334,11 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     }
 
     public void serverTick(ServerLevel level) {
-        if (needsValidating) {
+        if (needsReforming) {
+            needsReforming = false;
+            needsValidating = false;
+            expand();
+        } else if (needsValidating) {
             needsValidating = false;
             validate();
         }
@@ -373,8 +382,9 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     @Override
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
-        output.putInt("x", xIndex);
-        output.putInt("y", yIndex);
+        // Not "x"/"y": a chunk save writes the block position under those keys after saveAdditional (saveMetadata).
+        output.putInt("index_x", xIndex);
+        output.putInt("index_y", yIndex);
         output.putInt("width", width);
         output.putInt("height", height);
         output.storeNullable("mainframe", UUIDUtil.STRING_CODEC, mainframeId);
@@ -387,10 +397,24 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     @Override
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
-        xIndex = input.getIntOr("x", 0);
-        yIndex = input.getIntOr("y", 0);
         width = Math.max(1, input.getIntOr("width", 1));
         height = Math.max(1, input.getIntOr("height", 1));
+        int ix = input.getIntOr("index_x", Integer.MIN_VALUE);
+        if (ix != Integer.MIN_VALUE) {
+            xIndex = ix;
+            yIndex = input.getIntOr("index_y", 0);
+        } else if (width > 1 || height > 1) {
+            // Saved by 0.9.0 under "x"/"y", which the chunk save overwrote with the block position: the index is lost.
+            // Start as a 1×1 display and join the neighbours again on the first tick (like placing the blocks anew).
+            xIndex = 0;
+            yIndex = 0;
+            width = 1;
+            height = 1;
+            needsReforming = true;
+        } else {
+            xIndex = 0;
+            yIndex = 0;
+        }
         mainframeId = input.read("mainframe", UUIDUtil.STRING_CODEC).orElse(null);
         mainframeName = input.getStringOr("mainframe_name", "");
         sectionId = input.getStringOr("section", "");
@@ -407,8 +431,8 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        tag.putInt("x", xIndex);
-        tag.putInt("y", yIndex);
+        tag.putInt("index_x", xIndex);
+        tag.putInt("index_y", yIndex);
         tag.putInt("width", width);
         tag.putInt("height", height);
         if (mainframeId != null) tag.putString("mainframe", mainframeId.toString());

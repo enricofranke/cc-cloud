@@ -123,6 +123,13 @@ It is reviewed before every release.
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP.
 - Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit.
+  - 24 open connections per IP (behind a trusted proxy: per forwarded client IP) and 256 in total. Until 0.9.0 the
+    limits were 8 and 64, but a single browser tab already opens 7–8 connections (6 pooled HTTP/1.1 connections per
+    host and credentials mode, the WebSocket, preconnects), and the socket over the limit was closed without a
+    response, which Chrome showed as an empty page. The ratio of total to per-IP limit is unchanged.
+  - Up to 8 connections over a limit are answered on their first request with `503 too_many_connections`,
+    `Retry-After: 1` and `Connection: close`, and get a 2-second read timeout instead of 10 s; anything further over a
+    limit is closed at once, as before. So a flood still holds at most 8 extra sockets per IP for at most 2 seconds.
 - No CSRF surface:
   - authentication uses bearer tokens in headers or the first WebSocket message, never cookies;
   - the WebSocket `Origin` must match `Host`.
@@ -139,6 +146,12 @@ It is reviewed before every release.
   - Server-thread work is bounded: a 5-second timeout and no blocking lookups.
   - Player names for the web Access API come only from online players and names the mod already knows. There are no Mojang profile lookups from web input.
   - PIN hashing (PBKDF2, 120k iterations) runs on its own bounded executor.
+
+### Removed mainframes: retention and ownership
+- Breaking a mainframe deletes nothing at once: devices, accounts, PIN, layout, rules, scenes, API keys and push targets are kept for `mainframeRetentionDays` (default 7) and then deleted; `/cccloud mainframe purge <id>` (owner or `cccloud.admin.manage`) deletes them earlier. While a mainframe is removed, its devices stay paired but cannot act (it is offline), and relinking its devices elsewhere still needs `network.link` on it.
+- Ownership is stored on the server. The dropped item only names the mainframe; whoever places it restores the original owner's mainframe and gets no rights from that. A second item of a mainframe that stands is refused.
+- `/cccloud mainframe recover`: owners get one item per removal, and only when the break dropped none; otherwise only server admins (`cccloud.admin.manage`) can, so the command cannot duplicate mainframes.
+- Misclick and grief guard (`mainframeBreakProtection`, default on): in survival only the owner, the mainframe's admins and server admins can break it; in creative it only breaks while sneaking.
 
 ### No code execution from the web
 - The browser only sends data that is validated against schemas. There is no eval, no scripting endpoint and no command passthrough.

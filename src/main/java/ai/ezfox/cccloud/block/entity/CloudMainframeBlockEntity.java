@@ -59,6 +59,10 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private final Map<UUID, GlobalPos> linkedUplinks = new LinkedHashMap<>();
 
     private boolean registered;
+    /** From the placed item: the removed mainframe it restores (consumed by {@link #takePlacedIdentity}). */
+    private @Nullable UUID placedIdentity;
+    /** Set when a player breaks the mainframe: whether the block drops its item (null = removed some other way). */
+    private @Nullable Boolean breakerDrops;
     private final SpinAnimation clientAnimation = new SpinAnimation();
     private boolean redstoneChecked;
     private boolean powered;
@@ -177,6 +181,55 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         output.putInt("energy", energy.energy());
     }
 
+    // ---- identity on the item (docs/SPEC.md "Mainframe removal") -------------------------------------------------------
+
+    /** The dropped item (loot table {@code copy_components}) and pick-block carry the mainframe's identity. */
+    @Override
+    protected void collectImplicitComponents(net.minecraft.core.component.DataComponentMap.Builder components) {
+        super.collectImplicitComponents(components);
+        components.set(ModRegistry.MAINFRAME_IDENTITY.get(), new ai.ezfox.cccloud.item.MainframeIdentity(mainframeId, ownerName));
+    }
+
+    @Override
+    protected void applyImplicitComponents(net.minecraft.core.component.DataComponentGetter components) {
+        super.applyImplicitComponents(components);
+        var identity = components.get(ModRegistry.MAINFRAME_IDENTITY.get());
+        placedIdentity = identity == null ? null : identity.id();
+    }
+
+    /** The removed mainframe the item placed here stands for, once (null for a plain item). */
+    public @Nullable UUID takePlacedIdentity() {
+        var id = placedIdentity;
+        placedIdentity = null;
+        return id;
+    }
+
+    /**
+     * Placed from the item of a removed mainframe: takes over its identity and what only its block knew (owner,
+     * dashboard switch, linked devices), so devices, accounts, layout, rules and scenes are back and the devices
+     * reconnect. Ownership comes from the server's record, never from the item or the placer. False (nothing changed)
+     * when that mainframe's data is gone or it is placed somewhere else already.
+     */
+    public boolean restore(net.minecraft.server.MinecraftServer server, UUID id) {
+        if (CloudNetwork.mainframe(id) != null) return false;
+        var entry = ai.ezfox.cccloud.block.MainframeRetention.get(server).restore(id);
+        if (entry == null) return false;
+        mainframeId = id;
+        owner = entry.owner().orElse(null);
+        ownerName = entry.ownerName();
+        enabled = entry.enabled();
+        linkedUplinks.clear();
+        linkedUplinks.putAll(entry.uplinks());
+        setChanged();
+        CCCloud.LOGGER.info("[cccloud] Mainframe {} of {} was placed again at {}; its data is restored", id, ownerName, getBlockPos());
+        return true;
+    }
+
+    /** A player is breaking the mainframe: remember whether the block drops its item (for /cccloud mainframe recover). */
+    public void noteBreaker(Player player, BlockState state) {
+        breakerDrops = level != null && !player.preventsBlockDrops() && state.canHarvestBlock(level, getBlockPos(), player);
+    }
+
     // ---- lifecycle ---------------------------------------------------------------------------------------------------
 
     @Override
@@ -235,24 +288,23 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     public void preRemoveSideEffects(BlockPos pos, BlockState state) {
         super.preRemoveSideEffects(pos, state);
         if (level instanceof ServerLevel serverLevel) {
-            // The mainframe is gone for good: drop its pairing code and devices.
-            var store = WebAuthData.get(serverLevel.getServer());
-            int devices = store.devices(mainframeId).size();
-            store.forgetMainframe(mainframeId);
-            WebAuthData.access(serverLevel.getServer()).forget(mainframeId);
-            ai.ezfox.cccloud.rules.RuleService.forget(serverLevel.getServer(), mainframeId);
-            ai.ezfox.cccloud.scene.SceneService.forget(serverLevel.getServer(), mainframeId);
-            ai.ezfox.cccloud.production.ProductionService.forget(serverLevel.getServer(), mainframeId);
-            ai.ezfox.cccloud.publicapi.ApiKeyData.get(serverLevel.getServer()).keys().forgetMainframe(mainframeId);
-            ai.ezfox.cccloud.push.PushService.forget(serverLevel.getServer(), mainframeId);
-            ai.ezfox.cccloud.network.SectionCache.get(serverLevel.getServer()).forgetMainframe(mainframeId);
+            var server = serverLevel.getServer();
+            // Upgrade cards drop as items (they are not kept with the mainframe); the chunk anchor lets go.
             net.minecraft.world.Containers.dropContents(serverLevel, pos, upgrades);
-            ai.ezfox.cccloud.upgrade.ChunkAnchor.release(serverLevel.getServer(), mainframeId);
+            ai.ezfox.cccloud.upgrade.ChunkAnchor.release(server, mainframeId);
             anchorChunks = java.util.Set.of();
             ai.ezfox.cccloud.upgrade.Upgrades.forget(mainframeId);
-            CCCloud.LOGGER.info("[cccloud] {} was removed; its pairing code, PIN and {} device(s) were deleted", getDisplayName(), devices);
-            WebHub.INSTANCE.removeMainframe(mainframeId);
-            ai.ezfox.cccloud.layout.LayoutData.get(serverLevel.getServer()).remove(mainframeId);
+            if (ai.ezfox.cccloud.block.MainframeRetention.retentionMs() <= 0) {
+                CCCloud.LOGGER.info("[cccloud] {} was removed (mainframeRetentionDays=0)", getDisplayName());
+                ai.ezfox.cccloud.block.MainframeRetention.purge(server, mainframeId);
+                return;
+            }
+            // Keep everything for the retention time: placing the item (or a recovered one) brings it back.
+            var entry = new ai.ezfox.cccloud.block.MainframeRetention.Entry(java.util.Optional.ofNullable(owner), ownerName, System.currentTimeMillis(),
+                GlobalPos.of(serverLevel.dimension(), pos), breakerDrops == null || breakerDrops, false, enabled, Map.copyOf(linkedUplinks));
+            ai.ezfox.cccloud.block.MainframeRetention.get(server).removed(mainframeId, entry);
+            CCCloud.LOGGER.info("[cccloud] {} ({}, owner {}) was removed; its data is kept for {} day(s) – place its item again or use "
+                + "/cccloud mainframe recover to restore it", getDisplayName(), mainframeId, ownerName, CloudConfig.get(CloudConfig.MAINFRAME_RETENTION_DAYS));
         }
     }
 

@@ -46,6 +46,8 @@ public final class WebHub {
         /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
         @Nullable JsonObject power;
         @Nullable String reason;
+        /** Removed mainframe (block broken, data kept): millis when its data is deleted, 0 = not removed. */
+        long removedUntil;
         /** v0.4 network map: full (with positions, canControl) and without positions; sent at most 2x per second. */
         @Nullable String networkFull;
         @Nullable String networkStripped;
@@ -79,6 +81,7 @@ public final class WebHub {
             json.addProperty("enabled", enabled);
             if (power != null) json.add("power", power.deepCopy());
             if (reason != null) json.addProperty("reason", reason);
+            if (removedUntil > 0) json.addProperty("removedUntil", removedUntil);
             return json;
         }
     }
@@ -184,6 +187,32 @@ public final class WebHub {
             state.addProperty("enabled", view.enabled);
             state.add("power", power.deepCopy());
             state.add("reason", reason == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(reason));
+            put(view, "state", state);
+        }
+    }
+
+    /**
+     * A mainframe whose block was removed while its data is kept ({@code reason:"removed"}, {@code removedUntil}: millis
+     * when the data is deleted), or with {@code until = 0} placed again. Dashboards stay connected and show it offline.
+     */
+    public void publishRemoved(UUID mainframeId, String name, long until) {
+        var view = view(mainframeId);
+        synchronized (view) {
+            if (view.removedUntil == until && (until == 0 || "removed".equals(view.reason))) return;
+            view.removedUntil = until;
+            if (view.name.isEmpty()) view.name = name;
+            if (until > 0) {
+                view.online = false;
+                view.reason = "removed";
+            } else if ("removed".equals(view.reason)) {
+                view.reason = null;
+            }
+            var state = new JsonObject();
+            state.addProperty("t", "state");
+            state.addProperty("online", view.online);
+            state.addProperty("enabled", view.enabled);
+            state.add("reason", view.reason == null ? com.google.gson.JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(view.reason));
+            state.addProperty("removedUntil", until);
             put(view, "state", state);
         }
     }

@@ -33,7 +33,7 @@ class RomLuaTest {
     private static final String[] LUA_FILES = {"modules/main/cloud/ui.lua", "programs/cloud-demo.lua", "programs/cloud-storage.lua"};
 
     /** The validating part of the fake uplink (the bookkeeping is in rom_test/prelude.lua). */
-    private static final class FakeUplink {
+    static final class FakeUplink {
         final Map<String, ai.ezfox.cccloud.uplink.Widget> widgets = new LinkedHashMap<>();
         int pages;
 
@@ -99,7 +99,7 @@ class RomLuaTest {
         return value.toString();
     }
 
-    private static LuaFunction compile(LuaState state, InputStream in, String name, LuaValue env) throws Exception {
+    static LuaFunction compile(LuaState state, InputStream in, String name, LuaValue env) throws Exception {
         return LoadState.load(state, in, name, env);
     }
 
@@ -111,10 +111,20 @@ class RomLuaTest {
     }
 
     private static FakeUplink run(String scenario) throws Exception {
+        var fake = new FakeUplink();
+        var state = prepare(fake);
+        runScenario(state, scenario);
+        return fake;
+    }
+
+    /**
+     * A Lua state with CC's cc.expect, our cloud.ui and the ROM programs ({@code __programs}), after rom_test/prelude.lua
+     * (CraftOS stand-ins and the fake uplink, whose widget calls go to {@code fake}).
+     */
+    static LuaState prepare(FakeUplink fake) throws Exception {
         var state = new LuaState();
         CoreLibraries.standardGlobals(state);
         var globals = state.globals();
-        var fake = new FakeUplink();
         RegisteredFunction.bind(globals, new RegisteredFunction[]{
             RegisteredFunction.ofV("__create", fake::create),
             RegisteredFunction.ofV("__set", fake::set),
@@ -137,14 +147,16 @@ class RomLuaTest {
             }
         }
         globals.rawset("__programs", programs);
+        runScenario(state, "prelude");
+        return state;
+    }
 
-        try (var prelude = RomLuaTest.class.getResourceAsStream("/rom_test/prelude.lua")) {
-            LuaThread.runMain(state, compile(state, prelude, "@prelude.lua", globals));
+    /** Runs {@code rom_test/<name>.lua}; a Lua error fails the test. */
+    static void runScenario(LuaState state, String name) throws Exception {
+        try (var in = RomLuaTest.class.getResourceAsStream("/rom_test/" + name + ".lua")) {
+            assertNotNull(in, "missing rom_test/" + name + ".lua");
+            LuaThread.runMain(state, compile(state, in, "@" + name + ".lua", state.globals()));
         }
-        try (var test = RomLuaTest.class.getResourceAsStream("/rom_test/" + scenario + ".lua")) {
-            LuaThread.runMain(state, compile(state, test, "@" + scenario + ".lua", globals));
-        }
-        return fake;
     }
 
     @Test
