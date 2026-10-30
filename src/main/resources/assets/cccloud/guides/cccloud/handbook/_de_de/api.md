@@ -13,7 +13,7 @@ Mit der öffentlichen API können **deine eigenen Programme** Werte lesen und Kn
 
 ## Einschalten
 
-In der `serverconfig/cccloud-server.toml` der Welt (beim dedizierten Server: `world/serverconfig/`), Abschnitt `[api]`, danach den Server neu starten:
+In der `serverconfig/cccloud-server.toml` der Welt (beim dedizierten Server: `world/serverconfig/`), Abschnitt `[api]`. Speichern schaltet sie ein, ohne Neustart ([Live-Konfiguration](security.md)):
 
 ```toml
 [api]

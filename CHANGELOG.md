@@ -4,6 +4,30 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Settings without a restart
+- Every setting of `cccloud-server.toml` and `cccloud-integrations-server.toml` now applies while the server runs: save
+  the file, or run `/cccloud config reload`, which re-reads both files and lists what changed, what was applied live and
+  what would need a restart (nothing does today). `/cccloud config show [key]` shows the values with their defaults;
+  secrets such as the TLS key path are only shown as "set". Both need `cccloud.command.reload` (op level 4, console).
+- The last comment line of every setting in the file says `(applies live)` or `(restart required)`; the file starts with
+  a short note on live reload. NeoForge rewrites existing files once to the new comments (it keeps a backup).
+- `[web]` changes restart only the dashboard's web server: a new port or address is opened before the old one closes; a
+  port in use or unreadable TLS files keep the old server running with all its old settings (log and command say why,
+  the next reload retries). Open dashboards reconnect by themselves. `/cccloud config reload` also loads renewed TLS
+  certificates at the same paths and starts a dashboard that could not start before.
+- Switching `webAllowInternet` on behaves exactly like a start with it (same log lines and warnings); switching it off
+  disconnects every browser at once.
+- Values that were only read at start now follow the file: API rate limits of keys and IPs already in use (a lowered
+  limit holds at once, nothing is refilled), the API and event-stream switches (open streams end at once), the upgrade
+  base limits (`baseDevices`, `baseBrowsers`, `baseRules`, `baseHistoryHours`), Cloud Switch changes per second,
+  `mainframeMaxInputFE` and the relays' input rate, `trackedItemsPerStorage`, `mapTileMaxAgeDays` (sweeps at once), and
+  the `[cards]` switches of the integrations (cards are detected again, so `mffsRequirePin` reaches shown cards).
+- Open dashboards update their menus when a feature switch changes (API, push, rules, scenes, terminal, voxels,
+  production statistics, Script Store).
+- Fixes found on the way: after a `scriptStoreKey` change the store index verified with the old key was still trusted
+  for up to 5 minutes; push retries used the allow-list of the first attempt; cave slices (`mapSlices = auto`) now count
+  the dashboard as internet-facing while the running server allows the internet, even if a reload could not apply yet.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

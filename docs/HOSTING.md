@@ -2,8 +2,8 @@
 
 The dashboard is served by the mod itself, on the Minecraft server (dedicated server, or the integrated
 server in singleplayer/LAN). There is no external service. All settings live in the **server config**
-`<world>/serverconfig/cccloud-server.toml` (created on first start; changes need a server restart for the
-`[web]` section).
+`<world>/serverconfig/cccloud-server.toml` (created on first start). Changes apply without a restart – see
+[Changing settings without a restart](#changing-settings-without-a-restart).
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -106,13 +106,41 @@ Convert a Let's Encrypt key to PKCS#8 first:
 `openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`. If the files cannot be loaded the
 dashboard does not start (it never silently falls back to plain HTTP).
 
+## Changing settings without a restart
+
+Edit `cccloud-server.toml` (or `cccloud-integrations-server.toml`) and save it: NeoForge notices the change (within a few
+seconds; the command below applies it at once) and CC: Cloud applies it. Or run, as an op with `cccloud.command.reload` (op level 4) or from the console:
+
+```
+/cccloud config reload        # re-read both files, apply, print what changed / was applied / needs a restart
+/cccloud config show          # every value with its default (secrets only as "set")
+/cccloud config show webPort  # one value
+```
+
+The last comment line of every setting in the file says `(applies live)` or `(restart required)`; today every setting
+applies live.
+
+- **`[web]`**: only the dashboard's web server restarts, never the game. A new port or address is bound **before** the old
+  one is closed. If that fails (port in use, privileged port, unknown address) or the TLS files cannot be loaded, nothing
+  of the new `[web]` section is applied and the old server keeps running; the log and the command say why, and the next
+  reload tries again. Open dashboards reconnect on their own; after a port, address or TLS change open the new URL (the
+  mainframe screen shows it).
+- **Renewed certificates**: `/cccloud config reload` also loads renewed TLS files at the same paths (Let's Encrypt
+  renewals): new connections get the new certificate, open ones keep running.
+- **`webAllowInternet`**: switching it on logs the same lines and warnings as a start with it; switching it off closes
+  every connection at once.
+- **Limits and switches** (`[api]`, `[push]`, `[upgrades]`, `redstoneDeviceChangesPerSecond`, ...) apply at once; a lowered
+  rate limit counts what was already used.
+- A file NeoForge cannot parse is replaced with the defaults (a backup is kept next to it): LAN only, API off.
+
 ## Operations
 
 - `/cccloud status|devices|revoke <name|all>|trust <player>|untrust <player>|pin set <digits>|pin clear`
   (look at the mainframe; owner, trusted players and ops).
 - Every pairing, approval, revoke and dashboard action is logged as `[cccloud] …` in the server log.
 - Banned players' devices stop working; IP-banned addresses cannot connect. Devices unused for 30 days expire.
-- If the port is in use, the server logs an error and keeps running without the dashboard.
+- If the port is in use at start, the server logs an error and keeps running without the dashboard; free the port and run
+  `/cccloud config reload` to start it without a restart.
 
 ## FAQ
 

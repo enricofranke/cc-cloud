@@ -101,7 +101,7 @@ It is reviewed before every release.
   - with `hideNumbers`, no label, text or number widgets.
 
 ### Web hardening
-- The server is LAN-only by default (`webAllowInternet=false`). IP bans are honoured. `X-Forwarded-For` and `CF-Connecting-IP` are only trusted from configured proxies.
+- The server is LAN-only by default (`webAllowInternet=false`); changing it applies live (see "Config reload without a restart"). IP bans are honoured. `X-Forwarded-For` and `CF-Connecting-IP` are only trusted from configured proxies.
 - Deny by default:
   - Every HTTP route declares its access level in `Router` (public, device token, or API key) and is checked centrally (`RouteAuthTest` walks every route, `ApiHttpTest` the public API).
   - WebSocket messages other than `auth`, `auth_share` and `pong` are rejected before authentication.
@@ -163,6 +163,48 @@ It is reviewed before every release.
   - Server-thread work is bounded: a 5-second timeout and no blocking lookups.
   - Player names for the web Access API come only from online players and names the mod already knows. There are no Mojang profile lookups from web input.
   - PIN hashing (PBKDF2, 120k iterations) runs on its own bounded executor.
+
+### Config reload without a restart (live config, 2026-10-30)
+Every server config value applies while the server runs (file watcher or `/cccloud config reload`, docs/SPEC.md "Live
+config"). A reload must never leave the server in a state that a fresh start with the new file would not produce, and
+never weaker than the old one in between:
+- **All or nothing for `[web]`.** The new rules are built exactly like at a start: TLS files loaded, trusted proxies parsed
+  (invalid entries logged and ignored), the Host list with the host of `publicUrl`. If TLS cannot be loaded or the new
+  address cannot be bound, **nothing** of the new `[web]` section applies – in particular `webAllowInternet = true` never
+  takes effect over plain HTTP because the certificate failed (a start in that case does not open the dashboard at all;
+  a reload keeps the old, working rules). The error is logged and printed by the command; the keys stay pending and the
+  next reload retries them.
+- **One swap, one rule set per connection.** New connections get the new rules from a single atomic swap; every
+  connection keeps the rules it was accepted under and is closed when they change (address, TLS, `webAllowInternet`,
+  trusted proxies, `webTrustCloudflareHeader`, `webAllowedHosts`, `publicUrl`), so no request sees half of an old and
+  half of a new configuration. Switching internet access off disconnects every browser at once; only LAN clients get back
+  in. Browsers reconnect by themselves (WebSocket close 1012).
+- **Same checks and warnings as a start.** A reload that opens internet access logs the same "listening on … internet
+  allowed" line and the same plain-HTTP warning.
+- **Bind first.** A new port or address is bound before the old socket closes; the dashboard is never without a listener
+  because of a reload (only the same port on an overlapping address has to close first, and binds the old address again
+  when the new one fails).
+- **Limits never get a fresh budget.** Rate limit buckets in use (API per key and per IP, Cloud Switch changes) take a
+  new limit on their next use and keep what was used: a lowered limit holds at once, a raised one refills only at the new
+  rate. Per-IP connection counters, pairing and share-link failure counters and API stream counts survive a reload (the
+  web server instance stays). A lowered browser or stream limit applies to new connections; open ones stay, like after
+  removing a Bandwidth upgrade.
+- **Switches off means off now.** `apiEnabled=false` makes `/api/v1` 404 for the next request and ends open event
+  streams at once; `pushEnabled`, `terminalEnabled`, `rulesEnabled`, `scenesEnabled`, `voxelView`, `scriptStore` apply to
+  the next action. `mffsRequirePin` and the other `[cards]` switches re-detect every card, so a PIN requirement switched
+  on is in the published widgets within a second. Dashboards refetch the feature list (`{"t":"config"}`).
+- **Store key rotation.** Verified store indexes are cached per URL **and key**: after `scriptStoreKey` changes, nothing
+  verified with the old key is trusted again (it was trusted for up to 5 minutes before).
+- **Push allow-list.** `pushAllowedHosts` is read for every attempt, so a host removed by a reload gets no further retries.
+- **X-ray guard.** `mapSlices = auto` counts the dashboard as internet-facing while the file **or** the running server
+  allows the internet.
+- **The commands.** `/cccloud config reload|show` need `cccloud.command.reload` (op level 4 by default, the console).
+  `show` and the reload report never print secret values (`tlsKeyPath`, names with token/secret/password/private key: only
+  "(set, hidden)"/"(not set)"; user info in URLs masked); the report goes to the server log with the same masking.
+- A file with a syntax error is replaced by NeoForge with defaults (backup kept); the defaults are the closed ones (LAN
+  only, API off, Chunk Anchor off).
+- Residual: whoever can write the config file can change these settings live – the same person could before, with a
+  restart. Open dashboards on an old port or scheme must be reopened at the new address.
 
 ### Removed mainframes: retention and ownership
 - Breaking a mainframe deletes nothing at once: devices, accounts, PIN, layout, rules, scenes, API keys and push targets are kept for `mainframeRetentionDays` (default 7) and then deleted; `/cccloud mainframe purge <id>` (owner or `cccloud.admin.manage`) deletes them earlier. While a mainframe is removed, its devices stay paired but cannot act (it is offline), and relinking its devices elsewhere still needs `network.link` on it.
