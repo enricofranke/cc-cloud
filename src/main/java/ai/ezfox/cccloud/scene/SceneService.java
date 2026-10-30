@@ -413,7 +413,7 @@ public final class SceneService {
                 DIRTY.clear();
             }
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.SCENES, tickCost);
         }
     }
 

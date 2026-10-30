@@ -39,6 +39,8 @@ public final class RsDevices {
     /** mainframe → section id → card. Only for loaded mainframes. */
     private static final Map<UUID, LinkedHashMap<UUID, RsGroupSection>> SECTIONS = new HashMap<>();
     private static final Set<UUID> DIRTY = new HashSet<>();
+    /** What each mainframe's cards were last built from (see refresh). */
+    private static final Map<UUID, Object> LAST_INPUT = new HashMap<>();
     private static boolean listening;
 
     private RsDevices() {
@@ -100,6 +102,7 @@ public final class RsDevices {
     public static void purge(MinecraftServer server, UUID mainframeId) {
         RsDeviceData.get(server).forget(mainframeId);
         var sections = SECTIONS.remove(mainframeId);
+        LAST_INPUT.remove(mainframeId);
         if (sections != null) for (var section : sections.values()) CloudNetwork.unregisterSection(section);
     }
 
@@ -181,15 +184,24 @@ public final class RsDevices {
     // ---- cards -------------------------------------------------------------------------------------------------------
 
     static void tick(MinecraftServer server) {
+        long cost = ai.ezfox.cccloud.network.TickCost.start();
+        try {
+            tickCards(server);
+        } finally {
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RS_CARDS, cost);
+        }
+    }
+
+    private static void tickCards(MinecraftServer server) {
         var data = RsDeviceData.get(server);
-        boolean all = server.getTickCount() % REFRESH_INTERVAL == 0;
-        if (!all && DIRTY.isEmpty()) return;
+        int tick = server.getTickCount();
         var ids = new HashSet<UUID>(DIRTY);
         DIRTY.clear();
-        if (all) {
-            ids.addAll(data.mainframes());
-            ids.addAll(SECTIONS.keySet());
-        }
+        // Every mainframe once per REFRESH_INTERVAL, spread over the ticks by its id: a server with many mainframes
+        // does not rebuild all their cards in the same tick (docs/SPEC.md "Scaling").
+        for (var id : data.mainframes()) if (due(id, tick)) ids.add(id);
+        for (var id : SECTIONS.keySet()) if (due(id, tick)) ids.add(id);
+        if (ids.isEmpty()) return;
         for (var id : ids) {
             try {
                 refresh(server, data, id);
@@ -197,6 +209,10 @@ public final class RsDevices {
                 CloudLog.LOGGER.error("[cccloud] Could not update the redstone cards of {}", id, e);
             }
         }
+    }
+
+    private static boolean due(UUID mainframeId, int tick) {
+        return Math.floorMod(mainframeId.hashCode() + tick, REFRESH_INTERVAL) == 0;
     }
 
     /** Rebuilds a mainframe's cards and publishes what changed. */
@@ -218,6 +234,11 @@ public final class RsDevices {
         }
         boolean online = mainframe.status() == CloudStatus.ONLINE && mainframe.isEnabled();
         var link = new MainframeLink(GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos()), mainframeId);
+        // The cards are a pure function of the device copies, online and the link: nothing to do when those are the same
+        // as last time (the periodic pass on a big base rebuilt hundreds of widgets every second for nothing).
+        var input = List.of(List.copyOf(data.devices(mainframeId).values()), online, link);
+        if (current != null && input.equals(LAST_INPUT.get(mainframeId))) return;
+        LAST_INPUT.put(mainframeId, input);
         var cards = RsCards.build(data.devices(mainframeId).values());
         var next = new LinkedHashMap<UUID, RsGroupSection>();
         for (var card : cards) {
@@ -296,6 +317,7 @@ public final class RsDevices {
         LOADED.clear();
         SECTIONS.clear();
         DIRTY.clear();
+        LAST_INPUT.clear();
     }
 
     // ---- network map, analyzer ----------------------------------------------------------------------------------------

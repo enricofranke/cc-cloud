@@ -21,10 +21,15 @@ import org.jspecify.annotations.Nullable;
  * script restarts and unloaded chunks, and the dashboard simply skips unknown ids.
  */
 public final class LayoutValidator {
-    public static final int MAX_BYTES = 64 * 1024;
+    /**
+     * Document limits, raised for big bases in 0.10 (docs/SPEC.md "Scaling"): a page of 500 cards needs more than 256
+     * card entries and rows beyond 999; the dashboard leaves out the widget entries of untouched cards, so 256 KB holds
+     * the cards of a 2000-section base. Saving is still limited to 5 per 10 s per mainframe and needs layout.edit.
+     */
+    public static final int MAX_BYTES = 256 * 1024;
     public static final int MAX_PAGES = 12;
-    public static final int MAX_CARDS = 256;
-    public static final int MAX_WIDGETS = 2048;
+    public static final int MAX_CARDS = 2048;
+    public static final int MAX_WIDGETS = 8192;
     public static final int MAX_KEY = 160;
     public static final int MAX_ORDER = 10_000;
     public static final Set<String> ACCENTS = Set.of("gold", "cyan", "green", "yellow", "red", "purple", "orange", "gray");
@@ -34,7 +39,7 @@ public final class LayoutValidator {
     public static final int COLS = 12;
     public static final int MAX_CARD_H = 60;
     public static final int MAX_WIDGET_H = 40;
-    public static final int MAX_Y = 999;
+    public static final int MAX_Y = 99_999;
     /** v2: the smallest readable card width (of 12). */
     public static final int MIN_CARD_W = 3;
     public static final String CUSTOM_PREFIX = "c:";

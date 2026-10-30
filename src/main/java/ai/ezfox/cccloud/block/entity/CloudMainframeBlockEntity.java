@@ -371,11 +371,21 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
     // ---- power -------------------------------------------------------------------------------------------------------
 
+    private ai.ezfox.cccloud.network.graph.NetworkPower.@org.jspecify.annotations.Nullable Counts usageCounts;
+    private int usageClients = -1;
+
     private void tickPower() {
         int capacity = CloudConfig.get(CloudConfig.MAINFRAME_BUFFER_FE);
         if (capacity != energy.capacity()) energy.setCapacity(capacity);
         // v0.4: base + per connected device type + per client + per extra hop (counts come from the network service).
-        energyUsage = ai.ezfox.cccloud.network.NetworkService.power(mainframeId, WebHub.INSTANCE.clientCount(mainframeId)).get("total");
+        // Recomputed when the device counts or the browsers change, else once a second (upgrades, config).
+        var counts = ai.ezfox.cccloud.network.NetworkService.counts(mainframeId);
+        int clients = WebHub.INSTANCE.clientCount(mainframeId);
+        if (counts != usageCounts || clients != usageClients || powerTicks % 20 == 0) {
+            usageCounts = counts;
+            usageClients = clients;
+            energyUsage = ai.ezfox.cccloud.network.NetworkService.power(mainframeId, clients).get("total");
+        }
         boolean before = hasPower;
         hasPower = power.tick(energy.energy(), energyUsage, CloudConfig.get(CloudConfig.REQUIRE_POWER), energy::consume);
         energy.startTick();

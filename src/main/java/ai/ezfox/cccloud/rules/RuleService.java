@@ -36,6 +36,10 @@ import org.jspecify.annotations.Nullable;
  */
 public final class RuleService {
     public static final int INTERVAL = 10;
+    /** Ticks between two rules documents of a mainframe caused by rule runs. */
+    static final int PUBLISH_INTERVAL = 20;
+    private static final java.util.Set<UUID> PENDING_PUBLISH = new java.util.HashSet<>();
+    private static final Map<UUID, Integer> LAST_PUBLISH = new HashMap<>();
     private static final SecureRandom RANDOM = new SecureRandom();
     /** mainframe → parsed rules (cache of RuleData). */
     private static final Map<UUID, List<Rule>> RULES = new HashMap<>();
@@ -191,12 +195,26 @@ public final class RuleService {
                 if (engine.takeFiredDirty()) saveFired(server, e.getKey(), engine);
                 if (!runs.isEmpty()) {
                     String name = loaded ? mainframe.getDisplayName() : displayName(e.getKey());
-                    for (var run : runs) record(server, e.getKey(), name, run);
-                    publish(server, e.getKey());
+                    // Many rules at once (a big base: dozens of thresholds crossed together): one log line for all of them
+                    boolean summary = runs.size() > 3;
+                    for (var run : runs) record(server, e.getKey(), name, run, !summary);
+                    if (summary) logSummary(name, runs);
+                    PENDING_PUBLISH.add(e.getKey());
                 }
             }
+            // The rules document (all rules + log) goes to every browser: at most once a second per mainframe, however
+            // many rules run (docs/SPEC.md "Scaling"). Edits still publish at once.
+            int now = server.getTickCount();
+            for (var it = PENDING_PUBLISH.iterator(); it.hasNext(); ) {
+                var id = it.next();
+                Integer last = LAST_PUBLISH.get(id);
+                if (last != null && now - last < PUBLISH_INTERVAL && now >= last) continue;
+                it.remove();
+                LAST_PUBLISH.put(id, now);
+                publish(server, id);
+            }
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.GLOBAL, tickCost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RULES, tickCost);
         }
     }
 
@@ -265,14 +283,32 @@ public final class RuleService {
     }
 
     private static void record(MinecraftServer server, UUID mainframeId, String mainframeName, RuleEngine.Run run) {
+        record(server, mainframeId, mainframeName, run, true);
+    }
+
+    private static void logSummary(String mainframeName, List<RuleEngine.Run> runs) {
+        var sb = new StringBuilder();
+        int failed = 0;
+        for (var run : runs) {
+            if (run.skipped()) continue;
+            if (!run.ok()) failed++;
+            if (sb.length() < 400) sb.append(sb.isEmpty() ? "" : ", ").append(run.name()).append(run.ok() ? "" : " (" + run.error() + ")");
+        }
+        if (sb.isEmpty()) return;
+        CCCloud.LOGGER.info("[cccloud] {} rules of {} ran ({} failed): {}{}", runs.size(), mainframeName, failed, sb, sb.length() >= 400 ? " …" : "");
+    }
+
+    private static void record(MinecraftServer server, UUID mainframeId, String mainframeName, RuleEngine.Run run, boolean log) {
         String result = run.ok() ? "ok" : run.error();
         RuleData.get(server).addLog(mainframeId, new RuleData.LogEntry(run.time(), run.ruleId(), run.name(), result, run.manual(), run.skipped()));
         if (run.skipped()) {
             CCCloud.LOGGER.info("[cccloud] Schedule '{}' of {} skipped: the mainframe is {}", run.name(), mainframeName, result.substring("skipped_".length()));
             return;
         }
-        CCCloud.LOGGER.info("[cccloud] Rule '{}' of {} ran{} ({} action(s)): {}", run.name(), mainframeName, run.manual() ? " manually" : "",
-            run.actions(), result);
+        if (log) {
+            CCCloud.LOGGER.info("[cccloud] Rule '{}' of {} ran{} ({} action(s)): {}", run.name(), mainframeName, run.manual() ? " manually" : "",
+                run.actions(), result);
+        }
         if (run.push()) notifier.accept(new Notification(mainframeId, mainframeName, "Rule '" + run.name() + "': " + result,
             run.ok() ? "info" : "warn"));
     }

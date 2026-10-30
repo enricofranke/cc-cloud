@@ -7,7 +7,7 @@ import { presetHas } from "./permissions.ts";
 import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
-import { signal, batch } from "@preact/signals";
+import { signal, batch, computed } from "@preact/signals";
 import { WIDGET_TYPES, type ClaimsOverlay, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
@@ -173,6 +173,13 @@ export class MainframeConn {
   readonly status = signal<ConnStatus>("connecting");
   readonly info = signal<MainframeInfo | null>(null);
   readonly uplinks = signal<Uplink[]>([]);
+  /**
+   * Bumped whenever the set of sections or a section's structure changes (snapshot, uplink, uplink_removed), not on
+   * value deltas: the layout is only resolved again when this changes (docs/SPEC.md "Scaling").
+   */
+  readonly structure = signal(0);
+  /** Number of sections; only notifies when the number changes (not on every value delta). */
+  readonly sectionCount = computed(() => this.uplinks.value.length);
   readonly alerts = signal<Alert[]>([]);
   readonly unread = signal(0);
   /** Optimistic values by `uplinkId/id`, shown until the server confirms or we roll back. */
@@ -408,6 +415,32 @@ export class MainframeConn {
   }
 
   // ---------------------------------------------------------------- inbound
+  /**
+   * Applies value deltas of several sections in one pass and one signal write: only the changed sections and widgets
+   * get new objects, so unchanged cards keep their identity (and are not rendered again).
+   */
+  private applyValues(sections: Record<string, unknown>) {
+    let changed = false;
+    const list = this.uplinks.value.map((u) => {
+      const vals = sections[u.uplinkId];
+      if (!vals || typeof vals !== "object" || Array.isArray(vals)) return u;
+      const changes = vals as Record<string, unknown>;
+      let any = false;
+      const widgets = u.widgets.map((w) => {
+        if (!Object.hasOwn(changes, w.id)) return w;
+        any = true;
+        return withValue(w, changes[w.id]);
+      });
+      if (!any) return u;
+      changed = true;
+      return { ...u, widgets };
+    });
+    if (changed) this.uplinks.value = list;
+    for (const [uplinkId, vals] of Object.entries(sections)) {
+      if (vals && typeof vals === "object" && !Array.isArray(vals)) for (const id of Object.keys(vals)) this.settle(keyOf(uplinkId, id));
+    }
+  }
+
   private handle(msg: any) {
     switch (msg.t) {
       case "auth_ok":
@@ -422,6 +455,7 @@ export class MainframeConn {
           this.dropAllPending();
           this.info.value = normalizeInfo(msg.mainframe);
           this.uplinks.value = msg.uplinks.map(normalizeUplink).filter(Boolean) as Uplink[];
+          this.structure.value++;
           if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
@@ -470,38 +504,24 @@ export class MainframeConn {
         const list = this.uplinks.value;
         const i = list.findIndex((x) => x.uplinkId === u.uplinkId);
         this.uplinks.value = i >= 0 ? list.map((x, j) => (j === i ? u : x)) : [...list, u];
+        this.structure.value++;
         // a fresh snapshot of the uplink settles every pending value in it
         for (const w of u.widgets) this.settle(keyOf(u.uplinkId, w.id));
         break;
       }
       case "uplink_removed":
         this.uplinks.value = this.uplinks.value.filter((x) => x.uplinkId !== msg.uplinkId);
+        this.structure.value++;
         break;
       case "value": {
         if (typeof msg.uplinkId !== "string" || typeof msg.id !== "string") return;
-        const value = toValue(msg.value);
-        let changed = false;
-        const list = this.uplinks.value.map((u) => {
-          if (u.uplinkId !== msg.uplinkId) return u;
-          return {
-            ...u,
-            widgets: u.widgets.map((w) => {
-              if (w.id !== msg.id) return w;
-              changed = true;
-              if (w.type === "chart") {
-                const history = Array.isArray(msg.value)
-                  ? numbers(msg.value, chartCap(w))
-                  : typeof msg.value === "number" && Number.isFinite(msg.value)
-                    ? [...(w.history ?? []), msg.value].slice(-chartCap(w))
-                    : w.history ?? [];
-                return { ...w, history, value: history.at(-1) ?? null };
-              }
-              return { ...w, value };
-            }),
-          };
-        });
-        if (changed) this.uplinks.value = list;
-        this.settle(keyOf(msg.uplinkId, msg.id));
+        this.applyValues({ [msg.uplinkId]: { [msg.id]: msg.value } });
+        break;
+      }
+      case "values": {
+        // one message per flush: {s: {uplinkId: {widgetId: value}}} (docs/SPEC.md "Scaling")
+        if (!msg.s || typeof msg.s !== "object" || Array.isArray(msg.s)) return;
+        this.applyValues(msg.s);
         break;
       }
       case "alert": {
@@ -1278,6 +1298,19 @@ function normalizeUplink(u: any): Uplink | null {
 }
 
 const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+
+/** A widget with a new value; a chart appends a number to its history (an array replaces it). */
+function withValue(w: Widget, raw: unknown): Widget {
+  if (w.type === "chart") {
+    const history = Array.isArray(raw)
+      ? numbers(raw, chartCap(w))
+      : typeof raw === "number" && Number.isFinite(raw)
+        ? [...(w.history ?? []), raw].slice(-chartCap(w))
+        : w.history ?? [];
+    return { ...w, history, value: history.at(-1) ?? null };
+  }
+  return { ...w, value: toValue(raw) };
+}
 const chartCap = (w: Widget) => Math.min(300, Math.max(2, typeof w.opts?.points === "number" ? w.opts.points : 60));
 function numbers(raw: unknown[], cap: number) {
   return raw.filter((x): x is number => typeof x === "number" && Number.isFinite(x)).slice(-cap);

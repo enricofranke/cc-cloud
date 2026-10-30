@@ -213,7 +213,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     role = granted.role();
                     perms = granted.perms();
                     state = State.READY;
-                    // Only authenticated sessions may send big frames (layout_set, up to 64 KB).
+                    // Only authenticated sessions may send big frames (layout_set, up to 256 KB).
                     if (sizeGuard != null) sizeGuard.raiseLimit(ClientMessages.MAX_LAYOUT_FRAME);
                     if (authDeadline != null) authDeadline.cancel(false);
                     WebHub.INSTANCE.addSession(this);
@@ -826,16 +826,31 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         return device;
     }
 
-    /** Non-blocking; disconnects clients whose outbound buffer is full (slow consumers). */
+    /**
+     * A browser may fall behind by this many bytes (beyond the 1 MB write buffer) or for this long before it is
+     * disconnected as too slow: a big base's snapshot is over 1 MB, and the deltas right after it must not cost the
+     * connection (docs/SPEC.md "Scaling"). Memory per connection stays bounded.
+     */
+    static final long MAX_BACKLOG_BYTES = 4L * 1024 * 1024;
+    static final long MAX_BACKLOG_NANOS = 10_000_000_000L;
+    private volatile long slowSince;
+
+    /** Non-blocking; disconnects clients whose outbound backlog stays too big for too long (slow consumers). */
     @Override
     public void send(List<String> messages) {
         var ch = channel;
         if (ch == null || closed || !ch.isActive()) return;
         if (!ch.isWritable()) {
-            var d = device;
-            CloudLog.LOGGER.info("[cccloud] Disconnecting slow dashboard client {} ({})", ip, d != null ? d.name() : "?");
-            close(1013, "too slow");
-            return;
+            long now = System.nanoTime();
+            if (slowSince == 0) slowSince = now;
+            if (ch.bytesBeforeWritable() > MAX_BACKLOG_BYTES || now - slowSince > MAX_BACKLOG_NANOS) {
+                var d = device;
+                CloudLog.LOGGER.info("[cccloud] Disconnecting slow dashboard client {} ({})", ip, d != null ? d.name() : "?");
+                close(1013, "too slow");
+                return;
+            }
+        } else {
+            slowSince = 0;
         }
         for (String message : messages) ch.write(new TextWebSocketFrame(message));
         ch.flush();

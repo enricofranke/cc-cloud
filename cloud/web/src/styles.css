@@ -666,6 +666,10 @@ pre {
   gap: 14px;
   padding: 14px;
 }
+/* big pages: a card far off screen keeps its grid box and renders its widgets when it comes near (Card.tsx) */
+.card-lazy {
+  min-height: 48px;
+}
 .led {
   width: 8px;
   height: 8px;

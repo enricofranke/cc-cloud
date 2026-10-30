@@ -211,7 +211,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
         tickCounter = Math.floorMod(Long.hashCode(getBlockPos().asLong()), STATUS_INTERVAL);
         statusPending = true;
         inputPending = true;
-        NetworkService.markDirty();
+        NetworkService.markDirty(link == null ? null : link.id());
     }
 
     @Override
@@ -232,7 +232,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
                 serverLevel.getServer().getTickCount());
         }
         RsDevices.unregister(this);
-        NetworkService.markDirty();
+        NetworkService.markDirty(link == null ? null : link.id());
         status = CloudStatus.OFFLINE;
     }
 
@@ -266,7 +266,7 @@ public class RsDeviceBlockEntity extends BlockEntity {
             }
             tickCounter++;
         } finally {
-            ai.ezfox.cccloud.network.TickCost.end(cost);
+            ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RSDEVICE, cost);
         }
     }
 
@@ -491,6 +491,11 @@ public class RsDeviceBlockEntity extends BlockEntity {
         group = newGroup;
         setChanged();
         RsDevices.changed(this);
+    }
+
+    /** Test hook (scale test): name and group like the screen sets them. */
+    public void setNameAndGroupForTest(String newName, String newGroup) {
+        setNameAndGroup(newName, newGroup);
     }
 
     void setAnalog(boolean value) {

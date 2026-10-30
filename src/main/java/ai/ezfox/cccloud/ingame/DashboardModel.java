@@ -62,15 +62,17 @@ public final class DashboardModel {
             case "uplink" -> put(m);
             case "uplink_removed" -> uplinks.remove(str(m, "uplinkId"));
             case "value" -> {
-                var uplink = uplinks.get(str(m, "uplinkId"));
-                if (uplink == null || !uplink.has("widgets")) return false;
-                for (var w : uplink.getAsJsonArray("widgets")) {
-                    var widget = w.getAsJsonObject();
-                    if (!str(widget, "id").equals(str(m, "id"))) continue;
-                    var value = m.get("value");
-                    widget.add("value", value);
-                    appendHistory(widget, value);
+                if (!setValue(str(m, "uplinkId"), str(m, "id"), m.get("value"))) return false;
+            }
+            case "values" -> {
+                // {s: {uplinkId: {widgetId: value}}}: all value deltas of one hub flush
+                if (!(m.get("s") instanceof JsonObject sections)) return false;
+                boolean any = false;
+                for (var section : sections.entrySet()) {
+                    if (!(section.getValue() instanceof JsonObject values)) continue;
+                    for (var value : values.entrySet()) any |= setValue(section.getKey(), value.getKey(), value.getValue());
                 }
+                return any;
             }
             case "state" -> {
                 for (var key : new String[]{"online", "enabled", "name", "power", "reason"}) {
@@ -94,6 +96,19 @@ public final class DashboardModel {
             }
         }
         return true;
+    }
+
+    private boolean setValue(String uplinkId, String widgetId, JsonElement value) {
+        var uplink = uplinks.get(uplinkId);
+        if (uplink == null || !uplink.has("widgets") || value == null) return false;
+        for (var w : uplink.getAsJsonArray("widgets")) {
+            var widget = w.getAsJsonObject();
+            if (!str(widget, "id").equals(widgetId)) continue;
+            widget.add("value", value);
+            appendHistory(widget, value);
+            return true;
+        }
+        return false;
     }
 
     private void put(JsonObject uplink) {

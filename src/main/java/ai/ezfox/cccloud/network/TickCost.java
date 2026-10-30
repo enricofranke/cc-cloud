@@ -1,12 +1,14 @@
 package ai.ezfox.cccloud.network;
 
 /**
- * Optional measurement of the server-thread time cccloud spends per tick, by part (used by the load test). Disabled by
- * default; then it costs a single boolean check per call.
+ * Optional measurement of the server-thread time cccloud spends per tick, by part (used by the load and scale tests).
+ * Disabled by default; then it costs a single boolean check per call.
  */
 public final class TickCost {
-    public static final int MAINFRAME = 0, UPLINK = 1, OTHER_BE = 2, GLOBAL = 3;
-    public static final String[] NAMES = {"mainframe", "uplink", "other block entities", "global tick handlers"};
+    public static final int MAINFRAME = 0, UPLINK = 1, OTHER_BE = 2, GLOBAL = 3, RSDEVICE = 4, NETWORK = 5, RULES = 6, HISTORY = 7,
+        PRODUCTION = 8, SCENES = 9, CARDS = 10, RS_CARDS = 11, SCREENS = 12, WEB = 13;
+    public static final String[] NAMES = {"mainframe", "uplink", "other block entities", "global tick handlers", "redstone devices", "network",
+        "rules", "history", "production", "scenes", "mainframe cards", "redstone cards", "screens", "web housekeeping"};
     public static volatile boolean enabled;
     private static final long[] NANOS = new long[NAMES.length];
 

@@ -65,6 +65,19 @@ public final class NetworkService {
         dirty = true;
     }
 
+    /**
+     * Only this mainframe's network changed (one of its devices loaded, unloaded or changed): recomputed on the next tick
+     * without touching the other networks (big servers: a chunk load must not recompute every mainframe; docs/SPEC.md
+     * "Scaling"). Null = unknown, everything.
+     */
+    public static void markDirty(@Nullable UUID mainframeId) {
+        if (mainframeId == null) dirty = true;
+        else DIRTY_MAINFRAMES.add(mainframeId);
+    }
+
+    private static final Set<UUID> DIRTY_MAINFRAMES = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, Set<UUID>> OVER_BY_MAINFRAME = new HashMap<>();
+
     /** Fiber cables, junctions, ender fiber links or cloud elements were placed, removed, loaded or unloaded. */
     public static void markFiberDirty() {
         fiberDirty = true;
@@ -73,6 +86,8 @@ public final class NetworkService {
 
     public static void clear() {
         RESULTS.clear();
+        SCREEN.clear();
+        PUBLISHED.clear();
         ROUTES.clear();
         COUNTS.clear();
         SERVING.clear();
@@ -86,18 +101,38 @@ public final class NetworkService {
         fiberDirty = true;
     }
 
-    /** Called every server tick; recomputes only when dirty (and every 10 s as a safety net). */
+    /**
+     * Called every server tick; recomputes only what is dirty. The 10 s safety net is spread over the ticks (each
+     * mainframe at its own tick) instead of recomputing every network at once; the fiber flood-fill runs every 10 s and
+     * recomputes everything only when the fiber networks changed.
+     */
     public static void tick(MinecraftServer server) {
         CloudWired.tick();
-        boolean safety = server.getTickCount() % SAFETY_INTERVAL == 0;
-        if (!dirty && !safety) return;
-        dirty = false;
+        int t = server.getTickCount();
         try {
-            if (fiberDirty || safety) {
+            if (fiberDirty || t % SAFETY_INTERVAL == 0) {
                 fiberDirty = false;
+                var before = fibers;
                 fibers = FiberNetworks.compute(fiberElements(), EnderFiberLinkBlockEntity.loaded());
+                if (!fibers.equals(before)) dirty = true;
             }
-            recompute();
+            if (dirty) {
+                dirty = false;
+                DIRTY_MAINFRAMES.clear();
+                recompute(null);
+                return;
+            }
+            Set<UUID> due = null;
+            if (!DIRTY_MAINFRAMES.isEmpty()) {
+                due = new HashSet<>(DIRTY_MAINFRAMES);
+                DIRTY_MAINFRAMES.removeAll(due);
+            }
+            for (var mainframe : CloudNetwork.mainframes()) {
+                if (Math.floorMod(mainframe.getMainframeId().hashCode() + t, SAFETY_INTERVAL) != 0) continue;
+                if (due == null) due = new HashSet<>();
+                due.add(mainframe.getMainframeId());
+            }
+            if (due != null) recompute(due);
         } catch (RuntimeException e) {
             CCCloud.LOGGER.error("[cccloud] Could not compute the cloud network", e);
         }
@@ -186,18 +221,30 @@ public final class NetworkService {
         return nodes;
     }
 
-    private static void recompute() {
+    /** Everything (only = null) or only these mainframes' networks; the others keep their results. */
+    private static void recompute(@Nullable Set<UUID> only) {
         recomputations++;
-        RESULTS.clear();
-        ROUTES.clear();
-        COUNTS.clear();
-        SERVING.clear();
-        OVER_CAPACITY.clear();
+        if (only == null) {
+            RESULTS.clear();
+            ROUTES.clear();
+            COUNTS.clear();
+            OVER_CAPACITY.clear();
+            OVER_BY_MAINFRAME.clear();
+        } else {
+            for (var id : only) {
+                var old = RESULTS.remove(id);
+                // routes of devices that meanwhile belong to another network are not this one's to remove
+                if (old != null) for (var d : old.devices()) ROUTES.remove(UUID.fromString(d.id()), old.route(d.id()));
+                COUNTS.remove(id);
+                var over = OVER_BY_MAINFRAME.remove(id);
+                if (over != null) OVER_CAPACITY.removeAll(over);
+            }
+        }
         boolean grace = CloudConfig.get(CloudConfig.LEGACY_RANGE_GRACE);
         var devicesByMainframe = new HashMap<UUID, List<NetworkGraph.Device>>();
         for (var uplink : CloudNetwork.uplinks()) {
             var link = uplink.getLink();
-            if (link == null || uplink.getLevel() == null || uplink.isRemoved()) continue;
+            if (link == null || uplink.getLevel() == null || uplink.isRemoved() || (only != null && !only.contains(link.id()))) continue;
             var p = uplink.getBlockPos();
             var type = deviceType(uplink);
             String id = uplink.getUplinkId().toString();
@@ -207,6 +254,7 @@ public final class NetworkService {
         }
         for (var section : CloudNetwork.bridgeSections()) {
             if (!(section instanceof BridgeSection bridge) || bridge.getLink() == null) continue;
+            if (only != null && !only.contains(bridge.getLink().id())) continue;
             var be = bridge.host().asBlockEntity();
             if (be.getLevel() == null || be.isRemoved()) continue;
             var p = be.getBlockPos();
@@ -218,7 +266,7 @@ public final class NetworkService {
         // Cloud Redstone devices: radio only (no cables), a fraction of a device in capacity and FE.
         for (var device : ai.ezfox.cccloud.rsdevice.RsDevices.loadedDevices()) {
             var link = device.getLink();
-            if (link == null || device.getLevel() == null || device.isRemoved()) continue;
+            if (link == null || device.getLevel() == null || device.isRemoved() || (only != null && !only.contains(link.id()))) continue;
             var p = device.getBlockPos();
             devicesByMainframe.computeIfAbsent(link.id(), k -> new ArrayList<>()).add(new NetworkGraph.Device(device.deviceId().toString(),
                 NetworkGraph.DeviceType.REDSTONE, dim(device.getLevel()), p.getX() + .5, p.getY() + .5, p.getZ() + .5,
@@ -227,6 +275,7 @@ public final class NetworkService {
         for (var mainframe : CloudNetwork.mainframes()) {
             if (mainframe.getLevel() == null || mainframe.isRemoved()) continue;
             var id = mainframe.getMainframeId();
+            if (only != null && !only.contains(id)) continue;
             var devices = devicesByMainframe.getOrDefault(id, List.of());
             var computed = NetworkGraph.compute(id.toString(), nodes(mainframe), devices, grace);
             // v0.7 capacity: devices beyond the mainframe's limit go over_capacity (most hops / most recent first).
@@ -234,16 +283,40 @@ public final class NetworkService {
             var over = limit == ai.ezfox.cccloud.upgrade.UpgradeEffects.UNLIMITED ? Set.<String>of()
                 : ai.ezfox.cccloud.network.graph.Capacity.overCapacity(computed, id.toString(), limit, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT),
                     CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS), linkOrder(mainframe));
-            for (var o : over) OVER_CAPACITY.add(UUID.fromString(o));
+            var overIds = new HashSet<UUID>();
+            for (var o : over) overIds.add(UUID.fromString(o));
+            OVER_CAPACITY.addAll(overIds);
+            if (!overIds.isEmpty()) OVER_BY_MAINFRAME.put(id, overIds);
             var result = ai.ezfox.cccloud.network.graph.Capacity.without(computed, over);
             RESULTS.put(id, result);
             for (var device : devices) ROUTES.put(UUID.fromString(device.id()), result.route(device.id()));
             COUNTS.put(id, NetworkPower.counts(result, CloudConfig.get(CloudConfig.FIBER_CAPACITY_WEIGHT), CloudConfig.get(CloudConfig.REDSTONE_CAPACITY_WEIGHT),
                 CloudConfig.get(CloudConfig.PROBE_CAPACITY_UNITS)));
+            // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
+            // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
+            var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
+                Set.copyOf(mainframe.getLinkedUplinks().keySet()), namesHash(id, mainframe.getLinkedUplinks().keySet()));
+            var last = PUBLISHED.get(id);
+            long now = System.currentTimeMillis();
+            if (last != null && last.key().equals(key) && now - last.at() < REPUBLISH_MS) {
+                // unchanged: only remember that its online parts are still online (lastSeen on the map)
+                if (mainframe.isOnline()) {
+                    for (var node : result.nodes()) if (node.available() && result.reachable(node.id())) LAST_ONLINE.put(node.id(), now);
+                    for (var e : result.routes().entrySet()) {
+                        if (e.getValue().connected() && !e.getValue().legacyOutOfRange() && !over.contains(e.getKey())) LAST_ONLINE.put(e.getKey(), now);
+                    }
+                }
+                continue;
+            }
+            PUBLISHED.put(id, new Published(key, now));
+            WebHub.INSTANCE.publishNetwork(id, toJson(mainframe, result, true), toJson(mainframe, result, false));
+        }
+        // Relays serving any network (from every network's last result)
+        SERVING.clear();
+        for (var result : RESULTS.values()) {
             for (var node : result.nodes()) {
                 if (node.type() != NetworkGraph.NodeType.MAINFRAME && result.reachable(node.id())) SERVING.add(UUID.fromString(node.id()));
             }
-            WebHub.INSTANCE.publishNetwork(id, toJson(mainframe, result, true), toJson(mainframe, result, false));
         }
         // Routes may have changed: wireless redstone follows on the same tick.
         ai.ezfox.cccloud.redstone.RedstoneService.markDirty();
@@ -311,7 +384,10 @@ public final class NetworkService {
         // Capacity must count links made earlier in this tick (linking is a rare player action, so this is cheap).
         if (dirty) {
             dirty = false;
-            recompute();
+            DIRTY_MAINFRAMES.clear();
+            recompute(null);
+        } else if (DIRTY_MAINFRAMES.remove(mainframe.getMainframeId())) {
+            recompute(Set.of(mainframe.getMainframeId()));
         }
         // Linking is a geometric check: nodes count even while they (or the mainframe) have no power right now.
         var nodes = new ArrayList<NetworkGraph.Node>();
@@ -513,9 +589,23 @@ public final class NetworkService {
             nodes.add(n);
         }
         json.add("nodes", nodes);
+        // Big networks: a device's links to nodes it does not use (shown faintly on the map) are left out; they were
+        // most of a 500-device map (5 links per device with 4 relays; docs/SPEC.md "Scaling").
+        boolean trim = result.devices().size() > TRIM_LINKS_ABOVE;
+        var usedDeviceLinks = new HashSet<String>();
+        if (trim) {
+            for (var e : result.routes().entrySet()) {
+                if (e.getValue().connected()) usedDeviceLinks.add(e.getValue().path().getLast() + ">" + e.getKey());
+            }
+        }
+        int trimmed = 0;
         var links = new JsonArray();
         for (var link : result.links()) {
             if (!(included.contains(link.a()) || loaded.contains(link.a())) || !(included.contains(link.b()) || loaded.contains(link.b()))) continue;
+            if (trim && loaded.contains(link.b()) && !link.legacy() && !usedDeviceLinks.contains(link.a() + ">" + link.b())) {
+                trimmed++;
+                continue;
+            }
             var l = new JsonObject();
             l.addProperty("a", link.a());
             l.addProperty("b", link.b());
@@ -530,6 +620,7 @@ public final class NetworkService {
             links.add(l);
         }
         json.add("links", links);
+        if (trimmed > 0) json.addProperty("unusedLinks", trimmed);
         // Routes: node id -> ids from the mainframe to that node, both ends included.
         var routes = new JsonObject();
         for (var e : result.nodePaths().entrySet()) {
@@ -547,6 +638,129 @@ public final class NetworkService {
         }
         json.add("routes", routes);
         return json;
+    }
+
+    /** Above this many devices the map leaves out the links a device does not use (count in {@code unusedLinks}). */
+    public static final int TRIM_LINKS_ABOVE = 200;
+
+    /** Device nodes the in-game mainframe screen gets at most (docs/SPEC.md "Scaling"); the rest is counted in {@code more}. */
+    public static final int SCREEN_MAX_DEVICES = 600;
+    /** Names on the screen are cut to this (the tree row cannot show more). */
+    static final int SCREEN_NAME = 32;
+
+    /** A compact network for the in-game screen, its content hash, and the recomputation it was built from. */
+    public record ScreenNetwork(JsonObject json, long version, long builtAt) {
+    }
+
+    private static final Map<UUID, ScreenNetwork> SCREEN = new HashMap<>();
+
+    /** What a mainframe's published map was built from; an equal key within {@link #REPUBLISH_MS} skips the rebuild. */
+    private record PublishKey(NetworkGraph.Result result, Set<String> over, boolean online, boolean enabled, @Nullable String reason, Set<UUID> linked,
+                              int names) {
+    }
+
+    /** Names and redstone groups of a mainframe's devices as shown on the map (a rename from the map must show at once). */
+    private static int namesHash(UUID mainframeId, Set<UUID> linked) {
+        int h = 0;
+        for (var id : linked) {
+            String key = id.toString();
+            var group = ai.ezfox.cccloud.rsdevice.RsDevices.group(mainframeId, id);
+            h += key.hashCode() * 31 + deviceName(mainframeId, key, null).hashCode() * 17 + (group == null ? 0 : group.hashCode());
+        }
+        return h;
+    }
+
+    private record Published(PublishKey key, long at) {
+    }
+
+    private static final Map<UUID, Published> PUBLISHED = new HashMap<>();
+    static final long REPUBLISH_MS = 60_000;
+
+    /**
+     * The network as the in-game mainframe screen shows it (tree list and mini map): short node ids ({@code n0} is the
+     * mainframe), only name, type, status, parent, x/z and the dimension when it differs from the mainframe's, and only
+     * the links of the tree. Devices with problems come first; at most {@link #SCREEN_MAX_DEVICES} device nodes, the
+     * rest is counted in {@code more}. Rebuilt once per network recomputation and shared by every open screen;
+     * {@code version} changes only when the content does, so open screens get it again only then.
+     */
+    public static @Nullable ScreenNetwork screenNetwork(CloudMainframeBlockEntity mainframe) {
+        var result = RESULTS.get(mainframe.getMainframeId());
+        if (result == null) return null;
+        var cached = SCREEN.get(mainframe.getMainframeId());
+        if (cached != null && cached.builtAt() == recomputations) return cached;
+        var full = toJson(mainframe, result, true);
+        var json = compactForScreen(full, NetworkService.dim(mainframe.getLevel()), SCREEN_MAX_DEVICES);
+        var built = new ScreenNetwork(json, ai.ezfox.cccloud.uplink.Json.GSON.toJson(json).hashCode() & 0xffffffffL, recomputations);
+        SCREEN.put(mainframe.getMainframeId(), built);
+        return built;
+    }
+
+    /** Pure: the compact screen form of a {@link #toJson} network (unit tested). */
+    public static JsonObject compactForScreen(JsonObject full, String mainframeDim, int maxDevices) {
+        var nodes = full.getAsJsonArray("nodes");
+        var ordered = new ArrayList<JsonObject>();
+        var devices = new ArrayList<JsonObject>();
+        for (var e : nodes) {
+            var n = e.getAsJsonObject();
+            boolean device = n.has("uplinkId");
+            (device ? devices : ordered).add(n);
+        }
+        // problems first (they are what a player opens the screen for), then by name
+        devices.sort(java.util.Comparator.comparingInt((JsonObject n) -> "online".equals(str(n, "status")) || "unloaded".equals(str(n, "status")) ? 1 : 0)
+            .thenComparing(n -> str(n, "name")));
+        int more = Math.max(0, devices.size() - maxDevices);
+        ordered.addAll(devices.subList(0, Math.min(devices.size(), maxDevices)));
+        var shortId = new HashMap<String, String>();
+        for (int i = 0; i < ordered.size(); i++) shortId.put(str(ordered.get(i), "id"), "n" + i);
+        var outNodes = new JsonArray();
+        for (var n : ordered) {
+            var o = new JsonObject();
+            o.addProperty("id", shortId.get(str(n, "id")));
+            o.addProperty("type", str(n, "type"));
+            String name = str(n, "name");
+            o.addProperty("name", name.length() > SCREEN_NAME ? name.substring(0, SCREEN_NAME) : name);
+            o.addProperty("status", str(n, "status"));
+            String parent = n.has("parent") ? shortId.get(str(n, "parent")) : null;
+            if (parent != null) o.addProperty("parent", parent);
+            if (n.has("flags")) o.add("flags", n.get("flags"));
+            if (n.get("pos") instanceof JsonObject p) {
+                var pos = new JsonObject();
+                pos.add("x", p.get("x"));
+                pos.add("z", p.get("z"));
+                o.add("pos", pos);
+            }
+            String dim = str(n, "dim");
+            if (!dim.isEmpty() && !dim.equals(mainframeDim)) o.addProperty("dim", dim);
+            outNodes.add(o);
+        }
+        // only the links of the tree: each node's link to its parent
+        var parentOf = new HashMap<String, String>();
+        for (var n : ordered) if (n.has("parent")) parentOf.put(str(n, "id"), str(n, "parent"));
+        var outLinks = new JsonArray();
+        for (var e : full.getAsJsonArray("links")) {
+            var l = e.getAsJsonObject();
+            String a = str(l, "a"), b = str(l, "b");
+            boolean tree = a.equals(parentOf.get(b)) || b.equals(parentOf.get(a));
+            if (!tree || !shortId.containsKey(a) || !shortId.containsKey(b)) continue;
+            var o = new JsonObject();
+            o.addProperty("a", shortId.get(a));
+            o.addProperty("b", shortId.get(b));
+            o.add("signal", l.get("signal"));
+            o.add("kind", l.get("kind"));
+            if (l.has("medium")) o.add("medium", l.get("medium"));
+            outLinks.add(o);
+        }
+        var json = new JsonObject();
+        json.addProperty("dim", mainframeDim);
+        json.add("nodes", outNodes);
+        json.add("links", outLinks);
+        if (more > 0) json.addProperty("more", more);
+        return json;
+    }
+
+    private static String str(JsonObject o, String key) {
+        var e = o.get(key);
+        return e != null && e.isJsonPrimitive() ? e.getAsString() : "";
     }
 
     private static String deviceTypeId(UUID mainframeId, NetworkGraph.Device device, @Nullable DashboardSection section) {

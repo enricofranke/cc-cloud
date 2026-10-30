@@ -16,8 +16,11 @@ import org.jspecify.annotations.Nullable;
  * {@link #send} from any thread; the server thread drains the queue and forwards it to the player.
  */
 public final class InGameSession implements HubSession {
-    /** Messages queued for the player at most; a client that falls behind gets a fresh snapshot instead. */
-    static final int MAX_QUEUED = 512;
+    /**
+     * Messages queued for the player at most; a client that falls behind gets a fresh snapshot instead. A snapshot of a
+     * big base is one message per section (docs/SPEC.md "Scaling"), so this is above the sections a mainframe can have.
+     */
+    static final int MAX_QUEUED = 4096;
 
     private final UUID mainframeId;
     private final AuthStore.Device device;
@@ -63,6 +66,11 @@ public final class InGameSession implements HubSession {
     public void setAccess(Role role, java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
         this.role = role;
         this.perms = java.util.Set.copyOf(perms);
+    }
+
+    @Override
+    public boolean inGame() {
+        return true;
     }
 
     @Override

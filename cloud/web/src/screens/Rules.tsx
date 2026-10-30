@@ -75,7 +75,9 @@ export default function RulesScreen({ id }: { id: string }) {
     if (sc && conn.can("rules.edit")) setEditing({ rule: scheduleRule(sc), before: null });
   }, [!!doc]);
   if (!conn) return null;
-  const uplinks = conn.uplinks.value;
+  // names and labels only: re-render on structure changes, not on every value delta (docs/SPEC.md "Scaling")
+  void conn.structure.value;
+  const uplinks = conn.uplinks.peek();
   const scenes = sceneRefs(conn);
   const canEdit = conn.can("rules.edit");
   const canToggle = conn.can("rules.toggle");

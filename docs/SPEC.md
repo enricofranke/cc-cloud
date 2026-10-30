@@ -90,7 +90,7 @@ There is no external relay. The mod itself hosts the dashboard on the Minecraft 
 - `GET /api/mainframes` with `Authorization: Bearer <token>` (a browser may hold several tokens, one per mainframe) → basic info.
 - `GET /ws/client?token=...` (WebSocket). Server → client:
   - `{"t":"snapshot","mainframe":{"id","name","online","enabled"},"uplinks":[{"uplinkId","title","online","widgets":[{"id","type","label","opts","value"}]}]}`
-  - deltas: `{"t":"value","uplinkId","id","value"}`, `{"t":"uplink",...full uplink...}`, `{"t":"uplink_removed","uplinkId"}`, `{"t":"state","online","enabled"}`, `{"t":"alert","uplinkId","text","level","ts"}`, `{"t":"action_result","reqId","ok","error?"}`
+  - deltas: `{"t":"value","uplinkId","id","value"}` (since 0.10 the hub sends all values of a flush as one `{"t":"values","s":{uplinkId:{widgetId:value}}}`, see "Scaling"), `{"t":"uplink",...full uplink...}`, `{"t":"uplink_removed","uplinkId"}`, `{"t":"state","online","enabled"}`, `{"t":"alert","uplinkId","text","level","ts"}`, `{"t":"action_result","reqId","ok","error?"}`
   - `{"t":"ping"}` every 20 s.
 - Client → server: `{"t":"action","reqId":"...","uplinkId","id","value"}`, `{"t":"pong"}`. The server rejects actions while the mainframe is offline or disabled, and limits each client to 10 actions per second. `online` here = the mainframe exists, is loaded and is not redstone-killed.
 - Tokens can be revoked: sneak + right-click the mainframe with a Link Card → revoke all tokens (later a GUI).
@@ -219,7 +219,7 @@ dash:run()
 - Limits stay: 32 widgets per uplink → raised to 64 when pages are used; chart history is kept server-side and capped (60–300 points per chart).
 
 ## Layout schema
-The layout of the dashboard is stored per mainframe (SavedData, max **64 KB** as UTF-8 JSON) and is the same for all devices. Only `canControl` devices may change it. The mod only stores and validates it; the browser merges it with what the Lua scripts declare. Reference implementation: `cloud/dev/protocol.ts` (`layoutDoc`, zod) and `cloud/web/src/lib/layout.ts` (`resolveLayout`, `snapshotLayout`).
+The layout of the dashboard is stored per mainframe (SavedData, max **64 KB** as UTF-8 JSON; 256 KB since 0.10, see "Scaling") and is the same for all devices. Only `canControl` devices may change it. The mod only stores and validates it; the browser merges it with what the Lua scripts declare. Reference implementation: `cloud/dev/protocol.ts` (`layoutDoc`, zod) and `cloud/web/src/lib/layout.ts` (`resolveLayout`, `snapshotLayout`).
 
 ### Messages
 - Server → client: the `snapshot` gains `"layout": {...} | null` (null = never edited, the defaults apply).
@@ -281,7 +281,7 @@ The dashboard now writes `"v": 2` documents (it still reads v1 and migrates it o
   }
 }
 ```
-Validation (reject the whole document with `invalid_layout`; unknown keys are an error; sizes as in v1: ≤ 64 KB, ≤ 12 pages, ≤ 256 cards, ≤ 2048 widgets):
+Validation (reject the whole document with `invalid_layout`; unknown keys are an error; sizes as in v1: ≤ 64 KB, ≤ 12 pages, ≤ 256 cards, ≤ 2048 widgets – since 0.10 ≤ 256 KB, ≤ 2048 cards, ≤ 8192 widgets and `y` ≤ 99 999, see "Scaling"):
 - `v` = `1` (old rules above) or `2`.
 - `pages`: as in v1.
 - `cards` keys: a card key (1–160 chars) or a custom card `c:` + `[A-Za-z0-9_-]{1,24}`. Values (all optional): `page` ≤ 32, `x` int 0–11, `y` int 0–999, `w` int 1–12, `h` int 1–60, `x + w ≤ 12` when both are set, `title` ≤ 48, `hidden` bool, `color` ∈ accents, `icon` ∈ icon set, `style` ∈ `comfortable|compact`. v1's `order`/`span` are not allowed in v2.
@@ -330,7 +330,7 @@ What the Java side actually does, where the sections above leave room. Packages:
 - `cloud.setMany(t)`: ≤ 64 entries, all validated before any is applied. `cloud.notify` = `cloud.alert`. `cloud.getClients()` = connected dashboards of the uplink's mainframe.
 
 ### Protocol details
-- Frame size: a raw-byte guard in front of Netty's frame decoder reads each frame header and closes the connection with 1009 before the payload is buffered if a frame (or a fragmented message) is larger than the current limit: **2 KB before authentication**, 64 KB + 1 KB after. After authentication every message except `layout_set` is still limited to 8 KB (checked after parsing).
+- Frame size: a raw-byte guard in front of Netty's frame decoder reads each frame header and closes the connection with 1009 before the payload is buffered if a frame (or a fragmented message) is larger than the current limit: **2 KB before authentication**, 64 KB + 1 KB after (256 KB + 1 KB since 0.10). After authentication every message except `layout_set` is still limited to 8 KB (checked after parsing).
 - `layout_set` → `layout_result`: checks in this order: `read_only`, `rate_limited` (5 per 10 s per mainframe), `too_large`, `invalid_layout`; rights are re-checked on the server thread. Layouts live in `data/cccloud/layouts.dat`, are loaded into the hub on server start and deleted with the mainframe.
 - `query` needs an authenticated device but not `canControl` (read-only search). Besides the listed errors, `query_result.error` can be a rights error (`no_rights`, `banned`).
 - `action_result` for craft actions carries `jobId`. Possible bridge errors: `unavailable` (bridge not loaded/not found), plus the crafting and watchlist errors above.
@@ -1205,7 +1205,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 ### Cached sections of unloaded uplinks/bridges (mod side, implemented)
 - When the chunk of a linked uplink or bridge unloads, its card stays on the dashboard. The `uplink` snapshot/delta carries `"loaded":false`, `"online":false`, `"lastSeen":<ms since epoch>`, and the last widgets with their last values. The dashboard shows it greyed out: "last seen 12 min ago".
 - Live sections always carry `"loaded":true`.
-- The mod keeps these snapshots in SavedData (`data/cccloud/sections.dat`, ≤ 64 KB per section, ≤ 256 per mainframe). They are captured on chunk unload and at server stop, published at server start, and replaced by the live snapshot as soon as the chunk loads. No chunk is ever loaded for this.
+- The mod keeps these snapshots in SavedData (`data/cccloud/sections.dat`, ≤ 64 KB per section, ≤ 256 per mainframe; since 0.10 ≤ 2048 sections and 16 MB per mainframe). They are captured on chunk unload and at server stop, published at server start, and replaced by the live snapshot as soon as the chunk loads. No chunk is ever loaded for this.
 - Removed sections: breaking an uplink drops its section at once. A section whose block disappeared without the break path (`/setblock`, `/fill`, explosions or block movers that skip block-entity side effects) is dropped by `OrphanSections` once its position is loaded but holds no uplink/bridge with that id for 5 minutes (checked every 10 s over the linked sections of loaded mainframes, and for removed block entities whose mainframe is not loaded). Unloaded positions never count.
 - Actions on an unloaded section get `action_result.error = "unloaded"`.
 - Unlinking or breaking a section, or breaking the mainframe, drops its cached snapshot.
@@ -1579,3 +1579,146 @@ Modpacks (All the Mods via KubeJS, CraftTweaker, datapacks) change recipes. JEI/
 - Unit: `RecipeCatalogTest` (every recipe file of the mod normalizes and fits 3×3; conditions; a hand-made "server" with an overridden, a removed, an added and an inactive recipe, tags, alternatives and a shapeless recipe in another order; size bound and ETag; only `mod/cccloud` counts as default), `RecipeRouteTest` (public and read-only, ETag/304, 404 without a game, 60/min, LAN-only), the route and permission walks.
 - GameTest `recipes_live_catalog`: GameTest runs (`-Dcccloud.gametest=true`) enable the datapack `testpacks/live_recipes` through `AddPackFindersEvent` (excluded from the release jar) that overrides the Cloud Lamp, removes the Cloud Sensor and adds a Cloud Core recipe in its own namespace. The test checks those three, that every other loaded recipe of ours comes out `default` (the JSON comparison agrees with the decoded recipes for all of them), that the conditional variants follow the loaded mods, the tag icons and names, the cache, and the same document over HTTP.
 - Web: `live-recipes.test.ts` (parsing and hostile input, badges, merging on the recipes page and on other pages, the fallback, names and icons, the pack makers section).
+
+## Scaling: big bases and big servers (2026-10-30)
+Goal: bases with hundreds of machines per mainframe, many mainframes, many players and browsers – without lag on the
+server thread, with a dashboard that opens in under 2 s, and with no view, packet or payload that can exceed a protocol
+limit. Targets: a 500-device mainframe with 10 browsers costs < 1 ms per tick on average and never more than 5 ms in a
+tick; memory is bounded per device and per series.
+
+### Benchmark (`-PscaleTest`)
+- `./gradlew runGameTestServer -PscaleTest --max-workers=3` runs only the GameTest `cccloud:scale_test` (its own batch,
+  `test_environment` `cccloud:scaletest`); without the flag the test passes at once (normal CI is not slowed down).
+- Builds above the test structure (chunks force-loaded, everything removed afterwards): one mainframe with
+  `-PscaleTestBig=500` devices – 35 % uplinks with a ready-made machine card (8 widgets incl. a 300-point chart, 30 % of
+  the machines never change), 35 % Lua cards with 25 widgets (gauges, labels, toggles, buttons, two 60-point charts,
+  progress, indicators, select, number, text; `opts.history` 1h/24h/7d on some), 30 % Cloud Redstone devices in groups of
+  10 – plus 4 relays; `-PscaleTestMainframes=10` more mainframes with `-PscaleTestDevices=100` devices each; 100 rules (84
+  threshold rules on Lua gauges, 16 one-minute schedules) on the big one; Memory upgrade and Quantum Core everywhere.
+- A thread stands in for the CC computers and calls `set()` like Lua does (two gauges per Lua card every tick, the rest
+  every 1–10 s: about 26 000 calls per second); two redstone groups get All on/All off every 5 s.
+- `-PscaleTestBrowsers=50` real WebSocket clients (`-PscaleTestBigBrowsers=10` on the big mainframe). The server is held at a
+  real 20 TPS (sleeping after each tick, outside the measurement) and the hub flushes on its own 100 ms timer, as on a real
+  server. 10 s idle (`-PscaleTestBaseline`), 30 s load (`-PscaleTestSeconds`).
+- Measured: cccloud's server-thread time per tick by part (`TickCost`: uplinks, mainframes, redstone devices, network,
+  rules, history, production, scenes, mainframe cards, redstone cards, screens, web housekeeping) as avg/p50/p95/p99/max,
+  the whole tick in wall and CPU time, and `cccloudCpuEstMs` (cccloud's wall time scaled by the tick's CPU/wall ratio: on
+  a busy machine the server thread is preempted, which inflates wall times); snapshot size and time per browser; bytes,
+  messages and values per second per browser; the view of every in-game screen (mainframe, uplink with a Lua or machine
+  card, relay, redstone device) against `OPEN_VIEW`/`MAX_VIEW`; the tablet snapshot against `InGamePayloads.MAX_DATA`;
+  network recompute and link check; history memory and save encoding; heap per device; machine load.
+- Writes `run/scaletest-report.json`. Fails only on functional problems (a browser disconnected, a view or a tablet
+  message over its limit, no deltas); `-PscaleTestStrict=true` also checks the timing targets.
+- `-PscaleTestHold=180` keeps the bases running and writes `run/scaletest-session.json`; then
+  `node tools/e2e/scale-render.mjs [--chrome <Chrome binary>]` opens the big mainframe's dashboard in headless Chromium and
+  measures time to the first card and to all cards, long tasks while loading and while live updates arrive, JS heap and
+  DOM size. `-PscaleTestJfr=<file>` records a Java Flight Recording of the run.
+
+### What was slow, and what changed
+Measured 2026-10-30 on a 10-core Apple M-series machine shared with other work (system load 10–14 during the runs,
+recorded in each report), before = main at 39ab961 with the same benchmark code, after = branch `scale`. Wall times
+include preemption by other processes; `CPU est.` is cccloud's share of the server thread's CPU time (see above).
+
+**Full benchmark** (500 + 10 × 100 devices, 1 186 sections, 100 rules, 50 browsers, ~5 500 value changes per second):
+
+| | before | after |
+|---|---|---|
+| cccloud ms/tick under load, avg / p95 / max (wall) | 6.38 / 18.0 / 69.7 | 1.61 / 4.07 / 31.2 |
+| cccloud ms/tick under load, CPU est. avg / p95 / max | 4.76 / 9.44 / 43.0 | 1.27 / 2.91 / 8.9 |
+| cccloud ms/tick idle (browsers connected), avg (wall) | 4.74 | 0.78 |
+| whole tick under load, avg / p95 | 8.42 / 22.3 ms | 2.76 / 5.44 ms |
+| uplinks (block entity ticks), avg / max | 5.13 / 36.9 ms | 1.22 / 31.1 ms |
+| history, redstone cards, network: max per tick | 32.9 / 12.0 / 32.3 ms | 7.3 / 2.2 / 6.1 ms |
+| network recompute of all 11 networks / Link Card check (big network) | 56.9 / 14.6 ms | 6.1 / 3.1 ms (and per changed network only) |
+| messages / s to a browser of the big mainframe | 5 790 | 12 |
+| bytes / s to a browser of the big mainframe | 490 KiB | 129 KiB raw, ~57 KiB with compression |
+| snapshot of the big mainframe: size / time to 10 browsers at once | 1.35 MB / 932 ms | 1.09 MB (112 KB compressed) / 186 ms |
+| opening a Cloud Tablet on the big mainframe (server thread) | 127 ms, then 1.35 MB > 1 MB payload limit: never arrives | 0.4 ms; 367 messages, largest 310 KB |
+| mainframe screen view (500 devices) | 539 KB > 256 KB: empty screen | 86 KB, network only when it changed |
+| network map JSON of the big mainframe | 538 KB (2 506 links) | 278 KB (510 links) |
+| dashboard (headless Chromium): first card | never – the page stayed busy (renderer > 100 % CPU for 18 min) | 0.24–0.28 s warm, 1.5 s cold |
+| dashboard while live updates arrive | – | 0 % busy, 54–59 fps, 7 300 DOM nodes, 57–65 MB JS heap |
+| resolving a 500-card page (layout engine, Node) | 58 s | < 0.1 s |
+
+**Target configuration** (one mainframe with 500 devices, 10 browsers): cccloud 0.50–0.99 ms/tick on average (CPU est.
+0.48–0.71 ms; before 1.86 ms / 1.53 ms), p95 1.3–2.5 ms, p99 2.8–7.9 ms; the largest single ticks were the 500-device
+network recompute (6–15 ms on this machine), a burst of rules (7–12 ms when 84 thresholds are crossed in the same
+second) and wall-time stalls of up to 65 ms with under 9 ms of CPU (preemption or GC on the shared machine). Before, 2 of
+the 10 browsers were disconnected as "too slow"; after, none. Heap: about 36 KB per device (whole server, all mods'
+share; unchanged).
+
+The bottlenecks and the fixes:
+- **Hub (`web/WebHub`).** Every changed value was its own WebSocket message (`{"t":"value",…}`, 85 bytes, 4 000 per second
+  per browser); outbox operations scanned the whole outbox per publish; a new browser's snapshot (1.35 MB) was
+  serialised while holding the mainframe's hub lock, so the server thread waited whenever it published to that mainframe
+  (126 ms per browser); the network map was serialised on the server thread. Now:
+  - one message per flush per mainframe with all changed values: `{"t":"values","s":{"<uplinkId>":{"<widgetId>":value}}}`
+    (latest value per widget; charts: a number appends a point, an array replaces the history, as with `value`; restricted
+    sections and share filtering apply per section). `value` is still understood by every client (dashboard, tablet,
+    display, public API – the API's SSE stream still sends one `value` event per widget);
+  - published sections are immutable versions (`Section` head + widget states `W`): a value update creates a new
+    widget state and section version without copying JSON trees; a snapshot takes references under the lock and is
+    serialised outside it, every section's text is built once per version and shared by all browsers and displays;
+  - section messages (`{"t":"uplink"}`) are built at flush time from the current version, so a browser that joins between
+    a publish and the next flush never gets an older section after its snapshot; deltas of flushes that happen while a
+    snapshot is being serialised wait for it (no delta before the snapshot);
+  - in-game sessions (Cloud Tablet) get the snapshot head and then one `uplink` message per section, serialised on a
+    snapshot thread, not on the server thread (a big base's snapshot no longer exceeds the 1 MB payload limit);
+  - `historySamples` reads only the sections that have widgets with `opts.history` (indexed on publish).
+- **Web server.** permessage-deflate (`webCompression`, default on): the snapshot and the batched values shrink 5–10×; a
+  browser may lag 4 MB / 10 s behind (the 1.3 MB snapshot no longer got a browser disconnected as "too slow" by the
+  deltas right after it).
+- **Server thread.** Uplinks hand changed values to the hub every other tick (staggered), sample only their charts (chart
+  options read once instead of on every tick), mark their chunk unsaved every 5 s without the comparator updates of
+  `setChanged`; redstone cards of many mainframes refresh spread over the ticks and are not rebuilt from unchanged
+  devices; the rules document (all rules + log) goes out at most once a second however many rules run; mainframe power
+  usage is recomputed when counts or browsers change; bridges are staggered. **Network:** a device loading, unloading or
+  changing recomputes only its own network (`NetworkService.markDirty(mainframeId)`), the 10 s safety pass is spread over
+  the ticks per mainframe; when more than three rules run in one evaluation the server log gets one summary line; the map
+  JSON is only rebuilt when that network changed (topology, statuses, capacity, names)
+  or once a minute, and maps of more than 200 devices leave out the links a device does not use (`unusedLinks` counts
+  them; a 500-device map 538 KB → 276 KB).
+- **In-game screens.** The mainframe screen gets a compact network (short node ids, x/z only, tree links only, at most
+  600 devices with problems first, names cut to 32 characters, `more` = the rest; a view still over the limit goes without
+  the network) and only when its content changed (`netV`; the screen keeps the
+  last one). Displays read the hub's cached section text.
+- **Dashboard.** The layout is resolved only when the structure changes (`MainframeConn.structure`), value deltas swap in
+  new widget objects for the cards they touch (`lib/hydrate.ts`) and only those cards render again; on pages with more
+  than 24 cards a card renders its widgets when it comes within 800 px of the screen; one `values` message is one signal
+  write. The rules and scenes pages render on structure changes only; the storage browser stops scrolling in after 1000
+  rows (search for the rest). The grid engine's `compact` moved items up one row at a time over a copy of all items
+  (minutes for a 500-card page): now O(n²) with exactly the same results (randomised test against the original), and
+  `freeSpot` tries only rows and columns where something ends (same results); `LayoutMigration.java` has the same change.
+- **Layout limits.** A 500-card page needs more than 256 card entries, rows beyond 999 and, with every widget box saved,
+  about 1 MB. Now: ≤ 2048 cards, ≤ 8192 widgets, ≤ 256 KB, y ≤ 99 999 (`LayoutValidator`, `protocol.ts`, `layout.ts`); the
+  `layout_set` frame limit follows (256 KB + 1 KB). The editor leaves out the widget entries of cards whose widgets all sit
+  where the automatic packing puts them, checked by resolving the sparse document again.
+
+### Limits and memory
+| What | Limit | Notes |
+|---|---|---|
+| Layout document | 256 KB, 2048 cards, 8192 widgets, y ≤ 99 999 | 5 saves per 10 s per mainframe, `layout.edit` |
+| Section cache (unloaded sections) | 2048 sections and 16 MB per mainframe, 64 KB per section | was 256 sections |
+| Long-term statistics | 2 MB per mainframe, `historyMaxTotalMB` (128) for all | a series' size is fixed at creation: 1 h 60 floats, 24 h 1 440, 7 d 3 456, 30 d 4 896 (4 bytes each) |
+| Browser backlog | 1 MB write buffer + 4 MB or 10 s | then 1013 `too slow`, the browser reconnects |
+| Compression | ~300 KB deflate state per open browser | inflated frames ≤ 257 KB |
+| Tablet queue | 4096 messages | then a fresh snapshot |
+| Mainframe screen | 600 devices (≤ ~110 KB), view ≤ 256 KB | the dashboard's Network page shows all |
+| Network map | links of devices not on their route left out above 200 devices | |
+
+Memory of the hub per section: the published section (head + one immutable state per widget, the widget definition
+shared between versions) and its serialised text, about 2–4 KB per section for typical cards (a 300-point chart adds
+~1.5 KB); the benchmark reports the whole heap growth per device (all of Minecraft's and CC: Cloud's share).
+
+### Remaining limits
+- Single ticks above 5 ms remain: recomputing a 500-device network (6–15 ms on the benchmark machine; it happens when a
+  device of that network loads, unloads or links, and once per 10 s spread over the ticks) and a burst of many rules in
+  the same second (7–12 ms). Both are per mainframe now, not for all networks at once.
+- The uplink block entity tick is still the largest part of cccloud's tick cost on a base where every value changes all
+  the time (about half of it is handing ~5 000 value changes per second to the hub); it scales with the number of
+  changed values, not with browsers.
+- A single dashboard page with hundreds of cards is a long scroll (the browser's CSS grid; Firefox caps a grid at
+  10 000 rows): split big bases into pages.
+- The network map (Network page, 3D view) still receives the whole network of a mainframe in the snapshot (~276 KB
+  for 500 devices before compression).
+- The machine card refresh runs once per second per card regardless of viewers (rules and history need the values).

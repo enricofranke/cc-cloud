@@ -15,6 +15,12 @@ import org.jspecify.annotations.Nullable;
  */
 public final class HistoryStore {
     public static final int MAX_BYTES = 2 * 1024 * 1024;
+    /**
+     * All mainframes together (config {@code historyMaxTotalMB}, docs/SPEC.md "Scaling"): a new series is only started
+     * while the total stays below this; existing series always keep recording (their memory is fixed at creation).
+     */
+    private volatile long maxTotalBytes = 128L * 1024 * 1024;
+    private long totalBytes;
     public static final int MAX_KEY = 240;
 
     private final Map<UUID, Map<String, HistorySeries>> series = new HashMap<>();
@@ -30,15 +36,19 @@ public final class HistoryStore {
         var map = series.computeIfAbsent(mainframeId, k -> new LinkedHashMap<>());
         var range = HistorySeries.Range.limit(wanted, retentionHours);
         var s = map.get(key);
-        if (s != null && s.range() != range && bytes(map) - s.bytes() + HistorySeries.bytes(range) <= MAX_BYTES) {
+        if (s != null && s.range() != range && bytes(map) - s.bytes() + HistorySeries.bytes(range) <= MAX_BYTES
+            && totalBytes - s.bytes() + HistorySeries.bytes(range) <= maxTotalBytes) {
             // retention or the widget's range changed: keep the data that still fits
             var resized = HistorySeries.decode(withRange(s.encode(), range));
+            totalBytes -= s.bytes();
             s = resized != null ? resized : new HistorySeries(range);
+            totalBytes += s.bytes();
             map.put(key, s);
         }
         if (s == null) {
-            if (bytes(map) + HistorySeries.bytes(range) > MAX_BYTES) return false;
+            if (bytes(map) + HistorySeries.bytes(range) > MAX_BYTES || totalBytes + HistorySeries.bytes(range) > maxTotalBytes) return false;
             s = new HistorySeries(range);
+            totalBytes += s.bytes();
             map.put(key, s);
         }
         s.add(now, value);
@@ -57,6 +67,21 @@ public final class HistoryStore {
         int b = 0;
         for (var s : map.values()) b += s.bytes();
         return b;
+    }
+
+    /** Bytes of all series of all mainframes. */
+    public synchronized long totalBytes() {
+        return totalBytes;
+    }
+
+    public void setMaxTotalBytes(long bytes) {
+        maxTotalBytes = Math.max(MAX_BYTES, bytes);
+    }
+
+    private void recount() {
+        long t = 0;
+        for (var map : series.values()) t += bytes(map);
+        totalBytes = t;
     }
 
     public synchronized int bytes(UUID mainframeId) {
@@ -87,11 +112,17 @@ public final class HistoryStore {
         boolean changed = false;
         for (var map : series.values()) changed |= map.values().removeIf(s -> now - s.lastSample() > s.range().ms);
         changed |= series.values().removeIf(Map::isEmpty);
-        if (changed) onChange.run();
+        if (changed) {
+            recount();
+            onChange.run();
+        }
     }
 
     public synchronized void remove(UUID mainframeId) {
-        if (series.remove(mainframeId) != null) onChange.run();
+        if (series.remove(mainframeId) != null) {
+            recount();
+            onChange.run();
+        }
     }
 
     public synchronized Map<UUID, Map<String, String>> save() {
@@ -114,5 +145,6 @@ public final class HistoryStore {
             }
             if (!m.isEmpty()) series.put(e.getKey(), m);
         }
+        recount();
     }
 }

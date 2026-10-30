@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:scaletest",
+  "function": "cccloud:scale_test",
+  "max_ticks": 40000,
+  "structure": "cccloud:test_floor"
+}

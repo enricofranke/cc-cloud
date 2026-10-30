@@ -16,6 +16,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.BooleanValue WEB_ALLOW_INTERNET;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_TRUSTED_PROXIES;
     public static final ModConfigSpec.BooleanValue WEB_TRUST_CLOUDFLARE_HEADER;
+    public static final ModConfigSpec.BooleanValue WEB_COMPRESSION;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_ALLOWED_HOSTS;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
@@ -46,6 +47,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue BASE_BROWSERS;
     public static final ModConfigSpec.IntValue BASE_RULES;
     public static final ModConfigSpec.IntValue BASE_HISTORY_HOURS;
+    public static final ModConfigSpec.IntValue HISTORY_MAX_TOTAL_MB;
     public static final ModConfigSpec.BooleanValue CHUNK_ANCHOR;
     // Mainframe removal: retention of a broken mainframe's data and the misclick guard
     public static final ModConfigSpec.IntValue MAINFRAME_RETENTION_DAYS;
@@ -149,6 +151,10 @@ public final class CloudConfig {
                 "cloudflared (Cloudflare Tunnel), which sets the header itself; other proxies pass a client-supplied header through.")
             .translation("cccloud.configuration.webTrustCloudflareHeader")
             .define("webTrustCloudflareHeader", false);
+        WEB_COMPRESSION = b.comment("Compress dashboard WebSocket messages (permessage-deflate) when the browser offers it. A big base's snapshot",
+                "shrinks about 5-10x; costs some CPU on the web server's threads (never on the server thread) and ~300 KB per open browser.")
+            .translation("cccloud.configuration.webCompression")
+            .define("webCompression", true);
         WEB_ALLOWED_HOSTS = b.comment("Extra host names the dashboard may be opened with (the Host header). IP addresses, localhost, *.local/*.lan names",
                 "and the host of publicUrl always work; other names are refused (protection against DNS rebinding).")
             .translation("cccloud.configuration.webAllowedHosts")
@@ -411,6 +417,10 @@ public final class CloudConfig {
         BASE_HISTORY_HOURS = b.comment("History retention (hours) without a Memory upgrade.")
             .translation("cccloud.configuration.baseHistoryHours")
             .defineInRange("baseHistoryHours", 1, 1, 24 * 365);
+        HISTORY_MAX_TOTAL_MB = b.comment("Memory for long-term statistics of all mainframes together (MB, kept in RAM and saved with the world).",
+                "Each mainframe has at most 2 MB; when this total is reached, no new series are started (existing ones keep recording).")
+            .translation("cccloud.configuration.historyMaxTotalMB")
+            .defineInRange("historyMaxTotalMB", 128, 2, 4096);
         CHUNK_ANCHOR = b.comment("Allow the Chunk Anchor upgrade card: it keeps the mainframe's and its linked devices' chunks loaded. Off by default.")
             .translation("cccloud.configuration.chunkAnchor")
             .define("chunkAnchor", false);

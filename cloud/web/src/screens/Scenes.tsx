@@ -97,7 +97,9 @@ export default function ScenesScreen({ id }: { id: string }) {
   if (!conn) return null;
   const L = lang.value;
   const doc = feature("scenes") ? conn.scenes.value : null;
-  const uplinks = conn.uplinks.value;
+  // names and labels only: re-render on structure changes, not on every value delta (docs/SPEC.md "Scaling")
+  void conn.structure.value;
+  const uplinks = conn.uplinks.peek();
   const canEdit = conn.can("rules.edit");
   const name = conn.info.value?.name ?? "Mainframe";
   return (

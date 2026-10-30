@@ -74,8 +74,10 @@ class LayoutValidatorTest {
 
     @Test
     void rejectsOversizedDocuments() {
+        // just over MAX_BYTES (256 KB since the limits were raised for big bases) with fewer than MAX_WIDGETS entries
         var widgets = new StringBuilder();
-        for (int i = 0; i < 2000; i++) widgets.append(i == 0 ? "" : ",").append("\"").append("w".repeat(30)).append(i).append("\":{\"label\":\"").append("x".repeat(40)).append("\"}");
+        for (int i = 0; i < 2600; i++) widgets.append(i == 0 ? "" : ",").append("\"").append("w".repeat(50)).append(i).append("\":{\"label\":\"").append("x".repeat(48)).append("\"}");
+        assertTrue(widgets.length() > LayoutValidator.MAX_BYTES);
         assertEquals("too_large", validate("{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{" + widgets + "}}").error());
     }
 
@@ -104,7 +106,7 @@ class LayoutValidatorTest {
             {"cards", "{\"%s\":{\"x\":10,\"w\":3}}"},
             {"cards", "{\"%s\":{\"w\":2}}"},
             {"cards", "{\"%s\":{\"x\":12}}"},
-            {"cards", "{\"%s\":{\"y\":1000}}"},
+            {"cards", "{\"%s\":{\"y\":100000}}"},
             {"cards", "{\"%s\":{\"h\":61}}"},
             {"cards", "{\"%s\":{\"h\":0}}"},
             {"cards", "{\"%s\":{\"x\":1.5}}"},

@@ -1084,6 +1084,18 @@ Den Let's-Encrypt-Schlüssel vorher umwandeln: \`${C.PKCS8}\`. Lassen sich die D
 
 Nur für schnelle Tests: \`webAllowInternet = true\`, \`publicUrl = "http://mc.example.com:8787"\` setzen und TCP 8787 im Panel deines Hosters freigeben.
 
+## Große Server {#big-servers}
+
+CC: Cloud ist für große Basen gebaut: hunderte Maschinen an einem Mainframe, viele Mainframes und viele Browser. Das meiste braucht keine Einstellung; das kann ein Serverbetreiber tun.
+
+- **Seiten:** Das Dashboard zeichnet nur die Karten in der Nähe des Bildschirms, aber eine Seite mit 500 Karten bleibt ein langer Scroll. Teile große Basen in Seiten auf (Layout-Editor oder \`opts.page\` in Lua); bis etwa 100 Karten pro Seite ist angenehm. Layouts mit bis zu 2048 Karten lassen sich speichern.
+- **Kompression:** Lass \`webCompression = true\` (Standard). Browser bekommen Snapshot und Updates komprimiert (5–10× kleiner); das kostet etwas CPU auf den eigenen Threads des Webservers, nie auf dem Server-Thread. Reverse-Proxys (Caddy, nginx, Cloudflare) reichen das durch.
+- **Browser:** Jeder Browser eines Mainframes bekommt alle seine Updates. Ein Mainframe mit 500 Geräten, bei dem sich ständig alles ändert, schickt etwa 130 KB/s pro Browser (komprimiert etwa 60 KB/s). Das Bandbreiten-Upgrade (oder \`baseBrowsers\`) begrenzt die Browser pro Mainframe; Freigabe-Links zählen extra.
+- **Langzeit-Statistik:** Jeder Mainframe hält höchstens 2 MB Verlauf; \`historyMaxTotalMB\` (Standard 128) begrenzt alle Mainframes zusammen. Jede Reihe hat von Anfang an eine feste Größe (1 h ≈ 240 B, 24 h ≈ 5,6 KB, 7 Tage ≈ 14 KB, 30 Tage ≈ 20 KB).
+- **Bildschirme im Spiel:** Der Mainframe-Bildschirm listet die ersten 600 Geräte (Probleme zuerst) und bekommt das Netzwerk nur, wenn es sich geändert hat; die Netzwerk-Seite des Dashboards zeigt alle Geräte. Große Netzwerkkarten lassen Verbindungen weg, die ein Gerät nicht benutzt.
+- **Langsame Browser:** Ein Browser, der mehr als 4 MB oder 10 Sekunden zurückliegt, wird getrennt und verbindet sich mit einem frischen Snapshot neu; auf dem Server stapelt sich nichts.
+- **Messen:** \`/neoforge tps\` oder spark zeigen die Tick-Zeit des Servers. Der eigene Anteil von CC: Cloud liegt bei einem Mainframe mit 500 Geräten und 10 Browsern bei etwa 0,5–1 ms pro Tick (Entwickler: \`./gradlew runGameTestServer -PscaleTest\` misst das).
+
 ## Was der Server protokolliert {#logs}
 
 Jede Kopplung, Freigabe, Sperre und Dashboard-Aktion steht als \`[cccloud] …\` im Server-Log.

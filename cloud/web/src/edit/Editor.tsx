@@ -576,7 +576,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
 
   // ------------------------------------------------------------- save, exit
   const save = async () => {
-    const doc = snapshotLayout(current(histRef.current));
+    const doc = snapshotLayout(current(histRef.current), props.uplinks);
     if (layoutSize(doc) > MAX_LAYOUT_BYTES) return setError(SAVE_ERRORS.too_large);
     setSaving(true);
     setError(null);

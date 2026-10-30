@@ -218,10 +218,15 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
     private void refreshView(boolean force) {
         if (!force && menu.viewVersion() == seenVersion) return;
         seenVersion = menu.viewVersion();
+        var previous = view;
         try {
             view = JsonParser.parseString(menu.view()).getAsJsonObject();
         } catch (RuntimeException e) {
             view = new JsonObject();
+        }
+        // Mainframe screen: the server leaves out a network the screen already has (same "netV"); keep the old one.
+        if (!view.has("network") && view.has("netV") && previous.has("network") && view.get("netV").equals(previous.get("netV"))) {
+            view.add("network", previous.get("network"));
         }
         viewTime = System.currentTimeMillis();
         layoutList();

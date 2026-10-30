@@ -108,7 +108,8 @@ It is reviewed before every release.
   - Authentication must happen within 5 seconds.
 - Size limits:
   - 2 KB WebSocket frames before authentication;
-  - 8 KB per message after authentication, 64 KB only for `layout_set`;
+  - 8 KB per message after authentication, 256 KB only for `layout_set` (64 KB until 0.10; raised for big bases, see
+    docs/SPEC.md "Scaling": a page of 500 cards; saves stay limited to 5 per 10 s per mainframe and need `layout.edit`);
   - 4 KB HTTP bodies.
 - Parsing:
   - Strict JSON schemas; unknown fields are rejected in the v0.6 APIs.
@@ -126,7 +127,10 @@ It is reviewed before every release.
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP;
   - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread.
-- Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit.
+- Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit: a
+  browser may fall behind by at most 4 MB beyond the 1 MB write buffer, or for at most 10 seconds (a big base's snapshot
+  is over 1 MB), then it is closed with 1013 `too slow`. In-game tablet sessions queue at most 4096 messages, then they
+  get a fresh snapshot.
   - 24 open connections per IP (behind a trusted proxy: per forwarded client IP) and 256 in total. Until 0.9.0 the
     limits were 8 and 64, but a single browser tab already opens 7–8 connections (6 pooled HTTP/1.1 connections per
     host and credentials mode, the WebSocket, preconnects), and the socket over the limit was closed without a
@@ -134,6 +138,10 @@ It is reviewed before every release.
   - Up to 8 connections over a limit are answered on their first request with `503 too_many_connections`,
     `Retry-After: 1` and `Connection: close`, and get a 2-second read timeout instead of 10 s; anything further over a
     limit is closed at once, as before. So a flood still holds at most 8 extra sockets per IP for at most 2 seconds.
+- WebSocket compression (permessage-deflate, `webCompression`, on by default) only when the browser offers it. Incoming
+  compressed frames are size-checked before they are inflated (the raw-frame guard sees the compressed size) and inflate to
+  at most the 257 KB frame limit, so a small frame cannot expand into a large message. Memory: about 300 KB of deflate
+  state per open browser.
 - No CSRF surface:
   - authentication uses bearer tokens in headers or the first WebSocket message, never cookies;
   - the WebSocket `Origin` must match `Host`.
