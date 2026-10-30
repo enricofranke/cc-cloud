@@ -3,6 +3,7 @@
 //   node dev/voxel-bench.ts <voxel-bodies.json>
 // Prints decode and meshing time (per region and total), triangles and quads.
 import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { VoxelWorld, decodeBatch, decodeRunBytes, decodeRuns, meshRegion, type SectionData } from "../web/src/network/voxels.ts";
 
 const file = process.argv[2];
@@ -12,7 +13,8 @@ const bodies = JSON.parse(readFileSync(file, "utf8")) as { url: string; type?: s
 const t0 = performance.now();
 const sections: SectionData[] = [];
 for (const b of bodies) {
-  const buf = Buffer.from(b.body, "base64");
+  let buf = Buffer.from(b.body, "base64");
+  if (buf[0] === 0x1f && buf[1] === 0x8b) buf = gunzipSync(buf); // in case the body was captured still compressed
   if (!b.type || b.type.includes("json")) {
     const j = JSON.parse(buf.toString("utf8"));
     if (!j.exposed) continue;
