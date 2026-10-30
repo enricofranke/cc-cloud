@@ -11,7 +11,11 @@ import type { Uplink, Widget } from "./types.ts";
 import { bottom, clampItem, compact, flowPack, freeSpot, insertItem, moveItem, placeAll, resizeItem, type GridItem } from "./grid.ts";
 
 export const LAYOUT_VERSION = 2;
-export const MAX_LAYOUT_BYTES = 64 * 1024;
+export const MAX_LAYOUT_BYTES = 256 * 1024;
+/** Limits of a layout document (LayoutValidator.java): raised for big bases (docs/SPEC.md "Scaling"). */
+export const MAX_LAYOUT_CARDS = 2048;
+export const MAX_LAYOUT_WIDGETS = 8192;
+export const MAX_LAYOUT_Y = 99_999;
 export const MAX_PAGES = 12;
 export const DEFAULT_PAGE = "main";
 /** columns of the page grid and of every card's widget grid */
@@ -190,12 +194,12 @@ export function normalizeLayout(raw: unknown): LayoutDoc {
   }
   const box = (c: Record<string, any>, maxH: number) => ({
     ...(int(c.x, 0, COLS - 1) !== undefined ? { x: int(c.x, 0, COLS - 1) } : {}),
-    ...(int(c.y, 0, 999) !== undefined ? { y: int(c.y, 0, 999) } : {}),
+    ...(int(c.y, 0, MAX_LAYOUT_Y) !== undefined ? { y: int(c.y, 0, MAX_LAYOUT_Y) } : {}),
     ...(int(c.w, 1, COLS) !== undefined ? { w: int(c.w, 1, COLS) } : {}),
     ...(int(c.h, 1, maxH) !== undefined ? { h: int(c.h, 1, maxH) } : {}),
   });
   if (r.cards && typeof r.cards === "object")
-    for (const [k, c] of Object.entries(r.cards as Record<string, any>).slice(0, 256)) {
+    for (const [k, c] of Object.entries(r.cards as Record<string, any>).slice(0, MAX_LAYOUT_CARDS)) {
       if (!c || typeof c !== "object" || k.length > 160) continue;
       if (k.startsWith(CUSTOM_PREFIX) && !/^c:[A-Za-z0-9_-]{1,24}$/.test(k)) continue;
       const patch: CardPatch = box(c, MAX_CARD_H);
@@ -210,7 +214,7 @@ export function normalizeLayout(raw: unknown): LayoutDoc {
       out.cards[k] = patch;
     }
   if (r.widgets && typeof r.widgets === "object")
-    for (const [k, w] of Object.entries(r.widgets as Record<string, any>).slice(0, 2048)) {
+    for (const [k, w] of Object.entries(r.widgets as Record<string, any>).slice(0, MAX_LAYOUT_WIDGETS)) {
       if (!w || typeof w !== "object" || k.length > 160) continue;
       const patch: WidgetPatch = box(w, MAX_WIDGET_H);
       if (str(w.card) && w.card.length <= 160) patch.card = w.card;
@@ -409,8 +413,40 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
 // The editor works on a resolved view (includeHidden) and writes explicit
 // boxes back, so the saved document is self-contained.
 
-/** Turns the current resolved view into a full v2 layout document. */
-export function snapshotLayout(pages: ResolvedPage[]): LayoutDoc {
+/**
+ * Turns the current resolved view into a v2 layout document. With the uplinks it was resolved from, the widget entries
+ * of cards whose widgets all sit where the automatic packing puts them are left out (a big base's full document would
+ * be about 1 MB; docs/SPEC.md "Scaling"); the sparse document is resolved again to make sure nothing moves.
+ */
+export function snapshotLayout(pages: ResolvedPage[], uplinks?: Uplink[]): LayoutDoc {
+  const doc = fullSnapshot(pages);
+  return uplinks ? sparseWidgets(doc, pages, uplinks) : doc;
+}
+
+const BOX_KEYS = new Set(["x", "y", "w", "h"]);
+
+function sparseWidgets(doc: LayoutDoc, pages: ResolvedPage[], uplinks: Uplink[]): LayoutDoc {
+  const candidates: ResolvedCard[] = [];
+  for (const p of pages)
+    for (const c of p.cards)
+      if (!c.custom && c.widgets.length && c.widgets.every((w) => !w.hidden && w.home === c.key && Object.keys(doc.widgets[w.key] ?? {}).every((k) => BOX_KEYS.has(k))))
+        candidates.push(c);
+  if (!candidates.length) return doc;
+  const sparse: LayoutDoc = { ...doc, widgets: { ...doc.widgets } };
+  for (const c of candidates) for (const w of c.widgets) delete sparse.widgets[w.key];
+  const again = new Map<string, Box>();
+  for (const p of resolveLayout(uplinks, sparse, { includeHidden: true })) for (const c of p.cards) for (const w of c.widgets) again.set(w.key, w.box);
+  for (const c of candidates) {
+    const same = c.widgets.every((w) => {
+      const b = again.get(w.key);
+      return !!b && b.x === w.box.x && b.y === w.box.y && b.w === w.box.w && b.h === w.box.h;
+    });
+    if (!same) for (const w of c.widgets) sparse.widgets[w.key] = doc.widgets[w.key];
+  }
+  return sparse;
+}
+
+function fullSnapshot(pages: ResolvedPage[]): LayoutDoc {
   const doc = emptyLayout();
   doc.pages = pages.map(({ id, title, icon }) => ({ id, title, ...(icon ? { icon } : {}) }));
   for (const p of pages)

@@ -2,7 +2,7 @@
 // protocol against the mock, and the v0.2 Lua widgets (chart/select/number/...).
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, CONTROL, ME, REACTOR, type MockServer } from "../dev/mock-server.ts";
-import { layoutDoc } from "../dev/protocol.ts";
+import { layoutDoc, MAX_LAYOUT_BYTES, MAX_LAYOUT_CARDS } from "../dev/protocol.ts";
 import {
   addPage,
   deletePage,
@@ -194,17 +194,21 @@ describe("layout protocol", () => {
     expect(await c.next("layout_result")).toMatchObject({ reqId: "i", ok: false, error: "invalid_layout" });
     c.send({ t: "layout_set", reqId: "e", layout: { v: 1, pages: [], cards: { a: { evil: true } }, widgets: {} } });
     expect(await c.next("layout_result")).toMatchObject({ reqId: "e", ok: false, error: "invalid_layout" });
-    // just over 64 KB of layout (the frame limit for layout_set is 64 KB + 1 KB envelope)
+    // just over the 256 KB layout limit (the frame limit for layout_set is 256 KB + 1 KB envelope; big bases, docs/SPEC.md "Scaling")
     const cards: Record<string, object> = {};
-    for (let i = 0; JSON.stringify(cards).length < 64 * 1024 + 200; i++) cards[`card_${i}_${"x".repeat(30)}`] = { title: "y".repeat(40) };
+    for (let i = 0, size = 0; size < MAX_LAYOUT_BYTES + 200; i++) {
+      const key = `card_${i}_${"x".repeat(80)}`;
+      cards[key] = { title: "y".repeat(48) };
+      size += key.length + JSON.stringify(cards[key]).length + 4;
+    }
     // bigger layouts are refused with too_large, the socket stays open
     c.send({ t: "layout_set", reqId: "big", layout: { v: 1, pages: [], cards, widgets: {} } });
     expect(await c.next((m) => m.reqId === "big")).toMatchObject({ ok: false, error: "too_large" });
     expect(c.ws.readyState).toBe(1);
     const mid: Record<string, object> = {};
-    for (let i = 0; i < 300; i++) mid[`card_${i}`] = { title: "t".repeat(20), order: i };
+    for (let i = 0; i < MAX_LAYOUT_CARDS + 1; i++) mid[`c${i}`] = { order: i };
     c.send({ t: "layout_set", reqId: "mid", layout: { v: 1, pages: [], cards: mid, widgets: {} } });
-    expect(await c.next((m) => m.reqId === "mid")).toMatchObject({ ok: false, error: "invalid_layout" }); // > 256 cards
+    expect(await c.next((m) => m.reqId === "mid")).toMatchObject({ ok: false, error: "invalid_layout" }); // > 2048 cards
   });
 
   it("MainframeConn.saveLayout resolves and updates the layout signal", async () => {

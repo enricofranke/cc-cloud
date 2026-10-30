@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 public final class ClientMessages {
     /** Max size of every message except layout_set. */
     public static final int MAX_FRAME = 8 * 1024;
-    /** WebSocket frame limit: layout_set may carry a layout of up to 64 KB (plus a little envelope). */
+    /** WebSocket frame limit: layout_set may carry a layout of up to 256 KB (plus a little envelope). */
     public static final int MAX_LAYOUT_FRAME = LayoutValidator.MAX_BYTES + 1024;
     public static final int MAX_BODY = 4 * 1024;
     private static final Pattern REQ_ID = Pattern.compile("[A-Za-z0-9_.:-]{1,64}");

@@ -5,6 +5,10 @@ import { z } from "zod";
 
 const widgetId = z.string().regex(/^[a-z0-9_]{1,32}$/);
 const entityId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+// Layout limits (docs/SPEC.md "Layout schema v2", raised for big bases in "Scaling"): same as LayoutValidator.java.
+export const MAX_LAYOUT_CARDS = 2048;
+export const MAX_LAYOUT_WIDGETS = 8192;
+export const MAX_LAYOUT_Y = 99_999;
 export const scalar = z.union([z.number(), z.boolean(), z.string().max(256), z.null()]);
 export type Scalar = z.infer<typeof scalar>;
 
@@ -42,7 +46,7 @@ const layoutV1 = z.strictObject({
       color: z.enum(ACCENTS).optional(),
       icon: z.enum(ICONS).optional(),
     }),
-  ).refine((c) => Object.keys(c).length <= 256, "too many cards"),
+  ).refine((c) => Object.keys(c).length <= MAX_LAYOUT_CARDS, "too many cards"),
   widgets: z.record(
     layoutKey,
     z.strictObject({
@@ -51,13 +55,13 @@ const layoutV1 = z.strictObject({
       label: z.string().max(48).optional(),
       hidden: z.boolean().optional(),
     }),
-  ).refine((w) => Object.keys(w).length <= 2048, "too many widgets"),
+  ).refine((w) => Object.keys(w).length <= MAX_LAYOUT_WIDGETS, "too many widgets"),
 });
 /** Layout schema v2 (docs/SPEC.md "Layout schema v2"): x/y/w/h on 12-column grids, custom cards "c:<id>", styles. */
 export const DISPLAYS = ["dial", "bar", "number", "row", "big", "line", "sparkline", "chip", "lamp"] as const;
 const box = (maxH: number) => ({
   x: z.number().int().min(0).max(11).optional(),
-  y: z.number().int().min(0).max(999).optional(),
+  y: z.number().int().min(0).max(MAX_LAYOUT_Y).optional(),
   w: z.number().int().min(1).max(12).optional(),
   h: z.number().int().min(1).max(maxH).optional(),
 });
@@ -77,7 +81,7 @@ const layoutV2 = z.strictObject({
         style: z.enum(["comfortable", "compact"]).optional(),
       })
       .refine((c) => c.x === undefined || c.w === undefined || c.x + c.w <= 12, "card wider than the grid"),
-  ).refine((c) => Object.keys(c).length <= 256, "too many cards"),
+  ).refine((c) => Object.keys(c).length <= MAX_LAYOUT_CARDS, "too many cards"),
   widgets: z.record(
     layoutKey,
     z
@@ -91,11 +95,11 @@ const layoutV2 = z.strictObject({
         display: z.enum(DISPLAYS).optional(),
       })
       .refine((w) => w.x === undefined || w.w === undefined || w.x + w.w <= 12, "widget wider than the grid"),
-  ).refine((w) => Object.keys(w).length <= 2048, "too many widgets"),
+  ).refine((w) => Object.keys(w).length <= MAX_LAYOUT_WIDGETS, "too many widgets"),
 });
 export const layoutDoc = z.discriminatedUnion("v", [layoutV1, layoutV2]);
 export type LayoutDocument = z.infer<typeof layoutDoc>;
-export const MAX_LAYOUT_BYTES = 64 * 1024;
+export const MAX_LAYOUT_BYTES = 256 * 1024;
 
 export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("layout_set"), reqId: z.string().min(1).max(64), layout: z.unknown() }),

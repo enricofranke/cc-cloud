@@ -110,19 +110,28 @@ public final class LayoutMigration {
         return false;
     }
 
+    /** Same result as moving each item up row by row, but O(n²) (big bases: thousands of rows), like grid.ts. */
     static List<Item> compact(List<Item> items) {
         var out = new ArrayList<Item>();
         var sorted = new ArrayList<>(items);
         sorted.sort(BY_POS);
         for (var it : sorted) {
             var c = it.copy();
-            while (c.y > 0) {
-                var up = c.copy();
-                up.y--;
-                if (anyCollides(up, out)) break;
-                c.y--;
+            int top = 0;
+            for (var o : out) {
+                if (o.id.equals(c.id) || !(c.x < o.x + o.w && o.x < c.x + c.w)) continue;
+                int hi = Math.min(c.y - 1, o.y + o.h - 1);
+                if (hi >= Math.max(o.y - c.h + 1, 0)) top = Math.max(top, hi + 1);
             }
-            for (int guard = 0; anyCollides(c, out) && guard < 1000; guard++) c.y++;
+            c.y = Math.min(c.y, top);
+            int start = c.y;
+            while (true) {
+                int next = Integer.MAX_VALUE;
+                for (var o : out) if (collides(c, o)) next = Math.min(next, o.y + o.h);
+                if (next == Integer.MAX_VALUE) break;
+                c.y = Math.min(next, start + 1000);
+                if (c.y == start + 1000) break;
+            }
             out.add(c);
         }
         out.sort(BY_POS);
@@ -148,11 +157,21 @@ public final class LayoutMigration {
         return new ArrayList<>(map.values());
     }
 
+    /** First free spot, trying only rows/columns where something ends (same result as every cell), like grid.ts. */
     private static int[] freeSpot(List<Item> items, int w, int h, int cols) {
         int ww = Math.min(cols, w);
-        for (int y = 0; y < 10_000; y++) {
-            for (int x = 0; x + ww <= cols; x++) {
-                if (!anyCollides(new Item("\u0000", x, y, ww, h), items)) return new int[]{x, y};
+        var ys = new java.util.TreeSet<Integer>();
+        ys.add(0);
+        for (var o : items) if (o.y + o.h < 10_000) ys.add(o.y + o.h);
+        for (int y : ys) {
+            var band = new ArrayList<Item>();
+            for (var o : items) if (o.y < y + h && y < o.y + o.h) band.add(o);
+            var xs = new java.util.TreeSet<Integer>();
+            xs.add(0);
+            for (var o : band) xs.add(o.x + o.w);
+            for (int x : xs) {
+                if (x + ww > cols) continue;
+                if (!anyCollides(new Item("\u0000", x, y, ww, h), band)) return new int[]{x, y};
             }
         }
         return new int[]{0, bottom(items)};

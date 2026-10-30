@@ -16,7 +16,11 @@ export class Hydrator {
   private live = new WeakMap<Uplink, Live>();
   private cards = new WeakMap<ResolvedCard, ResolvedCard>();
 
-  constructor(private readonly adapt: (u: Uplink) => Uplink) {}
+  private readonly adapt: (u: Uplink) => Uplink;
+
+  constructor(adapt: (u: Uplink) => Uplink) {
+    this.adapt = adapt;
+  }
 
   /** The adapted uplink (e.g. the auto Computer card), once per uplink object. */
   adapted(u: Uplink): Uplink {

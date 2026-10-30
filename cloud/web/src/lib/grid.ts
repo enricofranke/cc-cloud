@@ -25,16 +25,36 @@ export function clampItem<T extends GridItem>(it: T, cols: number, maxH = 200): 
   return { ...it, x, y, w, h };
 }
 
-/** Floats every item up as far as it goes (top to bottom, left to right). `pinned` stays where it is. */
+/**
+ * Floats every item up as far as it goes (top to bottom, left to right). `pinned` stays where it is.
+ * O(n²) instead of a row-by-row walk (a 500-card page is thousands of rows tall; docs/SPEC.md "Scaling"); the result is
+ * exactly that of moving each item up one row at a time until the row above is blocked, then down past overlaps.
+ */
 export function compact<T extends GridItem>(items: T[], pinned?: string): T[] {
   const out: T[] = [];
   const fixed = items.filter((i) => i.id === pinned);
+  const obstacles: GridItem[] = [...fixed];
   for (const it of [...items].filter((i) => i.id !== pinned).sort(byPos)) {
     const c = { ...it };
-    while (c.y > 0 && ![...out, ...fixed].some((o) => collides({ ...c, y: c.y - 1 }, o))) c.y--;
-    // pushed below anything it still overlaps (only possible around the pinned item)
-    for (let guard = 0; [...out, ...fixed].some((o) => collides(c, o)) && guard < 1000; guard++) c.y++;
+    // up: the highest row above the start where the item would collide stops it just below
+    let top = 0;
+    for (const o of obstacles) {
+      if (o.id === c.id || !(c.x < o.x + o.w && o.x < c.x + c.w)) continue;
+      const hi = Math.min(c.y - 1, o.y + o.h - 1);
+      if (hi >= Math.max(o.y - c.h + 1, 0)) top = Math.max(top, hi + 1);
+    }
+    c.y = Math.min(c.y, top);
+    // pushed below anything it still overlaps (only possible around the pinned item), at most 1000 rows
+    const start = c.y;
+    for (;;) {
+      let next = Infinity;
+      for (const o of obstacles) if (collides(c, o)) next = Math.min(next, o.y + o.h);
+      if (next === Infinity) break;
+      c.y = Math.min(next, start + 1000);
+      if (c.y === start + 1000) break;
+    }
     out.push(c);
+    obstacles.push(c);
   }
   return [...out, ...fixed].sort(byPos);
 }
@@ -110,11 +130,19 @@ export function resizeItem<T extends GridItem>(items: T[], id: string, w: number
   return compact(compact(pushDown(items, sized), id));
 }
 
-/** The first free spot (top-left first) for an item of w × h. */
+/**
+ * The first free spot (top-left first) for an item of w × h. Only rows where something ends (and row 0) and columns
+ * where something ends (and column 0) can be the first free spot, so only those are tried (same result as trying every
+ * cell; docs/SPEC.md "Scaling").
+ */
 export function freeSpot(items: GridItem[], w: number, h: number, cols: number): { x: number; y: number } {
   const ww = Math.min(cols, w);
-  for (let y = 0; y < 10_000; y++)
-    for (let x = 0; x + ww <= cols; x++) if (!items.some((o) => collides({ id: "\u0000", x, y, w: ww, h }, o))) return { x, y };
+  const ys = [...new Set([0, ...items.map((o) => o.y + o.h)])].filter((y) => y < 10_000).sort((a, b) => a - b);
+  for (const y of ys) {
+    const band = items.filter((o) => o.y < y + h && y < o.y + o.h);
+    const xs = [...new Set([0, ...band.map((o) => o.x + o.w)])].filter((x) => x + ww <= cols).sort((a, b) => a - b);
+    for (const x of xs) if (!band.some((o) => collides({ id: "\u0000", x, y, w: ww, h }, o))) return { x, y };
+  }
   return { x: 0, y: bottom(items) };
 }
 
