@@ -33,7 +33,7 @@ public final class RsCompat {
         p -> p.mapColor(MapColor.COLOR_LIGHT_BLUE).strength(2.5f).sound(SoundType.METAL));
     public static final DeferredItem<BlockItem> ITEM = ITEMS.registerSimpleBlockItem(BLOCK);
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RsBridgeBlockEntity>> BLOCK_ENTITY = BLOCK_ENTITIES.register("rs_cloud_bridge",
-        () -> new BlockEntityType<>(RsBridgeBlockEntity::new, BLOCK.get()));
+        () -> new BlockEntityType<>(RsBridgeBlockEntity::new, true, BLOCK.get()));
 
     static {
         TEST_FUNCTIONS.register("rs_bridge_storage", () -> RsGameTests::storage);

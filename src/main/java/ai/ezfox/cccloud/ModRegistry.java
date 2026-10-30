@@ -139,18 +139,18 @@ public final class ModRegistry {
 
     // Block entities
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudMainframeBlockEntity>> MAINFRAME_BE = BLOCK_ENTITIES.register("cloud_mainframe",
-        () -> new BlockEntityType<>(CloudMainframeBlockEntity::new, CLOUD_MAINFRAME.get()));
+        () -> new BlockEntityType<>(CloudMainframeBlockEntity::new, true, CLOUD_MAINFRAME.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.relay.CloudRelayBlockEntity>> RELAY_BE = BLOCK_ENTITIES.register("cloud_relay",
-        () -> new BlockEntityType<>(ai.ezfox.cccloud.relay.CloudRelayBlockEntity::new, CLOUD_RELAY.get(), ADVANCED_CLOUD_RELAY.get(), ENDER_RELAY.get()));
+        () -> new BlockEntityType<>(ai.ezfox.cccloud.relay.CloudRelayBlockEntity::new, true, CLOUD_RELAY.get(), ADVANCED_CLOUD_RELAY.get(), ENDER_RELAY.get()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CloudUplinkBlockEntity>> UPLINK_BE = BLOCK_ENTITIES.register("cloud_uplink",
-        () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get(), CLOUD_PROBE.get()));
+        () -> new BlockEntityType<>(CloudUplinkBlockEntity::new, true, CLOUD_UPLINK.get(), ADVANCED_CLOUD_UPLINK.get(), CLOUD_PROBE.get()));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity>> RS_DEVICE_BE = BLOCK_ENTITIES.register(
-        "redstone_device", () -> new BlockEntityType<>(ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity::new, CLOUD_SWITCH.get(), CLOUD_BUTTON.get(),
+        "redstone_device", () -> new BlockEntityType<>(ai.ezfox.cccloud.rsdevice.RsDeviceBlockEntity::new, true, CLOUD_SWITCH.get(), CLOUD_BUTTON.get(),
             CLOUD_LAMP.get(), CLOUD_SENSOR.get()));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity>> ENDER_FIBER_LINK_BE =
-        BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, ENDER_FIBER_LINK.get()));
+        BLOCK_ENTITIES.register("ender_fiber_link", () -> new BlockEntityType<>(ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity::new, true, ENDER_FIBER_LINK.get()));
 
     // Data components
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
