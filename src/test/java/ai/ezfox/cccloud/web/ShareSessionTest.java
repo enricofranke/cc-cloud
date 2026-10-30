@@ -166,6 +166,7 @@ class ShareSessionTest {
         samples.put(ClientMessages.Storage.class, new String[]{"{\"t\":\"storage\",\"reqId\":\"s1\",\"uplinkId\":\"" + uplink + "\",\"op\":\"browse\"}", "storage_result"});
         samples.put(ClientMessages.CraftPreview.class, new String[]{"{\"t\":\"craft_preview\",\"reqId\":\"c1\",\"uplinkId\":\"" + uplink + "\",\"name\":\"minecraft:stick\",\"count\":1}", "craft_plan"});
         samples.put(ClientMessages.Terminal.class, new String[]{"{\"t\":\"term_open\",\"reqId\":\"t1\",\"uplinkId\":\"" + uplink + "\"}", "term_result"});
+        samples.put(ClientMessages.CardSettings.class, new String[]{"{\"t\":\"card_settings\",\"reqId\":\"k1\",\"uplinkId\":\"" + uplink + "\",\"settings\":{\"show\":[]}}", "card_settings_result"});
         samples.put(ClientMessages.Invalid.class, new String[]{"{\"t\":\"something_else\",\"reqId\":\"x1\"}", "error"});
         samples.put(ClientMessages.Pong.class, new String[]{"{\"t\":\"pong\"}", null});
         for (var type : ClientMessages.Message.class.getPermittedSubclasses()) {
