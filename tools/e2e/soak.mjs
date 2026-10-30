@@ -92,7 +92,7 @@ function buildJar() {
   writeFileSync(join(OUT, "build.log"), (r.stdout ?? "") + (r.stderr ?? ""));
   if (r.status !== 0) throw new Error(`build failed, see ${join(OUT, "build.log")}`);
   const libs = join(wt, "build/libs");
-  const jar = readdirSync(libs).filter((f) => /^cccloud-.*\.jar$/.test(f) && !/sources|javadoc/.test(f))
+  const jar = readdirSync(libs).filter((f) => /^cccloud-.*\.jar$/.test(f) && !/sources|javadoc|modpack/.test(f))
     .map((f) => join(libs, f)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
   const keep = join(OUT, basename(jar));
   copyFileSync(jar, keep);

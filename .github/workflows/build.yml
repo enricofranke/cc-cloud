@@ -1,8 +1,10 @@
 name: Build
 
 # Every push and pull request: build the web dashboard (bundled into the jar), run its tests, build the mod and run
-# the unit tests and the handbook check. A tag v* additionally attaches the jar and the FTB Quests quest pack
-# (cccloud-quests-atm11-<version>.zip, Gradle task questPack) to a GitHub release.
+# the unit tests and the handbook check. A tag v* additionally creates a GitHub release with three downloads: the
+# standard jar (cccloud-<version>.jar, adds the FTB Quests chapters by itself), the modpack edition
+# (cccloud-<version>-modpack.jar, task modpackJar) and the quest pack for modpacks (cccloud-quests-atm11-<version>.zip,
+# task questPack).
 # Actions are pinned to commit SHAs (the comment names the tag); update them deliberately.
 on:
   push:
@@ -62,7 +64,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
-      # `build` also zips the FTB Quests chapters (task questPack -> build/distributions/cccloud-quests-atm11-<version>.zip).
+      # `build` also makes the modpack jar (build/libs/cccloud-<version>-modpack.jar), checks both jars (checkEditionJars)
+      # and zips the FTB Quests chapters (build/distributions/cccloud-quests-atm11-<version>.zip).
       - name: Build the mod and run the unit tests
         run: ./gradlew build --max-workers=3
 
@@ -102,20 +105,31 @@ jobs:
           name: cccloud-quests
           path: dist
 
-      # The release text is this version's section of CHANGELOG.md ("## 1.0.0-beta.1 – …" up to the next "## ").
+      # The release text: which download to take, then this version's section of CHANGELOG.md ("## 1.0.0-beta.1 – …" up
+      # to the next "## ").
       - name: Release notes from the changelog
         env:
           VERSION: ${{ github.ref_name }}
         run: |
           v="${VERSION#v}"
-          awk -v v="$v" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on {print}' CHANGELOG.md > release-notes.md
-          test -s release-notes.md || { echo "CHANGELOG.md has no section for $v"; exit 1; }
+          awk -v v="$v" '$0 ~ "^## "v"( |$)" {on=1; next} on && /^## / {exit} on {print}' CHANGELOG.md > changes.md
+          test -s changes.md || { echo "CHANGELOG.md has no section for $v"; exit 1; }
+          test -f "dist/cccloud-$v.jar" && test -f "dist/cccloud-$v-modpack.jar" && test -f "dist/cccloud-quests-atm11-$v.zip" \
+            || { echo "a download for $v is missing:"; ls dist; exit 1; }
+          {
+            echo "### Which download?"
+            echo ""
+            echo "- **Playing on your own server?** Take \`cccloud-$v.jar\`. Put it into \`mods/\` on the server and the clients (next to CC: Tweaked). With FTB Quests, its quest chapters are added to the quest book once by themselves (\`installQuests = false\` in \`cccloud-server.toml\` turns that off)."
+            echo "- **Making a modpack?** Take \`cccloud-$v-modpack.jar\` + \`cccloud-quests-atm11-$v.zip\`. The same mod (same id and version), but it never touches the quest book: ship the chapters from the zip in your pack's quest book, as they are or adapted."
+            echo ""
+            cat changes.md
+          } > release-notes.md
 
       - name: Create the GitHub release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
-            dist/*.jar
+            dist/cccloud-*.jar
             dist/cccloud-quests-atm11-*.zip
           body_path: release-notes.md
           draft: false

@@ -81,7 +81,12 @@ public final class Integrations {
 
         // 8. World & progression.
         optional("waystones", () -> ai.ezfox.cccloud.compat.waystones.WaystonesCard::init);
-        optional("ftbquests", () -> ai.ezfox.cccloud.compat.ftbquests.QuestsCard::init);
+        optional("ftbquests", () -> () -> {
+            ai.ezfox.cccloud.compat.ftbquests.QuestsCard.init();
+            // Standard edition: add CC: Cloud's quest chapters to the quest book once, before FTB Quests reads it.
+            ai.ezfox.cccloud.compat.ftbquests.QuestAutoInstall.init();
+            ai.ezfox.cccloud.compat.ftbquests.QuestInstallGameTests.init();
+        });
 
         // Wave 3: more ATM11 machines.
         optional("witchery", () -> ai.ezfox.cccloud.compat.witchery.WitcheryCards::init);

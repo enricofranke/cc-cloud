@@ -1,14 +1,19 @@
 CC: Cloud @VERSION@ - FTB Quests chapters for All the Mods 11
 Deutsch: siehe unten.
 
+WHICH DOWNLOAD?
+  Playing on your own server?  Take cccloud-@VERSION@.jar - it adds these
+                               chapters by itself; you do not need this zip.
+  Making a modpack?            Take cccloud-@VERSION@-modpack.jar + this zip.
+
 WHAT IS THIS
 Two quest chapters for FTB Quests, with English and German text:
 "CC: Tweaked" (24 quests: computers, turtles, monitors, modems, first programs) and
 "CC: Cloud" (39 quests: mainframe, uplinks, pairing a browser, bridges, relays,
-upgrades, tablet, display). The quests are not inside the mod jar: FTB Quests keeps
-every quest in the server's quest book (config/ftbquests/quests). Install them once
-on the server; players get them from the server automatically. The chapters appear
-at the end of the Tech group, after Ender IO and XyCraft.
+upgrades, tablet, display). They belong to the quest book (config/ftbquests/quests).
+The modpack jar never touches the quest book, so a pack ships them in its own quest
+book, as they are or adapted. Install them once; players get them from the server.
+The chapters appear at the end of the Tech group, after Ender IO and XyCraft.
 
 INSTALL (Linux, macOS, or Git Bash / WSL on Windows)
   1. Unpack this zip anywhere.
@@ -46,14 +51,20 @@ reward tables. Pack makers may ship and adapt the chapters (MPL-2.0, see LICENSE
 ============================================================================
 DEUTSCH
 
+WELCHER DOWNLOAD?
+  Du spielst auf deinem eigenen Server?  Nimm cccloud-@VERSION@.jar - sie trägt
+                                         diese Kapitel selbst ein; dieses Zip
+                                         brauchst du nicht.
+  Du baust ein Modpack?                  Nimm cccloud-@VERSION@-modpack.jar + dieses Zip.
+
 WAS IST DAS
 Zwei Quest-Kapitel für FTB Quests, mit englischem und deutschem Text:
 "CC: Tweaked" (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und
 "CC: Cloud" (39 Quests: Mainframe, Uplinks, Browser koppeln, Bridges, Relays,
-Upgrades, Tablet, Display). Die Quests stecken nicht in der Mod-Jar: FTB Quests hält
-alle Quests im Questbuch des Servers (config/ftbquests/quests). Einmal auf dem
-Server installieren; die Spieler bekommen sie automatisch vom Server. Die Kapitel
-stehen am Ende der Gruppe Tech, nach Ender IO und XyCraft.
+Upgrades, Tablet, Display). Sie gehören ins Questbuch (config/ftbquests/quests). Die
+Modpack-Jar fasst das Questbuch nie an, ein Pack liefert sie also in seinem eigenen
+Questbuch mit, unverändert oder angepasst. Einmal installieren; die Spieler bekommen
+sie vom Server. Die Kapitel stehen am Ende der Gruppe Tech, nach Ender IO und XyCraft.
 
 INSTALLATION (Linux, macOS oder Git Bash / WSL unter Windows)
   1. Dieses Zip irgendwo entpacken.

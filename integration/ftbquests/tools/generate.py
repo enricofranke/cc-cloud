@@ -171,8 +171,10 @@ def T(en, de):
     return {"en_us": en, "de_de": de}
 
 
-MINING_TURTLE = {"computercraft:right_turtle_upgrade": "minecraft:diamond_pickaxe"}
-CRAFTY_TURTLE = {"computercraft:right_turtle_upgrade": "minecraft:crafting_table"}
+# The upgrade component in the form FTB Quests writes it back (an object with "id"), so a re-save by FTB Quests leaves
+# the chapter unchanged (the auto-install compares content hashes before it updates a chapter).
+MINING_TURTLE = {"computercraft:right_turtle_upgrade": {"id": "minecraft:diamond_pickaxe"}}
+CRAFTY_TURTLE = {"computercraft:right_turtle_upgrade": {"id": "minecraft:crafting_table"}}
 
 
 def turtle_with(upgrade):

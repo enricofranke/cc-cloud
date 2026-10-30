@@ -67,6 +67,7 @@
   "cccloud.pin.locked_notice": "[CC: Cloud] Device %s (%s) was locked for 5 minutes after too many wrong PINs on %s.",
   "cccloud.configuration.title": "CC: Cloud",
   "cccloud.configuration.allowCloud": "Allow cloud",
+  "cccloud.configuration.installQuests": "Add FTB Quests chapters",
   "cccloud.configuration.web": "Web server",
   "cccloud.configuration.webEnabled": "Web server enabled",
   "cccloud.configuration.webBind": "Bind address",
