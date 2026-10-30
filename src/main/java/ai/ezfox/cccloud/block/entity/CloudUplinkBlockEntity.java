@@ -122,6 +122,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     // Dirty tracking (guarded by this)
     private boolean structureDirty = true;
+    /** The widget set changed: the list of charts to sample is built again (structureDirty is cleared by the publish). */
+    private boolean chartsDirty = true;
+    private Widget[] charts = new Widget[0];
     private final Set<String> dirtyValues = new LinkedHashSet<>();
     private final List<String[]> pendingAlerts = new ArrayList<>();
     private long lastAlertNanos;
@@ -236,7 +239,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             } catch (RuntimeException e) {
                 CCCloud.LOGGER.warn("[cccloud] Could not read widgets of uplink at {}", getBlockPos(), e);
             }
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
     }
 
@@ -405,7 +408,9 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 dirtyValues.clear();
                 snapshot = snapshot();
                 changed = true;
-            } else if (!dirtyValues.isEmpty()) {
+            } else if (!dirtyValues.isEmpty() && (tickCounter & 1) == 0) {
+                // Every other tick (staggered by position): the hub sends at most 10 times a second anyway, so a value
+                // that changes every tick is handed over once per 2 ticks (docs/SPEC.md "Scaling").
                 // reused buffers: no per-tick allocation for the changed values
                 if (valueIds.length < dirtyValues.size()) {
                     valueIds = new String[dirtyValues.size() * 2];
@@ -451,9 +456,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private static final int BRIDGE_INTERVAL = 20;
 
     private synchronized void sampleCharts(long gameTime) {
-        for (var widget : widgets.values()) {
-            if (widget.type() == WidgetType.CHART && widget.sample(gameTime)) dirtyValues.add(widget.id());
+        if (chartsDirty) {
+            chartsDirty = false;
+            charts = widgets.values().stream().filter(w -> w.type() == WidgetType.CHART).toArray(Widget[]::new);
         }
+        for (var widget : charts) if (widget.sample(gameTime)) dirtyValues.add(widget.id());
     }
 
     /** The bridge this uplink is attached to (direct mode), or null. */
@@ -503,7 +510,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             suppressed = suppress;
             if (suppress && link != null) WebHub.INSTANCE.publishUplinkRemoved(link.id(), uplinkId.toString());
             synchronized (this) {
-                structureDirty = true;
+                structureDirty = chartsDirty = true;
             }
         }
         if (attached != null && !template) enterTemplate(attached.bridgeCore().kind());
@@ -568,7 +575,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         pages.clear();
         groups.clear();
         for (var widget : StorageTemplate.widgets(BridgeCore.maxCraftAmount())) widgets.put(widget.id(), widget);
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         setChanged();
     }
 
@@ -577,7 +584,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         templateKind = "";
         title = "";
         widgets.clear();
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         setChanged();
     }
 
@@ -796,7 +803,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 widgets.put(widget.id(), widget);
             }
         }
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         setChanged();
     }
 
@@ -838,7 +845,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 widgets.clear();
                 pages.clear();
                 groups.clear();
-                structureDirty = true;
+                structureDirty = chartsDirty = true;
             }
             if (!auto && widgets.isEmpty() && pages.isEmpty() && groups.isEmpty()) enterAuto();
             if (!auto) return;
@@ -852,7 +859,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         pages.clear();
         groups.clear();
         for (var widget : ComputerCard.widgets()) widgets.put(widget.id(), widget);
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         setChanged();
     }
 
@@ -861,7 +868,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         widgets.clear();
         groups.clear();
         title = "";
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         setChanged();
     }
 
@@ -878,7 +885,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             if (!auto) return;
             if (!title.equals(newTitle)) {
                 title = newTitle.length() > Limits.TITLE ? newTitle.substring(0, Limits.TITLE) : newTitle;
-                structureDirty = true;
+                structureDirty = chartsDirty = true;
             }
             setValue(ComputerCard.POWER, new com.google.gson.JsonPrimitive(on));
             setValue(ComputerCard.REDSTONE, ComputerCard.sides(out, in));
@@ -896,7 +903,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             deviceKind = "";
             widgets.clear();
             title = "";
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
         if (auto) {
             auto = false;
@@ -904,7 +911,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             pages.clear();
             groups.clear();
             title = "";
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
         return true;
     }
@@ -964,7 +971,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (newStatus != status) {
             status = newStatus;
             synchronized (this) {
-                structureDirty = true;
+                structureDirty = chartsDirty = true;
             }
         }
         BlockState state = getBlockState();
@@ -1051,7 +1058,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         var mainframe = CloudNetwork.mainframe(newLink.id());
         if (mainframe != null && level != null) mainframe.linkUplink(uplinkId, GlobalPos.of(level.dimension(), getBlockPos()));
         synchronized (this) {
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
@@ -1093,7 +1100,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         mainframe.linkUplink(uplinkId, here);
         synchronized (this) {
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
         setChanged();
         updateStatus(serverLevel);
@@ -1116,7 +1123,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         legacyLink = false;
         ai.ezfox.cccloud.network.NetworkService.markDirty();
         synchronized (this) {
-            structureDirty = true;
+            structureDirty = chartsDirty = true;
         }
         setChanged();
         updateStatus(serverLevel);
@@ -1163,7 +1170,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     public synchronized void setTitle(String title) {
         if (this.title.equals(title)) return;
         this.title = title;
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
     }
 
     @Override
@@ -1175,7 +1182,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     public synchronized boolean putWidget(Widget widget) {
         if (!widgets.containsKey(widget.id()) && widgets.size() >= maxWidgets()) return false;
         widgets.put(widget.id(), widget);
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         return true;
     }
 
@@ -1189,7 +1196,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (!pages.containsKey(id) && pages.size() >= Limits.MAX_PAGES) return false;
         if (page.equals(pages.get(id))) return true;
         pages.put(id, page);
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         return true;
     }
 
@@ -1198,7 +1205,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (!groups.containsKey(id) && groups.size() >= Limits.MAX_GROUPS) return false;
         if (group.equals(groups.get(id))) return true;
         groups.put(id, group);
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         return true;
     }
 
@@ -1233,7 +1240,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     public synchronized boolean removeWidget(String id) {
         if (widgets.remove(id) == null) return false;
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
         return true;
     }
 
@@ -1242,7 +1249,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         widgets.clear();
         pages.clear();
         groups.clear();
-        structureDirty = true;
+        structureDirty = chartsDirty = true;
     }
 
     /** Queues an alert, at most one per second per uplink. */

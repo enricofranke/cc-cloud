@@ -36,6 +36,10 @@ import org.jspecify.annotations.Nullable;
  */
 public final class RuleService {
     public static final int INTERVAL = 10;
+    /** Ticks between two rules documents of a mainframe caused by rule runs. */
+    static final int PUBLISH_INTERVAL = 20;
+    private static final java.util.Set<UUID> PENDING_PUBLISH = new java.util.HashSet<>();
+    private static final Map<UUID, Integer> LAST_PUBLISH = new HashMap<>();
     private static final SecureRandom RANDOM = new SecureRandom();
     /** mainframe → parsed rules (cache of RuleData). */
     private static final Map<UUID, List<Rule>> RULES = new HashMap<>();
@@ -192,8 +196,19 @@ public final class RuleService {
                 if (!runs.isEmpty()) {
                     String name = loaded ? mainframe.getDisplayName() : displayName(e.getKey());
                     for (var run : runs) record(server, e.getKey(), name, run);
-                    publish(server, e.getKey());
+                    PENDING_PUBLISH.add(e.getKey());
                 }
+            }
+            // The rules document (all rules + log) goes to every browser: at most once a second per mainframe, however
+            // many rules run (docs/SPEC.md "Scaling"). Edits still publish at once.
+            int now = server.getTickCount();
+            for (var it = PENDING_PUBLISH.iterator(); it.hasNext(); ) {
+                var id = it.next();
+                Integer last = LAST_PUBLISH.get(id);
+                if (last != null && now - last < PUBLISH_INTERVAL && now >= last) continue;
+                it.remove();
+                LAST_PUBLISH.put(id, now);
+                publish(server, id);
             }
         } finally {
             ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.RULES, tickCost);

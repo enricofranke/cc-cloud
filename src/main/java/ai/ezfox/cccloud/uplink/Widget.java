@@ -68,16 +68,26 @@ public final class Widget {
 
     // ---- charts ------------------------------------------------------------------------------------------------------
 
+    /** Chart options read once (charts are sampled every tick; their options do not change after creation). */
+    private int points = -1;
+    private long intervalTicks = -1;
+
     public int chartPoints() {
-        var p = opts.get("points");
-        return p == null ? Limits.CHART_POINTS_DEFAULT : p.getAsInt();
+        if (points < 0) {
+            var p = opts.get("points");
+            points = p == null ? Limits.CHART_POINTS_DEFAULT : p.getAsInt();
+        }
+        return points;
     }
 
     /** Sample interval in game ticks. */
     public long chartIntervalTicks() {
-        var i = opts.get("interval");
-        double seconds = i == null ? 1 : i.getAsDouble();
-        return Math.max(1, Math.round(seconds * 20));
+        if (intervalTicks < 0) {
+            var i = opts.get("interval");
+            double seconds = i == null ? 1 : i.getAsDouble();
+            intervalTicks = Math.max(1, Math.round(seconds * 20));
+        }
+        return intervalTicks;
     }
 
     /**

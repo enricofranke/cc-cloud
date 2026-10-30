@@ -191,14 +191,14 @@ public final class RsDevices {
 
     private static void tickCards(MinecraftServer server) {
         var data = RsDeviceData.get(server);
-        boolean all = server.getTickCount() % REFRESH_INTERVAL == 0;
-        if (!all && DIRTY.isEmpty()) return;
+        int tick = server.getTickCount();
         var ids = new HashSet<UUID>(DIRTY);
         DIRTY.clear();
-        if (all) {
-            ids.addAll(data.mainframes());
-            ids.addAll(SECTIONS.keySet());
-        }
+        // Every mainframe once per REFRESH_INTERVAL, spread over the ticks by its id: a server with many mainframes
+        // does not rebuild all their cards in the same tick (docs/SPEC.md "Scaling").
+        for (var id : data.mainframes()) if (due(id, tick)) ids.add(id);
+        for (var id : SECTIONS.keySet()) if (due(id, tick)) ids.add(id);
+        if (ids.isEmpty()) return;
         for (var id : ids) {
             try {
                 refresh(server, data, id);
@@ -206,6 +206,10 @@ public final class RsDevices {
                 CloudLog.LOGGER.error("[cccloud] Could not update the redstone cards of {}", id, e);
             }
         }
+    }
+
+    private static boolean due(UUID mainframeId, int tick) {
+        return Math.floorMod(mainframeId.hashCode() + tick, REFRESH_INTERVAL) == 0;
     }
 
     /** Rebuilds a mainframe's cards and publishes what changed. */
