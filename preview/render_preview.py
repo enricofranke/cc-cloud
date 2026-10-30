@@ -770,11 +770,11 @@ if __name__ == "__main__" and os.environ.get("FIBER"):
 # --------------------------------------------------------------------------- uplink mounts (compact puck)
 # Which `mount` the server picks for each attached block (UplinkMount.compute; UplinkMountTest checks the same cases).
 MOUNT_SCENE = [
-    # label, attached model, side mount, top mount
-    ("full block", "minecraft:block/stone", "full", "full"),
-    ("slab (8 px)", "minecraft:block/smooth_stone_slab", "low", "post8"),
-    ("solar panel (4 px)", "energizedpower:block/solar_panel_1", "bottom", "post12"),
-    ("carpet (1 px)", "minecraft:block/white_carpet", "bottom", "post16"),
+    # label, attached model, side mount (top / bottom faces only take the plate, so the scene shows sides only)
+    ("full block", "minecraft:block/stone", "full"),
+    ("slab (8 px)", "minecraft:block/smooth_stone_slab", "low"),
+    ("solar panel (4 px)", "energizedpower:block/solar_panel_1", "bottom"),
+    ("carpet (1 px)", "minecraft:block/white_carpet", "bottom"),
 ]
 
 
@@ -794,24 +794,23 @@ def _attached(a, rid, pos):
 
 def mounts_scene(a, advanced=False, direct=False, status="online"):
     q = []
-    for i, (_, rid, side, top) in enumerate(MOUNT_SCENE):
+    for i, (_, rid, side) in enumerate(MOUNT_SCENE):
         x = -2 * i
         q += _attached(a, rid, (x, 0, 0))
-        # side: the uplink sits north of the block (facing = towards the block = south); top: above it (facing down)
+        # the uplink sits north of the block (facing = towards the block = south)
         q += uplink_quads(a, advanced, status, "south", pos=(x, 0, -1), direct=direct, t=0.1, mount=side)
-        q += uplink_quads(a, advanced, status, "down", pos=(x, 1, 0), direct=direct, t=0.1, mount=top)
     return q
 
 
 def mounts_preview(a):
-    """preview/renders/uplink_mounts.png: uplinks on the side and on top of a full block, a slab, a
-    tray-height solar panel and a carpet-height block (normal / advanced + direct ring, day / night),
-    plus close-ups of the compact puck."""
+    """preview/renders/uplink_mounts.png: uplinks on the side of a full block, a slab, a tray-height
+    solar panel and a carpet-height block (normal / advanced + direct ring, day / night), plus
+    close-ups of the compact puck."""
     os.makedirs(os.path.join(HERE, "renders"), exist_ok=True)
     names = "  |  ".join(m[0] for m in MOUNT_SCENE)
-    shots = [label(render(mounts_scene(a), 900, yaw=205, pitch=28), "Uplinks (side + top): " + names),
+    shots = [label(render(mounts_scene(a), 900, yaw=205, pitch=28), "Uplinks on the side: " + names),
              label(render(mounts_scene(a, True, True), 900, yaw=205, pitch=28), "Advanced uplinks, direct mode (ring)"),
-             label(render(mounts_scene(a), 900, yaw=150, pitch=12), "low angle from the other side: " + names),
+             label(render(mounts_scene(a), 900, yaw=205, pitch=28, night=True), "night: online"),
              label(render(mounts_scene(a, True, False, "connecting"), 900, yaw=205, pitch=28, night=True),
                    "night: advanced, connecting")]
     top = grid(shots, 2)
@@ -821,9 +820,9 @@ def mounts_preview(a):
             q = uplink_quads(a, adv, "online", "north", mount="center")
             close.append(label(render(q, 300, yaw=yaw, pitch=pitch, center=np.array([8, 8, 1.0]), zoom=300 * 0.86 / 18),
                                f"{'adv ' if adv else ''}compact {nm}"))
-        q = uplink_quads(a, adv, "online", "north", mount="post12")
-        close.append(label(render(q, 300, yaw=320, pitch=20, center=np.array([8, 8, -5.0]), zoom=300 * 0.86 / 20),
-                           f"{'adv ' if adv else ''}post12"))
+        q = uplink_quads(a, adv, "online", "north", mount="bottom", direct=True)
+        close.append(label(render(q, 300, yaw=330, pitch=25, center=np.array([8, 4, 1.0]), zoom=300 * 0.86 / 18),
+                           f"{'adv ' if adv else ''}bottom + ring"))
         for st in ("connecting", "offline"):
             q = uplink_quads(a, adv, st, "north", mount="center", direct=(st == "offline"))
             close.append(label(render(q, 300, yaw=330, pitch=25, night=True, center=np.array([8, 8, 1.0]),

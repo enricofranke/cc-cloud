@@ -63,11 +63,3 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_compact_ring_high` | 4 |
 | `block/uplink_compact_top` | 2 |
 | `block/uplink_compact_ring_top` | 4 |
-| `block/uplink_compact_post4` | 4 |
-| `block/uplink_compact_ring_post4` | 4 |
-| `block/uplink_compact_post8` | 4 |
-| `block/uplink_compact_ring_post8` | 4 |
-| `block/uplink_compact_post12` | 4 |
-| `block/uplink_compact_ring_post12` | 4 |
-| `block/uplink_compact_post16` | 4 |
-| `block/uplink_compact_ring_post16` | 4 |

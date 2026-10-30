@@ -250,9 +250,8 @@ function uplinkAt(adv, s, mount, bx, by, bz, facing, direct) {
   if (direct) placed("cccloud:block/uplink_direct_ring", bx, by, bz, facing);
 }
 
-// attached block height, mount on its side, mount on its top (what UplinkMount.compute picks), dummy colour
-const MOUNT_DEMO = [[16, "full", "full", 0x7f7f7f], [8, "low", "post8", 0xb4b4b4], [4, "bottom", "post12", 0x26326b],
-                    [1, "bottom", "post16", 0xe6e6e6]];
+// attached block height, mount on its side (what UplinkMount.compute picks; top / bottom faces only take the plate), colour
+const MOUNT_DEMO = [[16, "full", 0x7f7f7f], [8, "low", 0xb4b4b4], [4, "bottom", 0x26326b], [1, "bottom", 0xe6e6e6]];
 
 function dummyBlock(bx, by, bz, color) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(16, 16, 16), new THREE.MeshBasicMaterial({ color }));
@@ -316,13 +315,12 @@ function rebuild() {
     uplinkAt(adv, s, "full", x, 0, 1, "north", direct);
   }
   if (show === "mounts") {
-    // front row normal, back row advanced: side uplinks on the south faces, top uplinks above (facing down)
+    // front row normal, back row advanced: uplinks on the south faces
     for (const [adv, z] of [[false, 0], [true, -3]])
-      MOUNT_DEMO.forEach(([h, side, top, col], i) => {
+      MOUNT_DEMO.forEach(([h, side, col], i) => {
         const x = 3 - 2 * i;
         if (h === 16) dummyBlock(x, 0, z, col); else dummyBox(x, 0, z, h, col);
         uplinkAt(adv, s, side, x, 0, z + 1, "north", direct);
-        uplinkAt(adv, s, top, x, 1, z, "down", direct);
       });
   }
   if (show === "all" || show === "bridges") {

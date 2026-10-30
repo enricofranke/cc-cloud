@@ -522,20 +522,15 @@ def uplink_direct_ring():
     return m
 
 
-# Compact uplink ("puck") for faces that cannot carry the 14x14 plate: slab sides, tray-height
-# machines (solar panels), carpet-height blocks, inset faces. Blockstate property `mount` (the Java
-# side computes it from the attached block's outline shape, see CloudUplinkBlock / UplinkMount):
-#   full                    the 14x14 plate (above)
+# Compact uplink ("puck") for side faces that cannot carry the 14x14 plate: slab sides, tray-height
+# machines (solar panels), carpet-height blocks. Blockstate property `mount` (the Java side computes
+# it from the attached block's outline shape, see CloudUplinkBlock / UplinkMount):
+#   full                    the 14x14 plate (above); the only mount on top / bottom faces
 #   bottom|low|center|high|top   8x6 puck flush on the face, bottom edge at model y COMPACT_Y
-#   post4|post8|post12|post16    centred puck on a 2x2 post with a 4x4x1 foot that reaches N px back
-#                           into the attached block's cell (top of a solar panel / slab: the face is
-#                           N px below the uplink's cell); the foot may end up to 3 px inside the block.
-# Puck: x 4..12, y v..v+6, z 0..2, LED 4x1 proud to z 2.25; post x/y 7..9, foot x/y 6..10, z -N..-N+1.
-# The shapes in UplinkMount (Java) use exactly these boxes.
-MOUNTS = ("full", "bottom", "low", "center", "high", "top", "post4", "post8", "post12", "post16")
-COMPACT_Y = {"bottom": 0, "low": 1, "center": 5, "high": 9, "top": 10,
-             "post4": 5, "post8": 5, "post12": 5, "post16": 5}
-POST = {"post4": 4, "post8": 8, "post12": 12, "post16": 16}
+# Puck: x 4..12, y v..v+6, z 0..2, LED 4x1 proud to z 2.25. The shapes in UplinkMount (Java) use
+# exactly these boxes.
+MOUNTS = ("full", "bottom", "low", "center", "high", "top")
+COMPACT_Y = {"bottom": 0, "low": 1, "center": 5, "high": 9, "top": 10}
 UC = "uplink_compact"
 
 
@@ -544,7 +539,7 @@ def uct(name):
 
 
 def uplink_compact(mount):
-    """8x6x2 puck (front = the compact atlas' 8x6 region), 4 px status LED, optional post."""
+    """8x6x2 puck (front = the compact atlas' 8x6 region), 4 px status LED."""
     v = COMPACT_Y[mount]
     tex = f"{NS}:block/uplink_compact"
     m = Model(parent=f"{NS}:block/uplink_display", textures={
@@ -552,10 +547,6 @@ def uplink_compact(mount):
     m.box([4, v, 0], [12, v + 6, 2], {"*": uct("body_l"), "south": Region("atlas", UC, "front"),
                                       "north": uct("body")})
     m.box([6, v + 1, 2], [10, v + 2, 2.25], st("strip4"), emit=15, skip=("north",))
-    if mount in POST:
-        n = POST[mount]
-        m.box([7, 7, 1 - n], [9, 9, 0], uct("post"), only=("west", "east", "up", "down"))
-        m.box([6, 6, -n], [10, 10, 1 - n], uct("post"), skip=("north",))   # foot on the attached face
     return m
 
 
@@ -1123,8 +1114,8 @@ def validate():
 
 def validate_uplinks(data):
     """Uplink blockstates cover facing x mount x status (one body each) and facing x mount (one direct
-    ring each) with the plate's rotations; compact pucks stay in the cell, posts only reach back into
-    the attached block, and body + ring of every mount are free of coplanar overlaps."""
+    ring each) with the plate's rotations; compact pucks stay in the cell, and body + ring of every
+    mount are free of coplanar overlaps."""
     problems = []
     for blk, adv in (("cloud_uplink", False), ("advanced_cloud_uplink", True)):
         body, ring = {}, {}
@@ -1156,16 +1147,14 @@ def validate_uplinks(data):
     pairs = [("full", elements(f"{NS}:block/uplink"))]
     for mt_ in MOUNTS[1:]:
         els = elements(f"{NS}:block/uplink_compact_{mt_}")
-        v, post = COMPACT_Y[mt_], POST.get(mt_, 0)
+        v = COMPACT_Y[mt_]
         pairs.append((mt_, els))
         if not els or els[0]["from"] != [4, v, 0] or els[0]["to"] != [12, v + 6, 2]:
             problems.append(f"uplink_compact_{mt_}: puck must be [4,{v},0]..[12,{v + 6},2] (CloudUplinkBlock shapes)")
         for i, el in enumerate(els):
             lo, hi = el["from"], el["to"]
-            if min(lo[0], lo[1]) < 0 or max(hi[0], hi[1]) > 16 or lo[2] < -post or hi[2] > 2.25:
-                problems.append(f"uplink_compact_{mt_} element {i}: outside x/y 0..16, z {-post}..2.25")
-        if mt_ in POST and not any(el["from"][2] == -post for el in els):
-            problems.append(f"uplink_compact_{mt_}: post must reach z {-post}")
+            if min(lo) < 0 or max(hi[0], hi[1]) > 16 or hi[2] > 2.25:
+                problems.append(f"uplink_compact_{mt_} element {i}: outside x/y 0..16, z 0..2.25")
     for mt_, els in pairs:
         ring_els = elements(uplink_ring_model(mt_))
         problems.extend(f"uplink {mt_} body + direct ring: {msg}" for msg in coplanar_faces(els + ring_els))
@@ -1230,16 +1219,17 @@ uplink blockstates have a `mount` property (`{" | ".join(MOUNTS)}`) that the ser
 from the attached block's outline shape (`UplinkMount.compute`, on placement, when that neighbour
 changes and once after loading, so older worlds fix themselves):
 
-- `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area -> the plate.
-- `bottom|low|center|high|top`: flush but smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
-  x 4..12, z 0..2, bottom edge at model y {", ".join(f"{k} {v}" for k, v in COMPACT_Y.items() if k not in POST)}).
+- `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area (or of
+  its 1 px outline, e.g. a hopper rim) -> the plate.
+- `bottom|low|center|high|top` (side faces only): smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
+  x 4..12, z 0..2, bottom edge at model y {", ".join(f"{k} {v}" for k, v in COMPACT_Y.items())}).
   The position with the largest overlap with the face wins (ties: nearest to the face's centre), so it
   sits on the visible part: solar panel / carpet side -> `bottom`, slab side -> `low`, top slab -> `high`.
-- `post4|post8|post12|post16`: the face is inset by more than 1 px (top of a solar panel or slab: the
-  face lies below the uplink's cell) -> the centred puck on a 2x2 post with a 4x4x1 foot, reaching
-  N px back into the attached block's cell (N = the inset rounded up to 4, so the foot may sit up to
-  3 px inside the block; exact for slabs and 4 px solar panels). Post and foot are part of the
-  selection shape (`UplinkMount#northShape`).
+- Top and bottom faces only take the plate: placing an uplink on a top / bottom face that does not
+  qualify for `full` (top of a slab or solar panel) is refused with an action bar hint. Uplinks that
+  already sit there (older versions allowed it on block entities) stay and keep the plate.
+- Unknown saved values (e.g. the removed `post*` mounts of a dev build) load as `full` (vanilla state
+  codec default) and are re-computed on the first tick.
 
 Front: 8x6 region `front` of `textures/block/uplink{{,_advanced}}_compact.png` (32x32: same outline, lower
 band, mini cloud, screws; gold for advanced), status LED = first 4 px of the status strip (`strip4`,

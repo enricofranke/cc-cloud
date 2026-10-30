@@ -187,7 +187,7 @@ LAYOUTS = {
     # compact uplink ("puck") for non-full faces: own small atlas per tier, so uplink*.png stay unchanged
     "uplink_compact": {
         "size": 32,
-        "tiles": {"body_l": (1, 0), "post": (0, 1), "body": (1, 1)},
+        "tiles": {"body_l": (1, 0), "body": (1, 1)},
         "regions": {"front": (0, 0, 8, 6)},
     },
     "bridge": {
@@ -464,9 +464,9 @@ def gen_uplink(advanced: bool):
 
 
 def gen_uplink_compact(advanced: bool):
-    """Compact uplink for non-full faces (slab sides, solar panels): an 8x6 front in the same plate
+    """Compact uplink for non-full side faces (slab sides, solar panels): an 8x6 front in the same plate
     language (1 px dark outline, lighter lower band with a lighter left edge, mini cloud emblem, dark
-    slot under the 4 px status LED), plus side / post materials."""
+    slot under the 4 px status LED), plus the side materials."""
     L = LAYOUTS["uplink_compact"]
     cv = Canvas(L["size"], L["size"], grey(0x30))
     T = lambda n: tile_origin("uplink_compact", n)
@@ -480,7 +480,7 @@ def gen_uplink_compact(advanced: bool):
             "EEEEEEEE"]
     cv.ascii(x0, y0, rows, {"E": EDGE, "e": EDGE_L, "b": body, "l": body_l, "o": grey(0x2b),
                             "C": CYAN_L, "c": CYAN, "S": SLOT}, 220)
-    for name, shades, seed in (("body", body, 221), ("body_l", body_l, 222), ("post", CABLE_D, 223)):
+    for name, shades, seed in (("body", body, 221), ("body_l", body_l, 222)):
         ox, oy = T(name)
         cv.noise(ox, oy, 16, 16, shades, seed)
     cv.save(os.path.join(TEX, "block", "uplink_advanced_compact.png" if advanced else "uplink_compact.png"))
