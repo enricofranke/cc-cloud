@@ -85,6 +85,13 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     }
 
     private void handle(ChannelHandlerContext ctx, FullHttpRequest req) {
+        if (Boolean.TRUE.equals(ctx.channel().attr(ConnectionLimiter.REFUSED).get())) {
+            // Over the connection limit (ConnectionLimiter): say so instead of an empty response, then close.
+            var response = json(HttpResponseStatus.SERVICE_UNAVAILABLE, error("too_many_connections"));
+            response.headers().set(HttpHeaderNames.RETRY_AFTER, "1");
+            write(ctx, req, response);
+            return;
+        }
         if (!req.decoderResult().isSuccess()) {
             sendJson(ctx, req, HttpResponseStatus.BAD_REQUEST, error("bad_request"));
             return;

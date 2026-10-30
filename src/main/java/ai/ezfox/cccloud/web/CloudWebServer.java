@@ -33,8 +33,20 @@ public final class CloudWebServer {
     public static final int IDLE_TIMEOUT_S = 60;
     public static final int AUTH_TIMEOUT_S = 5;
     public static final int PING_INTERVAL_S = 20;
-    public static final int MAX_CONNECTIONS_PER_IP = 8;
-    public static final int MAX_CONNECTIONS = 64;
+    /**
+     * Open connections per IP. A browser alone uses up to 6 HTTP/1.1 connections per host and privacy mode (credentialed
+     * and uncredentialed requests have separate pools), plus one WebSocket per tab and speculative preconnects; 8 was
+     * reached by a single tab, and the next socket was closed without a response (ERR_EMPTY_RESPONSE in Chrome).
+     */
+    public static final int MAX_CONNECTIONS_PER_IP = 24;
+    public static final int MAX_CONNECTIONS = 256;
+    /**
+     * Connections over a limit up to this many more are kept just long enough to answer their first request with 503 +
+     * Retry-After (a client sees why); beyond that they are closed at once, as before.
+     */
+    public static final int OVER_LIMIT_GRACE = 8;
+    /** Read timeout of such a refused connection. */
+    public static final int REFUSED_TIMEOUT_S = 2;
 
     /** Overridable for the load test only. */
     static volatile int maxConnectionsPerIp = MAX_CONNECTIONS_PER_IP;

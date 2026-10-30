@@ -35,6 +35,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Auto-stock no longer fills the crafting jobs with "failed (no_cpu)" rows while every crafting CPU is busy: the request
   waits as one "Waiting for CPU" row per item, is planned again after the 30 s cooldown and never counts as a failure.
   While AE2 has no idle CPU nothing is planned at all. Same logic for the ME and RS bridges and in the dashboard mock.
+- Dashboard: Chrome sometimes got an empty response on the first load. A tab alone opens 7–8 connections, and the
+  9th connection from an IP was closed without an answer. The limits are now 24 connections per IP and 256 in total,
+  and a connection slightly over a limit gets `503` with `Retry-After` instead of an empty response (docs/SECURITY.md).
 
 ## 0.9.0 – first public release candidate
 
