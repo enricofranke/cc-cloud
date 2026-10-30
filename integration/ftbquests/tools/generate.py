@@ -1119,6 +1119,50 @@ CLOUD += [
       T(["Build &eCloud Displays&r into a wall (up to 8 x 6) and show any dashboard card or page in your base."],
         ["Bau &eCloud-Displays&r zu einer Wand (bis 8 x 6) zusammen und zeig eine beliebige Dashboard-Karte oder Seite in deiner Basis."]),
       [item("cccloud:cloud_display")], [xp(100)], deps=["cloud.demo"], hide_lines=True),
+
+    # ---- Cloud Redstone devices ------------------------------------------------------------------
+    Q("cloud.rslamp", 9.25, 5,
+      T("Cloud Lamp", "Cloud-Lampe"),
+      T("&7A lamp on your phone", "&7Eine Lampe auf dem Handy"),
+      T([
+          "The &eCloud Lamp&r lights up by itself: place it, right-click the mainframe with the &eCloud Link Card&r, then the lamp. It shows up on the dashboard as a switch with a brightness slider.",
+          "",
+          "&7No computer, no Lua, no channels. Sneak + right-click opens its screen (name, group, brightness).",
+      ], [
+          "Die &eCloud-Lampe&r leuchtet von selbst: setzen, mit der &eCloud Link Card&r erst den Mainframe und dann die Lampe anklicken. Sie erscheint im Dashboard als Schalter mit Helligkeitsregler.",
+          "",
+          "&7Kein Computer, kein Lua, keine Kanäle. Schleichen + Rechtsklick öffnet ihr Fenster (Name, Gruppe, Helligkeit).",
+      ]),
+      [item("cccloud:cloud_lamp")], [xp(75), give("minecraft:redstone", 8)], deps=["cloud.linkcard"], hide_lines=True),
+
+    Q("cloud.rsswitch", 10.75, 5,
+      T("Switches and Buttons", "Schalter und Taster"),
+      T("&7One card per group", "&7Eine Karte pro Gruppe"),
+      T([
+          "A &eCloud Switch&r works like a lever (on/off or analog 0-15), a &eCloud Button&r gives a short pulse. Both stick to any side of a block.",
+          "",
+          "Give devices the same &bgroup&r in their screen: they share one dashboard card, with &aAll on&r and &aAll off&r. Devices without a group go to the card \"Redstone\".",
+      ], [
+          "Ein &eCloud-Schalter&r arbeitet wie ein Hebel (an/aus oder analog 0-15), ein &eCloud-Taster&r gibt einen kurzen Impuls. Beide haften an jeder Blockseite.",
+          "",
+          "Gib Geräten in ihrem Fenster dieselbe &bGruppe&r: sie teilen sich eine Dashboard-Karte mit &aAlle an&r und &aAlle aus&r. Geräte ohne Gruppe landen auf der Karte \"Redstone\".",
+      ]),
+      [anyof("cccloud:cloud_switch", ["cccloud:cloud_switch", "cccloud:cloud_button"])], [xp(75)], deps=["cloud.rslamp"]),
+
+    Q("cloud.rssensor", 12.25, 5,
+      T("Cloud Sensor", "Cloud-Sensor"),
+      T("&7When the door opens ...", "&7Wenn die Tür aufgeht ..."),
+      T([
+          "The &eCloud Sensor&r reads the redstone signal next to it and shows it on the dashboard.",
+          "",
+          "Use it in a &brule&r: \"when the sensor is on, then turn on the lamp and send a push notification\" - automation without a single line of Lua.",
+      ], [
+          "Der &eCloud-Sensor&r liest das Redstone-Signal neben sich und zeigt es im Dashboard.",
+          "",
+          "Nutze ihn in einer &bRegel&r: \"wenn der Sensor an ist, dann Lampe an und Push-Nachricht senden\" - Automatisierung ohne eine Zeile Lua.",
+      ]),
+      [item("cccloud:cloud_sensor")], [xp(100), table("common")], deps=["cloud.rsswitch", "cloud.rules"], hide_lines=True,
+      shape="hexagon"),
 ]
 
 

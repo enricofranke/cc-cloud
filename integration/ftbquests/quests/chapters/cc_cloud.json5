@@ -1072,6 +1072,110 @@
         },
       ],
     },
+    {
+      x: 9.25,
+      y: 5.0,
+      hide_dependency_lines: true,
+      dependencies: [
+        "40F7D0A3190FD2E6",
+      ],
+      size: 1.0,
+      id: "616D2EFD7671AD0D",
+      tasks: [
+        {
+          id: "2BFFCBF8F7BB7C20",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_lamp",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "1F3A2B43D7DCEA66",
+          type: "xp",
+          xp: 75,
+        },
+        {
+          id: "66A210184248EA0A",
+          type: "item",
+          item: {
+            id: "minecraft:redstone",
+            count: 1,
+          },
+          count: 8,
+        },
+      ],
+    },
+    {
+      x: 10.75,
+      y: 5.0,
+      dependencies: [
+        "616D2EFD7671AD0D",
+      ],
+      size: 1.0,
+      id: "1796B1E0C0692AFD",
+      tasks: [
+        {
+          id: "4DC0DEDD5191E47E",
+          type: "item",
+          icon: {
+            id: "cccloud:cloud_switch",
+            count: 1,
+          },
+          item: {
+            id: "ftbfiltersystem:smart_filter",
+            count: 1,
+            components: {
+              "ftbfiltersystem:filter": "or(item(cccloud:cloud_switch)item(cccloud:cloud_button))",
+            },
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "3EA7775E493E4C79",
+          type: "xp",
+          xp: 75,
+        },
+      ],
+    },
+    {
+      x: 12.25,
+      y: 5.0,
+      shape: "hexagon",
+      hide_dependency_lines: true,
+      dependencies: [
+        "1796B1E0C0692AFD",
+        "7173001B4D29A591",
+      ],
+      size: 1.0,
+      id: "6AC23D41F0DB24CE",
+      tasks: [
+        {
+          id: "389F2975E2D2EA5B",
+          type: "item",
+          item: {
+            id: "cccloud:cloud_sensor",
+            count: 1,
+          },
+        },
+      ],
+      rewards: [
+        {
+          id: "24DFF726787BA06F",
+          type: "xp",
+          xp: 100,
+        },
+        {
+          id: "63C6678C7AB326AB",
+          type: "random",
+          exclude_from_claim_all: true,
+          table_id: 487623848494439020,
+        },
+      ],
+    },
   ],
   quest_links: [
     {
