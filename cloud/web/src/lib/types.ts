@@ -263,4 +263,6 @@ export interface MainframeInfo {
   reason?: string;
   /** v0.3: FE buffer; absent when the server runs with requirePower=false */
   power?: PowerInfo;
+  /** The block was broken (reason "removed"): ms epoch when its data is deleted unless it is placed again */
+  removedUntil?: number;
 }

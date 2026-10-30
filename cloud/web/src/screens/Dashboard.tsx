@@ -228,7 +228,7 @@ export function Dashboard({ id }: { id: string }) {
         {st.text && (
           <div class={`banner banner-${st.kind}`} role="status">
             <span class="banner-icon">
-              {st.kind === "disabled" || st.kind === "no_power" ? <IconPower size={18} /> : st.kind === "offline" ? <IconAlert size={18} /> : <IconWifiOff size={18} />}
+              {st.kind === "disabled" || st.kind === "no_power" ? <IconPower size={18} /> : st.kind === "offline" || st.kind === "removed" ? <IconAlert size={18} /> : <IconWifiOff size={18} />}
             </span>
             <div class="banner-body">
               <div class="banner-text">{st.text}</div>

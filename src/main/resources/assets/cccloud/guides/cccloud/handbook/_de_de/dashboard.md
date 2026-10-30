@@ -55,7 +55,8 @@ Widgets mit `pin=true` fragen vor dem Auslösen die Mainframe-PIN über ein Ziff
 | Anzeige | Bedeutung |
 |---|---|
 | Dashboard disabled | das Dashboard ist im Mainframe-Bildschirm ausgeschaltet |
-| Offline | der Chunk des Mainframes ist nicht geladen, der Block wurde abgebaut oder der Redstone-Not-Aus ist aktiv |
+| Offline | der Chunk des Mainframes ist nicht geladen oder der Redstone-Not-Aus ist aktiv |
+| Removed | der Mainframe-Block wurde abgebaut – sein Item wieder platzieren bringt alles zurück ([wie](index.md)) |
 | Mainframe has no power | der FE-Puffer ist leer – siehe [Strom](index.md) |
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |

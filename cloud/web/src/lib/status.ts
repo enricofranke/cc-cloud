@@ -1,7 +1,7 @@
 import type { MainframeConn } from "./conn.ts";
 import { LAN_ONLY_TEXT, unreachableText } from "./api.ts";
 
-export type StatusKind = "no_power" | "lan_only" | "online" | "offline" | "disabled" | "reconnecting" | "unreachable" | "connecting" | "revoked";
+export type StatusKind = "no_power" | "lan_only" | "online" | "offline" | "removed" | "disabled" | "reconnecting" | "unreachable" | "connecting" | "revoked";
 
 export interface StatusInfo {
   kind: StatusKind;
@@ -19,6 +19,17 @@ export function statusOf(conn: MainframeConn | undefined): StatusInfo {
   if (s === "unreachable") return { kind: "unreachable", label: "No connection", text: unreachableText() };
   if (s === "reconnecting") return { kind: "reconnecting", label: "Reconnecting", text: "Connection lost. Reconnecting to the server…" };
   if (s === "connecting" || !i) return { kind: "connecting", label: "Connecting" };
+  if (!i.online && i.reason === "removed") {
+    const until = i.removedUntil ? new Date(i.removedUntil).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : undefined;
+    return {
+      kind: "removed",
+      label: "Removed",
+      text:
+        "The Cloud Mainframe was broken. Place its item again – or get a new one with /cccloud mainframe recover – and everything comes back: devices, layout, rules and scenes" +
+        (until ? `. Its data is deleted on ${until}.` : ".") +
+        " Showing the last known values; controls are locked.",
+    };
+  }
   if (!i.online && (i.reason === "no_power" || i.power?.ok === false))
     return {
       kind: "no_power",

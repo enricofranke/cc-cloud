@@ -52,6 +52,14 @@ ${recipe(R.rsBridge)}
 
 Ein Redstone-Signal an einer der beiden Hälften ist ein **Not-Aus**: Der Mainframe geht offline, bis das Signal weg ist.
 
+### Mainframe abbauen und umziehen {#moving}
+
+Der Mainframe trägt seine Identität im Item. Abbauen (Spitzhacke) und das Item wieder platzieren – egal wo, auch in einer anderen Basis – ergibt **denselben Mainframe**: Geräte, Konten, PIN, Layout, Regeln, Szenen und API-Schlüssel sind wieder da, verknüpfte Uplinks und Bridges verbinden sich von selbst. Er gehört weiter seinem Besitzer, egal wer ihn platziert. Upgrade-Karten fallen als eigene Items heraus; setze sie wieder ein.
+
+- **Nichts wird sofort gelöscht.** Nach dem Abbauen behält der Server alles **7 Tage** lang (\`mainframeRetentionDays\`); das Dashboard zeigt den Mainframe solange als **Removed**. Erst danach oder mit \`/cccloud mainframe purge <id>\` werden seine Daten gelöscht.
+- **Item verloren?** Im Kreativmodus fällt beim Abbauen nichts heraus: \`/cccloud mainframe recover\` listet deine abgebauten Mainframes und gibt dir ihr Item (einmal pro Abbau). Ist das Item gedroppt, platziere dieses – oder frag einen Server-Admin, der kann immer wiederherstellen.
+- **Schutz vor Fehlklicks** (\`mainframeBreakProtection\`): Im Kreativmodus lässt sich der Mainframe nur **schleichend** abbauen; im Überlebensmodus nur von seinem Besitzer, seinen Admins und Server-Admins. Claim-Mods schützen ihn zusätzlich.
+
 ## Strom (FE) {#power}
 
 Der Mainframe läuft mit **FE** (Forge Energy, auch RF genannt) – der Einheit von Powah, Ender IO, Thermal, AE2 und den meisten Technik-Mods. Schließe ein beliebiges FE-Kabel oder einen Generator an eine der beiden Hälften an.
@@ -191,7 +199,8 @@ Widgets mit \`pin=true\` fragen vor dem Auslösen die Mainframe-PIN über ein Zi
 | Anzeige | Bedeutung |
 |---|---|
 | Dashboard disabled | das Dashboard ist im Mainframe-Bildschirm ausgeschaltet |
-| Offline | der Chunk des Mainframes ist nicht geladen, der Block wurde abgebaut oder der Redstone-Not-Aus ist aktiv |
+| Offline | der Chunk des Mainframes ist nicht geladen oder der Redstone-Not-Aus ist aktiv |
+| Removed | der Mainframe-Block wurde abgebaut – sein Item wieder platzieren bringt alles zurück ([wie](/docs/start#moving)) |
 | Mainframe has no power | der FE-Puffer ist leer – siehe [Strom](/docs/start#power) |
 | Uplink offline | dieser Uplink ist nicht geladen oder außer Reichweite |
 | Read-only device | dieses Gerät darf zusehen, aber nicht steuern |

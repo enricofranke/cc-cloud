@@ -52,6 +52,14 @@ ${recipe(R.rsBridge)}
 
 A redstone signal on either half is a **kill switch**: the mainframe goes offline until the signal is gone.
 
+### Breaking and moving the mainframe {#moving}
+
+The mainframe keeps its identity in its item. Break it (pickaxe) and place the item again – anywhere, also in another base – and it is the **same mainframe**: devices, accounts, PIN, layout, rules, scenes and API keys are back, and linked uplinks and bridges reconnect by themselves. It still belongs to its owner, whoever places it. Upgrade cards drop as separate items; put them back in.
+
+- **Nothing is deleted right away.** After a break the server keeps everything for **7 days** (\`mainframeRetentionDays\`); the dashboard shows the mainframe as **Removed** meanwhile. Only after that, or with \`/cccloud mainframe purge <id>\`, is its data deleted.
+- **Lost the item?** In creative a break drops nothing: \`/cccloud mainframe recover\` lists your removed mainframes and hands you their item (once per break). If the item did drop, place that one – or ask a server admin, who can always recover.
+- **Misclick guard** (\`mainframeBreakProtection\`): in creative the mainframe only breaks while you **sneak**; in survival only its owner, its admins and server admins can break it. Claim mods protect it as well.
+
 ## Power (FE) {#power}
 
 The mainframe runs on **FE** (Forge Energy, also called RF) – the unit used by Powah, Ender IO, Mekanism's FE output, Thermal, AE2 and most tech mods. Connect any FE cable or generator to either half.
@@ -191,7 +199,8 @@ Widgets with \`pin=true\` ask for the mainframe PIN on a keypad before they act.
 | Message | Meaning |
 |---|---|
 | Dashboard disabled | the dashboard is switched off in the mainframe screen |
-| Offline | the mainframe chunk is unloaded, the block was broken or the redstone kill switch is on |
+| Offline | the mainframe chunk is unloaded or the redstone kill switch is on |
+| Removed | the mainframe block was broken – place its item again to bring everything back ([how](/docs/start#moving)) |
 | Mainframe has no power | the FE buffer is empty – see [power](/docs/start#power) |
 | Uplink offline | that uplink is unloaded or out of range |
 | Read-only device | this device may watch but not control |

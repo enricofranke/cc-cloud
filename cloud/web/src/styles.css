@@ -292,6 +292,7 @@ pre {
   animation: pulse 2s ease-in-out infinite;
 }
 .pill-offline,
+.pill-removed,
 .pill-no_power,
 .pill-lan_only,
 .pill-revoked,
@@ -1163,6 +1164,7 @@ pre {
   background: var(--yellow);
 }
 .mf-icon-led.st-offline,
+.mf-icon-led.st-removed,
 .mf-icon-led.st-no_power,
 .mf-icon-led.st-lan_only,
 .mf-icon-led.st-unreachable,
@@ -5016,6 +5018,7 @@ main:focus {
   background: var(--green);
 }
 .sm-dot.st-offline,
+.sm-dot.st-removed,
 .sm-dot.st-no_power,
 .sm-dot.st-unreachable,
 .sm-dot.st-revoked {

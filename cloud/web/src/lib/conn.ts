@@ -458,6 +458,7 @@ export class MainframeConn {
           // a delta that carries online/enabled also carries the current reason (or none)
           reason: "online" in msg || "reason" in msg ? (typeof msg.reason === "string" ? msg.reason.slice(0, 32) : undefined) : i.reason,
           power: "power" in msg ? normalizePower(msg.power) : i.power,
+          removedUntil: "removedUntil" in msg ? until(msg.removedUntil) : i.removedUntil,
         };
         if (!this.info.value.online || !this.info.value.enabled) this.dropAllPending();
         break;
@@ -1042,7 +1043,13 @@ function normalizeInfo(m: any): MainframeInfo {
     enabled: m.enabled === true,
     reason: typeof m.reason === "string" ? m.reason.slice(0, 32) : undefined,
     power: normalizePower(m.power),
+    removedUntil: until(m.removedUntil),
   };
+}
+
+/** A positive ms timestamp, else undefined (0 = not removed). */
+function until(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : undefined;
 }
 
 export function normalizePower(p: any): PowerInfo | undefined {
