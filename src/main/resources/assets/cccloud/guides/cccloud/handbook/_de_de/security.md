@@ -54,20 +54,40 @@ Kritische Widgets (`pin=true`) brauchen eine 4- bis 8-stellige PIN. 5 Fehlversuc
 
 ## Zugriff aus dem Internet in 2 Minuten
 
-Ein Befehl im Spiel (Serverbetreiber, OP-Level 4, oder die Server-Konsole):
+**Empfohlen: CC: Cloud Connect.** Ein Befehl im Spiel (Serverbetreiber, OP-Level 4, oder die Server-Konsole):
+
+```
+/cccloud internet connect mybase
+```
+
+Dein Dashboard ist dann unter **https://mybase.cccloud.dev** erreichbar – HTTPS, von überall, ohne Portfreigabe, ohne eigene Domain und ohne Proxy. Der Server baut eine Verbindung nach außen zum CC: Cloud-Relay auf und hält sie offen; an deinem Router ändert sich nichts. Such dir einen freien Namen aus (3–32 Zeichen: a–z, 0–9 und -); `/cccloud internet connect` ohne Namen schlägt einen vor. Es gilt sofort, ohne Neustart. In `serverconfig/cccloud-server.toml`: `internetAccess = "connect"` und `connectName = "mybase"` unter `[connect]`.
+
+| Modus | Einfach | Sicher | Braucht |
+|---|---|---|---|
+| `connect` – **empfohlen** | ein Befehl | ja – HTTPS, Freigabe im Spiel | ausgehendes HTTPS (Port 443) |
+| `off` (Standard) | nichts zu tun | ja – nur dein lokales Netz | – |
+| `http` – Einfach-Modus | ein Befehl, ein Port | **nein**, siehe unten | TCP-Port 8787 weitergeleitet |
+| HTTPS (Caddy, Cloudflare Tunnel, eigenes Zertifikat) | etwas Einrichtung | ja | eine Domain, siehe [Erweitert](#advanced) |
+
+`/cccloud internet` zeigt den aktuellen Modus, die Adresse und ob sie online ist; `/cccloud internet off` schließt den Zugriff aus dem Internet wieder.
+
+### CC: Cloud Connect
+
+- **Es funktioniert einfach:** Jeder neue Browser braucht weiter **[Erlauben]** im Spiel, danach verhalten sich die Steuerelemente wie im LAN; PIN-geschützte fragen weiter nach ihrer PIN. Browser über Connect zählen als Internet-Adressen: Falsche Kopplungscodes und Anmeldungen sperren eine Adresse eine Weile.
+- **Strenger, wenn du willst:** `internetRequirePin = true` in der Server-Config lässt jede Steuer-Aktion aus dem Internet nach der Mainframe-PIN fragen (einmal, dann 10 Minuten pro Browser); Mainframes ohne PIN sind von außen dann nur ansehbar (`/cccloud pin set <Ziffern>`).
+- **Wo du es siehst:** Der Mainframe-Bildschirm zeigt die Adresse zuerst und ob Connect online ist; Kopplungslinks im Chat nutzen sie, damit sie auch auf dem Handy mit mobilen Daten funktionieren.
+- **Der Name gehört dir:** Die Mod erzeugt einen Schlüssel in `<Serverordner>/cccloud/connect/` und weist ihn beim Relay nach; niemand sonst kann den Namen übernehmen. Server umziehen? Kopiere den Ordner mit. Ein Name, der 90 Tage nicht benutzt wird, wird frei; `/cccloud internet connect release` gibt ihn sofort frei und schaltet Connect aus.
+- **Grenzen:** 20 gleichzeitig offene Dashboard-Tabs und 2 GB Datenverkehr pro Tag und Server. Die öffentliche API funktioniert über Connect (nicht mit `internetRequirePin`: ein Schlüssel kann keine PIN mitschicken); Live-Event-Streams (`/events`) laufen nicht darüber.
+- **Wer was sehen kann:** HTTPS endet bei Cloudflare, wo der Relay läuft. Der Relay reicht deinen Dashboard-Verkehr weiter und könnte ihn technisch mitlesen; er wird vom Autor von CC: Cloud betrieben, speichert nichts und führt keine Anfrage-Logs. Die Dashboard-Seiten kommen immer vom Relay (die offiziellen Dateien deiner Mod-Version), nie von einem Minecraft-Server – so kann niemand eine gefälschte Anmeldeseite unter einer cccloud.dev-Adresse ablegen. Missbrauch meldest du über den CC: Cloud-Discord oder GitHub; Namen, die für Phishing genutzt werden, werden abgeschaltet. Wenn du dem Relay nicht vertrauen willst, nutze `/cccloud internet off` und einen der [erweiterten](#advanced) Wege.
+
+### Einfaches HTTP – Einfach-Modus
 
 ```
 /cccloud internet http
 /cccloud internet http mybase.duckdns.org
 ```
 
-Der Chat antwortet mit dem **Link** zum Öffnen, dem **Port**, den du im Router weiterleitest, und **wie du es testest** (Handy mit ausgeschaltetem WLAN). Es gilt sofort, ohne Neustart. `/cccloud internet` zeigt den aktuellen Stand, `/cccloud internet off` schließt es wieder. Dasselbe in `serverconfig/cccloud-server.toml`: `internetAccess = "http"` (optional `internetDomain = "meinebasis.duckdns.org"` für einen festen Namen).
-
-| Modus | Einfach | Sicher | Braucht |
-|---|---|---|---|
-| `off` (Standard) | nichts zu tun | ja – nur dein lokales Netz | – |
-| `http` – Einfach-Modus | ein Befehl, ein Port | **nein**, siehe unten | TCP-Port 8787 weitergeleitet |
-| HTTPS (Caddy, Cloudflare Tunnel, eigenes Zertifikat) | etwas Einrichtung | ja | eine Domain, siehe [Erweitert](#advanced) |
+Der Chat antwortet mit dem **Link** zum Öffnen, dem **Port**, den du im Router weiterleitest, und **wie du es testest** (Handy mit ausgeschaltetem WLAN). Dasselbe in der Config: `internetAccess = "http"` (optional `internetDomain = "meinebasis.duckdns.org"` für einen festen Namen). Es ist nicht verschlüsselt – nimm lieber Connect.
 
 ### Einfaches HTTP: was passieren kann
 
@@ -75,7 +95,7 @@ Der Chat antwortet mit dem **Link** zum Öffnen, dem **Port**, den du im Router 
 
 Es funktioniert einfach: Steuerelemente verhalten sich wie im LAN, PIN-geschützte fragen weiter nach ihrer PIN. Was bleibt: Neue Browser brauchen **[Erlauben]** im Spiel, ein Browser, der 24 Stunden nicht benutzt wurde, wird abgemeldet, wenn er aus dem Internet kommt (`publicTokenIdleHours`), falsche Kopplungscodes und Anmeldungen sperren eine Adresse eine Weile, Freigabe-Links bleiben nur lesend und API-Schlüssel können über einfaches HTTP nichts steuern.
 
-Strenger: `internetRequirePin = true` in der Server-Config lässt jede Steuer-Aktion aus dem Internet nach der Mainframe-PIN fragen (einmal, dann 10 Minuten pro Browser); Mainframes ohne PIN sind von außen dann nur ansehbar. Sicherer: HTTPS – siehe [Erweitert](#advanced); eingebautes HTTPS und Connect kommen bald.
+Strenger: `internetRequirePin = true` in der Server-Config lässt jede Steuer-Aktion aus dem Internet nach der Mainframe-PIN fragen (einmal, dann 10 Minuten pro Browser); Mainframes ohne PIN sind von außen dann nur ansehbar. Sicherer: HTTPS – [CC: Cloud Connect](#connect) oder einer der [erweiterten](#advanced) Wege.
 
 ## Erweitert: eigenes HTTPS
 

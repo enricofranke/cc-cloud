@@ -54,20 +54,40 @@ Critical widgets (`pin=true`) need a 4–8 digit PIN. 5 wrong tries lock that de
 
 ## Internet access in 2 minutes
 
-One command in game (server owner, op level 4, or the server console):
+**Recommended: CC: Cloud Connect.** One command in game (server owner, op level 4, or the server console):
+
+```
+/cccloud internet connect mybase
+```
+
+Your dashboard is then at **https://mybase.cccloud.dev** – HTTPS, from anywhere, with no port forwarding, no domain and no proxy. The server opens one connection out to the CC: Cloud relay and keeps it open; nothing changes in your router. Pick any free name (3–32 characters: a–z, 0–9 and -); `/cccloud internet connect` without a name suggests one. It applies at once, no restart. In `serverconfig/cccloud-server.toml`: `internetAccess = "connect"` and `connectName = "mybase"` in `[connect]`.
+
+| Mode | Easy | Secure | Needs |
+|---|---|---|---|
+| `connect` – **recommended** | one command | yes – HTTPS, approval in game | outgoing HTTPS (port 443) |
+| `off` (default) | nothing to do | yes – only your local network | – |
+| `http` – easy mode | one command, one port | **no**, see below | TCP port 8787 forwarded |
+| HTTPS (Caddy, Cloudflare Tunnel, own certificate) | some setup | yes | a domain, see [Advanced](#advanced) |
+
+`/cccloud internet` shows the current mode, the address and whether it is online; `/cccloud internet off` closes internet access again.
+
+### CC: Cloud Connect
+
+- **It just works:** every new browser still needs **[Allow]** in game, then the controls behave like on the LAN; PIN-protected controls still ask for their PIN. Browsers through Connect count as internet addresses: wrong pairing codes and logins block an address for a while.
+- **Stricter, if you want:** `internetRequirePin = true` in the server config makes every control action from the internet ask for the mainframe PIN (once, then 10 minutes per browser); mainframes without a PIN are then view-only from outside (`/cccloud pin set <digits>`).
+- **Where you see it:** the mainframe screen lists the address first and shows whether Connect is online; pairing links in chat use it, so they work on a phone with mobile data too.
+- **The name is yours:** the mod makes a key in `<server folder>/cccloud/connect/` and proves it to the relay; nobody else can take the name. Moving the server? Copy that folder along. A name unused for 90 days is freed; `/cccloud internet connect release` frees it at once and switches Connect off.
+- **Limits:** 20 open dashboard tabs at once and 2 GB of traffic per day per server. The public API works through Connect (not with `internetRequirePin`: a key can't carry the PIN); live event streams (`/events`) don't go through it.
+- **Who can see what:** HTTPS ends at Cloudflare, where the relay runs. The relay passes your dashboard traffic on and could technically read it; it is run by the CC: Cloud author, stores nothing and keeps no request logs. The dashboard pages always come from the relay (the official files of your mod version), never from a Minecraft server, so nobody can put a fake login page on a cccloud.dev address. Report abuse on the CC: Cloud Discord or GitHub; names used for phishing are switched off. If you don't want to trust the relay, use `/cccloud internet off` and one of the [advanced](#advanced) setups.
+
+### Plain HTTP – easy mode
 
 ```
 /cccloud internet http
 /cccloud internet http mybase.duckdns.org
 ```
 
-The chat answers with the **link** to open, the **port** to forward in your router and **how to test it** (a phone with Wi-Fi off). It applies at once, no restart. `/cccloud internet` shows the current state, `/cccloud internet off` closes it again. The same in `serverconfig/cccloud-server.toml`: `internetAccess = "http"` (optionally `internetDomain = "mybase.duckdns.org"` for a fixed name).
-
-| Mode | Easy | Secure | Needs |
-|---|---|---|---|
-| `off` (default) | nothing to do | yes – only your local network | – |
-| `http` – easy mode | one command, one port | **no**, see below | TCP port 8787 forwarded |
-| HTTPS (Caddy, Cloudflare Tunnel, own certificate) | some setup | yes | a domain, see [Advanced](#advanced) |
+The chat answers with the **link** to open, the **port** to forward in your router and **how to test it** (a phone with Wi-Fi off). The same in the config: `internetAccess = "http"` (optionally `internetDomain = "mybase.duckdns.org"` for a fixed name). It is not encrypted – prefer Connect.
 
 ### Plain HTTP: what can happen
 
@@ -75,7 +95,7 @@ The chat answers with the **link** to open, the **port** to forward in your rout
 
 It just works: controls behave like on the LAN, PIN-protected controls still ask for their PIN. What stays in place: new browsers need **[Allow]** in game, a browser unused for 24 hours is logged out when it comes from the internet (`publicTokenIdleHours`), wrong pairing codes and logins block an address for a while, share links stay read-only and API keys can't control anything over plain HTTP.
 
-Stricter: `internetRequirePin = true` in the server config makes every control action from the internet ask for the mainframe PIN (once, then 10 minutes per browser); mainframes without a PIN are then view-only from outside. Safer: HTTPS – see [Advanced](#advanced); built-in HTTPS and Connect are coming.
+Stricter: `internetRequirePin = true` in the server config makes every control action from the internet ask for the mainframe PIN (once, then 10 minutes per browser); mainframes without a PIN are then view-only from outside. Safer: HTTPS – [CC: Cloud Connect](#connect) or one of the [advanced](#advanced) setups.
 
 ## Advanced: your own HTTPS setup
 
