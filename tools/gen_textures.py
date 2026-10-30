@@ -1263,6 +1263,152 @@ def gen_items():
     # (the data_packet particle was removed in v0.4, see docs/SPEC.md)
 
 
+# --------------------------------------------------------------------------- Cloud Redstone devices
+# Self-contained section (layouts, textures, called once from main()). Switch / button / sensor are
+# small plates in CC casing language (like the uplink plate, only smaller); the lamp is a full block:
+# a CC frame of 2 px bars around a recessed glass core with a pixel cloud.
+LAYOUTS["rsplate"] = {
+    "size": 64,
+    "tiles": {
+        # plate faces are designed at their block position (auto UV): switch x4..12 y3..13,
+        # button x5..11 y5..11, sensor x4..12 y4..12 (all seen from the front)
+        "switch_face": (0, 0), "button_face": (1, 0), "sensor_face": (2, 0), "body": (3, 0),
+        "body_d": (0, 1), "cyan_d": (1, 1), "lens_side": (2, 1),
+    },
+    "regions": {
+        "rocker_off": (0, 32, 5, 6), "rocker_on": (8, 32, 5, 6),
+        "cap": (16, 32, 4, 4), "cap_lit": (24, 32, 4, 4),
+        "lens_off": (32, 32, 4, 4), "lens_on": (40, 32, 4, 4),
+    },
+}
+LAYOUTS["rslamp"] = {
+    "size": 64,
+    "tiles": {"frame": (0, 0), "frame_inner": (1, 0)},
+    "regions": {},
+}
+RS_LAMP_STATES = ("off", "dim", "mid", "on")
+REDSTONE = hx("d02b1d")
+REDSTONE_L = hx("ff6a4a")
+REDSTONE_D = hx("7a1610")
+
+
+def _rs_plate_face(cv, ox, oy, x0, y0, w, h, seed):
+    """CC plate face at its block position: 1 px dark outline, flat body, lighter lower band."""
+    for y in range(y0, y0 + h):
+        cv.hline(ox + x0, oy + y, w, GREY_L if y >= y0 + h - 4 else GREY, seed + y)
+    cv.outline(ox + x0, oy + y0, w, h, EDGE, seed)
+    for y in range(y0 + h - 4, y0 + h - 1):
+        cv.set(ox + x0, oy + y, EDGE_L[y % len(EDGE_L)])
+
+
+def gen_redstone_plates():
+    """Atlas of the Cloud Switch, Cloud Button and Cloud Sensor plates (status LED: uplink_status_*)."""
+    L = LAYOUTS["rsplate"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    T = lambda n: tile_origin("rsplate", n)
+    R = L["regions"]
+
+    # switch: 8x10 plate, dark slot for the rocker, LED slot, tiny cyan cloud mark
+    ox, oy = T("switch_face")
+    _rs_plate_face(cv, ox, oy, 4, 3, 8, 10, 600)
+    for y in range(4, 11):
+        cv.hline(ox + 5, oy + y, 6, RECESS, 601)
+    cv.hline(ox + 7, oy + 11, 2, SLOT, 602)
+    cv.set(ox + 5, oy + 11, CYAN)
+    cv.set(ox + 10, oy + 11, grey(0x2b))
+
+    # button: 6x6 plate, dark ring under the cap, LED slot along the bottom
+    ox, oy = T("button_face")
+    _rs_plate_face(cv, ox, oy, 5, 5, 6, 6, 610)
+    for y in range(6, 10):
+        cv.hline(ox + 6, oy + y, 4, RECESS, 611)
+    cv.hline(ox + 7, oy + 10, 2, SLOT, 612)
+
+    # sensor: 8x8 plate, lens recess, LED slot, two cyan "signal" ticks at the top corners
+    ox, oy = T("sensor_face")
+    _rs_plate_face(cv, ox, oy, 4, 4, 8, 8, 620)
+    for y in range(6, 10):
+        cv.hline(ox + 6, oy + y, 4, RECESS, 621)
+    cv.hline(ox + 7, oy + 10, 2, SLOT, 622)
+    cv.set(ox + 5, oy + 5, CYAN)
+    cv.set(ox + 10, oy + 5, CYAN)
+
+    for name, shades, seed in (("body", GREY, 630), ("body_d", CHASSIS, 631)):
+        ox, oy = T(name)
+        cv.noise(ox, oy, 16, 16, shades, seed)
+    ox, oy = T("cyan_d")
+    cv.noise(ox, oy, 16, 16, [CYAN_D, hx("2c8299"), hx("287c95")], 632)
+    ox, oy = T("lens_side")
+    cv.noise(ox, oy, 16, 16, [REDSTONE_D, hx("6b130e"), hx("821812")], 633)
+
+    # rocker fronts (5x6): off = grey with a dark "O" low; on = lit cyan "I" half on top
+    x, y, _, _ = R["rocker_off"]
+    cv.ascii(x, y, ["lllll", "lllll", "lmmml", "lmlml", "lmmml", "ddddd"],
+             {"l": GREY_L, "m": grey(0x4d), "d": GREY})
+    x, y, _, _ = R["rocker_on"]
+    cv.ascii(x, y, ["CcCcC", "cCLCc", "CcLcC", "lllll", "lllll", "ddddd"],
+             {"C": CYAN, "c": CYAN_D, "L": CYAN_L, "l": GREY_L, "d": GREY})
+    # button cap (4x4): cyan ring around a light centre; lit = bright while the pulse runs
+    x, y, _, _ = R["cap"]
+    cv.ascii(x, y, ["dccd", "cLlc", "cllc", "dccd"], {"d": CYAN_D, "c": CYAN, "l": GREY_L, "L": hx("dcdcdc")})
+    x, y, _, _ = R["cap_lit"]
+    cv.ascii(x, y, ["cCCc", "CWLC", "CLLC", "cCCc"], {"c": CYAN, "C": CYAN_L, "L": hx("dff7fc"), "W": hx("ffffff")})
+    # sensor lens (4x4): dark redstone glass / glowing like a powered comparator
+    x, y, _, _ = R["lens_off"]
+    cv.ascii(x, y, ["dmmd", "mhmm", "mmmm", "dmmd"], {"d": hx("3a0d0a"), "m": REDSTONE_D, "h": hx("a8433a")})
+    x, y, _, _ = R["lens_on"]
+    cv.ascii(x, y, ["mRRm", "RWLR", "RLLR", "mRRm"], {"m": REDSTONE, "R": REDSTONE_L, "L": hx("ffb39a"), "W": hx("fff0e8")})
+    cv.save(os.path.join(TEX, "block", "redstone_plate.png"))
+
+
+def gen_redstone_lamp():
+    """Cloud Lamp: frame atlas (2 px CC bars, screws, cyan mark) + one glass texture per light step."""
+    L = LAYOUTS["rslamp"]
+    cv = Canvas(L["size"], L["size"], grey(0x30))
+    ox, oy = tile_origin("rslamp", "frame")
+    cv.rect(ox, oy, 16, 16, RECESS[0])
+    for i in range(16):
+        for j in (1, 14):
+            cv.set(ox + i, oy + j, GREY_L[_hash(i, j, 640) % len(GREY_L)] if j == 1 else GREY[_hash(i, j, 641) % len(GREY)])
+            cv.set(ox + j, oy + i, GREY_L[_hash(j, i, 642) % len(GREY_L)] if j == 1 else GREY[_hash(j, i, 643) % len(GREY)])
+    cv.outline(ox, oy, 16, 16, EDGE, 644)
+    for (x, y) in ((1, 1), (14, 1), (1, 14), (14, 14)):
+        cv.set(ox + x, oy + y, grey(0x2b))
+    cv.set(ox + 7, oy + 14, CYAN)          # small cyan mark in the bottom bar
+    cv.set(ox + 8, oy + 14, CYAN_D)
+    ox, oy = tile_origin("rslamp", "frame_inner")
+    cv.noise(ox, oy, 16, 16, CHASSIS, 645)
+    cv.save(os.path.join(TEX, "block", "cloud_lamp.png"))
+
+    # glass: the visible window is 2..13; light grid every 4 px, a pixel cloud in the middle
+    looks = {
+        "off": ([hx("2b3a40"), hx("2f3f46"), hx("2d3c43")], hx("243137"), hx("3f5763"), hx("4a6673")),
+        "dim": ([hx("5e8d99"), hx("62929e"), hx("5a8894")], hx("4f7a85"), hx("86b9c5"), hx("9fd0db")),
+        "mid": ([hx("8fd0de"), hx("94d5e2"), hx("8acbd9")], hx("79bccb"), hx("c4ecf4"), hx("e2f8fc")),
+        "on": ([hx("c9f1f8"), hx("cff3f9"), hx("c4eef6")], hx("a8e3ef"), hx("f2fdff"), hx("ffffff")),
+    }
+    cloud = ["  cc  ", " cCCc ", "cCCCCc", " cccc "]
+    for state in RS_LAMP_STATES:
+        base, grid, c, C = looks[state]
+        g = Canvas(16, 16)
+        g.noise(0, 0, 16, 16, base, 650)
+        for k in (5, 9):
+            for i in range(2, 14):
+                g.set(k, i, grid)
+                g.set(i, k, grid)
+        g.ascii(5, 6, cloud, {"c": c, "C": C})
+        for i in range(2, 14):             # soft vignette along the frame
+            for (x, y) in ((i, 2), (i, 13), (2, i), (13, i)):
+                r, gg, b, a = g.get(x, y)
+                g.set(x, y, (r * 7 // 8, gg * 7 // 8, b * 7 // 8, a))
+        g.save(os.path.join(TEX, "block", f"cloud_lamp_glass_{state}.png"))
+
+
+def gen_redstone_family():
+    gen_redstone_plates()
+    gen_redstone_lamp()
+
+
 def main():
     gen_mainframe()
     gen_mainframe_glass()
@@ -1295,6 +1441,7 @@ def main():
     gen_gui_screen("uplink")
     gen_gui_widgets()
     gen_items()
+    gen_redstone_family()
     print("textures written to", TEX)
 
 

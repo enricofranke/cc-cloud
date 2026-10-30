@@ -757,6 +757,179 @@ def ender_fiber_link():
     return m
 
 
+# --------------------------------------------------------------------------- Cloud Redstone devices
+# Self-contained section: models, blockstates, items and checks of the Cloud Switch / Button / Sensor
+# (plates on any of the 6 faces, model space = attached to the north face like the uplink, +Z away from
+# the block; rotations ALL6) and the Cloud Lamp (full block, light steps off/dim/mid/on).
+RS_PLATES = ("cloud_switch", "cloud_button", "cloud_sensor")
+RS_PLATE_STATES = {"cloud_switch": ("cloud_switch_off", "cloud_switch_on"),       # powered = false / true
+                   "cloud_button": ("cloud_button", "cloud_button_pressed"),
+                   "cloud_sensor": ("cloud_sensor", "cloud_sensor_lit")}
+RS_LAMP_EMIT = {"off": 0, "dim": 7, "mid": 11, "on": 15}
+
+
+def rs_plate_display():
+    """Item display of the plates: like the uplink, re-centred for a plate of ~1.5 px at full GUI scale."""
+    m = Model(parent="minecraft:block/block")
+    # translation = -scale * R(30, 45, 0) * (0, 0, centre - 8): the plate sits on the north face (z 0..~2)
+    off = 8 - 1.5
+    gui_s = 1.0
+    tx, ty = round(0.7071 * off * gui_s, 2), round(-0.3536 * off * gui_s, 2)
+    m.extra["display"] = {
+        "gui": {"rotation": [30, 45, 0], "translation": [tx, ty, 0], "scale": [gui_s, gui_s, gui_s]},
+        "ground": {"rotation": [0, 0, 0], "translation": [0, 3, 0], "scale": [0.25, 0.25, 0.25]},
+        "fixed": {"rotation": [0, 0, 0], "translation": [0, 0, -3.5], "scale": [0.75, 0.75, 0.75]},
+        "thirdperson_righthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
+        "thirdperson_lefthand": {"rotation": [75, 180, 0], "translation": [0, 2.5, 0], "scale": [0.375, 0.375, 0.375]},
+        "firstperson_righthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
+        "firstperson_lefthand": {"rotation": [0, 45, 0], "translation": [0, 0, 0], "scale": [0.4, 0.4, 0.4]},
+    }
+    return m
+
+
+def _rs_plate_model():
+    tex = f"{NS}:block/redstone_plate"
+    return Model(parent=f"{NS}:block/rs_plate_display", textures={
+        "particle": tex, "atlas": tex, "status": f"{NS}:block/uplink_status_online"})
+
+
+def _rs(name):
+    return Tile("atlas", "rsplate", name)
+
+
+def _rsr(name):
+    return Region("atlas", "rsplate", name)
+
+
+def _rs_led():
+    """2 px status LED: the start of the uplink status strip (green / yellow / red per child model)."""
+    return Region("status", None, None, size=16, rect=(0, 8, 2, 1))
+
+
+def rs_switch(on):
+    """Cloud Switch: 8x10 plate (1.5 px) with a rocker tilted 22.5 deg around X; on = the cyan top tips out."""
+    m = _rs_plate_model()
+    m.box([4, 3, 0], [12, 13, 1.5], {"*": _rs("body"), "south": _rs("switch_face")}, skip=("north",))
+    m.box([7, 3.75, 1.5], [9, 4.5, 1.75], _rs_led(), emit=15, skip=("north",))
+    m.box([5.5, 5.5, 1.5], [10.5, 11.5, 2.75], {"*": _rs("body_d"), "south": _rsr("rocker_on" if on else "rocker_off")},
+          rot=("x", 22.5 if on else -22.5, [8, 8.5, 1.5]), emit=12 if on else 0, skip=("north",))
+    return m
+
+
+def rs_button(pressed):
+    """Cloud Button: 6x6 plate with a 4x4 cyan cap (1.5 px out, 0.5 px while pressed; the cap glows then)."""
+    m = _rs_plate_model()
+    m.box([5, 5, 0], [11, 11, 1], {"*": _rs("body"), "south": _rs("button_face")}, skip=("north",))
+    m.box([7, 5.25, 1], [9, 5.75, 1.25], _rs_led(), emit=15, skip=("north",))
+    m.box([6, 6, 1], [10, 10, 1.5 if pressed else 2.5], {"*": _rs("cyan_d"), "south": _rsr("cap_lit" if pressed else "cap")},
+          emit=15 if pressed else 0, skip=("north",))
+    return m
+
+
+def rs_sensor(lit):
+    """Cloud Sensor: 8x8 plate with a redstone lens that glows while a signal comes in."""
+    m = _rs_plate_model()
+    m.box([4, 4, 0], [12, 12, 1.5], {"*": _rs("body"), "south": _rs("sensor_face")}, skip=("north",))
+    m.box([7, 5, 1.5], [9, 5.5, 1.75], _rs_led(), emit=15, skip=("north",))
+    m.box([6, 6, 1.5], [10, 10, 2.25], {"*": _rs("lens_side"), "south": _rsr("lens_on" if lit else "lens_off")},
+          emit=12 if lit else 0, skip=("north",))
+    return m
+
+
+def rs_lamp(state):
+    """Cloud Lamp: 12 CC frame bars (2 px) around a glass core recessed by 1 px; the core glows per step.
+    The bars only touch (X bars full length, Y/Z bars between them), so no two faces are coplanar."""
+    tex = f"{NS}:block/cloud_lamp"
+    m = Model(textures={"particle": tex, "atlas": tex, "glass": f"{NS}:block/cloud_lamp_glass_{state}"})
+    m.box([1, 1, 1], [15, 15, 15], Tile("glass"), emit=RS_LAMP_EMIT[state], cull=False)
+    outer, inner = Tile("atlas", "rslamp", "frame"), Tile("atlas", "rslamp", "frame_inner")
+
+    def bar(frm, to):
+        faces = {}
+        for d in DIRS:
+            ax, hi = _AXIS[d]
+            plane = (to if hi else frm)[ax]
+            faces[d] = outer if plane in (0, 16) else inner
+        m.box(frm, to, faces)
+
+    for a in (0, 14):
+        for b in (0, 14):
+            bar([0, a, b], [16, a + 2, b + 2])     # along X, full length
+            bar([a, 2, b], [a + 2, 14, b + 2])     # along Y, between the X bars
+            bar([a, b, 2], [a + 2, b + 2, 14])     # along Z, between the X bars
+    return m
+
+
+def rs_lamp_state(level):
+    return "off" if level == 0 else "dim" if level <= 5 else "mid" if level <= 10 else "on"
+
+
+def write_redstone_family():
+    """Writes the Cloud Redstone models, blockstates and item definitions; returns element counts."""
+    counts = {}
+    models = {"block/rs_plate_display": rs_plate_display()}
+    for powered, name in enumerate(RS_PLATE_STATES["cloud_switch"]):
+        models[f"block/{name}"] = rs_switch(bool(powered))
+    for powered, name in enumerate(RS_PLATE_STATES["cloud_button"]):
+        models[f"block/{name}"] = rs_button(bool(powered))
+    for powered, name in enumerate(RS_PLATE_STATES["cloud_sensor"]):
+        models[f"block/{name}"] = rs_sensor(bool(powered))
+    for state in RS_LAMP_EMIT:
+        models[f"block/cloud_lamp_{state}"] = rs_lamp(state)
+    for name, m in models.items():
+        write(f"models/{name}.json", m.json())
+        counts[name] = len(m.elements)
+    for block, names in RS_PLATE_STATES.items():
+        for name in names:
+            for st_ in STATES:
+                write(f"models/block/{name}_{st_}.json", variant_child(f"{NS}:block/{name}", {"status": f"{NS}:block/uplink_status_{st_}"}))
+        write(f"blockstates/{block}.json", {"variants": {
+            f"facing={f},powered={'true' if p else 'false'},status={st_}": {"model": f"{NS}:block/{names[p]}_{st_}", **r}
+            for f, r in ALL6.items() for p in (0, 1) for st_ in STATES}})
+        write(f"items/{block}.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/{names[0]}_online"}})
+    write("blockstates/cloud_lamp.json", {"variants": {
+        f"level={lv}": {"model": f"{NS}:block/cloud_lamp_{rs_lamp_state(lv)}"} for lv in range(16)}})
+    write("items/cloud_lamp.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/cloud_lamp_on"}})
+    return counts
+
+
+def validate_redstone_family(data):
+    """Blockstate coverage of the redstone devices (6 facings x powered x 3 statuses; 16 lamp levels)."""
+    problems = []
+    for block in RS_PLATES:
+        v = data.get(f"blockstates/{block}.json", {}).get("variants", {})
+        if len(v) != 6 * 2 * 3:
+            problems.append(f"{block}: {len(v)} variants, expected 36 (facing x powered x status)")
+        if f"items/{block}.json" not in data:
+            problems.append(f"missing item definition {block}")
+    if len(data.get("blockstates/cloud_lamp.json", {}).get("variants", {})) != 16:
+        problems.append("cloud_lamp: expected 16 level variants")
+    if "items/cloud_lamp.json" not in data:
+        problems.append("missing item definition cloud_lamp")
+    return problems
+
+
+RS_DOC = """## Cloud Redstone devices
+
+`cloud_switch`, `cloud_button`, `cloud_sensor`: plates on any of the 6 faces. Model space = attached to
+the north face (like the uplink), +Z away from the block; blockstate `facing` (direction towards the
+block it sits on, rotations as the uplink) x `powered` x `status` = 36 variants. Base models per
+`powered` (`cloud_switch_off/_on`, `cloud_button/_pressed`, `cloud_sensor/_lit`) with
+`_online/_connecting/_offline` children that swap `uplink_status_*` (2 px LED = the start of the
+uplink LED strip). Atlas `textures/block/redstone_plate.png` (plate faces designed at their block
+position). Switch: 8x10 plate, rocker rotated +-22.5 deg around X (on = cyan top out, glowing);
+button: 6x6 plate, 4x4 cap 1.5 px out (0.5 px and glowing while pressed); sensor: 8x8 plate with a
+redstone lens (glows while a signal comes in). Shapes in `RsPlateBlock` match the plates. Items use
+the `_online` model of the off state with `block/rs_plate_display` (GUI scale 1, re-centred).
+
+`cloud_lamp`: full block, 12 frame bars (2 px, atlas `textures/block/cloud_lamp.png`) around a glass
+core recessed by 1 px; `level` 0..15 maps to `cloud_lamp_off` (0), `_dim` (1-5, emission 7),
+`_mid` (6-10, emission 11), `_on` (11-15, emission 15) with `cloud_lamp_glass_<step>.png`. The block's
+light level is the `level` itself. No BER.
+
+"""
+
+
 # --------------------------------------------------------------------------- writing
 written = []
 
@@ -902,6 +1075,7 @@ def main():
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_advanced_online"},
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_advanced_core"}]}})
 
+    counts.update(write_redstone_family())
     write_docs(counts)
     problems = validate()
     for k, v in counts.items():
@@ -1042,6 +1216,7 @@ def validate():
         bv = data.get(f"blockstates/{kind}_cloud_bridge.json", {}).get("variants", {})
         if len(bv) != 4 * 3:
             problems.append(f"{kind}_cloud_bridge: {len(bv)} variants, expected 12")
+    problems.extend(validate_redstone_family(data))
     return problems
 
 
@@ -1147,7 +1322,7 @@ Fiber geometry: 4x4 jacket (6..10) in two halves around a 1 px slit (y 7.5..8.5)
 inset to 6.25..9.75 so it glows through the slit without coplanar faces. Items: `item/fiber_cable`
 (straight 12 px piece with closed ends, like CC's cable item), the junction and link use their block models. No BER.
 
-## Render types / translucency (MC 26.1)
+{RS_DOC}## Render types / translucency (MC 26.1)
 
 In 26.1 the chunk layer is chosen **per quad** from the texture: `FaceBakery` calls
 `SpriteContents.computeTransparency(uv rect)` and `ChunkSectionLayer.byTransparency(...)`
