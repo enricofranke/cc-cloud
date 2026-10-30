@@ -20,6 +20,7 @@ CC: Tweaked 26.1 source for reference (read-only): a local checkout of https://g
 - Range to the linked mainframe: normal = 128 blocks in the same dimension; advanced = unlimited and across dimensions (config values).
 - It is a CC peripheral `cloud_uplink`. A computer next to it (or connected over a wired modem network) uses it to build its dashboard section.
 - Status in the blockstate: `offline` | `connecting` | `online`. Boolean `direct` (true when attached to a non-computer block; phase 2 shows that block's data read-only, v0.1 only sets the flag).
+- Shape (`mount` in the blockstate, docs/MODELS.md "Compact uplink"): the 14x14 plate on faces that carry it (sturdy, or flush and covering the plate or its rim); on smaller faces an 8x6 puck on the visible part of the face (`bottom|low|center|high|top`: solar panel / carpet side → `bottom`, slab side → `low`); on faces set back more than 1 px from the uplink's cell (top of a solar panel or slab) the puck on a post with a foot (`post4..post16`). Computed by the server from the attached block's outline shape on placement, when that block changes and once after loading (older worlds, `/setblock`, rotated structures); the selection shape matches the model (post included). Placement rules are unchanged (sturdy face or a block entity).
 
 ### Items
 - `cccloud:cloud_core`: crafting intermediate.
