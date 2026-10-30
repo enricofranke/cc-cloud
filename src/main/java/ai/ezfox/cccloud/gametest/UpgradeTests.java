@@ -174,7 +174,9 @@ public final class UpgradeTests {
         var level = helper.getLevel();
         var s = mainframe(helper);
         var id = s.mainframe().getMainframeId();
-        var remote = s.base().east(40).above(2);
+        // Another chunk, but between the rows of the GameTest grid: 40 blocks east alone is exactly 4 test slots over,
+        // on top of that test's mainframe.
+        var remote = s.base().east(40).south(6).above(2);
         uplink(level, remote);
         boolean before = CloudConfig.get(CloudConfig.CHUNK_ANCHOR);
 
@@ -281,9 +283,10 @@ public final class UpgradeTests {
         var level = helper.getLevel();
         var s = mainframe(helper);
         var id = s.mainframe().getMainframeId();
-        var tx = s.base().east(4).above(2);
-        var rx = s.base().west(4).above(2);
-        var lever = tx.east();
+        // Inside the test's own 5×5 floor (the mainframe stands in the middle), so neighbouring tests are never touched.
+        var tx = s.base().west(2).north(2).above(1);
+        var rx = s.base().east(2).south(2).above(1);
+        var lever = tx.south();
         java.util.function.IntSupplier channel = () -> {
             var c = RedstoneService.channels(id).get("gate");
             return c == null ? -1 : c.level();
@@ -296,8 +299,12 @@ public final class UpgradeTests {
         uplink(level, rx);
 
         helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(ai.ezfox.cccloud.network.CloudNetwork.mainframe(id) != null, "mainframe registered"))
             .thenExecute(() -> {
-                for (var pos : List.of(tx, rx)) uplinkAt(helper, level, pos).bind(s.link(), s.owner());
+                for (var pos : List.of(tx, rx)) {
+                    uplinkAt(helper, level, pos).bind(s.link(), s.owner());
+                    helper.assertTrue(uplinkAt(helper, level, pos).getLink() != null, "linked: " + pos);
+                }
                 uplinkAt(helper, level, tx).setRedstone(RedstoneMode.TRANSMIT, "gate");
                 uplinkAt(helper, level, rx).setRedstone(RedstoneMode.RECEIVE, "gate");
             })
