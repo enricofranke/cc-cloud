@@ -126,6 +126,7 @@ class PermissionWalkTest {
     private EmbeddedChannel connect() {
         var pending = auth.pair(auth.accountCode(player).code(), "Laptop", "127.0.0.1");
         String token = auth.approve(pending.id(), player, "Alex", true).token();
+        auth.poll(pending.id()); // hand-out done: the approval does not count against the pending limit any more
         var handshaker = new WebSocketServerHandshaker13("ws://localhost/ws/client", null, WebSocketDecoderConfig.newBuilder().build());
         var channel = new EmbeddedChannel(new WebSocketSession(instance, handshaker, "127.0.0.1", null));
         channel.writeInbound(new TextWebSocketFrame("{\"t\":\"auth\",\"token\":\"" + token + "\",\"mainframeId\":\"" + mainframe + "\"}"));
@@ -172,6 +173,11 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"rule_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rule_enable\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\",\"enabled\":true}", Perm.RULES_TOGGLE);
         cases.put("{\"t\":\"rule_run\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_TOGGLE);
+        cases.put("{\"t\":\"scene_set\",\"reqId\":\"r\",\"scene\":{}}", Perm.RULES_EDIT);
+        cases.put("{\"t\":\"scene_delete\",\"reqId\":\"r\",\"id\":\"0a1b2c3d\"}", Perm.RULES_EDIT);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"item\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:iron_ingot\"}", Perm.STORAGE_SEARCH);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"pin\",\"kind\":\"energy\"}", Perm.LAYOUT_EDIT);
+        cases.put("{\"t\":\"production\",\"reqId\":\"r\",\"op\":\"unpin\",\"id\":\"0a1b2c3d\"}", Perm.LAYOUT_EDIT);
         for (var op : new String[]{"browse", "craftables", "fluids", "item", "cpus"}) {
             cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"" + op + "\"}", Perm.STORAGE_SEARCH);
         }

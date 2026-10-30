@@ -166,8 +166,11 @@ public final class MinecraftBridge implements GameBridge {
             // Live role check on the server thread (the session's cached role may be up to 5 s old).
             String error = check(device, mainframeId, WebHub.INSTANCE.actionPerm(mainframeId, action.uplinkId().toString(), action.id()));
             if (error == null) error = checkUplink(mainframeId, action.uplinkId());
-            result = error != null ? ActionResult.done(error)
-                : uplink.handleAction(action.id(), action.value(), action.op(), device.name(), pinVerified);
+            if (error != null) result = ActionResult.done(error);
+            // v0.10: a scene button runs as the presser (every step checked with this device's live rights)
+            else if (uplink instanceof ai.ezfox.cccloud.scene.ScenesSection scenes) {
+                result = CompletableFuture.completedFuture(scenes.press(action.id(), action.value(), ai.ezfox.cccloud.scene.SceneService.Caller.of(device), pinVerified));
+            } else result = uplink.handleAction(action.id(), action.value(), action.op(), device.name(), pinVerified);
         } catch (RuntimeException e) {
             CloudLog.LOGGER.error("[cccloud] Error while handling action {} from '{}'", where, device.name(), e);
             result = ActionResult.done("internal_error");
@@ -295,6 +298,35 @@ public final class MinecraftBridge implements GameBridge {
                 return new GameBridge.RuleResult("invalid_message", null, null);
             }
         }
+    }
+
+    @Override
+    public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
+        var access = access(device, mainframeId);
+        String error = AccessGate.check(access.role(), access.perms(), AccessGate.Kind.SCENE_EDIT.perm);
+        if (error != null) return new GameBridge.RuleResult(error, null, null);
+        String who = device.playerName() + " (" + device.name() + ")";
+        if (command.op().equals("scene_delete")) {
+            var scene = ai.ezfox.cccloud.scene.SceneService.scene(mainframeId, command.id());
+            String e = ai.ezfox.cccloud.scene.SceneService.delete(server, mainframeId, command.id());
+            if (e == null) WebAuthData.access(server).audit(mainframeId, who + " deleted scene '" + (scene == null ? command.id() : scene.name()) + "'");
+            return new GameBridge.RuleResult(e, null, null);
+        }
+        var edit = ai.ezfox.cccloud.scene.SceneService.set(server, mainframeId, command.scene(), device.player(), device.playerName(), access.perms());
+        if (edit.error() != null) return new GameBridge.RuleResult(edit.error(), edit.detail(), null);
+        var scene = ai.ezfox.cccloud.scene.SceneService.scene(mainframeId, edit.id());
+        WebAuthData.access(server).audit(mainframeId, who + " saved scene '" + (scene == null ? edit.id() : scene.name()) + "'");
+        CloudLog.LOGGER.info("[cccloud] {} saved scene {} of {}", who, edit.id(), mainframeName(mainframeId));
+        return new GameBridge.RuleResult(null, null, edit.id());
+    }
+
+    @Override
+    public GameBridge.StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
+        var access = access(device, mainframeId);
+        String error = AccessGate.check(access.role(), access.perms(), AccessGate.productionPerm(request.op()));
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        var result = ai.ezfox.cccloud.production.ProductionService.handle(server, mainframeId, access.perms(), request, device.playerName() + " (" + device.name() + ")");
+        return new GameBridge.StorageResult(result.error(), result.data());
     }
 
     @Override

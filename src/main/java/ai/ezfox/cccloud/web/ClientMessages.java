@@ -22,7 +22,27 @@ public final class ClientMessages {
 
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
-    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, RedstoneOverride, Storage, CraftPreview, Terminal, Pong, Invalid {
+    public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
+        CraftPreview, Terminal, Pong, Invalid {
+    }
+
+    /**
+     * v0.10 scenes: {@code scene_set {reqId, scene}} and {@code scene_delete {reqId, id}} (both {@code rules.edit}),
+     * answered with {@code scene_result}. The scene itself is validated by {@link ai.ezfox.cccloud.scene.SceneCodec}.
+     * Scenes run through their button in the Scenes section (an ordinary action).
+     */
+    public record SceneCommand(String reqId, String op, @Nullable String id, @Nullable JsonElement scene) implements Message {
+    }
+
+    /** Production statistics operations: overview and item read, pin and unpin change the Production section. */
+    public static final java.util.Set<String> PRODUCTION_OPS = java.util.Set.of("overview", "item", "pin", "unpin");
+    public static final java.util.Set<String> PIN_KINDS = java.util.Set.of("item", "storage", "energy");
+
+    /**
+     * v0.10 production statistics: {@code {"t":"production","reqId","op",…}} → {@code production_result}. {@code item}
+     * needs uplinkId + name, a {@code pin} its kind (item: uplinkId + name, storage: uplinkId), {@code unpin} the pin id.
+     */
+    public record Production(String reqId, String op, @Nullable UUID uplinkId, @Nullable String name, @Nullable String kind, @Nullable String id) implements Message {
     }
 
     /** Storage operations that only read (browse, craftables, fluids, item, cpus). */
@@ -161,6 +181,8 @@ public final class ClientMessages {
                     ? new Invalid("invalid_message", null) : new AuthShare(id, secret);
             }
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> parseRule(t, obj);
+            case "scene_set", "scene_delete" -> parseScene(t, obj);
+            case "production" -> parseProduction(obj);
             case "storage" -> parseStorage(obj);
             case "term_open", "term_input", "term_close" -> parseTerminal(t, obj);
             case "craft_preview" -> parseCraftPreview(obj);
@@ -255,6 +277,41 @@ public final class ClientMessages {
         JsonElement rule = t.equals("rule_set") ? obj.get("rule") : null;
         if (t.equals("rule_set") && (rule == null || !rule.isJsonObject())) return new Invalid("invalid_message", reqId);
         return new RuleCommand(reqId, t, id, enabled, rule);
+    }
+
+    private static Message parseScene(String t, JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        if (t.equals("scene_delete")) {
+            String id = string(obj, "id");
+            return id == null || !RULE_ID.matcher(id).matches() ? new Invalid("invalid_message", reqId) : new SceneCommand(reqId, t, id, null);
+        }
+        var scene = obj.get("scene");
+        return scene == null || !scene.isJsonObject() ? new Invalid("invalid_message", reqId) : new SceneCommand(reqId, t, null, scene);
+    }
+
+    private static Message parseProduction(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        String op = string(obj, "op");
+        if (op == null || !PRODUCTION_OPS.contains(op)) return new Invalid("invalid_message", reqId);
+        String uplink = string(obj, "uplinkId");
+        UUID uplinkId = parseUuid(uplink);
+        String name = string(obj, "name");
+        String kind = string(obj, "kind");
+        String id = string(obj, "id");
+        if ((uplink != null && uplinkId == null) || (name != null && !Op.isItemName(name))) return new Invalid("invalid_message", reqId);
+        boolean ok = switch (op) {
+            case "item" -> uplinkId != null && name != null;
+            case "pin" -> kind != null && PIN_KINDS.contains(kind) && switch (kind) {
+                case "item" -> uplinkId != null && name != null;
+                case "storage" -> uplinkId != null;
+                default -> true;
+            };
+            case "unpin" -> id != null && RULE_ID.matcher(id).matches();
+            default -> true;
+        };
+        return ok ? new Production(reqId, op, uplinkId, name, kind, id) : new Invalid("invalid_message", reqId);
     }
 
     private static Message parseQuery(JsonObject obj) {

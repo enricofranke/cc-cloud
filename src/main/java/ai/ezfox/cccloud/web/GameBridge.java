@@ -59,6 +59,16 @@ public interface GameBridge {
     record RuleResult(@Nullable String error, @Nullable String detail, @Nullable String id) {
     }
 
+    /** v0.10 scenes: save or delete (rules.edit, re-checked live here); answered like rules ({@code scene_result}). */
+    default RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
+        return new RuleResult("disabled", null, null);
+    }
+
+    /** v0.10 production statistics (permissions re-checked live here). Server thread. */
+    default StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
+        return StorageResult.fail("disabled");
+    }
+
     /** Storage card v2 result: {@code data} on success, else {@code error}. */
     record StorageResult(@Nullable String error, @Nullable JsonObject data) {
         public static StorageResult fail(String error) {

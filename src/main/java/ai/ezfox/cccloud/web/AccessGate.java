@@ -33,7 +33,9 @@ public final class AccessGate {
         /** v0.5 E browser terminal. */
         TERMINAL(Perm.TERMINAL),
         /** v0.7 wireless redstone channel overrides. */
-        REDSTONE(Perm.ACT_REDSTONE);
+        REDSTONE(Perm.ACT_REDSTONE),
+        /** v0.10 scenes: create, edit, delete (running is a button action). */
+        SCENE_EDIT(Perm.RULES_EDIT);
 
         public final Perm perm;
 
@@ -94,6 +96,18 @@ public final class AccessGate {
         };
     }
 
+    /**
+     * v0.10 production statistics: the overview needs view (each storage in it also storage.search), item details
+     * storage.search, pins layout.edit (item and storage pins also storage.search, checked by the game side).
+     */
+    public static Perm productionPerm(String op) {
+        return switch (op) {
+            case "item" -> Perm.STORAGE_SEARCH;
+            case "pin", "unpin" -> Perm.LAYOUT_EDIT;
+            default -> Perm.VIEW;
+        };
+    }
+
     /** The permission of an HTTP route that touches a mainframe (null: not mainframe-scoped). */
     public static @Nullable Perm routePerm(Router.Id route) {
         return switch (route) {
@@ -126,6 +140,8 @@ public final class AccessGate {
             case "net_unlink" -> "net_result";
             case "rs_override" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
+            case "scene_set", "scene_delete" -> "scene_result";
+            case "production" -> "production_result";
             case "storage" -> "storage_result";
             case "craft_preview" -> "craft_plan";
             case "term_open", "term_input" -> "term_result";

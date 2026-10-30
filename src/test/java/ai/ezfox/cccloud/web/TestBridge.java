@@ -85,6 +85,18 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
+        dispatched.add(command.op());
+        return new GameBridge.RuleResult(null, null, null);
+    }
+
+    @Override
+    public GameBridge.StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
+        dispatched.add("production:" + request.op());
+        return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());
+    }
+
+    @Override
     public GameBridge.StorageResult storage(AuthStore.Device device, UUID mainframeId, ClientMessages.Storage request) {
         dispatched.add("storage:" + request.op());
         return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());

@@ -66,7 +66,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_KEY;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
-    // v0.10 schedules, scenes
+    // v0.10 schedules, scenes, production statistics
     public static final ModConfigSpec.IntValue MAX_SCHEDULES;
     public static final ModConfigSpec.IntValue MIN_INTERVAL_MINUTES;
     public static final ModConfigSpec.BooleanValue RUN_MISSED;
@@ -74,6 +74,10 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> TIMEZONE;
     public static final ModConfigSpec.BooleanValue SCENES_ENABLED;
     public static final ModConfigSpec.IntValue MAX_SCENES;
+    public static final ModConfigSpec.BooleanValue PRODUCTION_ENABLED;
+    public static final ModConfigSpec.IntValue PRODUCTION_SAMPLE_SECONDS;
+    public static final ModConfigSpec.IntValue PRODUCTION_WINDOW;
+    public static final ModConfigSpec.IntValue PRODUCTION_TRACKED_ITEMS;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -264,6 +268,21 @@ public final class CloudConfig {
         MAX_SCENES = b.comment("Scenes per mainframe.")
             .translation("cccloud.configuration.maxScenesPerMainframe")
             .defineInRange("maxScenesPerMainframe", 32, 1, 64);
+        b.pop();
+
+        b.push("production");
+        PRODUCTION_ENABLED = b.comment("Production statistics: items gained/consumed per minute of AE2/RS storages and the energy flow of energy cards.")
+            .translation("cccloud.configuration.productionEnabled")
+            .define("productionEnabled", true);
+        PRODUCTION_SAMPLE_SECONDS = b.comment("Seconds between two samples of a storage (one storage per tick, from the bridge's item index).")
+            .translation("cccloud.configuration.sampleSeconds")
+            .defineInRange("sampleSeconds", 60, 20, 600);
+        PRODUCTION_WINDOW = b.comment("Samples kept per series (the rates are averaged over this window).")
+            .translation("cccloud.configuration.windowSamples")
+            .defineInRange("windowSamples", 60, 10, 240);
+        PRODUCTION_TRACKED_ITEMS = b.comment("Items with their own rate per storage (the ones that move most; the storage totals count every item).")
+            .translation("cccloud.configuration.trackedItemsPerStorage")
+            .defineInRange("trackedItemsPerStorage", 256, 16, 1024);
         b.pop();
 
         b.push("store");

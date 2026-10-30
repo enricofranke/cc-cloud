@@ -162,6 +162,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RuleCommand command -> rule(current, command);
+            case ClientMessages.SceneCommand command -> scene(current, command);
+            case ClientMessages.Production request -> production(current, request);
             case ClientMessages.Storage storage -> storage(current, storage);
             case ClientMessages.CraftPreview preview -> craftPreview(current, preview);
             case ClientMessages.Terminal terminal -> terminal(current, terminal);
@@ -428,11 +430,11 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private void rule(AuthStore.Device current, ClientMessages.RuleCommand command) {
         String denied = AccessGate.check(role, perms, command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE);
         if (denied != null) {
-            sendRuleResult(command.reqId(), new GameBridge.RuleResult(denied, null, null));
+            sendRuleResult("rule_result", command.reqId(), new GameBridge.RuleResult(denied, null, null));
             return;
         }
         if (!actionLimit.tryAcquire()) {
-            sendRuleResult(command.reqId(), new GameBridge.RuleResult("rate_limited", null, null));
+            sendRuleResult("rule_result", command.reqId(), new GameBridge.RuleResult("rate_limited", null, null));
             return;
         }
         try {
@@ -444,10 +446,67 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     CloudLog.LOGGER.error("[cccloud] Error while handling a rule command from {}", ip, e);
                     result = new GameBridge.RuleResult("internal_error", null, null);
                 }
-                sendRuleResult(command.reqId(), result);
+                sendRuleResult("rule_result", command.reqId(), result);
             });
         } catch (RejectedExecutionException e) {
-            sendRuleResult(command.reqId(), new GameBridge.RuleResult("offline", null, null));
+            sendRuleResult("rule_result", command.reqId(), new GameBridge.RuleResult("offline", null, null));
+        }
+    }
+
+    /** v0.10 scenes: save or delete ({@code rules.edit}); answered with scene_result. Running is a button action. */
+    private void scene(AuthStore.Device current, ClientMessages.SceneCommand command) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.SCENE_EDIT);
+        if (denied != null) {
+            sendRuleResult("scene_result", command.reqId(), new GameBridge.RuleResult(denied, null, null));
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendRuleResult("scene_result", command.reqId(), new GameBridge.RuleResult("rate_limited", null, null));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.RuleResult result;
+                try {
+                    result = instance.bridge.sceneCommand(current, mainframeId, command);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a scene command from {}", ip, e);
+                    result = new GameBridge.RuleResult("internal_error", null, null);
+                }
+                sendRuleResult("scene_result", command.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendRuleResult("scene_result", command.reqId(), new GameBridge.RuleResult("offline", null, null));
+        }
+    }
+
+    /** Production statistics requests: 5 per second per socket. */
+    private final TokenBucket productionLimit = new TokenBucket(5, 5);
+
+    /** v0.10 production statistics: overview, item details, pins; answered with production_result. */
+    private void production(AuthStore.Device current, ClientMessages.Production request) {
+        String denied = AccessGate.check(role, perms, AccessGate.productionPerm(request.op()));
+        if (denied != null) {
+            sendStorage("production_result", "data", request.reqId(), GameBridge.StorageResult.fail(denied));
+            return;
+        }
+        if (!productionLimit.tryAcquire()) {
+            sendStorage("production_result", "data", request.reqId(), GameBridge.StorageResult.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.StorageResult result;
+                try {
+                    result = instance.bridge.production(current, mainframeId, request);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a production request from {}", ip, e);
+                    result = GameBridge.StorageResult.fail("internal_error");
+                }
+                sendStorage("production_result", "data", request.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendStorage("production_result", "data", request.reqId(), GameBridge.StorageResult.fail("offline"));
         }
     }
 
@@ -514,9 +573,9 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         send(List.of(Json.GSON.toJson(json)));
     }
 
-    private void sendRuleResult(String reqId, GameBridge.RuleResult result) {
+    private void sendRuleResult(String type, String reqId, GameBridge.RuleResult result) {
         var json = new JsonObject();
-        json.addProperty("t", "rule_result");
+        json.addProperty("t", type);
         json.addProperty("reqId", reqId);
         json.addProperty("ok", result.error() == null);
         if (result.error() != null) json.addProperty("error", result.error());
