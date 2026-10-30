@@ -341,9 +341,10 @@ function rebuild() {
   }
   if (show === "display") displayWall(3, 2, -1, 0, 0);
   if (show === "redstone") {
-    // Cloud Switch / Button / Sensor (off in front, on/pressed/lit behind) on grey blocks, a switch on top and one
+    // Cloud Switch / Button / Sensor / Advanced Sensor (off in front, on/pressed/lit behind) on grey blocks, a switch on top and one
     // hanging below a block, and the Cloud Lamp at every light step
-    const plates = [["cloud_switch_off", "cloud_switch_on"], ["cloud_button", "cloud_button_pressed"], ["cloud_sensor", "cloud_sensor_lit"]];
+    const plates = [["cloud_switch_off", "cloud_switch_on"], ["cloud_button", "cloud_button_pressed"], ["cloud_sensor", "cloud_sensor_lit"],
+      ["advanced_cloud_sensor", "advanced_cloud_sensor_lit"]];
     plates.forEach(([off, on], i) => {
       dummyBlock(i - 1, 0, 0, 0x7f7f7f);
       placed(`cccloud:block/${off}_${s}`, i - 1, 0, 1, "north");

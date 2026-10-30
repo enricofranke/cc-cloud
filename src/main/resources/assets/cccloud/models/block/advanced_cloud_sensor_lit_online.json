@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/advanced_cloud_sensor_lit",
+  "textures": {
+    "status": "cccloud:block/uplink_status_online"
+  }
+}

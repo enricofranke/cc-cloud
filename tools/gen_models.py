@@ -830,10 +830,13 @@ def ender_fiber_link():
 # Self-contained section: models, blockstates, items and checks of the Cloud Switch / Button / Sensor
 # (plates on any of the 6 faces, model space = attached to the north face like the uplink, +Z away from
 # the block; rotations ALL6) and the Cloud Lamp (full block, light steps off/dim/mid/on).
-RS_PLATES = ("cloud_switch", "cloud_button", "cloud_sensor")
+RS_PLATES = ("cloud_switch", "cloud_button", "cloud_sensor", "advanced_cloud_sensor")
 RS_PLATE_STATES = {"cloud_switch": ("cloud_switch_off", "cloud_switch_on"),       # powered = false / true
                    "cloud_button": ("cloud_button", "cloud_button_pressed"),
-                   "cloud_sensor": ("cloud_sensor", "cloud_sensor_lit")}
+                   "cloud_sensor": ("cloud_sensor", "cloud_sensor_lit"),
+                   "advanced_cloud_sensor": ("advanced_cloud_sensor", "advanced_cloud_sensor_lit")}
+# RsPlateBlock's shape of the Advanced Cloud Sensor (plate + rim + eye); validate_redstone_family checks the bounds
+ADV_SENSOR_BOUNDS = ([3, 3, 0], [13, 13, 3])
 RS_LAMP_EMIT = {"off": 0, "dim": 7, "mid": 11, "on": 15}
 
 
@@ -905,6 +908,18 @@ def rs_sensor(lit):
     return m
 
 
+def rs_advanced_sensor(lit):
+    """Advanced Cloud Sensor: 10x10 plate (1.5 px) with two signal ticks, a raised 6x6 gold rim (1 px) and a 4x4
+    glass eye standing 1.5 px proud; the eye glows while something matching is inside the zone."""
+    m = _rs_plate_model()
+    m.box([3, 3, 0], [13, 13, 1.5], {"*": _rs("body"), "south": _rs("adv_face")}, skip=("north",))
+    m.box([7, 4, 1.5], [9, 4.5, 1.75], _rs_led(), emit=15, skip=("north",))
+    m.box([5, 5, 1.5], [11, 11, 2.5], {"*": _rs("gold"), "south": _rsr("adv_ring")}, skip=("north",))
+    m.box([6, 6, 1.5], [10, 10, 3], {"*": _rs("eye_side"), "south": _rsr("eye_on" if lit else "eye_off")},
+          emit=12 if lit else 0, skip=("north",))
+    return m
+
+
 def rs_lamp(state):
     """Cloud Lamp: 12 CC frame bars (2 px) around a glass core recessed by 1 px; the core glows per step.
     The bars only touch (X bars full length, Y/Z bars between them), so no two faces are coplanar."""
@@ -943,6 +958,8 @@ def write_redstone_family():
         models[f"block/{name}"] = rs_button(bool(powered))
     for powered, name in enumerate(RS_PLATE_STATES["cloud_sensor"]):
         models[f"block/{name}"] = rs_sensor(bool(powered))
+    for powered, name in enumerate(RS_PLATE_STATES["advanced_cloud_sensor"]):
+        models[f"block/{name}"] = rs_advanced_sensor(bool(powered))
     for state in RS_LAMP_EMIT:
         models[f"block/cloud_lamp_{state}"] = rs_lamp(state)
     for name, m in models.items():
@@ -971,6 +988,12 @@ def validate_redstone_family(data):
             problems.append(f"{block}: {len(v)} variants, expected 36 (facing x powered x status)")
         if f"items/{block}.json" not in data:
             problems.append(f"missing item definition {block}")
+    for name in RS_PLATE_STATES["advanced_cloud_sensor"]:
+        els = data.get(f"models/block/{name}.json", {}).get("elements", [])
+        lo = [min(e["from"][i] for e in els) for i in range(3)] if els else None
+        hi = [max(e["to"][i] for e in els) for i in range(3)] if els else None
+        if (lo, hi) != tuple(ADV_SENSOR_BOUNDS):
+            problems.append(f"{name}: bounds {lo}..{hi}, RsPlateBlock's shape expects {ADV_SENSOR_BOUNDS[0]}..{ADV_SENSOR_BOUNDS[1]}")
     if len(data.get("blockstates/cloud_lamp.json", {}).get("variants", {})) != 16:
         problems.append("cloud_lamp: expected 16 level variants")
     if "items/cloud_lamp.json" not in data:
@@ -990,6 +1013,13 @@ position). Switch: 8x10 plate, rocker rotated +-22.5 deg around X (on = cyan top
 button: 6x6 plate, 4x4 cap 1.5 px out (0.5 px and glowing while pressed); sensor: 8x8 plate with a
 redstone lens (glows while a signal comes in). Shapes in `RsPlateBlock` match the plates. Items use
 the `_online` model of the off state with `block/rs_plate_display` (GUI scale 1, re-centred).
+
+`advanced_cloud_sensor` (same 36 variants; `powered` = something matching is inside its zone; base models
+`advanced_cloud_sensor` / `_lit`): a 10x10 grey plate (x 3..13, 1.5 px) with two cyan signal ticks, a raised
+6x6 gold rim (1 px, advanced tier) and a 4x4 glass eye standing 1.5 px proud (z up to 3): dark teal iris, black
+pupil, one glint; lit = glowing cyan iris (emission 12). Tiles `adv_face`, `gold`, `eye_side` and regions
+`adv_ring`, `eye_off`, `eye_on` in the same `redstone_plate` atlas. Bounds [3,3,0]..[13,13,3] = the shape in
+`RsPlateBlock` (checked by gen_models.py).
 
 `cloud_lamp`: full block, 12 frame bars (2 px, atlas `textures/block/cloud_lamp.png`) around a glass
 core recessed by 1 px; `level` 0..15 maps to `cloud_lamp_off` (0), `_dim` (1-5, emission 7),

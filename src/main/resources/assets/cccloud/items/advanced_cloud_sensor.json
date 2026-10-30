@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "cccloud:block/advanced_cloud_sensor_online"
+  }
+}

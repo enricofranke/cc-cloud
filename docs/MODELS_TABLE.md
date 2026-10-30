@@ -71,6 +71,8 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/cloud_button_pressed` | 3 |
 | `block/cloud_sensor` | 3 |
 | `block/cloud_sensor_lit` | 3 |
+| `block/advanced_cloud_sensor` | 4 |
+| `block/advanced_cloud_sensor_lit` | 4 |
 | `block/cloud_lamp_off` | 13 |
 | `block/cloud_lamp_dim` | 13 |
 | `block/cloud_lamp_mid` | 13 |

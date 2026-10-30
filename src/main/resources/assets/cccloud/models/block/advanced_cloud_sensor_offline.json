@@ -1,0 +1,6 @@
+{
+  "parent": "cccloud:block/advanced_cloud_sensor",
+  "textures": {
+    "status": "cccloud:block/uplink_status_offline"
+  }
+}
