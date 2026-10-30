@@ -339,7 +339,7 @@ export class FakeAe2 {
       return pool[start % pool.length];
     };
     const first = pick(h, count * 2);
-    const ings = [first, pick(h >> 5, count, first)];
+    const ings = [first, pick(h >>> 5, count, first)];
     const missingAll = name === "ae2:singularity" || name === "enderio:octadic_capacitor";
     const entries = ings.map((g, i) => {
       const need = count * (i === 0 ? 2 : 1);
