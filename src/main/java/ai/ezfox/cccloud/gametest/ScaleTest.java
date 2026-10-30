@@ -194,7 +194,7 @@ public final class ScaleTest {
     }
 
     private static void onTickPost(ServerTickEvent.Post event) {
-        if (!measuring) return;
+        if (!measuring || tickCpuStart == 0) return; // not the tick in which measuring started (no CPU start yet)
         long wall = System.nanoTime() - tickStart;
         long cpu = THREADS.getCurrentThreadCpuTime() - tickCpuStart;
         wholeTicks.add(wall / 1e6);
@@ -263,6 +263,7 @@ public final class ScaleTest {
         ownTicks.clear();
         cpuTicks.clear();
         ownCpuTicks.clear();
+        tickCpuStart = 0;
         partSums = new long[TickCost.NAMES.length];
         partMax = new long[TickCost.NAMES.length];
         TickCost.enabled = true;

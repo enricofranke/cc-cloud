@@ -1225,7 +1225,8 @@ public final class WebHub {
 
     private void flush(View view, long now) {
         Map<String, JsonObject> pending;
-        Map<String, JsonObject> valueSections;
+        Map<String, Set<String>> changedValues;
+        Map<String, Section> changedSections = new HashMap<>();
         JsonObject networkFull = null, networkStripped = null;
         Set<String> restricted;
         List<HubSession> targets;
@@ -1243,7 +1244,14 @@ public final class WebHub {
             view.outbox = new LinkedHashMap<>();
             view.pendingAlerts = 0;
             resolveSections(view, pending);
-            valueSections = takeValues(view);
+            // only references under the lock (the server thread publishes to this view every tick); the value
+            // messages are built outside it from the immutable section versions
+            changedValues = view.values;
+            view.values = new LinkedHashMap<>();
+            for (var id : changedValues.keySet()) {
+                var section = view.uplinks.get(id);
+                if (section != null) changedSections.put(id, section);
+            }
             restricted = view.restricted.isEmpty() ? Set.of() : Set.copyOf(view.restricted);
             // Only the sessions registered now: a session added later has these changes in its snapshot already.
             targets = List.copyOf(view.sessions);
@@ -1257,6 +1265,7 @@ public final class WebHub {
             }
         }
         if (targets.isEmpty()) return;
+        var valueSections = valuesOf(changedValues, changedSections);
         Map<String, JsonObject> uplinks = shareSections == null ? Map.of() : jsonSections(shareSections);
         String fullNet = null, strippedNet = null;
         if (networkFull != null) {
@@ -1335,12 +1344,12 @@ public final class WebHub {
         }
     }
 
-    /** uplinkId → {widgetId: latest value} of the changed widgets, and clears the pending set. Under the view's lock. */
-    private static Map<String, JsonObject> takeValues(View view) {
-        if (view.values.isEmpty()) return Map.of();
+    /** uplinkId → {widgetId: latest value} of the changed widgets (from immutable section versions; any thread). */
+    private static Map<String, JsonObject> valuesOf(Map<String, Set<String>> changedValues, Map<String, Section> sections) {
+        if (changedValues.isEmpty()) return Map.of();
         var out = new LinkedHashMap<String, JsonObject>();
-        for (var entry : view.values.entrySet()) {
-            var section = view.uplinks.get(entry.getKey());
+        for (var entry : changedValues.entrySet()) {
+            var section = sections.get(entry.getKey());
             if (section == null) continue;
             var changed = new JsonObject();
             for (var widgetId : entry.getValue()) {
@@ -1350,7 +1359,6 @@ public final class WebHub {
             }
             if (changed.size() > 0) out.put(entry.getKey(), changed);
         }
-        view.values = new LinkedHashMap<>();
         return out;
     }
 
