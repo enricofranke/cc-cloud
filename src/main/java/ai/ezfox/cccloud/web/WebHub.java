@@ -533,6 +533,33 @@ public final class WebHub {
         return list;
     }
 
+    /** Widget key ({@code <uplinkId>/<widgetId>}) → type of every published widget of a mainframe (without copying sections). */
+    public Map<String, String> widgetTypes(UUID mainframeId) {
+        var types = new HashMap<String, String>();
+        var view = views.get(mainframeId);
+        if (view == null) return types;
+        synchronized (view) {
+            for (var e : view.uplinks.entrySet()) {
+                for (var w : e.getValue().widgets) {
+                    var type = w.type();
+                    if (type != null) types.put(e.getKey() + "/" + w.id, type);
+                }
+            }
+        }
+        return types;
+    }
+
+    /** A section as JSON text (built once per version and shared; Cloud Displays poll it), or null. */
+    public @Nullable String sectionText(UUID mainframeId, String uplinkId) {
+        var view = views.get(mainframeId);
+        if (view == null) return null;
+        Section section;
+        synchronized (view) {
+            section = view.uplinks.get(uplinkId);
+        }
+        return section == null ? null : section.text();
+    }
+
     /** v0.5 F: the current value of a widget that asked for long-term statistics ({@code opts.history}). */
     public record HistorySample(UUID mainframeId, String uplinkId, String widgetId, String range, double value) {
     }

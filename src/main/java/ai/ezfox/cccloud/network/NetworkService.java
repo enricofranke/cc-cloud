@@ -74,6 +74,7 @@ public final class NetworkService {
     public static void clear() {
         RESULTS.clear();
         SCREEN.clear();
+        PUBLISHED.clear();
         ROUTES.clear();
         COUNTS.clear();
         SERVING.clear();
@@ -244,6 +245,23 @@ public final class NetworkService {
             for (var node : result.nodes()) {
                 if (node.type() != NetworkGraph.NodeType.MAINFRAME && result.reachable(node.id())) SERVING.add(UUID.fromString(node.id()));
             }
+            // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
+            // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
+            var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
+                Set.copyOf(mainframe.getLinkedUplinks().keySet()), namesHash(id, mainframe.getLinkedUplinks().keySet()));
+            var last = PUBLISHED.get(id);
+            long now = System.currentTimeMillis();
+            if (last != null && last.key().equals(key) && now - last.at() < REPUBLISH_MS) {
+                // unchanged: only remember that its online parts are still online (lastSeen on the map)
+                if (mainframe.isOnline()) {
+                    for (var node : result.nodes()) if (node.available() && result.reachable(node.id())) LAST_ONLINE.put(node.id(), now);
+                    for (var e : result.routes().entrySet()) {
+                        if (e.getValue().connected() && !e.getValue().legacyOutOfRange() && !over.contains(e.getKey())) LAST_ONLINE.put(e.getKey(), now);
+                    }
+                }
+                continue;
+            }
+            PUBLISHED.put(id, new Published(key, now));
             WebHub.INSTANCE.publishNetwork(id, toJson(mainframe, result, true), toJson(mainframe, result, false));
         }
         // Routes may have changed: wireless redstone follows on the same tick.
@@ -514,9 +532,23 @@ public final class NetworkService {
             nodes.add(n);
         }
         json.add("nodes", nodes);
+        // Big networks: a device's links to nodes it does not use (shown faintly on the map) are left out; they were
+        // most of a 500-device map (5 links per device with 4 relays; docs/SPEC.md "Scaling").
+        boolean trim = result.devices().size() > TRIM_LINKS_ABOVE;
+        var usedDeviceLinks = new HashSet<String>();
+        if (trim) {
+            for (var e : result.routes().entrySet()) {
+                if (e.getValue().connected()) usedDeviceLinks.add(e.getValue().path().getLast() + ">" + e.getKey());
+            }
+        }
+        int trimmed = 0;
         var links = new JsonArray();
         for (var link : result.links()) {
             if (!(included.contains(link.a()) || loaded.contains(link.a())) || !(included.contains(link.b()) || loaded.contains(link.b()))) continue;
+            if (trim && loaded.contains(link.b()) && !link.legacy() && !usedDeviceLinks.contains(link.a() + ">" + link.b())) {
+                trimmed++;
+                continue;
+            }
             var l = new JsonObject();
             l.addProperty("a", link.a());
             l.addProperty("b", link.b());
@@ -531,6 +563,7 @@ public final class NetworkService {
             links.add(l);
         }
         json.add("links", links);
+        if (trimmed > 0) json.addProperty("unusedLinks", trimmed);
         // Routes: node id -> ids from the mainframe to that node, both ends included.
         var routes = new JsonObject();
         for (var e : result.nodePaths().entrySet()) {
@@ -550,6 +583,9 @@ public final class NetworkService {
         return json;
     }
 
+    /** Above this many devices the map leaves out the links a device does not use (count in {@code unusedLinks}). */
+    public static final int TRIM_LINKS_ABOVE = 200;
+
     /** Device nodes the in-game mainframe screen gets at most (docs/SPEC.md "Scaling"); the rest is counted in {@code more}. */
     public static final int SCREEN_MAX_DEVICES = 1000;
 
@@ -558,6 +594,28 @@ public final class NetworkService {
     }
 
     private static final Map<UUID, ScreenNetwork> SCREEN = new HashMap<>();
+
+    /** What a mainframe's published map was built from; an equal key within {@link #REPUBLISH_MS} skips the rebuild. */
+    private record PublishKey(NetworkGraph.Result result, Set<String> over, boolean online, boolean enabled, @Nullable String reason, Set<UUID> linked,
+                              int names) {
+    }
+
+    /** Names and redstone groups of a mainframe's devices as shown on the map (a rename from the map must show at once). */
+    private static int namesHash(UUID mainframeId, Set<UUID> linked) {
+        int h = 0;
+        for (var id : linked) {
+            String key = id.toString();
+            var group = ai.ezfox.cccloud.rsdevice.RsDevices.group(mainframeId, id);
+            h += key.hashCode() * 31 + deviceName(mainframeId, key, null).hashCode() * 17 + (group == null ? 0 : group.hashCode());
+        }
+        return h;
+    }
+
+    private record Published(PublishKey key, long at) {
+    }
+
+    private static final Map<UUID, Published> PUBLISHED = new HashMap<>();
+    static final long REPUBLISH_MS = 60_000;
 
     /**
      * The network as the in-game mainframe screen shows it (tree list and mini map): short node ids ({@code n0} is the

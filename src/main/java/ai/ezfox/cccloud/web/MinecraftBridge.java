@@ -221,16 +221,7 @@ public final class MinecraftBridge implements GameBridge {
 
     /** Widget key ({@code <uplinkId>/<widgetId>}) → type of every published widget of a mainframe. */
     private static java.util.Map<String, String> widgetTypes(UUID mainframeId) {
-        var types = new java.util.HashMap<String, String>();
-        for (var section : WebHub.INSTANCE.sectionSnapshots(mainframeId)) {
-            if (!(section.get("uplinkId") instanceof com.google.gson.JsonPrimitive id) || !(section.get("widgets") instanceof com.google.gson.JsonArray widgets)) continue;
-            for (var w : widgets) {
-                if (w instanceof JsonObject wo && wo.get("id") instanceof com.google.gson.JsonPrimitive wid && wo.get("type") instanceof com.google.gson.JsonPrimitive type) {
-                    types.put(id.getAsString() + "/" + wid.getAsString(), type.getAsString());
-                }
-            }
-        }
-        return types;
+        return WebHub.INSTANCE.widgetTypes(mainframeId);
     }
 
     @Override

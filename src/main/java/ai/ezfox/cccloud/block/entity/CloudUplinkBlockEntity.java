@@ -441,11 +441,13 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (alerts != null && isOnline()) {
             for (var alert : alerts) WebHub.INSTANCE.publishAlert(mainframeId, id, alert[0], alert[1]);
         }
-        // Saving: at most once a second while values keep changing (the chunk is marked unsaved, not written)
+        // Saving: at most every 5 s while values keep changing (the chunk is marked unsaved, not written)
         if (changed) saveDirty = true;
-        if (saveDirty && (snapshot != null || tickCounter % BRIDGE_INTERVAL == 0)) {
+        if (saveDirty && (snapshot != null || tickCounter % SAVE_INTERVAL == 0)) {
             saveDirty = false;
-            setChanged();
+            // Only the chunk is marked unsaved: setChanged() would also update comparators around the uplink (it has no
+            // comparator output), which on a big base was a measurable part of the uplink tick.
+            level.blockEntityChanged(getBlockPos());
         }
     }
 
@@ -454,6 +456,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private boolean saveDirty;
 
     private static final int BRIDGE_INTERVAL = 20;
+    /** Changed values mark the chunk unsaved at most every 5 s (the world is written on autosave anyway). */
+    private static final int SAVE_INTERVAL = 100;
 
     private synchronized void sampleCharts(long gameTime) {
         if (chartsDirty) {

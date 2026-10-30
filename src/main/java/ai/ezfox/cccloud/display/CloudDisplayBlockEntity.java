@@ -2,9 +2,6 @@ package ai.ezfox.cccloud.display;
 
 import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.ingame.InGameRegistry;
-import ai.ezfox.cccloud.uplink.Json;
-import ai.ezfox.cccloud.web.InGameClients;
-import com.google.gson.JsonObject;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -361,11 +358,10 @@ public class CloudDisplayBlockEntity extends BlockEntity {
             || !ai.ezfox.cccloud.ingame.InGameAccess.has(server, configuredBy, mainframeId, ai.ezfox.cccloud.access.Perm.VIEW)) {
             return error("no_rights");
         }
-        JsonObject snapshot = InGameClients.section(mainframeId, sectionId);
-        if (snapshot == null) return error("missing");
-        if (snapshot.has("restricted") && snapshot.get("restricted").getAsBoolean()) return error("restricted");
-        snapshot.remove("t");
-        String json = Json.GSON.toJson(snapshot);
+        // The hub's text of the section (built once per change, shared): displays poll it every few ticks.
+        String json = ai.ezfox.cccloud.web.WebHub.INSTANCE.sectionText(mainframeId, sectionId);
+        if (json == null) return error("missing");
+        if (ai.ezfox.cccloud.web.WebHub.INSTANCE.isRestricted(mainframeId, sectionId)) return error("restricted");
         return json.length() > MAX_JSON ? error("too_large") : json;
     }
 
