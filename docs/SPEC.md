@@ -84,7 +84,7 @@ cloud.isOnline()              -- true if the mainframe is online and the dashboa
 ## Architecture change (2026-10-21): the web server runs INSIDE the mod
 There is no external relay. The mod itself hosts the dashboard on the Minecraft server (dedicated server, or the integrated server in singleplayer/LAN): whoever runs the MC server automatically has the dashboard.
 - One embedded HTTP + WebSocket server per Minecraft server (not per mainframe), started on ServerStarted, stopped on ServerStopping. Implementation: Netty (already on the MC classpath, CC: Tweaked uses netty-codec-http too) – verify availability; fall back to the JDK HttpServer + a minimal WebSocket handshake only if Netty's http codec is not available.
-- Config (server config): `webEnabled` (true), `webBind` ("0.0.0.0"), `webPort` (8787), `publicUrl` ("" → shown in chat as http://<server-ip>:<port>), `allowCloud`, `uplinkRange`, `maxWidgetsPerUplink`.
+- Config (server config): `webEnabled` (true), `webBind` ("0.0.0.0"), `webPort` (8787), `publicUrl` ("" → shown in chat as http://<server-ip>:<port>), `allowCloud`, `uplinkRange`, `maxWidgetsPerUplink`. All of them apply while the server runs (see "Live config" at the end).
 - The built web app (static files) is bundled in the jar under `assets/cccloud/web/` … or better `/cccloud_web/` at the jar root (not a resource pack path) and served from the classpath. Unknown paths fall back to index.html (SPA).
 - Persistence: pairing codes and client tokens (hashed, SHA-256) live in world SavedData (`cccloud_web`), keyed by mainframeId. No SQLite.
 - Mainframe: `enabled` = dashboard on/off for that mainframe. Each mainframe has its own pairing code (8 chars, unambiguous alphabet, shown as XXXX-XXXX, rotates after use). Right-click shows the dashboard URL + pairing code. Kill switch/redstone as before.
@@ -750,7 +750,7 @@ The dashboard follows the format in "v0.4 – Implementation notes" (mod side) e
   - `/cccloud devices` lists all of the player's browsers, with a clickable revoke (`/cccloud devices revoke <id>`).
   - The old per-mainframe list is now `/cccloud devices here`.
   - `/cccloud trust|untrust` remain and mean admin / remove.
-  - `/cccloud icons` uses `cccloud.command.icons`. There is no reload command yet; `cccloud.command.reload` is registered for it.
+  - `/cccloud icons` uses `cccloud.command.icons`; `/cccloud config reload|show` uses `cccloud.command.reload` (see "Live config").
 - **Escalation rules (Access API and `/cccloud role`):**
   - Admins may only change players whose current role is below their own, and may grant at most their own role.
   - The owner and server moderators (`cccloud.admin.manage`) may change everyone except the owner.
@@ -1909,3 +1909,70 @@ shared between versions) and its serialised text, about 2–4 KB per section for
 - The network map (Network page, 3D view) still receives the whole network of a mainframe in the snapshot (~276 KB
   for 500 devices before compression).
 - The machine card refresh runs once per second per card regardless of viewers (rules and history need the values).
+
+## Live config: settings without a restart (2026-10-30)
+
+Every value of `cccloud-server.toml` and `cccloud-integrations-server.toml` applies while the server runs. NeoForge
+watches both files and fires `ModConfigEvent.Reloading` (on its file-watcher thread); `/cccloud config reload` re-reads
+them on demand. `config/ConfigReload` compares the values with what was applied last (a snapshot taken when the server
+started) on the server thread and re-applies only what was cached (`config/ConfigPlan`); the rest is read where it is
+used anyway. Values that could not be applied keep their old state and stay "changed", so the next reload retries them.
+
+### Markers in the file
+- `config/MarkedBuilder` (a `ModConfigSpec.Builder`) ends every value's comment with a line `(applies live)` or
+  `(restart required)`, after NeoForge's own `Default:`/`Range:` lines; `restart()` before a value marks it. The first
+  value (`allowCloud`) carries a short header explaining live reload. `ConfigMarkersTest` checks both files.
+- Today every value is `(applies live)`. Nothing in these files is registry or worldgen data. `runMissed` and
+  `missedWindowHours` only matter when the server starts, by their nature, and are read then.
+
+### Audit (95 values in `cccloud-server.toml`, 12 in `cccloud-integrations-server.toml`)
+| Area | Values | Before | Now |
+|---|---|---|---|
+| `[web]` | `webEnabled`, `webBind`, `webPort`, `publicUrl`, `webAllowInternet`, `webTrustedProxies`, `webTrustCloudflareHeader`, `webCompression`, `webAllowedHosts`, `tlsCertPath`, `tlsKeyPath` (11) | cached at server start | web server reconfigured (below) |
+| `[api]` | `apiRequestsPerMinute`, `apiIpRequestsPerMinute` | refreshed every 5 s, but each key's/IP's bucket kept the limit it was made with | buckets take the new limit on their next request, keeping what was used (`TokenBucket.reconfigure`) |
+| `[api]` | `apiEnabled`, `apiEvents`, `apiMaxBody`, `apiCorsOrigins`, `apiStreamsPerKey`, `apiKeysPerPlayer` | applied within 5 s | at once; switching the API or its stream off ends open streams at once |
+| `[upgrades]` | `baseDevices`, `baseBrowsers`, `baseRules`, `baseHistoryHours` | baked into each mainframe's published upgrade effects when it loaded | effects recomputed for every mainframe, loaded or not (`UpgradeEffects.withBase`) |
+| `[redstoneDevices]` | `redstoneDeviceChangesPerSecond` | bucket per device made once | bucket follows the config on its next use |
+| `[power]` | `mainframeMaxInputFE`; `relayBufferFE` & co. (input rate = buffer/50) | fixed when the block entity was made | follow the config every tick |
+| `[production]` | `trackedItemsPerStorage` | only for new trackers | trackers start again with the new cap |
+| `[store]` | `scriptStoreKey` | verified index cached 5 min per URL, also after a key change | cache keyed by URL and key; cleared on reload |
+| `[map]` | `mapTileMaxAgeDays` | next daily sweep | sweep at once |
+| `[push]` | `pushAllowedHosts` | retries used the list from the first attempt | read for every attempt |
+| integrations `[cards]` | `deviceCards`, `storageCards`, `genericCardExcludes`, `mffsRequirePin` | detection-time (a shown card kept its kind and its PIN flag) | every uplink detects its device and wired machine cards again |
+| everything else (63 + 8) | ranges, power rates, buffers, feature switches, limits, schedules, scenes, rules, map, voxels, terminal, teams, … | read where used (network recomputed on reload) | unchanged; network recomputed, team changes re-checked at once |
+
+### Web server
+- `web/WebSettings` is the whole `[web]` section as one value (plus a hash of the TLS files, so renewed certificates at
+  the same paths are picked up by `/cccloud config reload`); `web/WebPolicy` is the rules a connection is accepted and
+  served under (TLS, trusted proxies, LAN rule, Cloudflare header, Host list, compression). Every connection keeps the
+  policy it was accepted with (`WebInstance.POLICY`) until it closes.
+- `CloudWebServer.reconfigure`, all or nothing: build the policy like at a start (TLS loaded; failure → nothing changes);
+  a new address is bound **before** the old socket closes (failure → nothing changes, the old one keeps serving; only the
+  same port on an overlapping address, e.g. `0.0.0.0` → `127.0.0.1`, has to close first and binds the old address again
+  if the new one fails); swap the policy for new connections; close the old socket; close the connections of older
+  policies (WebSockets with 1012 "service restart", the dashboard reconnects at once), unless only compression or the
+  certificate files' contents changed. The same address line and warnings as at start are logged.
+- `webEnabled=false` closes the listener and every connection but keeps the hub's state; `true` starts it again. The
+  rate limiter maps, pairing/share failure counters and API stream counts live in the instance and survive a reconfigure.
+- `XrayGuard` (`mapSlices = auto`) treats the dashboard as internet-facing while either the file or the running server
+  allows the internet, so a reload that could not be applied never turns slices on.
+
+### Protocol
+- Server → dashboard `{"t":"config"}`: a feature switch of `GET /api/config` changed; the dashboard fetches it again.
+
+### Commands (`cccloud.command.reload`, op level 4 by default; console)
+- `/cccloud config reload`: re-reads both files (invalid values corrected to their defaults in memory, as NeoForge does
+  on load), applies the difference, fires `ModConfigEvent.Reloading` so NeoForge syncs the values to clients, prints and
+  logs the report: changed keys (old → new), applied live, needs a restart, not applied + why.
+- `/cccloud config show [key]`: read-only; a key, its name alone (`webPort`) or part of it; value, default, live/restart.
+  Secrets (names with token, secret, password, private key, key path: `tlsKeyPath`) only as "(set, hidden)"/"(not set)";
+  user info in URLs is masked. The same masking applies to the reload report and the log.
+
+### Tests
+Unit: `ConfigMarkersTest`, `ConfigTextTest` (secrets never printed), `ConfigPlanTest`, `ConfigReportTest`,
+`TokenBucketReloadTest`, `ApiReloadTest`, `LiveConfigWebTest` (real sockets: new port bound before the old closes, a
+failed bind and unreadable TLS files keep everything, new rules close old connections and apply like a fresh start,
+compression alone keeps them), `StoreVerifierTest` (rotated key), `UpgradeEffectsTest` (rebase). GameTest
+`config_live_reload` (environment `cccloud:config`, its own batch): edits three cached values, fires the real
+`ModConfigEvent.Reloading`, checks the running web server, a loaded mainframe and the report, then `/cccloud config
+reload`'s re-read restores the file's values.

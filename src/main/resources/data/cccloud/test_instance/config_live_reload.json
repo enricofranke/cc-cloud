@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:config",
+  "function": "cccloud:config_live_reload",
+  "max_ticks": 400,
+  "structure": "cccloud:test_floor"
+}

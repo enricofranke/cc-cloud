@@ -13,6 +13,26 @@ class UpgradeEffectsTest {
     }
 
     @Test
+    void rebaseKeepsTheCards() {
+        // config reload of [upgrades] base*: the published effects follow the new base limits, the cards still count
+        var cards = UpgradeEffects.of(BASE, List.of(card(UpgradeType.BANDWIDTH, UpgradeTier.ALLTHEMODIUM), card(UpgradeType.RANGE, UpgradeTier.VIBRANIUM)),
+            false, true);
+        var raised = cards.withBase(new UpgradeEffects.Base(100, 20, 30, 48));
+        assertEquals(100, raised.devices());
+        assertEquals(20, raised.browsers(), "base above the card's 8");
+        assertEquals(30, raised.rules());
+        assertEquals(48, raised.historyHours());
+        assertEquals(2, raised.rangeFactor());
+        assertTrue(raised.chunkAnchor());
+        var lowered = cards.withBase(new UpgradeEffects.Base(2, 1, 1, 1));
+        assertEquals(8, lowered.browsers(), "the Bandwidth card still gives 8");
+        assertEquals(2, lowered.devices());
+        var quantum = UpgradeEffects.of(BASE, List.of(), true, false).withBase(new UpgradeEffects.Base(1, 1, 1, 1));
+        assertEquals(UpgradeEffects.UNLIMITED, quantum.devices());
+        assertEquals(UpgradeEffects.none(BASE), UpgradeEffects.none(new UpgradeEffects.Base(5, 5, 5, 5)).withBase(BASE));
+    }
+
+    @Test
     void baseWithoutCards() {
         var e = UpgradeEffects.none(BASE);
         assertEquals(16, e.devices());

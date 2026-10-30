@@ -13,7 +13,7 @@ The public API lets **your own tools** read values and press buttons: a Discord 
 
 ## Turn it on
 
-In the world's `serverconfig/cccloud-server.toml` (for a dedicated server: `world/serverconfig/`), section `[api]`, then restart the server:
+In the world's `serverconfig/cccloud-server.toml` (for a dedicated server: `world/serverconfig/`), section `[api]`. Saving the file switches it on, no restart needed ([live config](security.md)):
 
 ```toml
 [api]

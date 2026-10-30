@@ -10,7 +10,7 @@ import net.neoforged.neoforge.transfer.transaction.TransactionContext;
  * this handler with {@code IEnergyStorage.of(handler)} and feed it the same way.
  */
 public class MainframeEnergy extends SimpleEnergyHandler {
-    private final int maxPerTick;
+    private int maxPerTick;
     private int tickStart;
 
     public MainframeEnergy(int capacity, int maxPerTick) {
@@ -32,6 +32,16 @@ public class MainframeEnergy extends SimpleEnergyHandler {
     public void setCapacity(int capacity) {
         this.capacity = Math.max(0, capacity);
         if (energy > this.capacity) set(this.capacity);
+    }
+
+    /** Reconfigures the input limit per tick (config change). */
+    public void setMaxPerTick(int maxPerTick) {
+        this.maxPerTick = Math.max(0, maxPerTick);
+        this.maxInsert = this.maxPerTick;
+    }
+
+    public int maxPerTick() {
+        return maxPerTick;
     }
 
     @Override

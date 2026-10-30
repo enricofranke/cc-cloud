@@ -54,7 +54,7 @@ final class ApiHandler {
             respond(http, ctx, req, 401, error("unauthorized"), origin, 0);
             return;
         }
-        if (!bucket(instance.apiIpLimits, ip, settings.perIpPerMinute()).tryAcquire()) {
+        if (!bucket(instance, instance.apiIpLimits, ip, false).tryAcquire()) {
             respond(http, ctx, req, 429, error("rate_limited"), origin, retryAfter(settings.perIpPerMinute()));
             return;
         }
@@ -68,7 +68,7 @@ final class ApiHandler {
             respond(http, ctx, req, 403, error("ip_not_allowed"), origin, 0);
             return;
         }
-        if (!bucket(instance.apiKeyLimits, key.hash(), settings.perKeyPerMinute()).tryAcquire()) {
+        if (!bucket(instance, instance.apiKeyLimits, key.hash(), true).tryAcquire()) {
             respond(http, ctx, req, 429, error("rate_limited"), origin, retryAfter(settings.perKeyPerMinute()));
             return;
         }
@@ -148,9 +148,16 @@ final class ApiHandler {
         response.headers().set(HttpHeaderNames.VARY, "Origin");
     }
 
-    private static TokenBucket bucket(java.util.concurrent.ConcurrentHashMap<String, TokenBucket> map, String key, int perMinute) {
+    /**
+     * The per-key or per-IP bucket with the limit of the current {@code [api]} config (read fresh, not from the request's
+     * snapshot): after a reload every bucket in use takes the new limit on its next request and keeps what was used.
+     */
+    private static TokenBucket bucket(WebInstance instance, java.util.concurrent.ConcurrentHashMap<String, TokenBucket> map, String key, boolean perKey) {
         if (map.size() > 10_000) map.clear();
-        return map.computeIfAbsent(key, k -> new TokenBucket(perMinute, perMinute / 60.0));
+        int perMinute = perKey ? instance.api.perKeyPerMinute() : instance.api.perIpPerMinute();
+        var bucket = map.computeIfAbsent(key, k -> new TokenBucket(perMinute, perMinute / 60.0));
+        bucket.reconfigure(perMinute, perMinute / 60.0);
+        return bucket;
     }
 
     /** Seconds until a per-minute bucket has a token again. */

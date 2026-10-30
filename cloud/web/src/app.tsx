@@ -11,6 +11,7 @@ import { saved } from "./lib/store.ts";
 import { syncConns } from "./lib/conns.ts";
 import { insecureContext } from "./lib/security.ts";
 import { loadPublicConfig } from "./lib/config.ts";
+import { configChanged } from "./lib/conn.ts";
 import { MainframeList } from "./screens/MainframeList.tsx";
 import { PairScreen } from "./screens/Pair.tsx";
 import { Dashboard } from "./screens/Dashboard.tsx";
@@ -33,8 +34,11 @@ effect(() => {
   if (!inShare.value) syncConns();
 });
 
-// the server's feature switches (GET /api/config), once
+// the server's feature switches (GET /api/config): at start, and again when a server says they changed (config reload)
 if (!inShare.value) loadPublicConfig();
+effect(() => {
+  if (configChanged.value > 0 && !inShare.value) loadPublicConfig();
+});
 
 function TopBar() {
   const pref = themePref.value;

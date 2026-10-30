@@ -27,8 +27,9 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
- * {@code /cccloud status|devices|revoke|trust|untrust|role|pin|approve|deny|link|browsers|mainframe recover|purge}. Mainframe commands act on the
- * mainframe the player is looking at and need the admin role (AccessResolver: owner, roles, teams, admin nodes).
+ * {@code /cccloud status|devices|revoke|trust|untrust|role|pin|approve|deny|link|browsers|mainframe recover|purge|config reload|show}. Mainframe
+ * commands act on the mainframe the player is looking at and need the admin role (AccessResolver: owner, roles, teams, admin nodes); the
+ * config commands need the server node {@code cccloud.command.reload} (op level 4, console).
  */
 public final class CloudCommand {
     private static final SimpleCommandExceptionType NOT_OWNER = new SimpleCommandExceptionType(Component.translatable("cccloud.mainframe.not_owner"));
@@ -68,6 +69,14 @@ public final class CloudCommand {
                 .then(Commands.literal("status").executes(c -> icons(c, "status")))
                 .then(Commands.literal("rebuild").executes(c -> icons(c, "rebuild")))
                 .then(Commands.literal("clear").executes(c -> icons(c, "clear"))))
+            // server config without a restart: re-read and apply both files, or show the values (never secrets)
+            .then(Commands.literal("config").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.COMMAND_RELOAD))
+                .then(Commands.literal("reload").executes(CloudCommand::configReload))
+                .then(Commands.literal("show").executes(c -> configShow(c, null))
+                    .then(Commands.argument("key", StringArgumentType.word())
+                        .suggests((c, b) -> SharedSuggestionProvider.suggest(ai.ezfox.cccloud.config.ConfigCatalog.keys().stream()
+                            .map(ai.ezfox.cccloud.config.ConfigCatalog.Key::key), b))
+                        .executes(c -> configShow(c, StringArgumentType.getString(c, "key"))))))
             // diagnostics: map tile and voxel loading (requests, cache hits, server-thread time per tick)
             .then(Commands.literal("map").requires(src -> hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_VIEW))
                 .then(Commands.literal("stats").executes(c -> mapStats(c, false))
@@ -436,6 +445,29 @@ public final class CloudCommand {
 
     /** {@code /cccloud icons status|rebuild|clear} (cccloud.command.icons). */
     /** {@code /cccloud map stats [reset]}: loading counters of the map tiles and the voxel view (admins). */
+    /** {@code /cccloud config reload}: re-reads both server config files and applies what changed (report in chat and log). */
+    private static int configReload(CommandContext<CommandSourceStack> c) {
+        var source = c.getSource();
+        var report = ai.ezfox.cccloud.config.ConfigReload.reloadNow(source.getServer());
+        String who = source.getTextName();
+        CCCloud.LOGGER.info("[cccloud] {} ran /cccloud config reload: {} change(s)", who, report.changes().size());
+        for (var line : report.lines()) {
+            boolean bad = line.startsWith("Error") || line.startsWith("Not applied");
+            boolean head = line.startsWith("Applied live") || line.startsWith("Needs a restart");
+            source.sendSystemMessage(Component.literal(line).withStyle(bad ? ChatFormatting.RED : head ? ChatFormatting.AQUA : ChatFormatting.GRAY));
+        }
+        return report.errors().isEmpty() && report.failedKeys().isEmpty() ? 1 : 0;
+    }
+
+    /** {@code /cccloud config show [key]}: the values of both files, read-only; secrets only as set / not set. */
+    private static int configShow(CommandContext<CommandSourceStack> c, @org.jspecify.annotations.Nullable String key) {
+        var lines = ai.ezfox.cccloud.config.ConfigText.show(ai.ezfox.cccloud.config.ConfigCatalog.entries(), key);
+        for (var line : lines) {
+            c.getSource().sendSystemMessage(Component.literal(line).withStyle(line.startsWith("==") ? ChatFormatting.AQUA : ChatFormatting.GRAY));
+        }
+        return lines.size();
+    }
+
     private static int mapStats(CommandContext<CommandSourceStack> c, boolean reset) {
         int tick = c.getSource().getServer().getTickCount();
         for (var line : ai.ezfox.cccloud.map.MapStats.report(tick)) c.getSource().sendSystemMessage(Component.literal(line));

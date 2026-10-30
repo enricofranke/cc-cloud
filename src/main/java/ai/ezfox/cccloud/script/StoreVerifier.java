@@ -87,7 +87,9 @@ public final class StoreVerifier {
         var key = publicKey(publicKeyBase64);
         if (key == null) return new Result("store_not_configured");
         JsonObject index;
-        var cached = cache.get(storeUrl);
+        // keyed by URL and public key: an index verified with an old key (rotated by a config reload) is never reused
+        String cacheKey = storeUrl + "\n" + publicKeyBase64;
+        var cached = cache.get(cacheKey);
         if (cached != null && clock.getAsLong() - cached.at() < CACHE_MS) {
             index = cached.index();
         } else {
@@ -105,7 +107,7 @@ public final class StoreVerifier {
             } catch (RuntimeException e) {
                 return new Result("store_bad_signature");
             }
-            cache.put(storeUrl, new Cached(index, clock.getAsLong()));
+            cache.put(cacheKey, new Cached(index, clock.getAsLong()));
         }
         return checkFile(index, id, version, path, sha256Hex);
     }

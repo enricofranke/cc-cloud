@@ -39,7 +39,9 @@ public final class XrayGuard {
         return switch (CloudConfig.get(CloudConfig.MAP_SLICES)) {
             case "on" -> true;
             case "off" -> false;
-            default -> server.isSingleplayer() || !CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET);
+            // the running dashboard's rule counts too: after a reload that could not be applied, it may still allow the
+            // internet while the file says LAN only, and slices must stay off then
+            default -> server.isSingleplayer() || !(CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET) || ai.ezfox.cccloud.web.CloudWebServer.allowsInternet());
         };
     }
 

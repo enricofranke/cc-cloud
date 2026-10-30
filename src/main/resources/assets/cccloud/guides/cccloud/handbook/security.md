@@ -19,7 +19,7 @@ Out of the box only devices in the server's local network (and the host itself) 
 webAllowInternet = false   # default: only LAN addresses may connect
 ```
 
-The config file is `<world>/serverconfig/cccloud-server.toml`; changes to `[web]` need a server restart.
+The config file is `<world>/serverconfig/cccloud-server.toml`; changes apply without a restart (see [below](security.md)).
 
 ## Approvals and devices
 
@@ -125,6 +125,28 @@ CC: Cloud is built for big bases: hundreds of machines on one mainframe, many ma
 - **Slow browsers:** a browser that falls more than 4 MB or 10 seconds behind is disconnected and reconnects with a fresh snapshot; nothing piles up on the server.
 - **Advanced Cloud Sensors:** each looks at its zone twice a second with one bounded entity query, spread over the ticks; `advancedSensorScansPerTick` (default 32) caps the scans per tick on the whole server, and a disarmed sensor without redstone output does not scan at all.
 - **Measuring:** `/neoforge tps` or spark show the server's tick time. CC: Cloud's own cost for a 500-device mainframe with 10 browsers is about 0.5–1 ms per tick (developers: `./gradlew runGameTestServer -PscaleTest` measures it).
+
+## Changing settings without a restart
+
+Every setting in `cccloud-server.toml` and `cccloud-integrations-server.toml` applies while the server runs. Edit the file and save it: NeoForge notices the change (within a few seconds) and CC: Cloud applies it. Or run, as an op (permission `cccloud.command.reload`):
+
+```
+/cccloud config reload     # read both files again, apply, list what changed
+/cccloud config show       # all values (secrets only as "set")
+/cccloud config show webPort
+```
+
+`config reload` prints which values changed, what was applied live and what would need a restart (the last line of each setting's comment in the file says which; at the moment every setting applies live). It also picks up renewed TLS certificate files at the same paths and retries a dashboard that could not start. The same report goes to the server log.
+
+What happens to the dashboard:
+
+- **`[web]` (port, address, TLS, proxies, internet access, allowed hosts):** the web server restarts on its own, without the game. A new port or address is opened **before** the old one closes; if it cannot be opened (port in use, no permission), nothing changes, the old one keeps running and the log and `config reload` say why. Unreadable TLS files keep the old settings too – a reload never falls back to plain HTTP. Open dashboards reconnect by themselves; after a port, address or TLS change open the new address (the mainframe screen and `/cccloud status` show it).
+- **Internet access:** switching `webAllowInternet` on behaves exactly like a server start with it (same warnings in the log, e.g. for plain HTTP); switching it off closes every connection at once, and only LAN browsers get back in.
+- **Feature switches** (API, push, rules, scenes, terminal, voxels, production statistics, Script Store): apply to the next action; open dashboards update their menus.
+- **Limits** (API rate limits, Cloud Switch changes per second, upgrade base limits, history memory, buffers): apply at once. A lowered limit counts what was already used; a raised one gives nothing back. Browsers already open over a lowered browser limit stay connected (like after removing a Bandwidth upgrade).
+- **Ranges and power:** every network is recomputed within a second.
+
+A file with a syntax error is replaced by NeoForge with the defaults (it keeps a backup next to it) – the defaults are LAN only, so nothing opens up by accident.
 
 ## What the server logs
 

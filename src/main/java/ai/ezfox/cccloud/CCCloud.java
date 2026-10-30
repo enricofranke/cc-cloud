@@ -56,8 +56,8 @@ public class CCCloud {
         // Live recipes for the dashboard docs (GET /api/recipes), rebuilt after /reload.
         ai.ezfox.cccloud.recipes.RecipeCatalog.init();
         ai.ezfox.cccloud.voxel.BlockTextureService.init(modEventBus);
-        // Config changes (ranges, power) change the topology.
-        modEventBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> ai.ezfox.cccloud.network.NetworkService.markDirty());
+        // Config changes apply while the server runs (file watcher or /cccloud config reload): docs/SPEC.md "Live config".
+        ai.ezfox.cccloud.config.ConfigReload.init(modEventBus);
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
         if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);

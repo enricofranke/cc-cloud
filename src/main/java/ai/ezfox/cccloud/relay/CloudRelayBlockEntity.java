@@ -122,6 +122,8 @@ public class CloudRelayBlockEntity extends BlockEntity {
     public void serverTick(ServerLevel level) {
         var type = type();
         if (energy.capacity() != type.buffer()) energy.setCapacity(type.buffer());
+        int maxInput = Math.max(1, type.buffer() / 50);
+        if (energy.maxPerTick() != maxInput) energy.setMaxPerTick(maxInput);
         boolean before = hasPower;
         hasPower = power.tick(energy.energy(), type.usage(), true, energy::consume);
         energy.startTick();

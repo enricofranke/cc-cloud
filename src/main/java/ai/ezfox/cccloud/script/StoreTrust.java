@@ -20,6 +20,11 @@ public final class StoreTrust {
     private StoreTrust() {
     }
 
+    /** Config reload of {@code [store]}: verified indexes are fetched and checked again. */
+    public static void clearCache() {
+        VERIFIER.clearCache();
+    }
+
     /**
      * Null if the upload may be recorded as store file {@code store=<id>@<version>} ({@code storeFile} = the file's path
      * in the store, default the install path), else an error code.
