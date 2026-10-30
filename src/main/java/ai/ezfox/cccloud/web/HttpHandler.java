@@ -169,7 +169,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.UNAUTHORIZED, error("unauthorized"));
             return;
         }
-        var stats = route.id() == Router.Id.VOXELS ? ai.ezfox.cccloud.map.MapStats.VOXELS : route.id() == Router.Id.MAP_TILE ? ai.ezfox.cccloud.map.MapStats.TILES : null;
+        var stats = route.id() == Router.Id.VOXELS || route.id() == Router.Id.VOXEL_BATCH ? ai.ezfox.cccloud.map.MapStats.VOXELS
+            : route.id() == Router.Id.MAP_TILE ? ai.ezfox.cccloud.map.MapStats.TILES : null;
         if (stats != null) stats.requests.increment();
         if (instance.apiLimits.size() > 10_000) instance.apiLimits.clear();
         if (!instance.apiLimits.computeIfAbsent(ip, k -> new TokenBucket(API_RATE, API_RATE / 60.0)).tryAcquire()) {
@@ -187,6 +188,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         if (route.id() == Router.Id.VOXELS) {
             voxels(ctx, req, devices.getFirst());
+            return;
+        }
+        if (route.id() == Router.Id.VOXEL_BATCH) {
+            voxelBatch(ctx, req, devices.getFirst());
             return;
         }
         String path = new QueryStringDecoder(req.uri()).path();
@@ -242,11 +247,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         String ifNoneMatch = req.headers().get(HttpHeaderNames.IF_NONE_MATCH);
         req.retain();
         CompletableFuture.supplyAsync(() -> {
-                long t0 = System.nanoTime();
+                var t0 = ai.ezfox.cccloud.map.MapStats.start();
                 try {
                     return instance.bridge.mapTile(device, mainframeId, dim, slice, y, tx, tz);
                 } finally {
-                    stats.mainNanos.add(System.nanoTime() - t0);
+                    stats.main(t0);
                 }
             }, instance.bridge.serverExecutor())
             .thenCompose(f -> f)
@@ -280,8 +285,120 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             }));
     }
 
-    /** Voxel sections per device per second. */
-    static final int VOXEL_RATE = 40;
+    /**
+     * Voxel sections per device: a budget of {@link #VOXEL_BUDGET} sections, refilled at {@link #VOXEL_RATE} per second.
+     * It counts sections, not requests (a batch of 64 costs 64), so loading a whole base at once never hits 429 while
+     * the server's background work stays bounded.
+     */
+    static final int VOXEL_BUDGET = 2048;
+    static final int VOXEL_RATE = 256;
+
+    private TokenBucket voxelBucket(AuthStore.Device device) {
+        if (instance.voxelLimits.size() > 10_000) instance.voxelLimits.clear();
+        return instance.voxelLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(VOXEL_BUDGET, VOXEL_RATE));
+    }
+
+    private void voxelRateLimited(ChannelHandlerContext ctx, FullHttpRequest req, TokenBucket bucket, int sections) {
+        ai.ezfox.cccloud.map.MapStats.VOXELS.rateLimited.increment();
+        var body = error("rate_limited");
+        body.addProperty("retryAfter", Math.max(1, (int) Math.ceil(bucket.secondsUntil(sections))));
+        sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, body);
+    }
+
+    /** Parsed body of a voxel batch: sections {cx, cy, cz} and the hash the client has for each (or null). */
+    record VoxelBatchRequest(List<int[]> sections, List<@Nullable String> have) {
+    }
+
+    private static final Pattern HASH = Pattern.compile("[0-9a-f]{16}");
+
+    /**
+     * Strict parser of {@code {"sections":[[cx,cy,cz],[cx,cy,cz,"<16 hex>"],…]}} (1–64 entries, no other fields);
+     * null if invalid.
+     */
+    static @Nullable VoxelBatchRequest parseVoxelBatch(String body) {
+        try {
+            var root = com.google.gson.JsonParser.parseString(body);
+            if (!root.isJsonObject() || root.getAsJsonObject().size() != 1 || !(root.getAsJsonObject().get("sections") instanceof JsonArray list)) return null;
+            if (list.isEmpty() || list.size() > ai.ezfox.cccloud.voxel.VoxelBatch.MAX_SECTIONS) return null;
+            var sections = new ArrayList<int[]>(list.size());
+            var have = new ArrayList<@Nullable String>(list.size());
+            var seen = new java.util.HashSet<String>();
+            for (var el : list) {
+                if (!(el instanceof JsonArray a) || (a.size() != 3 && a.size() != 4)) return null;
+                int[] c = new int[3];
+                for (int i = 0; i < 3; i++) {
+                    if (!(a.get(i) instanceof com.google.gson.JsonPrimitive p) || !p.isNumber()) return null;
+                    double v = p.getAsDouble();
+                    long bound = i == 1 ? 256 : 2_000_000;
+                    if (v != Math.rint(v) || Math.abs(v) > bound) return null;
+                    c[i] = (int) v;
+                }
+                String hash = null;
+                if (a.size() == 4) {
+                    if (!(a.get(3) instanceof com.google.gson.JsonPrimitive p) || !p.isString() || !HASH.matcher(p.getAsString()).matches()) return null;
+                    hash = p.getAsString();
+                }
+                if (!seen.add(c[0] + "," + c[1] + "," + c[2])) return null;
+                sections.add(c);
+                have.add(hash);
+            }
+            return new VoxelBatchRequest(sections, have);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** {@code POST /api/mainframes/<mf>/voxels/<dim>}: many sections in one gzip-compressed binary batch. */
+    private void voxelBatch(ChannelHandlerContext ctx, FullHttpRequest req, AuthStore.Device device) {
+        String[] parts = new QueryStringDecoder(req.uri()).path().split("/");
+        var mainframeId = ClientMessages.parseUuid(parts[3]);
+        String dim = parts[5];
+        var batch = parseVoxelBatch(req.content().toString(StandardCharsets.UTF_8));
+        if (mainframeId == null || batch == null) {
+            sendJson(ctx, req, HttpResponseStatus.BAD_REQUEST, error("invalid"));
+            return;
+        }
+        var stats = ai.ezfox.cccloud.map.MapStats.VOXELS;
+        int n = batch.sections().size();
+        stats.items.add(n);
+        var bucket = voxelBucket(device);
+        if (!bucket.tryAcquire(n)) {
+            voxelRateLimited(ctx, req, bucket, n);
+            return;
+        }
+        String accept = req.headers().get(HttpHeaderNames.ACCEPT_ENCODING);
+        boolean gzip = accept != null && accept.toLowerCase(java.util.Locale.ROOT).contains("gzip");
+        req.retain();
+        CompletableFuture.supplyAsync(() -> {
+                var t0 = ai.ezfox.cccloud.map.MapStats.start();
+                try {
+                    return instance.bridge.voxelBatch(device, mainframeId, dim, batch.sections(), batch.have(), gzip);
+                } finally {
+                    stats.main(t0);
+                }
+            }, instance.bridge.serverExecutor())
+            .thenCompose(f -> f)
+            .orTimeout(15, TimeUnit.SECONDS)
+            .whenComplete((result, err) -> ctx.executor().execute(() -> {
+                try {
+                    if (err != null || result == null) {
+                        if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) CloudLog.LOGGER.warn("[cccloud] Voxel batch failed", err);
+                        sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    } else if (result.error() != null || result.body() == null) {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(result.status()), error(result.error() == null ? "unavailable" : result.error()));
+                    } else {
+                        var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(result.body()));
+                        stats.bytes.add(result.body().length);
+                        response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/octet-stream");
+                        if (result.gzip()) response.headers().set(HttpHeaderNames.CONTENT_ENCODING, HttpHeaderValues.GZIP);
+                        response.headers().set(HttpHeaderNames.CACHE_CONTROL, "no-store");
+                        write(ctx, req, response);
+                    }
+                } finally {
+                    req.release();
+                }
+            }));
+    }
 
     /** {@code /api/voxel-atlas/<rev>.png}: the current atlas; immutable when the revision matches, else no-cache. */
     private void voxelAtlas(ChannelHandlerContext ctx, FullHttpRequest req, String ip, String path) {
@@ -314,19 +431,18 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         var stats = ai.ezfox.cccloud.map.MapStats.VOXELS;
         stats.items.increment();
-        if (instance.voxelLimits.size() > 10_000) instance.voxelLimits.clear();
-        if (!instance.voxelLimits.computeIfAbsent(device.tokenHash(), k -> new TokenBucket(VOXEL_RATE, VOXEL_RATE)).tryAcquire()) {
-            stats.rateLimited.increment();
-            sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+        var bucket = voxelBucket(device);
+        if (!bucket.tryAcquire(1)) {
+            voxelRateLimited(ctx, req, bucket, 1);
             return;
         }
         req.retain();
         CompletableFuture.supplyAsync(() -> {
-                long t0 = System.nanoTime();
+                var t0 = ai.ezfox.cccloud.map.MapStats.start();
                 try {
                     return instance.bridge.voxels(device, mainframeId, dim, cx, cy, cz);
                 } finally {
-                    stats.mainNanos.add(System.nanoTime() - t0);
+                    stats.main(t0);
                 }
             }, instance.bridge.serverExecutor())
             .thenCompose(f -> f)
@@ -484,7 +600,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, APIKEYS_GET, APIKEYS_POST,
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, APIKEYS_GET, APIKEYS_POST,
                  API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through their authentication
             case API_OPENAPI -> ApiHandler.openApi(this, instance, ctx, req);

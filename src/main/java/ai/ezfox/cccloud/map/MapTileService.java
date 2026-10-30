@@ -158,8 +158,8 @@ public final class MapTileService {
     // ---- sampling (server thread, budgeted) --------------------------------------------------------------------------
 
     private static void tick(MinecraftServer server) {
-        long start = System.nanoTime();
-        if (sample(server, start)) MapStats.TILES.mainNanos.add(System.nanoTime() - start);
+        var start = MapStats.start();
+        if (sample(server, start[0])) MapStats.TILES.main(start);
     }
 
     /** Samples queued tiles within the tick budget; true if there was work. */
@@ -284,7 +284,7 @@ public final class MapTileService {
             encoder = executor;
         }
         executor.execute(() -> {
-            long t0 = System.nanoTime();
+            var t0 = MapStats.start();
             try {
                 var samples = job.samples;
                 for (int x = 0; x < MapTileRenderer.SIZE; x++) if (job.northRow[x] == Integer.MIN_VALUE) job.northRow[x] = samples.height[x];
@@ -299,7 +299,7 @@ public final class MapTileService {
                 if (Boolean.getBoolean("cccloud.gametest")) SAMPLES_FOR_TEST.put(job.key, samples);
                 if (png != null) save(server, job.key, png);
                 if (png == null) MapStats.TILES.empty.increment();
-                MapStats.TILES.workerNanos.add(System.nanoTime() - t0);
+                MapStats.TILES.worker(t0);
                 finish(server, job, new Tile(png, entry.etag()));
             } catch (RuntimeException e) {
                 CCCloud.LOGGER.warn("[cccloud] Map tile {} failed", job.key, e);

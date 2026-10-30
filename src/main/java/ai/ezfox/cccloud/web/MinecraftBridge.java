@@ -388,6 +388,64 @@ public final class MinecraftBridge implements GameBridge {
         return voxels(server, access(device, mainframeId), device.player(), mainframeId, dim, cx, cy, cz);
     }
 
+    @Override
+    public CompletableFuture<GameBridge.VoxelBatchResult> voxelBatch(AuthStore.Device device, UUID mainframeId, String dim, java.util.List<int[]> sections,
+                                                                      java.util.List<@org.jspecify.annotations.Nullable String> have, boolean gzip) {
+        return voxelBatch(server, access(device, mainframeId), device.player(), mainframeId, dim, sections, have, gzip);
+    }
+
+    /**
+     * The voxel batch endpoint after authentication (public for the GameTests): the same checks as {@link #voxels} for
+     * every section, then one binary batch (docs/SPEC.md "Voxel view – batch API"). Server thread: checks and copying
+     * the block states; encoding, the batch and gzip run in the background.
+     */
+    public static CompletableFuture<GameBridge.VoxelBatchResult> voxelBatch(MinecraftServer server, AccessResolver.Resolution access, UUID player, UUID mainframeId,
+                                                                            String dim, java.util.List<int[]> sections,
+                                                                            java.util.List<@org.jspecify.annotations.Nullable String> have, boolean gzip) {
+        if (!ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.VOXEL_VIEW)) return CompletableFuture.completedFuture(new GameBridge.VoxelBatchResult(404, null, false, "disabled"));
+        if (access.role() == Role.NONE) return CompletableFuture.completedFuture(new GameBridge.VoxelBatchResult(403, null, false, "no_access"));
+        if (AccessGate.check(access.role(), access.perms(), ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) != null) {
+            return CompletableFuture.completedFuture(new GameBridge.VoxelBatchResult(403, null, false, "not_allowed"));
+        }
+        var level = ai.ezfox.cccloud.map.MapTileService.level(server, dim);
+        if (level == null) return CompletableFuture.completedFuture(new GameBridge.VoxelBatchResult(404, null, false, "unknown_dimension"));
+        var status = new ai.ezfox.cccloud.voxel.VoxelBatch.Status[sections.size()];
+        var build = new java.util.ArrayList<int[]>();
+        var claims = new java.util.HashMap<Long, Boolean>();
+        for (int i = 0; i < sections.size(); i++) {
+            int[] s = sections.get(i);
+            if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, s[0], s[1], s[2])) {
+                status[i] = ai.ezfox.cccloud.voxel.VoxelBatch.Status.OUT_OF_RANGE;
+            } else if (claims.computeIfAbsent(net.minecraft.world.level.ChunkPos.pack(s[0], s[2]),
+                k -> ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, s[0], s[2], player))) {
+                status[i] = ai.ezfox.cccloud.voxel.VoxelBatch.Status.CLAIMED;
+            } else {
+                build.add(s);
+            }
+        }
+        return ai.ezfox.cccloud.voxel.VoxelService.encode(level, build, mainframeId).thenApplyAsync(encoded -> {
+            var t0 = ai.ezfox.cccloud.map.MapStats.start();
+            var out = new java.util.ArrayList<ai.ezfox.cccloud.voxel.VoxelBatch.Section>(sections.size());
+            int next = 0;
+            for (int i = 0; i < sections.size(); i++) {
+                int[] s = sections.get(i);
+                ai.ezfox.cccloud.voxel.VoxelBatch.Status st = status[i];
+                ai.ezfox.cccloud.voxel.VoxelSection.Encoded data = null;
+                if (st == null) {
+                    data = encoded.get(next++);
+                    if (data == null) st = ai.ezfox.cccloud.voxel.VoxelBatch.Status.EMPTY;
+                    else st = data.hashHex().equals(have.get(i)) ? ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME : ai.ezfox.cccloud.voxel.VoxelBatch.Status.OK;
+                }
+                if (st == ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME) ai.ezfox.cccloud.map.MapStats.VOXELS.hits.increment();
+                out.add(new ai.ezfox.cccloud.voxel.VoxelBatch.Section(s[0], s[1], s[2], st, data));
+            }
+            byte[] body = ai.ezfox.cccloud.voxel.VoxelBatch.write(dim, out, ai.ezfox.cccloud.voxel.BlockTextureService::decorate);
+            if (gzip) body = ai.ezfox.cccloud.voxel.VoxelBatch.gzip(body);
+            ai.ezfox.cccloud.map.MapStats.VOXELS.worker(t0);
+            return new GameBridge.VoxelBatchResult(200, body, gzip, null);
+        }, ai.ezfox.cccloud.voxel.VoxelService.executor());
+    }
+
     /** The voxel endpoint after authentication (public for the GameTests). */
     public static CompletableFuture<GameBridge.VoxelResult> voxels(MinecraftServer server, AccessResolver.Resolution access, UUID player, UUID mainframeId,
                                                                    String dim, int cx, int cy, int cz) {

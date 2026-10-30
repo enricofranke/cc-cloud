@@ -229,6 +229,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("section_orphan_silent", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::silentlyRemovedUplinkDropsSection);
         TEST_FUNCTIONS.register("map_tiles", () -> ai.ezfox.cccloud.gametest.MapTileTests::tiles);
         TEST_FUNCTIONS.register("voxel_exposed", () -> ai.ezfox.cccloud.gametest.VoxelTests::exposedOnly);
+        TEST_FUNCTIONS.register("voxel_dirty", () -> ai.ezfox.cccloud.gametest.VoxelTests::dirtyInvalidation);
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
         TEST_FUNCTIONS.register("network_routing", () -> ai.ezfox.cccloud.gametest.NetworkTests::routing);
         TEST_FUNCTIONS.register("network_ender", () -> ai.ezfox.cccloud.gametest.NetworkTests::enderAcrossDimensions);
