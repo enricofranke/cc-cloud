@@ -29,7 +29,7 @@ describe("namespaceHue", () => {
 });
 
 describe("mock /api/icon", () => {
-  it("serves sample PNGs publicly and 404s the rest", async () => {
+  it("serves sample (or exported) PNGs publicly and 404s the rest", async () => {
     mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, log: () => {} });
     const base = `http://127.0.0.1:${mock.port}`;
     const ok = await fetch(`${base}/api/icon/minecraft/diamond.png`);
@@ -40,7 +40,7 @@ describe("mock /api/icon", () => {
     expect([...buf.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(buf.readUInt32BE(16)).toBe(32); // IHDR width
     expect(buf.readUInt32BE(20)).toBe(32); // IHDR height
-    expect((await fetch(`${base}/api/icon/minecraft/dirt.png`)).status).toBe(404);
+    expect((await fetch(`${base}/api/icon/minecraft/no_such_item.png`)).status).toBe(404);
     expect((await fetch(`${base}/api/icon/minecraft/%2e%2e/x.png`)).status).toBe(404);
   });
 });

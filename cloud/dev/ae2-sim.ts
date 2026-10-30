@@ -93,7 +93,7 @@ export function buildItems(): Map<string, Item> {
     ["ae2:logic_processor", "Logic Processor", 96, true],
     ["ae2:calculation_processor", "Calculation Processor", 64, true],
     ["ae2:engineering_processor", "Engineering Processor", 51, true],
-    ["ae2:fluix_cable", "Fluix Glass Cable", 812, true],
+    ["ae2:fluix_glass_cable", "Fluix Glass Cable", 812, true],
     ["ae2:cell_component_64k", "64k ME Storage Component", 4, true],
     ["ae2:singularity", "Singularity", 0, true],
     ["mekanism:basic_control_circuit", "Basic Control Circuit", 140, true],
@@ -165,7 +165,7 @@ export class FakeAe2 {
       { name: "minecraft:iron_ingot", min: 0, below: false },
       { name: "ae2:fluix_crystal", min: 2_000, below: true },
       { name: "minecraft:diamond", min: 1_000, below: false },
-      { name: "mekanism:basic_control_circuit", min: 256, below: true },
+      { name: "minecraft:ender_pearl", min: 512, below: true },
       { name: "minecraft:redstone", min: 10_000, below: false },
     );
     // keep iron just above its minimum so the sim crosses it soon

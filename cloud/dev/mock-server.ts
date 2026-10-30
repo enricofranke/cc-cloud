@@ -12,7 +12,7 @@ import { CODE_ALPHABET, SECURITY_HEADERS, clientMessage, normalizeCode, pairRequ
 import { serveStatic } from "./static.ts";
 import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
-import { SAMPLE_ICONS } from "./icons.ts";
+import { mockIcon } from "./icons.ts";
 import { COMPAT_CARDS } from "./compat-cards.ts";
 import { FakeTerminal } from "./terminal-sim.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
@@ -1711,10 +1711,10 @@ export async function createMockServer(opts: MockOptions = {}) {
       if (approveDelayMs >= 0) later(approveDelayMs, () => decide(pairingId, !/deny/i.test(parsed.data.name)));
       return json(res, 202, { status: "pending", pairingId, expiresIn: Math.round(pairTtlMs / 1000) });
     }
-    // public, like the mod: item icons (a few samples, 404 for everything else)
+    // public, like the mod: item icons (exported ones or a few samples, 404 for everything else)
     const im = /^\/api\/icon\/([a-z0-9_.-]+)\/((?:[a-z0-9_.-]+\/)*[a-z0-9_.-]+)\.png$/.exec(p);
     if (p.startsWith("/api/icon/") && req.method === "GET") {
-      const png = im && !im[2].split("/").some((s) => s === "." || s === "..") ? SAMPLE_ICONS[`${im[1]}:${im[2]}`] : undefined;
+      const png = im && !im[2].split("/").some((s) => s === "." || s === "..") ? mockIcon(`${im[1]}:${im[2]}`) : undefined;
       if (!png) return json(res, 404, { error: "unknown_item" });
       res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "image/png", "content-length": png.length, "cache-control": "public, max-age=86400" });
       return void res.end(png);
