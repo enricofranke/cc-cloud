@@ -6753,6 +6753,33 @@ body.rz-nwse * {
 .card-cached-note a {
   color: var(--cyan);
 }
+/* claim guard: the machine is in another team's claim (Card.tsx) */
+.card-blocked {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--red) 8%, var(--panel));
+}
+.card-blocked p {
+  margin: 0;
+}
+.card-blocked-title {
+  color: var(--red-text, var(--red));
+  font-weight: 600;
+  font-size: 14px;
+}
+.card-blocked-hint {
+  margin-top: 4px !important;
+  color: var(--muted);
+  font-size: 13px;
+}
+.card-blocked-hint a {
+  color: var(--cyan);
+}
+.w-blocked .kv-val {
+  color: var(--red-text, var(--red));
+  white-space: normal;
+  text-align: right;
+}
 
 /* readable minimums: titles shrink spacing, then wrap to two lines */
 .pgrid > .card {

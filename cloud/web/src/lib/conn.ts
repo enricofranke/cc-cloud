@@ -8,7 +8,7 @@ import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch, computed } from "@preact/signals";
-import { WIDGET_TYPES, type CardSettingsInfo, type ClaimsOverlay, type DimInfo, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
+import { WIDGET_TYPES, type Blocked, type CardSettingsInfo, type ClaimsOverlay, type DimInfo, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
 
@@ -172,6 +172,7 @@ export const REJECT_TEXT: Record<string, string> = {
   zone_claimed: "The zone may not reach into another team's claim.",
   zone_protected: "The zone may not reach into spawn protection or beyond the world border.",
   not_allowed: "Your role on this mainframe does not allow this.",
+  claim_blocked: "This machine is in another team's claim, so it cannot be read or controlled from here.",
 };
 
 export function rejectText(r: ActionOutcome) {
@@ -1403,7 +1404,26 @@ export function normalizeCardSettings(raw: any): CardSettingsInfo | undefined {
   };
 }
 
-function normalizeUplink(u: any): Uplink | null {
+/** Claim guard: `{reason:"claim", team?}` (the team only reaches viewers with view.positions). */
+export function normalizeBlocked(raw: any): Blocked | undefined {
+  if (!raw || typeof raw !== "object" || raw.reason !== "claim") return undefined;
+  return { reason: "claim", ...(typeof raw.team === "string" && raw.team.trim() ? { team: raw.team.slice(0, 64) } : {}) };
+}
+
+function normalizeBlockedWidgets(raw: any): Record<string, Blocked> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const out: Record<string, Blocked> = {};
+  let n = 0;
+  for (const [id, value] of Object.entries(raw)) {
+    const b = normalizeBlocked(value);
+    if (!b || id.length > 64) continue;
+    out[id] = b;
+    if (++n >= 512) break;
+  }
+  return n > 0 ? out : undefined;
+}
+
+export function normalizeUplink(u: any): Uplink | null {
   if (!u || typeof u.uplinkId !== "string") return null;
   const widgets = Array.isArray(u.widgets) ? u.widgets : [];
   return {
@@ -1414,6 +1434,8 @@ function normalizeUplink(u: any): Uplink | null {
     ...(typeof u.template === "string" && /^[a-z0-9_]{1,32}$/.test(u.template) ? { template: u.template } : {}),
     ...(u.loaded === false ? { loaded: false, online: false } : {}),
     ...(u.loaded === false && typeof u.lastSeen === "number" && Number.isFinite(u.lastSeen) ? { lastSeen: u.lastSeen } : {}),
+    ...(normalizeBlocked(u.blocked) ? { blocked: normalizeBlocked(u.blocked) } : {}),
+    ...(normalizeBlockedWidgets(u.blockedWidgets) ? { blockedWidgets: normalizeBlockedWidgets(u.blockedWidgets) } : {}),
     widgets: widgets
       .filter((w: any) => w && typeof w.id === "string" && WIDGET_TYPES.includes(w.type))
       .map((w: any) => {
