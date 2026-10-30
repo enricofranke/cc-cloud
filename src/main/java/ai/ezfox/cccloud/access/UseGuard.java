@@ -47,8 +47,12 @@ public final class UseGuard {
         player.sendSystemMessage(Component.translatable("cccloud.access.no_use").withStyle(ChatFormatting.RED));
     }
 
-    /** Server side check before a mainframe is placed: {@code cccloud.use} and the per-player mainframe limit. */
-    public static boolean mayPlaceMainframe(ServerPlayer player) {
+    /**
+     * Server side check before a mainframe is placed: {@code cccloud.use} and the per-player mainframe limit. The item of
+     * a removed mainframe ({@code identity}) restores that mainframe for its owner, so the placer's limit does not apply;
+     * it is refused while that mainframe still stands somewhere.
+     */
+    public static boolean mayPlaceMainframe(ServerPlayer player, ai.ezfox.cccloud.item.@org.jspecify.annotations.Nullable MainframeIdentity identity) {
         var server = player.level().getServer();
         if (server == null) return true;
         var permissions = CloudPermissions.of(server);
@@ -56,9 +60,18 @@ public final class UseGuard {
             deny(player);
             return false;
         }
+        if (identity != null) {
+            var standing = ai.ezfox.cccloud.network.CloudNetwork.mainframe(identity.id());
+            if (standing != null) {
+                player.sendSystemMessage(Component.translatable("cccloud.mainframe.already_placed", standing.getDisplayName()).withStyle(ChatFormatting.RED));
+                return false;
+            }
+            if (ai.ezfox.cccloud.block.MainframeRetention.get(server).entry(identity.id()) != null) return true;
+        }
         if (permissions.has(player.getUUID(), ServerPermissions.Node.BYPASS_LIMITS)) return true;
         int limit = permissions.mainframeLimit(player.getUUID());
-        int owned = WebAuthData.access(server).ownedBy(player.getUUID());
+        // Removed mainframes keep their data for a while but do not count against the limit.
+        int owned = WebAuthData.access(server).ownedBy(player.getUUID()) - ai.ezfox.cccloud.block.MainframeRetention.get(server).ownedBy(player.getUUID());
         if (owned >= limit) {
             player.sendSystemMessage(Component.translatable("cccloud.access.mainframe_limit", limit).withStyle(ChatFormatting.RED));
             return false;

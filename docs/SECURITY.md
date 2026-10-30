@@ -147,6 +147,12 @@ It is reviewed before every release.
   - Player names for the web Access API come only from online players and names the mod already knows. There are no Mojang profile lookups from web input.
   - PIN hashing (PBKDF2, 120k iterations) runs on its own bounded executor.
 
+### Removed mainframes: retention and ownership
+- Breaking a mainframe deletes nothing at once: devices, accounts, PIN, layout, rules, scenes, API keys and push targets are kept for `mainframeRetentionDays` (default 7) and then deleted; `/cccloud mainframe purge <id>` (owner or `cccloud.admin.manage`) deletes them earlier. While a mainframe is removed, its devices stay paired but cannot act (it is offline), and relinking its devices elsewhere still needs `network.link` on it.
+- Ownership is stored on the server. The dropped item only names the mainframe; whoever places it restores the original owner's mainframe and gets no rights from that. A second item of a mainframe that stands is refused.
+- `/cccloud mainframe recover`: owners get one item per removal, and only when the break dropped none; otherwise only server admins (`cccloud.admin.manage`) can, so the command cannot duplicate mainframes.
+- Misclick and grief guard (`mainframeBreakProtection`, default on): in survival only the owner, the mainframe's admins and server admins can break it; in creative it only breaks while sneaking.
+
 ### No code execution from the web
 - The browser only sends data that is validated against schemas. There is no eval, no scripting endpoint and no command passthrough.
 - The v0.5 terminal and editor (admin only) will reach only the CC computer's own Lua sandbox:

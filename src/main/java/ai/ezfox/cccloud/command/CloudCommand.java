@@ -27,7 +27,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 /**
- * {@code /cccloud status|devices|revoke|trust|untrust|role|pin|approve|deny|link|browsers}. Mainframe commands act on the
+ * {@code /cccloud status|devices|revoke|trust|untrust|role|pin|approve|deny|link|browsers|mainframe recover|purge}. Mainframe commands act on the
  * mainframe the player is looking at and need the admin role (AccessResolver: owner, roles, teams, admin nodes).
  */
 public final class CloudCommand {
@@ -39,6 +39,9 @@ public final class CloudCommand {
     private static final SimpleCommandExceptionType BAD_ROLE = new SimpleCommandExceptionType(Component.translatable("cccloud.command.bad_role"));
     private static final SimpleCommandExceptionType NO_USE = new SimpleCommandExceptionType(Component.translatable("cccloud.access.no_use"));
     private static final SimpleCommandExceptionType UNKNOWN_DEVICE = new SimpleCommandExceptionType(Component.translatable("cccloud.gui.notice.unknown_device"));
+    private static final SimpleCommandExceptionType REMOVED_UNKNOWN = new SimpleCommandExceptionType(Component.translatable("cccloud.command.removed.unknown"));
+    private static final SimpleCommandExceptionType REMOVED_DROPPED = new SimpleCommandExceptionType(Component.translatable("cccloud.command.removed.dropped"));
+    private static final SimpleCommandExceptionType REMOVED_ALREADY = new SimpleCommandExceptionType(Component.translatable("cccloud.command.removed.already"));
 
     private CloudCommand() {
     }
@@ -92,6 +95,12 @@ public final class CloudCommand {
                         .suggests((c, b) -> SharedSuggestionProvider.suggest(java.util.List.of("viewer", "operator", "admin", "none"), b))
                         .executes(CloudCommand::role))))
             .then(Commands.literal("link").executes(CloudCommand::link))
+            // Removed mainframes (docs/SPEC.md "Mainframe removal"): list, hand out the item again, delete the data now.
+            .then(Commands.literal("mainframe")
+                .then(Commands.literal("recover").executes(CloudCommand::listRemoved)
+                    .then(Commands.argument("id", StringArgumentType.word()).suggests(CloudCommand::suggestRemoved).executes(CloudCommand::recover)))
+                .then(Commands.literal("purge")
+                    .then(Commands.argument("id", StringArgumentType.word()).suggests(CloudCommand::suggestRemoved).executes(CloudCommand::purge))))
             .then(Commands.literal("pin")
                 .then(Commands.literal("set").then(Commands.argument("pin", StringArgumentType.word()).executes(CloudCommand::setPin)))
                 .then(Commands.literal("clear").executes(CloudCommand::clearPin)))
@@ -196,7 +205,7 @@ public final class CloudCommand {
         String[][] entries = {
             {"status", "/cccloud status"}, {"link", "/cccloud link"}, {"devices", "/cccloud devices"}, {"approve", "/cccloud approve"},
             {"deny", "/cccloud deny"}, {"role", "/cccloud role "}, {"trust", "/cccloud trust "}, {"pin", "/cccloud pin set "},
-            {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}};
+            {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}, {"recover", "/cccloud mainframe recover"}};
         for (var e : entries) {
             String command = e[1];
             source.sendSystemMessage(Component.literal(command.trim()).withStyle(style -> style.withColor(ChatFormatting.GOLD)
@@ -205,6 +214,94 @@ public final class CloudCommand {
                 .append(Component.literal(" – ").withStyle(ChatFormatting.DARK_GRAY))
                 .append(Component.translatable("cccloud.help." + e[0]).withStyle(ChatFormatting.GRAY)));
         }
+        return 1;
+    }
+
+    // ---- removed mainframes -------------------------------------------------------------------------------------------
+
+    /** Server admins ({@code cccloud.admin.manage}, op level 2 by default) and the console see and recover every removed mainframe. */
+    private static boolean serverAdmin(CommandSourceStack src) {
+        return hasNode(src, ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_MANAGE);
+    }
+
+    private static java.util.List<java.util.Map.Entry<java.util.UUID, ai.ezfox.cccloud.block.MainframeRetention.Entry>> removedFor(CommandSourceStack src) {
+        boolean admin = serverAdmin(src);
+        var player = src.getPlayer();
+        var list = new java.util.ArrayList<java.util.Map.Entry<java.util.UUID, ai.ezfox.cccloud.block.MainframeRetention.Entry>>();
+        for (var e : ai.ezfox.cccloud.block.MainframeRetention.get(src.getServer()).entries().entrySet()) {
+            if (admin || (player != null && e.getValue().ownedBy(player.getUUID()))) list.add(e);
+        }
+        return list;
+    }
+
+    private static CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestRemoved(CommandContext<CommandSourceStack> c,
+                                                                                                com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+        return SharedSuggestionProvider.suggest(removedFor(c.getSource()).stream().map(e -> e.getKey().toString().substring(0, 8)), b);
+    }
+
+    /** A removed mainframe by its full id or the first 8 characters, among those the source may see. */
+    private static java.util.Map.Entry<java.util.UUID, ai.ezfox.cccloud.block.MainframeRetention.Entry> removedArg(CommandContext<CommandSourceStack> c)
+        throws CommandSyntaxException {
+        String id = StringArgumentType.getString(c, "id").toLowerCase(java.util.Locale.ROOT);
+        for (var e : removedFor(c.getSource())) if (e.getKey().toString().equals(id) || e.getKey().toString().startsWith(id) && id.length() >= 8) return e;
+        throw REMOVED_UNKNOWN.create();
+    }
+
+    /** {@code /cccloud mainframe recover}: the removed mainframes you own (all of them for server admins), click to recover. */
+    private static int listRemoved(CommandContext<CommandSourceStack> c) {
+        var list = removedFor(c.getSource());
+        if (list.isEmpty()) {
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.removed.none").withStyle(ChatFormatting.GRAY));
+            return 0;
+        }
+        var format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT);
+        for (var e : list) {
+            var entry = e.getValue();
+            String shortId = e.getKey().toString().substring(0, 8);
+            c.getSource().sendSystemMessage(Component.translatable("cccloud.command.removed.entry", shortId, ai.ezfox.cccloud.block.MainframeRetention.name(entry),
+                    entry.ownerName(), format.format(new Date(ai.ezfox.cccloud.block.MainframeRetention.purgeAt(entry)))).withStyle(ChatFormatting.GRAY)
+                .append(" ")
+                .append(Component.translatable("cccloud.command.removed.recover").withStyle(style -> style.withColor(ChatFormatting.GOLD)
+                    .withClickEvent(new net.minecraft.network.chat.ClickEvent.RunCommand("/cccloud mainframe recover " + shortId)))));
+        }
+        return list.size();
+    }
+
+    /**
+     * {@code /cccloud mainframe recover <id>}: gives a Cloud Mainframe item that restores the removed mainframe. Server
+     * admins always may; the owner only once per removal and only when the break dropped no item (creative, wrong tool),
+     * so recovering is never a way to get a second mainframe.
+     */
+    private static int recover(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var source = c.getSource();
+        ServerPlayer player = source.getPlayerOrException();
+        var e = removedArg(c);
+        var entry = e.getValue();
+        boolean admin = serverAdmin(source);
+        if (!admin) {
+            if (!entry.ownedBy(player.getUUID())) throw REMOVED_UNKNOWN.create();
+            if (entry.dropped()) throw REMOVED_DROPPED.create();
+            if (entry.recovered()) throw REMOVED_ALREADY.create();
+        }
+        if (ai.ezfox.cccloud.network.CloudNetwork.mainframe(e.getKey()) != null) throw REMOVED_UNKNOWN.create();
+        var stack = new net.minecraft.world.item.ItemStack(ai.ezfox.cccloud.ModRegistry.CLOUD_MAINFRAME_ITEM.get());
+        stack.set(ai.ezfox.cccloud.ModRegistry.MAINFRAME_IDENTITY.get(), new ai.ezfox.cccloud.item.MainframeIdentity(e.getKey(), entry.ownerName()));
+        if (!player.getInventory().add(stack)) player.drop(stack, false);
+        ai.ezfox.cccloud.block.MainframeRetention.get(source.getServer()).markRecovered(e.getKey());
+        CCCloud.LOGGER.info("[cccloud] {} recovered the item of removed mainframe {} ({}){}", player.getGameProfile().name(), e.getKey(), entry.ownerName(),
+            admin ? " as server admin" : "");
+        source.sendSystemMessage(Component.translatable("cccloud.command.removed.given", ai.ezfox.cccloud.block.MainframeRetention.name(entry))
+            .withStyle(ChatFormatting.GREEN));
+        return 1;
+    }
+
+    /** {@code /cccloud mainframe purge <id>}: deletes a removed mainframe's data now (its owner or a server admin). */
+    private static int purge(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var source = c.getSource();
+        var e = removedArg(c);
+        ai.ezfox.cccloud.block.MainframeRetention.purge(source.getServer(), e.getKey());
+        source.sendSystemMessage(Component.translatable("cccloud.command.removed.purged", ai.ezfox.cccloud.block.MainframeRetention.name(e.getValue()))
+            .withStyle(ChatFormatting.GRAY));
         return 1;
     }
 

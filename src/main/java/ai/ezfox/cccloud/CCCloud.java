@@ -23,6 +23,7 @@ public class CCCloud {
         modEventBus.addListener(CCCloud::registerCapabilities);
         CloudNetwork.init();
         CloudCommand.init();
+        ai.ezfox.cccloud.block.MainframeGuard.init();
         ai.ezfox.cccloud.access.Access.init();
         ai.ezfox.cccloud.rules.RuleService.init();
         ai.ezfox.cccloud.scene.SceneService.init();

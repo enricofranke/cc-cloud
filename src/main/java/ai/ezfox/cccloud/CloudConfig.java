@@ -39,6 +39,9 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue BASE_RULES;
     public static final ModConfigSpec.IntValue BASE_HISTORY_HOURS;
     public static final ModConfigSpec.BooleanValue CHUNK_ANCHOR;
+    // Mainframe removal: retention of a broken mainframe's data and the misclick guard
+    public static final ModConfigSpec.IntValue MAINFRAME_RETENTION_DAYS;
+    public static final ModConfigSpec.BooleanValue MAINFRAME_BREAK_PROTECTION;
     public static final ModConfigSpec.IntValue ANCHOR_BASE_FE;
     public static final ModConfigSpec.IntValue ANCHOR_PER_CHUNK_FE;
     public static final ModConfigSpec.IntValue MAINFRAME_PER_ADVANCED_UPLINK_FE;
@@ -100,6 +103,17 @@ public final class CloudConfig {
         ALLOW_CLOUD = b.comment("Master switch. When false, every mainframe on this server stays offline.")
             .translation("cccloud.configuration.allowCloud")
             .define("allowCloud", true);
+
+        b.push("mainframe");
+        MAINFRAME_RETENTION_DAYS = b.comment("Days the data of a broken mainframe (devices, accounts, PIN, layout, rules, scenes, API keys, history) is kept.",
+                "Placing its item again (or one from /cccloud mainframe recover) within that time restores everything. 0 = delete at once.")
+            .translation("cccloud.configuration.mainframeRetentionDays")
+            .defineInRange("mainframeRetentionDays", 7, 0, 365);
+        MAINFRAME_BREAK_PROTECTION = b.comment("Misclick guard: in creative a mainframe only breaks while sneaking; in survival only its owner, one of its",
+                "admins or a server admin (cccloud.admin.manage) can break it.")
+            .translation("cccloud.configuration.mainframeBreakProtection")
+            .define("mainframeBreakProtection", true);
+        b.pop();
 
         b.push("web");
         WEB_ENABLED = b.comment("Run the embedded dashboard web server (HTTP + WebSocket).")

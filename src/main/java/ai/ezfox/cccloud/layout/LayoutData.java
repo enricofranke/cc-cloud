@@ -99,6 +99,11 @@ public final class LayoutData extends SavedData {
         WebHub.INSTANCE.publishLayout(mainframeId, layout);
     }
 
+    /** Whether a mainframe has a stored layout (removal tests). */
+    public boolean has(UUID mainframeId) {
+        return layouts.containsKey(mainframeId);
+    }
+
     public void remove(UUID mainframeId) {
         if (layouts.remove(mainframeId) != null) setDirty();
     }

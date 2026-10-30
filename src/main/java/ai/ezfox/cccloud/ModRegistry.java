@@ -13,7 +13,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.DoubleHighBlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
@@ -74,8 +73,8 @@ public final class ModRegistry {
     }
 
     // Items
-    public static final DeferredItem<DoubleHighBlockItem> CLOUD_MAINFRAME_ITEM = ITEMS.registerItem("cloud_mainframe",
-        p -> new DoubleHighBlockItem(CLOUD_MAINFRAME.get(), p), p -> p.useBlockDescriptionPrefix().rarity(Rarity.UNCOMMON));
+    public static final DeferredItem<ai.ezfox.cccloud.item.CloudMainframeItem> CLOUD_MAINFRAME_ITEM = ITEMS.registerItem("cloud_mainframe",
+        p -> new ai.ezfox.cccloud.item.CloudMainframeItem(CLOUD_MAINFRAME.get(), p), p -> p.useBlockDescriptionPrefix().rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_UPLINK);
     public static final DeferredItem<?> ADVANCED_CLOUD_UPLINK_ITEM = ITEMS.registerSimpleBlockItem(ADVANCED_CLOUD_UPLINK, p -> p.rarity(Rarity.UNCOMMON));
     public static final DeferredItem<?> CLOUD_RELAY_ITEM = ITEMS.registerSimpleBlockItem(CLOUD_RELAY);
@@ -128,6 +127,10 @@ public final class ModRegistry {
     // Data components
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
         b -> b.persistent(MainframeLink.CODEC).networkSynchronized(MainframeLink.STREAM_CODEC));
+    /** A mainframe item dropped by a broken mainframe: placing it restores that mainframe (docs/SPEC.md "Mainframe removal"). */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ai.ezfox.cccloud.item.MainframeIdentity>> MAINFRAME_IDENTITY =
+        COMPONENTS.registerComponentType("mainframe_identity",
+            b -> b.persistent(ai.ezfox.cccloud.item.MainframeIdentity.CODEC).networkSynchronized(ai.ezfox.cccloud.item.MainframeIdentity.STREAM_CODEC));
 
 
     // Menus (in-game screens)
@@ -195,6 +198,10 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("upgrades_chunk_anchor", () -> ai.ezfox.cccloud.gametest.UpgradeTests::chunkAnchor);
         TEST_FUNCTIONS.register("wireless_redstone", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstone);
         TEST_FUNCTIONS.register("wireless_redstone_load", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstoneAfterLoad);
+        TEST_FUNCTIONS.register("mainframe_break_restore", () -> ai.ezfox.cccloud.gametest.MainframeRemovalTests::breakAndRestore);
+        TEST_FUNCTIONS.register("mainframe_break_guard", () -> ai.ezfox.cccloud.gametest.MainframeRemovalTests::breakGuard);
+        TEST_FUNCTIONS.register("mainframe_retention_purge", () -> ai.ezfox.cccloud.gametest.MainframeRemovalTests::retentionPurge);
+        TEST_FUNCTIONS.register("mainframe_recover_command", () -> ai.ezfox.cccloud.gametest.MainframeRemovalTests::recoverCommand);
         TEST_FUNCTIONS.register("scenes_rights_delays_pin", () -> ai.ezfox.cccloud.gametest.SceneTests::rightsDelaysPin);
         TEST_FUNCTIONS.register("schedules_clocks", () -> ai.ezfox.cccloud.gametest.ScheduleTests::clocks);
         TEST_FUNCTIONS.register("api_scopes_rights", () -> ai.ezfox.cccloud.gametest.ApiTests::scopesAndRights);

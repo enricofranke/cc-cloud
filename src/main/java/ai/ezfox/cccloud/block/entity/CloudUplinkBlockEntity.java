@@ -760,6 +760,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             var mainframe = CloudNetwork.mainframe(link.id());
             if (mainframe != null) {
                 mainframe.linkUplink(uplinkId, GlobalPos.of(level.dimension(), getBlockPos()));
+                var at = GlobalPos.of(mainframe.getLevel().dimension(), mainframe.getBlockPos());
+                if (!at.equals(link.pos())) {
+                    // The mainframe was restored from its item somewhere else: follow it (the link is by id).
+                    link = new MainframeLink(at, link.id());
+                    setChanged();
+                }
                 var route = ai.ezfox.cccloud.network.NetworkService.route(uplinkId);
                 if (route == null) {
                     newStatus = CloudStatus.CONNECTING; // network not computed yet

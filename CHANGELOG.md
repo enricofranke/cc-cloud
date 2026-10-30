@@ -26,6 +26,16 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - Docs (EN/DE): scenes, schedules, production statistics and a Public API page with curl, Home Assistant and a
   Discord bot example; handbook regenerated.
 
+### Mainframe removal is no longer final
+- A broken Cloud Mainframe drops its item with its identity (tooltip: id and owner). Placing it again – anywhere – brings
+  back the same mainframe with its devices, accounts, PIN, layout, rules, scenes and API keys, still owned by its
+  owner; uplinks and bridges reconnect. Upgrade cards still drop separately.
+- Nothing is deleted at once: the data is kept for `mainframeRetentionDays` (default 7), the dashboard shows the
+  mainframe as "Removed" with the deletion date. `/cccloud mainframe recover` gives owners their item back after a
+  creative break (server admins always); `/cccloud mainframe purge <id>` deletes it earlier.
+- Misclick guard (`mainframeBreakProtection`, default on): in creative the mainframe only breaks while sneaking; in
+  survival only its owner, its admins and server admins can break it.
+
 ### Fixes
 - Script Store: `door-controller` 1.0.1 no longer passes `icon` to `cloud.group()` (groups take `page` and `cols`; the
   card shows its first widget's icon), which the mod refused at start. A unit test now runs every store script on CC's

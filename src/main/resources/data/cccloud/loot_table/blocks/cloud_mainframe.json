@@ -10,6 +10,9 @@
           "conditions": [
             {"block": "cccloud:cloud_mainframe", "condition": "minecraft:block_state_property", "properties": {"half": "lower"}}
           ],
+          "functions": [
+            {"function": "minecraft:copy_components", "source": "block_entity", "include": ["cccloud:mainframe_identity"]}
+          ],
           "name": "cccloud:cloud_mainframe"
         }
       ],

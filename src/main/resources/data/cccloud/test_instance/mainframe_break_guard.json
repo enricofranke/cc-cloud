@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:ingame",
+  "function": "cccloud:mainframe_break_guard",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}
