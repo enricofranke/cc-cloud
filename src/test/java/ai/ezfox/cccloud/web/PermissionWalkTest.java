@@ -60,6 +60,7 @@ class PermissionWalkTest {
             Router.Id.SCRIPT_DELETE, Perm.SCRIPTS_DELETE, Router.Id.SCRIPT_RUN, Perm.SCRIPTS_RUN));
         expected.put(Router.Id.MAP_TILE, Perm.VIEW_POSITIONS);
         expected.put(Router.Id.VOXELS, Perm.VIEW_POSITIONS);
+        expected.put(Router.Id.VOXEL_BATCH, Perm.VIEW_POSITIONS);
         expected.put(Router.Id.PUSH_GET, Perm.PUSH_MANAGE);
         expected.put(Router.Id.SCRIPT_MOVE, Perm.SCRIPTS_UPLOAD);
         expected.put(Router.Id.HISTORY, Perm.VIEW);

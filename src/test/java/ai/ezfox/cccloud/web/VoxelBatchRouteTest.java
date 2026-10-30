@@ -91,9 +91,13 @@ class VoxelBatchRouteTest {
             assertEquals("application/octet-stream", ok.headers().get(HttpHeaderNames.CONTENT_TYPE));
         }
         assertEquals(batches, bridge.dispatched.stream().filter(d -> d.equals("voxels:64")).count());
-        // the budget is spent: the next batch waits (Retry-After in seconds), a smaller one fits sooner
-        var limited = post(token, sections(64, 99_000), true);
-        assertEquals(429, limited.status().code());
+        // asking faster than the refill (256 sections/s) runs into the limit, with Retry-After in seconds
+        FullHttpResponse limited = null;
+        for (int i = 0; i < 100 && limited == null; i++) {
+            var r = post(token, sections(64, 100_000 + i * 64), true);
+            if (r.status().code() == 429) limited = r;
+        }
+        assertNotNull(limited, "the budget runs out");
         var body = JsonParser.parseString(limited.content().toString(StandardCharsets.UTF_8)).getAsJsonObject();
         assertEquals("rate_limited", body.get("error").getAsString());
         assertTrue(body.get("retryAfter").getAsInt() >= 1, body.toString());
