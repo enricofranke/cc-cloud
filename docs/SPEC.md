@@ -1186,12 +1186,14 @@ Roles stay as presets, but every grant can be customized with individual permiss
   - `layout_set`: `layout.edit`;
   - `net_unlink`: `network.link`;
   - `rule_set` and `rule_delete`: `rules.edit`;
-  - `rule_enable` and `rule_run`: `rules.toggle`.
+  - `rule_enable` and `rule_run`: `rules.toggle`;
+  - v0.10: `scene_set` and `scene_delete`: `rules.edit` (+ every step's permission); scene buttons: `act.buttons` + every step's permission when it runs; `production`: `view` (overview; storages also `storage.search`), `storage.search` (item), `layout.edit` (pin, unpin).
 - HTTP:
   - access: `access.manage`;
   - shares: `shares.create`;
   - push targets: `push.manage`;
-  - script list, read and write: `scripts.upload`; run: `scripts.run`; delete: `scripts.delete`.
+  - script list, read and write: `scripts.upload`; run: `scripts.run`; delete: `scripts.delete`;
+  - v0.10 API key management (`/api/mainframes/<id>/apikeys`): `api.keys`; the `/api/v1` routes use API keys (scope ∩ the key owner's rights, see "Public API v1").
 - In-game screen and commands:
   - dashboard switch: `power.toggle`;
   - pairing code, approvals, devices: `devices.manage`;
@@ -1208,7 +1210,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
 **Presets:**
 - viewer = {view, storage.search};
 - operator = viewer + {view.positions, act.buttons, act.redstone, storage.craft, rules.toggle};
-- admin = owner = all.
+- admin = owner = all (since v0.10 including `api.keys`; the server node `cccloud.api.keys`, default true, removes it like `cccloud.feature.scripts` removes the script permissions).
 
 **Effective set:** the union over all sources (direct grant, team rank, server-admin node) of `preset(role) ∪ allow − deny`. Deny wins within a source. `cccloud.feature.scripts=false` (PermissionAPI node, default true) removes `scripts.*` and `terminal` for that player everywhere, the owner included. Read-only devices are capped at the viewer preset.
 
@@ -1277,6 +1279,8 @@ A scene is one named button that runs several steps in order ("Night mode": lamp
 - Steps are executed on the server thread in a tick listener: everything up to the next delay runs in the same tick, a delay parks the run (no blocking, no threads). If the mainframe goes offline or unloads during a run, the remaining steps fail with `offline` and the run ends.
 - **Log:** every run goes to the scene log (last 50, stored) and the server log (`[cccloud] <player> (<device>) ran scene 'Night mode' on <mainframe>: ok`); saves and deletes go to the mainframe's audit log.
 
+**Implementation notes:** the section is `online` while the mainframe is online and its dashboard enabled; a press goes `MinecraftBridge.dispatchAction` → `ScenesSection.press` (button validation, PIN flag) → `SceneService.start` with a `Caller` (the device; `source` dashboard, tablet or display), while `ScenesSection.handleAction` without a caller answers `unsupported` (rules use the scene action, and a rule's widget action on the Scenes section is refused when saving). Steps are executed by `RuleService.runAction`, the same code rule actions use (same validation as a human action, user = the device name). Runs and their per-step results live in memory; the scene log (`scenes.dat`) keeps the last 50 runs.
+
 **Scenes document** (snapshot field `scenes`, delta `{"t":"scenes", …}` after every change and every step; never sent to share sessions):
 `{"scenes":[<scene> + "owner":"<name>","needsPin":bool,"perms":["act.redstone",…] (what the steps need),"runs":n,"lastRun":{"by","source":"dashboard|tablet|display|rule|api","started":ms,"finished":ms|null,"steps":[{"ok":true}|{"ok":false,"error":"not_allowed"}|null (not run yet)]}|null],"log":[{"time","scene","name","by","source","result"}],"limit":n,"sectionId":"<uuid>"|null}`. Run state lives in memory; the log is stored.
 
@@ -1298,6 +1302,7 @@ Time-based triggers are rule triggers ("schedules" = rules whose `when` is `inte
 - **Unloaded mainframes:** time triggers are evaluated for every mainframe with rules, loaded or not (in-game time from the overworld clock). When an occurrence is due while the mainframe is unloaded or offline it is **skipped**: the rule log gets one entry `skipped_unloaded`/`skipped_offline` (`"skipped":true`) and the server log one line, once per outage (not every occurrence); nothing runs and nothing is caught up later.
 - **Limits** (server config `[schedules]`): `maxSchedulesPerMainframe` (16, 1–128; `rule_set` → `too_many_schedules`), `minIntervalMinutes` (1, 1–1440; shorter intervals → `invalid_rule`), `runMissed` (true), `missedWindowHours` (24, 1–168), `timezone` ("").
 - **Rules document additions:** every rule has `"nextRun": ms|null` (interval/schedule) and `"lastFire": ms|null`; log entries may carry `"skipped":true`; the document has `"schedules":{"count","limit","minInterval","timezone":"Europe/Berlin"}`.
+- **Implementation notes:** `RuleEngine` (pure, unit tested) gets the schedule settings per evaluation (`RuleEngine.Settings`: zone, `runMissed`, window, minimum interval – a stored interval below a raised minimum runs at the minimum). The engine created at server start carries the stored last occurrences (`rules.dat` `fired`); only its **first** evaluation looks for missed occurrences, so editing a schedule later never triggers a catch-up. The catch-up waits (within the window) until the mainframe is available. An occurrence that comes due also counts as "fired" when the cooldown or a condition held the run back, and when it was skipped, so neither is caught up after a restart. Interval catch-up uses the most recent missed occurrence. `ScheduleMath` handles daylight saving: a time that does not exist moves forward by the gap, a time that exists twice counts once. Rules of unloaded mainframes are only evaluated when they have schedules (edge triggers need live values).
 
 ### Production statistics (mod side)
 Code: `production/` (`RateRing`/`ProductionTracker` = pure ring buffers and rates, `EnergyTotals`, `ProductionService` = sampling and documents, `ProductionData` = pins, `ProductionSection` = the pinned charts).
@@ -1306,6 +1311,7 @@ Code: `production/` (`RateRing`/`ProductionTracker` = pure ring buffers and rate
 - **Energy:** every energy card (the generic FE card and its subclasses) reports stored/capacity and the mod's in/out rates (FE/t); cards without rates report the measured net flow (positive = in, negative = out, `measured:true`). Summed per mainframe; rings of in/out per sample.
 - Nothing is persisted: a restart starts the windows fresh. Long-term item charts come from the long-term statistics (watched and favourite items, `history` below).
 - Config `[production]`: `productionEnabled` (true), `sampleSeconds` (60, 20–600), `windowSamples` (60, 10–240), `trackedItemsPerStorage` (256, 16–1024).
+- **Guards against fake deltas:** while a storage is offline its tracker pauses (the next sample only records); an empty index is never a baseline (a network that is still booting looks empty); with a cut-off index (over 50 000 types) items missing from it are not counted as consumed; a sample time that goes backwards is ignored. Only sections that are published on the dashboard are sampled, one storage per bridge (an uplink on a linked bridge does not count twice). Energy is sampled from the cards' last refresh (no extra reads).
 
 **Protocol:** `{"t":"production","reqId","op",…}` → `{"t":"production_result","reqId","ok","error?","data":{…}}` (5 requests per second per socket; errors `disabled`, `unknown_storage`, `unknown_item`, `too_many`, `unknown_pin`, `rate_limited`, the permission errors).
 - `op:"overview"` (`view`): `{"interval":60,"window":60,"since":ms|null,"storages":[…],"energy":{…}|null,"pins":[…],"pinLimit":16}`.
@@ -1317,7 +1323,7 @@ Code: `production/` (`RateRing`/`ProductionTracker` = pure ring buffers and rate
 - **Production section:** while a mainframe has pins it publishes a section **Production** (stable id from mainframe id + `production`, `"template":"production"`, `"source":"mainframe"`, not restricted) with one `chart` widget per pin (`p_<pinId>`, label "Iron Ingot /min" / "<storage> net /min" / "Energy in/out FE/t", the window as history, updated every sample). It can be arranged in the layout editor like any card ("Iron rate" card) and shows on tablets and displays. Like watchlist rows, a pinned rate is visible to everyone who sees the mainframe's cards; pinning it needs `storage.search`.
 
 ### Public API v1 (mod side)
-For external tools (Discord bots, Home Assistant, scripts). **Off by default.** Code: `api/` (`ApiKeys` = store + hashing + rules, `ApiKeyData` = SavedData `data/cccloud/apikeys.dat`, `ApiScopes`, `ApiV1` = the routes, `ApiEvents` = the event stream, `OpenApi`).
+For external tools (Discord bots, Home Assistant, scripts). **Off by default.** Code: `publicapi/` (`ApiKeys` = store + hashing + rules, `ApiKeyData` = SavedData `data/cccloud/apikeys.dat`, `ApiScopes`, `ApiV1` = the routes, `ApiEvents` = the event stream, `OpenApi`).
 - Server config `[api]`: `apiEnabled` (false), `apiKeysPerPlayer` (5, 1–50), `apiRequestsPerMinute` (60 per key, 1–6000), `apiIpRequestsPerMinute` (120, 1–6000), `apiMaxBody` (2048 bytes, 256–4096), `apiCorsOrigins` ([] – exact origins like `https://bot.example.org`), `apiEvents` (true), `apiStreamsPerKey` (2, 1–8; at most 32 streams in total).
 - When `apiEnabled=false` the `/api/v1/…` routes do not exist (404 `not_found`, as for any unknown path) and the key management answers `disabled`.
 - **Permission** `api.keys` (group `manage`; admin and owner presets) to create keys; the PermissionAPI node `cccloud.api.keys` (boolean, default true) is the server-wide gate: without it a player cannot create keys and their keys stop working.
@@ -1329,7 +1335,7 @@ For external tools (Discord bots, Home Assistant, scripts). **Off by default.** 
   - `read:stats` → `view` (+ `storage.search` for storages): production statistics.
   - `action:widgets` → the widget's action permission (`act.buttons`, `act.redstone`, …): set a value / press a button.
   - `run:scenes` → `act.buttons` + every step's permission at run time (as a dashboard press).
-- **Every request** re-checks the key owner's rights like a device token: banned, no `cccloud.use`, no `cccloud.api.keys`, no role on the mainframe → `403 no_access`; a revoked or unknown key → `401 unauthorized`; expired → `401 expired`; IP not allowed → `403 ip_not_allowed`.
+- **Every request** re-checks the key owner's rights like a device token: banned, no `cccloud.use`, no `cccloud.api.keys`, no role on the mainframe → `403 no_access`; a revoked or unknown key, a device token, no or several Bearer values → `401 unauthorized`; expired → `401 expired`; IP not allowed → `403 ip_not_allowed`; the key lacks the route's scope → `403 missing_scope`; the owner lacks the permission → `403 not_allowed`.
 - **Never through the API:** admin and access endpoints, devices, pairing/approval, key management, terminal, files and script upload, layout, rules, push, map/voxels, and PIN-protected widgets and scenes (`403 pin_required` – there is no PIN in the API on purpose: a key that leaks must not be able to reach the second factor).
 
 **Transport.** `Authorization: Bearer cck_…` only; a key in the URL (`?key=`, `?api_key=`, `?token=`, `?access_token=`) is refused with `400 key_in_query` (and the key is not checked). Device tokens are not accepted on `/api/v1`, API keys nowhere else. JSON bodies ≤ `apiMaxBody`, strict schemas. The same Host allow-list, LAN-only rule, IP bans, security headers and connection limits as the dashboard. Rate limits per key and per IP → `429 rate_limited` with `Retry-After` (seconds). Keys are looked up by hash and compared in constant time. Every write (widget action, scene run) is written to the mainframe's audit log ("API key 'bot' (Steve) set Reactor/rods = 3") and the server log. CORS: no CORS headers unless the request's `Origin` is in `apiCorsOrigins` (then `Access-Control-Allow-Origin: <origin>`, `Vary: Origin`; `OPTIONS` preflight allows `GET, POST` and `Authorization, Content-Type`, max-age 600).
@@ -1339,12 +1345,15 @@ For external tools (Discord bots, Home Assistant, scripts). **Off by default.** 
 - `GET /api/v1/me` → `{"key":{"id","name","scopes","expires"},"player","mainframe":{"id","name","online","enabled"}}`.
 - `GET /api/v1/mainframes/<id>/sections` (`read:sections`) → `{"sections":[{"id","title","online","loaded","template?","widgets":[{"id","type","label","value","unit?","min?","max?"}]}]}`.
 - `GET /api/v1/mainframes/<id>/sections/<sectionId>` (`read:sections`) → one section.
-- `POST /api/v1/mainframes/<id>/sections/<sectionId>/widgets/<widgetId>` (`action:widgets`) with `{"value": number|string|boolean}` → `{"ok":true}`; validated like a dashboard action (`invalid_value`, `not_interactive`, `pin_required`, `offline`, …); structured operations (crafting, watchlists, redstone sides) are not available.
+- `POST /api/v1/mainframes/<id>/sections/<sectionId>/widgets/<widgetId>` (`action:widgets`) with `{"value": number|string|boolean}` → `{"ok":true}`; validated like a dashboard action (`invalid_value`, `not_interactive`, `pin_required`, `offline`, …); structured operations (crafting, watchlists, redstone sides) answer `400 not_supported`; scene buttons `400 use_scene_route`. Restricted sections need `view.positions`.
 - `GET /api/v1/mainframes/<id>/storage/<sectionId>/items?q=iron&limit=20` (`read:storage`, ≤ 50 rows, 5 per second per key) → `{"rows":[{"name","displayName","count","craftable"}],"truncated"}`.
 - `GET /api/v1/mainframes/<id>/production` (`read:stats`) → the production overview (above, without pins).
 - `GET /api/v1/mainframes/<id>/scenes` (`run:scenes`) → `{"scenes":[{"id","name","needsPin","running"}]}`; `POST …/scenes/<sceneId>/run` (`run:scenes`) → `{"ok":true}` or the press errors.
 - `GET /api/v1/mainframes/<id>/events` (`read:sections`, config `apiEvents`) – a read-only **Server-Sent Events** stream: `event: snapshot` (the sections), then `event: value` `{"sectionId","id","value"}`, `event: section` (a whole section), `event: removed` `{"sectionId"}`, `event: state` `{"online","enabled"}`; a comment line every 20 s. Restricted sections only with `view.positions`. Rights are re-checked every 5 s (lost → the stream ends with `event: error` `{"error":"no_access"}`). At most `apiStreamsPerKey` streams per key and 32 in total (`429 too_many_streams`); slow readers are disconnected.
 
+**Implementation notes:** `Router.Access.API_KEY` routes are handled by `web/ApiHandler` on the Netty thread (key in the URL, Bearer lookup, expiry, IP list, rate limits, body size) and then by `publicapi/ApiV1` on the server thread (live rights, scopes, the action itself). `GET /api/v1/openapi.json` and the `OPTIONS` preflight are public while the API is on. The event stream (`web/ApiEventStream`) is a hub session without a device that never takes a browser slot; it translates hub messages into events and drops everything else (rules, scenes, network, layout). Usage (last time and IP) is saved at most once a minute per key.
+
 **Key management** (dashboard; device token, `api.keys`, 4 KB bodies):
-- `GET /api/mainframes/<id>/apikeys` → `{"enabled":bool,"scopes":["read:sections",…],"limit":5,"keys":[{"id","name","player","scopes","created","expires"|null,"lastUsed"|null,"lastIp"|null,"ips":[…],"own":bool}]}` (own keys; with `access.manage` every key of the mainframe).
+- `GET /api/mainframes/<id>/apikeys` → `{"enabled":bool,"scopes":["read:sections",…],"limit":5,"keys":[{"id","name","player","scopes","created","expires"|null,"expired":bool,"lastUsed"|null,"lastIp"|null,"ips":[…],"own":bool}]}` (own keys; with `access.manage` every key of the mainframe). Expired keys are listed for a week, then deleted.
+- Creating a key needs the base permission of each scope (`read:sections`/`read:stats` view, `read:storage` storage.search, `action:widgets`/`run:scenes` act.buttons; else `403 not_allowed`), so no key ever reaches past its creator.
 - `POST /api/mainframes/<id>/apikeys` `{"op":"create","name","scopes":[…],"expiresIn":3600|86400|604800|2592000|7776000|null,"ips":[…]}` → `{"key":"cck_…","id", …}` (the only time the key is returned); `{"op":"revoke","id"}` → `{"ok":true}`. Errors `400 invalid`, `403 not_allowed`, `409 too_many`, `409 disabled`. Creating and revoking go to the audit log.
