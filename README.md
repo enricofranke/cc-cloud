@@ -19,7 +19,8 @@ is served by the mod itself.
 
 > [!IMPORTANT]
 > CC: Cloud is an addon: it needs **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked) 1.120.0+** installed next to
-> it, on the client and the server. On CurseForge it is a required dependency, so the CurseForge app installs it for you.
+> it, on the client and the server. For Minecraft 26.1.2 CC: Tweaked is published on Modrinth only – download it there
+> and put both jars into your `mods/` folder (also when you use the CurseForge app).
 
 <p align="center"><img src="docs/readme/how.png" width="100%" alt="How it works: 1. Place a Cloud Mainframe – it hosts your dashboard and shows its address and a pairing code. 2. Stick on an Uplink and link it with the Link Card – it shows up as a card. 3. Pair your browser: open the address, type the code, click Allow in game."></p>
 
