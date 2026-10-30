@@ -610,7 +610,7 @@ public final class WebHub {
         var view = views.get(mainframeId);
         if (view == null) return false;
         int browsers = 0;
-        for (var s : view.sessions) if (s.share() == null) browsers++;
+        for (var s : view.sessions) if (s.countsAsBrowser()) browsers++;
         return browsers >= browserLimit.applyAsInt(mainframeId);
     }
 

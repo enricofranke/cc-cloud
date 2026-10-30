@@ -114,6 +114,7 @@ public final class AccessGate {
             case ACCESS_GET, ACCESS_POST -> Perm.ACCESS_MANAGE;
             case SHARES_GET, SHARES_POST, SHARE_DELETE -> Perm.SHARES_CREATE;
             case PUSH_GET, PUSH_POST -> Perm.PUSH_MANAGE;
+            case APIKEYS_GET, APIKEYS_POST -> Perm.API_KEYS;
             case SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_MOVE -> Perm.SCRIPTS_UPLOAD;
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;

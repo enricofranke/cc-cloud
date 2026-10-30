@@ -64,6 +64,20 @@ public interface GameBridge {
         return new RuleResult("disabled", null, null);
     }
 
+    /** v0.10 public API: one request of an authenticated API key (server thread; the owner's live rights are checked here). */
+    default AccessApi.Response apiV1(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, Router.Id route, String path, java.util.Map<String, String> query, String body,
+                                     String ip) {
+        return AccessApi.error(404, "not_found");
+    }
+
+    /**
+     * v0.10 event stream: what the stream of this key may see now (the owner's live rights ∩ {@code read:sections}), or
+     * null if it may not (any more). Server thread.
+     */
+    default java.util.@Nullable Set<ai.ezfox.cccloud.access.Perm> apiStreamAccess(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, String ip) {
+        return null;
+    }
+
     /** v0.10 production statistics (permissions re-checked live here). Server thread. */
     default StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
         return StorageResult.fail("disabled");

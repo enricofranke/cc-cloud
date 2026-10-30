@@ -34,7 +34,7 @@ public final class CloudPermissions implements ServerPermissions {
     static {
         for (var node : Node.values()) {
             NODES.put(node, new PermissionNode<>(CCCloud.MODID, node.path, PermissionTypes.BOOLEAN, (player, uuid, ctx) -> switch (node) {
-                case USE, FEATURE_SCRIPTS -> true;
+                case USE, FEATURE_SCRIPTS, API_KEYS -> true;
                 case BYPASS_LIMITS -> hasLevel(player, uuid, Permissions.COMMANDS_OWNER);
                 default -> hasLevel(player, uuid, Permissions.COMMANDS_GAMEMASTER);
             }));

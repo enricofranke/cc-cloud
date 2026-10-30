@@ -64,10 +64,17 @@ class PermissionWalkTest {
         expected.put(Router.Id.SCRIPT_MOVE, Perm.SCRIPTS_UPLOAD);
         expected.put(Router.Id.HISTORY, Perm.VIEW);
         expected.put(Router.Id.PUSH_POST, Perm.PUSH_MANAGE);
+        expected.put(Router.Id.APIKEYS_GET, Perm.API_KEYS);
+        expected.put(Router.Id.APIKEYS_POST, Perm.API_KEYS);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
             Router.Id.ICON, Router.Id.WEBSOCKET, Router.Id.STATIC, Router.Id.CONFIG, Router.Id.VOXEL_ATLAS);
         for (var id : Router.Id.values()) {
+            // v0.10 public API: scopes ∩ the key owner's rights, checked per route by ApiV1 (ApiV1Test walks them).
+            if (id.isPublicApi()) {
+                assertNull(AccessGate.routePerm(id), id.name());
+                continue;
+            }
             if (accountLevel.contains(id)) {
                 assertNull(AccessGate.routePerm(id), id.name());
                 continue;

@@ -66,7 +66,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> SCRIPT_STORE_KEY;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> PUSH_ALLOWED_HOSTS;
     public static final ModConfigSpec.IntValue MAX_RULES;
-    // v0.10 schedules, scenes, production statistics
+    // v0.10 schedules, scenes, production statistics, public API
     public static final ModConfigSpec.IntValue MAX_SCHEDULES;
     public static final ModConfigSpec.IntValue MIN_INTERVAL_MINUTES;
     public static final ModConfigSpec.BooleanValue RUN_MISSED;
@@ -78,6 +78,14 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue PRODUCTION_SAMPLE_SECONDS;
     public static final ModConfigSpec.IntValue PRODUCTION_WINDOW;
     public static final ModConfigSpec.IntValue PRODUCTION_TRACKED_ITEMS;
+    public static final ModConfigSpec.BooleanValue API_ENABLED;
+    public static final ModConfigSpec.IntValue API_KEYS_PER_PLAYER;
+    public static final ModConfigSpec.IntValue API_REQUESTS_PER_MINUTE;
+    public static final ModConfigSpec.IntValue API_IP_REQUESTS_PER_MINUTE;
+    public static final ModConfigSpec.IntValue API_MAX_BODY;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> API_CORS_ORIGINS;
+    public static final ModConfigSpec.BooleanValue API_EVENTS;
+    public static final ModConfigSpec.IntValue API_STREAMS_PER_KEY;
     public static final ModConfigSpec.BooleanValue AUTO_COMPUTER_CARD;
     public static final ModConfigSpec.ConfigValue<String> VANILLA_ASSETS_JAR;
     public static final ModConfigSpec.BooleanValue REQUIRE_POWER;
@@ -283,6 +291,34 @@ public final class CloudConfig {
         PRODUCTION_TRACKED_ITEMS = b.comment("Items with their own rate per storage (the ones that move most; the storage totals count every item).")
             .translation("cccloud.configuration.trackedItemsPerStorage")
             .defineInRange("trackedItemsPerStorage", 256, 16, 1024);
+        b.pop();
+
+        b.push("api");
+        API_ENABLED = b.comment("Public REST API (/api/v1) for external tools with per-player API keys. Off by default: when false the routes do not exist.")
+            .translation("cccloud.configuration.apiEnabled")
+            .define("apiEnabled", false);
+        API_KEYS_PER_PLAYER = b.comment("API keys one player may have (over all mainframes).")
+            .translation("cccloud.configuration.apiKeysPerPlayer")
+            .defineInRange("apiKeysPerPlayer", 5, 1, 50);
+        API_REQUESTS_PER_MINUTE = b.comment("Requests per minute per API key (429 + Retry-After above).")
+            .translation("cccloud.configuration.apiRequestsPerMinute")
+            .defineInRange("apiRequestsPerMinute", 60, 1, 6000);
+        API_IP_REQUESTS_PER_MINUTE = b.comment("Requests per minute per client IP on /api/v1.")
+            .translation("cccloud.configuration.apiIpRequestsPerMinute")
+            .defineInRange("apiIpRequestsPerMinute", 120, 1, 6000);
+        API_MAX_BODY = b.comment("Largest JSON body of an API request (bytes).")
+            .translation("cccloud.configuration.apiMaxBody")
+            .defineInRange("apiMaxBody", 2048, 256, 4096);
+        API_CORS_ORIGINS = b.comment("Browser origins allowed to call the API (exact, e.g. https://bot.example.org). Empty = no CORS headers at all.")
+            .translation("cccloud.configuration.apiCorsOrigins")
+            .defineListAllowEmpty("apiCorsOrigins", java.util.List.of(), () -> "https://bot.example.org",
+                o -> o instanceof String s && ai.ezfox.cccloud.publicapi.ApiCors.validOrigin(s));
+        API_EVENTS = b.comment("Read-only event stream (Server-Sent Events) of value changes for keys with read:sections.")
+            .translation("cccloud.configuration.apiEvents")
+            .define("apiEvents", true);
+        API_STREAMS_PER_KEY = b.comment("Open event streams per API key (at most 32 on the whole server).")
+            .translation("cccloud.configuration.apiStreamsPerKey")
+            .defineInRange("apiStreamsPerKey", 2, 1, 8);
         b.pop();
 
         b.push("store");

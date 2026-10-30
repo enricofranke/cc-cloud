@@ -243,6 +243,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             ai.ezfox.cccloud.rules.RuleService.forget(serverLevel.getServer(), mainframeId);
             ai.ezfox.cccloud.scene.SceneService.forget(serverLevel.getServer(), mainframeId);
             ai.ezfox.cccloud.production.ProductionService.forget(serverLevel.getServer(), mainframeId);
+            ai.ezfox.cccloud.publicapi.ApiKeyData.get(serverLevel.getServer()).keys().forgetMainframe(mainframeId);
             ai.ezfox.cccloud.push.PushService.forget(serverLevel.getServer(), mainframeId);
             ai.ezfox.cccloud.network.SectionCache.get(serverLevel.getServer()).forgetMainframe(mainframeId);
             net.minecraft.world.Containers.dropContents(serverLevel, pos, upgrades);

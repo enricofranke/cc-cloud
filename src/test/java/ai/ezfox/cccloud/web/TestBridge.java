@@ -85,6 +85,15 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public AccessApi.Response apiV1(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, Router.Id route, String path, java.util.Map<String, String> query, String body,
+                                    String ip) {
+        dispatched.add("api:" + route + ":" + key.name());
+        var json = new com.google.gson.JsonObject();
+        json.addProperty("ok", true);
+        return new AccessApi.Response(200, json);
+    }
+
+    @Override
     public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
         dispatched.add(command.op());
         return new GameBridge.RuleResult(null, null, null);

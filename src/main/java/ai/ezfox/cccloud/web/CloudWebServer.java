@@ -66,7 +66,8 @@ public final class CloudWebServer {
             .map(c -> c.getModInfo().getVersion().toString()).orElse("dev");
         PublicConfig.setSource(() -> new PublicConfig.Settings(version, CloudConfig.get(CloudConfig.SCRIPT_STORE), CloudConfig.get(CloudConfig.SCRIPT_STORE_URL),
             CloudConfig.get(CloudConfig.SCRIPT_STORE_KEY), CloudConfig.get(CloudConfig.TERMINAL_ENABLED), CloudConfig.get(CloudConfig.VOXEL_VIEW), CloudConfig.get(CloudConfig.PUSH_ENABLED),
-            CloudConfig.get(CloudConfig.RULES_ENABLED), true));
+            CloudConfig.get(CloudConfig.RULES_ENABLED), true, CloudConfig.get(CloudConfig.SCENES_ENABLED), CloudConfig.get(CloudConfig.PRODUCTION_ENABLED),
+            CloudConfig.get(CloudConfig.API_ENABLED)));
         if (!CloudConfig.get(CloudConfig.WEB_ENABLED)) {
             CloudLog.LOGGER.info("[cccloud] Dashboard web server disabled in config (webEnabled=false)");
             return;
@@ -103,6 +104,8 @@ public final class CloudWebServer {
         String publicHost = HostCheck.hostOfUrl(CloudConfig.get(CloudConfig.PUBLIC_URL));
         if (publicHost != null) hosts.add(publicHost);
         instance.allowedHosts = java.util.Set.copyOf(hosts);
+        instance.apiKeys = ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys();
+        instance.api = MinecraftBridge.apiSettings();
         var group = new MultiThreadIoEventLoopGroup(2, new DefaultThreadFactory("cccloud-web", true), NioIoHandler.newFactory());
         instance.group = group;
         try {
@@ -178,6 +181,7 @@ public final class CloudWebServer {
         if (instance == null) return;
         try {
             instance.bannedIps = bannedIps(server);
+            instance.api = MinecraftBridge.apiSettings(); // config reloads apply within 5 s
             recheck(instance, null);
             long now = System.currentTimeMillis();
             if (now - lastExpiry > 3_600_000L) {
@@ -185,6 +189,7 @@ public final class CloudWebServer {
                 int expired = instance.auth.expireDevices();
                 if (expired > 0) CloudLog.LOGGER.info("[cccloud] {} dashboard device(s) expired after 30 days without use", expired);
                 instance.access.expireShares();
+                instance.apiKeys.expire();
             }
         } catch (RuntimeException e) {
             CloudLog.LOGGER.error("[cccloud] Error in dashboard housekeeping", e);

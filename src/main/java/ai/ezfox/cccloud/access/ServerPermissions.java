@@ -22,7 +22,9 @@ public interface ServerPermissions {
         /** Ignore per-player limits (default op level 4). */
         BYPASS_LIMITS("bypass.limits"),
         /** Feature switch: script import (and later the terminal) on this server (default true). */
-        FEATURE_SCRIPTS("feature.scripts");
+        FEATURE_SCRIPTS("feature.scripts"),
+        /** v0.10 public API: may create API keys, and the player's keys work (default true; false = keys dead). */
+        API_KEYS("api.keys");
 
         public final String path;
 

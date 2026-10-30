@@ -448,9 +448,54 @@ public final class MinecraftBridge implements GameBridge {
         if (allowed.isEmpty()) return AccessApi.error(403, "forbidden");
         for (var d : allowed) auth.touch(d.tokenHash(), ip.isEmpty() ? null : ip);
         if (route == Router.Id.HISTORY) return history(allowed.getFirst(), path);
+        if (route == Router.Id.APIKEYS_GET || route == Router.Id.APIKEYS_POST) return apiKeys(allowed.getFirst(), route, path, body);
         var api = new AccessApi(auth, resolver(), players(), hooks());
         if (route == Router.Id.PUSH_GET || route == Router.Id.PUSH_POST) api.withPush(pushApi());
         return api.handle(route, allowed, path, body);
+    }
+
+    /** The current {@code [api]} config (v0.10). */
+    public static ai.ezfox.cccloud.publicapi.ApiSettings apiSettings() {
+        var cors = new java.util.ArrayList<String>();
+        for (var o : ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_CORS_ORIGINS)) cors.add(o);
+        return new ai.ezfox.cccloud.publicapi.ApiSettings(ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_ENABLED),
+            ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_KEYS_PER_PLAYER), ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_REQUESTS_PER_MINUTE),
+            ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_IP_REQUESTS_PER_MINUTE), ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_MAX_BODY),
+            cors, ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_EVENTS), ai.ezfox.cccloud.CloudConfig.get(ai.ezfox.cccloud.CloudConfig.API_STREAMS_PER_KEY));
+    }
+
+    /** v0.10: {@code /api/mainframes/<id>/apikeys} – the device's player manages their API keys (api.keys). */
+    private AccessApi.Response apiKeys(AuthStore.Device device, Router.Id route, String path, String body) {
+        UUID mainframeId = ClientMessages.parseUuid(path.split("/")[3]);
+        if (mainframeId == null) return AccessApi.error(404, "not_found");
+        var resolution = access(device, mainframeId);
+        if (resolution.role() == Role.NONE) return AccessApi.error(403, "no_access");
+        String denied = AccessGate.check(resolution.role(), resolution.perms(), AccessGate.routePerm(route));
+        if (denied != null) return AccessApi.error(403, denied.equals("read_only") ? "not_allowed" : denied);
+        var keys = ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys();
+        var caller = new ai.ezfox.cccloud.publicapi.ApiKeysApi.Caller(device.player(), device.playerName(), resolution.perms());
+        long now = System.currentTimeMillis();
+        if (route == Router.Id.APIKEYS_GET) return ai.ezfox.cccloud.publicapi.ApiKeysApi.get(keys, apiSettings(), mainframeId, caller, now);
+        return ai.ezfox.cccloud.publicapi.ApiKeysApi.post(keys, apiSettings(), mainframeId, caller, body, now, line -> {
+            WebAuthData.access(server).audit(mainframeId, line);
+            CloudLog.LOGGER.info("[cccloud] {} ({})", line, mainframeName(mainframeId));
+        });
+    }
+
+    @Override
+    public AccessApi.Response apiV1(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, Router.Id route, String path, java.util.Map<String, String> query, String body,
+                                    String ip) {
+        return ai.ezfox.cccloud.publicapi.ApiV1.handle(server, key, route, path, query, body, ip);
+    }
+
+    @Override
+    public java.util.@Nullable Set<ai.ezfox.cccloud.access.Perm> apiStreamAccess(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, String ip) {
+        if (!key.scopes().contains(ai.ezfox.cccloud.publicapi.ApiScope.READ_SECTIONS)) return null;
+        var access = ai.ezfox.cccloud.publicapi.ApiV1.access(server, key);
+        if (!access.has(ai.ezfox.cccloud.access.Perm.VIEW)) return null;
+        var perms = java.util.EnumSet.noneOf(ai.ezfox.cccloud.access.Perm.class);
+        for (var p : access.perms()) if (p == ai.ezfox.cccloud.access.Perm.VIEW || p == ai.ezfox.cccloud.access.Perm.VIEW_POSITIONS) perms.add(p);
+        return perms;
     }
 
     /** v0.5 F: {@code /api/mainframes/<id>/history/…} (permissions resolved here, the rest in HistoryApi). */

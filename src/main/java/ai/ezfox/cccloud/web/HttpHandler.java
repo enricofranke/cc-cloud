@@ -58,6 +58,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     /** The forwarded client IP this connection counts against (behind a trusted proxy), or null. */
     private @Nullable String countedClient;
+    /** The connection became a public API event stream: nothing else is served on it. */
+    volatile boolean streaming;
 
     HttpHandler(WebInstance instance) {
         this.instance = instance;
@@ -65,6 +67,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest req) {
+        if (streaming) {
+            ctx.close();
+            return;
+        }
         try {
             handle(ctx, req);
         } catch (Exception e) {
@@ -115,6 +121,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
         String path = new QueryStringDecoder(req.uri()).path();
         var route = Router.match(req.method(), path);
+        // v0.10: the public API does not exist at all while it is switched off (apiEnabled=false).
+        if (!instance.api.enabled() && (route != null ? route.id().isPublicApi() : path.startsWith("/api/v1/") || path.equals("/api/v1"))) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
+            return;
+        }
         if (route == null) {
             if (Router.pathExists(path)) sendJson(ctx, req, HttpResponseStatus.METHOD_NOT_ALLOWED, error("method_not_allowed"));
             else sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
@@ -130,6 +141,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         switch (route.access()) {
             case PUBLIC -> dispatch(ctx, req, route, ip, List.of());
             case DEVICE -> authenticateDevices(ctx, req, route, ip);
+            case API_KEY -> ApiHandler.handle(this, instance, ctx, req, route, ip);
         }
     }
 
@@ -440,8 +452,11 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS ->
-                sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through authenticateDevices
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, APIKEYS_GET, APIKEYS_POST,
+                 API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS ->
+                sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through their authentication
+            case API_OPENAPI -> ApiHandler.openApi(this, instance, ctx, req);
+            case API_PREFLIGHT -> ApiHandler.preflight(this, instance, ctx, req);
             case ICON -> icon(ctx, req, ip, path);
             case CONFIG -> sendJson(ctx, req, HttpResponseStatus.OK, PublicConfig.json());
             case VOXEL_ATLAS -> voxelAtlas(ctx, req, ip, path);
@@ -454,7 +469,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
     }
 
-    private static List<String> bearerTokens(FullHttpRequest req) {
+    static List<String> bearerTokens(FullHttpRequest req) {
         var tokens = new LinkedHashSet<String>();
         for (String header : req.headers().getAll(HttpHeaderNames.AUTHORIZATION)) {
             for (String part : header.split(",")) {
@@ -692,7 +707,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         return json;
     }
 
-    private static FullHttpResponse json(HttpResponseStatus status, JsonObject body) {
+    static FullHttpResponse json(HttpResponseStatus status, JsonObject body) {
         byte[] bytes = Json.GSON.toJson(body).getBytes(StandardCharsets.UTF_8);
         var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.wrappedBuffer(bytes));
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8");
@@ -700,7 +715,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         return response;
     }
 
-    private void sendJson(ChannelHandlerContext ctx, FullHttpRequest req, HttpResponseStatus status, JsonObject body) {
+    void sendJson(ChannelHandlerContext ctx, FullHttpRequest req, HttpResponseStatus status, JsonObject body) {
         write(ctx, req, json(status, body));
     }
 
@@ -717,7 +732,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         write(ctx, req, response);
     }
 
-    private void write(ChannelHandlerContext ctx, FullHttpRequest req, FullHttpResponse response) {
+    void write(ChannelHandlerContext ctx, FullHttpRequest req, FullHttpResponse response) {
         addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), instance.ssl != null);
         if (!response.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) HttpUtil.setContentLength(response, response.content().readableBytes());
         boolean keepAlive = HttpUtil.isKeepAlive(req) && response.status().code() < 400;
@@ -726,7 +741,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         if (!keepAlive) future.addListener(ChannelFutureListener.CLOSE);
     }
 
-    static void addSecurityHeaders(FullHttpResponse response, @Nullable String host, boolean tls) {
+    static void addSecurityHeaders(io.netty.handler.codec.http.HttpResponse response, @Nullable String host, boolean tls) {
         String connect = "'self'";
         if (host != null && SAFE_HOST.matcher(host).matches()) connect += " ws://" + host + " wss://" + host;
         String store = PublicConfig.storeOrigin();
@@ -738,7 +753,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         h.set("X-Frame-Options", "DENY");
         h.set("Referrer-Policy", "no-referrer");
         h.set("Cross-Origin-Opener-Policy", "same-origin");
-        h.set("Cross-Origin-Resource-Policy", "same-origin");
+        // Public API responses for an allowed CORS origin may be read cross-origin (v0.10, apiCorsOrigins).
+        h.set("Cross-Origin-Resource-Policy", h.contains("Access-Control-Allow-Origin") ? "cross-origin" : "same-origin");
         h.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         // Dashboards and share links (/s/<id>) must never be indexed.
         h.set("X-Robots-Tag", "noindex, nofollow");

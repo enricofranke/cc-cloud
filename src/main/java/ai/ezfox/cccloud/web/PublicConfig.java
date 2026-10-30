@@ -12,7 +12,13 @@ import org.jspecify.annotations.Nullable;
 public final class PublicConfig {
     /** The current settings (replaced by the game with the live config; tests set their own). */
     public record Settings(String version, boolean store, String storeUrl, String storeKey, boolean terminal, boolean voxels, boolean push,
-                           boolean rules, boolean map) {
+                           boolean rules, boolean map, boolean scenes, boolean production, boolean api) {
+        /** Without the v0.10 switches (scenes, production statistics, public API). */
+        public Settings(String version, boolean store, String storeUrl, String storeKey, boolean terminal, boolean voxels, boolean push, boolean rules,
+                        boolean map) {
+            this(version, store, storeUrl, storeKey, terminal, voxels, push, rules, map, false, false, false);
+        }
+
         /** Without a store signing key. */
         public Settings(String version, boolean store, String storeUrl, boolean terminal, boolean voxels, boolean push, boolean rules, boolean map) {
             this(version, store, storeUrl, "", terminal, voxels, push, rules, map);
@@ -85,6 +91,9 @@ public final class PublicConfig {
         features.addProperty("push", s.push());
         features.addProperty("rules", s.rules());
         features.addProperty("map", s.map());
+        features.addProperty("scenes", s.scenes());
+        features.addProperty("production", s.production());
+        features.addProperty("api", s.api());
         json.add("features", features);
         return json;
     }
