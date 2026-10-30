@@ -964,7 +964,8 @@ export async function createMockServer(opts: MockOptions = {}) {
         ...tr.item(name),
         crafted: 0,
         jobs: meSim!.jobRows().filter((j) => j.name === name),
-        tasks: [...mf.production!.tasks.filter((x) => x.name === name), ...meSim!.cpus().tasks.filter((x) => x.name === name).map(({ name: n, displayName, count, progress }) => ({ name: n, displayName, count, progress }))],
+        // like the mod: everything crafting on the network now (terminal jobs included), not only this item
+        tasks: [...mf.production!.tasks, ...meSim!.cpus().tasks.map(({ name: n, displayName, count, progress }) => ({ name: n, displayName, count, progress }))].slice(0, 16),
         history: watched ? dayHistory(it.count, name.length * 31 + name.charCodeAt(0)) : null,
       },
     };
