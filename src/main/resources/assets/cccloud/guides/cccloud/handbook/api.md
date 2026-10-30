@@ -36,7 +36,7 @@ Dashboard → ⚙ → **API keys** → **New key**:
 3. An **expiry**: 1 hour, 24 hours, 7, 30 or 90 days, or never.
 4. Optional: the **IP addresses** it may be used from (up to 8, e.g. `192.168.1.0/24`).
 
-The key (`cck_…`) is shown **exactly once** – copy it then. The server only keeps a fingerprint (hash). The list shows every key with its scopes, created, expiry, last use and IP; **Revoke** stops a key at once. Players with “Manage access” see and can revoke every key of the mainframe.
+The key (`cck_…`) is shown **exactly once** – copy it then. The server only keeps a fingerprint (hash). The list shows every key with its scopes, created, expiry, last use and IP; **Revoke** stops a key at once. Players with “Manage access” see and can revoke every key of the mainframe. A key also ends when the browser you created it with is revoked (lost phone: revoking it ends its keys too).
 
 ## Scopes
 

@@ -36,7 +36,7 @@ Dashboard → ⚙ → **API-Schlüssel** → **Neuer Schlüssel**:
 3. Ein **Ablauf**: 1 Stunde, 24 Stunden, 7, 30 oder 90 Tage oder nie.
 4. Optional: die **IP-Adressen**, von denen er genutzt werden darf (bis 8, z. B. `192.168.1.0/24`).
 
-Der Schlüssel (`cck_…`) wird **genau einmal** angezeigt – kopiere ihn dann. Der Server behält nur einen Fingerabdruck (Hash). Die Liste zeigt jeden Schlüssel mit Bereichen, Erstellung, Ablauf, letzter Nutzung und IP; **Widerrufen** stoppt einen Schlüssel sofort. Spieler mit „Manage access“ sehen und widerrufen alle Schlüssel des Mainframes.
+Der Schlüssel (`cck_…`) wird **genau einmal** angezeigt – kopiere ihn dann. Der Server behält nur einen Fingerabdruck (Hash). Die Liste zeigt jeden Schlüssel mit Bereichen, Erstellung, Ablauf, letzter Nutzung und IP; **Widerrufen** stoppt einen Schlüssel sofort. Spieler mit „Manage access“ sehen und widerrufen alle Schlüssel des Mainframes. Ein Schlüssel endet auch, wenn der Browser widerrufen wird, mit dem du ihn erstellt hast (Handy verloren: es zu widerrufen beendet auch seine Schlüssel).
 
 ## Bereiche
 

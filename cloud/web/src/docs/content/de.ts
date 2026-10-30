@@ -99,7 +99,7 @@ Ein Uplink liest den Block, an dem er sitzt. Ist eine Maschine in eine Wand geba
 2. **Schleichen + Rechtsklick auf die Maschine** mit der Link Card – die Karte merkt sie sich (und die angeklickte Seite).
 3. **Rechtsklick auf die Sonde** mit der Karte. Sie zeigt jetzt die Karte der Maschine, genau wie ein Uplink an dieser Seite.
 
-Das Auswählen ist eine normale Interaktion, Claims und Spawn-Schutz gelten also: Wo du die Maschine nicht benutzen darfst, kannst du sie nicht auswählen. Nur du kannst deine Auswahl an eine Sonde geben. Rechtsklick auf die Sonde öffnet ihren Bildschirm: Er zeigt, was sie liest, und hat **Ziel löschen**; der Cloud-Analysator zeichnet eine dünne Linie zur Maschine. Wird die Maschine entfernt, vergisst die Sonde sie.
+Das Auswählen ist eine normale Interaktion, Claims und Spawn-Schutz gelten also: Wo du die Maschine nicht benutzen darfst, kannst du sie nicht auswählen. Nur du kannst deine Auswahl an eine Sonde geben, innerhalb von 10 Minuten. Die Sonde prüft weiter: Claimt ein anderes Team den Chunk der Maschine oder senkt der Server die Reichweite, liest sie nichts, bis sich das ändert; wird die Sonde versetzt (mit einem Block-Mover oder einer Contraption), vergisst sie ihre Maschine. Rechtsklick auf die Sonde öffnet ihren Bildschirm: Er zeigt, was sie liest, und hat **Ziel löschen**; der Cloud-Analysator zeichnet eine dünne Linie zur Maschine. Wird die Maschine entfernt, vergisst die Sonde sie.
 
 Zeigt ein Uplink keine Karte und sagt der Bildschirm *„Diese Seite gibt nichts frei“*, bietet die Maschine Energie, Items oder Flüssigkeiten an einer anderen Seite an – setz den Uplink dorthin (der Bildschirm nennt eine) oder nimm eine Sonde.
 
@@ -955,7 +955,7 @@ Dashboard → ⚙ → **API-Schlüssel** → **Neuer Schlüssel**:
 3. Ein **Ablauf**: 1 Stunde, 24 Stunden, 7, 30 oder 90 Tage oder nie.
 4. Optional: die **IP-Adressen**, von denen er genutzt werden darf (bis 8, z. B. \`192.168.1.0/24\`).
 
-Der Schlüssel (\`cck_…\`) wird **genau einmal** angezeigt – kopiere ihn dann. Der Server behält nur einen Fingerabdruck (Hash). Die Liste zeigt jeden Schlüssel mit Bereichen, Erstellung, Ablauf, letzter Nutzung und IP; **Widerrufen** stoppt einen Schlüssel sofort. Spieler mit „Manage access“ sehen und widerrufen alle Schlüssel des Mainframes.
+Der Schlüssel (\`cck_…\`) wird **genau einmal** angezeigt – kopiere ihn dann. Der Server behält nur einen Fingerabdruck (Hash). Die Liste zeigt jeden Schlüssel mit Bereichen, Erstellung, Ablauf, letzter Nutzung und IP; **Widerrufen** stoppt einen Schlüssel sofort. Spieler mit „Manage access“ sehen und widerrufen alle Schlüssel des Mainframes. Ein Schlüssel endet auch, wenn der Browser widerrufen wird, mit dem du ihn erstellt hast (Handy verloren: es zu widerrufen beendet auch seine Schlüssel).
 
 ## Bereiche {#scopes}
 

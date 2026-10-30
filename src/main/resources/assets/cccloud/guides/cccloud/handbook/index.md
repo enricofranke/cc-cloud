@@ -101,7 +101,7 @@ An uplink reads the block it sits on. If a machine is built into a wall, or ever
 2. **Sneak + right-click the machine** with the Link Card – the card remembers it (and the face you clicked).
 3. **Right-click the probe** with the card. It now shows the machine's card, exactly as an uplink on that face would.
 
-Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer draws a thin line to the machine. If the machine is removed, the probe forgets it.
+Picking the machine is a normal interaction, so claims and spawn protection apply: where you may not use the machine, you cannot pick it. Only you can hand your pick to a probe, within 10 minutes. The probe keeps checking: if another team claims the machine's chunk, or the server lowers the range, it stops reading until that changes; a probe that is moved (with a block mover or a contraption) forgets its machine. Right-click the probe for its screen: it shows what it reads and has **Clear target**; the Cloud Analyzer draws a thin line to the machine. If the machine is removed, the probe forgets it.
 
 If an uplink shows no card and the screen says *"This side exposes nothing"*, the machine offers its energy, items or fluids on another face – move the uplink there (the screen names one) or use a probe.
 
