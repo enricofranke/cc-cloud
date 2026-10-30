@@ -46,6 +46,11 @@ public final class MapTileService {
     public static final long TICK_BUDGET_NANOS = 2_000_000;
     public static final long DEBOUNCE_MS = 30_000;
     private static final int MEMORY_TILES = 256;
+    /**
+     * Tiles waiting for the server thread at most; more are answered 503 (each waiting tile holds its sample buffers, and
+     * jobs outlive the 15 s HTTP timeout). Security review 2026-10-30.
+     */
+    static final int MAX_QUEUE = 256;
 
     public enum Layer { SURFACE, SLICE }
 
@@ -90,6 +95,8 @@ public final class MapTileService {
         final Map<Long, Object[]> chunks = new HashMap<>();
         /** Surface: WORLD_SURFACE heights (256 per chunk, x + 16·z). */
         final Map<Long, int[]> heights = new HashMap<>();
+        /** Slices: chunks claimed by another team for the asking player (drawn empty, so older pixels never stay). */
+        final java.util.Set<Long> claimed = new java.util.HashSet<>();
         int minY, minSection;
 
         Job(Key key) {
@@ -144,14 +151,25 @@ public final class MapTileService {
      * background thread, never on the server thread), else re-rendered. Server thread.
      */
     public static CompletableFuture<Tile> tile(MinecraftServer server, Key key) {
-        var cached = CACHE.get(key);
-        if (cached != null && fresh(key, cached)) return hit(cached);
         var level = level(server, key.dim());
         if (level == null) return CompletableFuture.completedFuture(new Tile(null, "\"none\""));
         int[][] nodes = key.mainframe() != null ? XrayGuard.nodes(key.mainframe(), key.dim()) : new int[0][];
+        // A slice with a chunk another team has claimed (since it was cached) is drawn again: no cached pixels of it.
+        if (key.layer() == Layer.SLICE && anyClaimed(level, key)) return queue(key, nodes);
+        var cached = CACHE.get(key);
+        if (cached != null && fresh(key, cached)) return hit(cached);
         if (cached != null) return queue(key, nodes);
         return CompletableFuture.supplyAsync(() -> loadFromDisk(server, key), encoder())
             .thenCompose(disk -> disk != null && fresh(key, disk) ? hit(disk) : queue(key, nodes));
+    }
+
+    /** One of the tile's chunks is claimed by another team for the key's player. Server thread. */
+    private static boolean anyClaimed(ServerLevel level, Key key) {
+        if (key.player() == null) return false;
+        for (int c = 0; c < 64; c++) {
+            if (XrayGuard.claimedByOther(level, key.tx() * 8 + (c & 7), key.tz() * 8 + (c >> 3), key.player())) return true;
+        }
+        return false;
     }
 
     private static boolean fresh(Key key, Entry cached) {
@@ -170,6 +188,10 @@ public final class MapTileService {
         synchronized (JOBS) {
             var running = JOBS.get(key);
             if (running != null) return running.future;
+            if (QUEUE.size() >= MAX_QUEUE) {
+                MapStats.TILES.rateLimited.increment();
+                return CompletableFuture.failedFuture(new IllegalStateException("busy"));
+            }
             var job = new Job(key);
             MapStats.TILES.misses.increment();
             job.nodes = nodes;
@@ -235,8 +257,12 @@ public final class MapTileService {
                 int cx = baseChunkX + job.nextChunk % side, cz = baseChunkZ + job.nextChunk / side;
                 job.nextChunk++;
                 LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz); // never loads or generates
-                // slices never show chunks claimed by another team (they stay unknown/transparent)
-                if (chunk == null || (slice && XrayGuard.claimedByOther(level, cx, cz, job.key.player()))) continue;
+                // slices never show chunks claimed by another team: drawn empty (not "unknown", which keeps older pixels)
+                if (slice && XrayGuard.claimedByOther(level, cx, cz, job.key.player())) {
+                    job.claimed.add(net.minecraft.world.level.ChunkPos.pack(cx, cz));
+                    continue;
+                }
+                if (chunk == null) continue;
                 copyChunk(level, chunk, job, slice);
             }
             if (job.nextChunk >= side * side) {
@@ -307,6 +333,12 @@ public final class MapTileService {
         for (int c = 0; c < 64; c++) {
             int cx = job.key.tx() * 8 + (c & 7), cz = job.key.tz() * 8 + (c >> 3);
             long key = net.minecraft.world.level.ChunkPos.pack(cx, cz);
+            if (job.claimed.contains(key)) {
+                for (int dz = 0; dz < 16; dz++) {
+                    for (int dx = 0; dx < 16; dx++) s.color[(cz * 16 + dz - originZ) * MapTileRenderer.SIZE + (cx * 16 + dx - originX)] = 0;
+                }
+                continue;
+            }
             if (!job.chunks.containsKey(key)) continue;
             int[] heights = job.heights.get(key);
             for (int dz = 0; dz < 16; dz++) {
@@ -473,5 +505,14 @@ public final class MapTileService {
         SAMPLES_FOR_TEST.clear();
         CACHE.clear();
         DIRTY.clear();
+        synchronized (JOBS) {
+            JOBS.clear();
+            QUEUE.clear();
+        }
+    }
+
+    /** Test hook: queues a tile without a server (the queue limit). */
+    static CompletableFuture<Tile> queueForTest(Key key) {
+        return queue(key, new int[0][]);
     }
 }
