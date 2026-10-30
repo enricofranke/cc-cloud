@@ -54,6 +54,10 @@ Minecraft only runs the chunks near players. When you walk away, the chunk of a 
 
 To keep a base running while you are away, keep its chunks loaded: **force-load** them with FTB Chunks (claim, then force-load in the map), use a chunk loader from another mod, or have the server's settings keep spawn chunks loaded. Then the card comes back to life on its own.
 
+## Items show a letter instead of an icon
+
+The icon is not there yet. On a dedicated server the server draws the simple icons at start; chests, slabs, stairs, 3D machines – and vanilla items unless you allow the vanilla textures – wait for the first player with CC: Cloud, whose game renders them in the background. See [item icons on a dedicated server](security.md).
+
 ## Wrong PIN / locked
 
 After 5 wrong PINs the device is locked for 5 minutes. The owner can change the PIN with `/cccloud pin set`.

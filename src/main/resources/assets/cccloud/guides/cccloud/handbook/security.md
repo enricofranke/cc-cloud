@@ -112,6 +112,33 @@ Convert the Let's Encrypt key first: `openssl pkcs8 -topk8 -nocrypt -in privkey.
 
 Only for quick tests: set `webAllowInternet = true`, `publicUrl = "http://mc.example.com:8787"` and open TCP 8787 in your host's panel.
 
+## Item icons on a dedicated server
+
+The dashboard shows real item icons. The best ones come from the game itself: every player with CC: Cloud renders icons in the background (a few minutes for a big pack, without costing FPS), and the server keeps them in `<world>/cccloud/icons`.
+
+So that a fresh server has icons before anyone joins, it also draws the simple ones itself right after start, on one low-priority background thread:
+
+- **Drawn by the server:** flat items (ingots, tools, most modded items) and plain blocks (stone, ores, logs, storage blocks, machines with a cube model).
+- **Left for the players:** chests, shields, heads and other special models, slabs, stairs, fences and other shapes, 3D machine models. They show a letter tile until a player with the mod joins.
+
+Players' renders replace the server's later; they look exactly like the inventory. In All the Mods 11 the server draws about 27,000 of 38,500 items on its own (29,000 with vanilla textures), with about 10 seconds of CPU time on one core, never on the server's main thread, so ticks are not affected.
+
+**Vanilla items** need Minecraft's textures, and a dedicated server has none (the server jar ships no textures). Both ways to get them are your choice:
+
+```toml
+[icons]
+renderIconsOnServer = true      # default: draw flat items and plain blocks at server start
+downloadVanillaAssets = false   # true: get Minecraft's client jar from Mojang once, for vanilla icons
+vanillaAssetsJar = ""           # or: the path to a client jar you own
+```
+
+- `downloadVanillaAssets = true` downloads the official Minecraft client jar of exactly your server's version from Mojang's servers, once (about 40 MB, checked against Mojang's SHA-1, kept in `<server>/cccloud/cache`). It is only read locally for textures; nothing from it is passed on – browsers only get the 32×32 icons. By turning it on you agree to Mojang's terms (the [Minecraft EULA](https://www.minecraft.net/eula)).
+- `vanillaAssetsJar` points to a client jar you already have, e.g. `.minecraft/versions/26.1.2/26.1.2.jar`.
+
+Without either, vanilla items get their icons when the first player with the mod joins; the server log says so once at start. The settings are in the `[icons]` section of `<world>/serverconfig/cccloud-server.toml` and apply at the next start. In singleplayer and on LAN the host's game renders every icon, so the server renderer stays off there.
+
+`/cccloud icons status` shows how many icons come from players, how many from the server and how many are missing, and how far the server renderer is. `/cccloud icons rebuild` draws everything again, `/cccloud icons clear` deletes all icons.
+
 ## Big servers
 
 CC: Cloud is built for big bases: hundreds of machines on one mainframe, many mainframes and many browsers. Most of it needs no settings; this is what a server owner can do.

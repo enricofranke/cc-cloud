@@ -124,7 +124,7 @@ The website's recipe grids and mod cards and the dashboard mock (`pnpm mock`, `p
 
 - **Which items:** `node cloud/dev/icon-ids.ts` lists them (task `iconExportIds`): every recipe result and ingredient (a tag becomes a typical member, `iconItem` in the docs content), the docs' named items, the card icon of every mod on the "Supported mods" page (`cloud/web/src/docs/content/mods-meta.ts`) and the mock's storage items.
 - **Where an icon comes from**, best first (`index.json` says which per item):
-  1. `client`: a client-rendered icon store (`<world>/cccloud/icons`, e.g. after `runClient -PiconBenchmark`). `run/saves/*/cccloud/icons` is picked up automatically, `-PiconStores` adds more (`:`-separated). The game's own renderer: tints, chests, banners, GeckoLib machines. Our own items only when the store was rendered by the current mod version.
+  1. `client`: a client-rendered icon store (`<world>/cccloud/icons`, e.g. after `runClient -PiconBenchmark`). `run/saves/*/cccloud/icons` is picked up automatically, `-PiconStores` adds more (`:`-separated). The game's own renderer: tints, chests, banners, GeckoLib machines. Our own items only when the store was rendered by the current mod version. Icons a dedicated server drew itself (`source: "server"` in the manifest) are skipped.
   2. `model`: drawn from the item's model JSON (`src/iconExport`, `ModelIcon`): `item/generated` layers, block-like models with the model's gui transform (30°/225°), back-face culling, a depth buffer and inventory lighting. Models and textures come from everything on the dev classpath: the vanilla client resources of the NeoForge toolchain (`build/moddev/artifacts/minecraft-patched-*-merged.jar`), the compile-only mod jars (CC: Tweaked, AE2, RS and every integration mod of `build.gradle`) and our own resources. No display needed (`java.awt.headless`), so it runs in CI.
   3. `flat`: the server fallback's texture (`IconFallback`), scaled to 32×32.
   Items with special renderers (chests, banners, beds, GeckoLib models) only come from a client store; mods that are not on the classpath (AllTheModium, All The Tweaks, Mekanism, Thermal, …) have no icon. Those keep the letter tile.
@@ -138,6 +138,18 @@ The website's recipe grids and mod cards and the dashboard mock (`pnpm mock`, `p
   ```
   The export only reads from Gradle's cache (vanilla client jar, mod jars), so it adds a few seconds after `./gradlew build`.
 - Re-take the dashboard screenshots with real icons after an export: `SHOTS='^(desktop-st|phone-s[0-9]|docs-)' pnpm --dir cloud screenshots` re-takes only the matching shots (all of them without `SHOTS`).
+
+## Server-rendered item icons
+
+A dedicated server draws flat items and plain cube blocks itself at start (docs/SPEC.md "Item icons (as implemented)"). `serverIconBenchmark` runs the same renderer over a modpack's `mods/` folder (jar-in-jar mods included, the jars are only read) and prints flat / cube / skipped, the CPU time, the store size and the most common reasons an item was left for game clients:
+
+```sh
+./gradlew serverIconBenchmark -PiconBenchMods=/path/to/server/mods \
+    -PiconBenchVanilla=$HOME/.gradle/caches/neoformruntime/artifacts/minecraft_26.1.2_client.jar \
+    [-PiconBenchNoVanillaTextures] [-PiconBenchOut=/some/dir] [-PiconBenchCompare=/path/to/world/cccloud/icons] --max-workers=3
+```
+
+`-PiconBenchVanilla` adds the vanilla items (a real server registers them too) and lets the renderer read vanilla models and textures, like `downloadVanillaAssets = true`; `-PiconBenchNoVanillaTextures` keeps the vanilla items in the list but without textures, like a default dedicated server. `-PiconBenchCompare` compares with the client renders of an icon store (mean absolute difference per channel). The store is written to `-PiconBenchOut` (a temp folder by default), never into the repository. The unit tests use self-made textures only (`ServerIconRendererTest`, golden images in `src/test/resources/icons/golden`; a mismatching render is written to `build/test-goldens`).
 
 ## Art previews
 `python3 tools/gen_textures.py && python3 tools/gen_models.py` regenerate textures, models, blockstates and docs/MODELS.md (with validation). Renders need Pillow + numpy (e.g. `uv run --with pillow --with numpy python …`); reference assets for comparison scenes come from `CCCLOUD_REF` (`modref/<namespace>/assets/<namespace>`: vanilla, AE2, RS, Energized Power; CC: Tweaked via `--cc`), the scenes fall back to plain stand-ins without them:

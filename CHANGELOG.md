@@ -89,6 +89,24 @@ in, and who it was: a player's name or the kind of mob.
   for up to 5 minutes; push retries used the allow-list of the first attempt; cave slices (`mapSlices = auto`) now count
   the dashboard as internet-facing while the running server allows the internet, even if a reload could not apply yet.
 
+### Item icons right after server start
+- A dedicated server now draws the simple item icons itself at start, so the dashboard has icons before anyone joins:
+  flat items (ingots, tools, most modded items, tinted like in the inventory) and plain cube blocks (stone, ores, logs,
+  machines with a cube model) from the textures in the mod jars, on one low-priority background thread. In All the Mods
+  11 that is about 27,000 of 38,500 items. Chests, slabs, stairs, 3D models and other shapes still come from the first
+  player with CC: Cloud, whose game renders every icon in the background as before and replaces the server's (which are
+  marked `source: "server"` in the icon manifest; client renders are never replaced by server renders). New config
+  `renderIconsOnServer` (default true). Singleplayer and LAN are unchanged: the host's game renders everything.
+- Vanilla items on a dedicated server: new opt-in config `downloadVanillaAssets` (default false) downloads the official
+  Minecraft client jar of exactly the server's version from Mojang once (HTTPS to Mojang's hosts only, SHA-1 checked,
+  cached in `<server>/cccloud/cache`) and reads only its item textures and models locally; nothing from it is passed on.
+  Turning it on means agreeing to Mojang's terms. `vanillaAssetsJar` (a client jar you own) keeps working instead.
+  Without either, the server logs one hint at start and vanilla items wait for the first player.
+- `/cccloud icons status` shows icons by source (game clients / server / missing), the server renderer's progress and
+  where vanilla textures come from; `rebuild` also redraws the server's icons.
+- The texture fallback found mod assets only for namespaces with an English language file; it now indexes every mod
+  jar's `assets/` folder.
+
 ## 1.0.0-beta.1 – 2026-10-30
 
 The first public beta. CC: Cloud needs **CC: Tweaked 1.120.0+** next to it (Minecraft 26.1.2, NeoForge 26.1.2.109+,

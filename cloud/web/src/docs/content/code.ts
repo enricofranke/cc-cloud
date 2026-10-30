@@ -168,6 +168,11 @@ tlsCertPath = "/etc/letsencrypt/live/mc.example.com/fullchain.pem"
 tlsKeyPath = "/srv/mc/privkey-pkcs8.pem"
 publicUrl = "https://mc.example.com:8787"`;
 
+export const TOML_ICONS = `[icons]
+renderIconsOnServer = true      # default: draw flat items and plain blocks at server start
+downloadVanillaAssets = false   # true: get Minecraft's client jar from Mojang once, for vanilla icons
+vanillaAssetsJar = ""           # or: the path to a client jar you own`;
+
 export const PKCS8 = `openssl pkcs8 -topk8 -nocrypt -in privkey.pem -out privkey-pkcs8.pem`;
 
 export const COMMANDS = `/cccloud status
