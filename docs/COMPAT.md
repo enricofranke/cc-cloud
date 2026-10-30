@@ -122,5 +122,13 @@ False positives of the generic Energy and Tank cards can be excluded by pack mak
 | Trash Cans, Item Collectors | 1.1.1a / 1.1.12a | skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range) | – | – |
 | Just Dire Things | 1.6.11 | no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined | – | – |
 
+## Follow-ups (2026-10-30)
+
+### CC: Tweaked wired networks
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| CC: Tweaked (`computercraft`) | 1.120.0 | An uplink on a computer shows a card for every machine the computer reaches through its wired modems (networking cable, modems switched on): the card an uplink on that machine would show, same controls and permissions. Up to `wiredMachineCards` (8) per uplink, one per machine and mainframe, not for machines with their own uplink or probe. Lua bridge widgets accept bridges on the computer's cable network (`me_cloud_bridge_0`) with the uplink directly on the computer. Public CC API only (a listener node on the modem's network). | the card's own | yes (`wired_machine_cards`: an energy block behind a full wired modem; a chest gets no card) |
+
 ## Not in this wave
 Nothing left from the v0.8 list.

@@ -15,6 +15,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   nor shown for 30 days are deleted (new config `mapTileMaxAgeDays`, 0 keeps them).
 - Production statistics: a huge stock change (thousands of item types at once, e.g. emptying a drive) no longer creates
   a short-lived statistics entry for every changed item; only the items that will be tracked are created.
+- CC: Tweaked wired networks: an uplink on a computer now also shows cards for the machines the computer reaches through
+  its wired modems and networking cable – the same cards an uplink on each machine would show, with the same controls and
+  permissions (up to 8 per uplink, new config `wiredMachineCards`). Lua bridge widgets (`itemSearch`, `watchlist`, `jobs`)
+  accept a bridge on the computer's cable network when the uplink sits directly on the computer.
 - Railcraft Reborn: new cards for iron and steel tanks, coke ovens and blast furnaces. Like the steam boiler, an uplink
   or a Cloud Probe on any block of the formed multiblock shows the whole structure (fill and fluid; cooking progress,
   creosote and output; smelting progress, fuel, output and slag).

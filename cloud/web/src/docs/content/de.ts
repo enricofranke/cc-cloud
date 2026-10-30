@@ -178,6 +178,8 @@ Weiter: [Lua-Referenz](/docs/lua) oder die [cloud.ui-Bibliothek](/docs/ui-librar
 
 Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](/docs/redstone) teilen sich eine Karte pro Gruppe. Ein Computer ohne eigenes Programm zeigt die automatische **Computer-Karte**: Strom, Turn on / Reboot / Shut down und seine sechs Redstone-Seiten (Seite antippen schaltet den Ausgang, die LED zeigt den Eingang; analoge Stärken unter „Advanced“).
 
+**Maschinen im Kabelnetz des Computers.** Hat der Computer ein Wired Modem mit CC-Netzwerkkabel zu anderen Maschinen (deren Modems eingeschaltet), zeigt der Uplink am Computer auch für jede dieser Maschinen eine Karte – dieselbe Karte, die ein Uplink direkt an der Maschine zeigen würde (Energie, Tanks, Lager-Controller, Mod-Maschinen), mit denselben Bedienelementen und Rechten. Bis zu 8 pro Uplink (Server-Einstellung \`wiredMachineCards\`); eine Maschine mit eigenem Uplink oder eigener Sonde behält diese, und gleichnamige Maschinen unterscheidet der Name, den der Computer für sie nutzt („Energy Cell (energy_cell_2)“). Normale Truhen haben keine Karte.
+
 | Widget | Zeigt / macht |
 |---|---|
 | gauge | Wert auf einem Bogen mit Warn-/Kritisch-Farben |
@@ -332,7 +334,7 @@ Jedes Widget bekommt eine **ID** (1–32 Zeichen: a–z, 0–9, _), eine Beschri
 | \`cloud.number(id, label, opts)\` | min, max, step, value, unit |
 | \`cloud.text(id, label, opts)\` | maxLength (≤ 256), value, placeholder |
 | \`cloud.buttons(id, label, opts)\` | options = {"A","B","C"} |
-| \`cloud.itemSearch(id, label, opts)\` | bridge = Peripheral-Name, max |
+| \`cloud.itemSearch(id, label, opts)\` | bridge = Peripheral-Name (eine Seite oder eine Bridge im Kabelnetz des Computers, z. B. \`me_cloud_bridge_0\`), max |
 | \`cloud.watchlist(id, label, opts)\` | bridge |
 | \`cloud.jobs(id, label, opts)\` | bridge |
 

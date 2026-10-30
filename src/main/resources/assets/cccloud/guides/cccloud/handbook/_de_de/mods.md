@@ -120,6 +120,12 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | EvilCraft (`evilcraft`) | 1.2.107 | Dark Tank via the generic Tank card; Blood Infuser / Spirit Furnace keep the generic Energy/tank cards | – | see Tank |
 | Ars Magica Legacy (`arsmagicalegacy`) | 1.7.0 | **Etherium** card for every block of its public `EtheriumHandler` API (obelisk, celestial prism, black aurem, altar core): gauge + amount / max per etherium type; the widgets follow the block's types | none | yes (obelisk) |
 
+### CC: Tweaked wired networks
+
+| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
+|---|---|---|---|---|
+| CC: Tweaked (`computercraft`) | 1.120.0 | An uplink on a computer shows a card for every machine the computer reaches through its wired modems (networking cable, modems switched on): the card an uplink on that machine would show, same controls and permissions. Up to `wiredMachineCards` (8) per uplink, one per machine and mainframe, not for machines with their own uplink or probe. Lua bridge widgets accept bridges on the computer's cable network (`me_cloud_bridge_0`) with the uplink directly on the computer. Public CC API only (a listener node on the modem's network). | the card's own | yes (`wired_machine_cards`: an energy block behind a full wired modem; a chest gets no card) |
+
 ### Ohne eigene Karte
 
 - **Integrated Terminals / Tunnels**: –: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card

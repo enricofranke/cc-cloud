@@ -52,6 +52,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   sfm: { cat: "logistics", icon: "sfm:manager" },
   modularrouters: { cat: "logistics", icon: "modularrouters:modular_router" },
   integrateddynamics: { cat: "logistics", icon: "integrateddynamics:part_display_panel" },
+  computercraft: { cat: "logistics", icon: "computercraft:wired_modem_full" },
   waystones: { cat: "world", icon: "waystones:sandstone_waystone" },
   ftbquests: { cat: "world", icon: "minecraft:book" },
   journeymap: { cat: "world", icon: "minecraft:map" },

@@ -96,6 +96,7 @@ public final class NetworkService {
         OVER_CAPACITY.clear();
         fibers = Map.of();
         CloudWired.clear();
+        ai.ezfox.cccloud.uplink.WiredMachines.clear();
         EnderFiberLinkBlockEntity.clearLoaded();
         dirty = true;
         fiberDirty = true;

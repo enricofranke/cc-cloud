@@ -294,6 +294,7 @@
   "cccloud.command.revoke_button": "[entfernen]",
   "cccloud.configuration.cards": "Fertige Karten",
   "cccloud.configuration.deviceCards": "Gerätekarten an Maschinen",
+  "cccloud.configuration.wiredMachineCards": "Maschinenkarten über CC-Kabel",
   "cccloud.configuration.mffsRequirePin": "MFFS-Feldschalter braucht die PIN",
   "cccloud.configuration.server": "Server & Team",
   "cccloud.configuration.serverCard": "Server-Karte an Mainframes",

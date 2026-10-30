@@ -294,6 +294,7 @@
   "cccloud.command.revoke_button": "[revoke]",
   "cccloud.configuration.cards": "Ready-made cards",
   "cccloud.configuration.deviceCards": "Device cards on machines",
+  "cccloud.configuration.wiredMachineCards": "Machine cards over CC cable",
   "cccloud.configuration.mffsRequirePin": "MFFS field toggle needs the PIN",
   "cccloud.configuration.server": "Server & team",
   "cccloud.configuration.serverCard": "Server card on mainframes",

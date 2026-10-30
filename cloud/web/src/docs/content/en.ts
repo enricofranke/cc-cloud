@@ -178,6 +178,8 @@ Open the URL shown by the mainframe. One browser can hold several mainframes; ta
 
 Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one card per group. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
 
+**Machines on the computer's cable network.** If the computer has a wired modem with CC networking cable to other machines (their modems switched on), the uplink on the computer also shows a card for each of those machines – the same card an uplink sitting on the machine would show (energy, tanks, storage controllers, mod machines), with the same controls and permissions. Up to 8 per uplink (server setting \`wiredMachineCards\`); a machine with its own uplink or probe keeps that one, and machines with the same name are told apart by the computer's name for them ("Energy Cell (energy_cell_2)"). Plain chests have no card.
+
 | Widget | Shows / does |
 |---|---|
 | gauge | value on an arc with warn/crit colours |
@@ -332,7 +334,7 @@ Every widget takes an **id** (1–32 characters: a–z, 0–9, _), a label and a
 | \`cloud.number(id, label, opts)\` | min, max, step, value, unit |
 | \`cloud.text(id, label, opts)\` | maxLength (≤ 256), value, placeholder |
 | \`cloud.buttons(id, label, opts)\` | options = {"A","B","C"} |
-| \`cloud.itemSearch(id, label, opts)\` | bridge = peripheral name, max |
+| \`cloud.itemSearch(id, label, opts)\` | bridge = peripheral name (a side, or a bridge on the computer's cable network such as \`me_cloud_bridge_0\`), max |
 | \`cloud.watchlist(id, label, opts)\` | bridge |
 | \`cloud.jobs(id, label, opts)\` | bridge |
 

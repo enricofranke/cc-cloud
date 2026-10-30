@@ -247,6 +247,13 @@ Follow-ups done after the review (2026-10-30, branch `followups`):
 - **Production statistics, large stock changes:** new items are picked with a heap of at most `trackedItemsPerStorage`
   entries in one pass over the changes; a change of 50 000 types no longer allocates an entry with two rings for each of
   them before trimming (`ProductionTrackerTest`).
+- **CC wired networks (new):** an uplink on a computer shows cards for machines the computer reaches through its wired
+  modems. They expose nothing the computer could not already read and control from Lua over the same cable; the cards
+  are published like device cards, so every action needs the same permission as on an uplink attached to the machine
+  (`act.buttons`, `act.redstone` for redstone controls, PIN/confirm as the card says), and the uplink must be linked
+  with `network.link`. The listener node puts no peripheral on the network. Residual: like CC itself, claims are only
+  enforced when the modem and cable are placed and switched on (in-world interactions), not checked again on every read
+  as for the Cloud Probe.
 - **Discord bot pod:** a NetworkPolicy (`discord-bot/deploy/networkpolicy.yaml`) denies all ingress (the kubelet's probe
   comes from the node, which policies never block) and allows egress only to the cluster DNS and TCP 443 on public IPv4
   addresses (private, link-local/metadata, loopback and CGNAT ranges excluded). Pinning the image by digest is documented

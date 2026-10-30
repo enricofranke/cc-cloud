@@ -57,7 +57,7 @@ Jedes Widget bekommt eine **ID** (1–32 Zeichen: a–z, 0–9, _), eine Beschri
 | `cloud.number(id, label, opts)` | min, max, step, value, unit |
 | `cloud.text(id, label, opts)` | maxLength (≤ 256), value, placeholder |
 | `cloud.buttons(id, label, opts)` | options = \{"A","B","C"\} |
-| `cloud.itemSearch(id, label, opts)` | bridge = Peripheral-Name, max |
+| `cloud.itemSearch(id, label, opts)` | bridge = Peripheral-Name (eine Seite oder eine Bridge im Kabelnetz des Computers, z. B. `me_cloud_bridge_0`), max |
 | `cloud.watchlist(id, label, opts)` | bridge |
 | `cloud.jobs(id, label, opts)` | bridge |
 
