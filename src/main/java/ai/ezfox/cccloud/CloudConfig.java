@@ -28,6 +28,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> INTERNET_ACCESS;
     public static final ModConfigSpec.ConfigValue<String> INTERNET_DOMAIN;
     public static final ModConfigSpec.IntValue PUBLIC_TOKEN_IDLE_HOURS;
+    public static final ModConfigSpec.BooleanValue INTERNET_REQUIRE_PIN;
     // v0.4 network ranges (blocks, same dimension, spherical)
     public static final ModConfigSpec.IntValue RANGE_UPLINK;
     public static final ModConfigSpec.IntValue RANGE_ADVANCED_UPLINK;
@@ -203,9 +204,9 @@ public final class CloudConfig {
 
         INTERNET_ACCESS = b.comment("Internet access to the dashboard in one setting (or /cccloud internet <mode> in game):",
                 "off   = LAN only (default); the advanced keys above decide everything, as before.",
-                "http  = plain HTTP over the internet, INSECURE: logins and the PIN can be read on the way. Every control action from an",
-                "        internet address needs the mainframe PIN, so a PIN must be set; device tokens used from the internet expire after",
-                "        publicTokenIdleHours without use; stricter rate limits for internet addresses.")
+                "http  = plain HTTP over the internet, easy but readable on the network path (logins, PINs). New browsers still need",
+                "        [Allow] in game; device tokens used from the internet expire after publicTokenIdleHours without use; stricter",
+                "        rate limits for internet addresses; internetRequirePin makes control from the internet need the PIN.")
             .translation("cccloud.configuration.internetAccess")
             .define("internetAccess", "off", o -> o instanceof String s && ai.ezfox.cccloud.web.internet.InternetMode.parse(s) != null);
         INTERNET_DOMAIN = b.comment("Optional host name (or IP address) players use from the internet, e.g. mybase.duckdns.org. Empty = the public IP",
@@ -216,6 +217,10 @@ public final class CloudConfig {
                 "logged out and must be paired again (on the LAN the normal 30 days apply).")
             .translation("cccloud.configuration.publicTokenIdleHours")
             .defineInRange("publicTokenIdleHours", 24, 1, 720);
+        INTERNET_REQUIRE_PIN = b.comment("internetAccess = http, stricter: every control action from an internet address needs the mainframe PIN",
+                "(entered once, then 10 minutes per browser); mainframes without a PIN are view-only from the internet. LAN unchanged.")
+            .translation("cccloud.configuration.internetRequirePin")
+            .define("internetRequirePin", false);
         b.pop();
 
         b.push("uplinks");

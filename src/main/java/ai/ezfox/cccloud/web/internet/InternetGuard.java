@@ -12,11 +12,12 @@ import java.util.function.LongSupplier;
  * The extra rules of plain-HTTP internet access ({@code internetAccess = http}, docs/SECURITY.md "Internet access modes")
  * for clients with an internet address (not loopback/LAN, after the trusted-proxy rules):
  * <ul>
- *   <li>every write (control action, layout, rules, access, shares, scripts, …) needs the mainframe PIN: a correct PIN
- *       unlocks writes for {@link #UNLOCK_MS} for that browser, mainframe and address;</li>
  *   <li>a device token that was not used for {@code publicTokenIdleHours} is refused there (and dropped);</li>
  *   <li>stricter limits: {@link #PUBLIC_FAILURES} failed logins, pairing codes or PINs per {@link #FAILURE_WINDOW_MS}
- *       block the address, fewer actions and API requests.</li>
+ *       block the address, fewer actions and API requests;</li>
+ *   <li>only with {@code internetRequirePin} ({@link #pinRequired}): every write (control action, layout, rules, access,
+ *       shares, scripts, …) needs the mainframe PIN; a correct PIN unlocks writes for {@link #UNLOCK_MS} for that
+ *       browser, mainframe and address, and a mainframe without a PIN is view-only from there.</li>
  * </ul>
  * In every other mode (and for LAN addresses) nothing here applies. One guard per web server; a config reload swaps its
  * settings ({@link #update}). Pure Java and thread-safe, unit tested.
@@ -71,6 +72,11 @@ public final class InternetGuard {
         return settings.strictPublic() && isPublic(ip);
     }
 
+    /** {@code internetRequirePin}: writes from this client need the PIN (unlock). */
+    public boolean pinRequired(String ip) {
+        return strict(ip) && settings.requirePin();
+    }
+
     /** Too many failed logins, pairing codes or PINs from this internet address. */
     public boolean blocked(String ip) {
         return strict(ip) && failures.isBlocked(ip);
@@ -85,24 +91,24 @@ public final class InternetGuard {
         return tokenHash + "|" + mainframeId + "|" + ip;
     }
 
-    /** True if writes are allowed: not strict, or a correct PIN was entered within {@link #UNLOCK_MS}. */
+    /** True if writes are allowed: no PIN requirement here, or a correct PIN was entered within {@link #UNLOCK_MS}. */
     public boolean unlocked(String tokenHash, UUID mainframeId, String ip) {
-        if (!strict(ip)) return true;
+        if (!pinRequired(ip)) return true;
         Long until = unlocks.get(key(tokenHash, mainframeId, ip));
         return until != null && until > clock.getAsLong();
     }
 
-    /** Seconds the unlock still lasts (0 = locked or not strict). */
+    /** Seconds the unlock still lasts (0 = locked or no PIN requirement). */
     public long unlockedFor(String tokenHash, UUID mainframeId, String ip) {
-        if (!strict(ip)) return 0;
+        if (!pinRequired(ip)) return 0;
         Long until = unlocks.get(key(tokenHash, mainframeId, ip));
         long left = until == null ? 0 : until - clock.getAsLong();
         return left <= 0 ? 0 : (left + 999) / 1000;
     }
 
-    /** After a correct PIN from a strict client: writes are allowed for {@link #UNLOCK_MS}. Returns the seconds. */
+    /** After a correct PIN from a client with the PIN requirement: writes are allowed for {@link #UNLOCK_MS}. Returns the seconds. */
     public long unlock(String tokenHash, UUID mainframeId, String ip) {
-        if (!strict(ip)) return 0;
+        if (!pinRequired(ip)) return 0;
         long now = clock.getAsLong();
         if (unlocks.size() > 10_000) unlocks.values().removeIf(until -> until <= now);
         unlocks.put(key(tokenHash, mainframeId, ip), now + UNLOCK_MS);

@@ -12,7 +12,7 @@ export function RemoteUnlock({ conn }: { conn: MainframeConn }) {
   const [state, setState] = useState<PinState>({ kind: "idle" });
   useEffect(() => {
     if (lock === "no_pin") {
-      pushToast({ level: "warn", title: "No PIN on this mainframe", text: rejectText({ ok: false, error: "remote_no_pin" }) });
+      pushToast({ level: "warn", title: "Read-only from outside", text: rejectText({ ok: false, error: "remote_no_pin" }) });
       conn.remoteLock.value = null;
     }
     if (lock === "locked") setState({ kind: "idle" });

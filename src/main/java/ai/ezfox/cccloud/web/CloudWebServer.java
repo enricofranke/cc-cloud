@@ -197,22 +197,17 @@ public final class CloudWebServer {
      * (no PIN), and the internet link (public IP looked up in the background when no domain or publicUrl is set).
      */
     private static void plainHttp(WebInstance instance, boolean tls) {
-        String line = "[cccloud] ************************************************************************";
-        CloudLog.LOGGER.warn(line);
-        CloudLog.LOGGER.warn("[cccloud] * INSECURE: the CC: Cloud dashboard is open to the internet over plain HTTP");
-        CloudLog.LOGGER.warn("[cccloud] * (internetAccess = http). Anyone on the same Wi-Fi or on the network path");
-        CloudLog.LOGGER.warn("[cccloud] * can read logins and the PIN. Every control action from the internet needs");
-        CloudLog.LOGGER.warn("[cccloud] * the mainframe PIN; browsers unused for {} h are logged out there.",
-            instance.internet.settings().publicTokenIdleMs() / 3_600_000L);
-        CloudLog.LOGGER.warn("[cccloud] * Switch it off with /cccloud internet off (docs: Security & hosting).");
-        CloudLog.LOGGER.warn(line);
+        boolean requirePin = instance.internet.settings().requirePin();
+        CloudLog.LOGGER.warn("[cccloud] internetAccess = http: the dashboard is open to the internet over plain HTTP, so logins and PINs can be read on "
+            + "the network path; {} (switch off: /cccloud internet off)", requirePin ? "control from the internet needs the mainframe PIN (internetRequirePin)"
+            : "stricter: internetRequirePin = true, safer: HTTPS");
         if (tls) CloudLog.LOGGER.info("[cccloud] internetAccess = http uses your TLS certificate (tlsCertPath), so connections are encrypted");
         var server = ai.ezfox.cccloud.network.CloudNetwork.server();
-        if (server != null) {
+        if (server != null && requirePin) {
             var missing = ai.ezfox.cccloud.command.InternetCommand.mainframesWithoutPin(server);
             if (!missing.isEmpty()) {
-                CloudLog.LOGGER.warn("[cccloud] {} mainframe(s) have no PIN and can only be watched from the internet, not controlled: {}. "
-                    + "Set one in game: look at the mainframe and run /cccloud pin set <4-8 digits>.", missing.size(), String.join(", ", missing));
+                CloudLog.LOGGER.info("[cccloud] {} mainframe(s) have no PIN and stay view-only from the internet until their owner sets one "
+                    + "(look at the mainframe and /cccloud pin set <4-8 digits>): {}", missing.size(), String.join(", ", missing));
             }
         }
         if (instance.publicUrl.isEmpty()) {
@@ -229,6 +224,12 @@ public final class CloudWebServer {
     public static ai.ezfox.cccloud.web.internet.InternetMode internetMode() {
         var instance = current;
         return instance == null ? ai.ezfox.cccloud.web.internet.InternetMode.OFF : instance.internet.mode();
+    }
+
+    /** {@code internetAccess = http} with {@code internetRequirePin} on the running dashboard (GameTests, status). */
+    public static boolean requiresPin() {
+        var instance = current;
+        return instance != null && instance.internet.settings().requirePin();
     }
 
     /** The internet link of the running dashboard ({@code publicUrl}, the domain or the looked-up public IP), or "". */
@@ -484,6 +485,7 @@ public final class CloudWebServer {
                 session.close(4401, "revoked");
                 continue;
             }
+            session.recheckInternet();
             var access = instance.bridge.access(device, session.mainframeId());
             var role = access.role();
             if (role == ai.ezfox.cccloud.access.Role.NONE) {

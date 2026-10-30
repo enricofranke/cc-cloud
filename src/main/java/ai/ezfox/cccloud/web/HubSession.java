@@ -55,6 +55,10 @@ public interface HubSession {
     }
 
     /** Queues messages for sending. Must not block. */
+    /** The 5-second re-check: plain-HTTP internet access tells an internet session whether its mainframe can be controlled. */
+    default void recheckInternet() {
+    }
+
     void send(List<String> messages);
 
     void close(int code, String reason);

@@ -43,6 +43,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private final TokenBucket actionLimit;
     /** PIN unlocks (plain-HTTP internet access): one per second. */
     private final TokenBucket unlockLimit = new TokenBucket(1, 1);
+    /** What this session was last told by {@code {"t":"internet"}} ("" = nothing yet). */
+    private volatile String internetState = "";
     /** Item searches: 5 per second (docs/SPEC.md). */
     private final TokenBucket queryLimit = new TokenBucket(5, 5);
     /** Terminal input: 20 messages per second (each up to 32 events). */
@@ -152,9 +154,9 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             close(4401, "revoked");
             return;
         }
-        // Plain-HTTP internet access: writes from an internet address need the PIN first (actions and opening a terminal
-        // carry the PIN themselves and are checked in their handlers).
-        if (instance.internet.strict(ip) && ClientMessages.isWrite(message) && !(message instanceof ClientMessages.Action)
+        // Plain-HTTP internet access with internetRequirePin: writes from an internet address need the PIN first (actions
+        // and opening a terminal carry the PIN themselves and are checked in their handlers).
+        if (instance.internet.pinRequired(ip) && ClientMessages.isWrite(message) && !(message instanceof ClientMessages.Action)
             && !(message instanceof ClientMessages.Terminal t && t.op().equals("term_open"))) {
             String locked = remoteLock(current, mainframeId);
             if (locked != null) {
@@ -196,19 +198,41 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     /**
+     * Plain-HTTP internet access: tells an internet session whether its mainframe can be controlled from outside
+     * ({@code {"t":"internet","remote":true,"pin":false}} = read-only, the mainframe has no PIN). Sent after the login
+     * and again when it changes (the 5-second re-check), e.g. when the owner sets a PIN.
+     */
+    @Override
+    public void recheckInternet() {
+        if (state != State.READY || share != null) return;
+        boolean remote = instance.internet.pinRequired(ip);
+        boolean pin = instance.auth.hasPin(mainframeId);
+        String now = remote ? (pin ? "pin" : "no_pin") : "lan";
+        if (now.equals(internetState)) return;
+        boolean first = internetState.isEmpty();
+        internetState = now;
+        if (first && !remote) return; // the LAN never needs the message
+        var json = new JsonObject();
+        json.addProperty("t", "internet");
+        json.addProperty("remote", remote);
+        json.addProperty("pin", pin);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
+    /**
      * Plain-HTTP internet access: why a write from this (internet) session is refused, or null if it may go ahead.
      * {@code remote_no_pin}: the mainframe has no PIN, so nothing can be controlled from the internet;
      * {@code remote_locked}: enter the PIN first ({@code unlock}, or with the action itself).
      */
     private @Nullable String remoteLock(AuthStore.Device current, UUID mainframe) {
-        if (!instance.internet.strict(ip)) return null;
+        if (!instance.internet.pinRequired(ip)) return null;
         if (!instance.auth.hasPin(mainframe)) return "remote_no_pin";
         return instance.internet.unlocked(current.tokenHash(), mainframe, ip) ? null : "remote_locked";
     }
 
     /** A correct PIN from an internet address in plain-HTTP mode: writes are unlocked for a while (logged and audited). */
     private long remoteUnlocked(AuthStore.Device current, UUID mainframe) {
-        if (!instance.internet.strict(ip)) return 0;
+        if (!instance.internet.pinRequired(ip)) return 0;
         boolean was = instance.internet.unlocked(current.tokenHash(), mainframe, ip);
         long seconds = instance.internet.unlock(current.tokenHash(), mainframe, ip);
         if (!was) {
@@ -225,7 +249,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
      */
     private void unlock(AuthStore.Device current, ClientMessages.Unlock unlock) {
         UUID mainframe = mainframeId;
-        if (!instance.internet.strict(ip)) {
+        if (!instance.internet.pinRequired(ip)) {
             sendUnlockResult(unlock.reqId(), null, "seconds", 0);
             return;
         }
@@ -331,6 +355,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     if (sizeGuard != null) sizeGuard.raiseLimit(ClientMessages.MAX_LAYOUT_FRAME);
                     if (authDeadline != null) authDeadline.cancel(false);
                     WebHub.INSTANCE.addSession(this);
+                    recheckInternet();
                 });
             });
         } catch (RejectedExecutionException e) {
@@ -399,9 +424,9 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
         UUID mainframe = mainframeId;
         boolean needsPin = WebHub.INSTANCE.widgetNeedsPin(mainframe, action.uplinkId().toString(), action.id());
-        // Plain-HTTP internet access: every action from an internet address needs the PIN (once per unlock period; a PIN
-        // sent with the action unlocks too). A mainframe without a PIN cannot be controlled from the internet at all.
-        boolean remote = instance.internet.strict(ip);
+        // internetRequirePin: every action from an internet address needs the PIN (once per unlock period; a PIN sent with
+        // the action unlocks too). A mainframe without a PIN cannot be controlled from the internet then.
+        boolean remote = instance.internet.pinRequired(ip);
         if (remote && !instance.auth.hasPin(mainframe)) {
             sendResult(action.reqId(), "remote_no_pin");
             return;
@@ -865,7 +890,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     sendTermResult(terminal.reqId(), "rate_limited", null, null);
                     return;
                 }
-                boolean remote = instance.internet.strict(ip);
+                boolean remote = instance.internet.pinRequired(ip);
                 if (!instance.auth.hasPin(mainframe)) {
                     // plain-HTTP internet access: no terminal from the internet without a PIN
                     if (remote) sendTermResult(terminal.reqId(), "remote_no_pin", null, null);

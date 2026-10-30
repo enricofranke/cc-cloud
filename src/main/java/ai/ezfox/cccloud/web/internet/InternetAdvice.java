@@ -28,7 +28,8 @@ public final class InternetAdvice {
      * @param port          the dashboard's port
      * @param lanIp         this machine's LAN address (for the port forwarding), or null
      * @param publicIp      the looked-up public IP, or null (not found / lookups off)
-     * @param withoutPin    mainframes without a PIN (they can only be watched from the internet in plain-HTTP mode)
+     * @param withoutPin    owners of mainframes without a PIN, with their count ("Steve (2)"): those mainframes can only
+     *                      be watched from the internet in plain-HTTP mode
      * @param idleHours     {@code publicTokenIdleHours}
      * @param legacyOpen    {@code internetAccess = off} but {@code webAllowInternet = true} (an older setup stays open)
      */
@@ -61,7 +62,7 @@ public final class InternetAdvice {
                 if (f.legacyOpen()) lines.add(new Line(Style.WARN, "cccloud.internet.off.legacy"));
             }
             case HTTP -> {
-                lines.add(new Line(Style.ERROR, "cccloud.internet.http.title"));
+                lines.add(new Line(Style.WARN, "cccloud.internet.http.title"));
                 if (f.running() != InternetMode.HTTP) lines.add(new Line(Style.INFO, "cccloud.internet.restart"));
                 lines.addAll(httpSteps(f));
                 lines.add(new Line(Style.COMMAND, "cccloud.internet.back_off", "/cccloud internet off"));
@@ -81,8 +82,11 @@ public final class InternetAdvice {
         String port = String.valueOf(f.port());
         lines.add(new Line(Style.STEP, "cccloud.internet.step.forward", port, f.lanIp() != null ? f.lanIp() : "<this-pc>"));
         lines.add(new Line(Style.STEP, "cccloud.internet.step.test"));
-        lines.add(new Line(Style.ERROR, "cccloud.internet.http.warning", String.valueOf(f.idleHours())));
-        if (!f.withoutPin().isEmpty()) lines.add(new Line(Style.WARN, "cccloud.internet.http.without_pin", names(f.withoutPin())));
+        lines.add(new Line(Style.WARN, "cccloud.internet.http.warning", String.valueOf(f.idleHours())));
+        if (!f.withoutPin().isEmpty()) {
+            lines.add(new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
+            lines.add(new Line(Style.COMMAND, "cccloud.internet.http.set_pin", "/cccloud pin set "));
+        }
         return lines;
     }
 
@@ -95,24 +99,12 @@ public final class InternetAdvice {
             case OFF -> lines.add(new Line(f.legacyOpen() ? Style.WARN : Style.OK, f.legacyOpen() ? "cccloud.internet.status.legacy" : "cccloud.internet.status.lan"));
             case HTTP -> {
                 lines.add(new Line(Style.LINK, "cccloud.internet.status.link", runningUrl.isBlank() ? httpUrl(f) : runningUrl));
-                lines.add(new Line(Style.ERROR, "cccloud.internet.http.warning", String.valueOf(f.idleHours())));
+                lines.add(new Line(Style.WARN, "cccloud.internet.http.warning", String.valueOf(f.idleHours())));
                 lines.add(f.withoutPin().isEmpty() ? new Line(Style.OK, "cccloud.internet.status.all_pins")
-                    : new Line(Style.WARN, "cccloud.internet.http.without_pin", names(f.withoutPin())));
+                    : new Line(Style.INFO, "cccloud.internet.http.without_pin", names(f.withoutPin())));
             }
         }
         lines.add(new Line(Style.COMMAND, "cccloud.internet.status.modes", "/cccloud internet http", "/cccloud internet off"));
-        return lines;
-    }
-
-    /** {@code http} refused: a PIN is missing (or no mainframe exists yet). */
-    public static List<Line> refusedNoPin(List<String> withoutPin, int mainframes) {
-        var lines = new ArrayList<Line>();
-        if (mainframes == 0) {
-            lines.add(new Line(Style.ERROR, "cccloud.internet.http.refused_none"));
-        } else {
-            lines.add(new Line(Style.ERROR, "cccloud.internet.http.refused", names(withoutPin)));
-        }
-        lines.add(new Line(Style.COMMAND, "cccloud.internet.http.set_pin", "/cccloud pin set "));
         return lines;
     }
 

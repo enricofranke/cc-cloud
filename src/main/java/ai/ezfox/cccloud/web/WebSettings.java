@@ -46,7 +46,7 @@ public record WebSettings(boolean enabled, String bind, int port, String publicU
         int port = Integer.getInteger("cccloud.devWebPort", CloudConfig.get(CloudConfig.WEB_PORT));
         var internet = InternetSettings.resolve(new InternetSettings.Inputs(CloudConfig.get(CloudConfig.INTERNET_ACCESS),
             CloudConfig.get(CloudConfig.INTERNET_DOMAIN), port, CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET), CloudConfig.get(CloudConfig.PUBLIC_URL),
-            !cert.isEmpty() || !key.isEmpty(), CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS)));
+            !cert.isEmpty() || !key.isEmpty(), CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS), CloudConfig.get(CloudConfig.INTERNET_REQUIRE_PIN)));
         return new WebSettings(CloudConfig.get(CloudConfig.WEB_ENABLED), CloudConfig.get(CloudConfig.WEB_BIND).trim(), port, internet.publicUrl(),
             internet.allowInternet(), proxies, CloudConfig.get(CloudConfig.WEB_TRUST_CLOUDFLARE_HEADER),
             CloudConfig.get(CloudConfig.WEB_COMPRESSION), hosts, cert, key, fingerprint(cert, key), internet);

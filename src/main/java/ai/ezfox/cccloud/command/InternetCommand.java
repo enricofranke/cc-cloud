@@ -34,7 +34,8 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
  * {@code /cccloud internet [status|off|http [domain]]}: internet access to the dashboard in one setting
  * ({@code internetAccess}, docs/HOSTING.md). Switching needs the server owner (op level 4, or the console); the status
  * is shown to admins (level 2). The command writes the config, applies it at once (live config) and prints the link,
- * the port to forward and how to test it. Plain HTTP is refused while a mainframe has no PIN.
+ * the port to forward and how to test it. Mainframes without a PIN stay view-only from the internet in plain-HTTP mode;
+ * the command lists their owners.
  */
 public final class InternetCommand {
     private static final DynamicCommandExceptionType BAD_DOMAIN = new DynamicCommandExceptionType(
@@ -81,6 +82,21 @@ public final class InternetCommand {
         return list;
     }
 
+    /** Owners of standing mainframes without a PIN and how many each has ("Steve (2)"), sorted by name. */
+    public static List<String> ownersWithoutPin(MinecraftServer server) {
+        var auth = WebAuthData.get(server);
+        var counts = new java.util.TreeMap<String, Integer>(String.CASE_INSENSITIVE_ORDER);
+        for (var id : standingMainframes(server)) {
+            if (auth.hasPin(id)) continue;
+            var entry = WebAuthData.access(server).access(id);
+            String owner = entry == null || entry.ownerName().isBlank() ? "?" : entry.ownerName();
+            counts.merge(owner, 1, Integer::sum);
+        }
+        var list = new ArrayList<String>();
+        counts.forEach((owner, n) -> list.add(n == 1 ? owner : owner + " (" + n + ")"));
+        return list;
+    }
+
     static List<java.util.UUID> standingMainframes(MinecraftServer server) {
         var access = WebAuthData.access(server);
         var removed = ai.ezfox.cccloud.block.MainframeRetention.get(server).entries();
@@ -104,7 +120,8 @@ public final class InternetCommand {
         var lan = LanAddresses.select(LanAddresses.scan());
         int port = CloudWebServer.isRunning() ? CloudWebServer.port() : CloudConfig.get(CloudConfig.WEB_PORT);
         return new InternetAdvice.Facts(configured, CloudWebServer.internetMode(), domain, port, lan.isEmpty() ? null : lan.getFirst(), publicIp,
-            mainframesWithoutPin(server), CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS),
+            // without internetRequirePin a mainframe needs no PIN to be controlled from the internet
+            CloudConfig.get(CloudConfig.INTERNET_REQUIRE_PIN) ? ownersWithoutPin(server) : List.of(), CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS),
             configured == InternetMode.OFF && CloudConfig.get(CloudConfig.WEB_ALLOW_INTERNET));
     }
 
@@ -136,16 +153,6 @@ public final class InternetCommand {
             if (d.equalsIgnoreCase("auto")) domain = "";
             else if (!InternetSettings.validDomain(d)) throw BAD_DOMAIN.create(d);
             else domain = d.toLowerCase(Locale.ROOT);
-        }
-        if (mode == InternetMode.HTTP) {
-            var missing = mainframesWithoutPin(server);
-            int standing = standingMainframes(server).size();
-            if (standing == 0 || !missing.isEmpty()) {
-                send(source, InternetAdvice.refusedNoPin(missing, standing));
-                CCCloud.LOGGER.info("[cccloud] {} tried to switch internetAccess to http: refused, {} mainframe(s) without a PIN",
-                    source.getTextName(), standing == 0 ? "no mainframe yet," : String.valueOf(missing.size()));
-                return 0;
-            }
         }
         if (!write(mode, domain)) {
             source.sendFailure(Component.translatable("cccloud.internet.not_saved"));
@@ -184,19 +191,27 @@ public final class InternetCommand {
 
     // ---- warnings on join ---------------------------------------------------------------------------------------------
 
-    /** Plain-HTTP internet access: every admin (level 2) gets the warning when joining. */
+    /**
+     * Plain-HTTP internet access: every admin (level 2) gets a short warning when joining; with internetRequirePin the
+     * owner of a mainframe without a PIN is told (once per session) that it cannot be controlled from the internet yet.
+     */
     private static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (CloudWebServer.internetMode() != InternetMode.HTTP || !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
+        if (CloudWebServer.internetMode() != InternetMode.HTTP) return;
         var server = player.level().getServer();
         if (server == null) return;
-        var lines = new ArrayList<InternetAdvice.Line>();
-        lines.add(new InternetAdvice.Line(InternetAdvice.Style.ERROR, "cccloud.internet.join.title"));
-        lines.add(new InternetAdvice.Line(InternetAdvice.Style.ERROR, "cccloud.internet.http.warning", String.valueOf(CloudConfig.get(CloudConfig.PUBLIC_TOKEN_IDLE_HOURS))));
-        var missing = mainframesWithoutPin(server);
-        if (!missing.isEmpty()) lines.add(new InternetAdvice.Line(InternetAdvice.Style.WARN, "cccloud.internet.http.without_pin", String.join(", ", missing.subList(0, Math.min(5, missing.size())))));
-        lines.add(new InternetAdvice.Line(InternetAdvice.Style.COMMAND, "cccloud.internet.join.switch", "/cccloud internet off"));
-        for (var line : lines) player.sendSystemMessage(component(line));
+        var auth = WebAuthData.get(server);
+        if (player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
+            player.sendSystemMessage(component(new InternetAdvice.Line(InternetAdvice.Style.WARN, "cccloud.internet.join.title", "/cccloud internet off")));
+        }
+        if (!CloudConfig.get(CloudConfig.INTERNET_REQUIRE_PIN)) return;
+        for (var id : standingMainframes(server)) {
+            var entry = WebAuthData.access(server).access(id);
+            if (entry == null || !player.getUUID().equals(entry.owner()) || auth.hasPin(id)) continue;
+            var mainframe = ai.ezfox.cccloud.network.CloudNetwork.mainframe(id);
+            String name = mainframe != null ? mainframe.getDisplayName() : id.toString().substring(0, 8);
+            player.sendSystemMessage(component(new InternetAdvice.Line(InternetAdvice.Style.WARN, "cccloud.internet.owner_no_pin", name)));
+        }
     }
 
     // ---- chat ---------------------------------------------------------------------------------------------------------

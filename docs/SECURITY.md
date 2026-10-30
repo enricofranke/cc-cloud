@@ -216,33 +216,35 @@ can switch it in game (`/cccloud internet`); everyone else can only edit the con
 | Mode | Who can reach the dashboard | On the wire | Main risks |
 |---|---|---|---|
 | `off` (default) | LAN only (loopback, private, CGNAT ranges); an older `webAllowInternet = true` setup as configured | as configured | as before |
-| `http` | everyone who reaches the port | **plain text**: device tokens, pairing codes, share secrets, the PIN and every value | anyone on the same Wi-Fi or on the network path (hotspot, provider, VPN) can read logins and the PIN and replay them |
+| `http` | everyone who reaches the port | **plain text**: device tokens, pairing codes, share secrets, the PIN and every value | anyone on the same Wi-Fi or on the network path (hotspot, provider, VPN) can read logins and the PIN and replay them; control needs no PIN by default |
 
 **Threat model of `http` (easy mode).** It is explicitly insecure: an on-path attacker can read a device token and the
-PIN once they are used and then act as that browser, also from elsewhere. TLS is the only real fix; `http` mode limits
-what a passive or later attacker gets and what a random scanner can do. The rules apply to clients with an internet
-address (after the trusted-proxy rules); the LAN works as before (`InternetGuard`):
-- **PIN for every write from the internet.** `/cccloud internet http` is refused until every standing mainframe has a
-  PIN; at runtime a mainframe without a PIN cannot be controlled from the internet at all (`remote_no_pin`), only
-  watched. Every write message (classified by `ClientMessages.isWrite`, exhaustive over the sealed message interface)
-  and every management route (access, shares, push, API keys) needs a PIN unlock: a correct PIN unlocks writes for 10
-  minutes for that token, mainframe and address (a token stolen and used from another address needs the PIN again).
-  Script writes and the terminal need the PIN as before. The unlock uses the normal PIN lockouts (device and
-  mainframe) and is written to the audit log. Public API keys cannot carry the PIN: control through the API from the
-  internet is refused (`insecure_transport`).
+PIN once they are used and then act as that browser, also from elsewhere. TLS is the only real fix. By default `http`
+"just works" (Enrico's decision 2026-10-30): no PIN is needed to switch it on or to control anything from the internet;
+PIN-protected widgets keep their PIN. What stays, because it does not get in the way (`InternetGuard`, for clients with
+an internet address after the trusted-proxy rules; the LAN works as before):
+- **Pairing** still needs [Allow] in game; requests from internet addresses get an extra warning line.
 - **Short token life on the internet:** a token unused for `publicTokenIdleHours` (24) is dropped when it shows up from
   an internet address, so a token sniffed long ago does not work any more once its browser went quiet (on the LAN: 30
   days as before).
 - **Stricter limits:** 5 failed logins, pairing codes, share secrets or PINs per internet address in 15 minutes block
   pairing, logins, device API calls and WebSocket upgrades from it; 5 actions per second per socket and 60 device API
-  requests per minute per address (half the LAN limits); one unlock per second.
-- **Pairing** still needs [Allow] in game; requests from internet addresses get an extra warning line.
-- **Share links** never gain control: share sessions are hard-denied before the unlock gate, `unlock` included.
-- **Visibility:** a framed warning in the server log at every start (with the mainframes that have no PIN), a red chat
-  warning for ops on join, a dashboard banner without a close button.
-- Residual: a token and the PIN read on the way can be used right away (within 10 minutes the unlock does not even need
-  the PIN); everything a dashboard shows can be read on the way; the protections only start when a mainframe has a PIN.
-  The answer is HTTPS (a reverse proxy, a tunnel or TLS files).
+  requests per minute per address (half the LAN limits).
+- **Share links** never gain control (hard-denied before anything else, `unlock` included).
+- **API keys** cannot carry a PIN: control through the API from the internet over plain HTTP is refused
+  (`insecure_transport`).
+- **Visibility:** one warning line in the server log, a short chat line for ops on join, a small dashboard banner for
+  browsers that opened it over plain HTTP from outside (dismissible per browser session).
+
+**Optional strict mode (`internetRequirePin = true`).** Every write from an internet address (classified by
+`ClientMessages.isWrite`, exhaustive over the sealed message interface) and every management route (access, shares,
+push, API keys) needs a PIN unlock: a correct PIN unlocks writes for 10 minutes for that token, mainframe and address
+(a token stolen and used from another address needs the PIN again). A mainframe without a PIN is view-only from the
+internet (`remote_no_pin`); its owner is told on join and the dashboard shows "Read-only from outside". Script writes
+and the terminal need the PIN as before. The unlock uses the normal PIN lockouts and is written to the audit log.
+Enabling `http` is never refused (a server-wide switch must not depend on every player's PIN).
+- Residual: a token and the PIN read on the way can be used right away; everything a dashboard shows can be read on the
+  way. The answer is HTTPS (a reverse proxy, a tunnel or TLS files; built-in HTTPS and Connect are coming).
 - Privacy: in `http` mode without `internetDomain` the server asks a "what is my IP" service (api.ipify.org, then
   checkip.amazonaws.com, then ipv4.icanhazip.com) for its public address once at start and when `/cccloud internet`
   runs. Nothing else is sent; there is no outside port check (it would need a third-party service).

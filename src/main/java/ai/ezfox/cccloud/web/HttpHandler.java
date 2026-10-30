@@ -212,8 +212,8 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
-        // Plain-HTTP internet access: management writes from the internet need the PIN unlock (done over the WebSocket).
-        if (route.id().isManagementWrite() && instance.internet.strict(ip)) {
+        // internetRequirePin: management writes from the internet need the PIN unlock (done over the WebSocket).
+        if (route.id().isManagementWrite() && instance.internet.pinRequired(ip)) {
             var mainframeId = ClientMessages.parseUuid(new QueryStringDecoder(req.uri()).path().split("/")[3]);
             String locked = mainframeId == null ? "not_found" : !instance.auth.hasPin(mainframeId) ? "remote_no_pin"
                 : devices.stream().anyMatch(d -> instance.internet.unlocked(d.tokenHash(), mainframeId, ip)) ? null : "remote_locked";
@@ -540,9 +540,9 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
             return;
         }
-        boolean remote = instance.internet.strict(ip);
+        boolean remote = instance.internet.pinRequired(ip);
         if (!instance.auth.hasPin(mainframeId)) {
-            // plain-HTTP internet access: no script changes from the internet without a PIN
+            // internetRequirePin: no script changes from the internet without a PIN
             if (remote) sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error("remote_no_pin"));
             else runScript(ctx, req, request);
             return;
@@ -668,7 +668,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                 // treated as an internet address there (its writes need the PIN unlock)
                 var internet = new JsonObject();
                 internet.addProperty("mode", instance.internet.mode().id());
-                internet.addProperty("remote", instance.internet.strict(ip));
+                internet.addProperty("remote", instance.internet.pinRequired(ip));
                 config.add("internet", internet);
                 sendJson(ctx, req, HttpResponseStatus.OK, config);
             }

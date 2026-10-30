@@ -167,7 +167,7 @@ export const REJECT_TEXT: Record<string, string> = {
   access_revoked: "Your access to this mainframe was revoked.",
   forbidden: "This device is read-only.",
   remote_locked: "Control from the internet needs the mainframe PIN – enter it, then try again.",
-  remote_no_pin: "This mainframe has no PIN, so it can't be controlled from the internet over plain HTTP. The owner sets one in game: /cccloud pin set.",
+  remote_no_pin: "Set a PIN for this mainframe to control it from outside your home network (in game: look at it and /cccloud pin set, or the Security tab).",
   insecure_transport: "Not over plain HTTP from the internet.",
   zone_claimed: "The zone may not reach into another team's claim.",
   zone_protected: "The zone may not reach into spawn protection or beyond the world border.",
@@ -223,6 +223,8 @@ export class MainframeConn {
   readonly remoteLock = signal<"locked" | "no_pin" | null>(null);
   /** Until when a PIN unlock lasts (ms epoch, 0 = not unlocked / not needed). */
   readonly remoteUnlockedUntil = signal(0);
+  /** Plain-HTTP internet access: this browser is outside and the mainframe has no PIN, so it is read-only from here. */
+  readonly remoteNoPin = signal(false);
   private unlockReqs = new Map<string, { resolve: (r: UnlockOutcome) => void; timer: ReturnType<typeof setTimeout> }>();
   /** Shared dashboard layout of this mainframe (null = defaults). */
   readonly layout = signal<LayoutDoc | null>(null);
@@ -371,6 +373,7 @@ export class MainframeConn {
       if (msg.error === "remote_locked" || msg.error === "remote_no_pin") {
         this.remoteUnlockedUntil.value = 0;
         this.remoteLock.value = msg.error === "remote_locked" ? "locked" : "no_pin";
+        if (msg.error === "remote_no_pin") this.remoteNoPin.value = true;
       }
       if (isAuthError(msg)) {
         this.authFailed = true;
@@ -638,6 +641,11 @@ export class MainframeConn {
         const { [id]: _gone, ...rest } = this.terminals.value;
         this.terminals.value = rest;
         this.termClosed.value = { ...this.termClosed.value, [id]: typeof msg.reason === "string" ? msg.reason.slice(0, 32) : "closed" };
+        break;
+      }
+      case "internet": {
+        // plain-HTTP internet access: remote = this browser counts as outside; pin = the mainframe has one
+        this.remoteNoPin.value = msg.remote === true && msg.pin === false;
         break;
       }
       case "unlock_result": {

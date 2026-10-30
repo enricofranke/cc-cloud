@@ -30,6 +30,9 @@ class InternetSettingsTest {
         assertEquals(InternetMode.HTTP, http.mode());
         assertTrue(http.allowInternet(), "the mode implies webAllowInternet");
         assertTrue(http.strictPublic());
+        assertFalse(http.requirePin(), "by default no PIN is needed to control from the internet");
+        assertTrue(InternetSettings.resolve(new InternetSettings.Inputs("http", "", 8787, false, "", false, 24, true)).requirePin(), "internetRequirePin");
+        assertFalse(InternetSettings.resolve(new InternetSettings.Inputs("off", "", 8787, true, "", false, 24, true)).requirePin(), "only in http mode");
         assertEquals("", http.publicUrl(), "no domain: the public IP is looked up later");
         assertEquals(24 * InternetSettings.HOUR_MS, http.publicTokenIdleMs());
         assertNull(http.domain());
