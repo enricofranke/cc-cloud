@@ -670,7 +670,7 @@ Neu in v0.7: Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Da
 
 ## Mainframe-Upgrades {#upgrades}
 
-Der Mainframe hat **4 Upgrade-Slots** in seinem Fenster (Trichter können nichts einfügen). Ohne Upgrades schafft er:
+Der Mainframe hat **4 Upgrade-Slots** in seinem Fenster (Trichter können nichts einfügen). Zum Einsetzen klickst du den Mainframe mit dem Upgrade in der Hand rechts an oder legst es im Tab „Upgrades“ ein. Eine höhere Stufe ersetzt eine Karte desselben Typs und du bekommst die alte zurück; die gleiche oder eine niedrigere Stufe wird abgelehnt. Du brauchst dasselbe Recht wie für den Upgrades-Tab („Geräte verwalten“). Ohne Upgrades schafft er:
 
 | Grenze | Ohne Upgrades |
 |---|---|

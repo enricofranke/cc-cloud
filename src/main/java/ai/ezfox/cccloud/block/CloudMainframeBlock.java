@@ -4,11 +4,13 @@ import ai.ezfox.cccloud.ModRegistry;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
+import ai.ezfox.cccloud.upgrade.UpgradeItem;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -138,6 +140,17 @@ public class CloudMainframeBlock extends Block implements EntityBlock {
             }
         }
         return super.playerWillDestroy(level, pos, state, player);
+    }
+
+    /** Right-click with an upgrade installs it (server side, see {@link CloudMainframeBlockEntity#installUpgrade}); any other item opens the screen. */
+    @Override
+    protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        if (!(stack.getItem() instanceof UpgradeItem)) return super.useItemOn(stack, state, level, pos, player, hand, hit);
+        if (level.isClientSide()) return InteractionResult.SUCCESS;
+        var mainframe = getBlockEntity(level, pos, state);
+        if (mainframe == null) return InteractionResult.PASS;
+        mainframe.installUpgrade(player, stack);
+        return InteractionResult.SUCCESS;
     }
 
     @Override

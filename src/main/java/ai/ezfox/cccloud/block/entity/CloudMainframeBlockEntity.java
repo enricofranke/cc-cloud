@@ -7,6 +7,8 @@ import ai.ezfox.cccloud.block.CloudMainframeBlock;
 import ai.ezfox.cccloud.block.CloudStatus;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.peripheral.MainframePeripheral;
+import ai.ezfox.cccloud.upgrade.MainframeUpgrades;
+import ai.ezfox.cccloud.upgrade.UpgradeItem;
 import ai.ezfox.cccloud.web.AuthStore;
 import ai.ezfox.cccloud.web.CloudWebServer;
 import ai.ezfox.cccloud.web.WebAuthData;
@@ -29,7 +31,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.NameAndId;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -111,6 +116,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
 
     public ai.ezfox.cccloud.upgrade.MainframeUpgrades upgrades() {
         return upgrades;
+    }
+
+    /** Who may change the upgrade slots (the screen's Upgrades tab and right-click with an upgrade): devices.manage. */
+    public boolean mayChangeUpgrades(Player player) {
+        return player instanceof ServerPlayer sp && has(sp, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE);
     }
 
     /** Effective limits from the installed upgrades. */
@@ -549,6 +559,49 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         setEnabled(!enabled);
         player.sendSystemMessage(Component.translatable(enabled ? "cccloud.mainframe.enabled" : "cccloud.mainframe.disabled")
             .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.YELLOW));
+    }
+
+    /**
+     * Right-click with an upgrade item ({@link CloudMainframeBlock}): installs one like the Upgrades tab, for the same
+     * players ({@link #mayChangeUpgrades}; claim mods and {@code cccloud.use} already cancelled the click if they refuse
+     * it). A card replaced by a higher tier goes back to the player (inventory, else dropped); creative keeps the stack.
+     * The answer is an action-bar line and a short sound.
+     */
+    public void installUpgrade(Player player, ItemStack stack) {
+        if (!mayChangeUpgrades(player)) {
+            upgradeFeedback(player, Component.translatable("cccloud.gui.upgrade.read_only").withStyle(ChatFormatting.RED), false);
+            return;
+        }
+        var name = stack.getHoverName();
+        boolean card = stack.getItem() instanceof UpgradeItem item && item.tier() != null;
+        var install = upgrades.install(stack);
+        var other = install.other();
+        // The message first: consuming and handing the old card back empty those stacks.
+        Component message = switch (install.outcome()) {
+            case INSTALLED -> Component.translatable("cccloud.upgrade.click.installed", name).withStyle(ChatFormatting.GREEN);
+            case REPLACED -> Component.translatable("cccloud.upgrade.click.replaced", name, other.getHoverName()).withStyle(ChatFormatting.GREEN);
+            case ALREADY_INSTALLED -> Component.translatable(card ? "cccloud.upgrade.click.not_higher" : "cccloud.upgrade.click.already", other.getHoverName())
+                .withStyle(ChatFormatting.YELLOW);
+            case FULL -> Component.translatable("cccloud.upgrade.click.full").withStyle(ChatFormatting.YELLOW);
+        };
+        boolean changed = install.outcome() == MainframeUpgrades.Outcome.INSTALLED || install.outcome() == MainframeUpgrades.Outcome.REPLACED;
+        if (changed) {
+            stack.consume(1, player);
+            if (install.outcome() == MainframeUpgrades.Outcome.REPLACED) player.getInventory().placeItemBackInInventory(other);
+            // Like opening the screen: a server admin's change shows in the owner's audit log.
+            if (player instanceof ServerPlayer sp && level instanceof ServerLevel serverLevel
+                && ai.ezfox.cccloud.access.Access.resolve(sp, mainframeId).source() == ai.ezfox.cccloud.access.AccessResolver.Source.SERVER_ADMIN) {
+                ai.ezfox.cccloud.access.Access.auditAdmin(serverLevel.getServer(), mainframeId, sp.getGameProfile().name(), "Upgrade installed by admin");
+            }
+        }
+        upgradeFeedback(player, message, changed);
+    }
+
+    private void upgradeFeedback(Player player, Component message, boolean installed) {
+        player.sendOverlayMessage(message);
+        if (level != null) {
+            level.playSound(null, getBlockPos(), installed ? SoundEvents.VAULT_INSERT_ITEM : SoundEvents.VAULT_INSERT_ITEM_FAIL, SoundSource.BLOCKS, 0.6f, 1.2f);
+        }
     }
 
     public void showStatus(Player player) {

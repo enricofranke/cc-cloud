@@ -110,8 +110,7 @@ public final class GuiNetwork {
         long[] netV = {-1};
         String view = GuiViews.mainframe(mainframe, player, null, -1, netV);
         var pos = mainframe.getBlockPos();
-        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, inv, pos, view, mainframe.upgrades(),
-                who -> who instanceof ServerPlayer sp && mainframe.has(sp, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)),
+        player.openMenu(new SimpleMenuProvider((id, inv, p) -> new MainframeMenu(id, inv, pos, view, mainframe.upgrades(), mainframe::mayChangeUpgrades),
                 Component.translatable("block.cccloud.cloud_mainframe")),
             buf -> writeOpen(buf, pos, view));
         if (player.containerMenu instanceof MainframeMenu menu) menu.sentNetV = netV[0];
