@@ -183,6 +183,9 @@ public final class NetworkTests {
                 helper.assertTrue(uplink.getLink() != null, "linking in the Nether works through the ender relays");
             })
             .thenWaitUntil(() -> {
+                // The test server's ticks outrun the new Nether chunk: the first relay would run dry before the second one ticks.
+                ((CloudRelayBlockEntity) level.getBlockEntity(e1)).fillForTest();
+                ((CloudRelayBlockEntity) nether.getBlockEntity(e2)).fillForTest();
                 var route = NetworkService.route(uplinkAt(helper, nether, up).getUplinkId());
                 helper.assertTrue(route != null && route.connected() && route.hops() == 3, "mainframe → ender → ender → uplink: " + route);
                 var result = NetworkService.result(s.mainframe.getMainframeId());
