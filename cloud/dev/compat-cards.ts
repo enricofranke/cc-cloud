@@ -1066,4 +1066,18 @@ export const COMPAT_CARDS: SampleCard[] = [
       indicator("output_full", "Output full", "red", "gray", false),
     ],
   },
+
+  // Trash Cans
+  {
+    key: "trashcans_can",
+    mod: "trashcans",
+    title: "Item Trash Can",
+    template: "trashcans_can",
+    widgets: [
+      label("handles", "Takes", "Items"),
+      toggle("item_allow", "Items: only what the filter lists", {}, false),
+      label("deleted_0", "Deleted last", "32× Dirt", { span: 2 }),
+      label("deleted_1", "Before that", "64× Cobblestone", { span: 2 }),
+    ],
+  },
 ];

@@ -870,6 +870,16 @@
    "controls": "none: the strainer has no switch",
    "tested": "yes (gravel, diamond mesh and water: it strains)",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Trash Cans",
+   "id": "trashcans",
+   "version": "1.1.1a",
+   "what": "**Trash Can** card for all four cans: what it takes, the item can's last 6 deleted stacks (the can keeps them, so you see what went in), energy limit.",
+   "controls": "allow or deny list for items and fluids (toggle, `act.buttons`). The card never restores deleted items.",
+   "tested": "yes (item can: 32 dirt pushed in, filter mode switched)",
+   "skipped": false
   }
  ]
 }
