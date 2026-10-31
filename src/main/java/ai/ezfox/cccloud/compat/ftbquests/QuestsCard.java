@@ -33,6 +33,8 @@ public final class QuestsCard extends MainframeCard {
     public static final String EMPTY = "empty";
     static final int RECENT_ROWS = 5;
 
+    private static final java.util.regex.Pattern FORMAT = java.util.regex.Pattern.compile("[&\u00a7][0-9a-fk-orA-FK-OR]");
+
     private record Done(String title, String chapter, long time) {
     }
 
@@ -81,7 +83,7 @@ public final class QuestsCard extends MainframeCard {
 
     static String title(QuestObjectBase object) {
         try {
-            String title = object.getTitle().getString();
+            String title = FORMAT.matcher(object.getTitle().getString()).replaceAll(""); // pack titles keep their raw &a colours
             if (!title.isBlank()) return title;
         } catch (RuntimeException ignored) {
         }
