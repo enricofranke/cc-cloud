@@ -457,6 +457,7 @@ public final class VoxelTests {
             .thenWaitUntil(() -> helper.assertTrue(ready(step[2]) && ready(step[3]), "last known from disk"))
             .thenExecute(() -> {
                 helper.assertTrue(idAt.apply(2).equals("minecraft:stone"), "the same from disk: " + idAt.apply(2));
+                helper.assertTrue(step[3].join().getFirst() != null, "the section written with an ore is on disk");
                 var strip = step[3].join().getFirst().data();
                 helper.assertTrue(!hasKind(strip, "minecraft:gold_ore") && hasKind(strip, "minecraft:stone"), "a stored ore is stripped on the way out: " + strip.palette());
                 level.setBlock(relayPos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
@@ -481,14 +482,16 @@ public final class VoxelTests {
 
     /**
      * The last known area follows an online network at once, also with a device whose chunk is not loaded; a mainframe that
-     * is loaded but offline reaches no nodes and keeps its area.
+     * is loaded but offline reaches no nodes and keeps its area. Its chunk being loaded changes nothing: the route answers
+     * with what the network saw, not with blocks that were placed where it no longer reaches.
      */
     public static void lastKnownArea(GameTestHelper helper) {
         var level = helper.getLevel();
         var server = level.getServer();
         String dim = level.dimension().identifier().toString();
-        var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+        var owner = InGameTestSupport.player(helper, "vlk_area");
         var mainframe = CloudGameTests.placeMainframe(helper, owner);
+        mainframe.setOwner(owner);
         mainframe.setEnabled(true);
         CloudGameTests.keepPowered(helper, mainframe);
         var id = mainframe.getMainframeId();
@@ -498,9 +501,21 @@ public final class VoxelTests {
         level.setBlock(device, ai.ezfox.cccloud.ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING, net.minecraft.core.Direction.DOWN),
             Block.UPDATE_ALL);
         java.util.function.Predicate<BlockPos> inArea = pos -> Arrays.stream(VoxelAreas.points(id, dim)).anyMatch(p -> Math.floor(p[0]) == pos.getX() && Math.floor(p[1]) == pos.getY() && Math.floor(p[2]) == pos.getZ());
-        var redstone = helper.absolutePos(new BlockPos(0, 1, 0));
+        var seen = mainframe.getBlockPos().above().east();
+        var placedLater = seen.offset((seen.getX() & 15) == 15 ? -1 : 1, 0, 0);
+        int[] section = {seen.getX() >> 4, seen.getY() >> 4, seen.getZ() >> 4};
+        @SuppressWarnings("unchecked") CompletableFuture<GameBridge.VoxelBatchResult>[] batch = new CompletableFuture[2];
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && inArea.test(mainframe.getBlockPos().above()), "the mainframe's area"))
+            .thenExecute(() -> {
+                level.setBlock(seen, Blocks.GOLD_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+                batch[0] = ask(server, owner.getUUID(), id, dim, section, null);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(ready(batch[0]), "live answer"))
+            .thenExecute(() -> {
+                var live = answer(helper, batch[0]);
+                helper.assertTrue(!live.old() && idAt(live, seen).equals("minecraft:gold_block"), "read live: " + idAt(live, seen));
+            })
             .thenExecute(() -> {
                 if (!(level.getBlockEntity(device) instanceof ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity uplink)) throw helper.assertionException("uplink missing");
                 uplink.bind(link, owner);
@@ -522,6 +537,14 @@ public final class VoxelTests {
                 helper.assertTrue(view.knownAt(mainframe.getBlockPos().getX() >> 4, mainframe.getBlockPos().getY() >> 4, mainframe.getBlockPos().getZ() >> 4), "the view still knows it");
                 helper.assertTrue(!VoxelService.view(server, UUID.randomUUID(), dim).liveAt(0, 0, 0), "a mainframe nobody knows has no view");
                 helper.assertTrue(VoxelService.view(server, UUID.randomUUID(), dim).unknown(), "and says so");
+                level.setBlock(placedLater, Blocks.DIAMOND_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+                batch[1] = ask(server, owner.getUUID(), id, dim, section, null);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(ready(batch[1]), "last known answer"))
+            .thenExecute(() -> {
+                var old = answer(helper, batch[1]);
+                helper.assertTrue(old.old() && idAt(old, seen).equals("minecraft:gold_block"), "the last visit, though the chunk is loaded: " + old.old());
+                helper.assertTrue(!idAt(old, placedLater).equals("minecraft:diamond_block"), "a block placed out of the network's reach does not show");
                 level.setBlock(mainframe.getBlockPos().west(), Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
             })
             .thenSucceed();
