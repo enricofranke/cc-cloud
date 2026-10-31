@@ -44,7 +44,7 @@ public record DeviceInfo(UUID mainframeId, String kind, String status, double si
                 String status = !relay.hasPower() ? "no_power" : path != null ? "online" : "no_route";
                 if (path == null && result.nodes().stream().noneMatch(n -> n.id().equals(relay.relayId().toString()))) continue;
                 return new DeviceInfo(id, relay.type().nodeType.id, status, path == null ? 0 : AnalyzerGeometry.pathSignal(path, signals(result)),
-                    path == null ? -1 : path.size() - 1, path == null ? List.of() : types(result, path), path == null ? List.of() : positions(result, path),
+                    path == null ? -1 : path.size() - 1, path == null ? List.of() : types(result, path), path == null ? List.of() : positions(result, path, level.dimension().identifier().toString()),
                     relay.energy().energy(), relay.energy().capacity());
             }
             return null;
@@ -70,7 +70,7 @@ public record DeviceInfo(UUID mainframeId, String kind, String status, double si
         var route = NetworkService.route(deviceId);
         if (result == null || route == null) return new DeviceInfo(mainframeId, kind, "unloaded", 0, -1, List.of(), List.of(), -1, -1);
         String status = !route.connected() ? "no_route" : route.legacyOutOfRange() ? "legacy_out_of_range" : "online";
-        var positions = new ArrayList<>(positions(result, route.path()));
+        var positions = new ArrayList<>(positions(result, route.path(), level.dimension().identifier().toString()));
         positions.add(pos.getCenter());
         var types = new ArrayList<>(types(result, route.path()));
         types.add(kind);
@@ -93,9 +93,10 @@ public record DeviceInfo(UUID mainframeId, String kind, String status, double si
         return list;
     }
 
-    private static List<Vec3> positions(NetworkGraph.Result result, List<String> path) {
+    /** The route's nodes in the player's dimension: coordinates of another dimension mean nothing here. */
+    private static List<Vec3> positions(NetworkGraph.Result result, List<String> path, String dim) {
         var list = new ArrayList<Vec3>();
-        for (var id : path) for (var n : result.nodes()) if (n.id().equals(id)) list.add(new Vec3(n.x(), n.y(), n.z()));
+        for (var id : path) for (var n : result.nodes()) if (n.id().equals(id) && n.dim().equals(dim)) list.add(new Vec3(n.x(), n.y(), n.z()));
         return list;
     }
 }

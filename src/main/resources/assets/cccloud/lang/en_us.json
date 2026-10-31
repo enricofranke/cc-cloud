@@ -630,6 +630,8 @@
   "cccloud.analyzer.out_of_range": "Out of range – nearest: %s, %s blocks away (reach %s)",
   "cccloud.analyzer.no_network": "None of your networks is near",
   "cccloud.analyzer.hud_signal": "Signal here: %s %% via %s",
+  "cccloud.analyzer.hud_elsewhere": "No node of your networks here. Your network is in: %s",
+  "cccloud.analyzer.hud_gate": "Ender link to %s, signal %s %%",
   "cccloud.analyzer.hud_none": "No coverage %s %s, %s blocks",
   "cccloud.tablet.cached": "Not loaded – last seen %s ago",
   "cccloud.display.cached": "seen %s ago",

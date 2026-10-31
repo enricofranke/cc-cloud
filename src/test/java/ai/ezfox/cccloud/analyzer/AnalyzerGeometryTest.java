@@ -38,6 +38,21 @@ class AnalyzerGeometryTest {
     }
 
     @Test
+    void anEnderLinkShowsWhereItGoes() {
+        var mainframe = new NetworkGraph.Node("m", NetworkGraph.NodeType.MAINFRAME, OW, 0, 64, 0, 96, 96, true, null);
+        var a = new NetworkGraph.Node("a", NetworkGraph.NodeType.ENDER_RELAY, OW, 8, 64, 0, 96, 48, true, "g");
+        var b = new NetworkGraph.Node("b", NetworkGraph.NodeType.ENDER_RELAY, "minecraft:the_nether", 8, 64, 0, 96, 48, true, "g");
+        var result = NetworkGraph.compute("m", List.of(mainframe, a, b), List.of(), false);
+        var net = new AnalyzerGeometry.Network("m", "MF", result, Map.of(), Map.of());
+        assertTrue(result.links().stream().anyMatch(l -> l.a().equals("b") || l.b().equals("b")), "ender relays of one network link");
+        var here = AnalyzerGeometry.build(List.of(net), OW, 0, 64, 0, Map.of());
+        assertEquals("minecraft:the_nether", here.getAsJsonArray("gates").get(0).getAsJsonObject().get("to").getAsString());
+        assertEquals("minecraft:the_nether", here.getAsJsonArray("elsewhere").get(0).getAsString());
+        var hidden = AnalyzerGeometry.build(List.of(net), OW, 0, 64, 0, Map.of(), (x, y, z) -> x == 8);
+        assertEquals(0, hidden.getAsJsonArray("gates").size(), "a hidden end shows no gate");
+    }
+
+    @Test
     void elementCountIsCapped() {
         var nodes = new ArrayList<NetworkGraph.Node>();
         nodes.add(new NetworkGraph.Node("m", NetworkGraph.NodeType.MAINFRAME, OW, 0, 64, 0, 96, 96, true, null));

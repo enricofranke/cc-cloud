@@ -50,6 +50,7 @@ public final class AnalyzerOverlay {
     private static List<Vec3> highlight = List.of();
     private static long highlightUntil;
     private static String hud = "";
+    private static String gateHud = "";
     private static int hudColor = 0xFFFFFFFF;
 
     private AnalyzerOverlay() {
@@ -161,6 +162,7 @@ public final class AnalyzerOverlay {
             Gizmos.cuboid(new AABB(BlockPos.containing(p)).inflate(0.02), GizmoStyle.stroke(color, 2f)).setAlwaysOnTop();
         }
         preview(mc, data);
+        gates(data, eye);
         hudLine(mc, data);
     }
 
@@ -300,6 +302,22 @@ public final class AnalyzerOverlay {
         g.pose().popMatrix();
     }
 
+    /** Links that leave this dimension: a purple beam at this end, the HUD names the other side nearby. */
+    private static void gates(JsonObject data, Vec3 eye) {
+        if (!data.has("gates")) return;
+        for (var g : data.getAsJsonArray("gates")) {
+            var gate = g.getAsJsonObject();
+            var at = new Vec3(gate.get("x").getAsDouble(), gate.get("y").getAsDouble(), gate.get("z").getAsDouble());
+            dashed(at, at.add(0, 8, 0), 0xFFB48AE8);
+            if (at.distanceTo(eye) > 16) continue;
+            gateHud = I18n.get("cccloud.analyzer.hud_gate", dimName(gate.get("to").getAsString()), Math.round(gate.get("signal").getAsDouble() * 100));
+        }
+    }
+
+    private static String dimName(String id) {
+        return id.substring(id.indexOf(':') + 1).replace('_', ' ');
+    }
+
     private static void hudLine(Minecraft mc, JsonObject data) {
         var ranges = data.getAsJsonObject("ranges");
         double range = ranges.has("uplink") ? ranges.getAsJsonArray("uplink").get(0).getAsDouble() : 48;
@@ -315,6 +333,14 @@ public final class AnalyzerOverlay {
         } else if (!nodes.isEmpty()) {
             hud = I18n.get("cccloud.analyzer.no_network");
             hudColor = RED;
+        } else if (data.has("elsewhere") && !data.getAsJsonArray("elsewhere").isEmpty()) {
+            hud = I18n.get("cccloud.analyzer.hud_elsewhere", dimName(data.getAsJsonArray("elsewhere").get(0).getAsString()));
+            hudColor = YELLOW;
+        }
+        if (!gateHud.isEmpty()) {
+            hud = gateHud;
+            hudColor = 0xFFB48AE8;
+            gateHud = "";
         }
     }
 

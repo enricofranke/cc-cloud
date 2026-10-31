@@ -68,6 +68,8 @@ public final class AnalyzerGeometry {
         var nodes = new JsonArray();
         var devices = new JsonArray();
         var links = new JsonArray();
+        var gates = new JsonArray();
+        var elsewhere = new java.util.TreeSet<String>();
         record Candidate(double distance, String kind, JsonObject json) {
         }
         var candidates = new ArrayList<Candidate>();
@@ -135,6 +137,22 @@ public final class AnalyzerGeometry {
                 if (isRouteLink(result, link)) l.addProperty("used", true);
                 candidates.add(new Candidate(d + 0.5, "l", l));
             }
+            // a link that leaves this dimension: only this end can be drawn, it says where the link goes
+            for (var link : result.links()) {
+                String da = dimOf(result, link.a()), db = dimOf(result, link.b());
+                if (da == null || db == null || da.equals(db) || (!dim.equals(da) && !dim.equals(db))) continue;
+                boolean here = dim.equals(da);
+                var at = positions.get(here ? link.a() : link.b());
+                if (at == null || positions.get(here ? link.b() : link.a()) == null || dist(at[0], at[1], at[2], x, y, z) > RADIUS) continue;
+                var g = new JsonObject();
+                g.addProperty("x", round(at[0]));
+                g.addProperty("y", round(at[1]));
+                g.addProperty("z", round(at[2]));
+                g.addProperty("to", here ? db : da);
+                g.addProperty("signal", round2(link.signal()));
+                gates.add(g);
+            }
+            for (var node : result.nodes()) if (!node.dim().equals(dim) && node.available()) elsewhere.add(node.dim());
         }
         candidates.sort((p, q) -> Double.compare(p.distance(), q.distance()));
         int count = 0;
@@ -150,6 +168,10 @@ public final class AnalyzerGeometry {
         json.add("nodes", nodes);
         json.add("devices", devices);
         json.add("links", links);
+        json.add("gates", gates);
+        var away = new JsonArray();
+        elsewhere.forEach(away::add);
+        json.add("elsewhere", away);
         var r = new JsonObject();
         for (var e : ranges.entrySet()) {
             var a = new JsonArray();
