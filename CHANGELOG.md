@@ -12,6 +12,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Apothic Enchanting:** Library card with the stored enchantments, their levels and points.
 - **Ice and Fire:** Dragon Forge card with state, progress, inputs and output.
 - **FTB Ranks:** a Ranks card with power and online counts (only for those allowed to see positions). New server setting `ranksCard`.
+- **Sophisticated Backpacks:** placed backpacks are Storage cards with search.
 <!-- wave5 log -->
 
 ### In-game help

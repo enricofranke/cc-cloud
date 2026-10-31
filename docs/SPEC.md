@@ -1519,6 +1519,7 @@ Manifest: docs/COMPAT.md "Wave 5", the whole pack in docs/ATM11_COVERAGE.md.
 - **Apothic Enchanting (`compat/apothicenchanting`):** device card `apothicenchanting_library`; the widget set follows the number of rows, so it changes through `revision`. Read-only: books go in and out at the block.
 - **Ice and Fire (`compat/iceandfire`):** device card `iceandfire_forge`. The cook time has no getter, so `cookTime` is read by reflection; if that fails the bar stays 0.
 - **FTB Ranks (`compat/ftbranks`):** the restricted mainframe card `ftbranks_ranks` (config `world.ranksCard`), read every 10 s. A server's rank setup is not for everyone, so it follows `view.positions`; it holds counts and no player names.
+- **Sophisticated Backpacks:** a line in `StorageControllers`; no code of its own apart from the GameTest.
 <!-- wave5 spec -->
 
 ## v0.10 – Scenes, schedules, production statistics, public API (requested 2026-10-30)

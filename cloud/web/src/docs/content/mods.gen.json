@@ -890,6 +890,16 @@
    "controls": "none",
    "tested": "yes (ranks from the mod's manager)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Sophisticated Backpacks",
+   "id": "sophisticatedbackpacks",
+   "version": "3.26.11",
+   "what": "A placed backpack is a **Storage** card with count and search, through its item capability and the shared storage controller list. Backpacks worn by a player are not covered.",
+   "controls": "as Storage card",
+   "tested": "yes (placed iron backpack, 100 ingots inserted through the capability)",
+   "skipped": false
   }
  ]
 }

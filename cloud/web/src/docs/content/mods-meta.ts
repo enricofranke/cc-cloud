@@ -84,6 +84,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   apothic_enchanting: { cat: "magic", icon: "apothic_enchanting:library" },
   iceandfire: { cat: "world", icon: "iceandfire:dragonforge_fire_core" },
   ftbranks: { cat: "server", icon: "minecraft:command_block" },
+  sophisticatedbackpacks: { cat: "storage", icon: "sophisticatedbackpacks:backpack" },
   // wave 5 end
 };
 
