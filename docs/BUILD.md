@@ -25,6 +25,16 @@ attaches all three files (CI, below).
 
 Dev runs (`runServer`, `runGameTestServer`) serve the dashboard on port **18787** (`-Dcccloud.devWebPort`), so they do not collide with a game running on the same machine; the real default stays 8787.
 
+## Test builds and the build id
+Every jar carries a build id in `cccloud-build.properties`: `<mod version>-<git short hash>`, plus `-dirty` with
+uncommitted changes in `src`, `integration`, `build.gradle` or `gradle.properties`. The join check compares it, so a
+player gets told when their jar is not the server's, even with the same version number (docs/SPEC.md "Join check and build
+id"). `/cccloud version` shows it.
+
+`./gradlew build -PdevBuild=5` makes the mod version `1.0.0-beta.2+dev5`: the launcher's mod list and all three downloads
+show it (`cccloud-1.0.0-beta.2+dev5.jar`). Local only; tags never use it, the release workflow expects
+`cccloud-<version>.jar`.
+
 ## Optional storage mods (Cloud Bridges)
 The bridges compile against the versions in All the Mods 11. No local jars are needed; Gradle downloads them:
 

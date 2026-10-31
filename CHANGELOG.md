@@ -4,6 +4,18 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Same jar on client and server: the join check
+- **You are told when your CC: Cloud jar is not the server's.** Minecraft never downloads mods and every test build has
+  the same version number, so a player with an older jar joined without anyone noticing. Now the chat says so right after
+  joining, with both versions, and the server log names the player. Nobody is refused: clients from before this check
+  still join, and they get the message too.
+- **The right jar is one click away:** the message links to the server's own jar (`/api/download/cccloud.jar` on the
+  dashboard address: LAN, your internet address or CC: Cloud Connect). Without a dashboard you can reach, the message
+  comes without a link. `webJarDownload = false` switches the download off; 6 downloads per hour per address.
+- **Every jar knows its build:** version, git commit and a `-dirty` mark for uncommitted changes. `/cccloud version` shows
+  it, and the server log names it at start. `./gradlew build -PdevBuild=5` makes a test build `1.0.0-beta.2+dev5`, so the
+  mod list and the file name show it too.
+
 ### CC: Cloud Connect – an HTTPS address with one command
 - **`/cccloud internet connect mybase`** gives your dashboard the address **https://mybase.cccloud.dev**: HTTPS, from
   anywhere, with no port forwarding, no domain and no proxy (server owner, op level 4). The server keeps one outbound

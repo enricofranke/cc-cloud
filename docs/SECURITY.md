@@ -136,7 +136,15 @@ It is reviewed before every release.
   - public API (v0.10): per key and per IP from the config, item searches 5 per second per key;
   - icons: 200 per minute per IP;
   - map tiles: 60 per minute per device, at most 256 tiles waiting for the server thread (more get 503);
-  - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread.
+  - live recipes (`GET /api/recipes`, public like the docs: game data only): 60 per minute per IP, built once per recipe reload off the server thread;
+  - the mod's jar (`GET /api/download/cccloud.jar`, see below): 6 per IP at once, then 6 per hour; at most 8 downloads at a time, 2 through the Connect tunnel.
+- **The mod's jar is public** (`DOWNLOAD`, `webJarDownload`, on by default): the route serves the file the mod was loaded
+  from, so that the join check can link to it. The mod is open source (MPL-2.0) and the jar holds no secrets: no keys, no
+  config, no world data. The path comes from the mod loader, never from the request, and the route answers one fixed URL
+  (`DownloadRouteTest`). It stays behind the LAN-only rule, IP bans and the Host check, with the usual security headers
+  and no CORS. It is streamed at the pace of the client, so a slow reader holds one 64 KB piece, not the file; a transfer
+  that makes no progress for 30 seconds ends. Dev runs have no jar file and answer 404, like `webJarDownload = false`.
+  Through Connect the jar is sent as `text/plain` (below), because the relay refuses every jar type.
 - Connections are limited per IP and in total. Slow consumers are disconnected and never buffered without limit: a
   browser may fall behind by at most 4 MB beyond the 1 MB write buffer, or for at most 10 seconds (a big base's snapshot
   is over 1 MB), then it is closed with 1013 `too slow`. In-game tablet sessions queue at most 4096 messages, then they
@@ -310,6 +318,13 @@ revoke`): the tunnel is closed at once, browsers see "This address was disabled"
 until it is restored. Limits keep the relay from being a free proxy: 20 browser tabs, 64 requests in flight, 257 KB
 requests, 16 MB answers, 500 tunnel messages per second, 2 GB per name per day; public API event streams are not
 forwarded.
+
+**The mod's jar through the relay.** `/api/*` is all the relay forwards, so the download lives there. Its filter passes
+listed types only and has none for a jar, so the mod sends the jar as `text/plain` on tunnel connections, the relay's own
+download type: the relay forces `Content-Disposition: attachment` and a CSP with `sandbox`, nothing is rendered, and the
+bytes pass unchanged. A server could always send any bytes this way, so this opens nothing new on the relay. Each download
+counts against the name's 2 GB per day: one address can use about 150 MB per day (6 per hour, 4 MB each), so it takes many
+addresses to use up a name's budget, which then answers `daily_limit` until the next UTC day.
 
 **Residual.** Trust in the relay operator and Cloudflare (above). A malicious server can still show misleading text in
 its own dashboard or images through its icon route; names can be squatted until they expire; the relay is a single

@@ -1950,10 +1950,11 @@ used anyway. Values that could not be applied keep their old state and stay "cha
 - Today every value is `(applies live)`. Nothing in these files is registry or worldgen data. `runMissed` and
   `missedWindowHours` only matter when the server starts, by their nature, and are read then.
 
-### Audit (95 values in `cccloud-server.toml`, 12 in `cccloud-integrations-server.toml`)
+### Audit (96 values in `cccloud-server.toml`, 12 in `cccloud-integrations-server.toml`)
 | Area | Values | Before | Now |
 |---|---|---|---|
 | `[web]` | `webEnabled`, `webBind`, `webPort`, `publicUrl`, `webAllowInternet`, `webTrustedProxies`, `webTrustCloudflareHeader`, `webCompression`, `webAllowedHosts`, `tlsCertPath`, `tlsKeyPath` (11) | cached at server start | web server reconfigured (below) |
+| `[web]` | `webJarDownload` | added with the join check | read for every request and chat link |
 | `[api]` | `apiRequestsPerMinute`, `apiIpRequestsPerMinute` | refreshed every 5 s, but each key's/IP's bucket kept the limit it was made with | buckets take the new limit on their next request, keeping what was used (`TokenBucket.reconfigure`) |
 | `[api]` | `apiEnabled`, `apiEvents`, `apiMaxBody`, `apiCorsOrigins`, `apiStreamsPerKey`, `apiKeysPerPlayer` | applied within 5 s | at once; switching the API or its stream off ends open streams at once |
 | `[upgrades]` | `baseDevices`, `baseBrowsers`, `baseRules`, `baseHistoryHours` | baked into each mainframe's published upgrade effects when it loaded | effects recomputed for every mainframe, loaded or not (`UpgradeEffects.withBase`) |
@@ -2149,6 +2150,36 @@ through the tunnel, auth refused like on the LAN, control without a PIN by defau
 refusal stops retrying, reconnect, Host and IP rules), `ConnectDevRelayTest` (opt-in: against the real relay under
 `wrangler dev`); relay: 27 vitest tests in the Workers runtime (pages, claim/replace/release/revoke/expiry, filtering,
 WebSocket, hibernation, limits).
+
+## Join check and build id (2026-10-31)
+Every test build has the same version number, Minecraft never downloads mods and NeoForge only compares channels, so a
+player with an older jar joined unnoticed.
+
+- **Build id** (`BuildInfo`): `<mod version>-<git short hash>`, plus `-dirty` with uncommitted changes in `src`,
+  `integration`, `build.gradle` or `gradle.properties`. The build writes it into `cccloud-build.properties`
+  (`src/main/templates`), the same in the standard and the modpack jar (`checkEditionJars`). `-PdevBuild=N` makes the mod
+  version `<version>+devN`. Shown by `/cccloud version` and in the log at server start.
+- **Check** (`join/`): the client sends `build_hello` right after joining if the server has the channel. The server
+  compares it with its own id; on a difference, or without a hello within 200 ticks (a client from before the check), the
+  player gets a chat message and the log a line. One message per join; a later hello changes nothing. It never refuses
+  anyone.
+- **Old clients.** The channel is registered `.optional()`: `NetworkComponentNegotiator` drops an optional channel the
+  other side lacks, while a required one fails the negotiation. A new client on an old server finds no channel and sends
+  nothing (`hasChannel`; sending would throw). The texts carry a fallback picked on the server from the mod's language
+  files by the client's language (`JoinText`), because old clients do not have the keys.
+- **Download** (`GET`/`HEAD /api/download/cccloud.jar`, `Router.Id.DOWNLOAD`, public): the file the mod was loaded from
+  (`GameBridge.modJar`, null in dev runs and with `webJarDownload = false`), streamed with `ChunkedWriteHandler` in 64 KB
+  pieces. The route is under `/api/` because Connect forwards nothing else. The read timeout is swapped for a 30 second
+  stall timeout: the client only receives, and a slow download must not be cut.
+- **Which address** (`PairingText.reachableUrl`): Connect while it is online, like every chat link; else the dashboard
+  address for a player from a LAN address and the internet link for anyone else; none: the message has no link.
+- **Connect.** The relay's filter (`connect/src/filter.ts`) has no type for a jar: `application/java-archive` and
+  `application/octet-stream` get 502 `blocked_by_relay`. Tunnel connections send `text/plain`, which the relay turns into
+  an attachment and passes byte for byte; it drops our file name, so the browser takes `cccloud.jar` from the URL. The
+  tunnel's local side closes the connection after the last piece: a server-side close could overtake pieces it has not
+  read yet (`LocalChannel` drops them). The real jar (about 4 MB) fits the relay's limits: 16 MB per answer, `slow_reader`
+  at 5 MB queued, 64 KB frames. A jar over 16 MB is refused at once with 413; between 5 and 16 MB a browser slower than the
+  tunnel could hit `slow_reader`. A relay rule for this path could pass the real type and the file name.
 
 ## Claim guard (2026-10-30)
 Devices placed in unclaimed land kept reading and controlling their machine after another team claimed the chunk (only
