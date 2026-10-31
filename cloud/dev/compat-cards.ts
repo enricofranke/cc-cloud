@@ -813,6 +813,20 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // FTB Ranks
+  {
+    key: "ftbranks_ranks",
+    mod: "ftbranks",
+    title: "Ranks",
+    template: "ftbranks_ranks",
+    restricted: true,
+    widgets: [
+      label("count", "Ranks", "3", { span: 2 }),
+      label("row_1", "Admin", "power 100, 1 online"),
+      label("row_2", "Member", "power 10, 6 online"),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery

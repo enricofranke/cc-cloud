@@ -11,6 +11,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Silent Gear:** one Machine card for the alloy makers, Metal Press, Material Grader and Salvager, plus a Starlight Charger card.
 - **Apothic Enchanting:** Library card with the stored enchantments, their levels and points.
 - **Ice and Fire:** Dragon Forge card with state, progress, inputs and output.
+- **FTB Ranks:** a Ranks card with power and online counts (only for those allowed to see positions). New server setting `ranksCard`.
 <!-- wave5 log -->
 
 ### In-game help

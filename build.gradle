@@ -365,6 +365,7 @@ def integrationMods = [
                            "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
     iceandfire          : ["curse.maven:iceandfire-1040076:${iceandfire_curse_file}", "curse.maven:uranus-1010827:${uranus_curse_file}",
                            "curse.maven:jupiter-1072905:${jupiter_curse_file}"],
+    ftbranks            : ["dev.ftb.mods:ftb-ranks-neoforge:${ftbranks_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

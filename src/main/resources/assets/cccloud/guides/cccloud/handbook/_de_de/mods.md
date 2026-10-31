@@ -154,6 +154,7 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | Silent Gear (`silentgear`) | 4.2.3 | **Machine** for the alloy makers (Alloy Forge, Crude and Super Mixer, Recrystallizer, Refabricator), Metal Press, Material Grader and Salvager: status, progress, what goes in, what comes out. **Starlight Charger**: charge, progress. | none | yes (Alloy Forge and Metal Press; Starlight Charger; the running progress was not tested) |
 | Apothic Enchanting (`apothic_enchanting`) | 2.1.0 | **Library of Alexandria** and **Library of the End**: how many enchantments are stored and the fullest ones, with the level you can take out against the highest seen and the points behind it. | none | yes (book deposited through the mod, row read back) |
 | Ice And Fire Community Edition (`iceandfire`) | 2.2-beta.4 | **Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show. | none | yes (lone fire core; a built forge with a dragon was not tested) |
+| FTB Ranks (`ftbranks`) | 26.1.2.4 | **Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`. | none | yes (ranks from the mod's manager) |
 
 ### Ohne eigene Karte
 

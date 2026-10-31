@@ -880,6 +880,16 @@
    "controls": "none",
    "tested": "yes (lone fire core; a built forge with a dragon was not tested)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "FTB Ranks",
+   "id": "ftbranks",
+   "version": "26.1.2.4",
+   "what": "**Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`.",
+   "controls": "none",
+   "tested": "yes (ranks from the mod's manager)",
+   "skipped": false
   }
  ]
 }
