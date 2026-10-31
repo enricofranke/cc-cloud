@@ -6050,6 +6050,49 @@ fieldset.field {
 .wcontent > * {
   min-width: 0;
 }
+/* a script's surface: as large as the box allows, in its own proportions */
+.wcell.t-canvas {
+  contain: size;
+}
+.wcell.t-canvas > .wcontent {
+  min-height: 0;
+  justify-content: flex-start;
+}
+.canvas-widget {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.canvas-host {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.canvas-surface {
+  display: block;
+  background: var(--screen);
+  border-radius: 2px;
+}
+.canvas-surface.is-click {
+  cursor: pointer;
+}
+.canvas-surface.is-drag {
+  cursor: crosshair;
+  touch-action: none;
+}
+.canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
 /* long lists scroll inside their box instead of growing the row and stretching the neighbours */
 .wcell.t-watchlist,
 .wcell.t-jobs,

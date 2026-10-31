@@ -49,6 +49,87 @@ local function wrap_widget(dash, id, initial)
     return setmetatable({ dash = dash, id = id, value = initial }, Widget)
 end
 
+-- A canvas: drawing calls collect commands, canvas:draw() sends them as one frame.
+local Canvas = setmetatable({}, { __index = Widget })
+Canvas.__index = Canvas
+
+local function add(canvas, command)
+    local frame = canvas.frame
+    frame[#frame + 1] = command
+    return canvas
+end
+
+--- Starts a new frame; with a color it is filled with that color.
+function Canvas:clear(color)
+    self.frame = {}
+    if color ~= nil then add(self, { "c", color }) end
+    return self
+end
+
+--- A filled rectangle.
+function Canvas:rect(x, y, w, h, color)
+    return add(self, { "r", x, y, w, h, color or "text" })
+end
+
+--- A rectangle outline.
+function Canvas:box(x, y, w, h, color, line)
+    return add(self, { "R", x, y, w, h, color or "text", line or 1 })
+end
+
+function Canvas:line(x1, y1, x2, y2, color, line)
+    return add(self, { "l", x1, y1, x2, y2, color or "text", line or 1 })
+end
+
+--- A filled circle.
+function Canvas:circle(x, y, r, color)
+    return add(self, { "o", x, y, r, color or "text" })
+end
+
+--- A circle outline.
+function Canvas:ring(x, y, r, color, line)
+    return add(self, { "O", x, y, r, color or "text", line or 1 })
+end
+
+function Canvas:pixel(x, y, color)
+    return add(self, { "p", color or "text", x, y })
+end
+
+--- Text: opts.size (6-64, default 8), opts.align ("l", "c" or "r"; x is that edge of the text).
+function Canvas:text(x, y, text, color, opts)
+    return add(self, { "t", x, y, tostring(text), color or "text", opts and opts.size or 8, opts and opts.align or "l" })
+end
+
+--- A gradient: from and to are colors, direction "h" (default) or "v".
+function Canvas:gradient(x, y, w, h, from, to, direction)
+    return add(self, { "g", x, y, w, h, from, to, direction or "h" })
+end
+
+--- One of the bundled 8x8 icons, the names of opts.icon.
+function Canvas:icon(x, y, name, size, color)
+    return add(self, { "i", x, y, name, size or 16, color or "text" })
+end
+
+--- An item's icon, e.g. "minecraft:iron_ingot".
+function Canvas:item(x, y, name, size)
+    return add(self, { "s", x, y, name, size or 16 })
+end
+
+--- A bitmap: rows of paint colours 0-f, a space is transparent (like `blit` and paint images).
+function Canvas:bitmap(x, y, rows, scale)
+    expect(3, rows, "table")
+    local width = 0
+    for _, row in ipairs(rows) do width = math.max(width, #row) end
+    local data = {}
+    for i, row in ipairs(rows) do data[i] = row .. (" "):rep(width - #row) end
+    return add(self, { "b", x, y, width, table.concat(data), scale or 1 })
+end
+
+--- Sends the frame collected since clear(). Draw as often as you like: at most ten frames per second go out, the newest
+-- one wins. Returns the frame's size in bytes; the frame stays, so you can add to it and draw again.
+function Canvas:draw()
+    return self.dash.uplink.draw(self.id, self.frame)
+end
+
 --- Finds the Cloud Uplink and returns a dashboard builder.
 -- @tparam[opt] string|table uplink A peripheral name, a wrapped uplink or nil to search for one.
 -- @treturn table The dashboard.
@@ -137,6 +218,24 @@ Dash.itemSearch = constructor("itemSearch")
 Dash.watchlist = constructor("watchlist")
 Dash.jobs = constructor("jobs")
 
+--- A surface the program draws on: dash:canvas(id, label, [opts], [handler]). opts: width (16-480, default 160), height
+-- (16-320, default 90), bg, input ("click" or "drag"), pin, confirm (with input = "click"). The handler gets
+-- (user, { type = "click"|"down"|"drag"|"up", x = 12, y = 30 }).
+function Dash:canvas(id, label, opts, handler)
+    expect(1, id, "string")
+    expect(3, opts, "table", "function", "nil")
+    if type(opts) == "function" then opts, handler = nil, opts end
+    expect(4, handler, "function", "nil")
+    self.uplink.canvas(id, label, opts)
+    self.handlers[id] = handler
+    local canvas = setmetatable({
+        dash = self, id = id, frame = {},
+        width = opts and opts.width or 160, height = opts and opts.height or 90,
+    }, Canvas)
+    self.widgets[id] = canvas
+    return canvas
+end
+
 --- A read-only text line: dash:label(id, text, [opts]).
 function Dash:label(id, text, opts)
     self.uplink.label(id, text, opts)
@@ -188,6 +287,33 @@ function Dash:on(id, handler)
     expect(2, handler, "function")
     self.handlers[id] = handler
     return self
+end
+
+--- Finds a Cloud Mainframe this computer can reach (next to it or on its wired network), or nil.
+function ui.mainframe()
+    return peripheral.find("cloud_mainframe")
+end
+
+--- The values of the mainframe's cards a program may read, by card title and widget id:
+-- ui.readCards(mf)["Reactor"].temp. Same limits as getCards(); nil and an error when rate limited. With two cards of the
+-- same title the first one counts.
+function ui.readCards(mainframe)
+    expect(1, mainframe, "table")
+    local cards, err = mainframe.getCards()
+    if not cards then return nil, err end
+    local out = {}
+    for _, row in ipairs(cards) do
+        if not out[row.title] then
+            local card, cardErr = mainframe.getCard(row.id)
+            if cardErr then return nil, cardErr end
+            if card then
+                local values = {}
+                for _, widget in ipairs(card.widgets) do values[widget.id] = widget.value end
+                out[row.title] = values
+            end
+        end
+    end
+    return out
 end
 
 --- Runs fn every `seconds` seconds while dash:run() is active (first call right away).
@@ -284,7 +410,7 @@ function Dash:run()
         if name == "cloud_action" then
             local id, value, user, side = event[2], event[3], event[4], event[5]
             local widget = self.widgets[id]
-            if side == self.side and widget then widget.value = value end
+            if side == self.side and widget and type(value) ~= "table" then widget.value = value end
             local handler = side == self.side and self.handlers[id]
             if handler then start(handler, user, value) end
         elseif name == "cloud_run" and not multishell and type(event[2]) == "string" and fs.exists(event[2]) then

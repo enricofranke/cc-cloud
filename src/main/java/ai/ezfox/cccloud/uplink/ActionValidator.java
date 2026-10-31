@@ -70,8 +70,20 @@ public final class ActionValidator {
             }
             case WATCHLIST -> op instanceof Op.WatchAdd || op instanceof Op.WatchRemove || op instanceof Op.WatchSetMin ? Result.ok(op) : Result.fail("invalid_value");
             case REDSTONE_SIDES -> op instanceof Op.SetOutput ? Result.ok(op) : Result.fail("invalid_value");
+            case CANVAS -> validateCanvas(widget, op);
             default -> Result.fail("invalid_value");
         };
+    }
+
+    /** Only a canvas that asked for input takes it: clicks with input = "click", down/drag/up with "drag", inside the surface. */
+    private static Result validateCanvas(Widget widget, Op op) {
+        var input = widget.opts().get("input");
+        if (input == null) return Result.fail("not_interactive");
+        if (!(op instanceof Op.CanvasInput in)) return Result.fail("invalid_value");
+        boolean drag = input.getAsString().equals("drag");
+        if (drag == in.kind().equals("click")) return Result.fail("invalid_value");
+        if (in.x() >= widget.opts().get("width").getAsInt() || in.y() >= widget.opts().get("height").getAsInt()) return Result.fail("invalid_value");
+        return Result.ok(op);
     }
 
     public static boolean requiresPin(Widget widget) {

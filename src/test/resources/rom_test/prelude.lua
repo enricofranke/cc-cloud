@@ -45,13 +45,14 @@ local function uplink_method(name)
         local a = table.pack(...)
         if name == "label" then return __create("label", a[1], a[2], a[3]) end
         if name == "set" then return __set(a[1], a[2]) end
+        if name == "draw" then return __draw(a[1], a[2]) end
         if name == "setMany" then for id, v in pairs(a[1]) do __set(id, v) end return end
         return __create(name, a[1], a[2], a[3])
     end
 end
 uplink = {}
 for _, m in ipairs({ "button", "toggle", "slider", "gauge", "chart", "progress", "indicator", "select", "number", "text",
-                     "buttons", "itemSearch", "watchlist", "jobs", "page", "group", "label", "set", "setMany" }) do
+                     "buttons", "itemSearch", "watchlist", "jobs", "page", "group", "label", "set", "setMany", "canvas", "draw" }) do
     uplink[m] = uplink_method(m)
 end
 function uplink.setTitle(t) assert(type(t) == "string" and #t <= 48, "bad title") calls[#calls + 1] = { "setTitle", t } end

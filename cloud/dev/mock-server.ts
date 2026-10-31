@@ -37,10 +37,10 @@ interface Widget {
   id: string;
   type:
     | "button" | "toggle" | "slider" | "gauge" | "label" | "item_search" | "watchlist" | "jobs"
-    | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons" | "redstone_sides";
+    | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons" | "redstone_sides" | "canvas";
   label?: string;
   opts?: Record<string, unknown>;
-  value?: Scalar | Row[];
+  value?: Scalar | Row[] | object;
   history?: number[];
 }
 interface Uplink {
@@ -163,6 +163,8 @@ interface Mainframe {
   onQuery?: (uplinkId: string, id: string, q: string) => { rows: object[]; truncated: boolean } | undefined;
   /** Storage card v2: storage ops and craft previews */
   onStorage?: (uplinkId: string, op: string, p: Record<string, unknown>, user: string) => { ok: boolean; error?: string; data?: object } | undefined;
+  /** a canvas's pointer input, after the checks an action gets */
+  onCanvas?: (uplinkId: string, id: string, input: { kind: string; x: number; y: number }, user: string) => void;
   onPreview?: (uplinkId: string, name: string, count: number) => { ok: boolean; error?: string; plan?: object } | undefined;
   tick?: () => void;
   /** script import: one file system per uplink that sits on a computer */
@@ -195,6 +197,8 @@ export interface MockOptions {
   power?: boolean;
   /** Add an uplink in v0.3 auto mode: the automatic Computer card (default true). */
   computer?: boolean;
+  /** Add the "Canvas" uplink: a Lua-drawn reactor mimic with click input (default false). */
+  canvas?: boolean;
   /** "sides" = one redstone_sides widget (SPEC), "widgets" = per-side indicator/toggle/slider widgets in groups. */
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
@@ -249,6 +253,7 @@ export const COMPUTER = "b81e44d0-computer";
 export const DEEP_COMPUTER = "0d0c0e00-deep-computer";
 export const DEEP_RS = "0d0c0e01-deep-rs";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
+export const CANVAS = "2e6b1f90-canvas";
 
 export async function createMockServer(opts: MockOptions = {}) {
   const log = opts.log ?? ((m: string) => console.log(`[mock] ${m}`));
@@ -396,7 +401,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
   function shareUplink(mf: Mainframe, share: Share, u: Uplink): Uplink | null {
     const keys = shareCards(mf, share);
-    const hidden = new Set(["item_search", ...(share.hideNumbers ? ["label", "text", "number"] : [])]);
+    const hidden = new Set(["item_search", ...(share.hideNumbers ? ["label", "text", "number", "canvas"] : [])]);
     const widgets = u.widgets.filter((w) => keys.has(cardKeyOf(u.uplinkId, w as never)) && !hidden.has(w.type));
     return widgets.length ? { ...u, widgets } : null;
   }
@@ -1030,7 +1035,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     return mf.code;
   }
 
-  function setValue(mf: Mainframe, uplinkId: string, id: string, value: Scalar | Row[]) {
+  function setValue(mf: Mainframe, uplinkId: string, id: string, value: Scalar | Row[] | object) {
     const w = mf.uplinks.get(uplinkId)?.widgets.find((x) => x.id === id);
     if (w?.type === "chart" && typeof value === "number") {
       // charts: the mod keeps a ring buffer; deltas carry only the new point
@@ -1264,6 +1269,27 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
 
   // ---- a Lua v2 dashboard: pages, groups and the new widget types ----
+  if (opts.canvas) {
+    const mimic = (open: boolean) => ({
+      canvas: 1,
+      c: [
+        ["g", 0, 0, 200, 110, "panel", "bg", "v"],
+        ["o", 50, 55, 30, "#d34f4f40"], ["O", 50, 55, 30, "red", 2], ["t", 50, 44, "CORE", "text", 10, "c"], ["t", 50, 58, "812 K", "yellow", 8, "c"],
+        ["l", 80, 55, 120, 55, open ? "cyan" : "gray", 3], ["r", 120, 40, 60, 30, "panel"], ["R", 120, 40, 60, 30, open ? "green" : "red", 1],
+        ["t", 150, 50, open ? "PUMP ON" : "PUMP OFF", open ? "green" : "red", 8, "c"],
+        ["i", 4, 4, "flame", 16, "orange"], ["s", 178, 90, "minecraft:iron_ingot", 16], ["b", 4, 92, 4, "e1e1 e1e1e1 e1 e", 2], ["p", "gold", 196, 4, 197, 4, 198, 4],
+      ],
+    });
+    let open = true;
+    base.uplinks.set(CANVAS, {
+      uplinkId: CANVAS, title: "Canvas", online: true, mode: "lua",
+      widgets: [{ id: "mimic", type: "canvas", label: "Reactor", opts: { width: 200, height: 110, input: "click", bg: "panel" }, value: mimic(open) }],
+    });
+    base.onCanvas = (uplinkId, id) => {
+      open = !open;
+      setValue(base, uplinkId, id, mimic(open));
+    };
+  }
   if (opts.controlRoom !== false) {
     const rand = (() => {
       let s = 99;
@@ -2229,6 +2255,17 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} ${op.data.op} ${u.title}/${w.id} ${JSON.stringify(op.data)} -> ${r.ok ? "ok" : r.error}`);
           return result(msg.reqId, r.ok, r.error, r.jobId ? { jobId: r.jobId } : {});
         }
+        if (w.type === "canvas") {
+          const op = opValue.safeParse(msg.value);
+          const o = (w.opts ?? {}) as { input?: string; width?: number; height?: number };
+          if (!o.input) return result(msg.reqId, false, "not_interactive");
+          if (!op.success || op.data.op !== "canvas" || (o.input === "drag") === (op.data.kind === "click")) return result(msg.reqId, false, "invalid_value");
+          if (op.data.x >= (o.width ?? 160) || op.data.y >= (o.height ?? 90)) return result(msg.reqId, false, "invalid_value");
+          log(`${c.user} canvas ${u.title}/${w.id} ${op.data.kind} ${op.data.x},${op.data.y}`);
+          result(msg.reqId, true);
+          m.onCanvas?.(msg.uplinkId, msg.id, op.data, c.user);
+          return;
+        }
         if (w.type === "jobs") return result(msg.reqId, false, "not_interactive");
         const value = coerce(w, msg.value as Scalar | undefined);
         if (value === undefined) return result(msg.reqId, false, w.type === "gauge" || w.type === "label" ? "not_interactive" : "invalid_value");
@@ -3086,6 +3123,9 @@ export async function createMockServer(opts: MockOptions = {}) {
     shares,
     accountCodes,
     tickPower: (mf: Mainframe = base) => tickPower(mf),
+    /** publish a section or a widget value as the mod would (tests) */
+    putUplink,
+    setValue,
     /** v0.10: one production sample now (tests run without the tick) */
     sampleProduction: (mf: Mainframe = base) => sampleProduction(mf),
     /** v0.10 API keys (hashes only) */

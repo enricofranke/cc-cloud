@@ -108,6 +108,30 @@ public final class MainframePeripheral implements IPeripheral {
         return result;
     }
 
+    /** Reads per second of {@link #getCards} and {@link #getCard} per peripheral; a whole base can be a lot of JSON. */
+    private final ai.ezfox.cccloud.web.TokenBucket reads = new ai.ezfox.cccloud.web.TokenBucket(20, 10);
+
+    /**
+     * The dashboard's cards this program may read: {id, title, online, kind, widgets}, at most 256. A computer has no
+     * owner to ask, so a program sees what a plain viewer sees (docs/SPEC.md "Reading cards from Lua"): never restricted
+     * cards, player names in their public form. Returns nil and "rate_limited" above 10 reads per second.
+     */
+    @LuaFunction
+    public final Object[] getCards() {
+        if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
+        return new Object[]{ai.ezfox.cccloud.peripheral.CardReader.list(ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId()))};
+    }
+
+    /** One card with its widgets: {id, title, online, widgets={{id, type, label, value, unit, min, max},...}}, or nil. Limits like {@link #getCards}. */
+    @LuaFunction
+    public final Object[] getCard(String id) {
+        if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
+        for (var section : ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId())) {
+            if (id.equals(ai.ezfox.cccloud.peripheral.CardReader.id(section))) return new Object[]{ai.ezfox.cccloud.peripheral.CardReader.card(section)};
+        }
+        return new Object[]{null};
+    }
+
     /**
      * The mainframe's rules (v0.5): {id, name, enabled, trigger, actions, lastRun, lastResult, runs}. Editing happens in
      * the dashboard (admin); Lua can only list them and switch them on/off.

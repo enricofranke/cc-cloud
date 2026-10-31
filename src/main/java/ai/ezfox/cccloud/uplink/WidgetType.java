@@ -29,7 +29,12 @@ public enum WidgetType {
      * An Advanced Cloud Sensor's activity: who is inside, the last events and today's count (value
      * {@code {summary, inside, events, today, armed, zone, problem?}}). Read-only; not available from Lua.
      */
-    SENSOR_LOG(false);
+    SENSOR_LOG(false),
+    /**
+     * A surface a Lua script draws on (value {@link CanvasFrame}, set with {@code draw}, never with {@code set}); with
+     * {@code opts.input} the pointer comes back as a structured action {@link Op.CanvasInput}.
+     */
+    CANVAS(true);
 
     private final boolean interactive;
 
@@ -48,7 +53,7 @@ public enum WidgetType {
 
     /** Interactive widgets whose actions are structured operations ({@code {"op":...}}) rather than scalars. */
     public boolean takesOps() {
-        return this == ITEM_SEARCH || this == WATCHLIST || this == REDSTONE_SIDES;
+        return this == ITEM_SEARCH || this == WATCHLIST || this == REDSTONE_SIDES || this == CANVAS;
     }
 
     public String id() {

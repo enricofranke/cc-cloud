@@ -66,6 +66,19 @@ class RomLuaTest {
             return ValueFactory.varargsOf();
         }
 
+        /** Frames that passed {@link ai.ezfox.cccloud.uplink.CanvasFrame}, newest last. */
+        final java.util.List<com.google.gson.JsonObject> frames = new java.util.ArrayList<>();
+
+        Varargs draw(LuaState state, Varargs args) throws LuaError {
+            try {
+                var frame = ai.ezfox.cccloud.uplink.CanvasFrame.parse(toJava(args.arg(2)));
+                frames.add(frame.value());
+                return ValueFactory.valueOf(frame.bytes());
+            } catch (WidgetFactory.WidgetException e) {
+                throw new LuaError(e.getMessage());
+            }
+        }
+
         Varargs set(LuaState state, Varargs args) throws LuaError {
             String id = args.arg(1).checkString();
             var widget = widgets.get(id);
@@ -128,6 +141,7 @@ class RomLuaTest {
         RegisteredFunction.bind(globals, new RegisteredFunction[]{
             RegisteredFunction.ofV("__create", fake::create),
             RegisteredFunction.ofV("__set", fake::set),
+            RegisteredFunction.ofV("__draw", fake::draw),
         });
 
         // Modules for require(): CC's cc.expect from the CC jar and our cloud.ui.

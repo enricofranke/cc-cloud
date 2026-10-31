@@ -41,6 +41,14 @@ public sealed interface Op {
         public static final Set<String> SIDES = Set.of("top", "bottom", "left", "right", "front", "back");
     }
 
+    /**
+     * Pointer input on a canvas, in the canvas's logical pixels: {@code click}, or {@code down}, {@code drag} and
+     * {@code up} on a canvas with {@code input = "drag"}.
+     */
+    record CanvasInput(String kind, int x, int y) implements Op {
+        public static final Set<String> KINDS = Set.of("click", "down", "drag", "up");
+    }
+
     static boolean isItemName(@Nullable String name) {
         return name != null && ITEM_NAME.matcher(name).matches();
     }
@@ -53,6 +61,13 @@ public sealed interface Op {
             Long value = integer(obj.get("value"), 0, 15);
             if (!onlyKeys(obj, Set.of("op", "side", "value")) || side == null || !SetOutput.SIDES.contains(side) || value == null) return null;
             return new SetOutput(side, value.intValue());
+        }
+        if ("canvas".equals(op)) {
+            String kind = string(obj, "kind");
+            Long x = integer(obj.get("x"), 0, Limits.CANVAS_MAX_WIDTH);
+            Long y = integer(obj.get("y"), 0, Limits.CANVAS_MAX_HEIGHT);
+            if (!onlyKeys(obj, Set.of("op", "kind", "x", "y")) || kind == null || !CanvasInput.KINDS.contains(kind) || x == null || y == null) return null;
+            return new CanvasInput(kind, x.intValue(), y.intValue());
         }
         String name = string(obj, "name");
         if (op == null || !isItemName(name)) return null;

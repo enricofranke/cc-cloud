@@ -21,6 +21,8 @@ export const opValue = z.discriminatedUnion("op", [
   z.object({ op: z.literal("set_min"), name: itemName, min: z.number().int().min(0).max(2 ** 31 - 1) }),
   // v0.3 redstone_sides
   z.object({ op: z.literal("set_output"), side: z.enum(["top", "bottom", "left", "right", "front", "back"]), value: z.number().int().min(0).max(15) }),
+  // canvas pointer input (checked against the widget by the handler, like the mod's ActionValidator)
+  z.strictObject({ op: z.literal("canvas"), kind: z.enum(["click", "down", "drag", "up"]), x: z.number().int().min(0).max(480), y: z.number().int().min(0).max(320) }),
 ]);
 export type OpValue = z.infer<typeof opValue>;
 
@@ -66,7 +68,7 @@ const box = (maxH: number) => ({
   h: z.number().int().min(1).max(maxH).optional(),
 });
 /** what a view "v:<id>" may show its source as: every widget type */
-const VIEW_TYPES = ["button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs", "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log"];
+const VIEW_TYPES = ["button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs", "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log", "canvas"];
 const layoutV2 = z.strictObject({
   v: z.literal(2),
   pages: pagesSchema,

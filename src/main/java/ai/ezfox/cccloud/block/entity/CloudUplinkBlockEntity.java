@@ -480,12 +480,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             synchronized (this) {
                 dirtyValues.clear();
                 pendingAlerts.clear();
+                pendingFrames.clear();
             }
         }
         if (link == null || suppressed) {
             synchronized (this) {
                 dirtyValues.clear();
                 pendingAlerts.clear();
+                pendingFrames.clear();
             }
             return;
         }
@@ -495,8 +497,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         int valueCount = 0;
         List<String[]> alerts = null;
         synchronized (this) {
-            if (structureDirty) {
+            if (!pendingFrames.isEmpty()) applyFrames();
+            if (structureDirty && !holdStructure()) {
                 structureDirty = false;
+                lastStructureTick = tickCounter;
                 dirtyValues.clear();
                 snapshot = snapshot();
                 changed = true;
@@ -1446,6 +1450,66 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (widget.type() != WidgetType.CHART) dirtyValues.add(id);
     }
 
+    // ---- canvas (docs/SPEC.md "Canvas widget") -------------------------------------------------------------------------
+
+    /** Frames waiting for their turn, the newest per canvas: a script may draw as fast as it likes, only these limits count. */
+    private final Map<String, JsonElement> pendingFrames = new java.util.LinkedHashMap<>();
+    private final Map<String, Integer> pendingFrameBytes = new java.util.HashMap<>();
+    /** Canvas id → {@code tickCounter} of its last frame. */
+    private final Map<String, Long> lastFrameTick = new java.util.HashMap<>();
+    private final TokenBucket frameBytes = new TokenBucket(2 * Limits.CANVAS_FRAME_BYTES, Limits.CANVAS_UPLINK_BYTES_PER_SECOND);
+    private long lastStructureTick = Long.MIN_VALUE / 2;
+
+    /** Queues a checked frame; {@link #serverTick} hands it on within the limits. False if there is no such canvas. */
+    public synchronized boolean queueFrame(String id, JsonElement frame, int bytes) {
+        var widget = widgets.get(id);
+        if (widget == null || widget.type() != WidgetType.CANVAS) return false;
+        pendingFrames.put(id, frame);
+        pendingFrameBytes.put(id, bytes);
+        return true;
+    }
+
+    /** Canvases of this uplink, not counting {@code id} (declaring a canvas again replaces it). */
+    public synchronized int canvasCount(String id) {
+        int count = 0;
+        for (var widget : widgets.values()) if (widget.type() == WidgetType.CANVAS && !widget.id().equals(id)) count++;
+        return count;
+    }
+
+    /**
+     * Moves waiting frames into their widgets as far as the limits allow: this is the only way a frame gets into a
+     * widget, so a snapshot can never carry more than the budget paid for. Under this object's lock.
+     */
+    private void applyFrames() {
+        var mainframe = link;
+        for (var it = pendingFrames.entrySet().iterator(); it.hasNext(); ) {
+            var entry = it.next();
+            String id = entry.getKey();
+            var widget = widgets.get(id);
+            if (widget == null || widget.type() != WidgetType.CANVAS || widget.value().equals(entry.getValue())) {
+                it.remove();
+                pendingFrameBytes.remove(id);
+                continue;
+            }
+            Long last = lastFrameTick.get(id);
+            if (last != null && tickCounter - last < Limits.CANVAS_FRAME_TICKS) continue;
+            int bytes = pendingFrameBytes.getOrDefault(id, Limits.CANVAS_FRAME_BYTES);
+            if (!frameBytes.tryAcquire(bytes) || mainframe != null && !WebHub.INSTANCE.tryCanvasBytes(mainframe.id(), bytes)) continue;
+            widget.setValue(entry.getValue());
+            dirtyValues.add(id);
+            lastFrameTick.put(id, (long) tickCounter);
+            it.remove();
+            pendingFrameBytes.remove(id);
+        }
+    }
+
+    /** A whole section carries its frames, so a section with frames is sent at most once per second. Under this object's lock. */
+    private boolean holdStructure() {
+        if (tickCounter - lastStructureTick >= Limits.CANVAS_STRUCTURE_TICKS) return false;
+        for (var widget : widgets.values()) if (widget.type() == WidgetType.CANVAS && !widget.value().isJsonNull()) return true;
+        return false;
+    }
+
     public synchronized boolean removeWidget(String id) {
         if (widgets.remove(id) == null) return false;
         structureDirty = chartsDirty = true;
@@ -1520,6 +1584,14 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     }
 
     private CompletableFuture<ActionResult> handleOp(Widget widget, Op op, String user) {
+        if (op instanceof Op.CanvasInput input) {
+            var event = new java.util.LinkedHashMap<String, Object>();
+            event.put("type", input.kind());
+            event.put("x", input.x());
+            event.put("y", input.y());
+            queueAction(widget.id(), event, user);
+            return ActionResult.done(null);
+        }
         var host = bridgeFor(widget);
         if (host == null) return ActionResult.done("unavailable");
         var core = host.bridgeCore();

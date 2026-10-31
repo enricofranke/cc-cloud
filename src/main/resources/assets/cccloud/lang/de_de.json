@@ -709,6 +709,7 @@
   "cccloud.gui.card.empty": "Noch nichts auf dieser Karte",
   "cccloud.gui.card.on": "An",
   "cccloud.gui.card.off": "Aus",
+  "cccloud.gui.card.canvas": "Im Dashboard sichtbar",
   "cccloud.gui.card.search": "Suchen…",
   "cccloud.gui.card.entries": "%s Einträge",
   "cccloud.gui.card.custom_title": "Im Dashboard umbenannt (vorher „%s“).",

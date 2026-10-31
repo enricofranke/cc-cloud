@@ -362,7 +362,20 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         String json = ai.ezfox.cccloud.web.WebHub.INSTANCE.sectionText(mainframeId, sectionId);
         if (json == null) return error("missing");
         if (ai.ezfox.cccloud.web.WebHub.INSTANCE.isRestricted(mainframeId, sectionId)) return error("restricted");
+        json = withoutFrames(json);
         return json.length() > MAX_JSON ? error("too_large") : json;
+    }
+
+    private @Nullable String framesFrom;
+    private @Nullable String framesLeft;
+
+    /** A display shows a hint instead of a canvas; the hub's text is shared per version, so one parse per version is enough. */
+    private String withoutFrames(String json) {
+        if (json == framesFrom && framesLeft != null) return framesLeft;
+        String left = ai.ezfox.cccloud.uplink.CanvasFrame.withoutFrames(json);
+        framesFrom = json;
+        framesLeft = left == null ? json : left;
+        return framesLeft;
     }
 
     private static String error(String code) {

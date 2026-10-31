@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import { formatDuration, keyOf, rejectText, type ActionOutcome } from "../lib/conn.ts";
-import type { Scalar, Uplink, Widget } from "../lib/types.ts";
+import type { ActionValue, Scalar, Uplink, Widget } from "../lib/types.ts";
 import { IconLock } from "./Icons.tsx";
 import { labelFit, splitEntries } from "../lib/format.ts";
 import { ConfirmDialog, PinDialog, type PinState } from "./Overlays.tsx";
@@ -40,13 +40,13 @@ function useValue(conn: MainframeConn, uplinkId: string, w: Widget): { value: Sc
  * Returns `send(value, onCancel?)` and the dialog element to render.
  */
 export function usePinGate(conn: MainframeConn, uplink: Uplink, w: Widget, optimistic: boolean, after?: () => void) {
-  const [ask, setAsk] = useState<{ value: Scalar; onCancel?: () => void } | null>(null);
+  const [ask, setAsk] = useState<{ value: ActionValue; onCancel?: () => void } | null>(null);
   const [state, setState] = useState<PinState>({ kind: "idle" });
   const needsPin = w.opts?.pin === true;
   const lockedFor = () => Math.ceil((conn.pinLockedUntil.value - Date.now()) / 1000);
   const lockText = (sec: number) => rejectText({ ok: false, error: "pin_locked", retryAfter: sec });
 
-  const send = (value: Scalar, onCancel?: () => void) => {
+  const send = (value: ActionValue, onCancel?: () => void) => {
     if (!needsPin) {
       if (conn.action(uplink.uplinkId, w, value, optimistic)) after?.();
       return;

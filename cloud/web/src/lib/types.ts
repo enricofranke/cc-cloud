@@ -1,13 +1,16 @@
+import type { CanvasValue } from "./canvas.ts";
+
 export type Scalar = number | boolean | string | null;
 export type WidgetType =
   | "button" | "toggle" | "slider" | "gauge" | "label"
   | "item_search" | "watchlist" | "jobs"
   | "chart" | "progress" | "indicator" | "select" | "number" | "text" | "buttons"
   | "redstone_sides"
-  | "sensor_log";
+  | "sensor_log"
+  | "canvas";
 export const WIDGET_TYPES: readonly WidgetType[] = [
   "button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs",
-  "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log",
+  "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log", "canvas",
 ];
 
 export const SIDES = ["top", "bottom", "left", "right", "front", "back"] as const;
@@ -21,8 +24,8 @@ export interface RedstoneRow {
 
 /** A row of structured widget values (watchlist / jobs). */
 export type Row = Record<string, string | number | boolean | null>;
-/** Widget value: a scalar, or a list of rows for watchlist/jobs. */
-export type WidgetValue = Scalar | Row[];
+/** Widget value: a scalar, a list of rows for watchlist/jobs, or a frame of draw commands for a canvas. */
+export type WidgetValue = Scalar | Row[] | CanvasValue;
 /** Action value: a scalar, or an operation object for item_search/watchlist ({op:"craft",...}). */
 export type ActionValue = Scalar | Record<string, string | number | boolean>;
 
@@ -86,12 +89,22 @@ export interface WidgetOpts {
   display?: string;
   /** editor icon (layout v2) */
   wicon?: string;
+  /** canvas: surface in logical pixels, background, pointer input */
+  width?: number;
+  height?: number;
+  bg?: string;
+  input?: "click" | "drag";
   /** Lua v2 layout hints */
   page?: string;
   group?: string;
   span?: number;
   order?: number;
   icon?: string;
+  /** grid box from Lua (12 columns); what the editor saves wins */
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 }
 
 export interface Widget {
@@ -119,7 +132,7 @@ export interface Uplink {
   lastSeen?: number;
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
-  groups?: { id: string; title?: string; page?: string; cols?: number }[];
+  groups?: { id: string; title?: string; page?: string; cols?: number; x?: number; y?: number; w?: number; h?: number; color?: string; icon?: string; order?: number }[];
   /** claim guard: the machine is in another team's claim, so nothing is read or controlled (no widgets) */
   blocked?: Blocked;
   /** claim guard on a Cloud Redstone card: widget id → why that device is blocked (its widgets keep their last value) */

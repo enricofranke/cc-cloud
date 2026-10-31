@@ -18,13 +18,14 @@ import org.jspecify.annotations.Nullable;
  * and errors are reported as {@link WidgetException} with a message meant for the Lua programmer.
  * <p>
  * Every widget accepts the layout options {@code page}, {@code group}, {@code span} (1-4), {@code order},
- * {@code color} and {@code icon}. Everything else is type specific; unknown keys are rejected.
+ * {@code color}, {@code icon} and the grid box {@code x}, {@code y}, {@code w}, {@code h} (12 columns, see
+ * {@link #box}). Everything else is type specific; unknown keys are rejected.
  */
 public final class WidgetFactory {
     public static final Set<String> COLORS = Set.of("cyan", "green", "yellow", "red", "gray");
     public static final Set<String> ALERT_LEVELS = Set.of("info", "warn", "crit");
     /** Layout options every widget accepts. */
-    static final List<String> COMMON = List.of("page", "group", "span", "order", "color", "icon");
+    static final List<String> COMMON = List.of("page", "group", "span", "order", "color", "icon", "x", "y", "w", "h");
     /** Default upper bound for craft amounts when no config is available (unit tests). */
     public static final int DEFAULT_MAX_CRAFT = 4096;
 
@@ -193,6 +194,18 @@ public final class WidgetFactory {
                 opts.addProperty("max", intIn("max", o.get("max"), maxCraft, 1, maxCraft));
             }
             case WATCHLIST, JOBS -> allowKeys(type, o, "bridge");
+            case CANVAS -> {
+                allowKeys(type, o, "width", "height", "bg", "input", "pin", "confirm");
+                pin(opts, o);
+                confirm(opts, o);
+                opts.addProperty("width", intIn("width", o.get("width"), Limits.CANVAS_DEFAULT_WIDTH, Limits.CANVAS_MIN_SIZE, Limits.CANVAS_MAX_WIDTH));
+                opts.addProperty("height", intIn("height", o.get("height"), Limits.CANVAS_DEFAULT_HEIGHT, Limits.CANVAS_MIN_SIZE, Limits.CANVAS_MAX_HEIGHT));
+                if (o.get("bg") != null) opts.addProperty("bg", CanvasFrame.color(o.get("bg")));
+                if (o.get("input") != null) opts.addProperty("input", oneOf("input", o.get("input"), Set.of("click", "drag")));
+                boolean guarded = opts.has("pin") || opts.has("confirm") && opts.get("confirm").getAsBoolean();
+                if (guarded && !opts.has("input")) throw new WidgetException("canvas pin and confirm need input=\"click\"");
+                if (guarded && opts.get("input").getAsString().equals("drag")) throw new WidgetException("a canvas with pin or confirm only takes input=\"click\": a dialog cannot follow a drag");
+            }
             case REDSTONE_SIDES -> throw new WidgetException("redstone_sides is only used by the automatic Computer card");
             case SENSOR_LOG -> throw new WidgetException("sensor_log is only used by the Advanced Cloud Sensor");
         }
@@ -211,6 +224,7 @@ public final class WidgetFactory {
             case BUTTON, BUTTONS, ITEM_SEARCH -> throw new WidgetException(widget.type().id() + " '" + widget.id() + "' has no value");
             case WATCHLIST, JOBS -> throw new WidgetException(widget.type().id() + " '" + widget.id() + "' gets its value from the bridge");
             case REDSTONE_SIDES -> throw new WidgetException("redstone_sides '" + widget.id() + "' is managed by the Computer card");
+            case CANVAS -> throw new WidgetException("canvas '" + widget.id() + "' is drawn with draw(id, commands), not set()");
             case SENSOR_LOG -> throw new WidgetException("sensor_log '" + widget.id() + "' is managed by the Advanced Cloud Sensor");
             case TOGGLE, INDICATOR -> {
                 if (!(value instanceof Boolean b)) throw new WidgetException(widget.type().id() + " '" + widget.id() + "' expects a boolean, got " + describe(value));
@@ -257,15 +271,24 @@ public final class WidgetFactory {
         return json;
     }
 
-    /** {@code cloud.group(id, title, {page=, cols=1..4})} */
+    /**
+     * {@code cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})}: a card; what the
+     * editor saves for it wins over all of this.
+     */
     public static JsonObject group(Object id, @Nullable Object title, @Nullable Map<?, ?> rawOpts) throws WidgetException {
         var json = new JsonObject();
         json.addProperty("id", checkId("group id", id));
         json.addProperty("title", checkText("group title", title, Limits.TITLE));
         Map<?, ?> o = rawOpts == null ? Map.of() : rawOpts;
-        allowKeys("group", o, List.of("page", "cols"));
+        allowKeys("group", o, List.of("page", "cols", "x", "y", "w", "h", "color", "icon", "order"));
         if (o.get("page") != null) json.addProperty("page", checkId("page id", o.get("page")));
         if (o.get("cols") != null) json.addProperty("cols", intIn("cols", o.get("cols"), 1, 1, 4));
+        box(json, o, ai.ezfox.cccloud.layout.LayoutValidator.MIN_CARD_W, ai.ezfox.cccloud.layout.LayoutValidator.MAX_CARD_H);
+        if (o.get("color") != null) {
+            json.addProperty("color", oneOf("color", o.get("color"), ai.ezfox.cccloud.layout.LayoutValidator.ACCENTS));
+        }
+        if (o.get("icon") != null) json.addProperty("icon", icon(o.get("icon")));
+        if (o.get("order") != null) json.addProperty("order", intIn("order", o.get("order"), 0, 0, Limits.ORDER_MAX));
         return json;
     }
 
@@ -286,6 +309,19 @@ public final class WidgetFactory {
         if (o.get("order") != null) opts.addProperty("order", intIn("order", o.get("order"), 0, 0, Limits.ORDER_MAX));
         if (o.get("color") != null) opts.addProperty("color", color(o.get("color")));
         if (o.get("icon") != null) opts.addProperty("icon", icon(o.get("icon")));
+        box(opts, o, 1, ai.ezfox.cccloud.layout.LayoutValidator.MAX_WIDGET_H);
+    }
+
+    /** A box on a 12-column grid, like the layout editor's ({@code x}, {@code y}, {@code w}, {@code h}), any part of it. */
+    private static void box(JsonObject json, Map<?, ?> o, int minW, int maxH) throws WidgetException {
+        int cols = ai.ezfox.cccloud.layout.LayoutValidator.COLS;
+        if (o.get("x") != null) json.addProperty("x", intIn("x", o.get("x"), 0, 0, cols - 1));
+        if (o.get("y") != null) json.addProperty("y", intIn("y", o.get("y"), 0, 0, 999));
+        if (o.get("w") != null) json.addProperty("w", intIn("w", o.get("w"), cols, minW, cols));
+        if (o.get("h") != null) json.addProperty("h", intIn("h", o.get("h"), 1, 1, maxH));
+        if (json.has("x") && json.has("w") && json.get("x").getAsInt() + json.get("w").getAsInt() > cols) {
+            throw new WidgetException("x + w must not be more than " + cols + " columns");
+        }
     }
 
     private static void range(WidgetType type, JsonObject opts, Map<?, ?> o) throws WidgetException {

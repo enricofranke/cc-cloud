@@ -7,6 +7,7 @@
 // rows grow when the content is taller). Widgets can move into other cards and
 // into custom cards ("c:<id>"). v1 documents (order + span) are migrated on read.
 // Pure functions only, so the editor logic is unit-testable.
+import { canvasSize } from "./canvas.ts";
 import { WIDGET_TYPES, type Uplink, type Widget, type WidgetType } from "./types.ts";
 import { bottom, clampItem, compact, flowPack, freeSpot, insertItem, moveItem, placeAll, resizeItem, type GridItem } from "./grid.ts";
 
@@ -167,13 +168,13 @@ export function cardKeyOf(uplinkId: string, w: Widget) {
 /** Default widget order inside a card when nobody customised it: readouts first, buttons last. */
 const TYPE_RANK: Record<string, number> = {
   gauge: 0, indicator: 1, chart: 2, progress: 3, label: 4, item_search: 5, watchlist: 6, jobs: 7,
-  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10, redstone_sides: 11, sensor_log: 2,
+  toggle: 8, slider: 8, select: 8, number: 8, text: 8, buttons: 9, button: 10, redstone_sides: 11, sensor_log: 2, canvas: 2,
 };
 /** Smallest readable width (of 12): cards on the page, widgets inside their card. */
 export const MIN_CARD_W = 3;
 export function minWidgetW(type: string) {
   if (type === "item_search" || type === "watchlist" || type === "jobs" || type === "redstone_sides" || type === "sensor_log") return 6;
-  if (type === "chart") return 4;
+  if (type === "chart" || type === "canvas") return 4;
   if (type === "gauge") return 2;
   return 3;
 }
@@ -190,12 +191,12 @@ export function minWidgetH(type: string, display?: Display) {
   if (type === "label") return display === "big" ? 3 : 2;
   if (type === "chart") return display === "sparkline" ? 3 : 5;
   if (type === "indicator") return display === "lamp" ? 3 : 2;
-  const H: Record<string, number> = { progress: 2, item_search: 5, watchlist: 4, jobs: 3, toggle: 2, slider: 3, select: 2, number: 3, text: 3, buttons: 3, button: 2, redstone_sides: 7, sensor_log: 6 };
+  const H: Record<string, number> = { progress: 2, item_search: 5, watchlist: 4, jobs: 3, toggle: 2, slider: 3, select: 2, number: 3, text: 3, buttons: 3, button: 2, redstone_sides: 7, sensor_log: 6, canvas: 5 };
   return H[type] ?? 2;
 }
 export function defaultWidgetH(type: string, display?: Display) {
   // lists scroll inside their box, so they start with room for a few rows
-  const H: Record<string, number> = { watchlist: 8, jobs: 6, sensor_log: 8 };
+  const H: Record<string, number> = { watchlist: 8, jobs: 6, sensor_log: 8, canvas: 10 };
   return H[type] ?? minWidgetH(type, display);
 }
 /** Card rows for the header and padding around the widget grid. */
@@ -268,6 +269,27 @@ function luaPages(uplinks: Uplink[]): LayoutPage[] {
   return pages;
 }
 
+/** The parts of a grid box a script set (validated by the mod; untrusted here too, so they are checked again). */
+function luaBox(o: { x?: unknown; y?: unknown; w?: unknown; h?: unknown } | undefined): Partial<Box> {
+  const int = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isInteger(v) && v >= min && v <= max ? v : undefined);
+  const out: Partial<Box> = {};
+  const x = int(o?.x, 0, COLS - 1);
+  const y = int(o?.y, 0, 99_999);
+  const w = int(o?.w, 1, COLS);
+  const h = int(o?.h, 1, MAX_CARD_H);
+  if (x !== undefined) out.x = x;
+  if (y !== undefined) out.y = y;
+  if (w !== undefined) out.w = w;
+  if (h !== undefined) out.h = h;
+  return out;
+}
+
+/** Rows a canvas starts with: its proportions in a card of about half a page (560 px wide). */
+function canvasRows(w: Widget) {
+  const { w: width, h: height } = canvasSize(w.opts);
+  return Math.max(minWidgetH("canvas"), Math.min(MAX_WIDGET_H, Math.round(((560 / width) * height + 24) / 32)));
+}
+
 const hasBox = (p: Partial<Box>) => p.x !== undefined && p.y !== undefined && p.w !== undefined && p.h !== undefined;
 
 const REDSTONE_ICONS = new Set(["lamp", "lever", "button", "sensor", "eye"]);
@@ -314,6 +336,7 @@ export const VIEW_SOURCES: Record<WidgetType, WidgetType[]> = {
   jobs: ["jobs"],
   redstone_sides: ["redstone_sides"],
   sensor_log: ["sensor_log"],
+  canvas: ["canvas"],
 };
 const CHART_POINTS = 60;
 const views = new WeakMap<Widget, Map<WidgetType, Widget>>();
@@ -364,10 +387,12 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
   const cards = new Map<string, Draft>();
   const widgets: WDraft[] = [];
   let natural = 0;
-  const makeCard = (key: string, u: Uplink, defaultTitle: string, luaPage: string | undefined, cols: number | undefined, wide: boolean, o: Record<string, unknown>): Draft => {
-    const patch = doc.cards[key] ?? {};
-    const spanHint = patch.span ?? cols;
-    const w = patch.w ?? (spanHint ? spanHint * 3 : wide ? 6 : 3);
+  const makeCard = (key: string, u: Uplink, defaultTitle: string, luaPage: string | undefined, cols: number | undefined, wide: boolean, o: Record<string, unknown>, lua: Partial<Box> = {}): Draft => {
+    const saved = doc.cards[key] ?? {};
+    // what the editor saved wins, field by field, over the box a script asked for
+    const patch = { ...saved, x: saved.x ?? lua.x, y: saved.y ?? lua.y, ...(saved.h !== undefined || lua.h !== undefined ? { h: saved.h ?? lua.h } : {}) };
+    const spanHint = saved.span ?? cols;
+    const w = saved.w ?? lua.w ?? (spanHint ? spanHint * 3 : wide ? 6 : 3);
     return {
       key,
       uplink: u,
@@ -376,7 +401,7 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       title: patch.title || defaultTitle,
       page: pageOf(patch.page ?? luaPage, luaPage),
       box: { x: patch.x ?? 0, y: patch.y ?? 0, w, h: patch.h ?? 0 },
-      placed: hasBox(patch),
+      placed: hasBox({ ...patch, w }),
       hidden: patch.hidden === true,
       color: patch.color ?? (isAccent(o.color) && o.color !== "gray" ? (o.color as Accent) : "gold"),
       icon: patch.icon ?? (isIcon(o.icon) ? (o.icon as IconName) : undefined),
@@ -393,8 +418,12 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       if (!cards.has(key)) {
         const o = (w.opts ?? {}) as Record<string, unknown>;
         const group = str(o.group) ? groups.get(o.group as string) : undefined;
-        const wide = u.widgets.some((x) => cardKeyOf(u.uplinkId, x) === key && (x.type === "item_search" || x.type === "chart"));
-        cards.set(key, makeCard(key, u, group?.title ?? u.title ?? "Uplink", group?.page ?? str(o.page), group?.cols, wide, o));
+        const wide = u.widgets.some((x) => cardKeyOf(u.uplinkId, x) === key && (x.type === "item_search" || x.type === "chart" || x.type === "canvas"));
+        // a group's own colour, icon and box from Lua; without them the first widget's colour and icon, as before
+        const look = group ? { ...o, ...(group.color ? { color: group.color } : {}), ...(group.icon ? { icon: group.icon } : {}) } : o;
+        const card = makeCard(key, u, group?.title ?? u.title ?? "Uplink", group?.page ?? str(o.page), group?.cols, wide, look, luaBox(group));
+        if (typeof group?.order === "number" && doc.cards[key]?.order === undefined) card.order = group.order;
+        cards.set(key, card);
       }
       const wkey = `${u.uplinkId}/${w.id}`;
       const wp = doc.widgets[wkey] ?? {};
@@ -403,6 +432,7 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       const luaDisplay = w.type === "chart" && o.style === "sparkline" ? "sparkline" : undefined;
       const display: Display = wp.display && offered?.includes(wp.display) ? wp.display : luaDisplay ?? offered?.[0] ?? "auto";
       const spanHint = wp.span ?? (typeof o.span === "number" ? Math.max(1, Math.min(4, Math.round(o.span))) : undefined);
+      const box = luaBox(o);
       widgets.push({
         key: wkey,
         w,
@@ -410,13 +440,13 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
         home: key,
         label: wp.label || w.label || w.id,
         box: {
-          x: wp.x ?? 0,
-          y: wp.y ?? 0,
-          w: wp.w ?? (spanHint ? spanHint * 3 : defaultWidgetW(w.type)),
-          h: wp.h ?? defaultWidgetH(w.type, display),
+          x: wp.x ?? box.x ?? 0,
+          y: wp.y ?? box.y ?? 0,
+          w: wp.w ?? box.w ?? (spanHint ? spanHint * 3 : defaultWidgetW(w.type)),
+          h: wp.h ?? box.h ?? (w.type === "canvas" ? canvasRows(w) : defaultWidgetH(w.type, display)),
         },
-        placed: hasBox(wp),
-        ...(spanHint && wp.w === undefined ? { spanHint } : {}),
+        placed: hasBox({ ...box, ...wp }),
+        ...(spanHint && wp.w === undefined && box.w === undefined ? { spanHint } : {}),
         hidden: wp.hidden === true,
         ...(wp.color ? { color: wp.color } : {}),
         ...(wp.icon ? { icon: wp.icon } : {}),

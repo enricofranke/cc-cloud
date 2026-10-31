@@ -134,6 +134,8 @@ public final class Widget {
     /** The widget as saved in the block entity (includes the server-internal bridge binding). */
     public JsonObject toSaveJson() {
         var json = toJson();
+        // a frame is live data: the running script draws it again, chunks stay small
+        if (type == WidgetType.CANVAS) json.remove("value");
         if (bridge != null) json.add("bridge", bridge.toJson());
         return json;
     }
