@@ -69,10 +69,10 @@ public final class VoxelService {
     private static final int CACHE_SIZE = 8192;
     /** Bump when the build logic changes (invalidates input hashes and the disk cache). */
     private static final int LOGIC_VERSION = 3;
-    /** Time the unload snapshots may take per tick; chunks over it stay as they were on disk. */
+    /** Time the unload snapshots may take per tick; beyond it they leave out the neighbors in other chunks. */
     static final long TICK_BUDGET_NANOS = 500_000;
-    /** Unload snapshots waiting for the background threads at most (each holds its copied containers). */
-    static final int MAX_SNAPSHOTS = 128;
+    /** Unload snapshots waiting for the background threads at most; more are dropped. */
+    static final int MAX_SNAPSHOTS = 512;
     /** ... and at server stop, when the loaded rest of every view area is copied at once. */
     private static final int MAX_STOP_SNAPSHOTS = 1024;
     private static final long DAY_MS = 86_400_000L;
@@ -515,7 +515,12 @@ public final class VoxelService {
         return sections;
     }
 
-    /** A chunk unloads: if it is in a view area, its sections there are copied. Nearly every chunk ends at the lookup. */
+    /**
+     * A chunk unloads: if it is in a view area, its sections there are built in the background. Nearly every chunk ends at
+     * the lookup. The chunk is saved and nothing writes to it any more, so its own sections need no copy; only its
+     * neighbors do, and over the tick budget (an area unloading at once) they are left out. That only costs the blocks
+     * exposed across the chunk's border, and {@link VoxelDisk#keeps} does not let such a build replace a better one.
+     */
     private static void chunkUnloaded(ChunkEvent.Unload event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !(event.getChunk() instanceof LevelChunk chunk)) return;
         var server = level.getServer();
@@ -530,11 +535,7 @@ public final class VoxelService {
             budgetTick = tick;
             budgetUsed = 0;
         }
-        if (budgetUsed >= TICK_BUDGET_NANOS) {
-            MapStats.LAST_KNOWN.dropped.increment();
-            return;
-        }
-        if (snapshot(level, chunk, hits, MAX_SNAPSHOTS)) {
+        if (snapshot(level, chunk, hits, MAX_SNAPSHOTS, true, budgetUsed < TICK_BUDGET_NANOS)) {
             long took = System.nanoTime() - start;
             budgetUsed += took;
             MapStats.LAST_KNOWN.snapshotNanos.add(took);
@@ -546,12 +547,14 @@ public final class VoxelService {
     }
 
     /**
-     * Copies what the hits need of a chunk and queues the builds. Only the sections in range are copied, the air above the
-     * terrain and the side neighbors of air sections not at all; sections that are not loaded around it stay unknown.
+     * Collects what the hits need of a chunk and queues the builds. Only sections in range count, and side neighbors only
+     * of sections with blocks; neighbors that are not loaded stay unknown.
      *
-     * @return false if the chunk has nothing to copy or the queue is full
+     * @param unloaded the chunk is gone: its sections are used as they are, else they are copied
+     * @param neighbors with the neighbors in the four chunks around it
+     * @return false if the chunk has nothing in range or the queue is full
      */
-    private static boolean snapshot(ServerLevel level, LevelChunk chunk, VoxelAreas.Hit[] hits, int limit) {
+    private static boolean snapshot(ServerLevel level, LevelChunk chunk, VoxelAreas.Hit[] hits, int limit, boolean unloaded, boolean neighbors) {
         int cx = chunk.getPos().x(), cz = chunk.getPos().z(), minY = level.getMinSectionY(), maxY = level.getMaxSectionY();
         int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
         var retention = MainframeRetention.get(level.getServer());
@@ -570,13 +573,14 @@ public final class VoxelService {
             return false;
         }
         var source = level.getChunkSource();
-        LevelChunk east = source.getChunkNow(cx + 1, cz), west = source.getChunkNow(cx - 1, cz), south = source.getChunkNow(cx, cz + 1), north = source.getChunkNow(cx, cz - 1);
-        var containers = new HashMap<Long, @Nullable Object>(64);
+        LevelChunk east = neighbors ? source.getChunkNow(cx + 1, cz) : null, west = neighbors ? source.getChunkNow(cx - 1, cz) : null;
+        LevelChunk south = neighbors ? source.getChunkNow(cx, cz + 1) : null, north = neighbors ? source.getChunkNow(cx, cz - 1) : null;
+        var containers = new HashMap<Long, Object>(64);
         for (int i = wanted.nextSetBit(0); i >= 0; i = wanted.nextSetBit(i + 1)) {
             int cy = minY + i;
-            var self = own(containers, chunk, cx, cy, cz);
-            if (cy > minY) own(containers, chunk, cx, cy - 1, cz);
-            if (cy < maxY) own(containers, chunk, cx, cy + 1, cz);
+            var self = own(containers, chunk, cx, cy, cz, unloaded);
+            if (cy > minY) own(containers, chunk, cx, cy - 1, cz, unloaded);
+            if (cy < maxY) own(containers, chunk, cx, cy + 1, cz, unloaded);
             if (self == AIR) continue;
             side(containers, east, cx + 1, cy, cz);
             side(containers, west, cx - 1, cy, cz);
@@ -584,7 +588,8 @@ public final class VoxelService {
             side(containers, north, cx, cy, cz - 1);
         }
         MapStats.LAST_KNOWN.snapshots.increment();
-        var snapshot = new Snapshot(level.dimension().identifier().toString(), minY, maxY, containers, new int[0][]);
+        if (!neighbors) MapStats.LAST_KNOWN.partial.increment();
+        var snapshot = new Snapshot(level.dimension().identifier().toString(), minY, maxY, containers, NO_NODES);
         var store = disk(level.getServer());
         SNAPSHOTS.incrementAndGet();
         executor().execute(() -> {
@@ -601,11 +606,14 @@ public final class VoxelService {
         return true;
     }
 
-    private static @Nullable Object own(Map<Long, @Nullable Object> into, LevelChunk chunk, int cx, int cy, int cz) {
-        return into.computeIfAbsent(SectionPos.asLong(cx, cy, cz), k -> states(chunk, cy));
+    private static Object own(Map<Long, Object> into, LevelChunk chunk, int cx, int cy, int cz, boolean unloaded) {
+        return into.computeIfAbsent(SectionPos.asLong(cx, cy, cz), k -> {
+            var section = chunk.getSection(chunk.getSectionIndexFromSectionY(cy));
+            return section.hasOnlyAir() ? AIR : unloaded ? section.getStates() : section.getStates().copy();
+        });
     }
 
-    private static void side(Map<Long, @Nullable Object> into, @Nullable LevelChunk chunk, int cx, int cy, int cz) {
+    private static void side(Map<Long, Object> into, @Nullable LevelChunk chunk, int cx, int cy, int cz) {
         if (chunk != null) into.put(SectionPos.asLong(cx, cy, cz), states(chunk, cy));
     }
 
@@ -632,8 +640,10 @@ public final class VoxelService {
                 continue;
             }
             if (self == null) continue;
+            // the unloaded chunk's own container: writing it into the hash buffer takes its lock, so that goes to a copy
+            @SuppressWarnings("unchecked") var states = ((PalettedContainer<BlockState>) self).copy();
             Object[] around = around(snap, cx, cy, cz);
-            var hashes = hashes(self, around);
+            var hashes = hashes(states, around);
             if (stored != null && VoxelDisk.keeps(stored, hashes.self(), hashes.content(), hashes.known())) {
                 stats.unchanged.increment();
                 continue;
@@ -645,7 +655,7 @@ public final class VoxelService {
                 continue;
             }
             stats.built.increment();
-            var built = buildGrid(self, around, NO_NODES, cx, cy, cz);
+            var built = buildGrid(states, around, NO_NODES, cx, cy, cz);
             var update = new VoxelDisk.Stored(hashes.self(), hashes.content(), hashes.known(), built.oreFree());
             CACHE.put(key, new Entry(hashes.content(), built.oreFree(), update));
             updates.put(cy, update);
@@ -670,7 +680,7 @@ public final class VoxelService {
                             if (!seen.add(dim.getKey() + "|" + cx + "|" + cz)) continue;
                             var chunk = level.getChunkSource().getChunkNow(cx, cz);
                             var hits = chunk == null ? null : VoxelAreas.at(level.dimension(), cx, cz);
-                            if (hits != null) snapshot(level, chunk, hits, MAX_STOP_SNAPSHOTS);
+                            if (hits != null) snapshot(level, chunk, hits, MAX_STOP_SNAPSHOTS, false, true);
                         }
                     }
                 }

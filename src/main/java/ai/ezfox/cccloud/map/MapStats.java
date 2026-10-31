@@ -61,7 +61,9 @@ public final class MapStats {
     public static final class LastKnown {
         /** chunks in a view area that were copied when they unloaded */
         public final LongAdder snapshots = new LongAdder();
-        /** ... that were not, because the server thread's budget or the queue was used up */
+        /** ... of those, without the neighbors in other chunks (over the tick budget) */
+        public final LongAdder partial = new LongAdder();
+        /** ... that were not built, because the queue was full */
         public final LongAdder dropped = new LongAdder();
         /** wall-clock time on the server thread for the snapshots */
         public final LongAdder snapshotNanos = new LongAdder();
@@ -74,13 +76,13 @@ public final class MapStats {
         public final LongAdder reads = new LongAdder();
 
         void reset() {
-            for (var a : new LongAdder[]{snapshots, dropped, snapshotNanos, built, unchanged, served, reads}) a.reset();
+            for (var a : new LongAdder[]{snapshots, partial, dropped, snapshotNanos, built, unchanged, served, reads}) a.reset();
         }
 
         String line(long diskBytes) {
             long n = Math.max(1, snapshots.sum());
-            return String.format(Locale.ROOT, "Voxel terrain: %d chunk snapshots on unload (%d dropped, %.1f µs each on the server thread), %d sections built, %d unchanged; "
-                + "%d sections served as last known, %d files read; %.1f MB on disk", snapshots.sum(), dropped.sum(), snapshotNanos.sum() / 1e3 / n, built.sum(), unchanged.sum(),
+            return String.format(Locale.ROOT, "Voxel terrain: %d chunk snapshots on unload (%d without neighbors, %d dropped, %.1f µs each on the server thread), %d sections built, %d unchanged; "
+                + "%d sections served as last known, %d files read; %.1f MB on disk", snapshots.sum(), partial.sum(), dropped.sum(), snapshotNanos.sum() / 1e3 / n, built.sum(), unchanged.sum(),
                 served.sum(), reads.sum(), diskBytes / 1048576.0);
         }
     }

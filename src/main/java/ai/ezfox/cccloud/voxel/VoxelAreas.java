@@ -301,13 +301,4 @@ public final class VoxelAreas {
         AREAS.clear();
         indexDirty = true;
     }
-
-    /** Test hook: this mainframe's last known points in a dimension. */
-    public static void setForTest(UUID mainframeId, String dim, double[][] points) {
-        var area = AREAS.computeIfAbsent(mainframeId, k -> new Area(new HashMap<>(), System.currentTimeMillis()));
-        var copy = new HashMap<>(area.points);
-        copy.put(dim, points);
-        area.points = copy;
-        indexDirty = true;
-    }
 }
