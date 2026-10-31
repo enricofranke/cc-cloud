@@ -8,6 +8,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Easier to read:** button and tab text is crisp on the light buttons, grey text is brighter, and a caption is only cut
   when it really does not fit next to its value.
 
+### Fixes
+- **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.
+
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
 

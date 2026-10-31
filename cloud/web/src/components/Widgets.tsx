@@ -241,6 +241,8 @@ export function Toggle({ w, uplink, conn, locked }: WidgetProps) {
   const on = value === true;
   const id = `t-${uplink.uplinkId}-${w.id}`;
   const gate = usePinGate(conn, uplink, w, true);
+  const [confirming, setConfirming] = useState(false);
+  const name = w.label ?? w.id;
   return (
     <div class={`row ${locked ? "is-locked" : ""}`}>
       <label class="row-label" for={id}>
@@ -255,11 +257,24 @@ export function Toggle({ w, uplink, conn, locked }: WidgetProps) {
         aria-checked={on}
         disabled={locked}
         class={`switch ${on ? "on" : ""} ${pending ? "pending" : ""}`}
-        onClick={() => gate.send(!on)}
+        onClick={() => (w.opts?.confirm && !gate.needsPin ? setConfirming(true) : gate.send(!on))}
       >
         <span class="switch-text">{on ? "ON" : "OFF"}</span>
         <span class="switch-knob" />
       </button>
+      {confirming && (
+        <ConfirmDialog
+          title={`${name}?`}
+          text={`This switches “${name}” ${on ? "off" : "on"}.`}
+          confirmLabel={on ? "Switch off" : "Switch on"}
+          color={w.opts?.color ?? "gray"}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            gate.send(!on);
+          }}
+        />
+      )}
       {gate.dialog}
     </div>
   );

@@ -1112,7 +1112,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         { id: "items", type: "label", label: "Items", value: "18,342" },
         { id: "fill", type: "gauge", label: "Capacity", opts: { min: 0, max: 100, unit: "%", warn: 85, crit: 95 }, value: 61 },
         { id: "output", type: "slider", label: "Output limit", opts: { min: 0, max: 100, step: 5, unit: "%" }, value: 40 },
-        { id: "export", type: "toggle", label: "Export to AE2", value: false },
+        { id: "export", type: "toggle", label: "Export to AE2", opts: { confirm: true }, value: false },
         { id: "sort", type: "button", label: "Sort chests", opts: { color: "cyan" } },
       ],
     });
