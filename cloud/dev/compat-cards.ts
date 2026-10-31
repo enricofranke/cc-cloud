@@ -1049,4 +1049,21 @@ export const COMPAT_CARDS: SampleCard[] = [
       select("redstone", "Redstone mode", ["Ignored", "Off when powered", "On when powered", "Always off"], { confirm: true }, "Ignored"),
     ],
   },
+
+  // BBL Strainers
+  {
+    key: "strainers_strainer",
+    mod: "strainers",
+    title: "Strainer",
+    template: "strainers_strainer",
+    widgets: [
+      label("status", "Status", "Straining"),
+      progress("progress", "Progress", 0, 100, "%", {}, 62),
+      label("input", "Input", "48× Gravel", { span: 2 }),
+      label("mesh", "Mesh", "1× Diamond Mesh", { span: 2 }),
+      label("fluid", "Fluid", "6.40 k / 16.0 k mB Water", { span: 2 }),
+      label("output", "Output slots", "7 / 50", { span: 2 }),
+      indicator("output_full", "Output full", "red", "gray", false),
+    ],
+  },
 ];

@@ -82,6 +82,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   integratedcrafting: { cat: "logistics", icon: "integratedcrafting:part_interface_crafting" },
   classicpipes: { cat: "logistics", icon: "classicpipes:request_pipe" },
   pipez: { cat: "logistics", icon: "pipez:item_pipe" },
+  strainers: { cat: "machines", icon: "strainers:strainer" },
 };
 
 /** The generic cards that work with almost any mod. */

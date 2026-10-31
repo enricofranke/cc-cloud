@@ -359,6 +359,7 @@ def integrationMods = [
                            "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}", "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
     classicpipes        : ["curse.maven:classicpipes-1351745:${classicpipes_curse_file}"],
     pipez               : ["curse.maven:pipez-443900:${pipez_curse_file}"],
+    strainers           : ["curse.maven:strainers-882351:${strainers_curse_file}", "curse.maven:bblcore-1135181:${bblcore_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

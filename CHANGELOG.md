@@ -13,6 +13,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   under way and what stocking pipes are short of.
 - **Pipez:** a pipe's sides, targets, upgrade, filters and rate. With an upgrade that has a redstone mode the dashboard can
   switch the pipe, "Always off" is its off switch. An uplink only holds on a configured pipe.
+- **BBL Strainers:** what the Strainer is doing, progress, input, mesh, fluid and output.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
