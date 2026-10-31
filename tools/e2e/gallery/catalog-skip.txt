@@ -1,0 +1,8 @@
+# Blocks the card catalog must not place: `mod:block`, or `mod:*` for a whole mod. Look at
+# <server>/e2e-catalog-progress.txt when a scan hangs the server.
+# AE2 test blocks: debug_item_gen fills its neighbour forever, which hangs the server and eats the heap.
+ae2:debug_item_gen
+ae2:debug_energy_gen
+ae2:debug_chunk_loader
+ae2:debug_phantom_node
+ae2:debug_cube_gen

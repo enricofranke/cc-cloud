@@ -62,7 +62,7 @@ public final class MapNodesService {
         sender.accept(player, new InGamePayloads.MapNodesData(json));
     }
 
-    static com.google.gson.JsonObject build(ServerPlayer player) {
+    public static com.google.gson.JsonObject build(ServerPlayer player) {
         List<MapNodes.Network> networks = new ArrayList<>();
         for (var mainframe : List.copyOf(CloudNetwork.mainframes())) {
             if (mainframe.isRemoved() || mainframe.getLevel() == null) continue;
@@ -77,7 +77,12 @@ public final class MapNodesService {
             }
             networks.add(new MapNodes.Network(id, mainframe.getDisplayName(), result, names));
         }
-        return MapNodes.build(networks, id -> InGameAccess.has(player, id, Perm.VIEW_POSITIONS));
+        var self = List.of(player.getUUID());
+        var server = player.level().getServer();
+        return MapNodes.build(networks, id -> InGameAccess.has(player, id, Perm.VIEW_POSITIONS), (dim, x, y, z) -> {
+            var level = MapTileService.level(server, dim);
+            return level != null && ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(level, net.minecraft.core.BlockPos.containing(x, y, z), self);
+        });
     }
 
     /** Test hook. */

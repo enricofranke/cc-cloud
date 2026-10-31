@@ -3,6 +3,7 @@ package ai.ezfox.cccloud.claims;
 import ai.ezfox.cccloud.CloudLog;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.network.CloudNetwork;
+import ai.ezfox.cccloud.network.NetworkService;
 import com.google.gson.JsonObject;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import java.util.ArrayList;
@@ -394,6 +395,8 @@ public final class ClaimGuard {
             if (event instanceof ChunkEvent chunk) chunks.add(chunk);
             else if (event instanceof UUID player) players.add(player);
         }
+        // the network map and map mods leave out what stands in a foreign claim
+        NetworkService.markDirty();
         for (var device : all()) {
             if (!chunks.isEmpty()) {
                 var pos = device.guardPos();

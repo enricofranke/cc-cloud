@@ -303,7 +303,8 @@ public final class NetworkService {
             // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
             // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
             var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
-                Set.copyOf(mainframe.getLinkedUplinks().keySet()), 31 * namesHash(id, mainframe.getLinkedUplinks().keySet()) + mainframe.getDisplayName().hashCode(), probeTargets(result));
+                Set.copyOf(mainframe.getLinkedUplinks().keySet()), 31 * namesHash(id, mainframe.getLinkedUplinks().keySet()) + mainframe.getDisplayName().hashCode(), probeTargets(result),
+                hiddenPositions(mainframe, result));
             var last = PUBLISHED.get(id);
             long now = System.currentTimeMillis();
             if (last != null && last.key().equals(key) && now - last.at() < REPUBLISH_MS) {
@@ -555,7 +556,7 @@ public final class NetworkService {
                 n.addProperty("parent", path.get(path.size() - 2));
                 n.addProperty("hops", path.size() - 1);
             }
-            if (positions) n.add("pos", pos(node.x(), node.y(), node.z()));
+            if (positions && (isRoot || !positionHidden(mainframe, null, node.dim(), node.x(), node.y(), node.z()))) n.add("pos", pos(node.x(), node.y(), node.z()));
             n.addProperty("dim", node.dim());
             n.addProperty("range", (int) node.nodeRange());
             n.addProperty("deviceRange", (int) node.deviceRange());
@@ -586,7 +587,7 @@ public final class NetworkService {
                 flags.add("legacy_out_of_range");
                 n.add("flags", flags);
             }
-            if (positions) n.add("pos", pos(device.x(), device.y(), device.z()));
+            if (positions && !positionHidden(mainframe, section, device.dim(), device.x(), device.y(), device.z())) n.add("pos", pos(device.x(), device.y(), device.z()));
             n.addProperty("dim", device.dim());
             n.addProperty("range", (int) device.range());
             if (route != null && route.connected()) {
@@ -609,8 +610,9 @@ public final class NetworkService {
             n.addProperty("uplinkId", id);
             lastSeen(n, id, "unloaded");
             var p = e.getValue().pos();
-            if (positions) n.add("pos", pos(p.getX() + .5, p.getY() + .5, p.getZ() + .5));
-            n.addProperty("dim", e.getValue().dimension().identifier().toString());
+            String unloadedDim = e.getValue().dimension().identifier().toString();
+            if (positions && !positionHidden(mainframe, null, unloadedDim, p.getX(), p.getY(), p.getZ())) n.add("pos", pos(p.getX() + .5, p.getY() + .5, p.getZ() + .5));
+            n.addProperty("dim", unloadedDim);
             nodes.add(n);
         }
         json.add("nodes", nodes);
@@ -709,7 +711,7 @@ public final class NetworkService {
 
     /** What a mainframe's published map was built from; an equal key within {@link #REPUBLISH_MS} skips the rebuild. */
     private record PublishKey(NetworkGraph.Result result, Set<String> over, boolean online, boolean enabled, @Nullable String reason, Set<UUID> linked,
-                              int names, List<String> probes) {
+                              int names, List<String> probes, List<String> hidden) {
     }
 
     /** Names and redstone groups of a mainframe's devices as shown on the map (a rename from the map must show at once). */
@@ -852,6 +854,34 @@ public final class NetworkService {
 
     private static @Nullable BlockPos probeReadPos(@Nullable DashboardSection section) {
         return section instanceof CloudUplinkBlockEntity probe && probe.isProbe() && !probe.isRemoved() ? probe.readPos() : null;
+    }
+
+    /**
+     * The network map leaves out where a relay or device stands in the claim of a team its owners do not belong to (the
+     * mainframe's owner, for a device also who linked it), like the Cloud Analyzer and map mods: the device stays on the
+     * map without a place. The mainframe itself is always shown; it is the map's anchor.
+     */
+    private static boolean positionHidden(CloudMainframeBlockEntity mainframe, @Nullable DashboardSection section, String dim, double x, double y, double z) {
+        var server = mainframe.getLevel() == null ? null : mainframe.getLevel().getServer();
+        var level = server == null ? null : ai.ezfox.cccloud.map.MapTileService.level(server, dim);
+        if (level == null) return false;
+        List<UUID> owners = section instanceof ai.ezfox.cccloud.claims.ClaimGuard.Guarded guarded ? guarded.guardOwners()
+            : mainframe.getOwner() == null ? List.of() : List.of(mainframe.getOwner());
+        return ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(level, BlockPos.containing(x, y, z), owners);
+    }
+
+    /** The ids with a hidden place right now (part of the publish key: a claim redraws the map). */
+    private static List<String> hiddenPositions(CloudMainframeBlockEntity mainframe, NetworkGraph.Result result) {
+        if (ai.ezfox.cccloud.claims.ClaimGuard.provider() == null) return List.of();
+        var list = new ArrayList<String>();
+        String root = mainframe.getMainframeId().toString();
+        for (var node : result.nodes()) {
+            if (!node.id().equals(root) && positionHidden(mainframe, null, node.dim(), node.x(), node.y(), node.z())) list.add(node.id());
+        }
+        for (var device : result.devices()) {
+            if (positionHidden(mainframe, CloudNetwork.section(UUID.fromString(device.id())), device.dim(), device.x(), device.y(), device.z())) list.add(device.id());
+        }
+        return list;
     }
 
     /** What the probes of a network read right now (part of the publish key: a new target redraws the map). */

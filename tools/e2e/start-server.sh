@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Starts the ATM11 test server in the background and waits until it is ready ("Done (...)!" in the log).
 # Refuses to start if one of its ports is taken (the player's game must never be affected).
+# E2E_WORLD=<folder> runs another world than server.properties' level-name, E2E_JVM="-Dx=y ..." adds JVM options
+# (tools/e2e/gallery.mjs uses both: its own world and the dev commands).
 set -euo pipefail
 source "$(dirname "$0")/env.sh"
 TIMEOUT="${START_TIMEOUT:-900}"
@@ -16,7 +18,9 @@ done
 cd "$SERVER_DIR"
 [ -f "$LOG_FILE" ] && mv "$LOG_FILE" "$SERVER_DIR/logs/previous-e2e.log" || true
 # stdin from /dev/null: the console is not used, everything goes through RCON.
-nohup "$JAVA" @e2e_jvm_args.txt @"libraries/net/neoforged/neoforge/$NEOFORGE_VERSION/unix_args.txt" nogui \
+# shellcheck disable=SC2086
+nohup "$JAVA" @e2e_jvm_args.txt ${E2E_JVM:-} @"libraries/net/neoforged/neoforge/$NEOFORGE_VERSION/unix_args.txt" nogui \
+  ${E2E_WORLD:+--world "$E2E_WORLD"} \
   </dev/null >"$CONSOLE_LOG" 2>&1 &
 echo $! >"$PID_FILE"
 echo "started pid $(cat "$PID_FILE"), waiting for Done (max ${TIMEOUT}s)"

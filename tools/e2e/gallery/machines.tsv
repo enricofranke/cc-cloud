@@ -1,0 +1,1146 @@
+# The machine gallery's table (tools/e2e/gallery.mjs). One line per machine:
+#   <row>  <block id>  [tokens]
+# Row = the mod's row in the world and its page on the dashboard. `node tools/e2e/gallery.mjs catalog` adds the blocks a
+# running server has cards for; lines starting with "#" stay off (blocks that only fit a generic card). Tokens:
+#   fe[=N]            fill with N FE (default 1 000 000) through the energy capability (each machine stands on a full
+#                     Powah cell anyway, `nopower` leaves the cell out)
+#   item=<id>[*n]     insert items, as a player's hopper would (dev command; default 16)
+#   fluid=<id>[*mB]   insert a fluid (default 4000)
+#   state=[a=b,c=d]   block state  ·  nbt={...} block entity data (spaces written as §)
+#   face=up|north|south|east|west  where the uplink sits (default up)  ·  size=N the machine is N blocks wide/high
+#   build=<name>      a builder of gallery/builders.mjs (multi-blocks)
+#   self              the block is its own device: no uplink, nbt={LINK,...} links it to the mainframe
+#   note=words_like_this  why values may legitimately be empty, shown in the report
+#   kind=<card>       the card the catalog saw (information)
+advanced_ae              advanced_ae:quantum_unit                                 kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_core                                 kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_storage_128                          kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_storage_256                          kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:data_entangler                               kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_accelerator                          kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_multi_threader                       kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:quantum_structure                            kind=advancedae_quantum note=multi-block_not_built
+advanced_ae              advanced_ae:reaction_chamber                             fe kind=energy
+ae2                      ae2:sky_stone_tank                                       fluid=minecraft:water*4000 kind=tank
+ae2                      ae2:inscriber                                            fe kind=energy
+# ae2                      ae2:charger                                              fe kind=energy
+# ae2                      ae2:controller                                           fe kind=energy
+# ae2                      ae2:me_chest                                             fe kind=energy
+# ae2                      ae2:condenser                                            fluid=minecraft:water*4000 kind=tank
+# ae2                      ae2:growth_accelerator                                   fe face=north kind=energy
+agritechevolved          agritechevolved:basic_acacia_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_bamboo_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_birch_planter                      item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_cherry_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_crimson_planter                    item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_dark_oak_planter                   item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_jungle_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_mangrove_planter                   item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_planter                            item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_spruce_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_warped_planter                     item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:basic_pale_oak_planter                   item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:advanced_planter                         fe item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_advanced_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:biomass_burner                           fe kind=energy
+# agritechevolved          agritechevolved:composter                                fe kind=energy
+# agritechevolved          agritechevolved:capacitor_tier1                          fe kind=energy
+# agritechevolved          agritechevolved:capacitor_tier2                          fe kind=energy
+# agritechevolved          agritechevolved:capacitor_tier3                          fe kind=energy
+# agritechevolved          agritechevolved:silo                                     fe kind=energy
+# agritechevolved          agritechevolved:fertilizer_spreader                      fe kind=energy
+agritechevolved          agritechevolved:terracotta_planter                       item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:black_terracotta_planter                 item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:blue_terracotta_planter                  item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:brown_terracotta_planter                 item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:cyan_terracotta_planter                  item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:gray_terracotta_planter                  item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:green_terracotta_planter                 item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:light_blue_terracotta_planter            item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:light_gray_terracotta_planter            item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:lime_terracotta_planter                  item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:magenta_terracotta_planter               item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:orange_terracotta_planter                item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:pink_terracotta_planter                  item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:purple_terracotta_planter                item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:red_terracotta_planter                   item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:white_terracotta_planter                 item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+agritechevolved          agritechevolved:yellow_terracotta_planter                item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
+arsmagicalegacy          arsmagicalegacy:altar_core                               kind=arsmagica_etherium
+arsmagicalegacy          arsmagicalegacy:obelisk                                  kind=arsmagica_etherium
+arsmagicalegacy          arsmagicalegacy:celestial_prism                          kind=arsmagica_etherium
+arsmagicalegacy          arsmagicalegacy:black_aurem                              kind=arsmagica_etherium
+cabletiers               cabletiers:elite_interface                               fe kind=energy
+# cabletiers               cabletiers:ultra_interface                               fe kind=energy
+# cabletiers               cabletiers:mega_interface                                fe kind=energy
+# cabletiers               cabletiers:creative_interface                            fe kind=energy
+charginggadgets          charginggadgets:charging_station                         fe item=minecraft:coal*32 kind=charginggadgets_station
+classicpipes             classicpipes:oak_fluid_pipe                              fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:spruce_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:birch_fluid_pipe                            fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:jungle_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:acacia_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:dark_oak_fluid_pipe                         fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:mangrove_fluid_pipe                         fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:cherry_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:pale_oak_fluid_pipe                         fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:bamboo_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:crimson_fluid_pipe                          fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:warped_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:copper_fluid_pipe                           fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:inverted_copper_fluid_pipe                  fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:advanced_copper_fluid_pipe                  fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:inverted_advanced_copper_fluid_pipe         fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:iron_fluid_pipe                             fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:lapis_fluid_pipe                            fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:diamond_fluid_pipe                          fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:brick_fluid_pipe                            fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:nether_brick_fluid_pipe                     fluid=minecraft:water*4000 kind=tank
+# classicpipes             classicpipes:obsidian_fluid_pipe                         fluid=minecraft:water*4000 kind=tank
+cobblegengalore          cobblegengalore:block_gen_stone                          kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_copper                         kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_iron                           kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_gold                           kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_emerald                        kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_diamond                        kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cobblegengalore          cobblegengalore:block_gen_netherite                      kind=cobblegengalore_generator note=needs_water_and_lava_beside_it
+cookingforblockheads     cookingforblockheads:toaster                             kind=cookingforblockheads_toaster note=idle_without_bread
+cookingforblockheads     cookingforblockheads:milk_jar                            fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:cow_jar                             fluid=minecraft:water*4000 kind=tank
+cookingforblockheads     cookingforblockheads:blue_oven                           fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:pink_oven                           fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:black_oven                          fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:green_oven                          fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:orange_oven                         fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:light_blue_oven                     fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:lime_oven                           fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:magenta_oven                        fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:yellow_oven                         fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:purple_oven                         fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:white_oven                          fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:red_oven                            fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:cyan_oven                           fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:brown_oven                          fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:gray_oven                           fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:light_gray_oven                     fe item=minecraft:coal*16 item=minecraft:potato*8 kind=cookingforblockheads_oven
+cookingforblockheads     cookingforblockheads:blue_fridge                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:pink_fridge                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:black_fridge                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:green_fridge                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:orange_fridge                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_blue_fridge                   kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:lime_fridge                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:magenta_fridge                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:yellow_fridge                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:purple_fridge                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:white_fridge                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:red_fridge                          kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:cyan_fridge                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:brown_fridge                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:gray_fridge                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_gray_fridge                   kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:counter                             kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:blue_counter                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:pink_counter                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:black_counter                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:green_counter                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:orange_counter                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_blue_counter                  kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:lime_counter                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:magenta_counter                     kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:yellow_counter                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:purple_counter                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:white_counter                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:red_counter                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:cyan_counter                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:brown_counter                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:gray_counter                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_gray_counter                  kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:cabinet                             kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:blue_cabinet                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:pink_cabinet                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:black_cabinet                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:green_cabinet                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:orange_cabinet                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_blue_cabinet                  kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:lime_cabinet                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:magenta_cabinet                     kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:yellow_cabinet                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:purple_cabinet                      kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:white_cabinet                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:red_cabinet                         kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:cyan_cabinet                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:brown_cabinet                       kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:gray_cabinet                        kind=cookingforblockheads_storage item=minecraft:bread*16
+cookingforblockheads     cookingforblockheads:light_gray_cabinet                  kind=cookingforblockheads_storage item=minecraft:bread*16
+# cookingforblockheads     cookingforblockheads:sink                                fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:blue_sink                           fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:pink_sink                           fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:black_sink                          fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:green_sink                          fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:orange_sink                         fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:light_blue_sink                     fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:lime_sink                           fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:magenta_sink                        fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:yellow_sink                         fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:purple_sink                         fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:white_sink                          fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:red_sink                            fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:cyan_sink                           fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:brown_sink                          fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:gray_sink                           fluid=minecraft:water*4000 kind=tank
+# cookingforblockheads     cookingforblockheads:light_gray_sink                     fluid=minecraft:water*4000 kind=tank
+dimstorage               dimstorage:dimensional_chest                             kind=dimstorage_storage item=minecraft:bread*16
+dimstorage               dimstorage:dimensional_tank                              fluid=minecraft:water*4000 kind=dimstorage_tank
+easy_villagers           easy_villagers:farmer                                    kind=easyvillagers_farmer note=needs_a_villager
+easy_villagers           easy_villagers:breeder                                   kind=easyvillagers_breeder note=needs_villagers
+easy_villagers           easy_villagers:iron_farm                                 kind=easyvillagers_iron_farm note=needs_a_villager
+enderio                  enderio:alloy_smelter                                    fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:painting_machine                                 fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:wireless_charger                                 fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:stirling_generator                               fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:sag_mill                                         fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:slice_and_splice                                 fe kind=enderio_machine item=enderio:basic_capacitor*1 note=needs_a_capacitor
+enderio                  enderio:impulse_hopper                                   fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:soul_binder                                      fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:crafter                                          fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:drain                                            fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:wired_charger                                    fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:powered_spawner                                  fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:xp_vacuum                                        fluid=minecraft:water*4000 kind=tank
+enderio                  enderio:energetic_photovoltaic_module                    fe kind=enderio_solar
+enderio                  enderio:pulsating_photovoltaic_module                    fe kind=enderio_solar
+enderio                  enderio:vibrant_photovoltaic_module                      fe kind=enderio_solar
+enderio                  enderio:soul_engine                                      fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:niard                                            fe kind=enderio_machine item=enderio:basic_capacitor*1
+# enderio                  enderio:vat                                              fluid=minecraft:water*4000 kind=tank
+enderio                  enderio:farming_station                                  fe kind=enderio_machine item=enderio:basic_capacitor*1
+# enderio                  enderio:xp_obelisk                                       fluid=minecraft:water*4000 kind=tank
+enderio                  enderio:inhibitor_obelisk                                fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:aversion_obelisk                                 fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:relocator_obelisk                                fe kind=enderio_machine item=enderio:basic_capacitor*1
+enderio                  enderio:attractor_obelisk                                fe kind=enderio_machine item=enderio:basic_capacitor*1
+# enderio                  enderio:weather_obelisk                                  fluid=minecraft:water*4000 kind=tank
+energizedpower           energizedpower:fluid_tank_small                          fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:fluid_tank_medium                         fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:fluid_tank_large                          fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:creative_fluid_tank                       fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:xp_storage_tiny                           fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:xp_storage_small                          fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:xp_storage_medium                         fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:xp_storage_large                          fluid=minecraft:water*4000 kind=tank
+# energizedpower           energizedpower:xp_storage_giant                          fluid=minecraft:water*4000 kind=tank
+energizedpower           energizedpower:tin_cable                                 fe kind=energy
+# energizedpower           energizedpower:copper_cable                              fe kind=energy
+# energizedpower           energizedpower:gold_cable                                fe kind=energy
+# energizedpower           energizedpower:energized_copper_cable                    fe kind=energy
+# energizedpower           energizedpower:energized_gold_cable                      fe kind=energy
+# energizedpower           energizedpower:energized_crystal_matrix_cable            fe kind=energy
+# energizedpower           energizedpower:superconductive_cable                     fe kind=energy
+energizedpower           energizedpower:lv_transformer_1_to_n                     fe kind=energizedpower_machine
+energizedpower           energizedpower:lv_transformer_3_to_3                     fe kind=energizedpower_machine
+energizedpower           energizedpower:lv_transformer_n_to_1                     fe kind=energizedpower_machine
+energizedpower           energizedpower:transformer_1_to_n                        fe kind=energizedpower_machine
+energizedpower           energizedpower:transformer_3_to_3                        fe kind=energizedpower_machine
+energizedpower           energizedpower:transformer_n_to_1                        fe kind=energizedpower_machine
+energizedpower           energizedpower:hv_transformer_1_to_n                     fe kind=energizedpower_machine
+energizedpower           energizedpower:hv_transformer_3_to_3                     fe kind=energizedpower_machine
+energizedpower           energizedpower:hv_transformer_n_to_1                     fe kind=energizedpower_machine
+energizedpower           energizedpower:ehv_transformer_1_to_n                    fe kind=energizedpower_machine
+energizedpower           energizedpower:ehv_transformer_3_to_3                    fe kind=energizedpower_machine
+energizedpower           energizedpower:ehv_transformer_n_to_1                    fe kind=energizedpower_machine
+energizedpower           energizedpower:uhv_transformer_1_to_n                    fe kind=energizedpower_machine
+energizedpower           energizedpower:uhv_transformer_3_to_3                    fe kind=energizedpower_machine
+energizedpower           energizedpower:uhv_transformer_n_to_1                    fe kind=energizedpower_machine
+energizedpower           energizedpower:configurable_lv_transformer               fe kind=energizedpower_machine
+energizedpower           energizedpower:configurable_mv_transformer               fe kind=energizedpower_machine
+energizedpower           energizedpower:configurable_hv_transformer               fe kind=energizedpower_machine
+energizedpower           energizedpower:configurable_ehv_transformer              fe kind=energizedpower_machine
+energizedpower           energizedpower:configurable_uhv_transformer              fe kind=energizedpower_machine
+energizedpower           energizedpower:battery_box                               fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_battery_box                      fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_battery_box                         fe kind=energizedpower_machine
+# energizedpower           energizedpower:creative_battery_box                      fe kind=energy
+energizedpower           energizedpower:auto_crafter                              fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_auto_crafter                     fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_auto_crafter                        fe kind=energizedpower_machine
+energizedpower           energizedpower:crusher                                   fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_crusher                          fe kind=energizedpower_machine
+energizedpower           energizedpower:pulverizer                                fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_pulverizer                       fe kind=energizedpower_machine
+energizedpower           energizedpower:sawmill                                   fe kind=energizedpower_machine
+energizedpower           energizedpower:compressor                                fe kind=energizedpower_machine
+energizedpower           energizedpower:metal_press                               fe kind=energizedpower_machine
+energizedpower           energizedpower:auto_press_mold_maker                     fe kind=energizedpower_machine
+energizedpower           energizedpower:auto_stonecutter                          fe kind=energizedpower_machine
+energizedpower           energizedpower:plant_growth_chamber                      fe kind=energizedpower_machine
+energizedpower           energizedpower:block_placer                              fe kind=energizedpower_machine
+energizedpower           energizedpower:assembling_machine                        fe kind=energizedpower_machine
+energizedpower           energizedpower:induction_smelter                         fe kind=energizedpower_machine
+energizedpower           energizedpower:fluid_filler                              fe kind=energizedpower_machine
+energizedpower           energizedpower:fluid_freezer                             fe kind=energizedpower_machine
+energizedpower           energizedpower:stone_liquefier                           fe kind=energizedpower_machine
+energizedpower           energizedpower:stone_solidifier                          fe kind=energizedpower_machine
+energizedpower           energizedpower:filtration_plant                          fe kind=energizedpower_machine
+energizedpower           energizedpower:fluid_transposer                          fe kind=energizedpower_machine
+energizedpower           energizedpower:fluid_drainer                             fe kind=energizedpower_machine
+energizedpower           energizedpower:fluid_pump                                fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_fluid_pump                       fe kind=energizedpower_machine
+# energizedpower           energizedpower:drain                                     fluid=minecraft:water*4000 kind=tank
+energizedpower           energizedpower:charger                                   fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_charger                          fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_charger                             fe kind=energizedpower_machine
+energizedpower           energizedpower:uncharger                                 fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_uncharger                        fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_uncharger                           fe kind=energizedpower_machine
+energizedpower           energizedpower:minecart_charger                          fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_minecart_charger                 fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_minecart_charger                    fe kind=energizedpower_machine
+energizedpower           energizedpower:minecart_uncharger                        fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_minecart_uncharger               fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_minecart_uncharger                  fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_1                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_2                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_3                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_4                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_5                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_6                             fe kind=energizedpower_machine
+energizedpower           energizedpower:solar_panel_7                             fe kind=energizedpower_machine
+energizedpower           energizedpower:coal_engine                               fe kind=energizedpower_machine
+energizedpower           energizedpower:heat_generator                            fe kind=energizedpower_machine
+energizedpower           energizedpower:thermal_generator                         fe kind=energizedpower_machine
+# energizedpower           energizedpower:powered_lamp                              fe kind=energy
+energizedpower           energizedpower:powered_furnace                           fe kind=energizedpower_machine
+energizedpower           energizedpower:advanced_powered_furnace                  fe kind=energizedpower_machine
+energizedpower           energizedpower:elite_powered_furnace                     fe kind=energizedpower_machine
+# energizedpower           energizedpower:lightning_generator                       fe kind=energy
+energizedpower           energizedpower:energizer                                 fe kind=energizedpower_machine
+energizedpower           energizedpower:charging_station                          fe kind=energizedpower_machine
+energizedpower           energizedpower:crystal_growth_chamber                    fe kind=energizedpower_machine
+# energizedpower           energizedpower:weather_controller                        fe kind=energy
+# energizedpower           energizedpower:time_controller                           fe kind=energy
+# energizedpower           energizedpower:teleporter                                fe kind=energy
+energymeter              energymeter:meter                                        fe kind=energymeter note=not_wired_between_two_machines
+evilcraft                evilcraft:blood_stain                                    fluid=minecraft:water*4000 kind=tank note=decays_at_once
+# evilcraft                evilcraft:blood_infuser                                  fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:blood_chest                                    fluid=minecraft:water*4000 face=north kind=tank
+# evilcraft                evilcraft:purifier                                       fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:spirit_furnace                                 fluid=minecraft:water*4000 face=north kind=tank
+# evilcraft                evilcraft:dark_tank                                      fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:sanguinary_pedestal_0                          fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:sanguinary_pedestal_1                          fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:spirit_reanimator                              fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:entangled_chalice                              fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:eternal_water                                  fluid=minecraft:water*4000 kind=tank
+# evilcraft                evilcraft:colossal_blood_chest                           fluid=minecraft:water*4000 face=down kind=tank
+extendedae               extendedae:crystal_assembler                             fe kind=energy
+# extendedae               extendedae:ex_charger                                    fe kind=energy
+# extendedae               extendedae:crystal_fixer                                 fe kind=energy
+# extendedae               extendedae:caner                                         fe kind=energy
+# extendedae               extendedae:circuit_cutter                                fe kind=energy
+farmingforblockheads     farmingforblockheads:shipping_bin                        item=minecraft:wheat*16 kind=farmingforblockheads_shipping_bin
+forbidden_arcanus        forbidden_arcanus:hephaestus_forge                       kind=forbiddenarcanus_forge
+framedblocks             framedblocks:framed_tank                                 fluid=minecraft:water*4000 kind=tank
+framedblocks             framedblocks:powered_framing_saw                         fe kind=energy
+functionalstorage        functionalstorage:fluid_1                                fluid=minecraft:water*4000 kind=tank
+# functionalstorage        functionalstorage:fluid_2                                fluid=minecraft:water*4000 kind=tank
+# functionalstorage        functionalstorage:fluid_4                                fluid=minecraft:water*4000 kind=tank
+# functionalstorage        functionalstorage:framed_fluid_1                         fluid=minecraft:water*4000 kind=tank
+# functionalstorage        functionalstorage:framed_fluid_2                         fluid=minecraft:water*4000 kind=tank
+# functionalstorage        functionalstorage:framed_fluid_4                         fluid=minecraft:water*4000 kind=tank
+functionalstorage        functionalstorage:storage_controller                      kind=functionalstorage_storage build=fs_controller note=drawers_must_be_linked_with_the_configurator
+functionalstorage        functionalstorage:framed_storage_controller               kind=functionalstorage_storage build=fs_controller note=drawers_must_be_linked_with_the_configurator
+generatorgalore          generatorgalore:gold_generator                           fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:gold_generator_8x                        fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:magmatic_generator                       fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:magmatic_generator_8x                    fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:magmatic_generator_64x                   fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:emerald_generator                        fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:emerald_generator_8x                     fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherite_generator                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherite_generator_8x                   fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherite_generator_64x                  fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:halitosis_generator                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:halitosis_generator_8x                   fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:halitosis_generator_64x                  fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherstar_generator                     fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherstar_generator_8x                  fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:netherstar_generator_64x                 fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:iron_generator                           fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:iron_generator_8x                        fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:obsidian_generator                       fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:obsidian_generator_8x                    fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:enchantment_generator                    fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:enchantment_generator_8x                 fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:enchantment_generator_64x                fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:diamond_generator                        fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:diamond_generator_8x                     fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:culinary_generator                       fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:culinary_generator_8x                    fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:culinary_generator_64x                   fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:honey_generator                          fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:honey_generator_8x                       fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:honey_generator_64x                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:potion_generator                         fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:potion_generator_8x                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:potion_generator_64x                     fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:ender_generator                          fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:ender_generator_8x                       fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:ender_generator_64x                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:copper_generator                         fe item=minecraft:coal*32 kind=generatorgalore_generator
+generatorgalore          generatorgalore:copper_generator_8x                      fe item=minecraft:coal*32 kind=generatorgalore_generator
+hostilenetworks          hostilenetworks:sim_chamber                              fe kind=hostilenetworks_chamber note=no_data_model
+hostilenetworks          hostilenetworks:loot_fabricator                          fe kind=energy
+# hostilenetworks          hostilenetworks:data_center                              fe kind=energy
+integrateddynamics       integrateddynamics:energy_battery                        fe kind=energy
+# integrateddynamics       integrateddynamics:energy_battery_creative               fe kind=energy
+integrateddynamics       integrateddynamics:drying_basin                          fluid=minecraft:water*4000 kind=tank
+# integrateddynamics       integrateddynamics:squeezer                              fluid=minecraft:water*4000 kind=tank
+# integrateddynamics       integrateddynamics:mechanical_squeezer                   fe kind=energy
+# integrateddynamics       integrateddynamics:mechanical_drying_basin               fe kind=energy
+ironfurnaces             ironfurnaces:iron_furnace                                fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:gold_furnace                                fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:diamond_furnace                             fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:emerald_furnace                             fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:obsidian_furnace                            fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:crystal_furnace                             fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:netherite_furnace                           fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:copper_furnace                              fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:silver_furnace                              fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:allthemodium_furnace                        fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:vibranium_furnace                           fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:unobtainium_furnace                         fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+ironfurnaces             ironfurnaces:heater                                      fe kind=energy
+ironfurnaces             ironfurnaces:million_furnace                             fe item=minecraft:raw_iron*32 item=minecraft:coal*16 kind=ironfurnaces_furnace
+justdirethings           justdirethings:itemcollector                             kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:experienceholder                          fluid=minecraft:water*4000 kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:generatort1                               fe item=minecraft:coal*32 kind=justdirethings_generator
+justdirethings           justdirethings:generatorfluidt1                          fe item=minecraft:coal*32 kind=justdirethings_generator note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:energytransmitter                         fe kind=justdirethings_machine
+justdirethings           justdirethings:blockbreakert1                            kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:blockbreakert2                            fe kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:blockplacert1                             kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:blockplacert2                             fe kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:clickert1                                 kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:clickert2                                 fe kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:sensort1                                  kind=justdirethings_sensor note=no_target
+justdirethings           justdirethings:sensort2                                  fe kind=justdirethings_sensor note=no_target
+justdirethings           justdirethings:droppert1                                 kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:droppert2                                 fe kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:blockswappert1                            kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:blockswappert2                            fe kind=justdirethings_machine note=machine_has_only_settings,_no_reading
+justdirethings           justdirethings:fluidplacert1                             fluid=minecraft:water*4000 kind=justdirethings_machine
+justdirethings           justdirethings:fluidplacert2                             fe kind=justdirethings_machine
+justdirethings           justdirethings:fluidcollectort1                          fluid=minecraft:water*4000 kind=justdirethings_machine
+justdirethings           justdirethings:fluidcollectort2                          fe kind=justdirethings_machine
+justdirethings           justdirethings:paradoxmachine                            fe kind=justdirethings_machine
+merequester              merequester:requester                                    kind=merequester note=no_requests_configured
+mffs                     mffs:projector                                           fluid=minecraft:water*4000 kind=mffs_projector note=no_field_set_up
+mffs                     mffs:coercion_deriver                                    fe kind=energy
+minecraft                minecraft:spawner                                        kind=apothicspawners_spawner nbt={SpawnData:{entity:{id:"minecraft:pig"}}}
+modularrouters           modularrouters:modular_router                            fe kind=modularrouters_router note=no_modules
+mysticalagriculture      mysticalagriculture:furnace                              fe kind=mysticalagriculture_machine
+mysticalagriculture      mysticalagriculture:seed_reprocessor                     fe kind=mysticalagriculture_machine
+mysticalagriculture      mysticalagriculture:soul_extractor                       fe kind=mysticalagriculture_machine
+mysticalagriculture      mysticalagriculture:harvester                            fe kind=mysticalagriculture_machine
+mysticalagriculture      mysticalagriculture:soulium_spawner                      fe kind=mysticalagriculture_machine
+mysticalagriculture      mysticalagriculture:ore_infuser                          fe kind=mysticalagriculture_machine
+mysticalautomation       mysticalautomation:infuser                               fe kind=energy
+# mysticalautomation       mysticalautomation:crafter                               fe kind=energy
+# mysticalautomation       mysticalautomation:farmer                                fe kind=energy
+# mysticalautomation       mysticalautomation:fertilizer                            fe kind=energy
+# mysticalautomation       mysticalautomation:infusion_altarnator                   fe kind=energy
+# mysticalautomation       mysticalautomation:awakening_altarnator                  fe kind=energy
+# mysticalautomation       mysticalautomation:enchanternator                        fe kind=energy
+neovitae                 neovitae:ara_vitae                                       fluid=minecraft:water*4000 kind=tank
+# neovitae                 neovitae:blood_tank                                      fluid=minecraft:water*4000 kind=tank
+neovitae                 neovitae:blood_battery                                   fe kind=energy
+# neovitae                 neovitae:athanor                                         fluid=minecraft:water*4000 kind=tank
+occultism                occultism:storage_controller                             kind=occultism_storage note=needs_storage_stabilizers_in_the_world
+occultism                occultism:storage_controller_stabilized                  kind=occultism_storage note=needs_storage_stabilizers_in_the_world
+occultism                occultism:storage_controller_dark                        kind=occultism_storage note=needs_storage_stabilizers_in_the_world
+occultism                occultism:storage_controller_stabilized_dark             kind=occultism_storage note=needs_storage_stabilizers_in_the_world
+oritech                  oritech:energy_pipe_connection                           fe kind=energy
+# oritech                  oritech:framed_energy_pipe_connection                    fe kind=energy
+# oritech                  oritech:superconductor_connection                        fe kind=energy
+# oritech                  oritech:framed_superconductor_connection                 fe kind=energy
+# oritech                  oritech:energy_transmission_pole                         fe kind=energy
+# oritech                  oritech:pulverizer                                       fe kind=energy
+# oritech                  oritech:fragment_forge                                   fe kind=energy
+# oritech                  oritech:assembler                                        fe kind=energy
+# oritech                  oritech:foundry                                          fe kind=energy
+# oritech                  oritech:industrial_chiller                               fe kind=energy
+# oritech                  oritech:centrifuge                                       fe kind=energy
+# oritech                  oritech:refinery                                         fe kind=energy
+# oritech                  oritech:tainted_refinery                                 fe kind=energy
+oritech                  oritech:bio_generator                                    fe kind=oritech_generator
+oritech                  oritech:lava_generator                                   fe kind=oritech_generator
+oritech                  oritech:fuel_generator                                   fe kind=oritech_generator
+oritech                  oritech:basic_generator                                  fe kind=oritech_generator
+oritech                  oritech:steam_engine                                     fe kind=oritech_generator
+# oritech                  oritech:big_solar_panel                                  fe kind=energy
+# oritech                  oritech:powered_furnace                                  fe kind=energy
+# oritech                  oritech:enderic_laser                                    fe kind=energy
+# oritech                  oritech:drone_port                                       fe kind=energy
+# oritech                  oritech:addon_splicer                                    fe kind=energy
+oritech                  oritech:portable_energy_storage                          fe kind=oritech_storage
+oritech                  oritech:large_storage                                    fe kind=oritech_storage
+oritech                  oritech:creative_storage                                 fe kind=oritech_storage
+# oritech                  oritech:cybernetic_augmentation_center                   fe kind=energy
+# oritech                  oritech:placer                                           fe kind=energy
+# oritech                  oritech:destroyer                                        fe kind=energy
+# oritech                  oritech:fertilizer                                       fe kind=energy
+# oritech                  oritech:tree_cutter                                      fe kind=energy
+# oritech                  oritech:pipe_booster                                     fe kind=energy
+# oritech                  oritech:stabilized_enchanter                             fe kind=energy
+# oritech                  oritech:schrodingers_safe                                fe kind=energy
+# oritech                  oritech:accelerator_motor                                fe kind=energy
+# oritech                  oritech:tachyon_absorber                                 fe kind=energy
+# oritech                  oritech:pump                                             fe kind=energy
+# oritech                  oritech:equipment_charger                                fe kind=energy
+powah                    powah:energy_cell_starter                                fe kind=powah_cell
+powah                    powah:energy_cell_basic                                  fe kind=powah_cell
+powah                    powah:energy_cell_hardened                               fe kind=powah_cell
+powah                    powah:energy_cell_blazing                                fe kind=powah_cell
+powah                    powah:energy_cell_niotic                                 fe kind=powah_cell
+powah                    powah:energy_cell_spirited                               fe kind=powah_cell
+powah                    powah:energy_cell_nitro                                  fe kind=powah_cell
+powah                    powah:energy_cell_creative                               fe kind=powah_cell
+powah                    powah:ender_cell_starter                                 fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_basic                                   fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_hardened                                fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_blazing                                 fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_niotic                                  fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_spirited                                fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:ender_cell_nitro                                   fe kind=powah_cell note=ender_network_without_an_owner
+powah                    powah:energy_cable_starter                               fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_basic                                 fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_hardened                              fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_blazing                               fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_niotic                                fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_spirited                              fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:energy_cable_nitro                                 fe kind=powah_cell note=cable_has_no_buffer
+powah                    powah:ender_gate_starter                                 fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_basic                                   fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_hardened                                fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_blazing                                 fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_niotic                                  fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_spirited                                fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:ender_gate_nitro                                   fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:energizing_rod_starter                             fe kind=powah_cell
+powah                    powah:energizing_rod_basic                               fe kind=powah_cell
+powah                    powah:energizing_rod_hardened                            fe kind=powah_cell
+powah                    powah:energizing_rod_blazing                             fe kind=powah_cell
+powah                    powah:energizing_rod_niotic                              fe kind=powah_cell
+powah                    powah:energizing_rod_spirited                            fe kind=powah_cell
+powah                    powah:energizing_rod_nitro                               fe kind=powah_cell
+powah                    powah:furnator_starter                                   fe kind=powah_generator
+powah                    powah:furnator_basic                                     fe kind=powah_generator
+powah                    powah:furnator_hardened                                  fe kind=powah_generator
+powah                    powah:furnator_blazing                                   fe kind=powah_generator
+powah                    powah:furnator_niotic                                    fe kind=powah_generator
+powah                    powah:furnator_spirited                                  fe kind=powah_generator
+powah                    powah:furnator_nitro                                     fe kind=powah_generator
+powah                    powah:magmator_starter                                   fe kind=powah_generator
+powah                    powah:magmator_basic                                     fe kind=powah_generator
+powah                    powah:magmator_hardened                                  fe kind=powah_generator
+powah                    powah:magmator_blazing                                   fe kind=powah_generator
+powah                    powah:magmator_niotic                                    fe kind=powah_generator
+powah                    powah:magmator_spirited                                  fe kind=powah_generator
+powah                    powah:magmator_nitro                                     fe kind=powah_generator
+powah                    powah:thermo_generator_starter                           fe kind=powah_generator
+powah                    powah:thermo_generator_basic                             fe kind=powah_generator
+powah                    powah:thermo_generator_hardened                          fe kind=powah_generator
+powah                    powah:thermo_generator_blazing                           fe kind=powah_generator
+powah                    powah:thermo_generator_niotic                            fe kind=powah_generator
+powah                    powah:thermo_generator_spirited                          fe kind=powah_generator
+powah                    powah:thermo_generator_nitro                             fe kind=powah_generator
+powah                    powah:solar_panel_starter                                fe kind=powah_generator
+powah                    powah:solar_panel_basic                                  fe kind=powah_generator
+powah                    powah:solar_panel_hardened                               fe kind=powah_generator
+powah                    powah:solar_panel_blazing                                fe kind=powah_generator
+powah                    powah:solar_panel_niotic                                 fe kind=powah_generator
+powah                    powah:solar_panel_spirited                               fe kind=powah_generator
+powah                    powah:solar_panel_nitro                                  fe kind=powah_generator
+powah                    powah:player_transmitter_starter                         fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_basic                           fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_hardened                        fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_blazing                         fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_niotic                          fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_spirited                        fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:player_transmitter_nitro                           fe kind=powah_cell nopower note=breaks_when_set_by_command,_same_card_as_the_cells
+powah                    powah:energy_hopper_starter                              fe kind=powah_cell
+powah                    powah:energy_hopper_basic                                fe kind=powah_cell
+powah                    powah:energy_hopper_hardened                             fe kind=powah_cell
+powah                    powah:energy_hopper_blazing                              fe kind=powah_cell
+powah                    powah:energy_hopper_niotic                               fe kind=powah_cell
+powah                    powah:energy_hopper_spirited                             fe kind=powah_cell
+powah                    powah:energy_hopper_nitro                                fe kind=powah_cell
+powah                    powah:energy_discharger_starter                          fe kind=powah_cell
+powah                    powah:energy_discharger_basic                            fe kind=powah_cell
+powah                    powah:energy_discharger_hardened                         fe kind=powah_cell
+powah                    powah:energy_discharger_blazing                          fe kind=powah_cell
+powah                    powah:energy_discharger_niotic                           fe kind=powah_cell
+powah                    powah:energy_discharger_spirited                         fe kind=powah_cell
+powah                    powah:energy_discharger_nitro                            fe kind=powah_cell
+power_armor              power_armor:compressor                                   fe kind=energy
+# power_armor              power_armor:armor_modification_table                     fe kind=energy
+productivebees           productivebees:centrifuge                                fluid=minecraft:water*4000 kind=productivebees_centrifuge
+productivebees           productivebees:powered_centrifuge                        fe kind=productivebees_centrifuge
+productivebees           productivebees:heated_centrifuge                         fe kind=productivebees_centrifuge
+productivebees           productivebees:honey_generator                           fe kind=energy
+# productivebees           productivebees:incubator                                 fe kind=energy
+# productivebees           productivebees:breeding_chamber                          fe kind=energy
+productivebees           productivebees:dragon_egg_hive                           kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_pine_beehive  kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_palm_beehive  kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_redwood_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_socotra_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_eucalyptus_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_kapok_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_cobalt_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_dead_beehive  kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_cypress_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_pink_bioshroom_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_magnolia_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_willow_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_wisteria_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_yellow_bioshroom_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_blue_bioshroom_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_blackwood_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_joshua_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_baobab_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_maple_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_green_bioshroom_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_larch_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_regions_unexplored_brimwood_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_bamboo_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_cherry_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_crimson_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_birch_beehive                    kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_oak_beehive                      kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_acacia_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_warped_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_jungle_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_dark_oak_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_mangrove_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_snake_block_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_spruce_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_acacia_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_aspen_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_bamboo_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_birch_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_cherry_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_concrete_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_comb_canvas_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_crimson_canvas_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_dark_oak_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_dead_canvas_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_driftwood_canvas_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_fir_canvas_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_grimwood_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_hellbark_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_jacaranda_canvas_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_jungle_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_kousa_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_magic_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_mahogany_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_mangrove_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_maple_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_oak_canvas_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_palm_canvas_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_redwood_canvas_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_river_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_rosewood_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_snake_block_canvas_beehive       kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_spruce_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_umbran_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_warped_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_willow_canvas_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_wisteria_canvas_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivebees           productivebees:advanced_yucca_canvas_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivefarming        productivefarming:farm_controller                        fluid=minecraft:water*4000 kind=productivefarming_farm note=multi-block_not_built
+productivefarming        productivefarming:watering_trough                        fluid=minecraft:water*4000 kind=tank
+productivemetalworks     productivemetalworks:white_foundry_controller            kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:orange_foundry_controller           kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:magenta_foundry_controller          kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:light_blue_foundry_controller       kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:yellow_foundry_controller           kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:lime_foundry_controller             kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:pink_foundry_controller             kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:gray_foundry_controller             kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:light_gray_foundry_controller       kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:cyan_foundry_controller             kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:purple_foundry_controller           kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:blue_foundry_controller             kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:brown_foundry_controller            kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:green_foundry_controller            kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:red_foundry_controller              kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:black_foundry_controller            kind=productivemetalworks_foundry note=multi-block_not_built
+productivemetalworks     productivemetalworks:white_foundry_tank                  fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:orange_foundry_tank                 fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:magenta_foundry_tank                fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:light_blue_foundry_tank             fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:yellow_foundry_tank                 fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:lime_foundry_tank                   fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:pink_foundry_tank                   fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:gray_foundry_tank                   fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:light_gray_foundry_tank             fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:cyan_foundry_tank                   fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:purple_foundry_tank                 fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:blue_foundry_tank                   fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:brown_foundry_tank                  fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:green_foundry_tank                  fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:red_foundry_tank                    fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:black_foundry_tank                  fluid=minecraft:water*4000 kind=tank
+productivemetalworks     productivemetalworks:white_foundry_capacitor             fe kind=energy
+# productivemetalworks     productivemetalworks:orange_foundry_capacitor            fe kind=energy
+# productivemetalworks     productivemetalworks:magenta_foundry_capacitor           fe kind=energy
+# productivemetalworks     productivemetalworks:light_blue_foundry_capacitor        fe kind=energy
+# productivemetalworks     productivemetalworks:yellow_foundry_capacitor            fe kind=energy
+# productivemetalworks     productivemetalworks:lime_foundry_capacitor              fe kind=energy
+# productivemetalworks     productivemetalworks:pink_foundry_capacitor              fe kind=energy
+# productivemetalworks     productivemetalworks:gray_foundry_capacitor              fe kind=energy
+# productivemetalworks     productivemetalworks:light_gray_foundry_capacitor        fe kind=energy
+# productivemetalworks     productivemetalworks:cyan_foundry_capacitor              fe kind=energy
+# productivemetalworks     productivemetalworks:purple_foundry_capacitor            fe kind=energy
+# productivemetalworks     productivemetalworks:blue_foundry_capacitor              fe kind=energy
+# productivemetalworks     productivemetalworks:brown_foundry_capacitor             fe kind=energy
+# productivemetalworks     productivemetalworks:green_foundry_capacitor             fe kind=energy
+# productivemetalworks     productivemetalworks:red_foundry_capacitor               fe kind=energy
+# productivemetalworks     productivemetalworks:black_foundry_capacitor             fe kind=energy
+# productivemetalworks     productivemetalworks:casting_basin                       fluid=minecraft:water*4000 kind=tank
+# productivemetalworks     productivemetalworks:casting_table                       fluid=minecraft:water*4000 kind=tank
+productivetrees          productivetrees:stripper                                 item=minecraft:oak_log*32 kind=productivetrees_machine
+productivetrees          productivetrees:sawmill                                  item=minecraft:oak_log*32 kind=productivetrees_machine
+productivetrees          productivetrees:pollen_sifter                            item=minecraft:oak_log*32 kind=productivetrees_machine
+productivetrees          productivetrees:advanced_alder_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_allspice_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_almond_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_apricot_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_aquilaria_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_asai_palm_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_ash_beehive                     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_aspen_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_avocado_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_balsa_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_balsam_fir_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_banana_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_bay_leaf_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_beech_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_beliy_naliv_apple_beehive       kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_blackthorn_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_black_cherry_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_black_ember_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_black_locust_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_blue_mahoe_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_boxwood_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_brazilwood_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_brazil_nut_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_breadfruit_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_brown_amber_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_buddhas_hand_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_bull_pine_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_butternut_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cacao_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_candlenut_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_carob_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cashew_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cave_dweller_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cedar_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cempedak_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_ceylon_ebony_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cherry_plum_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cinnamon_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_citron_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_clove_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cocobolo_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_coconut_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_coffea_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_copoazu_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_copper_beech_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cork_oak_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_cultivated_pear_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_date_palm_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_dogwood_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_douglas_fir_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_elm_beehive                     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_european_larch_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_finger_lime_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_firecracker_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_flickering_sun_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_flowering_crabapple_beehive     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_foggy_blast_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_ginkgo_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_golden_delicious_apple_beehive  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_grandidiers_baobab_beehive      kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_granny_smith_apple_beehive      kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_grapefruit_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_great_sallow_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_greenheart_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_hawthorn_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_hazel_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_holly_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_hornbeam_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_ipe_beehive                     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_white_ipe_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pink_ipe_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_purple_ipe_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_iroko_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_jackfruit_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_juniper_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_kapok_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_key_lime_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_kumquat_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_lawson_cypress_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_lemon_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_lime_beehive                    kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_loblolly_pine_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_logwood_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_mahogany_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_mandarin_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_mango_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_monkey_puzzle_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_moonlight_magic_crepe_myrtle_beehive kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_myrtle_ebony_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_nectarine_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_night_fuchsia_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_nutmeg_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_old_fustic_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_olive_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_orange_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_osage_orange_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_padauk_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pandanus_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_papaya_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_peach_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pecan_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_persimmon_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pink_ivory_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pistachio_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_plantain_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_plum_beehive                    kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pomegranate_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_pomelo_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_prairie_crabapple_beehive       kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_purpleheart_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_purple_blackthorn_beehive       kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_purple_crepe_myrtle_beehive     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_purple_spiral_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rainbow_gum_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_red_banana_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_red_crepe_myrtle_beehive        kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_red_delicious_apple_beehive     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_red_maple_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rippling_willow_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rosewood_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rose_gum_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rowan_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_rubber_tree_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_salak_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sandalwood_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sand_pear_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_satsuma_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sequoia_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_silver_fir_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_silver_lime_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_slimy_delight_beehive           kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_socotra_dragon_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_soul_tree_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_soursop_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sour_cherry_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sparkle_cherry_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_star_anise_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_star_fruit_beehive              kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sugar_apple_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sugar_maple_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_swamp_gum_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sweetgum_beehive                kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sweet_chestnut_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sweet_crabapple_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_sycamore_fig_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_tangerine_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_teak_beehive                    kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_thunder_bolt_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_time_traveller_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_tuscarora_crepe_myrtle_beehive  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_blue_yonder_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_walnut_beehive                  kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_water_wonder_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_wenge_beehive                   kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_western_hemlock_beehive         kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_whitebeam_beehive               kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_white_poplar_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_white_willow_beehive            kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_wild_cherry_beehive             kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_yellow_meranti_beehive          kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_yew_beehive                     kind=productivebees_hive note=empty_hive_without_bees
+productivetrees          productivetrees:advanced_zebrano_beehive                 kind=productivebees_hive note=empty_hive_without_bees
+pylons                   pylons:expulsion_pylon                                   kind=pylons_pylon
+pylons                   pylons:infusion_pylon                                    kind=pylons_pylon
+pylons                   pylons:harvester_pylon                                   kind=pylons_pylon
+pylons                   pylons:interdiction_pylon                                kind=pylons_pylon
+pylons                   pylons:protection_pylon                                  kind=pylons_pylon
+quarryplus               quarryplus:quarry                                        fe kind=quarryplus_quarry note=no_area_set
+quarryplus               quarryplus:adv_quarry                                    fe kind=quarryplus_adv_quarry note=no_area_set
+quarryplus               quarryplus:debug_storage                                 fluid=minecraft:water*4000 kind=tank
+railcraft                railcraft:white_iron_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:orange_iron_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_iron_tank_gauge                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_iron_tank_gauge                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_iron_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_iron_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_iron_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_iron_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_iron_tank_gauge                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_iron_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_iron_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_iron_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_iron_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_iron_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_iron_tank_gauge                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_iron_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:white_iron_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:orange_iron_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_iron_tank_valve                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_iron_tank_valve                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_iron_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_iron_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_iron_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_iron_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_iron_tank_valve                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_iron_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_iron_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_iron_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_iron_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_iron_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_iron_tank_valve                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_iron_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:white_iron_tank_wall                           kind=railcraft_tank build=hollow3 size=3 note=shell_not_accepted_as_a_tank
+railcraft                railcraft:orange_iron_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_iron_tank_wall                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_iron_tank_wall                      kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_iron_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_iron_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_iron_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_iron_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_iron_tank_wall                      kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_iron_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_iron_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_iron_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_iron_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_iron_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_iron_tank_wall                             kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_iron_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:white_steel_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:orange_steel_tank_gauge                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_steel_tank_gauge                       kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_steel_tank_gauge                    kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_steel_tank_gauge                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_steel_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_steel_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_steel_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_steel_tank_gauge                    kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_steel_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_steel_tank_gauge                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_steel_tank_gauge                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_steel_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_steel_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_steel_tank_gauge                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_steel_tank_gauge                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:white_steel_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:orange_steel_tank_valve                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_steel_tank_valve                       kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_steel_tank_valve                    kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_steel_tank_valve                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_steel_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_steel_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_steel_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_steel_tank_valve                    kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_steel_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_steel_tank_valve                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_steel_tank_valve                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_steel_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_steel_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_steel_tank_valve                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_steel_tank_valve                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:white_steel_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:orange_steel_tank_wall                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:magenta_steel_tank_wall                        kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_blue_steel_tank_wall                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:yellow_steel_tank_wall                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:lime_steel_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:pink_steel_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:gray_steel_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:light_gray_steel_tank_wall                     kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:cyan_steel_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:purple_steel_tank_wall                         kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:blue_steel_tank_wall                           kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:brown_steel_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:green_steel_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:red_steel_tank_wall                            kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:black_steel_tank_wall                          kind=railcraft_tank note=multi-block_not_built
+railcraft                railcraft:low_pressure_steam_boiler_tank                 item=minecraft:coal*16 fluid=minecraft:water*8000 kind=railcraft_boiler note=multi-block_not_built
+railcraft                railcraft:high_pressure_steam_boiler_tank                item=minecraft:coal*16 fluid=minecraft:water*8000 kind=railcraft_boiler note=multi-block_not_built
+railcraft                railcraft:solid_fueled_firebox                           item=minecraft:coal*16 fluid=minecraft:water*8000 kind=railcraft_boiler note=multi-block_not_built
+railcraft                railcraft:fluid_fueled_firebox                           item=minecraft:coal*16 fluid=minecraft:water*8000 kind=railcraft_boiler note=multi-block_not_built
+railcraft                railcraft:blast_furnace_bricks                           kind=railcraft_blast_furnace note=multi-block_not_built
+railcraft                railcraft:force_track_emitter                            fe kind=energy
+# railcraft                railcraft:powered_rolling_machine                        fe kind=energy
+railcraft                railcraft:coke_oven_bricks                               kind=railcraft_coke_oven build=hollow3 size=3 note=formed,_no_coal_inside
+rangedpumps              rangedpumps:pump                                         fe kind=rangedpumps_pump
+refinedstorage           refinedstorage:white_controller                          fe kind=energy
+# refinedstorage           refinedstorage:orange_controller                         fe kind=energy
+# refinedstorage           refinedstorage:magenta_controller                        fe kind=energy
+# refinedstorage           refinedstorage:controller                                fe kind=energy
+# refinedstorage           refinedstorage:yellow_controller                         fe kind=energy
+# refinedstorage           refinedstorage:lime_controller                           fe kind=energy
+# refinedstorage           refinedstorage:pink_controller                           fe kind=energy
+# refinedstorage           refinedstorage:gray_controller                           fe kind=energy
+# refinedstorage           refinedstorage:light_gray_controller                     fe kind=energy
+# refinedstorage           refinedstorage:cyan_controller                           fe kind=energy
+# refinedstorage           refinedstorage:purple_controller                         fe kind=energy
+# refinedstorage           refinedstorage:blue_controller                           fe kind=energy
+# refinedstorage           refinedstorage:brown_controller                          fe kind=energy
+# refinedstorage           refinedstorage:green_controller                          fe kind=energy
+# refinedstorage           refinedstorage:red_controller                            fe kind=energy
+# refinedstorage           refinedstorage:black_controller                          fe kind=energy
+# refinedstorage           refinedstorage:interface                                 fe kind=energy
+# refinedstorage           refinedstorage:portable_grid                             fe kind=energy
+refurbished_furniture    refurbished_furniture:oak_kitchen_sink                   fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:spruce_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:birch_kitchen_sink                 fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:jungle_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:acacia_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:dark_oak_kitchen_sink              fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:mangrove_kitchen_sink              fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cherry_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:crimson_kitchen_sink               fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:warped_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pale_oak_kitchen_sink              fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:white_kitchen_sink                 fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:orange_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:magenta_kitchen_sink               fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_blue_kitchen_sink            fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:yellow_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:lime_kitchen_sink                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pink_kitchen_sink                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:gray_kitchen_sink                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_gray_kitchen_sink            fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cyan_kitchen_sink                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:purple_kitchen_sink                fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:blue_kitchen_sink                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:brown_kitchen_sink                 fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:green_kitchen_sink                 fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:red_kitchen_sink                   fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:black_kitchen_sink                 fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:oak_toilet                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:spruce_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:birch_toilet                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:jungle_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:acacia_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:dark_oak_toilet                    fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:mangrove_toilet                    fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cherry_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:crimson_toilet                     fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:warped_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pale_oak_toilet                    fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:white_toilet                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:orange_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:magenta_toilet                     fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_blue_toilet                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:yellow_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:lime_toilet                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pink_toilet                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:gray_toilet                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_gray_toilet                  fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cyan_toilet                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:purple_toilet                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:blue_toilet                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:brown_toilet                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:green_toilet                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:red_toilet                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:black_toilet                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:oak_basin                          fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:spruce_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:birch_basin                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:jungle_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:acacia_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:dark_oak_basin                     fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:mangrove_basin                     fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cherry_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:crimson_basin                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:warped_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pale_oak_basin                     fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:white_basin                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:orange_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:magenta_basin                      fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_blue_basin                   fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:yellow_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:lime_basin                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:pink_basin                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:gray_basin                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:light_gray_basin                   fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:cyan_basin                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:purple_basin                       fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:blue_basin                         fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:brown_basin                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:green_basin                        fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:red_basin                          fluid=minecraft:water*4000 kind=tank
+# refurbished_furniture    refurbished_furniture:black_basin                        fluid=minecraft:water*4000 kind=tank
+selling_bin              selling_bin:selling_bin                                  item=minecraft:wheat*16 kind=sellingbin_bin note=bin_refuses_a_hopper_insert
+sfm                      sfm:manager                                              kind=sfm_manager note=no_disk
+sfm                      sfm:buffer                                               fe kind=energy
+sfm                      sfm:tunnelled_manager                                    kind=sfm_manager note=no_disk
+sfm                      sfm:water_tank                                           fluid=minecraft:water*4000 kind=tank note=test_tank_without_water_source
+sophisticatedstorage     sophisticatedstorage:controller                          kind=sophisticatedstorage_storage build=sophisticated_controller
+stellaris                stellaris:solar_panel                                    fe kind=energy
+# stellaris                stellaris:star_light_panel                               fe kind=energy
+# stellaris                stellaris:coal_generator                                 fe kind=energy
+# stellaris                stellaris:diesel_generator                               fe kind=energy
+# stellaris                stellaris:vacuumator                                     fe kind=energy
+# stellaris                stellaris:blender                                        fe kind=energy
+# stellaris                stellaris:power_bank_t1                                  fe kind=energy
+stellaris                stellaris:fluid_tank_t1                                  fluid=minecraft:water*4000 kind=tank
+# stellaris                stellaris:cable_t1                                       fe kind=energy
+# stellaris                stellaris:pipe_t1                                        fluid=minecraft:water*4000 kind=tank
+# stellaris                stellaris:electrolyzer                                   fe kind=energy
+# stellaris                stellaris:gravity_manipulator                            fe kind=energy
+# stellaris                stellaris:electric_light                                 fe kind=energy
+# stellaris                stellaris:pumpjack                                       fe kind=energy
+# stellaris                stellaris:fuel_refinery                                  fe kind=energy
+# stellaris                stellaris:water_pump                                     fe kind=energy
+# stellaris                stellaris:oxygen_distributor                             fe kind=energy
+# stellaris                stellaris:oxygen_propagator                              fe kind=energy
+# stellaris                stellaris:cargo_unloader                                 fe kind=energy
+thaumaturge              thaumaturge:crucible                                     fluid=minecraft:water*4000 kind=tank
+# thaumaturge              thaumaturge:spa                                          fluid=minecraft:water*4000 kind=tank
+# thaumaturge              thaumaturge:everfull_urn                                 fluid=minecraft:water*4000 kind=tank
+thaumaturge              thaumaturge:vis_generator                                fe kind=energy
+theurgy                  theurgy:liquefaction_cauldron                            fluid=minecraft:water*4000 kind=tank nopower note=breaks_without_its_heater
+# theurgy                  theurgy:sal_ammoniac_accumulator                         fluid=minecraft:water*4000 kind=tank
+# theurgy                  theurgy:sal_ammoniac_tank                                fluid=minecraft:water*4000 kind=tank
+theurgy                  theurgy:mercury_flux_emitter                             fe kind=energy
+# theurgy                  theurgy:fermentation_vat                                 fluid=minecraft:water*4000 face=down kind=tank
+# theurgy                  theurgy:digestion_vat                                    fluid=minecraft:water*4000 face=down kind=tank
+# theurgy                  theurgy:logistics_mercury_flux_connector                 fe kind=energy
+trashcans                trashcans:liquid_trash_can                               fluid=minecraft:water*4000 kind=tank
+trashcans                trashcans:energy_trash_can                               fe kind=energy
+# trashcans                trashcans:ultimate_trash_can                             fe kind=energy
+witchery                 witchery:altar                                           kind=witchery_altar
+witchery                 witchery:cauldron                                        fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:copper_cauldron                                 fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:exposed_copper_cauldron                         fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:weathered_copper_cauldron                       fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:oxidized_copper_cauldron                        fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:waxed_copper_cauldron                           fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:waxed_exposed_copper_cauldron                   fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:waxed_weathered_copper_cauldron                 fluid=minecraft:water*4000 kind=tank
+# witchery                 witchery:waxed_oxidized_copper_cauldron                  fluid=minecraft:water*4000 kind=tank
+cloud_own                cccloud:cloud_switch                                     self state=[facing=down,powered=false] nbt={LINK,name:"Switch",group:"Gallery"} nopower note=no_redstone_signal_in_the_gallery
+cloud_own                cccloud:cloud_button                                     self state=[facing=down] nbt={LINK,name:"Button",group:"Gallery"} nopower note=no_redstone_signal_in_the_gallery
+cloud_own                cccloud:cloud_lamp                                       self nbt={LINK,name:"Lamp",group:"Gallery"} nopower note=no_redstone_signal_in_the_gallery
+cloud_own                cccloud:cloud_sensor                                     self state=[facing=down] nbt={LINK,name:"Sensor",group:"Gallery"} nopower note=no_redstone_signal_in_the_gallery
+cloud_own                cccloud:advanced_cloud_sensor                            self state=[facing=down] nbt={LINK,name:"Adv_Sensor",group:"Gallery"} nopower note=no_redstone_signal_in_the_gallery
+cloud_own                computercraft:computer_advanced                          state=[facing=south] nbt={ComputerId:9001,On:1b,Label:"Gallery"} nopower note=peripheral_card_of_a_computer_without_a_script
+ae2                      cccloud:me_cloud_bridge                                  self build=me_bridge state=[facing=south] nbt={LINK} nopower
+refinedstorage           cccloud:rs_cloud_bridge                                  self build=rs_bridge state=[facing=south] nbt={LINK} nopower

@@ -99,7 +99,7 @@ public final class AnalyzerService {
     }
 
     /** The player's payload: only networks where the player has {@code view.positions}. */
-    static com.google.gson.JsonObject build(ServerPlayer player) {
+    public static com.google.gson.JsonObject build(ServerPlayer player) {
         var networks = new ArrayList<AnalyzerGeometry.Network>();
         for (var mainframe : List.copyOf(CloudNetwork.mainframes())) {
             if (mainframe.isRemoved() || mainframe.getLevel() == null) continue;

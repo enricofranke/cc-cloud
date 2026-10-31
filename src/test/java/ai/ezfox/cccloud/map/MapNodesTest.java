@@ -41,6 +41,16 @@ class MapNodesTest {
         assertEquals(0, MapNodes.build(List.of(network(mine, 1)), id -> false).getAsJsonArray("nodes").size());
     }
 
+    /** Like the Cloud Analyzer: nothing in another team's claim, in any dimension. */
+    @Test
+    void hiddenPlacesAreLeftOut() {
+        var mine = UUID.randomUUID();
+        var json = MapNodes.build(List.of(network(mine, 3)), id -> true, (dim, x, y, z) -> dim.equals("minecraft:the_nether") && x == 1 || x == 40);
+        var ids = new ArrayList<String>();
+        for (var n : json.getAsJsonArray("nodes")) ids.add(n.getAsJsonObject().get("id").getAsString());
+        assertEquals(List.of(mine.toString(), "dev-0", "dev-2"), ids);
+    }
+
     @Test
     void capped() {
         var json = MapNodes.build(List.of(network(UUID.randomUUID(), MapNodes.MAX_NODES + 5)), id -> true);
