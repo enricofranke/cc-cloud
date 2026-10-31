@@ -43,9 +43,9 @@ public final class LayoutMigration {
         Map.entry("select", 8), Map.entry("number", 8), Map.entry("text", 8), Map.entry("buttons", 9), Map.entry("button", 10),
         Map.entry("redstone_sides", 11), Map.entry("sensor_log", 2));
     private static final Map<String, Integer> DEFAULT_H = Map.ofEntries(
-        Map.entry("progress", 2), Map.entry("item_search", 3), Map.entry("watchlist", 4), Map.entry("jobs", 3), Map.entry("toggle", 1),
-        Map.entry("slider", 2), Map.entry("select", 1), Map.entry("number", 1), Map.entry("text", 1), Map.entry("buttons", 1),
-        Map.entry("button", 2), Map.entry("redstone_sides", 6), Map.entry("sensor_log", 6));
+        Map.entry("progress", 2), Map.entry("item_search", 5), Map.entry("watchlist", 8), Map.entry("jobs", 6), Map.entry("toggle", 2),
+        Map.entry("slider", 3), Map.entry("select", 2), Map.entry("number", 3), Map.entry("text", 3), Map.entry("buttons", 3),
+        Map.entry("button", 2), Map.entry("redstone_sides", 7), Map.entry("sensor_log", 8));
     private static final int CARD_CHROME_H = 2;
     private static final Collator COLLATOR = Collator.getInstance(Locale.ROOT);
     private static final List<Map.Entry<Pattern, String>> ICON_GUESSES = List.of(
@@ -232,8 +232,8 @@ public final class LayoutMigration {
 
     static int defaultWidgetH(String type, String display) {
         return switch (type) {
-            case "gauge" -> display.equals("bar") ? 2 : display.equals("number") ? 3 : 5;
-            case "label" -> display.equals("big") ? 3 : 1;
+            case "gauge" -> display.equals("bar") ? 2 : display.equals("number") ? 3 : 6;
+            case "label" -> display.equals("big") ? 3 : 2;
             case "chart" -> display.equals("sparkline") ? 3 : 5;
             case "indicator" -> display.equals("lamp") ? 3 : 2;
             default -> DEFAULT_H.getOrDefault(type, 2);

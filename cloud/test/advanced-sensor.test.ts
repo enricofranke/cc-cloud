@@ -106,7 +106,7 @@ describe("the card on the dashboard", () => {
     expect(c.widgets[0].w.type).toBe("sensor_log");
     expect(c.widgets[0].box.w).toBeGreaterThanOrEqual(minWidgetW("sensor_log"));
     expect(minWidgetW("sensor_log")).toBe(6);
-    expect(defaultWidgetH("sensor_log")).toBe(6);
+    expect(defaultWidgetH("sensor_log")).toBe(8);
     expect(ICON_NAMES).toContain("eye");
   });
 

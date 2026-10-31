@@ -278,7 +278,7 @@
             "x": 0,
             "y": 0,
             "w": 6,
-            "h": 17,
+            "h": 27,
             "title": "Storage!",
             "icon": "box"
           },
@@ -287,29 +287,29 @@
             "x": 6,
             "y": 0,
             "w": 6,
-            "h": 12,
+            "h": 13,
             "color": "red",
             "icon": "flame"
           },
           "empty": {
             "page": "main",
             "x": 6,
-            "y": 12,
+            "y": 13,
             "w": 3,
             "h": 3
           },
           "door": {
             "page": "main",
             "x": 9,
-            "y": 12,
+            "y": 13,
             "w": 3,
-            "h": 4,
+            "h": 6,
             "icon": "shield"
           },
           "c:mine": {
             "page": "main",
             "x": 0,
-            "y": 17,
+            "y": 27,
             "w": 3,
             "h": 3,
             "title": "My card"
@@ -317,9 +317,9 @@
           "reactor": {
             "page": "main",
             "x": 3,
-            "y": 17,
+            "y": 27,
             "w": 3,
-            "h": 3,
+            "h": 4,
             "icon": "flame"
           },
           "farm": {
@@ -327,7 +327,7 @@
             "x": 0,
             "y": 0,
             "w": 3,
-            "h": 13,
+            "h": 19,
             "hidden": true,
             "icon": "leaf"
           },
@@ -336,15 +336,15 @@
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 14,
+            "h": 17,
             "icon": "bolt"
           },
           "reactor~power": {
             "page": "power",
             "x": 0,
-            "y": 14,
+            "y": 17,
             "w": 3,
-            "h": 3,
+            "h": 4,
             "icon": "flame"
           }
         },
@@ -353,25 +353,25 @@
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 5
+            "h": 6
           },
           "storage/search": {
             "x": 0,
-            "y": 5,
+            "y": 6,
             "w": 12,
-            "h": 3
+            "h": 5
           },
           "storage/watch": {
             "x": 0,
-            "y": 8,
+            "y": 11,
             "w": 12,
-            "h": 4
+            "h": 8
           },
           "storage/jobs": {
             "x": 0,
-            "y": 12,
+            "y": 19,
             "w": 12,
-            "h": 3
+            "h": 6
           },
           "reactor/fuel": {
             "x": 0,
@@ -383,7 +383,7 @@
             "x": 0,
             "y": 2,
             "w": 6,
-            "h": 5,
+            "h": 6,
             "label": "Core temp"
           },
           "reactor/status": {
@@ -400,7 +400,7 @@
           },
           "reactor/history": {
             "x": 0,
-            "y": 7,
+            "y": 8,
             "w": 6,
             "h": 3,
             "display": "sparkline"
@@ -409,86 +409,86 @@
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "door/open": {
             "x": 0,
-            "y": 1,
+            "y": 2,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "reactor/mode": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "reactor/msg": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1,
+            "h": 3,
             "hidden": true
           },
           "farm/count": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 3
           },
           "farm/lamp": {
             "x": 0,
-            "y": 1,
+            "y": 3,
             "w": 12,
             "h": 2
           },
           "farm/pick": {
             "x": 0,
-            "y": 3,
+            "y": 5,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "farm/go": {
             "x": 0,
-            "y": 4,
+            "y": 7,
             "w": 12,
-            "h": 1
+            "h": 3
           },
           "farm/rs": {
             "x": 0,
-            "y": 5,
+            "y": 10,
             "w": 12,
-            "h": 6
+            "h": 7
           },
           "reactor/t3": {
             "x": 0,
             "y": 0,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/t1": {
             "x": 6,
             "y": 0,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/t2": {
             "x": 0,
-            "y": 5,
+            "y": 6,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/flow": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "w": 12,
-            "h": 2
+            "h": 3
           },
           "reactor/power_total": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           }
         }
       }
@@ -790,46 +790,46 @@
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 14,
+            "h": 17,
             "icon": "bolt"
           },
           "storage": {
             "page": "main",
             "x": 0,
-            "y": 14,
+            "y": 17,
             "w": 6,
-            "h": 17,
+            "h": 27,
             "title": "Storage!",
             "icon": "box"
           },
           "reactor/core": {
             "page": "main",
             "x": 6,
-            "y": 14,
+            "y": 17,
             "w": 6,
-            "h": 12,
+            "h": 13,
             "color": "red",
             "icon": "flame"
           },
           "empty": {
             "page": "main",
             "x": 6,
-            "y": 26,
+            "y": 30,
             "w": 3,
             "h": 3
           },
           "door": {
             "page": "main",
             "x": 9,
-            "y": 26,
+            "y": 30,
             "w": 3,
-            "h": 4,
+            "h": 6,
             "icon": "shield"
           },
           "c:mine": {
             "page": "main",
             "x": 0,
-            "y": 31,
+            "y": 44,
             "w": 3,
             "h": 3,
             "title": "My card"
@@ -837,9 +837,9 @@
           "reactor": {
             "page": "main",
             "x": 3,
-            "y": 31,
+            "y": 44,
             "w": 3,
-            "h": 3,
+            "h": 4,
             "icon": "flame"
           },
           "reactor~power": {
@@ -847,7 +847,7 @@
             "x": 0,
             "y": 0,
             "w": 3,
-            "h": 3,
+            "h": 4,
             "icon": "flame"
           },
           "farm": {
@@ -855,7 +855,7 @@
             "x": 0,
             "y": 0,
             "w": 3,
-            "h": 13,
+            "h": 19,
             "icon": "leaf"
           }
         },
@@ -864,49 +864,49 @@
             "x": 0,
             "y": 0,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/t1": {
             "x": 6,
             "y": 0,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/t2": {
             "x": 0,
-            "y": 5,
+            "y": 6,
             "w": 6,
-            "h": 5
+            "h": 6
           },
           "reactor/flow": {
             "x": 0,
-            "y": 10,
+            "y": 12,
             "w": 12,
-            "h": 2
+            "h": 3
           },
           "storage/bytes": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 5
+            "h": 6
           },
           "storage/search": {
             "x": 0,
-            "y": 5,
+            "y": 6,
             "w": 12,
-            "h": 3
+            "h": 5
           },
           "storage/watch": {
             "x": 0,
-            "y": 8,
+            "y": 11,
             "w": 12,
-            "h": 4
+            "h": 8
           },
           "storage/jobs": {
             "x": 0,
-            "y": 12,
+            "y": 19,
             "w": 12,
-            "h": 3
+            "h": 6
           },
           "reactor/fuel": {
             "x": 0,
@@ -918,7 +918,7 @@
             "x": 0,
             "y": 2,
             "w": 6,
-            "h": 5,
+            "h": 6,
             "label": "Core temp"
           },
           "reactor/status": {
@@ -935,7 +935,7 @@
           },
           "reactor/history": {
             "x": 0,
-            "y": 7,
+            "y": 8,
             "w": 6,
             "h": 3,
             "display": "sparkline"
@@ -944,62 +944,62 @@
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "door/open": {
             "x": 0,
-            "y": 1,
+            "y": 2,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "reactor/mode": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "reactor/msg": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1,
+            "h": 3,
             "hidden": true
           },
           "reactor/power_total": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "farm/count": {
             "x": 0,
             "y": 0,
             "w": 12,
-            "h": 1
+            "h": 3
           },
           "farm/lamp": {
             "x": 0,
-            "y": 1,
+            "y": 3,
             "w": 12,
             "h": 2
           },
           "farm/pick": {
             "x": 0,
-            "y": 3,
+            "y": 5,
             "w": 12,
-            "h": 1
+            "h": 2
           },
           "farm/go": {
             "x": 0,
-            "y": 4,
+            "y": 7,
             "w": 12,
-            "h": 1
+            "h": 3
           },
           "farm/rs": {
             "x": 0,
-            "y": 5,
+            "y": 10,
             "w": 12,
-            "h": 6
+            "h": 7
           }
         }
       }
