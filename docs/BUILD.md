@@ -137,6 +137,7 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | `trashcans` | Trash Cans 1.1.1a | SuperMartijn642's Core Lib, Config Lib | `compat/trashcans` (`TrashCanBlockEntity`) |
 | `stepcrafter` | Stepcrafter 1.0.3 | Refined Storage | `compat/stepcrafter` (`StepCraftingMonitorBlockEntity`) |
 | `refinedtypes` | Refined Types 1.0.2 | Refined Storage | `compat/refinedtypes` (`NetworkEnergizerBlockEntity.getMenuData`) |
+| `enderthing` | Enderthing 1.10.2 | – | `compat/enderthing` (`EnderKeyChestBlockEntity.isPrivate`) |
 
 The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
 

@@ -1106,4 +1106,19 @@ export const COMPAT_CARDS: SampleCard[] = [
       label("energy", "Stored", "64.0 M / 100 M FE"),
     ],
   },
+
+  // Enderthing
+  {
+    key: "enderthing_storage",
+    mod: "enderthing",
+    title: "Ender Key Chest",
+    template: "enderthing_storage",
+    widgets: [
+      percent("storage", "Storage used", { warn: 85, crit: 95 }, 37.0),
+      label("items", "Total items", "1.20 k / 3.24 k"),
+      label("types", "Item types", "18"),
+      label("slots", "Slots used", "10 / 27"),
+      itemSearch("search", "Search storage"),
+    ],
+  },
 ];

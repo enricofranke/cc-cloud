@@ -900,6 +900,16 @@
    "controls": "none: the redstone mode is a screen setting without a public setter",
    "tested": "partly: lone energizer (\"No Energy Disks\"); a reserve needs an RS network with Energy Disks",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Enderthing",
+   "id": "enderthing",
+   "version": "1.10.2",
+   "what": "Ender Key Chests as **Storage** cards with item search (the inventory behind the key). A private chest belongs to one player and gets no card, viewers would see that player's items.",
+   "controls": "none",
+   "tested": "yes (key chest with 100 iron ingots, made private: the card goes away)",
+   "skipped": false
   }
  ]
 }
