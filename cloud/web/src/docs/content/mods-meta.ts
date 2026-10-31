@@ -81,6 +81,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   thaumaturge: { cat: "magic", icon: "thaumaturge:jar_normal" },
   appliedthaumaturge: { cat: "magic", icon: "appliedthaumaturge:arcane_assembler" },
   silentgear: { cat: "machines", icon: "silentgear:alloy_forge" },
+  apothic_enchanting: { cat: "magic", icon: "apothic_enchanting:library" },
   // wave 5 end
 };
 

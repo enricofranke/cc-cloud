@@ -860,6 +860,16 @@
    "controls": "none",
    "tested": "yes (Alloy Forge and Metal Press; Starlight Charger; the running progress was not tested)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Apothic Enchanting",
+   "id": "apothic_enchanting",
+   "version": "2.1.0",
+   "what": "**Library of Alexandria** and **Library of the End**: how many enchantments are stored and the fullest ones, with the level you can take out against the highest seen and the points behind it.",
+   "controls": "none",
+   "tested": "yes (book deposited through the mod, row read back)",
+   "skipped": false
   }
  ]
 }

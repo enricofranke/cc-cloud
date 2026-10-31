@@ -786,6 +786,19 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // Apothic Enchanting
+  {
+    key: "apothicenchanting_library",
+    mod: "apothic_enchanting",
+    title: "Library of Alexandria",
+    template: "apothicenchanting_library",
+    widgets: [
+      label("count", "Enchantments", "2", { span: 2 }),
+      label("row_1", "Sharpness", "Sharpness 3 (4 pts)"),
+      label("row_2", "Efficiency", "Efficiency 2 (2 pts)"),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery
