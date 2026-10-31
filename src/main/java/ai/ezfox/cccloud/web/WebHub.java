@@ -670,6 +670,29 @@ public final class WebHub {
         return section == null ? null : section.text(false);
     }
 
+    /**
+     * What a Cloud Display needs to compose a custom card or page: the layout and the public form of every section
+     * (shared objects: never change them), and the restricted section ids.
+     */
+    public record DisplaySource(@Nullable JsonObject layout, Map<String, JsonObject> sections, Set<String> restricted) {
+    }
+
+    public DisplaySource displaySource(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return new DisplaySource(null, Map.of(), Set.of());
+        Map<String, Section> refs;
+        JsonObject layout;
+        Set<String> restricted;
+        synchronized (view) {
+            refs = new LinkedHashMap<>(view.uplinks);
+            layout = view.layout;
+            restricted = Set.copyOf(view.restricted);
+        }
+        var sections = new LinkedHashMap<String, JsonObject>();
+        for (var e : refs.entrySet()) sections.put(e.getKey(), e.getValue().json(false));
+        return new DisplaySource(layout, sections, restricted);
+    }
+
     /** v0.5 F: the current value of a widget that asked for long-term statistics ({@code opts.history}). */
     public record HistorySample(UUID mainframeId, String uplinkId, String widgetId, String range, double value) {
     }

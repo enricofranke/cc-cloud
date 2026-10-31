@@ -117,7 +117,7 @@ public final class DemoScene {
             }
             uplink = u;
             var origin = level.getBlockEntity(wall) instanceof CloudDisplayBlockEntity d ? d.origin() : null;
-            if (origin != null) origin.configure(mf.getMainframeId(), mf.getDisplayName(), u.getUplinkId().toString(), true, player.getUUID());
+            if (origin != null) origin.configure(mf.getMainframeId(), mf.getDisplayName(), u.getUplinkId().toString(), true, false, player.getUUID());
         });
         // A powered relay behind the display wall (links show through walls in the analyzer overlay).
         var relayPos = base.offset(2, 0, 14);

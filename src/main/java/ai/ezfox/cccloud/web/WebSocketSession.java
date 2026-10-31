@@ -186,6 +186,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RedstoneDevice device -> redstoneDevice(current, device);
+            case ClientMessages.DisplayCommand command -> display(current, command);
             case ClientMessages.CardSettings settings -> cardSettings(current, settings);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
@@ -794,6 +795,33 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             });
         } catch (RejectedExecutionException e) {
             sendTypedResult("rs_result", message.reqId(), "offline");
+        }
+    }
+
+    /** Cloud Displays: the list and changes (layout.edit, rate limited like actions); answered with display_result. */
+    private void display(AuthStore.Device current, ClientMessages.DisplayCommand command) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.DISPLAY);
+        if (denied != null) {
+            sendStorage("display_result", "data", command.reqId(), GameBridge.StorageResult.fail(denied));
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendStorage("display_result", "data", command.reqId(), GameBridge.StorageResult.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.StorageResult result;
+                try {
+                    result = instance.bridge.display(current, mainframeId, command);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a display request from {}", ip, e);
+                    result = GameBridge.StorageResult.fail("internal_error");
+                }
+                sendStorage("display_result", "data", command.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendStorage("display_result", "data", command.reqId(), GameBridge.StorageResult.fail("offline"));
         }
     }
 

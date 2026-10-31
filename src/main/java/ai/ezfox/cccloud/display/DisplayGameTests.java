@@ -3,6 +3,7 @@ package ai.ezfox.cccloud.display;
 import static ai.ezfox.cccloud.ingame.InGameTestSupport.*;
 
 import ai.ezfox.cccloud.ModRegistry;
+import ai.ezfox.cccloud.access.Perm;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.compat.server.MainframeSection;
 import ai.ezfox.cccloud.ingame.InGamePayloads;
@@ -139,7 +140,7 @@ public final class DisplayGameTests {
                     level.setBlock(pos, state, net.minecraft.world.level.block.Block.UPDATE_ALL);
                     at.apply(pos).expand(); // what setPlacedBy does for a player
                 }
-                at.apply(wall.getFirst()).configure(mainframe, "Main", "sec", false, by);
+                at.apply(wall.getFirst()).configure(mainframe, "Main", "sec", false, false, by);
                 assertWall.run();
                 helper.assertTrue((border - 2) >> 4 != (border + 1) >> 4, "the wall crosses a chunk border");
             })
@@ -231,6 +232,96 @@ public final class DisplayGameTests {
                 helper.assertTrue(!uplink(helper).getWidget("lamp").value().getAsBoolean(), "a viewer's click is refused");
                 DisplayService.press(setup.owner(), d, section, lamp);
                 helper.assertTrue(uplink(helper).getWidget("lamp").value().getAsBoolean(), "an operator's click flips the toggle");
+            })
+            .thenSucceed();
+    }
+
+    private static String status(DisplayService.Actor actor, CloudDisplayBlockEntity d, java.util.UUID mainframe) {
+        for (var row : DisplayService.list(mainframe, actor.perms()).getAsJsonArray("displays")) {
+            var o = row.getAsJsonObject();
+            if (o.get("id").getAsString().equals(d.displayId().toString())) return o.get("status").getAsString();
+        }
+        return "not_listed";
+    }
+
+    private static ai.ezfox.cccloud.web.ClientMessages.DisplayCommand set(CloudDisplayBlockEntity d, String target, Boolean interactive, Boolean allowRestricted) {
+        return new ai.ezfox.cccloud.web.ClientMessages.DisplayCommand("r", "set", d.displayId(), target, interactive, allowRestricted);
+    }
+
+    /** Managing a display from the dashboard: the list, positions, restricted cards, custom cards, offline, unlink. */
+    public static void dashboard(GameTestHelper helper) {
+        var setup = mainframe(helper, "display_mgr_owner");
+        var admin = player(helper, "display_mgr_admin");
+        placeUplink(helper);
+        var screen = new BlockPos(1, 2, 2);
+        var server = helper.getLevel().getServer();
+        var all = java.util.EnumSet.allOf(Perm.class);
+        var edit = java.util.EnumSet.of(Perm.VIEW, Perm.LAYOUT_EDIT);
+        helper.startSequence()
+            .thenIdle(3)
+            .thenExecute(() -> {
+                bindAndFill(helper, setup);
+                grant(helper, setup, admin, Role.ADMIN);
+                place(helper, screen);
+                var card = new ItemStack(ModRegistry.CLOUD_LINK_CARD.get());
+                card.set(ModRegistry.LINKED_MAINFRAME.get(), setup.link());
+                DisplayService.bind(setup.owner(), display(helper, screen), card);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(uplink(helper).isOnline(), "uplink online"))
+            .thenExecute(() -> {
+                var d = display(helper, screen);
+                var id = setup.id();
+                var byAdmin = new DisplayService.Actor(admin.getUUID(), "admin", all);
+                var byEditor = new DisplayService.Actor(admin.getUUID(), "editor", edit);
+                helper.assertTrue(status(byAdmin, d, id).equals("no_section"), "listed once bound: " + status(byAdmin, d, id));
+                var listed = DisplayService.list(id, all).getAsJsonArray("displays").get(0).getAsJsonObject();
+                helper.assertTrue(listed.get("x").getAsInt() == d.getBlockPos().getX() && listed.has("dim"), "view.positions sees where it is");
+                var hidden = DisplayService.list(id, edit).getAsJsonArray("displays").get(0).getAsJsonObject();
+                helper.assertTrue(!hidden.has("x") && !hidden.has("dim"), "no position without view.positions: " + hidden);
+
+                String serverCard = MainframeSection.sectionId(id, "server").toString();
+                helper.assertTrue("not_allowed".equals(DisplayService.command(server, id, byAdmin, set(d, serverCard, null, null))), "restricted needs the choice first");
+                helper.assertTrue("not_allowed".equals(DisplayService.command(server, id, byEditor, set(d, null, null, true))), "the choice needs view.positions");
+                helper.assertTrue("unknown_target".equals(DisplayService.command(server, id, byAdmin, set(d, "c:nope", null, null))), "unknown custom card");
+                helper.assertTrue(DisplayService.command(server, id, byAdmin, set(d, null, null, true)) == null, "an admin allows restricted cards");
+                helper.assertTrue(DisplayService.command(server, id, byAdmin, set(d, serverCard, null, null)) == null, "then picks one");
+                helper.assertTrue(d.allowRestricted() && admin.getUUID().equals(d.configuredBy()), "saved, with who chose it");
+                helper.assertTrue(status(byAdmin, d, id).equals("ok"), "a restricted card on the display: " + status(byAdmin, d, id));
+
+                // the right is checked live: the configuring player loses it, the card goes
+                grant(helper, setup, admin, Role.VIEWER);
+                helper.assertTrue(status(byAdmin, d, id).equals("restricted"), "lost the right: " + status(byAdmin, d, id));
+                grant(helper, setup, admin, Role.ADMIN);
+                helper.assertTrue(status(byAdmin, d, id).equals("ok"), "got it back");
+
+                // someone who may not see restricted cards can't leave the choice behind
+                helper.assertTrue(DisplayService.command(server, id, byEditor, set(d, uplink(helper).getUplinkId().toString(), null, null)) == null, "picks a plain card");
+                helper.assertTrue(!d.allowRestricted(), "the choice is gone with the new target");
+
+                // a custom card: composed on the server, clicks reach the real widget
+                ai.ezfox.cccloud.web.WebHub.INSTANCE.publishLayout(id, com.google.gson.JsonParser.parseString(("{'v':2,'pages':[{'id':'main','title':'Base'}],"
+                    + "'cards':{'c:wall':{'title':'Wall','page':'main','x':0,'y':0,'w':6,'h':4}},"
+                    + "'widgets':{'" + uplink(helper).getUplinkId() + "/lamp':{'card':'c:wall','x':0,'y':0,'w':6,'h':2,'label':'Light'}}}").replace('\'', '"')).getAsJsonObject());
+                helper.assertTrue(DisplayService.command(server, id, byAdmin, set(d, "c:wall", true, null)) == null, "picks the custom card");
+                var section = DisplayService.parse(d.readContent());
+                helper.assertTrue(section != null && "Wall".equals(section.get("title").getAsString()) && section.toString().contains("Light"), "the composed card: " + section);
+                var box = DisplayLayout.layout(section, d.width(), d.height()).boxes().getFirst();
+                DisplayService.press(setup.owner(), d, section, box);
+                helper.assertTrue(uplink(helper).getWidget("lamp").value().getAsBoolean(), "a click on a composed card flips the real toggle");
+
+                setup.mainframe().setEnabled(false);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(display(helper, screen).readContent().contains("offline"), "a disabled mainframe says offline"))
+            .thenExecute(() -> {
+                var d = display(helper, screen);
+                var byAdmin = new DisplayService.Actor(admin.getUUID(), "admin", all);
+                var byEditor = new DisplayService.Actor(admin.getUUID(), "editor", edit);
+                helper.assertTrue("not_allowed".equals(DisplayService.command(server, setup.id(), byEditor,
+                    new ai.ezfox.cccloud.web.ClientMessages.DisplayCommand("r", "unlink", d.displayId(), null, null, null))), "unlink needs network.link");
+                helper.assertTrue(DisplayService.command(server, setup.id(), byAdmin,
+                    new ai.ezfox.cccloud.web.ClientMessages.DisplayCommand("r", "unlink", d.displayId(), null, null, null)) == null, "unlink");
+                helper.assertTrue(d.mainframeId() == null, "unlinked");
+                helper.assertTrue(status(byAdmin, d, setup.id()).equals("not_listed"), "gone from the list");
             })
             .thenSucceed();
     }

@@ -70,6 +70,11 @@ public interface GameBridge {
         return "unsupported";
     }
 
+    /** Cloud Displays: {@code list} (data) or a change (layout.edit, re-checked live here). */
+    default StorageResult display(AuthStore.Device device, UUID mainframeId, ClientMessages.DisplayCommand message) {
+        return StorageResult.fail("unsupported");
+    }
+
     /** v0.5 rules command (role already checked by the session, re-checked live here). */
     RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command);
 

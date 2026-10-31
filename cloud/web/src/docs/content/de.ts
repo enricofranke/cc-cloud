@@ -721,7 +721,9 @@ Ein Handgerät, das dein Dashboard **im Spiel** öffnet – ein eigenes Fenster 
 Ein Display-Block, der eine Dashboard-Karte oder -Seite **in der Welt** zeigt, wie ein CC-Monitor.
 
 - Mehrere nebeneinander ergeben einen größeren Bildschirm (Rechtecke bis **8 × 6**).
-- Per Rechtsklick in seinem Fenster Karte oder Seite wählen. Standardmäßig nur zum Ansehen; Operatoren können **klickbare Buttons** erlauben – dann drückt ein Rechtsklick auf einen Button im Display ihn.
+- Mit Schleichen + Rechtsklick in seinem Fenster die Karte wählen, oder im Dashboard unter **Cloud-Displays** in den Einstellungen (braucht „Layout bearbeiten“): Dort stehen alle Displays mit Position, Größe, Status und Vorschau. Es kann eine Originalkarte, eine eigene Karte oder eine ganze Seite zeigen. Standardmäßig nur zum Ansehen; Operatoren können **klickbare Buttons** erlauben – dann drückt ein Rechtsklick auf einen Button im Display ihn.
+- **Eingeschränkte Karten** (Server, Claims, Waystones) bleiben von Displays fern, außer du erlaubst sie auf diesem einen Display. Das dürfen nur Spieler, die sie selbst sehen dürfen, und **jeder vor dem Display kann sie lesen**. Das endet, sobald der Spieler, der es erlaubt hat, dieses Recht verliert.
+- Ist der Mainframe aus, ohne Strom oder deaktiviert, zeigt das Display **Mainframe offline**. Reichweite und Dimension spielen keine Rolle: Ein verbundenes Display funktioniert überall.
 - Aktualisiert höchstens 4× pro Sekunde und wird ab 48 Blöcken Entfernung nicht mehr gezeichnet – schont Server und FPS.
 
 ## Drahtloses Redstone {#redstone}

@@ -314,6 +314,17 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.StorageResult display(AuthStore.Device device, UUID mainframeId, ClientMessages.DisplayCommand message) {
+        String error = check(device, mainframeId, AccessGate.Kind.DISPLAY.perm);
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        var perms = access(device, mainframeId).perms();
+        if (message.op().equals("list")) return new GameBridge.StorageResult(null, ai.ezfox.cccloud.display.DisplayService.list(mainframeId, perms));
+        var actor = new ai.ezfox.cccloud.display.DisplayService.Actor(device.player(), device.playerName(), perms);
+        error = ai.ezfox.cccloud.display.DisplayService.command(server, mainframeId, actor, message);
+        return error == null ? new GameBridge.StorageResult(null, null) : GameBridge.StorageResult.fail(error);
+    }
+
+    @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         String error = check(device, mainframeId, (command.edits() ? AccessGate.Kind.RULE_EDIT : AccessGate.Kind.RULE_OPERATE).perm);
         if (error != null) return new GameBridge.RuleResult(error, null, null);

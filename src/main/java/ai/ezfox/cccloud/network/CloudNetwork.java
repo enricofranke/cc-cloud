@@ -212,6 +212,7 @@ public final class CloudNetwork {
         UPLINKS.clear();
         BRIDGE_SECTIONS.clear();
         RELAYS.clear();
+        ai.ezfox.cccloud.display.DisplayRegistry.clear();
         NetworkService.clear();
         ai.ezfox.cccloud.upgrade.Upgrades.clear();
         ai.ezfox.cccloud.upgrade.ChunkAnchor.clear();

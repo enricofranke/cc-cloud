@@ -80,6 +80,7 @@ final class DisplayPainter {
         var value = widget.get("value");
         int x = box.x(), y = box.y(), w = box.w();
         switch (box.type()) {
+            case "heading" -> g.text(GlyphCanvas.fit(label, w), x, y + 2, GOLD); // a card on a composed page
             case "label" -> {
                 if (!label.isEmpty()) g.text(GlyphCanvas.fit(label, w), x, y, DIM);
                 g.text(GlyphCanvas.fit(text(value), w), x, y + 11, TEXT);

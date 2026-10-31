@@ -8,8 +8,8 @@ import net.minecraft.world.entity.player.Inventory;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 
 /**
- * The Cloud Display screen: size, linked mainframe and shown section; for admins the section picker (restricted
- * sections are not offered), the "in-world clicks" switch and unlink.
+ * The Cloud Display screen: size, linked mainframe and what it shows; for admins the picker (sections, custom cards,
+ * pages; restricted sections only once this display allows them), the "in-world clicks" switch, that choice and unlink.
  */
 public class DisplayScreen extends CloudScreen<DisplayMenu> {
     public DisplayScreen(DisplayMenu menu, Inventory inventory, Component title) {
@@ -56,6 +56,14 @@ public class DisplayScreen extends CloudScreen<DisplayMenu> {
             c.toggle(x + 4, y + 3, interactive, true, () -> send("interactive", String.valueOf(!interactive)));
             c.text(Component.translatable("cccloud.display.interactive"), x + 32, y + 5, CloudGui.TEXT);
         }));
+        if (bool(view, "canRestricted")) {
+            boolean allow = bool(view, "allowRestricted");
+            rows.add(new Row(ROW, (c, x, y, w) -> {
+                c.toggle(x + 4, y + 3, allow, true, () -> send("restricted", String.valueOf(!allow)));
+                c.text(Component.translatable("cccloud.display.allow_restricted"), x + 32, y + 5, allow ? CloudGui.YELLOW : CloudGui.TEXT);
+            }));
+            textRow(Component.translatable("cccloud.display.restricted_warning"), CloudGui.YELLOW);
+        }
         heading("cccloud.display.sections");
         String current = str(view, "section");
         var sections = view.has("sections") ? view.getAsJsonArray("sections") : new com.google.gson.JsonArray();
@@ -63,17 +71,20 @@ public class DisplayScreen extends CloudScreen<DisplayMenu> {
         for (var s : sections) {
             var section = s.getAsJsonObject();
             String id = str(section, "uplinkId");
-            String name = str(section, "title");
+            String kind = str(section, "kind");
+            String label = str(section, "title");
+            String name = label.isEmpty() ? Component.translatable("cccloud.tablet.untitled").getString()
+                : kind.isEmpty() ? label : Component.translatable("cccloud.display.kind." + kind, label).getString();
             boolean selected = id.equals(current);
             rows.add(new Row(ROW, (c, x, y, w) -> {
                 CloudGui.row(c.g(), x, y, w, ROW, false);
-                c.text(name.isEmpty() ? Component.translatable("cccloud.tablet.untitled").getString() : name, x + 6, y + 5,
+                c.text(name, x + 6, y + 5,
                     selected ? CloudGui.GREEN : CloudGui.TEXT, w - 80);
                 var show = Component.translatable(selected ? "cccloud.display.shown" : "cccloud.display.show");
                 c.button(x + w - c.buttonWidth(show) - 3, y + 2, show, CloudGui.ButtonStyle.NORMAL, !selected, () -> send("select", id));
             }));
         }
-        rows.add(new Row(22, (c, x, y, w) -> {
+        if (bool(view, "canUnlink")) rows.add(new Row(22, (c, x, y, w) -> {
             var unlink = Component.translatable("cccloud.gui.unlink");
             c.button(x + w - c.buttonWidth(unlink) - 3, y + 4, unlink, CloudGui.ButtonStyle.DANGER, true, () -> send("unlink", ""));
         }));

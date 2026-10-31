@@ -113,6 +113,20 @@ interface PendingPairing {
   token?: string;
   createdAt: number;
 }
+interface MockDisplay {
+  id: string;
+  dim: string;
+  x: number;
+  y: number;
+  z: number;
+  w: number;
+  h: number;
+  target: string;
+  interactive: boolean;
+  allowRestricted: boolean;
+  unloaded?: boolean;
+  broken?: "no_rights" | "too_large";
+}
 interface Mainframe {
   id: string;
   name: string;
@@ -126,6 +140,8 @@ interface Mainframe {
   layout: object | null;
   layoutSaves: number[];
   access: Access;
+  /** Cloud Displays: linked rectangles; `unloaded` = the chunk is gone, `broken` = the status the mock can't derive */
+  displays?: MockDisplay[];
   /** v0.4 network map */
   net?: { nodes: SimNode[]; lastSeen: Record<string, number> };
   /** v0.7 upgrade effects: device limit (null = Quantum Core) and the FE factor of an Efficiency card */
@@ -343,6 +359,24 @@ export async function createMockServer(opts: MockOptions = {}) {
   }
   /** WebSocket: null when allowed; else not_allowed, or read_only for sessions without act.buttons. */
   const denied = (c: Client, perm: string) => (c.perms.includes(perm) ? null : c.canControl ? "not_allowed" : "read_only");
+  /** Does a display target exist: a section, a custom card or a page of the layout? */
+  const displayTargetExists = (m: Mainframe, target: string) => {
+    if (m.uplinks.has(target)) return true;
+    const doc = (m.layout ?? {}) as { pages?: { id: string }[]; cards?: Record<string, unknown> };
+    if (target.startsWith("c:")) return !!doc.cards?.[target];
+    if (target.startsWith("p:")) return doc.pages?.length ? doc.pages.some((p) => p.id === target.slice(2)) : target === "p:main";
+    return false;
+  };
+  /** DisplayService.status: what the mod's readContent reports. */
+  const displayStatus = (m: Mainframe, d: MockDisplay) => {
+    if (d.unloaded) return "unloaded";
+    if (!d.target) return "no_section";
+    if (d.broken === "no_rights") return d.broken;
+    if (!m.online || !m.enabled) return "offline";
+    if (!displayTargetExists(m, d.target)) return "missing";
+    if (m.uplinks.get(d.target)?.restricted && !d.allowRestricted) return "restricted";
+    return d.broken ?? "ok";
+  };
   /** HTTP gate: 403 no_access / not_allowed, else the mainframe, role and perms. */
   const gate = (t: Token, mfId: string, perm: string) => {
     const m = mainframes.get(mfId);
@@ -1650,6 +1684,13 @@ export async function createMockServer(opts: MockOptions = {}) {
     demoKey({ name: "Stock sheet", player: "Lisa", scopes: ["read:storage"], created: now - 40 * day, expires: now - 3 * day, lastUsed: now - 5 * day, lastIp: "198.51.100.7", ips: [] });
   }
   // v0.5 D: one Discord target
+  // Cloud Displays of the base (the mock has no blocks): one of each kind of state
+  base.displays = [
+    { id: "d1000000-0000-0000-0000-000000000001", dim: "minecraft:overworld", x: 118, y: 72, z: -40, w: 4, h: 3, target: REACTOR, interactive: true, allowRestricted: false },
+    { id: "d1000000-0000-0000-0000-000000000002", dim: "minecraft:overworld", x: 124, y: 66, z: -52, w: 6, h: 2, target: "p:main", interactive: false, allowRestricted: false },
+    { id: "d1000000-0000-0000-0000-000000000003", dim: "minecraft:the_nether", x: 12, y: 80, z: 7, w: 1, h: 1, target: "", interactive: false, allowRestricted: false },
+    { id: "d1000000-0000-0000-0000-000000000004", dim: "minecraft:overworld", x: 400, y: 64, z: 310, w: 2, h: 2, target: COMPUTER, interactive: false, allowRestricted: false, unloaded: true },
+  ];
   base.push = [
     { id: "p1", type: "discord", name: "Base channel", url: "https://discord.com/api/webhooks/1234567890/abcdefghijk7f3a", minLevel: "warn", events: ["alerts", "rules", "power"], enabled: true, lastSent: Date.now() - 42 * 60_000, lastResult: "ok" },
   ];
@@ -1869,7 +1910,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
           const type =
-            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "card_settings" ? "card_settings_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
+            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "display" ? "display_result" : t === "card_settings" ? "card_settings_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -2095,6 +2136,43 @@ export async function createMockServer(opts: MockOptions = {}) {
           cu.cardSettings.settings = { show, charts: Array.isArray(st.charts) ? st.charts : [], toggle: st.toggle ?? null, pin: st.pin !== false };
           log(`${c.user} changed the settings of card ${cu.title}`);
           return cres(true);
+        }
+        if (msg.t === "display") {
+          const dres = (ok: boolean, error?: string, data?: object) => sendTo(ws, { t: "display_result", reqId: msg.reqId, ok, ...(error ? { error } : {}), ...(data ? { data } : {}) });
+          const dd = denied(c, "layout.edit");
+          if (dd) return dres(false, dd);
+          const list = (m.displays ??= []);
+          if (msg.op === "list") {
+            const positions = c.perms.includes("view.positions");
+            return dres(true, undefined, {
+              displays: list.map((d) => ({
+                id: d.id, w: d.w, h: d.h, target: d.target, interactive: d.interactive, allowRestricted: d.allowRestricted, status: displayStatus(m, d),
+                ...(positions ? { dim: d.dim, x: d.x, y: d.y, z: d.z } : {}),
+              })),
+            });
+          }
+          const d = list.find((x) => x.id === msg.id);
+          if (!d) return dres(false, "unknown_display");
+          if (d.unloaded) return dres(false, "unloaded");
+          if (msg.op === "unlink") {
+            const nl = denied(c, "network.link");
+            if (nl) return dres(false, nl);
+            m.displays = list.filter((x) => x !== d);
+            return dres(true);
+          }
+          const sees = c.perms.includes("view.positions");
+          if (msg.target === undefined && msg.interactive === undefined && msg.allowRestricted === undefined) return dres(false, "invalid_message");
+          if (msg.allowRestricted === true && !sees) return dres(false, "not_allowed");
+          const allow = msg.allowRestricted ?? d.allowRestricted;
+          if (msg.target !== undefined && msg.target !== d.target) {
+            if (msg.target && !displayTargetExists(m, msg.target)) return dres(false, "unknown_target");
+            if (m.uplinks.get(msg.target)?.restricted && !(allow && sees)) return dres(false, "not_allowed");
+            d.target = msg.target;
+            d.allowRestricted = allow && sees;
+          } else d.allowRestricted = allow;
+          d.interactive = msg.interactive ?? d.interactive;
+          log(`${c.user} changed a Cloud Display`);
+          return dres(true);
         }
         if (msg.t === "rs_device") {
           // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown
