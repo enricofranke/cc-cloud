@@ -9,6 +9,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   an item search. Integrated Terminals show the same network, so they need no card of their own.
 - **Integrated Crafting:** an uplink on the cable with a Crafting Interface lists the network's crafting jobs and what each
   waits for, with a Cancel all button.
+- **Classic Pipes:** an uplink on a networked pipe shows the logistics network: items with a search, craftable types, requests
+  under way and what stocking pipes are short of.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.

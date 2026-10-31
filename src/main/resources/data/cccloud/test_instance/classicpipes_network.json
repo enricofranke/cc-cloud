@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "classicpipes"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:classicpipes_network",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

@@ -840,6 +840,16 @@
    "controls": "Cancel all jobs (`act.buttons`, confirm)",
    "tested": "yes (a job handed to the interface shows its row, Cancel all removes it; no job runs to completion, nothing is behind the interface)",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Classic Pipes",
+   "id": "classicpipes",
+   "version": "1.1.7",
+   "what": "**Pipe Network** card from an uplink on any networked pipe (routing, request, provider, stocking and so on): what the Request Pipe's list offers (items, types, craftable types) with an item search, pipes, requests under way, what stocking pipes are short of; warn alert once when something goes missing. Destinations are not shown.",
+   "controls": "none: a request needs a player and a pipe to deliver to",
+   "tested": "yes (request pipe and provider pipe on a chest: 24 redstone counted and found)",
+   "skipped": false
   }
  ]
 }

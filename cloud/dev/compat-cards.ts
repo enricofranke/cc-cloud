@@ -1014,4 +1014,22 @@ export const COMPAT_CARDS: SampleCard[] = [
       button("cancel", "Cancel all jobs", { confirm: true, color: "red" }),
     ],
   },
+
+  // Classic Pipes
+  {
+    key: "classicpipes_network",
+    mod: "classicpipes",
+    title: "Pipe Network",
+    template: "classicpipes_network",
+    widgets: [
+      label("status", "Status", "Connected"),
+      label("items", "Total items", "18.2 k", { span: 2 }),
+      label("types", "Item types", "212", { span: 2 }),
+      label("craftable", "Craftable types", "9", { span: 2 }),
+      label("pipes", "Pipes", "27", { span: 2 }),
+      label("requests", "Requests under way", "64× Iron Ingot"),
+      label("missing", "Stocking short of", "Nothing"),
+      itemSearch("search", "Search network"),
+    ],
+  },
 ];
