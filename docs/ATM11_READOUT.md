@@ -9,10 +9,10 @@ Machines in the table: **827**, placed: **826**.
 | Result | Machines | Meaning |
 |---|---:|---|
 | OK | 611 | card shown, at least one real value |
-| IDLE | 187 | card shown, only a status word (not formed, no plant), no reading |
-| EMPTY | 5 | card shown, every value zero or empty |
+| IDLE | 191 | card shown, only a status word (not formed, no plant), no reading |
+| EMPTY | 6 | card shown, every value zero or empty |
 | NO_CARD | 2 | uplink online, but no ready-made card |
-| NO_SECTION | 21 | the dashboard has no section for this uplink |
+| NO_SECTION | 16 | the dashboard has no section for this uplink |
 | NOT_PLACED | 1 | the block could not be placed |
 
 ## Bug list
@@ -196,22 +196,22 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 
 | Card | Online | Widgets (id = value, ⚠ = zero or empty) |
 |---|---|---|
-| Energy Cell Nitro | yes | stored=38.9; energy=777 M / 2.00 G FE; flow=0 FE/t ⚠; history=38.9; tier=Nitro; redstone=Ignore redstone |
+| Energy Cell Nitro | yes | stored=39; energy=779 M / 2.00 G FE; flow=0 FE/t ⚠; history=39; tier=Nitro; redstone=Ignore redstone |
 | Iron Furnace | yes | status=Idle; progress=0 ⚠; fuel=– ⚠; input=Empty ⚠; output=32× Iron Ingot; energy=100; redstone=Ignore redstone |
-| Energy Cell Hardened | yes | stored=10.1; energy=1.01 M / 10.0 M FE; flow=0 FE/t ⚠; history=10.1; tier=Hardened; redstone=Ignore redstone |
+| Energy Cell Hardened | yes | stored=10.2; energy=1.02 M / 10.0 M FE; flow=0 FE/t ⚠; history=10.2; tier=Hardened; redstone=Ignore redstone |
 |  | no |  |
 | Gallery | yes | all_on=– ⚠; all_off=– ⚠; d_27b031566377=false; d_3edddbf90222=– ⚠; d_81022e63fdad=false; d_81022e63fdad_b=0 ⚠; d_9698ec96cce4=false; d_9698ec96cce4_l=0 ⚠; d_881d726d2559=false |
 | Energy Cell Hardened | yes | stored=10.1; energy=1.01 M / 10.0 M FE; flow=0 FE/t ⚠; history=10.1; tier=Hardened; redstone=Ignore redstone |
 | Iron Furnace | yes | status=Idle; progress=0 ⚠; fuel=– ⚠; input=Empty ⚠; output=32× Iron Ingot; energy=100; redstone=Ignore redstone |
-| Energy Cell Nitro | yes | stored=39; energy=779 M / 2.00 G FE; flow=0 FE/t ⚠; history=39; tier=Nitro; redstone=Ignore redstone |
+| Energy Cell Nitro | yes | stored=39.1; energy=781 M / 2.00 G FE; flow=0 FE/t ⚠; history=39.1; tier=Nitro; redstone=Ignore redstone |
 | Copper Generator | yes | stored=100; energy=5.00 k / 5.00 k FE; flow=0 FE/t ⚠; history=100; running=false; generation=0 FE/t ⚠; burn=0 ⚠ |
 | Copper Generator | yes | stored=100; energy=5.00 k / 5.00 k FE; flow=0 FE/t ⚠; history=100; running=false; generation=0 FE/t ⚠; burn=0 ⚠ |
 | Gateways | yes | active=false; count=0 ⚠; empty=No active gates |
 | Waystones | yes | count=0 ⚠; empty=No waystones yet |
-| Quests | yes | team=e2e_admin#b2a566f5; progress=0 ⚠; chapters=0 / 42; quests=3 / 4902; recent1=Welcome Early Birds (Chapter 1: New Beginning…; recent2=Welcome Early Birds to ATM11 (Welcome) – 1 h …; recent3=We haven't moved yet! (Ice and Fire) – 1 h 3 … |
+| Quests | yes | team=e2e_admin#b2a566f5; progress=0 ⚠; chapters=0 / 42; quests=3 / 4902; recent1=Welcome Early Birds (Chapter 1: New Beginning…; recent2=Welcome Early Birds to ATM11 (Welcome) – 1 h …; recent3=We haven't moved yet! (Ice and Fire) – 1 h 6 … |
 | Training dummies | yes | hit=false; best=0 DPS ⚠; dps=0 ⚠; empty=No training dummy within 64 blocks |
 | Warps | yes | count=0 ⚠; empty=No warps set (/setwarp) |
-| Server | yes | tps=20; mspt=11.7; mspt_history=11.7; players=0 / 2; uptime=2 min 16 s; memory=1604; dimensions=overworld 11.0 ms · the_end 0.1 ms · dungeon …; spark_tps=20.0 / 20.3 / 20.1 / 20.0; spark_mspt=12.6 ms avg, 156.9 ms max; spark_cpu=5.3 |
+| Server | yes | tps=20; mspt=11.8; mspt_history=12.1; players=0 / 2; uptime=2 min 26 s; memory=1195; dimensions=overworld 11.1 ms · moon 0.0 ms · the_other 0…; spark_tps=20.0 / 20.0 / 19.9 / 20.0; spark_mspt=12.3 ms avg, 31.9 ms max; spark_cpu=3.4 |
 | Team claims | yes | team=e2e_admin#b2a566f5; claimed=0 / 500; forced=0 / 25; dimensions=– ⚠ |
 
 ## Machines
@@ -280,7 +280,7 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 |---|---|---|---|
 | altar_core | lua | NO_CARD |  |
 | obelisk | arsmagica_etherium | OK | etherium_neutral=0 ⚠; etherium_neutral_text=0 / 5.00 k |
-| celestial_prism | arsmagica_etherium | OK | etherium_light=2.1; etherium_light_text=107 / 5.00 k |
+| celestial_prism | arsmagica_etherium | OK | etherium_light=6.6; etherium_light_text=332 / 5.00 k |
 | black_aurem | arsmagica_etherium | OK | etherium_dark=0 ⚠; etherium_dark_text=0 / 5.00 k |
 
 ### cabletiers (1/1 OK)
@@ -456,8 +456,8 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 | configurable_ehv_transformer | energizedpower_machine | OK | stored=47.7; energy=1.00 M / 2.10 M FE; flow=0 FE/t ⚠; history=47.7; redstone=Ignore redstone |
 | configurable_uhv_transformer | energizedpower_machine | OK | stored=6; energy=1.00 M / 16.8 M FE; flow=0 FE/t ⚠; history=6; redstone=Ignore redstone |
 | battery_box | energizedpower_machine | OK | stored=21.9; energy=14.3 k / 65.5 k FE; flow=0 FE/t ⚠; history=21.9; running=false |
-| advanced_battery_box | energizedpower_machine | OK | stored=15; energy=1.26 M / 8.39 M FE; flow=0 FE/t ⚠; history=15; running=false |
-| elite_battery_box | energizedpower_machine | OK | stored=1.1; energy=3.00 M / 268 M FE; flow=0 FE/t ⚠; history=1.1; running=false |
+| advanced_battery_box | energizedpower_machine | OK | stored=18.2; energy=1.52 M / 8.39 M FE; flow=0 FE/t ⚠; history=18.2; running=false |
+| elite_battery_box | energizedpower_machine | OK | stored=1.9; energy=5.00 M / 268 M FE; flow=0 FE/t ⚠; history=1.9; running=false |
 | auto_crafter | energizedpower_machine | OK | stored=100; energy=2.05 k / 2.05 k FE; flow=0 FE/t ⚠; history=100; running=false; redstone=Ignore redstone |
 | advanced_auto_crafter | energizedpower_machine | OK | stored=100; energy=16.4 k / 16.4 k FE; flow=0 FE/t ⚠; history=100; running=false; redstone=Ignore redstone |
 | elite_auto_crafter | energizedpower_machine | OK | stored=100; energy=8.39 M / 8.39 M FE; flow=0 FE/t ⚠; history=100; running=false; redstone=Ignore redstone |
@@ -640,7 +640,7 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 |---|---|---|---|
 | itemcollector | justdirethings_machine | IDLE | status=Active; speed=Every 20 ticks; redstone=Always on *(machine has only settings, no reading)* |
 | experienceholder | justdirethings_machine | IDLE | status=Waits for a redstone pulse; speed=Every 20 ticks; extra=0 XP ⚠; redstone=One step per pulse *(machine has only settings, no reading)* |
-| generatort1 | justdirethings_generator | OK | status=Generating; output=60 FE/t; energy=44.9; fuel=32; extra=13× Coal; redstone=Always on |
+| generatort1 | justdirethings_generator | OK | status=Generating; output=60 FE/t; energy=53; fuel=91; extra=9× Coal; redstone=Always on |
 | generatorfluidt1 | justdirethings_generator | IDLE | status=No fuel; output=0 FE/t ⚠; energy=0 ⚠; fluid=Empty ⚠; redstone=Always on *(machine has only settings, no reading)* |
 | energytransmitter | justdirethings_machine | OK | status=Active; speed=Every 50 ticks; energy=100; extra=1.00 M / 1.00 M FE; redstone=Always on |
 | blockbreakert1 | justdirethings_machine | IDLE | status=Active; speed=Every 20 ticks; redstone=Always on *(machine has only settings, no reading)* |
@@ -693,7 +693,7 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 | furnace | mysticalagriculture_machine | OK | status=Idle; progress=0 ⚠; energy=100; fuel=– ⚠; tier=None ⚠ |
 | seed_reprocessor | mysticalagriculture_machine | OK | status=Idle; progress=0 ⚠; energy=100; fuel=– ⚠; tier=None ⚠ |
 | soul_extractor | mysticalagriculture_machine | OK | status=Idle; progress=0 ⚠; energy=100; fuel=– ⚠; tier=None ⚠ |
-| harvester | mysticalagriculture_machine | OK | status=Working; progress=60; energy=100; fuel=– ⚠; tier=None ⚠ |
+| harvester | mysticalagriculture_machine | OK | status=Working; progress=9; energy=100; fuel=– ⚠; tier=None ⚠ |
 | soulium_spawner | mysticalagriculture_machine | OK | status=Idle; progress=0 ⚠; energy=100; fuel=– ⚠; tier=None ⚠ |
 | ore_infuser | mysticalagriculture_machine | OK | status=Idle; progress=0 ⚠; energy=100; fuel=– ⚠; tier=None ⚠ |
 
@@ -738,7 +738,7 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 | Machine | Card | Result | Widgets (id = value, ⚠ = zero or empty) |
 |---|---|---|---|
 | energy_cell_starter | powah_cell | OK | stored=0.7; energy=7.00 k / 1.00 M FE; flow=0 FE/t ⚠; history=0.7; tier=Starter; redstone=Ignore redstone |
-| energy_cell_basic | powah_cell | OK | stored=0.7; energy=28.0 k / 4.00 M FE; flow=0 FE/t ⚠; history=0.7; tier=Basic; redstone=Ignore redstone |
+| energy_cell_basic | powah_cell | OK | stored=0.8; energy=32.0 k / 4.00 M FE; flow=0 FE/t ⚠; history=0.8; tier=Basic; redstone=Ignore redstone |
 | energy_cell_hardened | powah_cell | OK | stored=0.7; energy=70.0 k / 10.0 M FE; flow=0 FE/t ⚠; history=0.7; tier=Hardened; redstone=Ignore redstone |
 | energy_cell_blazing | powah_cell | OK | stored=0.7; energy=280 k / 40.0 M FE; flow=0 FE/t ⚠; history=0.7; tier=Blazing; redstone=Ignore redstone |
 | energy_cell_niotic | powah_cell | OK | stored=0.7; energy=700 k / 100 M FE; flow=0 FE/t ⚠; history=0.7; tier=Niotic; redstone=Ignore redstone |
@@ -799,8 +799,8 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 | solar_panel_hardened | powah_generator | OK | stored=100; energy=200 k / 200 k FE; flow=0 FE/t ⚠; history=100; running=false; generation=0 FE/t ⚠; redstone=Ignore redstone |
 | solar_panel_blazing | powah_generator | OK | stored=100; energy=800 k / 800 k FE; flow=0 FE/t ⚠; history=100; running=false; generation=0 FE/t ⚠; redstone=Ignore redstone |
 | solar_panel_niotic | powah_generator | OK | stored=100; energy=2.00 M / 2.00 M FE; flow=0 FE/t ⚠; history=100; running=false; generation=0 FE/t ⚠; redstone=Ignore redstone |
-| solar_panel_spirited | powah_generator | OK | stored=75.3; energy=6.02 M / 8.00 M FE; flow=+800 FE/t; history=75.3; running=true; generation=800 FE/t; redstone=Ignore redstone |
-| solar_panel_nitro | powah_generator | OK | stored=37.7; energy=15.1 M / 40.0 M FE; flow=+2.00 k FE/t; history=37.6; running=true; generation=2.00 k FE/t; redstone=Ignore redstone |
+| solar_panel_spirited | powah_generator | OK | stored=88.9; energy=7.11 M / 8.00 M FE; flow=+800 FE/t; history=87.7; running=true; generation=800 FE/t; redstone=Ignore redstone |
+| solar_panel_nitro | powah_generator | OK | stored=44.5; energy=17.8 M / 40.0 M FE; flow=+2.00 k FE/t; history=43.8; running=true; generation=2.00 k FE/t; redstone=Ignore redstone |
 | player_transmitter_starter | – | NO_SECTION |  *(breaks when set by command, same card as the cells)* |
 | player_transmitter_basic | – | NO_SECTION |  *(breaks when set by command, same card as the cells)* |
 | player_transmitter_hardened | – | NO_SECTION |  *(breaks when set by command, same card as the cells)* |
@@ -1276,7 +1276,7 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 
 | Machine | Card | Result | Widgets (id = value, ⚠ = zero or empty) |
 |---|---|---|---|
-| solar_panel | energy | OK | stored=58.8; energy=7.53 k / 12.8 k FE; flow=+1 FE/t; history=58.7 |
+| solar_panel | energy | OK | stored=69.5; energy=8.89 k / 12.8 k FE; flow=+1 FE/t; history=68.4 |
 | fluid_tank_t1 | tank | OK | fill=80; fluid=Water; amount=4.00 k / 5.00 k mB |
 
 ### thaumaturge (2/2 OK)
@@ -1311,9 +1311,9 @@ Sections without a machine in the table (server, claims, quests, waystones and t
 
 | Machine | Card | Result | Widgets (id = value, ⚠ = zero or empty) |
 |---|---|---|---|
-| cloud_switch | – | NO_SECTION |  *(no redstone signal in the gallery)* |
-| cloud_button | – | NO_SECTION |  *(no redstone signal in the gallery)* |
-| cloud_lamp | – | NO_SECTION |  *(no redstone signal in the gallery)* |
-| cloud_sensor | – | NO_SECTION |  *(no redstone signal in the gallery)* |
-| advanced_cloud_sensor | – | NO_SECTION |  *(no redstone signal in the gallery)* |
+| cloud_switch | redstone | IDLE | d_881d726d2559=false *(no redstone signal in the gallery)* |
+| cloud_button | redstone | EMPTY | d_3edddbf90222=– ⚠ *(no redstone signal in the gallery)* |
+| cloud_lamp | redstone | IDLE | d_81022e63fdad=false; d_81022e63fdad_b=0 ⚠ *(no redstone signal in the gallery)* |
+| cloud_sensor | redstone | IDLE | d_9698ec96cce4=false; d_9698ec96cce4_l=0 ⚠ *(no redstone signal in the gallery)* |
+| advanced_cloud_sensor | redstone | IDLE | d_27b031566377=false *(no redstone signal in the gallery)* |
 | computer_advanced | auto | NO_CARD | power=true; turn_on=– ⚠; reboot=– ⚠; shutdown=– ⚠; redstone=[{"side":"top","out":0,"in":0},{"side":"botto… *(peripheral card of a computer without a script)* |

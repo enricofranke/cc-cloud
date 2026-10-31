@@ -85,8 +85,9 @@ if (!state.tokens.owner) {
 const dash = await Dash.open(state.tokens.owner, { mainframeId: state.mainframe.id, settle: 6000 });
 /** Cloud Switches and the like are widgets of their group's card, `d_<id>`: read as a section of their own. */
 const devicePart = (rec) => {
-  const group = [...dash.sections.values()].find((x) => x.title === rec.group);
   const prefix = `d_${rec.uplinkId?.replaceAll("-", "").slice(0, 12)}`;
+  // a rebuilt gallery leaves the old group behind as an offline section of the same name
+  const group = [...dash.sections.values()].find((x) => x.title === rec.group && x.widgets?.some((w) => w.id.startsWith(prefix)));
   const widgets = group?.widgets?.filter((w) => w.id.startsWith(prefix)) ?? [];
   return widgets.length ? { ...group, mode: "direct", widgets: widgets.map((w) => ({ ...w, type: "reading" })) } : null;
 };
