@@ -164,13 +164,11 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 - **AE2 Infinity Booster / Network Analyzer**: nothing to show (range card / client-side analyzer)
 - **Silent Gear Metalworks** (`sgearmetalworks`): adds only recipes to the Productive Metalworks foundry, no blocks of its own
 - **Mystical Automation** (`mysticalautomation`): its machines only expose energy, so the generic Energy card applies
-- **LaserIO, Pipez**: pipes/nodes without state worth a card (no buffers, no machine status)
 - **Logistics Networks** (`logisticsnetworks`): it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it
 - **Stellaris** (`stellaris`): fluid tanks via the generic Tank card, generators via the Energy card where they expose the capabilities (not verified in a test); rockets are entities
 - **Theurgy** (`theurgy`): its machines (calcination oven, distiller, incubator, accumulators) were not examined in depth; tanks are covered by the Tank card, powered blocks by the Energy card
 - **Reliquary** (`reliquary`): altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth
 - **Interdimensional Wireless Transmitter**: an RS2 network node; the RS Cloud Bridge already shows the network
-- **Trash Cans, Item Collectors**: no state worth a card (a trash can is always empty; a collector only has a filter and a range)
 - **Just Dire Things**: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined
 - **Nullscape** (`nullscape`): it reshapes the End's terrain (same dimension `minecraft:the_end`), which the map already handles
 - **DeepNull Reforged** (`deepnullreforged`): not a dimension but a Dank Null-style item storage you carry; nothing a block card could show
@@ -185,6 +183,16 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 - **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
 - **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
 - **Integrated Terminals** (`integratedterminals`): its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents
+- **Cable Tiers** (`cabletiers`): faster versions of RS devices (disk drives, interfaces, importers, exporters, autocrafters) on the RS network; their contents and jobs show through the RS Cloud Bridge
+- **Extra Disks** (`extradisks`): bigger RS disks and storage blocks; capacity and contents show through the RS Cloud Bridge
+- **Laser Bridges** (`laserbridges`): no block entity, a source only has a `powered` block state set by redstone; Cloud Redstone can switch it
+- **Universal Grid** (`universalgrid`): a handheld RS grid, no block entity
+- **Refined Fluid Substitution** (`refinedfluidsubstitution`): mixins into RS autocrafting, no block entity of its own
+- **Applied Sticks , Refined Sticks (`refinedsticks`)** (`appliedsticks`): handheld storage sticks, no block entity
+- **Building Gadgets 2** (`buildinggadgets2`): gadgets are items; the Template Manager only holds a template in a screen and render blocks exist for a moment
+- **Construction Sticks , Tool Belt (`toolbelt`), Crafting on a Stick (`crafting_on_a_stick`)** (`constructionstick`): items only, no block entity
+- **FastFurnace , FastWorkbench (`fastbench`)** (`fastfurnace`): recipe speed-ups; FastFurnace is one mixin, vanilla furnaces keep their CC peripheral
+- **Simple Magnets , Utilitarian (`utilitarian`)** (`simplemagnets`): the Demagnetization Coil (range, filter) and Redstone Clock (rate) have values a card could show; Utilitarian's Fluid Hopper exposes no fluid capability, so the Tank card does not apply; the TPS Meter repeats the Server card
 
 Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
 

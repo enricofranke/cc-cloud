@@ -18,6 +18,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Stepcrafter:** the Step Crafting Monitor as a card, with its tasks and Cancel all.
 - **Refined Types:** the Network Energizer's energy reserve, with a warning before the network runs out.
 - **Enderthing:** Ender Key Chests as searchable storage cards. Private chests stay private.
+- Checked and left out, with the reasons in the compatibility list: Cable Tiers and Extra Disks (the RS Cloud Bridge covers
+  them), Laser Bridges, Universal Grid and the mods that only add items.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.

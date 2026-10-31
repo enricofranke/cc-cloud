@@ -72,7 +72,6 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | --- | --- | --- | --- | --- |
 | Super Factory Manager (`sfm`) | 4.34.0 | **Factory Manager** card: state (running / no disk / no program / program has errors), program name, average tick time, errors, warnings, first error (SFM's translation key on dedicated servers), queued redstone pulses; warn alert when the program becomes invalid | none: SFM has no on/off – taking the disk out is its off switch | yes (manager without a disk) |
 | Modular Routers (`modularrouters`) | 26.1.2.2 | **Modular Router** card: status, modules, speed (tick rate, items, eco mode), buffer | redstone mode (Always / Redstone low / Redstone high / Never / Redstone pulse) – "Never" switches the router off; select with confirm, `act.redstone` | yes (empty router, switched to Never) |
-| LaserIO, Pipez | – | skipped: pipes/nodes without state worth a card (no buffers, no machine status) | – | – |
 | Logistics Networks (`logisticsnetworks`) | 1.13.0 | no card: it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it | – | – |
 
 ### 7. Integrated Dynamics
@@ -132,7 +131,6 @@ False positives of the generic Energy and Tank cards can be excluded by pack mak
 | Ars Magica Legacy (`arsmagicalegacy`) | 1.7.0 | **Etherium** card for every block of its public `EtheriumHandler` API (obelisk, celestial prism, black aurem, altar core): gauge + amount / max per etherium type; the widgets follow the block's types | none | yes (obelisk) |
 | Reliquary (`reliquary`) | 2.0.92 | skipped: altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth | – | – |
 | Interdimensional Wireless Transmitter | 1.0.1 | skipped: an RS2 network node; the RS Cloud Bridge already shows the network | – | – |
-| Trash Cans, Item Collectors | 1.1.1a / 1.1.12a | skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range) | – | – |
 | Just Dire Things | 1.6.11 | no own card: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined | – | – |
 
 ## Follow-ups (2026-10-30)
@@ -206,6 +204,16 @@ Checked against the jars of All the Mods 11 for MC 26.1.2 (CurseForge files of t
 | Stepcrafter (`stepcrafter`) | 1.0.3 | **Step Crafting Monitor** card: state, tasks, up to 6 rows ("64× Iron Ingot – Running 42 %"); warn alert once when a task runs out of ingredients or the network is full, info alert when the last task finishes. Step Crafters and Requesters themselves are configured in their screens. | Cancel all tasks (`act.buttons`, confirm) | partly: a monitor without a network (card, "Not active", Cancel refused); a task needs a full RS network with patterns |
 | Refined Types (`refinedtypes`) | 1.0.2 | **Network Energizer** card: the FE reserve on Energy Disks that keeps the RS network alive, as a gauge and amount; warn alert once below 10 %. Energy, Soul, Source and Essentia storage live on RS disks and show through the RS Cloud Bridge. | none: the redstone mode is a screen setting without a public setter | partly: lone energizer ("No Energy Disks"); a reserve needs an RS network with Energy Disks |
 | Enderthing (`enderthing`) | 1.10.2 | Ender Key Chests as **Storage** cards with item search (the inventory behind the key). A private chest belongs to one player and gets no card, viewers would see that player's items. | none | yes (key chest with 100 iron ingots, made private: the card goes away) |
+| Cable Tiers (`cabletiers`) | 1.0.3 | no own card: faster versions of RS devices (disk drives, interfaces, importers, exporters, autocrafters) on the RS network; their contents and jobs show through the RS Cloud Bridge | – | – |
+| Extra Disks (`extradisks`) | 26.1.1 | no own card: bigger RS disks and storage blocks; capacity and contents show through the RS Cloud Bridge | – | – |
+| Laser Bridges (`laserbridges`) | 6.2 | skipped: no block entity, a source only has a `powered` block state set by redstone; Cloud Redstone can switch it | – | – |
+| Universal Grid (`universalgrid`) | 1.0.2 | skipped: a handheld RS grid, no block entity | – | – |
+| Refined Fluid Substitution (`refinedfluidsubstitution`) | 1.0.1 | skipped: mixins into RS autocrafting, no block entity of its own | – | – |
+| Applied Sticks (`appliedsticks`), Refined Sticks (`refinedsticks`) | 2.0.4 / 2.0.7 | skipped: handheld storage sticks, no block entity | – | – |
+| Building Gadgets 2 (`buildinggadgets2`) | 1.4.6 | skipped: gadgets are items; the Template Manager only holds a template in a screen and render blocks exist for a moment | – | – |
+| Construction Sticks (`constructionstick`), Tool Belt (`toolbelt`), Crafting on a Stick (`crafting_on_a_stick`) | 3.2.1 / 2.9.5 / 1.1 | skipped: items only, no block entity | – | – |
+| FastFurnace (`fastfurnace`), FastWorkbench (`fastbench`) | 10.0.0 | skipped: recipe speed-ups; FastFurnace is one mixin, vanilla furnaces keep their CC peripheral | – | – |
+| Simple Magnets (`simplemagnets`), Utilitarian (`utilitarian`) | 1.1.12 / 0.22.0 | no own card in this pass: the Demagnetization Coil (range, filter) and Redstone Clock (rate) have values a card could show; Utilitarian's Fluid Hopper exposes no fluid capability, so the Tank card does not apply; the TPS Meter repeats the Server card | – | – |
 
 ## Not in this wave
 Nothing left from the v0.8 list.
