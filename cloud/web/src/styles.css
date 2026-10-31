@@ -1542,6 +1542,12 @@ pre {
   padding: 10px 10px 10px 18px;
   border-bottom: 1px solid var(--line);
 }
+.sheet-back {
+  margin: -4px 6px -4px -10px;
+}
+.sheet-back + .px-title {
+  flex: 1;
+}
 .sheet-body {
   padding: 16px 18px 22px;
   overflow-y: auto;

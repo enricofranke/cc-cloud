@@ -5,6 +5,7 @@ import { REJECT_TEXT } from "../lib/conn.ts";
 import type { ItemRow, JobRow, Uplink, WatchRow, Widget } from "../lib/types.ts";
 import { Sheet } from "./Overlays.tsx";
 import { fmtCount } from "../lib/format.ts";
+import { pushToast } from "../lib/ui.ts";
 import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
 import { AutoStockSheet, ItemDetailSheet, STATE_TEXT, StorageBrowser } from "./StorageV2.tsx";
@@ -224,7 +225,7 @@ function ItemSheet(props: {
   const max = num(w.opts?.max, 4096);
   const [amount, setAmount] = useState<number | "custom">(64);
   const [custom, setCustom] = useState("");
-  const [craft, setCraft] = useState<{ kind: "idle" } | { kind: "sending" } | { kind: "ok"; jobId?: string; count: number } | { kind: "error"; text: string }>({ kind: "idle" });
+  const [craft, setCraft] = useState<{ kind: "idle" } | { kind: "sending" } | { kind: "error"; text: string }>({ kind: "idle" });
   const [watchState, setWatchState] = useState<{ kind: "idle" | "sending" | "ok" } | { kind: "error"; text: string }>({ kind: "idle" });
   const [min, setMin] = useState(String(Math.max(1, Math.round(item.count / 2 / 64) * 64) || 64));
   const count = amount === "custom" ? Math.floor(Number(custom)) : amount;
@@ -236,7 +237,10 @@ function ItemSheet(props: {
     setCraft({ kind: "sending" });
     const sent = conn.action(uplink.uplinkId, w, { op: "craft", name: item.name, count }, false, {
       onResult: (r) => {
-        setCraft(r.ok ? { kind: "ok", jobId: r.jobId, count } : { kind: "error", text: errorText(r, max) });
+        if (r.ok) {
+          pushToast({ level: "info", title: `Crafting ${full(count)}× ${item.displayName} started`, text: `${r.jobId ? `Job #${r.jobId}. ` : ""}Progress shows under crafting jobs.` });
+          props.onClose();
+        } else setCraft({ kind: "error", text: errorText(r, max) });
         return true;
       },
     });
@@ -273,16 +277,7 @@ function ItemSheet(props: {
       {item.craftable ? (
         <div class="sheet-block">
           <h3 class="block-title">Craft</h3>
-          {craft.kind === "ok" ? (
-            <div class="result result-ok" role="status">
-              <span class="result-icon">✓</span>
-              <div>
-                <b>Crafting {full(craft.count)}× started.</b>
-                <div class="muted small">{craft.jobId ? `Job #${craft.jobId} – progress shows under crafting jobs.` : "Progress shows under crafting jobs."}</div>
-              </div>
-            </div>
-          ) : (
-            <>
+          <>
               <div class="amounts" role="radiogroup" aria-label="Amount">
                 {AMOUNTS.map((a) => (
                   <button key={a} type="button" role="radio" aria-checked={amount === a} class={`chip ${amount === a ? "on" : ""}`} onClick={() => setAmount(a)}>
@@ -318,8 +313,7 @@ function ItemSheet(props: {
               <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={!countValid || !!reason || craft.kind === "sending"} onClick={startCraft}>
                 <span>{craft.kind === "sending" ? "Starting…" : countValid ? `Craft ${full(count)}×` : "Craft"}</span>
               </button>
-            </>
-          )}
+          </>
         </div>
       ) : (
         <p class="muted small">Not craftable – there is no pattern for this item.</p>

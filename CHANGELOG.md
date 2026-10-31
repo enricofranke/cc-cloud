@@ -10,6 +10,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   no longer squeezes the cards and they don't read as one more card. Drag the window by its header; during a drag it
   turns see-through and lets the drop through. The accent colours show in colour again and the panel no longer scrolls
   sideways or jumps when you click an icon.
+- **Every window behaves the same:** X, Esc and a click outside leave the whole flow, the new ← goes one step back, and a
+  finished action (crafting started, stock rule saved) closes everything and confirms with a short message.
+- **Remove** in the stock rule window takes an item off the watchlist. "Turn off" left a "Min 0 · up to 0" row behind
+  that could not be removed.
 - A storage network that is not connected no longer says "The mainframe is offline": it names the storage network, the
   bridge and the controller.
 

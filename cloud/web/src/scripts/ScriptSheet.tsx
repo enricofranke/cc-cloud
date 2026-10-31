@@ -10,7 +10,7 @@ import { DocsLink } from "../components/DocsLink.tsx";
 import { EXAMPLES, type Example } from "./examples.ts";
 import type { ComponentType } from "preact";
 
-type EditorProps = { conn: MainframeConn; uplinkId: string; title: string; initialPath?: string; onClose: () => void };
+type EditorProps = { conn: MainframeConn; uplinkId: string; title: string; initialPath?: string; onClose: () => void; onBack?: () => void };
 let EditorComp: ComponentType<EditorProps> | null = null;
 /** The Lua editor (CodeMirror) is its own chunk, loaded on first use. */
 function EditorLoader(props: EditorProps) {
@@ -396,7 +396,7 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
           }}
         />
       )}
-      {editor && <EditorLoader conn={conn} uplinkId={uplinkId} title={title} initialPath={editor.path} onClose={() => (setEditor(null), refresh())} />}
+      {editor && <EditorLoader conn={conn} uplinkId={uplinkId} title={title} initialPath={editor.path} onClose={onClose} onBack={() => (setEditor(null), refresh())} />}
     </Sheet>
   );
 }

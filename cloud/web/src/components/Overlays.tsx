@@ -72,7 +72,8 @@ export function useFocusTrap(ref: { current: HTMLElement | null }) {
 }
 
 /** `tall`: a sheet with a live filter keeps its full height, so its top edge does not jump while results change. */
-export function Sheet(props: { title: string; onClose: () => void; children: ComponentChildren; wide?: boolean; tall?: boolean }) {
+/** One rule for every sheet: X, Esc and the backdrop leave the whole flow, {@code onBack} (shown as ←) goes one step back. */
+export function Sheet(props: { title: string; onClose: () => void; onBack?: () => void; children: ComponentChildren; wide?: boolean; tall?: boolean }) {
   useEscape(props.onClose);
   const ref = useRef<HTMLElement>(null);
   useFocusTrap(ref);
@@ -80,6 +81,11 @@ export function Sheet(props: { title: string; onClose: () => void; children: Com
     <div class="backdrop backdrop-sheet" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
       <section ref={ref} class={`sheet ${props.wide ? "sheet-wide" : ""} ${props.tall ? "sheet-tall" : ""}`} role="dialog" aria-modal="true" aria-label={props.title} tabIndex={-1}>
         <header class="sheet-head">
+          {props.onBack && (
+            <button type="button" class="icon-btn sheet-back" aria-label="Back" title="Back" onClick={props.onBack}>
+              ←
+            </button>
+          )}
           <h2 class="px-title">{props.title}</h2>
           <button type="button" class="icon-btn" aria-label="Close" onClick={props.onClose}>
             <IconClose />

@@ -39,7 +39,7 @@ const theme = EditorView.theme({
 type Open = { path: string; hash: string | null; saved: string };
 type Confirm = { title: string; text: string; label: string; color: string; resolve: (ok: boolean) => void };
 
-export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose }: { conn: MainframeConn; uplinkId: string; title: string; initialPath?: string; onClose: () => void }) {
+export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose, onBack }: { conn: MainframeConn; uplinkId: string; title: string; initialPath?: string; onClose: () => void; onBack?: () => void }) {
   const api = useMemo(() => scriptApi(conn.baseUrl.replace(/\/$/, ""), conn.token, conn.info.value?.id ?? "", uplinkId), [conn, uplinkId]);
   const [tree, setTree] = useState<(FileList & { truncated?: boolean }) | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -226,14 +226,14 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose 
       fail(e);
     }
   }
-  const close = async () => {
+  const leave = async (then: () => void) => {
     if (dirty && !(await ask({ title: "Discard changes?", text: `${open?.path} has unsaved changes.`, label: "Discard", color: "red" }))) return;
-    onClose();
+    then();
   };
 
   const visible = (tree?.files ?? []).filter((f) => !f.path.split("/").slice(0, -1).some((_, i, a) => closedDirs.has(a.slice(0, i + 1).join("/"))));
   return (
-    <Sheet title={`${title} – editor`} onClose={close} wide>
+    <Sheet title={`${title} – editor`} onClose={() => leave(onClose)} onBack={onBack ? () => leave(onBack) : undefined} wide>
       <div class={`lua-editor ${showTree ? "" : "tree-hidden"}`}>
         <div class="ed-toolbar">
           <button type="button" class="btn btn-small ed-tree-toggle" aria-pressed={showTree} onClick={() => setShowTree(!showTree)}>

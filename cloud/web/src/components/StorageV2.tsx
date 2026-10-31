@@ -6,6 +6,7 @@ import type { CpuInfo, CraftPlan, ItemDoc, JobInfo, MainframeConn, StockState, S
 import { REJECT_TEXT } from "../lib/conn.ts";
 import type { Uplink, Widget } from "../lib/types.ts";
 import { fmtCount } from "../lib/format.ts";
+import { pushToast } from "../lib/ui.ts";
 import { Sheet } from "./Overlays.tsx";
 import { ItemIcon } from "./ItemIcon.tsx";
 
@@ -84,6 +85,7 @@ export function AutoStockSheet(props: {
   current?: { min: number; target: number; autoCraft: boolean; state?: StockState; failures?: number } | null;
   craftable?: boolean;
   onClose: () => void;
+  onBack?: () => void;
   onSaved?: () => void;
 }) {
   const { conn, uplink, item } = props;
@@ -96,21 +98,44 @@ export function AutoStockSheet(props: {
   const t = Math.floor(Number(target));
   const valid = min !== "" && target !== "" && m >= 0 && t >= m;
   const readOnly = !conn.can("storage.autostock");
-  const save = async (off = false) => {
+  const finish = (text: string) => {
+    pushToast({ level: "info", title: item.displayName, text });
+    props.onSaved?.();
+    props.onClose();
+  };
+  const save = async () => {
     setBusy(true);
     setError(null);
     try {
-      await conn.storage(uplink.uplinkId, "autostock", off ? { name: item.name, min: 0, target: 0, autoCraft: false } : { name: item.name, min: m, target: t, autoCraft: auto }, props.widgetId);
-      props.onSaved?.();
-      props.onClose();
+      await conn.storage(uplink.uplinkId, "autostock", { name: item.name, min: m, target: t, autoCraft: auto }, props.widgetId);
+      finish("Stock rule saved.");
     } catch (e) {
       setError(storageError(e));
     } finally {
       setBusy(false);
     }
   };
+  // A rule of 0 would stay in the list doing nothing: removing takes the item off the watchlist.
+  const watchW = uplink.widgets.find((w) => w.type === "watchlist");
+  const remove = () => {
+    if (!watchW) return;
+    setBusy(true);
+    setError(null);
+    const sent = conn.action(uplink.uplinkId, watchW, { op: "remove", name: item.name }, false, {
+      onResult: (r) => {
+        setBusy(false);
+        if (r.ok) finish("Removed from the watchlist.");
+        else setError(storageError(r.error ?? "failed"));
+        return true;
+      },
+    });
+    if (!sent) {
+      setBusy(false);
+      setError("Not connected – try again in a moment.");
+    }
+  };
   return (
-    <Sheet title={`Keep ${item.displayName} in stock`} onClose={props.onClose}>
+    <Sheet title={`Keep ${item.displayName} in stock`} onClose={props.onClose} onBack={props.onBack}>
       <div class="item-head with-icon">
         <ItemIcon name={item.name} displayName={item.displayName} size={48} />
         <div class="item-big-count">
@@ -151,9 +176,9 @@ export function AutoStockSheet(props: {
         </p>
       )}
       <div class="sheet-actions">
-        {props.current && (
-          <button type="button" class="btn btn-danger-ghost" disabled={readOnly || busy} onClick={() => save(true)}>
-            Turn off
+        {props.current && watchW && (
+          <button type="button" class="btn btn-danger-ghost" disabled={readOnly || busy} onClick={remove}>
+            Remove
           </button>
         )}
         <button type="button" class="pxbtn pxbtn-gold" disabled={readOnly || busy || !valid} onClick={() => save()}>
@@ -167,7 +192,7 @@ export function AutoStockSheet(props: {
 
 // -------------------------------------------------------------- craft preview
 const AMOUNTS = [1, 16, 64, 256];
-export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWidget?: Widget; widgetId?: string; item: { name: string; displayName: string }; max: number; onClose: () => void }) {
+export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWidget?: Widget; widgetId?: string; item: { name: string; displayName: string }; max: number; onClose: () => void; onBack?: () => void }) {
   const { conn, uplink, item } = props;
   const [amount, setAmount] = useState(64);
   const [custom, setCustom] = useState("");
@@ -175,7 +200,7 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
   const [planErr, setPlanErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [notify, setNotify] = useState(true);
-  const [state, setState] = useState<{ kind: "idle" | "sending" } | { kind: "ok"; jobId?: string } | { kind: "error"; text: string }>({ kind: "idle" });
+  const [state, setState] = useState<{ kind: "idle" | "sending" } | { kind: "error"; text: string }>({ kind: "idle" });
   const count = custom ? Math.floor(Number(custom)) : amount;
   const valid = Number.isInteger(count) && count >= 1 && count <= props.max;
   useEffect(() => {
@@ -199,7 +224,10 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
     setState({ kind: "sending" });
     const sent = conn.action(uplink.uplinkId, props.craftWidget, { op: "craft", name: item.name, count, notify }, false, {
       onResult: (r) => {
-        setState(r.ok ? { kind: "ok", jobId: r.jobId } : { kind: "error", text: storageError(r.error ?? "failed") });
+        if (r.ok) {
+          pushToast({ level: "info", title: `Crafting ${full(count)}× ${item.displayName} started`, text: `${r.jobId ? `Job #${r.jobId}. ` : ""}${notify ? "You get a notice when it is done." : "Progress shows under crafting jobs."}` });
+          props.onClose();
+        } else setState({ kind: "error", text: storageError(r.error ?? "failed") });
         return true;
       },
     });
@@ -207,20 +235,8 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
   };
   const readOnly = !conn.can("storage.craft");
   return (
-    <Sheet title={`Craft ${item.displayName}`} onClose={props.onClose}>
-      {state.kind === "ok" ? (
-        <div class="result result-ok" role="status">
-          <span class="result-icon">✓</span>
-          <div>
-            <b>Crafting {full(count)}× {item.displayName} started.</b>
-            <div class="muted small">
-              {state.jobId ? `Job #${state.jobId}. ` : ""}
-              {notify ? "You get a notice when it is done." : "Progress shows under crafting jobs."}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
+    <Sheet title={`Craft ${item.displayName}`} onClose={props.onClose} onBack={props.onBack}>
+      <>
           <div class="amounts" role="radiogroup" aria-label="Amount">
             {AMOUNTS.map((a) => (
               <button key={a} type="button" role="radio" aria-checked={!custom && amount === a} class={`chip ${!custom && amount === a ? "on" : ""}`} onClick={() => (setCustom(""), setAmount(a))}>
@@ -290,14 +306,13 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
             <span>{state.kind === "sending" ? "Starting…" : `Craft ${valid ? full(count) : ""}×`}</span>
           </button>
           {readOnly && <p class="muted small">You can preview; starting jobs needs the “Craft” permission.</p>}
-        </>
-      )}
+      </>
     </Sheet>
   );
 }
 
 // --------------------------------------------------------------- item details
-export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; widgetId?: string; name: string; displayName: string; onClose: () => void; onFallback?: () => void }) {
+export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; widgetId?: string; name: string; displayName: string; onClose: () => void; onBack?: () => void; onFallback?: () => void }) {
   const { conn, uplink } = props;
   const [doc, setDoc] = useState<ItemDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -327,12 +342,12 @@ export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; wi
       setError(storageError(e));
     }
   };
-  if (sub === "craft" && doc) return <CraftSheet conn={conn} uplink={uplink} craftWidget={craftW} widgetId={props.widgetId} item={doc} max={max} onClose={() => (setSub(null), load())} />;
+  if (sub === "craft" && doc) return <CraftSheet conn={conn} uplink={uplink} craftWidget={craftW} widgetId={props.widgetId} item={doc} max={max} onClose={props.onClose} onBack={() => (setSub(null), load())} />;
   if (sub === "stock" && doc)
-    return <AutoStockSheet conn={conn} uplink={uplink} widgetId={props.widgetId} item={doc} current={doc.watch} craftable={doc.craftable} onClose={() => (setSub(null), load())} />;
+    return <AutoStockSheet conn={conn} uplink={uplink} widgetId={props.widgetId} item={doc} current={doc.watch} craftable={doc.craftable} onClose={props.onClose} onBack={() => (setSub(null), load())} />;
   const readOnly = !conn.can("act.buttons");
   return (
-    <Sheet title={props.displayName} onClose={props.onClose}>
+    <Sheet title={props.displayName} onClose={props.onClose} onBack={props.onBack}>
       <div class="item-head with-icon">
         <ItemIcon name={props.name} displayName={props.displayName} size={48} />
         <div class="item-big-count">
@@ -502,7 +517,7 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
     }
   };
 
-  if (open) return <ItemDetailSheet conn={conn} uplink={uplink} widgetId={props.widgetId} name={open.name} displayName={open.displayName} onClose={() => (setOpen(null), loadPage(0))} />;
+  if (open) return <ItemDetailSheet conn={conn} uplink={uplink} widgetId={props.widgetId} name={open.name} displayName={open.displayName} onClose={props.onClose} onBack={() => (setOpen(null), loadPage(0))} />;
   return (
     <Sheet title={`${uplink.title || "Storage"} – browse`} onClose={props.onClose} wide tall>
       <div class="sb">
