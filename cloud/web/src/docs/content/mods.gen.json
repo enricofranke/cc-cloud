@@ -850,6 +850,16 @@
    "controls": "none: a request needs a player and a pipe to deliver to",
    "tested": "yes (request pipe and provider pipe on a chest: 24 redstone counted and found)",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Pipez",
+   "id": "pipez",
+   "version": "1.2.31",
+   "what": "**Pipe** card for item, fluid, energy, gas and universal pipes: status (running, not extracting, no targets, stopped by redstone, switched off), extracting sides, number of targets, upgrade, filters, rate per pipe type. A pipe only has data once it is configured, so an uplink holds on a pipe with an extracting or disconnected side and drops off when the last one is cleared. No coordinates.",
+   "controls": "with an upgrade that allows it: the redstone mode on every extracting side (Ignored / Off when powered / On when powered / Always off), select with confirm, `act.redstone`. Without one there is no select: a dashboard switch would skip the upgrade.",
+   "tested": "yes (item pipe between two chests, Advanced upgrade, switched off)",
+   "skipped": false
   }
  ]
 }

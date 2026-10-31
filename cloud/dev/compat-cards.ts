@@ -1032,4 +1032,21 @@ export const COMPAT_CARDS: SampleCard[] = [
       itemSearch("search", "Search network"),
     ],
   },
+
+  // Pipez
+  {
+    key: "pipez_pipe",
+    mod: "pipez",
+    title: "Item Pipe",
+    template: "pipez_pipe",
+    widgets: [
+      label("status", "Status", "Running"),
+      label("extracting", "Extracting from", "West", { span: 2 }),
+      label("targets", "Targets", "3", { span: 2 }),
+      label("upgrade", "Upgrade", "Advanced", { span: 2 }),
+      label("filters", "Filters", "1", { span: 2 }),
+      label("rate", "Rate", "32 items / 5 ticks"),
+      select("redstone", "Redstone mode", ["Ignored", "Off when powered", "On when powered", "Always off"], { confirm: true }, "Ignored"),
+    ],
+  },
 ];

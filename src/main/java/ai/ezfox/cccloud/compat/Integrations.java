@@ -113,6 +113,7 @@ public final class Integrations {
         // Interface shows the jobs, any other cable of the network the items.
         optional("integratedcrafting", () -> ai.ezfox.cccloud.compat.integratedcrafting.CraftingJobsCards::init);
         optional("integratedtunnels", () -> ai.ezfox.cccloud.compat.integratedtunnels.ItemNetworkCards::init);
+        optional("pipez", () -> ai.ezfox.cccloud.compat.pipez.PipeCards::init);
         optional("classicpipes", () -> ai.ezfox.cccloud.compat.classicpipes.PipeNetworkCards::init);
 
         // B. Server & team.
