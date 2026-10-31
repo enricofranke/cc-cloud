@@ -746,6 +746,20 @@ export const COMPAT_CARDS: SampleCard[] = [
     widgets: [label("ev", "EV of the owner", "125 k EV", { icon: "drop" }), chart("history", "EV", null, null, "EV", [118000, 121000, 119500, 125000])],
   },
 
+  // Thaumaturge
+  {
+    key: "thaumaturge_node",
+    mod: "thaumaturge",
+    title: "Aura Node",
+    template: "thaumaturge_node",
+    widgets: [
+      label("type", "Type", "Normal", { span: 2 }),
+      label("aspects", "Aspects", "Aer 32, Ignis 18"),
+      label("vis", "Vis", "142", { span: 2 }),
+      label("flux", "Flux", "3", { span: 2 }),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery

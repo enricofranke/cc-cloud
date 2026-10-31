@@ -130,6 +130,7 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | Key (`-PintegrationMods=`) | Mod (version) | Extra runtime jars | Compile use |
 | --- | --- | --- | --- |
 | `neovitae` | Neo Vitae 1.1.38 | GeckoLib, Modonomicon | `compat/neovitae` (block entity getters, `AnimaHelper`) |
+| `thaumaturge` | Thaumaturge 1.0.2 | none | `compat/thaumaturge` (aura and aspect API, block entity getters) |
 <!-- wave5 build -->
 
 The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.

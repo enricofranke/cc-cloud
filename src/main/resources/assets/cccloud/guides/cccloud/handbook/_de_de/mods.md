@@ -149,6 +149,7 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
 |---|---|---|---|---|
 | Neo Vitae (`neovitae`) | 1.1.38 | **Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards. | none | yes (lone altar, ritual stone and forge; Anima card with EV set through the mod) |
+| Thaumaturge (`thaumaturge`) | 1.0.2 | **Essentia** for warded and void jars and the reservoir: fill gauge and what is inside. **Aura Node**: type, state, aspects against the node's base, vis and flux of the chunk. **Runic Matrix**: crafting state, stability, essentia still to pay, chunk aura; warn alert when an infusion turns unstable. **Crucible**: heat, water, essentia and its limit. | none | yes (jar, node with aspects, lone matrix, crucible; a running infusion was not tested) |
 
 ### Ohne eigene Karte
 

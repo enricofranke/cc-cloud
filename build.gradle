@@ -354,6 +354,8 @@ def integrationMods = [
     // Wave 5.
     neovitae            : ["curse.maven:neovitae-1404763:${neovitae_curse_file}", "maven.modrinth:geckolib:${geckolib_modrinth_version}",
                            "curse.maven:modonomicon-538392:${modonomicon_curse_file}"],
+    thaumaturge         : ["curse.maven:thaumaturge-1628024:${thaumaturge_curse_file}", "top.theillusivec4.curios:curios-neoforge:${curios_version}",
+                           "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

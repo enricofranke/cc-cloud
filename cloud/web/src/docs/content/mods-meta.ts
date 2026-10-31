@@ -78,6 +78,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   allthemodium: { cat: "world", icon: "minecraft:netherite_pickaxe" },
   // wave 5
   neovitae: { cat: "magic", icon: "neovitae:ara_vitae" },
+  thaumaturge: { cat: "magic", icon: "thaumaturge:jar_normal" },
   // wave 5 end
 };
 

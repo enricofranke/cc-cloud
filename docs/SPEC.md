@@ -1513,6 +1513,7 @@ Manifest: docs/COMPAT.md "Wave 4".
 ### Wave 5 – magic, progress and world (2026-10-31)
 Manifest: docs/COMPAT.md "Wave 5", the whole pack in docs/ATM11_COVERAGE.md.
 - **Neo Vitae (`compat/neovitae`):** device cards `neovitae_altar`, `neovitae_ritual`, `neovitae_forge`. The owner's EV is one player's private value, so it is the restricted mainframe card `neovitae_anima` (config `world.animaCard`), read every 10 s from the mod's saved data through `AnimaHelper`, which works for offline owners. The mod's `Anima` calls life points "EV"; the cards use its words.
+- **Thaumaturge (`compat/thaumaturge`):** device cards `thaumaturge_jar`, `thaumaturge_reservoir`, `thaumaturge_node`, `thaumaturge_matrix`, `thaumaturge_crucible`, from the mod's public aura and aspect API plus block entity getters. A node without aspects removes itself, so a test has to give it data first.
 <!-- wave5 spec -->
 
 ## v0.10 – Scenes, schedules, production statistics, public API (requested 2026-10-30)

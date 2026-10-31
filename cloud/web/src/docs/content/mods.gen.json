@@ -830,6 +830,16 @@
    "controls": "none",
    "tested": "yes (lone altar, ritual stone and forge; Anima card with EV set through the mod)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Thaumaturge",
+   "id": "thaumaturge",
+   "version": "1.0.2",
+   "what": "**Essentia** for warded and void jars and the reservoir: fill gauge and what is inside. **Aura Node**: type, state, aspects against the node's base, vis and flux of the chunk. **Runic Matrix**: crafting state, stability, essentia still to pay, chunk aura; warn alert when an infusion turns unstable. **Crucible**: heat, water, essentia and its limit.",
+   "controls": "none",
+   "tested": "yes (jar, node with aspects, lone matrix, crucible; a running infusion was not tested)",
+   "skipped": false
   }
  ]
 }
