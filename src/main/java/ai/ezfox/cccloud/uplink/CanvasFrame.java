@@ -177,7 +177,7 @@ public final class CanvasFrame {
                 arity(c, 4, 5);
                 if (++state.items > Limits.CANVAS_ITEMS) throw new WidgetException("too many item icons (max " + Limits.CANVAS_ITEMS + " per frame)");
                 coord(out, c, 2, 3);
-                if (!(item(c, 4) instanceof String name) || !Op.isItemName(name)) throw new WidgetException("bad item id " + WidgetFactory.describe(item(c, 4)));
+                if (!(item(c, 4) instanceof String name) || !isItemPath(name)) throw new WidgetException("bad item id " + WidgetFactory.describe(item(c, 4)));
                 state.size += name.length();
                 out.add(name);
                 if (c.size() > 4) out.add(Json.number(whole("icon size", item(c, 5), Limits.CANVAS_ICON_MIN, Limits.CANVAS_ICON_MAX)));
@@ -201,6 +201,13 @@ public final class CanvasFrame {
             default -> throw new WidgetException("unknown operation " + WidgetFactory.describe(item(c, 1)) + " (expected c, r, R, l, o, O, p, t, g, i, s or b)");
         }
         return out;
+    }
+
+    /** A registry id whose path can become a path of the icon route: no empty, {@code .} or {@code ..} parts. */
+    private static boolean isItemPath(String name) {
+        if (!Op.isItemName(name)) return false;
+        for (var part : name.substring(name.indexOf(':') + 1).split("/", -1)) if (part.isEmpty() || part.equals(".") || part.equals("..")) return false;
+        return true;
     }
 
     private static void arity(Map<?, ?> c, int min, int max) throws WidgetException {

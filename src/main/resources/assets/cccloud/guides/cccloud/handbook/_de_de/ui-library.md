@@ -32,6 +32,8 @@ dash:run()
 | `ui.connect([uplink])` | findet den Uplink (oder nimmt einen Namen / ein Peripheral), liefert `dash` |
 | `dash:title(text)` | Kartentitel |
 | `dash:page(id, title, opts)`, `dash:group(id, title, opts)` | Layout |
+| `dash:canvas(id, label, opts, handler)` | eine Fläche zum Zeichnen: [Canvas](lua.md) |
+| `ui.mainframe()`, `ui.readCards(mainframe)` | das Mainframe-Peripheral und die [Werte der anderen Karten](lua.md) nach Titel und Widget-ID |
 | `dash:gauge(id, label, opts)` … | jeder Widget-Typ: button, toggle, slider, gauge, chart, progress, indicator, select, number, text, buttons, label, itemSearch, watchlist, jobs |
 | `(…, opts, handler)` | optionales letztes Argument: `function(user, value)`, wird bei Bedienung aufgerufen |
 | `widget:set(value)` | aktualisieren; `widget:remove()`, `widget:on(handler)` |
@@ -117,4 +119,8 @@ dash:run()
 
 - `cloud-demo` – alle Widgets auf zwei Seiten
 - `cloud-storage [bridge] [uplink]` – ein eigenes Lager-Dashboard für eine ME / RS Bridge
+- `cloud-mimic [uplink]` – ein Reaktor-Fließbild auf einem [Canvas](lua.md), simuliert, bis du deinen Reaktor einträgst
+- `cloud-map [uplink]` – eine Karte deines Netzwerks auf einem Canvas (braucht das Mainframe-Peripheral)
+- `cloud-snake [uplink]` – Snake im Dashboard
+- `cloud-overview [uplink]` – die Zahlen aller Maschinenkarten auf einem Canvas (braucht das Mainframe-Peripheral)
 

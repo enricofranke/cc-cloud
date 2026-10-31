@@ -200,7 +200,7 @@ Three levels, all on the same widget system:
 3. **Full scripting (Lua)** – a richer API for custom dashboards.
 
 ### Lua API v2 (`cloud_uplink` peripheral; v1 calls keep working)
-- Layout: `cloud.page(id, title, {icon=})`, `cloud.group(id, title, {page=, cols=1..4})`; every widget accepts `opts.page`, `opts.group`, `opts.span` (1–4 columns), `opts.order`, `opts.color`, `opts.icon` (from a fixed bundled icon set, e.g. "bolt", "flame", "drop", "box", "fan", "lock", "warning").
+- Layout: `cloud.page(id, title, {icon=})`, `cloud.group(id, title, {page=, cols=1..4})` (more: "Lua layout, canvas and reading cards"); every widget accepts `opts.page`, `opts.group`, `opts.span` (1–4 columns), `opts.order`, `opts.color`, `opts.icon` (from a fixed bundled icon set, e.g. "bolt", "flame", "drop", "box", "fan", "lock", "warning").
 - New widgets:
   - `chart(id, label, {min, max, unit, points=60, interval=1})` – the mod keeps a ring buffer of the values set via `set()` and the dashboard draws a line chart or sparkline
   - `progress(id, label, {min, max, unit})`
@@ -2344,3 +2344,34 @@ blocked, its card shows the claim and refuses actions, and it comes back after t
 `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard` (the same scenario with real FTB Chunks claims and FTB Teams
 allies, own test environment `cccloud:claims`; the claims overlay test `ftbchunks_claims` moved to `cccloud:claims_card`
 and unclaims at the end, because a real claim affects the tests around it).
+
+## Lua layout, canvas and reading cards (requested 2026-10-31)
+
+Scripting has to do more than drag and drop: a program can draw its own card, place its cards and read other cards.
+
+### Canvas widget
+`cloud.canvas(id, label, {width=160, height=90, bg, input="click"|"drag", pin, confirm})` (type `canvas`, 16-480 × 16-320 logical pixels, at most `Limits.CANVAS_PER_UPLINK` = 4 per uplink) and `cloud.draw(id, commands)`; `cloud.ui` has `dash:canvas(...)` with `clear/rect/box/line/circle/ring/pixel/text/gradient/icon/item/bitmap/draw`. `cloud.set` refuses a canvas.
+
+- **Frame:** value `{"canvas":1,"c":[[op,...],...]}`. Operations: `c` fill, `r`/`R` rectangle filled/outline, `l` line, `o`/`O` circle filled/outline, `p` pixels, `t` text, `g` gradient, `i` bundled icon, `s` item icon, `b` bitmap (paint colours 0-f, space = transparent). The argument lists are in `CanvasFrame.java` and `help cloud`. Unknown operations, wrong argument counts and out-of-range values are errors in Lua.
+- **Whole frames, no diffs.** A frame replaces the last one. Delta encoding would need per-session state in the hub for little gain: identical frames are not sent, and permessage-deflate with context takeover makes a repeated background cheap on the wire.
+- **Security:** a frame is data, not markup. Operations come from a fixed list; colours are palette names, `#rrggbb[aa]` or CC's `colors.*` numbers; icons are bundled names; items are registry ids that can only become a path of the same-origin `/api/icon` route (no empty, `.` or `..` parts); text is plain text (no control characters) drawn with `fillText`; numbers are finite and within ±4096 and rounded to 0.1. `CanvasFrame` checks all of it in Java and `web/src/lib/canvas.ts` checks it again and drops what does not match; colours reach the 2D context only through the palette or the strict hex form. The font is the dashboard's, the size a checked number.
+- **Limits** (`Limits.CANVAS_*`): 1024 commands, 24 KB of JSON, 128 characters per text, 64 item icons, 512 points per pixel command, 16 KB per bitmap. Rate: `draw` only stores the newest frame per canvas (the frame was validated on the computer's thread); the uplink's tick moves it into the widget at most every 2 ticks (10 per second), paid from a byte budget of 64 KB/s per uplink and 256 KB/s per mainframe (burst 48 KB). This is the only way into a widget, so a snapshot can never carry more than the budget paid for, and a script gets no error: the newest frame waits. A section with frames is published as a whole at most once per second (`CANVAS_STRUCTURE_TICKS`): redeclaring pages in a loop cannot resend frames at tick rate.
+- **Storage:** frames are not saved with the uplink (`Widget.toSaveJson`) and they do not reach in-game clients: `CanvasFrame.withoutFrames` takes them out of what tablets and Cloud Displays get. `SectionCache` keeps the frames of an unloaded section unless the snapshot would pass its 64 KB; then it keeps the section without them.
+- **Tablet and Cloud Display:** a note in place of the canvas ("Open the dashboard to see it"), no input.
+- **Input:** `opts.input` is off by default. `"click"` sends `click`; `"drag"` sends `down`, `drag` (the dashboard sends one per 150 ms) and `up`. The action value is `{"op":"canvas","kind","x","y"}` (`Op.CanvasInput`), checked by `ActionValidator`: only the kinds of that canvas's mode, inside the surface. It goes through the normal action path: `act.buttons`, 10 actions/s per client, the internet PIN, `opts.pin`, and the computer's event queue. Lua gets `cloud_action` with `{type, x, y}`. `pin` and `confirm` need `input="click"`, a dialog cannot follow a drag. Share sessions are refused as for every action. The REST API answers `not_supported` like for all structured operations. `drag` actions are not written to the server log, their `down` and `up` are.
+- **Share links** show canvases, without input; with `hideNumbers` they are hidden, because a canvas can show any number.
+- **Dashboard:** `components/Canvas.tsx` draws on an HTML canvas. The backing store is a whole multiple of the logical size, at most 2048 px on a side. Theme colours are read when painting; a theme change paints again. Up to 256 item images per page; others draw as a plain tile. In the editor `minWidgetW` 4, `minWidgetH` 5; the default height follows the canvas's proportions. Not in `WIDGET_KINDS`: a canvas cannot be bound without Lua. A view of a canvas can only be a canvas.
+
+### Lua layout
+`cloud.group` also takes `x`, `y`, `w` (3-12), `h` (1-60), `color` (the layout accents), `icon`, `order`; every widget takes `x`, `y`, `w` (1-12), `h` (1-40). They are the grid of "Layout schema v2": the card's or widget's box before anyone edits it. `resolveLayout` uses a saved value first, field by field; all four set = placed, otherwise only the size counts. Boxes are checked by `WidgetFactory` and again by `luaBox` in `lib/layout.ts`.
+
+### Reading cards from Lua
+`cloud_mainframe.getCards()` → list of `{id, title, online, kind, blocked?, widgets = count}` (at most 256), `getCard(id)` → the same with `widgets = {{id, type, label, value, unit, min, max, warn, crit}, ...}`, or nil. `cloud.ui`: `ui.mainframe()`, `ui.readCards(mainframe)`. At most 10 reads per second per peripheral (burst 20), then `nil, "rate_limited"`.
+
+**Who the script runs as.** CC computers have no owner: anyone who can place a computer or a wired modem next to a mainframe has a program there, and no player can be asked for rights. So a program never gets more than a **viewer** (`WebHub.viewerSections`): restricted sections are never handed out, however the program got there; private values come in their public form; a claim's team name stays out. `CardReader` passes on a fixed set of fields, no canvas frames. Scripts of the owner do not get more either: an owner check needs a principal the game does not have. What physical access to a mainframe already gives (`getNetwork` with positions, `setEnabled`) stays as it was.
+
+### Programs
+`cloud-mimic`, `cloud-map`, `cloud-snake`, `cloud-overview` in the ROM, also in the script import's example gallery. `RomLuaTest` runs each against the fake uplink with every frame through `CanvasFrame`.
+
+### Tests
+`CanvasFrameTest`, `CardReaderTest`, `CardReadingTest`, `WidgetFactoryV2Test`, `canvas.test.ts`, GameTest `canvas_program` (a real CC computer draws and gets a click).

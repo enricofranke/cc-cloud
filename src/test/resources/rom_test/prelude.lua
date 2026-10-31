@@ -71,7 +71,7 @@ bridge = {
     listItems = function(filter, limit) return { { name = "minecraft:iron_ingot", displayName = "Iron Ingot", count = 1000, craftable = true } } end,
 }
 
-local devices = { left = { "cloud_uplink", uplink }, back = { "me_cloud_bridge", bridge } }
+devices = { left = { "cloud_uplink", uplink }, back = { "me_cloud_bridge", bridge } }
 peripheral = {}
 function peripheral.find(kind) for _, d in pairs(devices) do if d[1] == kind then return d[2] end end end
 function peripheral.wrap(name) return devices[name] and devices[name][2] end

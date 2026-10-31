@@ -30,7 +30,7 @@ import org.junit.jupiter.api.Test;
  */
 class RomLuaTest {
     private static final String ROM = "data/computercraft/lua/rom/";
-    private static final String[] LUA_FILES = {"modules/main/cloud/ui.lua", "programs/cloud-demo.lua", "programs/cloud-storage.lua"};
+    private static final String[] LUA_FILES = {"modules/main/cloud/ui.lua", "programs/cloud-demo.lua", "programs/cloud-storage.lua", "programs/cloud-mimic.lua", "programs/cloud-map.lua", "programs/cloud-snake.lua", "programs/cloud-overview.lua"};
 
     /** The validating part of the fake uplink (the bookkeeping is in rom_test/prelude.lua). */
     static final class FakeUplink {
@@ -155,7 +155,7 @@ class RomLuaTest {
         }
         globals.rawset("__modules", modules);
         var programs = new LuaTable();
-        for (var name : new String[]{"cloud-demo", "cloud-storage"}) {
+        for (var name : new String[]{"cloud-demo", "cloud-storage", "cloud-mimic", "cloud-map", "cloud-snake", "cloud-overview"}) {
             try (var in = file("programs/" + name + ".lua")) {
                 programs.rawset(name, compile(state, in, "@" + name + ".lua", globals));
             }
@@ -205,6 +205,14 @@ class RomLuaTest {
             assertTrue(fake.widgets.containsKey(id), id);
         }
         assertEquals(0, fake.pages % 2, "two pages per run (the test starts the program four times)");
+    }
+
+    @Test
+    void canvasProgramsDrawValidFrames() throws Exception {
+        var fake = run("canvas_programs_test");
+        for (var id : new String[]{"mimic", "map", "board", "all"}) assertTrue(fake.widgets.containsKey(id), id);
+        assertTrue(fake.frames.size() >= 8, "frames: " + fake.frames.size());
+        for (var frame : fake.frames) assertTrue(frame.getAsJsonArray("c").size() > 0);
     }
 
     @Test
