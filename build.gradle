@@ -351,6 +351,9 @@ def integrationMods = [
     farmingforblockheads: ["curse.maven:farmingforblockheads-261924:${farmingforblockheads_curse_file}", "curse.maven:balm-531761:${balm_curse_file}",
                            "curse.maven:shogi-1475746:${shogi_curse_file}"],
     ftbessentials       : ["dev.ftb.mods:ftb-essentials-neoforge:${ftbessentials_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    // Wave 5.
+    neovitae            : ["curse.maven:neovitae-1404763:${neovitae_curse_file}", "maven.modrinth:geckolib:${geckolib_modrinth_version}",
+                           "curse.maven:modonomicon-538392:${modonomicon_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

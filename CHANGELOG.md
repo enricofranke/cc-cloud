@@ -4,6 +4,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Magic, progress and world mods
+- **Neo Vitae:** Ara Vitae (blood, tier, progress), Master Ritual Stone and Hellfire Forge cards, and an Anima card with your EV (only for those allowed to see positions). New server setting `animaCard`.
+<!-- wave5 log -->
+
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
 

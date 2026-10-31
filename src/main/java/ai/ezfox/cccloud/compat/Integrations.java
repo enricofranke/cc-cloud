@@ -109,6 +109,9 @@ public final class Integrations {
         optional("trainingdummy", () -> ai.ezfox.cccloud.compat.trainingdummy.DummiesCard::init);
         optional("ftbessentials", () -> ai.ezfox.cccloud.compat.ftbessentials.WarpsCard::init);
 
+        // Wave 5: magic, progress and world mods.
+        optional("neovitae", () -> ai.ezfox.cccloud.compat.neovitae.NeoVitaeCards::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

@@ -144,6 +144,12 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | The Undergarden (`undergarden`) | 26.1.2-0.9.8 | Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether) | – | unit tests; not in a dev world |
 | All the Modium (`allthemodium`) | 26.1.2-4.2.0 | Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges | – | unit tests; not in a dev world |
 
+### Wave 5 – magic, progress and world
+
+| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
+|---|---|---|---|---|
+| Neo Vitae (`neovitae`) | 1.1.38 | **Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards. | none | yes (lone altar, ritual stone and forge; Anima card with EV set through the mod) |
+
 ### Ohne eigene Karte
 
 - **Integrated Terminals / Tunnels**: –: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card

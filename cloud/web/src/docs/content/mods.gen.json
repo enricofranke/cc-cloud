@@ -820,6 +820,16 @@
    "controls": "–",
    "tested": "–",
    "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Neo Vitae",
+   "id": "neovitae",
+   "version": "1.1.38",
+   "what": "**Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards.",
+   "controls": "none",
+   "tested": "yes (lone altar, ritual stone and forge; Anima card with EV set through the mod)",
+   "skipped": false
   }
  ]
 }

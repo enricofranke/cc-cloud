@@ -697,6 +697,57 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // Neo Vitae
+  {
+    key: "neovitae_altar",
+    mod: "neovitae",
+    title: "Ara Vitae",
+    template: "neovitae_altar",
+    widgets: [
+      label("status", "Status", "Crafting", { span: 2 }),
+      label("tier", "Tier", "Tier 3", { span: 2 }),
+      percent("blood", "Blood", { color: "red", icon: "drop" }, 64.2),
+      label("blood_text", "Stored", "16.1 k / 25.0 k mB"),
+      progress("progress", "Progress", 0, 100, "%", {}, 37),
+      label("item", "On the altar", "Weak Blood Orb", { span: 2 }),
+      label("runes", "Runes", "×1.40 speed, ×1.20 efficiency", { span: 2 }),
+    ],
+  },
+  {
+    key: "neovitae_ritual",
+    mod: "neovitae",
+    title: "Master Ritual Stone",
+    template: "neovitae_ritual",
+    widgets: [
+      label("ritual", "Ritual", "Water", { span: 2 }),
+      label("status", "Status", "Running", { span: 2 }),
+      label("running", "Running for", "2 h 14 min", { span: 2 }),
+      label("cost", "Cost", "25 EV every 20 t", { span: 2 }),
+    ],
+  },
+  {
+    key: "neovitae_forge",
+    mod: "neovitae",
+    title: "Hellfire Forge",
+    template: "neovitae_forge",
+    widgets: [
+      label("status", "Status", "Needs spiritus", { span: 2 }),
+      label("spiritus", "Spiritus", "120 / 400", { span: 2 }),
+      progress("progress", "Progress", 0, 100, "%", {}, 0),
+      label("item", "Output", "–"),
+    ],
+  },
+  {
+    key: "neovitae_anima",
+    mod: "neovitae",
+    title: "Anima",
+    template: "neovitae_anima",
+    restricted: true,
+    widgets: [label("ev", "EV of the owner", "125 k EV", { icon: "drop" }), chart("history", "EV", null, null, "EV", [118000, 121000, 119500, 125000])],
+  },
+
+  // wave 5 end
+
   // Witchery
   {
     key: "witchery_altar",

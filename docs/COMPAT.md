@@ -176,6 +176,15 @@ Checked against the jars of All the Mods 11 for MC 26.1.2 (CurseForge files of t
 | Power Armor (`power_armor`) | 1.0.7 | no own card: the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version | – | – |
 | Mining Gadgets (`mininggadgets`) | 1.19.3 | skipped: only the modification table, without energy, progress or switch | – | – |
 
+## Wave 5 – magic, progress and world (2026-10-31)
+
+Checked against the jars of All the Mods 11 for MC 26.1.2 with `javap` (CurseForge files of the instance, SHA-1 compared, see docs/BUILD.md "Wave 5"). Soft dependencies as always; GameTests run with `-PintegrationMods=<key>`. The whole pack, mod by mod, is in docs/ATM11_COVERAGE.md.
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| Neo Vitae (`neovitae`) | 1.1.38 | **Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards. | none | yes (lone altar, ritual stone and forge; Anima card with EV set through the mod) |
+<!-- wave5 rows -->
+
 ### Peripheral card
 
 The fallback for every mod: if CC: Tweaked offers a block as a peripheral, an uplink or probe on it shows a card.

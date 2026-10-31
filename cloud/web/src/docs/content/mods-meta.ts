@@ -76,6 +76,9 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   aether_ii: { cat: "world", icon: "minecraft:feather" },
   undergarden: { cat: "world", icon: "minecraft:moss_block" },
   allthemodium: { cat: "world", icon: "minecraft:netherite_pickaxe" },
+  // wave 5
+  neovitae: { cat: "magic", icon: "neovitae:ara_vitae" },
+  // wave 5 end
 };
 
 /** The generic cards that work with almost any mod. */

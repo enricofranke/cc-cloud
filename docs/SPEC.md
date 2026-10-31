@@ -1510,6 +1510,11 @@ Manifest: docs/COMPAT.md "Wave 4".
 - **Mainframe cards of wave 4:** `dummies` (Training Dummy DPS meter; counts `LivingDamageEvent.Post` on `DummyEntity` itself, streaks of hits less than 5 s apart, at most 1024 tracked dummies) and `warps` (FTB Essentials, config `world.warpsCard`), both restricted.
 - **Dimensions:** the network snapshot gains `"dims":{"<dim>":{"minY","maxY","ceiling"?}}` (from the server's levels, only dimensions on the map). The dashboard's dimension names and icons (`web/src/lib/dims.ts`), slice/cut ranges, and the slice default for dimensions with a roof use it; without `dims` (older mods) it falls back to vanilla ranges.
 
+### Wave 5 – magic, progress and world (2026-10-31)
+Manifest: docs/COMPAT.md "Wave 5", the whole pack in docs/ATM11_COVERAGE.md.
+- **Neo Vitae (`compat/neovitae`):** device cards `neovitae_altar`, `neovitae_ritual`, `neovitae_forge`. The owner's EV is one player's private value, so it is the restricted mainframe card `neovitae_anima` (config `world.animaCard`), read every 10 s from the mod's saved data through `AnimaHelper`, which works for offline owners. The mod's `Anima` calls life points "EV"; the cards use its words.
+<!-- wave5 spec -->
+
 ## v0.10 – Scenes, schedules, production statistics, public API (requested 2026-10-30)
 Four features on top of the rules engine, the long-term statistics and the permission model. Same rules as before: deny by default, every check on the server thread with the live rights, strict schemas (unknown keys are an error), bounded sizes and rate limits, share sessions get nothing.
 
