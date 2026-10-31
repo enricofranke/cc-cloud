@@ -213,11 +213,17 @@ public final class NetworkService {
         return wired == null ? Set.of() : wired.cableBuses();
     }
 
+    /**
+     * The mainframe and the relays that carry its network. A relay of another team (not shared with everyone) is left
+     * out entirely: it routes nothing for this network, and its position never reaches this network's topology, map,
+     * 3D view, screen, analyzer or link errors (docs/SPEC.md "Relays belong to a team"; the team check is cached).
+     */
     private static List<NetworkGraph.Node> nodes(CloudMainframeBlockEntity m) {
         var nodes = new ArrayList<NetworkGraph.Node>();
         nodes.add(mainframeNode(m));
+        var owner = m.getOwner();
         for (var relay : CloudNetwork.relays()) {
-            if (relay.getLevel() != null && relay.servesForTest(m.getMainframeId())) nodes.add(relayNode(relay, m.getMainframeId()));
+            if (relay.getLevel() != null && relay.servesForTest(m.getMainframeId()) && relay.carries(owner)) nodes.add(relayNode(relay, m.getMainframeId()));
         }
         return nodes;
     }

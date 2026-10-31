@@ -433,6 +433,8 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             : Component.translatable("cccloud.gui.relay.explain", num(view, "nodeRange"), num(view, "deviceRange")), CloudGui.TEXT);
         if (ender) textRow(Component.translatable(bool(view, "enderLinked") ? "cccloud.relay.ender_group" : "cccloud.relay.ender_unlinked"), CloudGui.TEXT_DIM);
 
+        shareRows();
+
         heading("cccloud.gui.relay.networks");
         var networks = view.get("networks") instanceof JsonArray a ? a : new JsonArray();
         for (var e : networks) {
@@ -480,6 +482,29 @@ public class UplinkScreen extends CloudScreen<UplinkMenu> {
             g.pose().popMatrix();
         }));
         if (!bool(view, "powered") && !networks.isEmpty()) warningRow(Component.translatable("cccloud.gui.relay.no_power_hint", usage));
+    }
+
+    /** "Shared with": its owner's team (default) or everyone; the owner (or a server admin) switches it. */
+    private void shareRows() {
+        heading("cccloud.gui.relay.share");
+        if (bool(view, "legacy")) {
+            textRow(Component.translatable("cccloud.gui.relay.share_legacy"), CloudGui.TEXT_DIM);
+            return;
+        }
+        String owner = str(view, "owner");
+        String share = str(view, "share");
+        boolean can = bool(view, "canShare");
+        textRow(Component.translatable("everyone".equals(share) ? "cccloud.gui.relay.share_everyone_text" : "cccloud.gui.relay.share_team_text",
+            owner.isEmpty() ? "?" : owner), CloudGui.TEXT);
+        rows.add(new Row(20, (c, x, y, w) -> {
+            int bx = x + 2;
+            for (var s : new String[]{"team", "everyone"}) {
+                var label = Component.translatable("cccloud.gui.relay.share." + s);
+                bx += c.button(bx, y + 3, label, s.equals(share) ? CloudGui.ButtonStyle.ACCENT : CloudGui.ButtonStyle.NORMAL, can, () -> send("share", s)) + 3;
+            }
+            if (bool(view, "shareDefault")) c.text(Component.translatable("cccloud.gui.relay.share_default").getString(), bx + 3, y + 7, CloudGui.TEXT_DIM, x + w - bx - 5);
+        }));
+        if (!can) textRow(Component.translatable("cccloud.gui.relay.share_no_rights", owner.isEmpty() ? "?" : owner), CloudGui.TEXT_DIM);
     }
 
     // ---- advanced ----------------------------------------------------------------------------------------------------

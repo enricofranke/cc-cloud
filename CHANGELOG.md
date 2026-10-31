@@ -11,6 +11,21 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   is the same as for the Upgrades tab: players without "Manage devices" change nothing, and a claim mod that refuses the
   click still wins.
 
+### Multiplayer: relays belong to your team
+- **A relay now carries only its team's networks.** Before, any network in range used any relay: another team ran over
+  your relay (your relay paid the FE), saw it on their topology, map and 3D view and reached into your base with it.
+  Now a Cloud Relay, Advanced Cloud Relay or Ender Relay belongs to the player who placed it and carries the networks
+  of its owner, the owner's team and that team's allies (FTB Teams; scoreboard teams; without a team mod only your
+  own). Another team's relay never shows up on your topology, map, 3D view, mainframe screen or analyzer.
+- **Share with: Team / Everyone** in the relay's screen: its owner (or a server admin) can share a relay with every
+  network, e.g. a public relay at spawn. Server default: `relayShareDefault = "team"` in `[network]` (`"everyone"`
+  restores the old behaviour; applies at once).
+- **Old relays keep working:** relays placed with 1.0.0-beta.1 or older have no owner and still carry every network
+  (logged once). Break one and place it again to make it your team's.
+- An Ender Relay only joins the group of a mainframe it carries, so another team can't pull your Ender Relay into
+  theirs. Team changes apply at once with FTB Teams (within 10 seconds for scoreboard teams); the team check is cached
+  and never runs per tick.
+
 ### CC: Cloud Connect – an HTTPS address with one command
 - **`/cccloud internet connect mybase`** gives your dashboard the address **https://mybase.cccloud.dev**: HTTPS, from
   anywhere, with no port forwarding, no domain and no proxy (server owner, op level 4). The server keeps one outbound

@@ -35,6 +35,8 @@ Rollen kommen aus mehreren Quellen – **die höchste gilt**: der Besitzer, eine
 
 Ein Mainframe kann einem Team aus **FTB Teams**, **Open Parties and Claims** oder einem Vanilla-Scoreboard-Team zugeordnet werden. Jeder Team-Rang bekommt eine Rolle auf diesem Mainframe (Standard: owner/officer/leader → admin, member → operator, ally → viewer). Tritt jemand ein oder aus, ändert sich sein Zugriff sofort.
 
+Deine [Relays](network.md) tragen auch die Netzwerke deines Teams und deiner Verbündeten, und sonst keine – außer du teilst sie mit allen.
+
 ## Die Seite Access
 
 Admins öffnen sie über das Mainframe-Menü in der Kopfzeile (**Access & roles**):

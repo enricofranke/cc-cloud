@@ -601,7 +601,16 @@ Signal = 1 − Entfernung / Reichweite, angezeigt als 0–100 % und Balken. Unte
 - **Advanced Cloud Relay** – größere Reichweite für Knoten und Geräte.
 - **Ender Relay** – verbindet sich mit anderen Ender Relays über jede Entfernung und **dimensionsübergreifend** (z. B. in den Nether). Ender Relays mit der Link Card zu einer Gruppe verbinden.
 
-Relay aufstellen und wie jedes Gerät verbinden: Link Card auf den Mainframe, dann auf das Relay.
+Relay aufstellen und mit FE versorgen: Es trägt dein Netzwerk von selbst, ohne Verbinden. Nur Ender Relays werden mit der Link Card zu einer Gruppe verbunden (auf den Mainframe, dann auf das Relay).
+
+### Relays gehören deinem Team {#relay-team}
+
+Ein Relay gehört dem Spieler, der es aufgestellt hat. Es trägt die Netzwerke seines Besitzers, des Teams des Besitzers und der Verbündeten dieses Teams (FTB Teams, Scoreboard-Teams; ohne Team-Mod nur deine eigenen). Andere Teams können nicht darüber routen, es zahlt für sie kein FE, und es erscheint nicht in ihrer Topologie, Karte, 3D-Ansicht oder ihrem Mainframe-Fenster.
+
+- Rechtsklick auf ein Relay: **Geteilt mit** zeigt, wen es trägt. Sein Besitzer (oder ein Server-Admin) kann es auf **Allen** stellen – etwa für ein öffentliches Relay am Spawn – und zurück auf **Team**.
+- Ein Ender Relay tritt nur der Gruppe eines Mainframes bei, den es trägt: Ein anderes Team kann dein Ender Relay nicht in seine Gruppe ziehen.
+- Relays, die vor dieser Regel aufgestellt wurden (1.0.0-beta.1 und älter), haben keinen Besitzer und tragen wie bisher jedes Netzwerk. Abbauen und neu aufstellen, dann gehört es deinem Team.
+- Server-Admins können **Allen** zum Standard machen: \`relayShareDefault = "everyone"\` in \`[network]\` der Server-Config (gilt sofort).
 
 ### Cloud Relay
 ${recipe(R.relay)}
@@ -966,6 +975,8 @@ Rollen kommen aus mehreren Quellen – **die höchste gilt**: der Besitzer, eine
 ## Teams {#teams}
 
 Ein Mainframe kann einem Team aus **FTB Teams**, **Open Parties and Claims** oder einem Vanilla-Scoreboard-Team zugeordnet werden. Jeder Team-Rang bekommt eine Rolle auf diesem Mainframe (Standard: owner/officer/leader → admin, member → operator, ally → viewer). Tritt jemand ein oder aus, ändert sich sein Zugriff sofort.
+
+Deine [Relays](/docs/network#relay-team) tragen auch die Netzwerke deines Teams und deiner Verbündeten, und sonst keine – außer du teilst sie mit allen.
 
 ## Die Seite Access {#access}
 

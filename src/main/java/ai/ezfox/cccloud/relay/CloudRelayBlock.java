@@ -7,7 +7,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -57,6 +59,19 @@ public class CloudRelayBlock extends Block implements EntityBlock {
     @Override
     protected VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
         return type == RelayType.ENDER ? ENDER : MAST;
+    }
+
+    /**
+     * The placer owns the relay (it carries their team's networks by default). Machines (fake players) leave it without
+     * an owner, like a relay from before relays had owners: it carries every network.
+     */
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (level.isClientSide() || !(placer instanceof Player player) || player instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
+        if (level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay && relay.owner() == null) {
+            relay.setOwner(player.getUUID(), player.getGameProfile().name());
+        }
     }
 
     @Override

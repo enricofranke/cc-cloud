@@ -35,6 +35,8 @@ Roles come from several sources – the **highest one wins**: the owner, roles g
 
 A mainframe can be assigned to a team from **FTB Teams**, **Open Parties and Claims** or a vanilla scoreboard team. Each team rank maps to a role on that mainframe (defaults: owner/officer/leader → admin, member → operator, ally → viewer). When someone joins or leaves the team, their access changes right away.
 
+Your [relays](network.md) carry your team's and your allies' networks too, and no one else's unless you share them with everyone.
+
 ## The Access page
 
 Admins open it from the mainframe menu in the header (**Access & roles**):

@@ -44,6 +44,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_NODES;
     public static final ModConfigSpec.IntValue RANGE_ENDER_RELAY_DEVICES;
     public static final ModConfigSpec.BooleanValue LEGACY_RANGE_GRACE;
+    /** Relays carry only their owner's team's networks ("team") or every network in range ("everyone"); per relay changeable. */
+    public static final ModConfigSpec.ConfigValue<String> RELAY_SHARE_DEFAULT;
     public static final ModConfigSpec.DoubleValue FIBER_CAPACITY_WEIGHT;
     public static final ModConfigSpec.DoubleValue FIBER_POWER_FACTOR;
     // Cloud Redstone devices (switch, button, lamp, sensor)
@@ -265,6 +267,12 @@ public final class CloudConfig {
                 + "until they are re-linked or a relay is placed.")
             .translation("cccloud.configuration.legacyRangeGrace")
             .define("legacyRangeGrace", true);
+        RELAY_SHARE_DEFAULT = b.comment("Which networks a relay (Cloud Relay, Advanced, Ender) carries unless its owner chose in the relay's screen:",
+                "\"team\" = only networks whose mainframe belongs to the relay's owner, a member of the owner's team or an ally of that team",
+                "(FTB Teams, scoreboard teams; without a team mod: the same player); \"everyone\" = every network in range (the behaviour",
+                "up to 1.0.0-beta.1). Relays placed before relays had owners (1.0.0-beta.1 and older) always carry every network.")
+            .translation("cccloud.configuration.relayShareDefault")
+            .define("relayShareDefault", "team", o -> o instanceof String s && ai.ezfox.cccloud.network.graph.RelaySharing.Share.byId(s) != null);
         FIBER_CAPACITY_WEIGHT = b.comment("How much a device attached by Fiber Cable counts against the mainframe's device capacity (1 = like any device).")
             .translation("cccloud.configuration.fiberCapacityWeight")
             .defineInRange("fiberCapacityWeight", 0.5, 0.0, 1.0);

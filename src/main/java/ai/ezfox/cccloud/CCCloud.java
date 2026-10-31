@@ -34,6 +34,8 @@ public class CCCloud {
         CloudCommand.init();
         ai.ezfox.cccloud.block.MainframeGuard.init();
         ai.ezfox.cccloud.access.Access.init();
+        // Relays carry their owner's team's networks: team changes recompute the networks (docs/SPEC.md "Relays belong to a team").
+        ai.ezfox.cccloud.relay.RelayShares.init();
         ai.ezfox.cccloud.rules.RuleService.init();
         ai.ezfox.cccloud.scene.SceneService.init();
         ai.ezfox.cccloud.publicapi.ApiKeyData.init();

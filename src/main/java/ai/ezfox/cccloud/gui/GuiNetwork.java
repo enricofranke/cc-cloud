@@ -199,6 +199,11 @@ public final class GuiNetwork {
     private static void onUplinkAction(UplinkActionPayload payload, IPayloadContext context) {
         if (!(context.player() instanceof ServerPlayer player)) return;
         if (!ai.ezfox.cccloud.ingame.PacketLimiter.SCREEN_ACTIONS.allow(player.getUUID())) return;
+        if (player.containerMenu instanceof UplinkMenu relayMenu && relayMenu.containerId == payload.containerId() && relayMenu.stillValid(player)
+            && player.level().getBlockEntity(relayMenu.pos()) instanceof ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay) {
+            onRelayAction(player, relay, payload);
+            return;
+        }
         ai.ezfox.cccloud.network.DashboardSection section = null;
         Runnable unlink = null;
         CloudUplinkBlockEntity redstoneTarget = null;
@@ -281,6 +286,16 @@ public final class GuiNetwork {
             else CCCloud.LOGGER.debug("[cccloud] Rejected screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
         }
         if (open) push(player, error != null ? error : notice[0] != null ? notice[0] : "redstone".equals(payload.action()) ? "redstone_saved" : "unlinked");
+    }
+
+    /** The relay screen's "Share with" (owner or server admin, checked live). */
+    private static void onRelayAction(ServerPlayer player, ai.ezfox.cccloud.relay.CloudRelayBlockEntity relay, UplinkActionPayload payload) {
+        String error = GuiActions.relay(payload.action(), payload.arg(), true, relay.mayChangeShare(player), relay.legacy(), share -> {
+            relay.setShare(share, player.getGameProfile().name());
+            return null;
+        });
+        if (error != null) CCCloud.LOGGER.info("[cccloud] Rejected relay screen action {} of {}: {}", payload.action(), player.getGameProfile().name(), error);
+        push(player, error != null ? error : "share_" + payload.arg());
     }
 
     /**

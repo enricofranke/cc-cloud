@@ -5,6 +5,7 @@ import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.entity.SpinAnimation;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.network.NetworkService;
+import ai.ezfox.cccloud.network.graph.RelaySharing;
 import ai.ezfox.cccloud.power.MainframeEnergy;
 import ai.ezfox.cccloud.power.PowerState;
 import java.util.UUID;
@@ -22,15 +23,22 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A relay: a node of the cloud network with its own FE buffer. Relays are shared infrastructure (any mainframe's
- * network may route through them); Ender Relays additionally belong to the ender group of the mainframe they were
- * linked to with the Link Card. Topology changes (load, unload, break, power flips, ender links) mark the network
- * dirty; the {@link NetworkService} recomputes routes, never this block entity per tick.
+ * A relay: a node of the cloud network with its own FE buffer. A relay belongs to the player who placed it and carries
+ * only the networks of that player, their team and its allies, unless its owner shares it with everyone
+ * ({@link RelaySharing}, docs/SPEC.md "Relays belong to a team"); relays without an owner (placed before relays had
+ * owners, or by a machine) carry every network. Ender Relays additionally belong to the ender group of the mainframe
+ * they were linked to with the Link Card. Topology changes (load, unload, break, power flips, ender links, the share
+ * setting) mark the network dirty; the {@link NetworkService} recomputes routes, never this block entity per tick.
  */
 public class CloudRelayBlockEntity extends BlockEntity {
     private UUID relayId = UUID.randomUUID();
     /** Ender relays: the mainframe whose ender group this relay joined. */
     private @Nullable UUID enderGroup;
+    /** The player who placed it; null = no owner (placed before relays had owners, or by a machine): carries every network. */
+    private @Nullable UUID owner;
+    private String ownerName = "";
+    /** Its owner's choice; null = the server default ({@code relayShareDefault}). */
+    private RelaySharing.@Nullable Share share;
     private final MainframeEnergy energy;
     private final PowerState power = new PowerState();
     private boolean hasPower;
@@ -59,6 +67,59 @@ public class CloudRelayBlockEntity extends BlockEntity {
         return enderGroup;
     }
 
+    public @Nullable UUID owner() {
+        return owner;
+    }
+
+    public String ownerName() {
+        return ownerName;
+    }
+
+    /** No owner: placed before relays had owners (or by a machine); carries every network, the setting does not apply. */
+    public boolean legacy() {
+        return owner == null;
+    }
+
+    /** The owner's choice, or null when it follows the server default. */
+    public RelaySharing.@Nullable Share share() {
+        return share;
+    }
+
+    /** What applies now: the owner's choice, else the server default. */
+    public RelaySharing.Share effectiveShare() {
+        return share != null ? share : RelayShares.serverDefault();
+    }
+
+    /** Whether this relay carries the network of a mainframe owned by {@code mainframeOwner} (cached team check). */
+    public boolean carries(@Nullable UUID mainframeOwner) {
+        return RelayShares.carries(owner, effectiveShare(), mainframeOwner);
+    }
+
+    /** Set once when a player places it ({@link CloudRelayBlock#setPlacedBy}). */
+    public void setOwner(UUID player, String name) {
+        owner = player;
+        ownerName = name;
+        setChanged();
+        NetworkService.markDirty();
+    }
+
+    /** Only the owner and server admins ({@code cccloud.admin.manage}, op level 2 by default) change who the relay carries. */
+    public boolean mayChangeShare(Player player) {
+        if (player.getUUID().equals(owner)) return true;
+        var server = player.level().getServer();
+        return server != null && ai.ezfox.cccloud.access.CloudPermissions.of(server).has(player.getUUID(), ai.ezfox.cccloud.access.ServerPermissions.Node.ADMIN_MANAGE);
+    }
+
+    /** The relay screen's "Share with" (rights checked by the caller). Every network is computed again. */
+    public void setShare(RelaySharing.Share value, String by) {
+        if (value == share) return;
+        share = value;
+        setChanged();
+        NetworkService.markDirty();
+        CCCloud.LOGGER.info("[cccloud] {} set the {} at {} (owner {}) to share with {}", by, type().nodeType.id, getBlockPos().toShortString(),
+            ownerName.isEmpty() ? owner : ownerName, value.id());
+    }
+
     public MainframeEnergy energy() {
         return energy;
     }
@@ -84,6 +145,9 @@ public class CloudRelayBlockEntity extends BlockEntity {
         super.loadAdditional(input);
         input.read("relay_id", UUIDUtil.STRING_CODEC).ifPresent(id -> relayId = id);
         enderGroup = input.read("ender_group", UUIDUtil.STRING_CODEC).orElse(null);
+        owner = input.read("owner", UUIDUtil.STRING_CODEC).orElse(null);
+        ownerName = input.getStringOr("owner_name", "");
+        share = RelaySharing.Share.byId(input.getStringOr("share", ""));
         energy.set(Math.min(energy.capacity(), Math.max(0, input.getIntOr("energy", 0))));
     }
 
@@ -92,6 +156,9 @@ public class CloudRelayBlockEntity extends BlockEntity {
         super.saveAdditional(output);
         output.store("relay_id", UUIDUtil.STRING_CODEC, relayId);
         output.storeNullable("ender_group", UUIDUtil.STRING_CODEC, enderGroup);
+        output.storeNullable("owner", UUIDUtil.STRING_CODEC, owner);
+        if (!ownerName.isEmpty()) output.putString("owner_name", ownerName);
+        if (share != null) output.putString("share", share.id());
         output.putInt("energy", energy.energy());
     }
 
@@ -131,6 +198,8 @@ public class CloudRelayBlockEntity extends BlockEntity {
             NetworkService.markDirty();
             setChanged();
         }
+        // after setPlacedBy (same tick as the placement), so a freshly placed relay is not reported
+        if (ticks == 0 && owner == null) RelayShares.legacyLoaded(getBlockPos());
         if (ticks++ % 20 == 0) updateStatus(level);
     }
 
@@ -159,6 +228,11 @@ public class CloudRelayBlockEntity extends BlockEntity {
             player.sendSystemMessage(Component.translatable("cccloud.link_card.linked_elsewhere").withStyle(ChatFormatting.RED));
             return;
         }
+        // Another team's relay: it would not carry that network, and joining its group is the owner's (or their team's) call.
+        if (!carries(mainframe.getOwner())) {
+            player.sendSystemMessage(Component.translatable("cccloud.relay.not_shared", ownerName.isEmpty() ? "?" : ownerName).withStyle(ChatFormatting.RED));
+            return;
+        }
         enderGroup = link.id();
         setChanged();
         NetworkService.markDirty();
@@ -178,18 +252,17 @@ public class CloudRelayBlockEntity extends BlockEntity {
         }
     }
 
-    /** Test hook. */
-    /** GameTests only: this relay serves the network of one mainframe (tests run side by side in one world). */
-    private @Nullable UUID onlyForTest;
+    /** GameTests only: this relay serves the networks of these mainframes (tests run side by side in one world). */
+    private java.util.@Nullable Set<UUID> onlyForTest;
 
-    public void restrictForTest(UUID mainframeId) {
-        onlyForTest = mainframeId;
+    public void restrictForTest(UUID... mainframeIds) {
+        onlyForTest = java.util.Set.of(mainframeIds);
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
-    /** False if a GameTest restricted this relay to another mainframe's network. */
+    /** False if a GameTest restricted this relay to other mainframes' networks. */
     public boolean servesForTest(UUID mainframeId) {
-        return onlyForTest == null || onlyForTest.equals(mainframeId);
+        return onlyForTest == null || onlyForTest.contains(mainframeId);
     }
 
     public void fillForTest() {
