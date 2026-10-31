@@ -230,7 +230,7 @@ class PermissionWalkTest {
                 channel = connect();
                 channel.writeInbound(new TextWebSocketFrame(e.getKey()));
                 channel.runPendingTasks();
-                assertEquals("not_allowed", result(drain(channel), "r").get("error").getAsString(), "no write without view.positions");
+                assertEquals("read_only", result(drain(channel), "r").get("error").getAsString(), "no write without view.positions");
                 granted.add(Perm.VIEW_POSITIONS);
             }
             channel = connect();
