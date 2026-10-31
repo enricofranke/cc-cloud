@@ -236,6 +236,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("security_no_link_takeover", () -> ai.ezfox.cccloud.gametest.SecurityTests::noLinkTakeover);
         TEST_FUNCTIONS.register("internet_mode_switch", () -> ai.ezfox.cccloud.gametest.InternetTests::modeSwitch);
         TEST_FUNCTIONS.register("connect_mode_switch", () -> ai.ezfox.cccloud.gametest.ConnectTests::modeSwitch);
+        TEST_FUNCTIONS.register("join_check", () -> ai.ezfox.cccloud.gametest.JoinTests::joinCheck);
         TEST_FUNCTIONS.register("security_screen_parts", () -> ai.ezfox.cccloud.gametest.SecurityTests::screenShowsOnlyAllowedParts);
         TEST_FUNCTIONS.register("uplink_screen_card", () -> ai.ezfox.cccloud.gametest.SecurityTests::uplinkScreenCard);
         TEST_FUNCTIONS.register("section_cache", () -> ai.ezfox.cccloud.gametest.SectionCacheTests::unloadAndReload);

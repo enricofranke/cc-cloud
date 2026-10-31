@@ -80,8 +80,13 @@ public final class JoinCheck {
     }
 
     private static void onHello(Hello hello, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player) || !CHECK.hello(player.getUUID())) return;
-        String client = BuildCheck.clean(hello.build());
+        if (context.player() instanceof ServerPlayer player) hello(player, hello.build());
+    }
+
+    /** A player named a build (the payload; GameTests call it directly, their mock players send nothing). */
+    public static void hello(ServerPlayer player, String build) {
+        if (!CHECK.hello(player.getUUID())) return;
+        String client = BuildCheck.clean(build);
         if (BuildCheck.same(BuildInfo.id(), client)) {
             CloudLog.LOGGER.debug("[cccloud] {} has the server's CC: Cloud build {}", player.getGameProfile().name(), client);
             return;
