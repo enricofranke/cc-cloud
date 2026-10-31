@@ -57,6 +57,7 @@ public final class CloudCommand {
     }
 
     static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        if (Boolean.getBoolean("cccloud.devCommands")) dispatcher.register(Commands.literal("cccloud").then(DevCommand.node()));
         dispatcher.register(Commands.literal("cccloud")
             .executes(CloudCommand::help)
             .then(Commands.literal("help").executes(CloudCommand::help))
@@ -66,7 +67,7 @@ public final class CloudCommand {
             }))
             .then(Commands.literal("status").executes(CloudCommand::status)
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
-            .then(Commands.literal("test-token").requires(src -> Boolean.getBoolean("cccloud.devCommands") && src.getEntity() == null && src.source == src.getServer())
+            .then(Commands.literal("test-token").requires(DevCommand::allowed)
                 .then(Commands.argument("mainframe", StringArgumentType.word()).executes(CloudCommand::testToken)))
             .then(Commands.literal("select")
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
