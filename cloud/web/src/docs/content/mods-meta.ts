@@ -79,6 +79,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   // tech and logistics
   integratedtunnels: { cat: "logistics", icon: "integratedtunnels:part_interface_item" },
   integratedterminals: { cat: "logistics", icon: "integratedterminals:part_terminal_storage" },
+  integratedcrafting: { cat: "logistics", icon: "integratedcrafting:part_interface_crafting" },
 };
 
 /** The generic cards that work with almost any mod. */

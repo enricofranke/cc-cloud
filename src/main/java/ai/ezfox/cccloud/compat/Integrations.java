@@ -109,7 +109,9 @@ public final class Integrations {
         optional("trainingdummy", () -> ai.ezfox.cccloud.compat.trainingdummy.DummiesCard::init);
         optional("ftbessentials", () -> ai.ezfox.cccloud.compat.ftbessentials.WarpsCard::init);
 
-        // Tech and logistics. After Integrated Dynamics: a cable with Display Panels keeps its Panels card.
+        // Tech and logistics. In this order: a cable with Display Panels keeps its Panels card, a cable with a Crafting
+        // Interface shows the jobs, any other cable of the network the items.
+        optional("integratedcrafting", () -> ai.ezfox.cccloud.compat.integratedcrafting.CraftingJobsCards::init);
         optional("integratedtunnels", () -> ai.ezfox.cccloud.compat.integratedtunnels.ItemNetworkCards::init);
 
         // B. Server & team.

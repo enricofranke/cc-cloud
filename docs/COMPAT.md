@@ -198,6 +198,7 @@ Checked against the jars of All the Mods 11 for MC 26.1.2 (CurseForge files of t
 | --- | --- | --- | --- | --- |
 | Integrated Tunnels (`integratedtunnels`) | 1.13.1 | **Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card. | none (read-only) | yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search) |
 | Integrated Terminals (`integratedterminals`) | 1.10.0 | no own card: its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents | – | – |
+| Integrated Crafting (`integratedcrafting`) | 1.7.1 | **Crafting Jobs** card from an uplink on a logic cable that carries a Crafting Interface: jobs by state, up to 6 rows ("12× Stick – Missing ingredients"), interfaces, recipes; warn alert once on invalid inputs, info alert when the last job is done. Any other cable of the network shows the Item Network card. | Cancel all jobs (`act.buttons`, confirm) | yes (a job handed to the interface shows its row, Cancel all removes it; no job runs to completion, nothing is behind the interface) |
 
 ## Not in this wave
 Nothing left from the v0.8 list.

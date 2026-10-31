@@ -830,6 +830,16 @@
    "controls": "–",
    "tested": "–",
    "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Crafting",
+   "id": "integratedcrafting",
+   "version": "1.7.1",
+   "what": "**Crafting Jobs** card from an uplink on a logic cable that carries a Crafting Interface: jobs by state, up to 6 rows (\"12× Stick – Missing ingredients\"), interfaces, recipes; warn alert once on invalid inputs, info alert when the last job is done. Any other cable of the network shows the Item Network card.",
+   "controls": "Cancel all jobs (`act.buttons`, confirm)",
+   "tested": "yes (a job handed to the interface shows its row, Cancel all removes it; no job runs to completion, nothing is behind the interface)",
+   "skipped": false
   }
  ]
 }

@@ -998,4 +998,20 @@ export const COMPAT_CARDS: SampleCard[] = [
       itemSearch("search", "Search network"),
     ],
   },
+
+  // Integrated Crafting
+  {
+    key: "integratedcrafting_jobs",
+    mod: "integratedcrafting",
+    title: "Crafting Jobs",
+    template: "integratedcrafting_jobs",
+    widgets: [
+      label("status", "Status", "1 processing, 1 missing ingredients"),
+      label("interfaces", "Crafting interfaces", "6", { span: 2 }),
+      label("recipes", "Recipes", "148", { span: 2 }),
+      label("job_0", "Job 1", "64× Iron Ingot – Processing"),
+      label("job_1", "Job 2", "12× Stick – Missing ingredients"),
+      button("cancel", "Cancel all jobs", { confirm: true, color: "red" }),
+    ],
+  },
 ];

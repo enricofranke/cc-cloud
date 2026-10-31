@@ -352,6 +352,9 @@ def integrationMods = [
                            "curse.maven:shogi-1475746:${shogi_curse_file}"],
     ftbessentials       : ["dev.ftb.mods:ftb-essentials-neoforge:${ftbessentials_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
     // Tech and logistics batch.
+    integratedcrafting  : ["curse.maven:integratedcrafting-287357:${integratedcrafting_curse_file}", "curse.maven:integrateddynamics-236307:${integrateddynamics_curse_file}",
+                           "curse.maven:integratedtunnels-251389:${integratedtunnels_curse_file}", "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}",
+                           "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
     integratedtunnels   : ["curse.maven:integratedtunnels-251389:${integratedtunnels_curse_file}", "curse.maven:integrateddynamics-236307:${integrateddynamics_curse_file}",
                            "curse.maven:cyclopscore-232758:${cyclopscore_curse_file}", "curse.maven:commoncapabilities-247007:${commoncapabilities_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
