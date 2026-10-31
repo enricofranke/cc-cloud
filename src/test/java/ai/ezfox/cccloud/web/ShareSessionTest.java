@@ -169,6 +169,8 @@ class ShareSessionTest {
         samples.put(ClientMessages.CraftPreview.class, new String[]{"{\"t\":\"craft_preview\",\"reqId\":\"c1\",\"uplinkId\":\"" + uplink + "\",\"name\":\"minecraft:stick\",\"count\":1}", "craft_plan"});
         samples.put(ClientMessages.Terminal.class, new String[]{"{\"t\":\"term_open\",\"reqId\":\"t1\",\"uplinkId\":\"" + uplink + "\"}", "term_result"});
         samples.put(ClientMessages.CardSettings.class, new String[]{"{\"t\":\"card_settings\",\"reqId\":\"k1\",\"uplinkId\":\"" + uplink + "\",\"settings\":{\"show\":[]}}", "card_settings_result"});
+        samples.put(ClientMessages.CardDetail.class, new String[]{"{\"t\":\"card_detail\",\"reqId\":\"k2\",\"uplinkId\":\"" + uplink + "\"}", "card_detail_result"});
+        samples.put(ClientMessages.CardWrite.class, new String[]{"{\"t\":\"card_write\",\"reqId\":\"k3\",\"uplinkId\":\"" + uplink + "\",\"op\":\"save\",\"text\":\"x\"}", "card_write_result"});
         samples.put(ClientMessages.Unlock.class, new String[]{"{\"t\":\"unlock\",\"reqId\":\"u1\",\"pin\":\"1234\"}", "unlock_result"});
         samples.put(ClientMessages.Invalid.class, new String[]{"{\"t\":\"something_else\",\"reqId\":\"x1\"}", "error"});
         samples.put(ClientMessages.Pong.class, new String[]{"{\"t\":\"pong\"}", null});
