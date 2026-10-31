@@ -112,6 +112,7 @@ public final class Integrations {
         // Wave 5: magic, progress and world mods.
         optional("neovitae", () -> ai.ezfox.cccloud.compat.neovitae.NeoVitaeCards::init);
         optional("thaumaturge", () -> ai.ezfox.cccloud.compat.thaumaturge.ThaumaturgeCards::init);
+        optional("appliedthaumaturge", () -> ai.ezfox.cccloud.compat.appliedthaumaturge.AppliedThaumaturgeCards::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

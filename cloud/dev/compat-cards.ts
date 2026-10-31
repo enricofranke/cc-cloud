@@ -760,6 +760,18 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // Applied Thaumaturge
+  {
+    key: "appliedthaumaturge_essentia",
+    mod: "appliedthaumaturge",
+    title: "ME Essentia",
+    template: "appliedthaumaturge_essentia",
+    widgets: [
+      label("online", "Network", "Online", { span: 2 }),
+      label("aspects", "Stored", "Aer 1.2 k, Ignis 640"),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery

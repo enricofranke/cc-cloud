@@ -356,6 +356,10 @@ def integrationMods = [
                            "curse.maven:modonomicon-538392:${modonomicon_curse_file}"],
     thaumaturge         : ["curse.maven:thaumaturge-1628024:${thaumaturge_curse_file}", "top.theillusivec4.curios:curios-neoforge:${curios_version}",
                            "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
+    // The Thaumaturge bridge to AE2 (compiled against the full AE2 jar, like ME Requester).
+    appliedthaumaturge  : ["curse.maven:appliedthaumaturge-1718689:${appliedthaumaturge_curse_file}", "curse.maven:thaumaturge-1628024:${thaumaturge_curse_file}",
+                           "org.appliedenergistics:appliedenergistics2:${ae2_version}", "org.appliedenergistics:guideme:${guideme_version}",
+                           "top.theillusivec4.curios:curios-neoforge:${curios_version}", "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

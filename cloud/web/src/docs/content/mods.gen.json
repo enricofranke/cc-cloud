@@ -840,6 +840,16 @@
    "controls": "none",
    "tested": "yes (jar, node with aspects, lone matrix, crucible; a running infusion was not tested)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Applied Thaumaturge",
+   "id": "appliedthaumaturge",
+   "version": "1.0.0",
+   "what": "The bridge between Thaumaturge and AE2. **Arcane Assembler**: status, progress, vis it can draw, link to a vis source, patterns. **ME Essentia** for the Essentia Interface and Infusion Provider: network online, the essentia stored in the ME network.",
+   "controls": "none",
+   "tested": "yes (assembler, Essentia Interface; offline, without an ME network)",
+   "skipped": false
   }
  ]
 }
