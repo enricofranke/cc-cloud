@@ -159,6 +159,9 @@ public final class ModRegistry {
     // Data components
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<MainframeLink>> LINKED_MAINFRAME = COMPONENTS.registerComponentType("linked_mainframe",
         b -> b.persistent(MainframeLink.CODEC).networkSynchronized(MainframeLink.STREAM_CODEC));
+    /** An Advanced Cloud Tablet with its alert toasts switched off (in the tablet's Alerts tab). */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> TABLET_ALERTS_OFF = COMPONENTS.registerComponentType("tablet_alerts_off",
+        b -> b.persistent(com.mojang.serialization.Codec.BOOL).networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.BOOL));
     /** A machine picked for a Cloud Probe with the Link Card (sneak + right-click), see {@link ai.ezfox.cccloud.item.ProbeTarget}. */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ai.ezfox.cccloud.item.ProbeTarget>> PROBE_TARGET = COMPONENTS.registerComponentType("probe_target",
         b -> b.persistent(ai.ezfox.cccloud.item.ProbeTarget.CODEC).networkSynchronized(ai.ezfox.cccloud.item.ProbeTarget.STREAM_CODEC));

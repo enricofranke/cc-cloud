@@ -85,6 +85,10 @@ ${recipe(R.rsBridge)}
 
 Ein Redstone-Signal an einer der beiden Hälften ist ein **Not-Aus**: Der Mainframe geht offline, bis das Signal weg ist.
 
+### Mainframe umbenennen {#rename}
+
+Ein neuer Mainframe heißt nach seiner Position. Gib ihm einen Namen in seinem Fenster (**Name** im Reiter Übersicht) oder im Dashboard unter **Settings** beim Namen. Du brauchst dafür das Recht „Edit the layout“. Bis zu 32 Zeichen; ein leerer Name geht zurück zur Position. Dashboards, Tablets, Displays und die Netzwerkkarte folgen sofort.
+
 ### Mainframe abbauen und umziehen {#moving}
 
 Der Mainframe trägt seine Identität im Item. Abbauen (Spitzhacke) und das Item wieder platzieren – egal wo, auch in einer anderen Basis – ergibt **denselben Mainframe**: Geräte, Konten, PIN, Layout, Regeln, Szenen und API-Schlüssel sind wieder da, verknüpfte Uplinks und Bridges verbinden sich von selbst. Er gehört weiter seinem Besitzer, egal wer ihn platziert. Upgrade-Karten fallen als eigene Items heraus; setze sie wieder ein.
@@ -237,7 +241,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 
 ## Meldungen {#alerts}
 
-Programme senden Meldungen mit \`cloud.alert(text, level)\`. Sie erscheinen als Einblendung und bleiben im Protokoll unter der **Glocke**. Info-Meldungen verschwinden von selbst, warn und crit bleiben, bis du sie schließt. Mit **Enable notifications** im Protokoll bekommst du für kritische Meldungen System-Benachrichtigungen, auch wenn der Tab im Hintergrund ist.
+Programme senden Meldungen mit \`cloud.alert(text, level)\`. Sie erscheinen als Einblendung und bleiben im Protokoll unter der **Glocke**. Info-Meldungen verschwinden von selbst, warn und crit bleiben, bis du sie schließt. Mit **Enable notifications** im Protokoll bekommst du für kritische Meldungen System-Benachrichtigungen, auch wenn der Tab im Hintergrund ist. Das Protokoll kommt vom Server: Ein Browser, der sich neu verbindet, hat die letzten 50 noch (bis zum Neustart des Servers). Auf einem [Cloud Tablet](/docs/upgrades#tablet) stehen sie im Tab Alerts.
 
 ## PIN-geschützte Bedienelemente {#pin}
 
@@ -770,6 +774,9 @@ Ein Handgerät, das dein Dashboard **im Spiel** öffnet – ein eigenes Fenster 
 - Funktioniert in Netzwerk-Reichweite jedes Knotens (Mainframe oder Relay). Das **Advanced Cloud Tablet** funktioniert zusätzlich überall, wo ein Ender Relay hinreicht.
 - Nutzt **deine Rolle** auf diesem Mainframe: Viewer schauen zu, Operatoren steuern, Admins bearbeiten.
 - Optionale Taste zum Öffnen (standardmäßig nicht belegt; unter Steuerung einstellen), solange das Tablet im Inventar oder in einem Curios-Slot ist.
+- Knöpfe mit Rückfrage zeigen nach dem ersten Klick **Zum Bestätigen nochmal klicken**; klick innerhalb von 3 Sekunden noch einmal. Knöpfe mit PIN fragen sie oben in der Liste ab.
+- Der Tab **Alerts** zeigt die letzten Meldungen des Mainframes, auch die aus der Zeit, in der das Tablet zu war (bis zum Neustart des Servers). Du siehst, was deine Rolle sehen darf, wie im Dashboard.
+- Mit einem **Advanced Cloud Tablet** im Inventar oder Curios-Slot erscheinen Meldungen seines Mainframes als Toast, auch bei geschlossenem Tablet. Ein Schalter oben im Tab Alerts stellt das für dieses Tablet ab. Kommen viele Meldungen auf einmal, zählt der Toast den Rest mit.
 - Hergestellt aus einem CC-Pocket-Computer und einem Cloud Core (Advanced: dazu Gold und eine Enderperle).
 
 ## Cloud Display {#display}

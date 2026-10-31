@@ -1,9 +1,9 @@
 import { useEffect, useState } from "preact/hooks";
 import { getConn, syncConns, accountLoading } from "../lib/conns.ts";
-import { formatDuration } from "../lib/conn.ts";
+import { formatDuration, rejectText } from "../lib/conn.ts";
 import { removeSaved, saved } from "../lib/store.ts";
 import { statusOf } from "../lib/status.ts";
-import { navigate, notifyPermission, pendingInstall, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
+import { navigate, notifyPermission, pendingInstall, pushToast, requestNotifications, setTheme, themePref, timeAgo } from "../lib/ui.ts";
 import type { ComponentType } from "preact";
 import { Pages } from "./Pages.tsx";
 import { MainframeSwitcher } from "../components/MainframeSwitcher.tsx";
@@ -149,6 +149,33 @@ function PowerMeter({ p, onClick }: { p: PowerInfo; onClick?: () => void }) {
       <span class="pwr-usage">{p.ok ? fmtFE(p.usage, true) : "NO POWER"}</span>
       <span class="pwr-stored">{fmtFE(p.stored)}</span>
     </button>
+  );
+}
+
+/** The mainframe's name in the settings sheet: editable with layout.edit, empty = back to the default name. */
+function MainframeName({ conn, name }: { conn: MainframeConn; name: string }) {
+  const [value, setValue] = useState(name);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => setValue(name), [name]);
+  const save = async (e: Event) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await conn.renameMainframe(value.trim());
+      pushToast({ level: "info", title: "Renamed", text: value.trim() ? `This mainframe is "${value.trim()}" now.` : "Back to the default name." });
+    } catch (err) {
+      pushToast({ level: "warn", title: "Not renamed", text: rejectText({ ok: false, error: (err as Error).message }) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form class="mf-rename" onSubmit={save}>
+      <input class="input" type="text" maxLength={32} aria-label="Mainframe name" placeholder="Default name" value={value} onInput={(e) => setValue((e.target as HTMLInputElement).value)} />
+      <button type="submit" class="btn" disabled={busy || value.trim() === name}>
+        Rename
+      </button>
+    </form>
   );
 }
 
@@ -338,7 +365,7 @@ export function Dashboard({ id }: { id: string }) {
         <Sheet title="This mainframe" onClose={() => setSheet(null)}>
           <dl class="facts">
             <dt>Name</dt>
-            <dd>{info?.name ?? entry.name}</dd>
+            <dd>{conn.can("layout.edit") ? <MainframeName conn={conn} name={info?.name ?? entry.name} /> : (info?.name ?? entry.name)}</dd>
             <dt>This browser</dt>
             <dd>
               {entry.deviceName}

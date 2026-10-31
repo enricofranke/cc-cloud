@@ -95,7 +95,7 @@ There is no external relay. The mod itself hosts the dashboard on the Minecraft 
 - `POST /api/pair {"code":"XXXX-XXXX","name":"Enricos iPhone"}` → `{"token":"...","mainframeId":"...","name":"..."}`. Wrong code → 403; max 5 wrong attempts per IP per minute.
 - `GET /api/mainframes` with `Authorization: Bearer <token>` (a browser may hold several tokens, one per mainframe) → basic info.
 - `GET /ws/client?token=...` (WebSocket). Server → client:
-  - `{"t":"snapshot","mainframe":{"id","name","online","enabled"},"uplinks":[{"uplinkId","title","online","widgets":[{"id","type","label","opts","value"}]}]}`
+  - `{"t":"snapshot","mainframe":{"id","name","online","enabled"},"uplinks":[{"uplinkId","title","online","widgets":[{"id","type","label","opts","value"}]}],"alerts?":[…]}` (`alerts`: the mainframe's latest alerts, oldest first, in the form of the `alert` delta and filtered for this session; missing while there are none, never for share links)
   - deltas: `{"t":"value","uplinkId","id","value"}` (since 0.10 the hub sends all values of a flush as one `{"t":"values","s":{uplinkId:{widgetId:value}}}`, see "Scaling"), `{"t":"uplink",...full uplink...}`, `{"t":"uplink_removed","uplinkId"}`, `{"t":"state","online","enabled"}`, `{"t":"alert","uplinkId","text","level","ts"}`, `{"t":"action_result","reqId","ok","error?"}`
   - `{"t":"ping"}` every 20 s.
 - Client → server: `{"t":"action","reqId":"...","uplinkId","id","value"}`, `{"t":"pong"}`. The server rejects actions while the mainframe is offline or disabled, and limits each client to 10 actions per second. `online` here = the mainframe exists, is loaded and is not redstone-killed.
@@ -887,6 +887,11 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 - Override (needs `act.redstone`): client → `{"t":"rs_override","reqId","channel","level":0-15,"seconds":1-86400|null}` (null = until reset); `level:null` clears the override. Server → `{"t":"rs_result","reqId","ok","error?"}` (`not_allowed | read_only | forbidden | invalid_channel | invalid_argument | too_many_channels | rate_limited | offline`), then a `redstone` delta. An override may create a channel that has no transmitter yet. Every override is written to the mainframe's audit log.
 - Power breakdown items may now include `anchor` (Chunk Anchor FE) and `efficiency` (negative, saved FE); unknown keys should be shown with their key as label.
 
+### Renaming a mainframe
+- A mainframe is called `Mainframe @ x y z` until it is renamed, in the Mainframe screen (Overview, action `rename`) or the dashboard's settings sheet. Needs `layout.edit`, like a card's title. Plain text, stripped, at most 32 characters, no control characters, no `§`; empty = back to the default name.
+- Client → `{"t":"mainframe_rename","reqId","name"}`, strict; invalid → `invalid_message`. Server → `{"t":"mainframe_result","reqId","ok","error?"}` (`read_only | not_allowed | forbidden | unloaded | rate_limited | offline`; `unloaded`: the name is stored in the block). A write for the internet PIN gate.
+- The block stores it (`custom_name`), the retention entry keeps it for a removed mainframe, every change goes to the audit log. Dashboards, share links and open tablets get a `state` delta with `name` (a pending state message keeps the name when a later one replaces it), the network map republishes (the name is part of its publish key), displays follow within 5 ticks, and the saved mainframe list follows through the dashboard's connection.
+
 ### Cloud Tablet (item)
 - Handheld item, opens the dashboard **in-game** (a native screen that renders the same cards/widgets with MC widgets – not a browser). Works within network range of any node (or anywhere in Ender range with an advanced tablet). Uses the player's role on that mainframe. Keybind to open (default unbound) when the tablet is in the inventory/curios slot.
 - Normal and advanced tier; recipe from a CC pocket computer + cloud core (+ gold/ender pearl for advanced).
@@ -906,6 +911,9 @@ Code: `ingame/` (shared: access helper, coverage, hub session, payloads, registr
 - Every second: the tablet must still be carried and linked to that mainframe, the player in coverage (normal tablet) and still have a role – otherwise the screen closes with a message.
 - Requests: `cccloud:tablet_request` carries a browser-format `action` or `query` message (≤ 8 KB), parsed by `ClientMessages` and run by the same bridge as browsers (live role check, uplink check, widget validation, audit log "<player> (tablet)"). Rate limits: 10 actions/s, 5 queries/s. PIN widgets: the screen asks for the PIN; it is checked off the server thread with the same per-device lockout. Results come back as `action_result`/`query_result` messages in `tablet_data`.
 - Screen: all widget types (gauges/progress bars, labels, indicators, charts, buttons with two-step confirm, toggles, sliders as −/+, select/buttons, number/text inputs, item search, watchlist, jobs, redstone sides) plus an Alerts tab; layout card order and hidden cards/widgets are respected.
+- Controls with `confirm`: the first click arms the control, a second click within 3 s sends it; another click disarms. The button itself says "Click again to confirm" and keeps its width in both states; other controls show that as a notice. Results and hints are notices over the list, never rows: a row on top would move the list between the two clicks (the second click then hit the neighbouring button, which is why Reboot and Shut down seemed dead), and when scrolled it would not be seen at all. PIN widgets skip the confirmation (as on the web), scroll to the PIN row at the top and focus it; Enter submits. The auto Computer card disables power buttons that make no sense right now (as on the web).
+- Alerts tab: the hub keeps the latest 50 delivered alerts per mainframe in memory (gone after a server restart); a new session gets them in its snapshot, so the tab shows what happened while the screen was closed. Added at flush time, so an alert is in a session's snapshot or arrives as a delta, never both. Same filter as the deltas: restricted sections and private text need `view.positions`, viewers get the public form. A fresh snapshot replaces the client's list (rights may have changed); an alert with an `uplinkId` shows that card's title.
+- Alert toasts (advanced tablet only): the alerts of a mainframe reach every online player who carries an Advanced Cloud Tablet linked to it (hands, inventory, Curios; screen open or closed, any distance) as `cccloud:tablet_alert` {mainframeName, text, level, more}, shown as a toast titled with the mainframe. Live rights and the same filter as above. Per player: 3 at once, then one every 4 s; what is held back is counted in the next toast (`more`) or a summary (`text` empty) and stays in the Alerts tab. The switch at the top of the Alerts tab (`cccloud:tablet_notify`) sets the item component `cccloud:tablet_alerts_off` on every carried tablet linked to that mainframe.
 
 **Cloud Display** (`cccloud:cloud_display`, CC-monitor blockstate: `facing` × `orientation` × 16 edge states):
 - Forming exactly like CC: Tweaked monitors (expand into compatible neighbours, contract/split when a block is removed, validate after loading), up to 8×6 blocks. The configuration (mainframe, section, in-world clicks, configuring player) is copied to every block, so it survives growing and splitting.
@@ -1448,7 +1456,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
   - crafting through `item_search`: `storage.craft`;
   - watchlist edits: `storage.autostock`;
   - `query`: `storage.search`;
-  - `layout_set`: `layout.edit`;
+  - `layout_set`, `mainframe_rename`: `layout.edit`;
   - `net_unlink`: `network.link`;
   - `rule_set` and `rule_delete`: `rules.edit`;
   - `rule_enable` and `rule_run`: `rules.toggle`;

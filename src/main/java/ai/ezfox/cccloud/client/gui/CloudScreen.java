@@ -70,7 +70,12 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
 
         /** Draws a button and makes it clickable; returns its width. */
         public int button(int x, int y, Component label, CloudGui.ButtonStyle style, boolean enabled, Runnable action) {
-            int w = Math.max(30, font.width(label) + 10);
+            return button(x, y, label, style, enabled, 0, action);
+        }
+
+        /** As above, at least {@code minW} wide (a button that changes its label stays under the cursor). */
+        public int button(int x, int y, Component label, CloudGui.ButtonStyle style, boolean enabled, int minW, Runnable action) {
+            int w = Math.max(minW, Math.max(30, font.width(label) + 10));
             boolean hover = enabled && hover(x, y, w, 14);
             CloudGui.button(g, x, y, w, style, hover, enabled);
             // a shadow smears dark text on the light button
@@ -99,7 +104,7 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
 
         public void toggle(int x, int y, boolean on, boolean enabled, Runnable action) {
             CloudGui.toggle(g, x, y, on);
-            if (enabled) hits.add(new Hit(x, y, 24, 12, action));
+            if (enabled) hitArea(x, y, 24, 12, action);
         }
 
         /** Text cut to fit {@code maxW} (with an ellipsis). */
@@ -255,6 +260,16 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
         setFocused(null);
         rows.clear();
         buildRows();
+    }
+
+    /** A short message over the list. It does not move the rows, so what is under the cursor stays there. */
+    protected void showNotice(Component text) {
+        notice = text.getString();
+        noticeUntil = System.currentTimeMillis() + 4000;
+    }
+
+    protected void scrollToTop() {
+        scroll = 0;
     }
 
     /** Scrolls the list to its end (clamped when drawn). */

@@ -75,6 +75,11 @@ public interface GameBridge {
     /** v0.7 wireless redstone override of a channel (act.redstone). Returns null or an error code. */
     @Nullable String redstoneOverride(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneOverride override);
 
+    /** Renames the mainframe (layout.edit). Returns null or an error code. */
+    default @Nullable String renameMainframe(AuthStore.Device device, UUID mainframeId, ClientMessages.MainframeRename message) {
+        return "unsupported";
+    }
+
     /** Cloud Redstone devices: rename / regroup (network.link). Returns null or an error code. */
     default @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
         return "unsupported";

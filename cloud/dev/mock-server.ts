@@ -132,6 +132,8 @@ interface MockDisplay {
 interface Mainframe {
   id: string;
   name: string;
+  /** The name before the first rename ("" renames back to it). */
+  defaultName?: string;
   online: boolean;
   enabled: boolean;
   code: string;
@@ -2240,6 +2242,24 @@ export async function createMockServer(opts: MockOptions = {}) {
           prog.program = msg.text;
           log(`${c.user} wrote a new program to ${pu.title}`);
           return reply({ ok: true, detail: doc() });
+        }
+        if (msg.t === "mainframe_rename") {
+          const mres = (ok: boolean, error?: string) => sendTo(ws, { t: "mainframe_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          const rd = denied(c, "layout.edit");
+          if (rd) return mres(false, rd);
+          const name = msg.name.trim();
+          // eslint-disable-next-line no-control-regex
+          if (/[\u0000-\u001f\u007f-\u009f]/.test(name)) return mres(false, "invalid_name");
+          const before = m.name;
+          m.defaultName ??= before;
+          m.name = name || m.defaultName;
+          if (m.name !== before) {
+            for (const n of m.net?.nodes ?? []) if (n.type === "mainframe") n.name = m.name;
+            broadcast(m, { t: "state", online: m.online, enabled: m.enabled, name: m.name });
+            if (m.net) broadcastNetwork(m);
+          }
+          log(`${c.user} renamed the mainframe: ${before} → ${m.name}`);
+          return mres(true);
         }
         if (msg.t === "rs_device") {
           // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown

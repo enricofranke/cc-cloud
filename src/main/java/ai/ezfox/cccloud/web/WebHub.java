@@ -33,6 +33,8 @@ import org.jspecify.annotations.Nullable;
 public final class WebHub {
     public static final WebHub INSTANCE = new WebHub();
     private static final int MAX_PENDING_ALERTS = 16;
+    /** Alerts a mainframe keeps for snapshots (the dashboard's alert log holds as many). */
+    private static final int MAX_ALERT_LOG = 50;
 
     public record MainframeInfo(UUID id, String name, boolean online, boolean enabled) {
     }
@@ -304,6 +306,10 @@ public final class WebHub {
         }
     }
 
+    /** An alert of the history: {@code pub} is its form for sessions that may not see names (null = not private). */
+    private record LoggedAlert(JsonObject message, @Nullable JsonObject pub) {
+    }
+
     private static final class View {
         final UUID id;
         String name = "";
@@ -327,6 +333,8 @@ public final class WebHub {
         Map<String, Set<String>> values = new LinkedHashMap<>();
         int pendingAlerts;
         int alertSeq;
+        /** The latest delivered alerts, oldest first; new sessions get them in their snapshot. In memory, like the rest of the view. */
+        final java.util.ArrayDeque<LoggedAlert> alertLog = new java.util.ArrayDeque<>();
         /** Power of the mainframe: {stored, capacity, usage, ok}; reason why it is offline (or null). */
         @Nullable JsonObject power;
         @Nullable String reason;
@@ -930,6 +938,16 @@ public final class WebHub {
 
     public static volatile @Nullable AlertListener onAlert;
 
+    /**
+     * Every published alert with what a permission filter needs (the Advanced Cloud Tablet's notifications). Any thread;
+     * {@code publicText} as in {@link #publishAlert(UUID, String, String, String, String)}.
+     */
+    public interface AlertTap {
+        void alert(UUID mainframeId, @Nullable String uplinkId, String text, String level, @Nullable String publicText);
+    }
+
+    public static volatile @Nullable AlertTap alertTap;
+
     /** True if the section is published and online. */
     public boolean uplinkOnline(UUID mainframeId, String uplinkId) {
         var view = views.get(mainframeId);
@@ -967,6 +985,8 @@ public final class WebHub {
                 ai.ezfox.cccloud.CloudLog.LOGGER.warn("[cccloud] Alert listener failed", e);
             }
         }
+        var tap = alertTap;
+        if (tap != null) tap.alert(mainframeId, uplinkId, text, level, publicText);
         var view = views.get(mainframeId);
         if (view == null) return;
         synchronized (view) {
@@ -1155,6 +1175,7 @@ public final class WebHub {
         } else {
             json.add("account", com.google.gson.JsonNull.INSTANCE);
         }
+        if (!view.alertLog.isEmpty()) json.add("alerts", alertHistory(view, session.perms()));
         var sections = new ArrayList<Section>(view.uplinks.size());
         boolean restricted = seesRestricted(session.perms());
         for (var entry : view.uplinks.entrySet()) {
@@ -1163,6 +1184,24 @@ public final class WebHub {
         // Positions only with view.positions.
         var network = session.seesPositions() ? view.networkFullJson : view.networkStrippedJson;
         return new SnapshotParts(json, sections, view.layout, network, view.rules, view.redstone, view.scenes, seesNames(session.perms()));
+    }
+
+    /**
+     * The alert history for a snapshot, oldest first, filtered like the deltas: alerts of restricted sections and the
+     * private forms only with {@code view.positions}. Under the view's lock.
+     */
+    private static com.google.gson.JsonArray alertHistory(View view, java.util.Set<ai.ezfox.cccloud.access.Perm> perms) {
+        boolean full = seesRestricted(perms);
+        var array = new com.google.gson.JsonArray();
+        for (var alert : view.alertLog) {
+            var message = alert.message();
+            if (full) {
+                array.add(message);
+            } else if (!(message.has("uplinkId") && view.restricted.contains(message.get("uplinkId").getAsString()))) {
+                array.add(alert.pub() != null ? alert.pub() : message);
+            }
+        }
+        return array;
     }
 
     /** The snapshot text: the head, then the sections (each serialised once per change and shared), then the rest. */
@@ -1443,6 +1482,12 @@ public final class WebHub {
             publicPending = view.publicOutbox.isEmpty() ? new LinkedHashMap<>() : view.publicOutbox;
             if (!view.publicOutbox.isEmpty()) view.publicOutbox = new LinkedHashMap<>();
             view.pendingAlerts = 0;
+            // Logged here, not when published: a session's snapshot then holds exactly the alerts it gets no delta for.
+            for (var entry : pending.entrySet()) {
+                if (!entry.getKey().startsWith("a:")) continue;
+                view.alertLog.addLast(new LoggedAlert(entry.getValue(), publicPending.get(entry.getKey())));
+                if (view.alertLog.size() > MAX_ALERT_LOG) view.alertLog.removeFirst();
+            }
             resolveSections(view, pending, publicPending);
             // only references under the lock (the server thread publishes to this view every tick); the value
             // messages are built outside it from the immutable section versions
@@ -1604,6 +1649,10 @@ public final class WebHub {
     }
 
     private static void put(View view, String key, JsonObject message) {
+        // a state message replaces the pending one: a rename in it must not get lost (power updates come every second)
+        if (view.outbox.get(key) instanceof JsonObject old && key.equals("state") && old.has("name") && !message.has("name")) {
+            message.add("name", old.get("name"));
+        }
         view.outbox.remove(key);
         view.outbox.put(key, message);
     }

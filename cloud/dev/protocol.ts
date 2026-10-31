@@ -133,6 +133,8 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
   // wave 4: a device card's settings (the Peripheral card's values; layout.edit), the card checks the names
   z.object({ t: z.literal("card_settings"), reqId: z.string().min(1).max(64), uplinkId: entityId, settings: z.record(z.string(), z.unknown()) }).strict(),
+  // rename the mainframe (layout.edit); plain text ≤ 32 characters, "" = the default name
+  z.object({ t: z.literal("mainframe_rename"), reqId: z.string().min(1).max(64), name: z.string().max(32) }).strict(),
   // Cloud Redstone devices: rename / regroup (network.link); plain text ≤ 32, at least one of name/group
   z.object({ t: z.literal("rs_device"), reqId: z.string().min(1).max(64), deviceId: entityId, name: z.string().max(32).optional(), group: z.string().max(32).optional() }).strict(),
   // Cloud Displays (layout.edit): op list, or set / unlink one display (the handler checks the target)

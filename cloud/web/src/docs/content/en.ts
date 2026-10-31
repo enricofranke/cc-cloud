@@ -85,6 +85,10 @@ ${recipe(R.rsBridge)}
 
 A redstone signal on either half is a **kill switch**: the mainframe goes offline until the signal is gone.
 
+### Rename the mainframe {#rename}
+
+A new mainframe is named after its position. Give it a name in its screen (**Name** on the Overview tab) or on the dashboard under **Settings** next to the name. You need the permission “Edit the layout”. Up to 32 characters; an empty name goes back to the position. Dashboards, tablets, displays and the network map follow right away.
+
 ### Breaking and moving the mainframe {#moving}
 
 The mainframe keeps its identity in its item. Break it (pickaxe) and place the item again – anywhere, also in another base – and it is the **same mainframe**: devices, accounts, PIN, layout, rules, scenes and API keys are back, and linked uplinks and bridges reconnect by themselves. It still belongs to its owner, whoever places it. Upgrade cards drop as separate items; put them back in.
@@ -237,7 +241,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 
 ## Alerts {#alerts}
 
-Programs send alerts with \`cloud.alert(text, level)\`. They pop up as toasts and are kept in the **bell** log. Info toasts fade; warn and crit stay until dismissed. Tap **Enable notifications** in the alert log to get system notifications for crit alerts while the tab is in the background.
+Programs send alerts with \`cloud.alert(text, level)\`. They pop up as toasts and are kept in the **bell** log. Info toasts fade; warn and crit stay until dismissed. Tap **Enable notifications** in the alert log to get system notifications for crit alerts while the tab is in the background. The log comes from the server, so a browser that reconnects still has the latest 50 (until the server restarts). On a [Cloud Tablet](/docs/upgrades#tablet) they are on the Alerts tab.
 
 ## PIN-protected controls {#pin}
 
@@ -770,6 +774,9 @@ A handheld item that opens your dashboard **in-game** – a native screen with t
 - Works within network range of any node (mainframe or relay). The **Advanced Cloud Tablet** also works anywhere an Ender Relay reaches.
 - Uses **your role** on that mainframe: viewers watch, operators control, admins edit.
 - Optional key binding to open it (unbound by default; set it under Controls) while the tablet is in your inventory or a Curios slot.
+- Buttons that ask for confirmation say **Click again to confirm** after the first click; click them again within 3 seconds. Buttons with a PIN ask for it at the top of the list.
+- The **Alerts** tab shows the latest alerts of the mainframe, also those from while the tablet was closed (kept until the server restarts). You see what your role may see, as on the dashboard.
+- With an **Advanced Cloud Tablet** in your inventory or a Curios slot, alerts of its mainframe pop up as a toast, even with the tablet closed. A switch at the top of the Alerts tab turns that off for this tablet. If many alerts come at once, the toast counts the rest.
 - Crafted from a CC pocket computer and a Cloud Core (advanced: plus gold and an ender pearl).
 
 ## Cloud Display {#display}

@@ -34,7 +34,7 @@ public final class MainframeRetention extends SavedData {
      * @param recovered an item was handed out with {@code /cccloud mainframe recover} (owners get one per removal)
      */
     public record Entry(Optional<UUID> owner, String ownerName, long removedAt, GlobalPos pos, boolean dropped, boolean recovered,
-                        boolean enabled, Map<UUID, GlobalPos> uplinks) {
+                        boolean enabled, Map<UUID, GlobalPos> uplinks, String name) {
         static final Codec<Entry> CODEC = RecordCodecBuilder.create(i -> i.group(
             UUIDUtil.STRING_CODEC.optionalFieldOf("owner").forGetter(Entry::owner),
             Codec.STRING.optionalFieldOf("owner_name", "").forGetter(Entry::ownerName),
@@ -43,7 +43,8 @@ public final class MainframeRetention extends SavedData {
             Codec.BOOL.optionalFieldOf("dropped", true).forGetter(Entry::dropped),
             Codec.BOOL.optionalFieldOf("recovered", false).forGetter(Entry::recovered),
             Codec.BOOL.optionalFieldOf("enabled", true).forGetter(Entry::enabled),
-            Codec.unboundedMap(UUIDUtil.STRING_CODEC, GlobalPos.CODEC).optionalFieldOf("uplinks", Map.of()).forGetter(Entry::uplinks)
+            Codec.unboundedMap(UUIDUtil.STRING_CODEC, GlobalPos.CODEC).optionalFieldOf("uplinks", Map.of()).forGetter(Entry::uplinks),
+            Codec.STRING.optionalFieldOf("name", "").forGetter(Entry::name)
         ).apply(i, Entry::new));
 
         public boolean ownedBy(UUID player) {
@@ -51,7 +52,7 @@ public final class MainframeRetention extends SavedData {
         }
 
         Entry withRecovered() {
-            return new Entry(owner, ownerName, removedAt, pos, dropped, true, enabled, uplinks);
+            return new Entry(owner, ownerName, removedAt, pos, dropped, true, enabled, uplinks, name);
         }
     }
 
@@ -95,8 +96,9 @@ public final class MainframeRetention extends SavedData {
         WebHub.INSTANCE.publishRemoved(id, name(entry), purgeAt(entry));
     }
 
-    /** The name the mainframe had (it is named after its position). */
+    /** The name the mainframe had (by default it is named after its position). */
     public static String name(Entry entry) {
+        if (!entry.name().isEmpty()) return entry.name();
         var p = entry.pos().pos();
         return "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
     }

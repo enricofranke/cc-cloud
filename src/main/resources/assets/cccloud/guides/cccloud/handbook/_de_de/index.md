@@ -95,6 +95,10 @@ Ohne Allthemodium ersetzen 4 Diamanten und 2 Netheritschrott die Vibranium-Barre
 
 Ein Redstone-Signal an einer der beiden Hälften ist ein **Not-Aus**: Der Mainframe geht offline, bis das Signal weg ist.
 
+### Mainframe umbenennen
+
+Ein neuer Mainframe heißt nach seiner Position. Gib ihm einen Namen in seinem Fenster (**Name** im Reiter Übersicht) oder im Dashboard unter **Settings** beim Namen. Du brauchst dafür das Recht „Edit the layout“. Bis zu 32 Zeichen; ein leerer Name geht zurück zur Position. Dashboards, Tablets, Displays und die Netzwerkkarte folgen sofort.
+
 ### Mainframe abbauen und umziehen
 
 Der Mainframe trägt seine Identität im Item. Abbauen (Spitzhacke) und das Item wieder platzieren – egal wo, auch in einer anderen Basis – ergibt **denselben Mainframe**: Geräte, Konten, PIN, Layout, Regeln, Szenen und API-Schlüssel sind wieder da, verknüpfte Uplinks und Bridges verbinden sich von selbst. Er gehört weiter seinem Besitzer, egal wer ihn platziert. Upgrade-Karten fallen als eigene Items heraus; setze sie wieder ein.

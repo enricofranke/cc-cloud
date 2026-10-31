@@ -87,7 +87,11 @@ public final class TabletService {
 
     public static void init() {
         NeoForge.EVENT_BUS.addListener(TabletService::onServerTick);
-        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent e) -> OPEN.clear());
+        NeoForge.EVENT_BUS.addListener((ServerStoppedEvent e) -> {
+            OPEN.clear();
+            TabletAlerts.clear();
+        });
+        TabletAlerts.init();
     }
 
     /** Test/diagnostics: the session of an open tablet. */
@@ -117,7 +121,7 @@ public final class TabletService {
         boolean advanced = item.isAdvanced();
         boolean control = access.perms().contains(ai.ezfox.cccloud.access.Perm.ACT_BUTTONS);
         player.openMenu(new SimpleMenuProvider((id, inv, p) -> new TabletMenu(id, pos, name, advanced, control), stack.getHoverName()),
-            buf -> TabletMenu.writeOpen(buf, pos, name, advanced, control));
+            buf -> TabletMenu.writeOpen(buf, pos, name, advanced, control, !stack.getOrDefault(ModRegistry.TABLET_ALERTS_OFF.get(), false)));
         if (player.containerMenu instanceof TabletMenu menu) attach(player, menu, link.id(), advanced);
     }
 
@@ -145,14 +149,8 @@ public final class TabletService {
 
     /** A carried tablet (linked to {@code mainframeId} if not null), linked tablets first. */
     static @Nullable ItemStack findTablet(ServerPlayer player, @Nullable UUID mainframeId) {
-        var candidates = new ArrayList<ItemStack>();
-        candidates.add(player.getMainHandItem());
-        candidates.add(player.getOffhandItem());
-        var inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) candidates.add(inventory.getItem(i));
-        candidates.addAll(CuriosTablets.stacks(player));
         ItemStack unlinked = null;
-        for (var stack : candidates) {
+        for (var stack : carried(player)) {
             if (!(stack.getItem() instanceof CloudTabletItem)) continue;
             var link = stack.get(ModRegistry.LINKED_MAINFRAME.get());
             if (link == null) {
@@ -162,6 +160,17 @@ public final class TabletService {
             if (mainframeId == null || link.id().equals(mainframeId)) return stack;
         }
         return unlinked;
+    }
+
+    /** Everything the player carries that could be a tablet: the hands, the inventory, then the Curios slots. */
+    static List<ItemStack> carried(ServerPlayer player) {
+        var candidates = new ArrayList<ItemStack>();
+        candidates.add(player.getMainHandItem());
+        candidates.add(player.getOffhandItem());
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) candidates.add(inventory.getItem(i));
+        candidates.addAll(CuriosTablets.stacks(player));
+        return candidates;
     }
 
     /** Null if the player may use a tablet on this mainframe from where they stand, else an error code. */
@@ -185,10 +194,15 @@ public final class TabletService {
     // ---- ticking ---------------------------------------------------------------------------------------------------
 
     private static void onServerTick(ServerTickEvent.Post event) {
-        if (OPEN.isEmpty()) return;
+        boolean alerts = TabletAlerts.busy();
+        if (OPEN.isEmpty() && !alerts) return;
         long cost = ai.ezfox.cccloud.network.TickCost.start();
         try {
-            tickOpen(event);
+            if (alerts) {
+                InGameClients.flushIfNoWebServer(); // the alert history is written by the hub's flush
+                TabletAlerts.tick(event.getServer());
+            }
+            if (!OPEN.isEmpty()) tickOpen(event);
         } finally {
             ai.ezfox.cccloud.network.TickCost.end(ai.ezfox.cccloud.network.TickCost.SCREENS, cost);
         }
@@ -300,6 +314,18 @@ public final class TabletService {
             case ClientMessages.Query query -> query(player, open, query);
             default -> {
             }
+        }
+    }
+
+    /** The switch in the Alerts tab: every carried tablet linked to the open tablet's mainframe follows it. */
+    public static void setNotify(ServerPlayer player, InGamePayloads.TabletNotify payload) {
+        var open = OPEN.get(player.getUUID());
+        if (open == null || open.containerId != payload.containerId() || !(player.containerMenu instanceof TabletMenu)) return;
+        for (var stack : carried(player)) {
+            var link = stack.get(ModRegistry.LINKED_MAINFRAME.get());
+            if (!(stack.getItem() instanceof CloudTabletItem) || link == null || !link.id().equals(open.mainframeId)) continue;
+            if (payload.on()) stack.remove(ModRegistry.TABLET_ALERTS_OFF.get());
+            else stack.set(ModRegistry.TABLET_ALERTS_OFF.get(), true);
         }
     }
 

@@ -342,6 +342,7 @@ public final class GuiNetwork {
         @Override public @Nullable String linkAccount() { return "no_screen"; }
         @Override public @Nullable String setPin(String pin) { return "no_screen"; }
         @Override public @Nullable String clearPin() { return "no_screen"; }
+        @Override public @Nullable String renameMainframe(String name) { return "no_screen"; }
     };
 
     /** GameTests: the screen operations of a player on a mainframe (the same object a screen action uses). */
@@ -515,6 +516,13 @@ public final class GuiNetwork {
                 if (player.containerMenu instanceof MainframeMenu) push(player, "pin_set");
             }));
             notice = "pin_saving";
+            return null;
+        }
+
+        @Override
+        public @Nullable String renameMainframe(String name) {
+            mainframe.rename(name, player.getGameProfile().name());
+            notice = "renamed";
             return null;
         }
 

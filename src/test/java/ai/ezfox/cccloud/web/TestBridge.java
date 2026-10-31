@@ -69,6 +69,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String renameMainframe(AuthStore.Device device, UUID mainframeId, ClientMessages.MainframeRename message) {
+        dispatched.add("mainframe_rename:" + message.name());
+        return null;
+    }
+
+    @Override
     public @Nullable String setLayout(AuthStore.Device device, UUID mainframeId, @Nullable JsonObject layout) {
         dispatched.add("layout");
         return null;

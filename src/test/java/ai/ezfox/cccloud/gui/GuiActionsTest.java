@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 class GuiActionsTest {
     private static final Map<GuiActions.Mainframe, String> VALID_ARGS = Map.ofEntries(
         Map.entry(GuiActions.Mainframe.TOGGLE_DASHBOARD, ""),
+        Map.entry(GuiActions.Mainframe.RENAME, "Main base"),
         Map.entry(GuiActions.Mainframe.NEW_CODE, ""),
         Map.entry(GuiActions.Mainframe.APPROVE, "AbC_123-xyz"),
         Map.entry(GuiActions.Mainframe.DENY, "AbC_123-xyz"),
@@ -67,6 +68,7 @@ class GuiActionsTest {
         @Override public @Nullable String setPin(String pin) { return call("pin_set"); }
         @Override public @Nullable String clearPin() { return call("pin_clear"); }
         @Override public @Nullable String unlink() { return call("unlink"); }
+        @Override public @Nullable String renameMainframe(String name) { return call("rename:" + name); }
     }
 
     @Test
@@ -107,6 +109,17 @@ class GuiActionsTest {
             assertEquals("invalid_argument", GuiActions.mainframe(b[0], b[1], true, ALL, ops), b[0] + " '" + b[1] + "'");
             assertTrue(ops.calls.isEmpty());
         }
+        for (var name : new String[]{"x".repeat(GuiActions.MAX_MAINFRAME_NAME + 1), "§cRed", "two\nlines", "bell\u0007"}) {
+            var ops = new Recorder();
+            assertEquals("invalid_name", GuiActions.mainframe("rename", name, true, ALL, ops), name);
+            assertTrue(ops.calls.isEmpty());
+        }
+        var trimmed = new Recorder();
+        assertNull(GuiActions.mainframe("rename", "  Main base  ", true, ALL, trimmed));
+        assertEquals(List.of("rename:Main base"), trimmed.calls);
+        var cleared = new Recorder();
+        assertNull(GuiActions.mainframe("rename", "   ", true, ALL, cleared));
+        assertEquals(List.of("rename:"), cleared.calls);
         for (var pin : new String[]{"", "123", "123456789", "12a4", "١٢٣٤"}) {
             var ops = new Recorder();
             assertEquals("invalid_pin", GuiActions.mainframe("pin_set", pin, true, ALL, ops), pin);

@@ -48,7 +48,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 
 ## Meldungen
 
-Programme senden Meldungen mit `cloud.alert(text, level)`. Sie erscheinen als Einblendung und bleiben im Protokoll unter der **Glocke**. Info-Meldungen verschwinden von selbst, warn und crit bleiben, bis du sie schließt. Mit **Enable notifications** im Protokoll bekommst du für kritische Meldungen System-Benachrichtigungen, auch wenn der Tab im Hintergrund ist.
+Programme senden Meldungen mit `cloud.alert(text, level)`. Sie erscheinen als Einblendung und bleiben im Protokoll unter der **Glocke**. Info-Meldungen verschwinden von selbst, warn und crit bleiben, bis du sie schließt. Mit **Enable notifications** im Protokoll bekommst du für kritische Meldungen System-Benachrichtigungen, auch wenn der Tab im Hintergrund ist. Das Protokoll kommt vom Server: Ein Browser, der sich neu verbindet, hat die letzten 50 noch (bis zum Neustart des Servers). Auf einem [Cloud Tablet](upgrades.md) stehen sie im Tab Alerts.
 
 ## PIN-geschützte Bedienelemente
 

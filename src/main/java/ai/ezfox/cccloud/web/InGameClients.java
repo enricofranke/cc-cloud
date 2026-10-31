@@ -40,6 +40,11 @@ public final class InGameClients {
         return new MinecraftBridge(server, WebAuthData.get(server)).dispatchAction(device, device.mainframeId(), action, pinVerified, "in-game");
     }
 
+    /** Renames the mainframe as this device, with the dashboard's checks (null or an error code). */
+    public static @Nullable String renameMainframe(MinecraftServer server, AuthStore.Device device, String name) {
+        return new MinecraftBridge(server, WebAuthData.get(server)).renameMainframe(device, device.mainframeId(), new ClientMessages.MainframeRename("in-game", name));
+    }
+
     public static QueryResult query(MinecraftServer server, AuthStore.Device device, ClientMessages.Query query) {
         return new MinecraftBridge(server, WebAuthData.get(server)).dispatchQuery(device, device.mainframeId(), query);
     }

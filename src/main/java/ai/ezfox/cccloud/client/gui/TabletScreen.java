@@ -1,5 +1,6 @@
 package ai.ezfox.cccloud.client.gui;
 
+import ai.ezfox.cccloud.ingame.ConfirmArm;
 import ai.ezfox.cccloud.ingame.InGamePayloads;
 import ai.ezfox.cccloud.ingame.LabelText;
 import ai.ezfox.cccloud.tablet.TabletMenu;
@@ -25,7 +26,9 @@ import org.jspecify.annotations.Nullable;
  * The Cloud Tablet screen: the dashboard drawn with the mod's CC-style widgets. Same sections and widgets as the web
  * (from the hub's snapshot and deltas), the layout's hidden cards/widgets and card order are respected. Actions are
  * browser-format messages ({@code {"t":"action",...}}) – the server validates them exactly like a browser's. Buttons
- * with {@code confirm} need a second click within 3 s; PIN widgets ask for the mainframe PIN first.
+ * with {@code confirm} need a second click within 3 s ({@link ConfirmArm}; the button says so); PIN widgets ask for the
+ * mainframe PIN first, which replaces the confirmation as on the web. Messages are notices over the list: a row added
+ * on top would move the button under the cursor, and the second click would hit its neighbour.
  */
 public class TabletScreen extends CloudScreen<TabletMenu> {
     private static final int TAB_CARDS = 0;
@@ -37,11 +40,8 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
     private final EditBox pinBox;
     /** An action waiting for its PIN (shown as a row at the top). */
     private @Nullable JsonObject pendingPin;
-    private String armedKey = "";
-    private long armedUntil;
+    private final ConfirmArm confirm = new ConfirmArm();
     private final List<String> myRequests = new ArrayList<>();
-    private String lastError = "";
-    private long lastErrorUntil;
     private int reqSeq;
     /** Latest search per item_search widget: reqId. */
     private final Map<String, String> searches = new HashMap<>();
@@ -66,7 +66,9 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
 
     @Override
     protected Component rightTitle() {
-        return Component.literal(menu.mainframeName());
+        // live: the mainframe may be renamed while the tablet is open
+        var mainframe = view.get("mainframe") instanceof JsonObject m ? str(m, "name") : "";
+        return Component.literal(mainframe.isEmpty() ? menu.mainframeName() : mainframe);
     }
 
     @Override
@@ -94,7 +96,6 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
             String reason = str(mainframe, "reason");
             warningRow(Component.translatable(reason.isEmpty() ? "cccloud.tablet.mainframe_offline" : "cccloud.tablet.reason." + reason));
         }
-        if (System.currentTimeMillis() < lastErrorUntil) warningRow(Component.translatableWithFallback("cccloud.tablet.result." + lastError, lastError));
         if (pendingPin != null) pinRow();
         if (tab == TAB_ALERTS) {
             alerts();
@@ -151,13 +152,26 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
     }
 
     private void alerts() {
+        // Advanced tablet: pop-ups for this mainframe's alerts while the tablet is carried, also with the screen closed
+        if (menu.isAdvanced()) rows.add(new Row(ROW, (c, x, y, w) -> {
+            c.toggle(x + 4, y + 3, menu.alertsOn, true, () -> {
+                menu.alertsOn = !menu.alertsOn;
+                ClientPacketDistributor.sendToServer(new InGamePayloads.TabletNotify(menu.containerId, menu.alertsOn));
+            });
+            c.text(Component.translatable("cccloud.tablet.alerts_popup").getString(), x + 32, y + 5, CloudGui.TEXT, w - 36);
+        }));
         var alerts = view.getAsJsonArray("alerts");
         if (alerts.isEmpty()) textRow(Component.translatable("cccloud.tablet.no_alerts"), CloudGui.TEXT_DIM);
+        var titles = new HashMap<String, String>();
+        for (var u : view.getAsJsonArray("uplinks")) titles.put(str(u.getAsJsonObject(), "uplinkId"), str(u.getAsJsonObject(), "title"));
         for (var a : alerts) {
             var alert = a.getAsJsonObject();
             String level = str(alert, "level");
-            int color = level.equals("crit") ? CloudGui.RED : level.equals("warn") ? CloudGui.YELLOW : CloudGui.TEXT;
+            int color = level.equals("crit") || level.equals("error") ? CloudGui.RED : level.equals("warn") ? CloudGui.YELLOW : CloudGui.TEXT;
             textRow(Component.literal(str(alert, "text")), color);
+            long seconds = Math.max(0, (System.currentTimeMillis() - num(alert, "ts")) / 1000);
+            String source = titles.getOrDefault(str(alert, "uplinkId"), "");
+            textRow(Component.literal((source.isEmpty() ? "" : source + " · ") + ago(seconds)), CloudGui.TEXT_DIM);
         }
     }
 
@@ -165,16 +179,7 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
         rows.add(new Row(20, (c, x, y, w) -> {
             c.text(Component.translatable("cccloud.gui.pin"), x + 2, y + 6, CloudGui.YELLOW);
             c.edit(pinBox, x + 40, y + 2, 64);
-            int bx = c.button(x + 110, y + 2, Component.translatable("cccloud.tablet.ok"), CloudGui.ButtonStyle.ACCENT, !pinBox.getValue().isEmpty(), () -> {
-                var action = pendingPin;
-                pendingPin = null;
-                if (action != null) {
-                    action.addProperty("pin", pinBox.getValue());
-                    send(action);
-                }
-                pinBox.setValue("");
-                rebuild();
-            });
+            int bx = c.button(x + 110, y + 2, Component.translatable("cccloud.tablet.ok"), CloudGui.ButtonStyle.ACCENT, !pinBox.getValue().isEmpty(), this::submitPin);
             c.button(x + 114 + bx, y + 2, Component.translatable("cccloud.tablet.cancel"), CloudGui.ButtonStyle.NORMAL, true, () -> {
                 pendingPin = null;
                 pinBox.setValue("");
@@ -201,11 +206,12 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
             }));
             case "chart" -> rows.add(new Row(48, (c, x, y, w) -> chart(c, x, y, w, label, widget, opts)));
             case "button" -> rows.add(new Row(ROW, (c, x, y, w) -> {
-                String key = uplinkId + "/" + id;
-                boolean armed = key.equals(armedKey) && System.currentTimeMillis() < armedUntil;
+                boolean armed = confirm.armed(uplinkId + "/" + id, System.currentTimeMillis());
                 var text = armed ? Component.translatable("cccloud.tablet.confirm") : Component.literal(label);
                 var style = armed || "red".equals(str(opts, "color")) ? CloudGui.ButtonStyle.DANGER : CloudGui.ButtonStyle.NORMAL;
-                c.button(x + 4, y + 2, text, style, enabled, () -> act(uplinkId, id, new JsonPrimitive(true), opts));
+                // same width in both states: the second click lands where the first one did
+                int width = needsConfirm(opts) ? Math.max(c.buttonWidth(Component.literal(label)), c.buttonWidth(Component.translatable("cccloud.tablet.confirm"))) : 0;
+                c.button(x + 4, y + 2, text, style, enabled && !powerDisabled(uplink(uplinkId), id), width, () -> act(uplinkId, id, new JsonPrimitive(true), opts, true));
             }));
             case "toggle" -> rows.add(new Row(ROW, (c, x, y, w) -> {
                 boolean on = value != null && value.isJsonPrimitive() && value.getAsBoolean();
@@ -430,14 +436,15 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
     // ---- actions ---------------------------------------------------------------------------------------------------
 
     private void act(String uplinkId, String id, JsonElement value, JsonObject opts) {
-        String key = uplinkId + "/" + id;
-        if (bool(opts, "confirm") && !(key.equals(armedKey) && System.currentTimeMillis() < armedUntil)) {
-            armedKey = key;
-            armedUntil = System.currentTimeMillis() + 3000;
-            showError("confirm_again");
+        act(uplinkId, id, value, opts, false);
+    }
+
+    /** {@code labelled}: the control shows the "click again" state itself. */
+    private void act(String uplinkId, String id, JsonElement value, JsonObject opts, boolean labelled) {
+        if (!confirm.press(uplinkId + "/" + id, needsConfirm(opts), System.currentTimeMillis())) {
+            if (!labelled) showError("confirm_again");
             return;
         }
-        armedKey = "";
         var json = new JsonObject();
         json.addProperty("t", "action");
         json.addProperty("reqId", nextReqId());
@@ -447,9 +454,36 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
         if (bool(opts, "pin")) {
             pendingPin = json;
             rebuild();
+            // the PIN row is the first row: it must be seen and typed in right away, wherever the list was scrolled to
+            scrollToTop();
+            setFocused(pinBox);
+            pinBox.setFocused(true);
             return;
         }
         send(json);
+    }
+
+    /** The PIN replaces the confirmation (as on the web). */
+    private static boolean needsConfirm(JsonObject opts) {
+        return bool(opts, "confirm") && !bool(opts, "pin");
+    }
+
+    private @Nullable JsonObject uplink(String uplinkId) {
+        for (var u : view.getAsJsonArray("uplinks")) if (str(u.getAsJsonObject(), "uplinkId").equals(uplinkId)) return u.getAsJsonObject();
+        return null;
+    }
+
+    /** Auto Computer card: a power button that makes no sense right now (off: Reboot/Shut down, on: Turn on), as on the web. */
+    private static boolean powerDisabled(@Nullable JsonObject uplink, String id) {
+        if (uplink == null || !"auto".equals(str(uplink, "mode"))) return false;
+        if (!id.equals("turn_on") && !id.equals("reboot") && !id.equals("shutdown")) return false;
+        for (var w : uplink.getAsJsonArray("widgets")) {
+            var widget = w.getAsJsonObject();
+            if (!str(widget, "id").equals("power") || !str(widget, "type").equals("indicator")) continue;
+            if (!(widget.get("value") instanceof JsonPrimitive p) || !p.isBoolean()) return false;
+            return id.equals("turn_on") == p.getAsBoolean();
+        }
+        return false;
     }
 
     private void send(JsonObject json) {
@@ -474,9 +508,7 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
     }
 
     private void showError(String code) {
-        lastError = code;
-        lastErrorUntil = System.currentTimeMillis() + 4000;
-        rebuild();
+        showNotice(Component.translatableWithFallback("cccloud.tablet.result." + code, code));
     }
 
     private void rebuild() {
@@ -484,6 +516,22 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
         rows.clear();
         tab = current;
         buildRows();
+    }
+
+    @Override
+    protected void onEnter(EditBox box) {
+        if (box == pinBox && pendingPin != null && !pinBox.getValue().isEmpty()) submitPin();
+    }
+
+    private void submitPin() {
+        var action = pendingPin;
+        pendingPin = null;
+        if (action != null) {
+            action.addProperty("pin", pinBox.getValue());
+            send(action);
+        }
+        pinBox.setValue("");
+        rebuild();
     }
 
     private EditBox input(String key, int maxLength) {

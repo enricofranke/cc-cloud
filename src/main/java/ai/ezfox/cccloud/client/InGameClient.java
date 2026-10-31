@@ -46,12 +46,29 @@ public final class InGameClient {
     static void setup(FMLClientSetupEvent event) {
         ai.ezfox.cccloud.client.dev.DemoCapture.init();
         InGamePayloads.clientAnalyzerHandler = payload -> ai.ezfox.cccloud.client.analyzer.AnalyzerOverlay.accept(payload.json());
+        InGamePayloads.clientTabletAlertHandler = InGameClient::alertToast;
         InGamePayloads.clientTabletHandler = payload -> {
             var player = Minecraft.getInstance().player;
             if (player != null && player.containerMenu instanceof TabletMenu menu && menu.containerId == payload.containerId()) {
                 menu.apply(payload.messages());
             }
         };
+    }
+
+    /** An Advanced Cloud Tablet's alert: a toast, titled with the mainframe and coloured by level. */
+    private static void alertToast(InGamePayloads.TabletAlert alert) {
+        var mc = Minecraft.getInstance();
+        var color = switch (alert.level()) {
+            case "crit", "error" -> net.minecraft.ChatFormatting.RED;
+            case "warn" -> net.minecraft.ChatFormatting.YELLOW;
+            default -> net.minecraft.ChatFormatting.AQUA;
+        };
+        var title = net.minecraft.network.chat.Component.literal(alert.mainframeName()).withStyle(color);
+        var more = net.minecraft.network.chat.Component.translatable("cccloud.tablet.alert_more", alert.more());
+        var text = alert.text().isEmpty() ? more
+            : alert.more() > 0 ? net.minecraft.network.chat.Component.literal(alert.text() + " · ").append(more) : net.minecraft.network.chat.Component.literal(alert.text());
+        mc.getToastManager().addToast(net.minecraft.client.gui.components.toasts.SystemToast.multiline(mc,
+            new net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId(), title, text));
     }
 
     @SubscribeEvent

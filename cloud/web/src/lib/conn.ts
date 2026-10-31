@@ -153,6 +153,7 @@ interface Pending {
 export const REJECT_TEXT: Record<string, string> = {
   offline: "The mainframe is offline.",
   disabled: "The dashboard is switched off in-game.",
+  invalid_name: "Names are up to 32 characters of plain text.",
   rate_limited: "Too many actions – slow down a little.",
   uplink_offline: "This uplink is offline.",
   unknown_uplink: "This uplink no longer exists.",
@@ -508,7 +509,12 @@ export class MainframeConn {
           this.info.value = normalizeInfo(msg.mainframe);
           this.uplinks.value = msg.uplinks.map(normalizeUplink).filter(Boolean) as Uplink[];
           this.structure.value++;
-          if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
+          if (Array.isArray(msg.alerts)) {
+            const titles = new Map(this.uplinks.value.map((u) => [u.uplinkId, u.title]));
+            const history = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
+            for (const a of history) if (!a.uplinkTitle && a.uplinkId) a.uplinkTitle = titles.get(a.uplinkId);
+            this.alerts.value = history;
+          }
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
           this.redstone.value = normalizeRedstone(msg.redstone);
@@ -707,6 +713,7 @@ export class MainframeConn {
         break;
       }
       case "rs_result":
+      case "mainframe_result":
       case "card_settings_result":
       case "net_result": {
         const r = this.netReqs.get(String(msg.reqId ?? ""));
@@ -940,6 +947,24 @@ export class MainframeConn {
   /** Unlinks a display from this mainframe (also needs network.link). */
   unlinkDisplay(id: string, timeoutMs = 8000): Promise<void> {
     return this.displayRequest({ op: "unlink", id }, timeoutMs);
+  }
+
+  /**
+   * Renames this mainframe ({"t":"mainframe_rename"} → mainframe_result); "" = back to the default name. Needs
+   * layout.edit. Every client gets the new name as a `state` delta.
+   */
+  renameMainframe(name: string, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("layout.edit");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "mainframe_rename", reqId, name })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
   }
 
   /** v0.5 E: opens (or refreshes) the terminal of the computer behind a card. Frames arrive in `terminals`. */

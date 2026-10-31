@@ -36,4 +36,22 @@ class DashboardModelTest {
         assertEquals(1, view.getAsJsonArray("uplinks").size());
         assertFalse(model.apply("not json"), "garbage is ignored");
     }
+
+    @Test
+    void alertHistoryComesWithTheSnapshotAndDeltasFollow() {
+        var model = new DashboardModel();
+        model.apply("""
+            [{"t":"snapshot","canControl":true,"mainframe":{},"uplinks":[],"layout":null,
+              "alerts":[{"t":"alert","text":"old","level":"info","ts":1},{"t":"alert","text":"newer","level":"warn","ts":2}]}]""");
+        model.apply("[{\"t\":\"alert\",\"text\":\"live\",\"level\":\"crit\",\"ts\":3}]");
+        var alerts = JsonParser.parseString(model.toJson()).getAsJsonObject().getAsJsonArray("alerts");
+        assertEquals(3, alerts.size());
+        assertEquals("live", alerts.get(0).getAsJsonObject().get("text").getAsString(), "newest first");
+        assertEquals("old", alerts.get(2).getAsJsonObject().get("text").getAsString());
+        model.apply("[{\"t\":\"snapshot\",\"canControl\":true,\"mainframe\":{},\"uplinks\":[],\"layout\":null,\"alerts\":[{\"t\":\"alert\",\"text\":\"only\"}]}]");
+        alerts = JsonParser.parseString(model.toJson()).getAsJsonObject().getAsJsonArray("alerts");
+        assertEquals(1, alerts.size(), "a new snapshot replaces the history (rights may have changed)");
+        model.apply("[{\"t\":\"snapshot\",\"canControl\":true,\"mainframe\":{},\"uplinks\":[],\"layout\":null}]");
+        assertEquals(1, JsonParser.parseString(model.toJson()).getAsJsonObject().getAsJsonArray("alerts").size(), "no history on the server: keep what we have");
+    }
 }

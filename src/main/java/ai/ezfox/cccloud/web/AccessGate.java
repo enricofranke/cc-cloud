@@ -45,7 +45,9 @@ public final class AccessGate {
         /** A card's restricted details, e.g. a Factory Manager's program: the same right as the restricted cards ({@link WebHub#seesRestricted}). */
         CARD_DETAIL(Perm.VIEW_POSITIONS),
         /** Writing a machine's program; needs {@link #CARD_DETAIL} as well. */
-        CARD_WRITE(Perm.DEVICE_PROGRAM);
+        CARD_WRITE(Perm.DEVICE_PROGRAM),
+        /** The mainframe's name (like a card's title). */
+        MAINFRAME_RENAME(Perm.LAYOUT_EDIT);
 
         public final Perm perm;
 
@@ -176,6 +178,7 @@ public final class AccessGate {
             case "net_unlink" -> "net_result";
             case "rs_override", "rs_device" -> "rs_result";
             case "display" -> "display_result";
+            case "mainframe_rename" -> "mainframe_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             case "scene_set", "scene_delete" -> "scene_result";
             case "production" -> "production_result";
