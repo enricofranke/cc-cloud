@@ -4,6 +4,9 @@ navigation:
   title: "Bridges (AE2 / RS)"
   position: 11
   icon: cccloud:cloud_core
+item_ids:
+  - cccloud:me_cloud_bridge
+  - cccloud:rs_cloud_bridge
 ---
 
 # Bridges: AE2 and Refined Storage

@@ -4,6 +4,13 @@ navigation:
   title: "Network, relays & range"
   position: 6
   icon: cccloud:cloud_relay
+item_ids:
+  - cccloud:cloud_relay
+  - cccloud:advanced_cloud_relay
+  - cccloud:ender_relay
+  - cccloud:ender_fiber_link
+  - cccloud:fiber_cable
+  - cccloud:fiber_junction
 ---
 
 # Network, relays and range

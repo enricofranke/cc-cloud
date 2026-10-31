@@ -6050,6 +6050,19 @@ fieldset.field {
 .wcontent > * {
   min-width: 0;
 }
+/* long lists scroll inside their box instead of growing the row and stretching the neighbours */
+.wcell.t-watchlist,
+.wcell.t-jobs,
+.wcell.t-sensor_log {
+  contain: size;
+}
+.wcell.t-watchlist > .wcontent,
+.wcell.t-jobs > .wcontent,
+.wcell.t-sensor_log > .wcontent {
+  min-height: 0;
+  justify-content: flex-start;
+  overflow-y: auto;
+}
 /* view polish: every gauge/number is its own "screen" tile, labels are rows */
 .wcell.t-gauge > .wcontent,
 .wcell.d-number > .wcontent,

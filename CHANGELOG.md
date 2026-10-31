@@ -4,6 +4,14 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### In-game help
+- **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
+
+### Dashboard: resizing
+- **Widgets stop at their minimum height.** The size badge turns red and the widget bounces, the same as for width.
+  Widgets below their content height no longer stretch the ones beside them; saved layouts are lifted on load.
+- **Watchlist, jobs and sensor log scroll inside their box** instead of growing the row.
+
 ### Dashboard: build it yourself
 - **A pencil on every card** opens that card for editing right where it is: its settings float next to it and the other
   cards step back. The settings have sizes S to XL, width and height, page, and a list of the card's widgets.

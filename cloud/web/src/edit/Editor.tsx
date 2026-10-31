@@ -12,6 +12,7 @@ import {
   DRAFT_WIDGET,
   MAX_LAYOUT_BYTES,
   MIN_CARD_W,
+  minWidgetH,
   minWidgetW,
   addPage,
   addViewsCard,
@@ -496,21 +497,24 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     let last = `${start.w}x${start.h}xfalse`;
     let result: ResolvedPage[] | null = null;
     document.body.classList.add("dnd-active", edge === "r" ? "rz-ew" : edge === "b" ? "rz-ns" : "rz-nwse");
-    const minW = kind === "card" ? MIN_CARD_W : minWidgetW(findWidget(base, key)?.widget.w.type ?? "");
+    const sized = findWidget(base, key)?.widget;
+    const minW = kind === "card" ? MIN_CARD_W : minWidgetW(sized?.w.type ?? "");
+    const minH = kind === "card" ? 3 : minWidgetH(sized?.w.type ?? "", sized?.display);
     const move = (ev: PointerEvent) => {
       const dw = edge !== "b" ? Math.round((ev.clientX - e.clientX) / colUnit) : 0;
       const dh = edge !== "r" ? Math.round((ev.clientY - e.clientY) / rowUnit) : 0;
       const raw = Math.min(COLS - start.x, start.w + dw);
+      const rawH = start.h + dh;
       // below the readable minimum: it stops there and the badge turns red
-      const atMin = raw < minW;
+      const atMin = raw < minW || rawH < minH;
       const w = Math.max(minW, raw);
-      const h = Math.max(kind === "card" ? 3 : 1, start.h + dh);
+      const h = Math.max(minH, rawH);
       const sig = `${w}x${h}x${atMin}`;
       if (sig === last) return;
       if (atMin && !last.endsWith("true")) vibrate(6);
       last = sig;
       result = kind === "widget" ? resizeWidget(base, key, w, h) : resizeCard(base, key, w, h);
-      setBadge({ key, text: atMin ? `min ${minW} × ${h}` : `${w} × ${h}`, warn: atMin });
+      setBadge({ key, text: atMin ? `min ${w} × ${h}` : `${w} × ${h}`, warn: atMin });
       showPreview(result);
     };
     const up = () => {

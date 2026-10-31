@@ -1,8 +1,8 @@
 // The in-game handbook (GuideMe) is generated from the docs: committed pages are up to date and convert cleanly.
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { convert, escapeText, generate, rewriteLinks } from "../../tools/gen_handbook.ts";
+import { ITEM_PAGES, convert, escapeText, generate, rewriteLinks } from "../../tools/gen_handbook.ts";
 import { PAGES } from "../web/src/docs/content/index.ts";
 
 const OUT = fileURLToPath(new URL("../../src/main/resources/assets/cccloud/guides/cccloud/handbook/", import.meta.url));
@@ -10,6 +10,13 @@ const OUT = fileURLToPath(new URL("../../src/main/resources/assets/cccloud/guide
 describe("handbook generator", () => {
   it("escapes MDX characters outside code only", () => {
     expect(escapeText("a {b} <c> `x {y} <z>`")).toBe("a \\{b\\} \\<c> `x {y} <z>`");
+  });
+
+  it("opens a page for every item when G is held on it", () => {
+    const items = readdirSync(fileURLToPath(new URL("../../src/main/resources/assets/cccloud/items/", import.meta.url))).map((f) => f.replace(".json", ""));
+    expect(Object.values(ITEM_PAGES).flat().sort()).toEqual(items.sort());
+    for (const id of Object.keys(ITEM_PAGES)) expect(PAGES.some((p) => p.id === id), id).toBe(true);
+    expect(convert("network", "en", "# x", 1, "x")).toContain("item_ids:\n  - cccloud:cloud_relay\n");
   });
 
   it("rewrites docs links to page files", () => {

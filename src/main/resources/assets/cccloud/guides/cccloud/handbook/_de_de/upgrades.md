@@ -4,6 +4,27 @@ navigation:
   title: "Upgrades, Tablet & Display"
   position: 7
   icon: cccloud:cloud_tablet
+item_ids:
+  - cccloud:cloud_tablet
+  - cccloud:advanced_cloud_tablet
+  - cccloud:cloud_display
+  - cccloud:quantum_core
+  - cccloud:upgrade_chunk_anchor
+  - cccloud:upgrade_bandwidth_allthemodium
+  - cccloud:upgrade_bandwidth_vibranium
+  - cccloud:upgrade_bandwidth_unobtainium
+  - cccloud:upgrade_capacity_allthemodium
+  - cccloud:upgrade_capacity_vibranium
+  - cccloud:upgrade_capacity_unobtainium
+  - cccloud:upgrade_efficiency_allthemodium
+  - cccloud:upgrade_efficiency_vibranium
+  - cccloud:upgrade_efficiency_unobtainium
+  - cccloud:upgrade_memory_allthemodium
+  - cccloud:upgrade_memory_vibranium
+  - cccloud:upgrade_memory_unobtainium
+  - cccloud:upgrade_range_allthemodium
+  - cccloud:upgrade_range_vibranium
+  - cccloud:upgrade_range_unobtainium
 ---
 
 # Upgrades, Tablet und Display

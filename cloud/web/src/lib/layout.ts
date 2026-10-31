@@ -184,14 +184,19 @@ export function defaultWidgetW(type: string) {
   return 12;
 }
 /** Default height in grid rows (32 px each incl. gap) – roughly what the widget needs. */
-export function defaultWidgetH(type: string, display?: Display) {
-  if (type === "gauge") return display === "bar" ? 2 : display === "number" ? 3 : 5;
-  if (type === "label") return display === "big" ? 3 : 1;
+/** Rows the content really needs. Below this a row would grow and stretch the widgets next to it. */
+export function minWidgetH(type: string, display?: Display) {
+  if (type === "gauge") return display === "bar" ? 2 : display === "number" ? 3 : 6;
+  if (type === "label") return display === "big" ? 3 : 2;
   if (type === "chart") return display === "sparkline" ? 3 : 5;
   if (type === "indicator") return display === "lamp" ? 3 : 2;
-  // rows grow with their content, so these are minimums rather than exact heights
-  const H: Record<string, number> = { progress: 2, item_search: 3, watchlist: 4, jobs: 3, toggle: 1, slider: 2, select: 1, number: 1, text: 1, buttons: 1, button: 2, redstone_sides: 6, sensor_log: 6 };
+  const H: Record<string, number> = { progress: 2, item_search: 5, watchlist: 4, jobs: 3, toggle: 2, slider: 3, select: 2, number: 3, text: 3, buttons: 3, button: 2, redstone_sides: 7, sensor_log: 6 };
   return H[type] ?? 2;
+}
+export function defaultWidgetH(type: string, display?: Display) {
+  // lists scroll inside their box, so they start with room for a few rows
+  const H: Record<string, number> = { watchlist: 8, jobs: 6, sensor_log: 8 };
+  return H[type] ?? minWidgetH(type, display);
 }
 /** Card rows for the header and padding around the widget grid. */
 export const CARD_CHROME_H = 2;
@@ -473,7 +478,10 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
     // v1 / Lua spans count body columns: 2 in a narrow card, 4 in a wide one
     for (const w of visible) if (w.spanHint && !w.placed) w.box.w = c.box.w <= 3 ? Math.min(COLS, w.spanHint * 6) : w.spanHint * 3;
     // never below the readable minimum (also for old and migrated layouts)
-    for (const w of visible) w.box.w = Math.min(COLS, Math.max(minWidgetW(w.w.type), w.box.w));
+    for (const w of visible) {
+      w.box.w = Math.min(COLS, Math.max(minWidgetW(w.w.type), w.box.w));
+      w.box.h = Math.max(minWidgetH(w.w.type, w.display), w.box.h);
+    }
     // indicators carry a label: full width in narrow cards
     for (const w of visible) if (!w.placed && !w.spanHint && w.w.type === "indicator" && c.box.w <= 3) w.box.w = 12;
     const anyPlaced = visible.some((w) => w.placed);
@@ -756,7 +764,7 @@ export function resizeWidget(pages: ResolvedPage[], widgetKey: string, w: number
   const next = clone(pages);
   const f = findWidget(next, widgetKey);
   if (!f) return pages;
-  applyWidgets(f.card, resizeItem(wItems(f.card.widgets), widgetKey, Math.max(minWidgetW(f.widget.w.type), w), h, COLS, MAX_WIDGET_H));
+  applyWidgets(f.card, resizeItem(wItems(f.card.widgets), widgetKey, Math.max(minWidgetW(f.widget.w.type), w), Math.max(minWidgetH(f.widget.w.type, f.widget.display), h), COLS, MAX_WIDGET_H));
   fitCard(f.page, f.card);
   return next;
 }

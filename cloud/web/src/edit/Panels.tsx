@@ -12,6 +12,7 @@ import {
   MAX_CARD_H,
   MAX_WIDGET_H,
   MIN_CARD_W,
+  minWidgetH,
   minWidgetW,
   defaultWidgetH,
   defaultWidgetW,
@@ -150,7 +151,7 @@ export function WidgetSettings({ found, pages, conn, onChange, onRebind, onRemov
         <span class="field-label">Size (of {COLS} columns)</span>
         <div class="ed-size">
           <Stepper label="Width" value={rw.box.w} min={minWidgetW(rw.w.type)} max={COLS} onChange={(w) => onChange(resizeWidget(pages, k, w, rw.box.h))} />
-          <Stepper label="Height" value={rw.box.h} min={1} max={MAX_WIDGET_H} onChange={(h) => onChange(resizeWidget(pages, k, rw.box.w, h))} />
+          <Stepper label="Height" value={rw.box.h} min={minWidgetH(rw.w.type, rw.display)} max={MAX_WIDGET_H} onChange={(h) => onChange(resizeWidget(pages, k, rw.box.w, h))} />
           <button type="button" class="btn btn-small btn-ghost" onClick={() => onChange(resizeWidget(pages, k, defaultWidgetW(rw.w.type), defaultWidgetH(rw.w.type, rw.display)))}>
             Auto
           </button>

@@ -4,6 +4,12 @@ navigation:
   title: "Redstone devices"
   position: 3
   icon: cccloud:cloud_lamp
+item_ids:
+  - cccloud:cloud_lamp
+  - cccloud:cloud_switch
+  - cccloud:cloud_button
+  - cccloud:cloud_sensor
+  - cccloud:advanced_cloud_sensor
 ---
 
 # Redstone devices

@@ -62,6 +62,17 @@ export function rewriteLinks(line: string): string {
 
 const yamlString = (s: string) => JSON.stringify(s);
 
+const UPGRADES = ["bandwidth", "capacity", "efficiency", "memory", "range"].flatMap((u) => ["allthemodium", "vibranium", "unobtainium"].map((t) => `upgrade_${u}_${t}`));
+
+/** Items whose page opens when G is held on them in a tooltip (like AE2). */
+export const ITEM_PAGES: Record<string, string[]> = {
+  start: ["cloud_mainframe", "cloud_uplink", "advanced_cloud_uplink", "cloud_link_card", "cloud_core", "cloud_probe", "cloud_analyzer"],
+  redstone: ["cloud_lamp", "cloud_switch", "cloud_button", "cloud_sensor", "advanced_cloud_sensor"],
+  network: ["cloud_relay", "advanced_cloud_relay", "ender_relay", "ender_fiber_link", "fiber_cable", "fiber_junction"],
+  upgrades: ["cloud_tablet", "advanced_cloud_tablet", "cloud_display", "quantum_core", "upgrade_chunk_anchor", ...UPGRADES],
+  bridges: ["me_cloud_bridge", "rs_cloud_bridge"],
+};
+
 /** Converts one docs page (the web's Markdown subset) to a GuideMe page. */
 export function convert(id: string, lang: Lang, markdown: string, position: number, title: string): string {
   const out: string[] = [
@@ -71,6 +82,7 @@ export function convert(id: string, lang: Lang, markdown: string, position: numb
     `  title: ${yamlString(title)}`,
     `  position: ${position}`,
     ...(ICONS[id] ? [`  icon: ${ICONS[id]}`] : []),
+    ...(ITEM_PAGES[id] ? ["item_ids:", ...ITEM_PAGES[id].map((item) => `  - cccloud:${item}`)] : []),
     "---",
     "",
   ];

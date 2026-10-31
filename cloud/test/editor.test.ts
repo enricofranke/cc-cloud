@@ -15,6 +15,7 @@ import {
   removeCustomCard,
   removeView,
   resizeCard,
+  minWidgetH,
   resizeWidget,
   resolveLayout,
   snapshotLayout,
@@ -111,11 +112,27 @@ describe("layout v2", () => {
     expect(r.widgets.map((w) => [w.w.id, w.box.x, w.box.y, w.box.w])).toEqual([
       ["temp", 0, 0, 6],
       ["cool", 6, 0, 6],
-      ["power", 0, 5, 12],
-      ["scram", 0, 6, 4], // three buttons per row
+      ["power", 0, 6, 12],
+      ["scram", 0, 8, 4], // three buttons per row
     ]);
-    expect(r.box.h).toBe(2 + 8);
+    expect(r.box.h).toBe(2 + 10);
     expect(r.icon).toBe("flame"); // guessed from the title
+  });
+
+  it("holds a widget at its minimum height and leaves the neighbour alone", () => {
+    const pages = resolveLayout(uplinks, null);
+    const before = findWidget(pages, "r/cool")!.widget.box;
+    const next = resizeWidget(pages, "r/temp", 6, 1);
+    expect(findWidget(next, "r/temp")!.widget.box.h).toBe(minWidgetH("gauge"));
+    expect(findWidget(next, "r/cool")!.widget.box).toEqual(before);
+  });
+
+  it("lifts saved widgets that are shorter than their content", () => {
+    const pages = resolveLayout(uplinks, null, { includeHidden: true });
+    const doc = JSON.parse(JSON.stringify(snapshotLayout(resizeWidget(pages, "r/temp", 6, 6))));
+    const saved = JSON.stringify(doc).replace(/("h":)6/, "$11");
+    const again = resolveLayout(uplinks, normalizeLayout(JSON.parse(saved)), { includeHidden: true });
+    for (const w of again.flatMap((p) => p.cards).flatMap((c) => c.widgets)) expect(w.box.h).toBeGreaterThanOrEqual(minWidgetH(w.w.type, w.display));
   });
 
   it("round-trips through the saved document", () => {

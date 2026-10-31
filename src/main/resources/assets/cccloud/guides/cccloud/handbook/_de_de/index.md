@@ -4,6 +4,14 @@ navigation:
   title: "Erste Schritte"
   position: 0
   icon: cccloud:cloud_mainframe
+item_ids:
+  - cccloud:cloud_mainframe
+  - cccloud:cloud_uplink
+  - cccloud:advanced_cloud_uplink
+  - cccloud:cloud_link_card
+  - cccloud:cloud_core
+  - cccloud:cloud_probe
+  - cccloud:cloud_analyzer
 ---
 
 # Erste Schritte
