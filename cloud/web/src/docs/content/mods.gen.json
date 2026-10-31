@@ -870,6 +870,16 @@
    "controls": "none",
    "tested": "yes (book deposited through the mod, row read back)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Ice And Fire Community Edition",
+   "id": "iceandfire",
+   "version": "2.2-beta.4",
+   "what": "**Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show.",
+   "controls": "none",
+   "tested": "yes (lone fire core; a built forge with a dragon was not tested)",
+   "skipped": false
   }
  ]
 }

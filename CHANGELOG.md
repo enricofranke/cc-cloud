@@ -10,6 +10,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Applied Thaumaturge:** Arcane Assembler card and an ME Essentia card with the essentia stored in the ME network.
 - **Silent Gear:** one Machine card for the alloy makers, Metal Press, Material Grader and Salvager, plus a Starlight Charger card.
 - **Apothic Enchanting:** Library card with the stored enchantments, their levels and points.
+- **Ice and Fire:** Dragon Forge card with state, progress, inputs and output.
 <!-- wave5 log -->
 
 ### In-game help

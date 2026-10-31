@@ -363,6 +363,8 @@ def integrationMods = [
     silentgear          : ["curse.maven:silentgear-297039:${silentgear_curse_file}", "curse.maven:silentlib-242998:${silentlib_curse_file}"],
     apothicenchanting   : ["curse.maven:apothicenchanting-1063926:${apothicenchanting_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}",
                            "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
+    iceandfire          : ["curse.maven:iceandfire-1040076:${iceandfire_curse_file}", "curse.maven:uranus-1010827:${uranus_curse_file}",
+                           "curse.maven:jupiter-1072905:${jupiter_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],

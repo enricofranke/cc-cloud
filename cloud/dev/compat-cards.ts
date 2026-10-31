@@ -799,6 +799,20 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // Ice and Fire
+  {
+    key: "iceandfire_forge",
+    mod: "iceandfire",
+    title: "Dragon Forge",
+    template: "iceandfire_forge",
+    widgets: [
+      label("type", "Type", "Fire", { span: 2 }),
+      label("status", "Status", "Dragon breathing", { span: 2 }),
+      progress("progress", "Progress", 0, 100, "%", {}, 63),
+      label("output", "Output", "Dragonsteel Fire Ingot"),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery
