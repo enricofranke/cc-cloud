@@ -63,10 +63,15 @@ public final class MapStats {
         public final LongAdder snapshots = new LongAdder();
         /** ... of those, without the neighbors in other chunks (over the tick budget) */
         public final LongAdder partial = new LongAdder();
-        /** ... that were not built, because the queue was full */
+        /** ... that had to wait for a later tick (over the tick limit) */
+        public final LongAdder deferred = new LongAdder();
+        /** ... that were not built, because a queue was full */
         public final LongAdder dropped = new LongAdder();
-        /** wall-clock time on the server thread for the snapshots */
-        public final LongAdder snapshotNanos = new LongAdder();
+        /** CPU time of the server thread for the snapshots with and without neighbors */
+        public final LongAdder snapshotCpuNanos = new LongAdder();
+        public final LongAdder partialCpuNanos = new LongAdder();
+        /** the longest snapshot in CPU time */
+        public final java.util.concurrent.atomic.LongAccumulator snapshotMaxCpuNanos = new java.util.concurrent.atomic.LongAccumulator(Math::max, 0);
         /** sections built from snapshots, and those skipped because nothing changed */
         public final LongAdder built = new LongAdder();
         public final LongAdder unchanged = new LongAdder();
@@ -76,14 +81,23 @@ public final class MapStats {
         public final LongAdder reads = new LongAdder();
 
         void reset() {
-            for (var a : new LongAdder[]{snapshots, partial, dropped, snapshotNanos, built, unchanged, served, reads}) a.reset();
+            for (var a : new LongAdder[]{snapshots, partial, deferred, dropped, snapshotCpuNanos, partialCpuNanos, built, unchanged, served, reads}) a.reset();
+            snapshotMaxCpuNanos.reset();
+        }
+
+        /** Adds the CPU time since {@link #start()} to a snapshot. @return the wall-clock time */
+        public long snapshot(long[] start, boolean neighbors) {
+            long cpu = cpu() - start[1];
+            (neighbors ? snapshotCpuNanos : partialCpuNanos).add(cpu);
+            snapshotMaxCpuNanos.accumulate(cpu);
+            return System.nanoTime() - start[0];
         }
 
         String line(long diskBytes) {
-            long n = Math.max(1, snapshots.sum());
-            return String.format(Locale.ROOT, "Voxel terrain: %d chunk snapshots on unload (%d without neighbors, %d dropped, %.1f µs each on the server thread), %d sections built, %d unchanged; "
-                + "%d sections served as last known, %d files read; %.1f MB on disk", snapshots.sum(), partial.sum(), dropped.sum(), snapshotNanos.sum() / 1e3 / n, built.sum(), unchanged.sum(),
-                served.sum(), reads.sum(), diskBytes / 1048576.0);
+            long full = Math.max(1, snapshots.sum() - partial.sum());
+            return String.format(Locale.ROOT, "Voxel terrain: %d chunk snapshots on unload (%d without neighbors, %d waited for a later tick, %d dropped; server thread CPU %.1f µs each, without neighbors %.1f µs, longest %.1f µs), "
+                + "%d sections built, %d unchanged; %d sections served as last known, %d files read; %.1f MB on disk", snapshots.sum(), partial.sum(), deferred.sum(), dropped.sum(), snapshotCpuNanos.sum() / 1e3 / full,
+                partialCpuNanos.sum() / 1e3 / Math.max(1, partial.sum()), snapshotMaxCpuNanos.get() / 1e3, built.sum(), unchanged.sum(), served.sum(), reads.sum(), diskBytes / 1048576.0);
         }
     }
 

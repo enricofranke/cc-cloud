@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:voxel_last_known_deferred",
+  "max_ticks": 6000,
+  "structure": "cccloud:test_floor"
+}

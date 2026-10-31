@@ -10,6 +10,7 @@ import com.google.gson.JsonObject;
 import io.netty.buffer.Unpooled;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -71,6 +72,8 @@ public final class VoxelService {
     private static final int LOGIC_VERSION = 3;
     /** Time the unload snapshots may take per tick; beyond it they leave out the neighbors in other chunks. */
     static final long TICK_BUDGET_NANOS = 500_000;
+    /** ... and beyond this limit the chunks wait for later ticks. */
+    static final long TICK_LIMIT_NANOS = 2_000_000;
     /** Unload snapshots waiting for the background threads at most; more are dropped. */
     static final int MAX_SNAPSHOTS = 512;
     /** ... and at server stop, when the loaded rest of every view area is copied at once. */
@@ -130,6 +133,9 @@ public final class VoxelService {
     private static @Nullable ExecutorService executor;
     private static @Nullable VoxelDisk disk;
     private static final AtomicInteger SNAPSHOTS = new AtomicInteger();
+    /** Unloaded chunks over the tick limit, at most {@link #MAX_SNAPSHOTS}. Server thread only. */
+    private static final ArrayDeque<Deferred> DEFERRED = new ArrayDeque<>();
+    private static boolean deferAllForTest;
     private static int budgetTick;
     private static long budgetUsed;
     private static long nextSweep = Long.MAX_VALUE;
@@ -161,6 +167,7 @@ public final class VoxelService {
                 pool.shutdownNow();
             }
             if (store != null) store.close(2000);
+            DEFERRED.clear();
             CACHE.clear();
             INFO.clear();
             VoxelAreas.clear();
@@ -177,6 +184,8 @@ public final class VoxelService {
     }
 
     private static void tick(MinecraftServer server) {
+        VoxelAreas.tick();
+        snapshotDeferred(server);
         if (server.getTickCount() % 1200 != 0) return;
         long now = System.currentTimeMillis();
         if (now < nextSweep) return;
@@ -519,7 +528,8 @@ public final class VoxelService {
      * A chunk unloads: if it is in a view area, its sections there are built in the background. Nearly every chunk ends at
      * the lookup. The chunk is saved and nothing writes to it any more, so its own sections need no copy; only its
      * neighbors do, and over the tick budget (an area unloading at once) they are left out. That only costs the blocks
-     * exposed across the chunk's border, and {@link VoxelDisk#keeps} does not let such a build replace a better one.
+     * exposed across the chunk's border, and {@link VoxelDisk#keeps} does not let such a build replace a better one. Over
+     * the tick limit the chunk only goes in a queue: its sections stay valid, so a large area spreads over a few ticks.
      */
     private static void chunkUnloaded(ChunkEvent.Unload event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !(event.getChunk() instanceof LevelChunk chunk)) return;
@@ -529,17 +539,40 @@ public final class VoxelService {
         var hits = VoxelAreas.at(level.dimension(), pos.x(), pos.z());
         if (hits == null) return;
         if (!CloudConfig.get(CloudConfig.VOXEL_VIEW)) return;
-        long start = System.nanoTime();
+        if (!budgetLeft(server)) {
+            if (DEFERRED.size() < MAX_SNAPSHOTS) {
+                DEFERRED.add(new Deferred(level, chunk, hits));
+                MapStats.LAST_KNOWN.deferred.increment();
+            } else {
+                MapStats.LAST_KNOWN.dropped.increment();
+            }
+            return;
+        }
+        var t0 = MapStats.start();
+        boolean neighbors = budgetUsed < TICK_BUDGET_NANOS;
+        if (snapshot(level, chunk, hits, MAX_SNAPSHOTS, true, neighbors)) budgetUsed += MapStats.LAST_KNOWN.snapshot(t0, neighbors);
+    }
+
+    private static boolean budgetLeft(MinecraftServer server) {
         int tick = server.getTickCount();
         if (tick != budgetTick) {
             budgetTick = tick;
             budgetUsed = 0;
         }
-        if (snapshot(level, chunk, hits, MAX_SNAPSHOTS, true, budgetUsed < TICK_BUDGET_NANOS)) {
-            long took = System.nanoTime() - start;
-            budgetUsed += took;
-            MapStats.LAST_KNOWN.snapshotNanos.add(took);
+        return budgetUsed < TICK_LIMIT_NANOS && !deferAllForTest;
+    }
+
+    /** What is left of the tick limit goes to the waiting chunks. */
+    private static void snapshotDeferred(MinecraftServer server) {
+        while (!DEFERRED.isEmpty() && budgetLeft(server)) {
+            var next = DEFERRED.poll();
+            var t0 = MapStats.start();
+            if (snapshot(next.level(), next.chunk(), next.hits(), MAX_SNAPSHOTS, true, false)) budgetUsed += MapStats.LAST_KNOWN.snapshot(t0, false);
         }
+    }
+
+    /** An unloaded chunk waiting for its snapshot. */
+    private record Deferred(ServerLevel level, LevelChunk chunk, VoxelAreas.Hit[] hits) {
     }
 
     /** One mainframe's sections of a snapshot. */
@@ -666,6 +699,8 @@ public final class VoxelService {
     /** Server stop: chunks with tickets never unload, so what is loaded of every view area is copied now. */
     private static void snapshotLoaded(MinecraftServer server) {
         if (!CloudConfig.get(CloudConfig.VOXEL_VIEW)) return;
+        for (var next : DEFERRED) snapshot(next.level(), next.chunk(), next.hits(), MAX_STOP_SNAPSHOTS, true, false);
+        DEFERRED.clear();
         int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
         var seen = new java.util.HashSet<String>();
         for (var area : VoxelAreas.all().values()) {
@@ -894,6 +929,11 @@ public final class VoxelService {
 
     /** Test hook: waits until the unload snapshots queued so far are built and the disk cache has written them. */
     public static boolean idleForTest(MinecraftServer server) {
-        return SNAPSHOTS.get() == 0 && disk(server).flush(100);
+        return SNAPSHOTS.get() == 0 && DEFERRED.isEmpty() && disk(server).flush(100);
+    }
+
+    /** Test hook: every unload waits, as if the tick limit was used up, until this is switched off. */
+    public static void deferAllForTest(boolean on) {
+        deferAllForTest = on;
     }
 }

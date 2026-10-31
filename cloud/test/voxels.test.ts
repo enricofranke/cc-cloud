@@ -199,6 +199,18 @@ describe("voxel batch endpoint (mock)", () => {
     mock = undefined;
   });
 
+  it("marks sections as last known while the mainframe is offline", async () => {
+    mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, deepBase: true, log: () => {} });
+    const base = `http://127.0.0.1:${mock.port}`;
+    const m = [...mock.mainframes.values()].find((x) => x.name.startsWith("Deep"))!;
+    const t = (await (await fetch(`${base}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Vitest", mainframeId: m.id }) })).json()).token as string;
+    const post = async () =>
+      decodeBatch(new Uint8Array(await (await fetch(`${base}/api/mainframes/${m.id}/voxels/minecraft:overworld`, { method: "POST", headers: { authorization: `Bearer ${t}`, "content-type": "application/json" }, body: JSON.stringify({ sections: [[0, -4, 0]] }) })).arrayBuffer()));
+    expect((await post()).sections[0].old).toBeUndefined();
+    m.online = false;
+    expect((await post()).sections[0].old).toBe(true);
+  });
+
   it("answers many sections at once, gzip, same for known hashes, budget in sections", async () => {
     mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, deepBase: true, voxelRate: 2, log: () => {} });
     const base = `http://127.0.0.1:${mock.port}`;

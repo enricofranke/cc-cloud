@@ -216,6 +216,56 @@ public final class VoxelTests {
     }
 
     /**
+     * Over the tick limit an unloaded chunk waits in the queue instead of costing the tick, and nothing of it is lost: the
+     * block nobody asked for reaches the disk once the queue runs, long after the chunk went.
+     */
+    public static void lastKnownDeferred(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var server = level.getServer();
+        String dim = level.dimension().identifier().toString();
+        var origin = helper.absolutePos(BlockPos.ZERO);
+        int chunkX = (origin.getX() + 20000) >> 4, chunkZ = (origin.getZ() + 16000) >> 4;
+        var floor = new BlockPos((chunkX << 4) + 2 - origin.getX(), 1, (chunkZ << 4) + 2 - origin.getZ());
+        var forced = new ArrayList<ChunkPos>();
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) forced.add(new ChunkPos(chunkX + dx, chunkZ + dz));
+        for (var c : forced) level.setChunkForced(c.x(), c.z(), true);
+        var owner = InGameTestSupport.player(helper, "vlk_deferred");
+        var mainframe = CloudGameTests.placeMainframe(helper, owner, floor);
+        mainframe.setOwner(owner);
+        mainframe.setEnabled(true);
+        CloudGameTests.keepPowered(helper, mainframe);
+        var id = mainframe.getMainframeId();
+        var spot = helper.absolutePos(floor).offset(5, 2, 5);
+        int[] section = {spot.getX() >> 4, spot.getY() >> 4, spot.getZ() >> 4};
+        var disk = VoxelService.diskForTest(server);
+        long[] before = new long[1];
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && VoxelAreas.points(id, dim).length > 0, "mainframe online with its area"))
+            .thenExecute(() -> {
+                level.setBlock(spot, Blocks.DIAMOND_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+                before[0] = ai.ezfox.cccloud.map.MapStats.LAST_KNOWN.deferred.sum();
+                VoxelService.deferAllForTest(true);
+                for (var c : forced) level.setChunkForced(c.x(), c.z(), false);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(level.getChunkSource().getChunkNow(chunkX, chunkZ) == null && CloudNetwork.mainframe(id) == null
+                && ai.ezfox.cccloud.map.MapStats.LAST_KNOWN.deferred.sum() > before[0], "the chunk went and waits"))
+            .thenIdle(40)
+            .thenExecute(() -> {
+                var stored = disk.column(id, dim, section[0], section[2]).get(section[1]);
+                boolean early = stored != null && hasKind(stored.section(), "minecraft:diamond_block");
+                VoxelService.deferAllForTest(false);
+                helper.assertTrue(!early, "a chunk over the limit costs nothing until the queue runs");
+            })
+            .thenWaitUntil(() -> {
+                var stored = disk.column(id, dim, section[0], section[2]).get(section[1]);
+                helper.assertTrue(VoxelService.idleForTest(server) && stored != null && hasKind(stored.section(), "minecraft:diamond_block"),
+                    "the queue filled the cache: " + ai.ezfox.cccloud.map.MapStats.report(0)[2]);
+            })
+            .thenExecute(() -> ai.ezfox.cccloud.block.MainframeRetention.purge(server, id))
+            .thenSucceed();
+    }
+
+    /**
      * The whole path of Enrico's report with real chunks: a mainframe far from the test structures unloads with its
      * chunks, and the route still answers with the terrain from memory and from disk, including a block nobody asked for
      * before the chunk went (the snapshot of the unload). Ores stay stone, claims and the area still apply, a removed

@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -39,7 +40,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>It is saved under {@code <world>/cccloud/voxels/<mainframe>/area.gz} with the last published network map, so
  *       dashboards have the map (and with it the view) after a restart, before the mainframe's chunk loads.</li>
  * </ul>
- * Server thread only.
+ * Server thread only, except {@link #at}: the lookup is rebuilt in the background when an area changes, so a big network
+ * that changes costs the server thread nothing.
  */
 public final class VoxelAreas {
     /** A mainframe whose area may reach into a region of the world, with its points near that region. */
@@ -110,22 +112,25 @@ public final class VoxelAreas {
     private static final long SAVE_MS = 600_000;
     /** A map larger than this is left out of the file; the area itself is small. */
     private static final int MAX_NETWORK_CHARS = 2 * 1024 * 1024;
-    private static Index<ResourceKey<Level>> index = new Index<>(Map.of(), 0);
+    private static volatile Index<ResourceKey<Level>> index = new Index<>(Map.of(), 0);
     private static boolean indexDirty = true;
+    private static final AtomicBoolean INDEXING = new AtomicBoolean();
 
     private VoxelAreas() {
     }
 
     /**
-     * Mainframes whose area may reach this chunk, or null for nearly every chunk of a world. No allocation on that path.
+     * Mainframes whose area may reach this chunk, or null for nearly every chunk of a world. One map lookup, no allocation.
      */
     public static Hit @Nullable [] at(ResourceKey<Level> dim, int cx, int cz) {
-        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
-        if (indexDirty || index.radius != radius) rebuild(radius);
         return index.at(dim, cx, cz);
     }
 
-    private static void rebuild(int radius) {
+    /** Every tick: after a change of an area or of {@code voxelRadius} the lookup is built again in the background. */
+    static void tick() {
+        int radius = CloudConfig.get(CloudConfig.VOXEL_RADIUS);
+        if ((!indexDirty && index.radius == radius) || !INDEXING.compareAndSet(false, true)) return;
+        indexDirty = false;
         var byDim = new HashMap<ResourceKey<Level>, Map<UUID, double[][]>>();
         for (var area : AREAS.entrySet()) {
             for (var dim : area.getValue().points.entrySet()) {
@@ -133,8 +138,13 @@ public final class VoxelAreas {
                 if (id != null) byDim.computeIfAbsent(ResourceKey.create(Registries.DIMENSION, id), k -> new HashMap<>()).put(area.getKey(), dim.getValue());
             }
         }
-        index = new Index<>(byDim, radius);
-        indexDirty = false;
+        VoxelService.executor().execute(() -> {
+            try {
+                index = new Index<>(byDim, radius);
+            } finally {
+                INDEXING.set(false);
+            }
+        });
     }
 
     /** True if an area is known for this mainframe (it was online with this version at least once). */
@@ -299,6 +309,8 @@ public final class VoxelAreas {
 
     public static void clear() {
         AREAS.clear();
+        index = new Index<>(Map.of(), 0);
         indexDirty = true;
+        INDEXING.set(false);
     }
 }
