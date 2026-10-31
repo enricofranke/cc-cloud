@@ -229,6 +229,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("access_scoreboard_team", () -> ai.ezfox.cccloud.gametest.AccessTests::scoreboardTeam);
         TEST_FUNCTIONS.register("access_migration_v03", () -> ai.ezfox.cccloud.gametest.AccessTests::migrationV03);
         TEST_FUNCTIONS.register("script_upload_run", () -> ai.ezfox.cccloud.gametest.ScriptTests::uploadAndRun);
+        TEST_FUNCTIONS.register("canvas_real_computer", () -> ai.ezfox.cccloud.gametest.CanvasTests::realComputer);
         TEST_FUNCTIONS.register("rules_widget_redstone", () -> ai.ezfox.cccloud.gametest.RuleTests::widgetThresholdSetsRedstone);
         TEST_FUNCTIONS.register("terminal_type_and_see", () -> ai.ezfox.cccloud.gametest.TerminalTests::typeAndSee);
         TEST_FUNCTIONS.register("history_widget_series", () -> ai.ezfox.cccloud.gametest.HistoryTests::widgetSeries);

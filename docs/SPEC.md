@@ -2374,4 +2374,4 @@ Scripting has to do more than drag and drop: a program can draw its own card, pl
 `cloud-mimic`, `cloud-map`, `cloud-snake`, `cloud-overview` in the ROM, also in the script import's example gallery. `RomLuaTest` runs each against the fake uplink with every frame through `CanvasFrame`.
 
 ### Tests
-`CanvasFrameTest`, `CardReaderTest`, `CardReadingTest`, `WidgetFactoryV2Test`, `canvas.test.ts`, GameTest `canvas_program` (a real CC computer draws and gets a click).
+`CanvasFrameTest`, `CardReaderTest`, `CardReadingTest`, `WidgetFactoryV2Test`, `canvas.test.ts`, GameTest `canvas_real_computer` (a real CC computer draws, gets a click, has a hostile frame refused and reads its card).
