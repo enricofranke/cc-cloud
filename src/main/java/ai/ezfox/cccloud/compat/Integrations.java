@@ -113,6 +113,7 @@ public final class Integrations {
         optional("neovitae", () -> ai.ezfox.cccloud.compat.neovitae.NeoVitaeCards::init);
         optional("thaumaturge", () -> ai.ezfox.cccloud.compat.thaumaturge.ThaumaturgeCards::init);
         optional("appliedthaumaturge", () -> ai.ezfox.cccloud.compat.appliedthaumaturge.AppliedThaumaturgeCards::init);
+        optional("silentgear", () -> ai.ezfox.cccloud.compat.silentgear.SilentGearCards::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

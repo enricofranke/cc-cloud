@@ -80,6 +80,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   neovitae: { cat: "magic", icon: "neovitae:ara_vitae" },
   thaumaturge: { cat: "magic", icon: "thaumaturge:jar_normal" },
   appliedthaumaturge: { cat: "magic", icon: "appliedthaumaturge:arcane_assembler" },
+  silentgear: { cat: "machines", icon: "silentgear:alloy_forge" },
   // wave 5 end
 };
 

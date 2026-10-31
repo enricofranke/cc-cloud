@@ -8,6 +8,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Neo Vitae:** Ara Vitae (blood, tier, progress), Master Ritual Stone and Hellfire Forge cards, and an Anima card with your EV (only for those allowed to see positions). New server setting `animaCard`.
 - **Thaumaturge:** Essentia, Aura Node, Runic Matrix and Crucible cards, with a warning when an infusion turns unstable.
 - **Applied Thaumaturge:** Arcane Assembler card and an ME Essentia card with the essentia stored in the ME network.
+- **Silent Gear:** one Machine card for the alloy makers, Metal Press, Material Grader and Salvager, plus a Starlight Charger card.
 <!-- wave5 log -->
 
 ### In-game help

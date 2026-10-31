@@ -850,6 +850,16 @@
    "controls": "none",
    "tested": "yes (assembler, Essentia Interface; offline, without an ME network)",
    "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Silent Gear",
+   "id": "silentgear",
+   "version": "4.2.3",
+   "what": "**Machine** for the alloy makers (Alloy Forge, Crude and Super Mixer, Recrystallizer, Refabricator), Metal Press, Material Grader and Salvager: status, progress, what goes in, what comes out. **Starlight Charger**: charge, progress.",
+   "controls": "none",
+   "tested": "yes (Alloy Forge and Metal Press; Starlight Charger; the running progress was not tested)",
+   "skipped": false
   }
  ]
 }

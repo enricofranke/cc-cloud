@@ -772,6 +772,20 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
+  // Silent Gear
+  {
+    key: "silentgear_machine",
+    mod: "silentgear",
+    title: "Machine",
+    template: "silentgear_machine",
+    widgets: [
+      label("status", "Status", "Working", { span: 2 }),
+      progress("progress", "Progress", 0, 100, "%", {}, 42),
+      label("input", "Input", "Crimson Iron Ingot x2"),
+      label("output", "Output", "Crimson Steel Ingot"),
+    ],
+  },
+
   // wave 5 end
 
   // Witchery
