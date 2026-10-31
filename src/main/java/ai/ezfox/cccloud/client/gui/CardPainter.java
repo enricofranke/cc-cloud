@@ -53,7 +53,9 @@ final class CardPainter {
     private static void row(GuiGraphicsExtractor g, Font font, int x, int y, int w, JsonObject p) {
         String type = str(p, "t");
         String label = str(p, "l");
-        int labelW = Math.min(font.width(label), (int) (w * 0.48));
+        // a short value leaves room: the caption only gets cut when both really do not fit
+        int valueW = type.equals("label") ? font.width(str(p, "s")) + 6 : w;
+        int labelW = Math.min(font.width(label), Math.max((int) (w * 0.48), w - valueW));
         int vx = x + labelW + 6, right = x + w;
         int ty = y + 2;
         switch (type) {

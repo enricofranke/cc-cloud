@@ -20,7 +20,7 @@ public final class CloudGui {
 
     // Palette (ARGB)
     public static final int TEXT = 0xFFE6E6E6;
-    public static final int TEXT_DIM = 0xFF8C8C8C;
+    public static final int TEXT_DIM = 0xFFB4B4B4;
     public static final int TEXT_DARK = 0xFF202020;
     public static final int CYAN = 0xFF4FC3D7;
     public static final int GOLD = 0xFFE0B03A;

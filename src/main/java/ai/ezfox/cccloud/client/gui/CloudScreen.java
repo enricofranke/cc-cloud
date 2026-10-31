@@ -73,7 +73,8 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
             int w = Math.max(30, font.width(label) + 10);
             boolean hover = enabled && hover(x, y, w, 14);
             CloudGui.button(g, x, y, w, style, hover, enabled);
-            g.centeredText(font, label, x + w / 2, y + 3, CloudGui.buttonText(style, enabled));
+            // a shadow smears dark text on the light button
+            g.text(font, label, x + (w - font.width(label)) / 2, y + 3, CloudGui.buttonText(style, enabled), style != CloudGui.ButtonStyle.NORMAL && enabled);
             if (enabled) hits.add(new Hit(x, Math.max(y, clipTop), w, Math.min(y + 14, clipBottom) - Math.max(y, clipTop), action));
             return w;
         }
@@ -290,8 +291,8 @@ public abstract class CloudScreen<M extends CloudMenu> extends AbstractContainer
                 int w = i == tabs.size() - 1 ? panelX + panelW - 7 - x : each - 1;
                 CloudGui.tab(g, tex, x, ty, w, i == tab, accent());
                 boolean hover = top.hover(x, ty, w, 14);
-                g.centeredText(font, Component.literal(fit(tabs.get(i).getString(), w - 6)), x + w / 2, ty + 3,
-                    i == tab ? CloudGui.TEXT : hover ? CloudGui.TEXT_DARK : 0xFF404040);
+                String name = fit(tabs.get(i).getString(), w - 6);
+                g.text(font, name, x + (w - font.width(name)) / 2, ty + 3, i == tab ? CloudGui.TEXT : hover ? CloudGui.TEXT_DARK : 0xFF404040, i == tab);
                 int index = i;
                 hits.add(new Hit(x, ty, w, 14, () -> setTab(index)));
                 x += w + 1;
