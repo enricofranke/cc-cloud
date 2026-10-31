@@ -8,6 +8,13 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Easier to read:** button and tab text is crisp on the light buttons, grey text is brighter, and a caption is only cut
   when it really does not fit next to its value.
 
+### Cloud Tablet
+- **The Alerts tab shows what happened.** The server keeps the latest 50 alerts of each mainframe, so opening the tablet
+  shows them, with their card and age. Before, the tab only showed alerts that fired while you were looking at it. A
+  dashboard that reconnects gets the same history. Restricted cards' alerts and player names stay filtered as on the web.
+- **Alert pop-ups:** with an Advanced Cloud Tablet in your inventory or Curios slot, your mainframe's alerts appear as a
+  toast, also with the tablet closed. At most 3 at once, then one every 4 seconds; a switch in the Alerts tab turns them off.
+
 ### Fixes
 - **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.
 

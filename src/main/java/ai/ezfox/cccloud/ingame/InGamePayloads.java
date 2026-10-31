@@ -105,8 +105,37 @@ public final class InGamePayloads {
         }
     }
 
+    /**
+     * Server → client: an alert for an Advanced Cloud Tablet the player carries (a toast, also with the screen closed).
+     * {@code more} = alerts held back by the rate limit before this one; {@code text} empty = only that summary.
+     */
+    public record TabletAlert(String mainframeName, String text, String level, int more) implements CustomPacketPayload {
+        public static final Type<TabletAlert> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "tablet_alert"));
+        public static final StreamCodec<ByteBuf, TabletAlert> CODEC = StreamCodec.composite(
+            ByteBufCodecs.stringUtf8(128), TabletAlert::mainframeName, ByteBufCodecs.stringUtf8(1024), TabletAlert::text,
+            ByteBufCodecs.stringUtf8(8), TabletAlert::level, ByteBufCodecs.VAR_INT, TabletAlert::more, TabletAlert::new);
+
+        @Override
+        public Type<TabletAlert> type() {
+            return TYPE;
+        }
+    }
+
+    /** Client → server: alert toasts of the tablets linked to the open tablet's mainframe on or off. */
+    public record TabletNotify(int containerId, boolean on) implements CustomPacketPayload {
+        public static final Type<TabletNotify> TYPE = new Type<>(Identifier.fromNamespaceAndPath(CCCloud.MODID, "tablet_notify"));
+        public static final StreamCodec<ByteBuf, TabletNotify> CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT, TabletNotify::containerId, ByteBufCodecs.BOOL, TabletNotify::on, TabletNotify::new);
+
+        @Override
+        public Type<TabletNotify> type() {
+            return TYPE;
+        }
+    }
+
     /** Set by the client entry point. */
     public static volatile @Nullable Consumer<TabletData> clientTabletHandler;
+    public static volatile @Nullable Consumer<TabletAlert> clientTabletAlertHandler;
     public static volatile @Nullable Consumer<AnalyzerData> clientAnalyzerHandler;
     public static volatile @Nullable Consumer<MapNodesData> clientMapNodesHandler;
 
@@ -123,6 +152,10 @@ public final class InGamePayloads {
             var handler = clientTabletHandler;
             if (handler != null) handler.accept(payload);
         });
+        registrar.playToClient(TabletAlert.TYPE, TabletAlert.CODEC, (payload, context) -> {
+            var handler = clientTabletAlertHandler;
+            if (handler != null) handler.accept(payload);
+        });
         registrar.playToClient(AnalyzerData.TYPE, AnalyzerData.CODEC, (payload, context) -> {
             var handler = clientAnalyzerHandler;
             if (handler != null) handler.accept(payload);
@@ -136,6 +169,9 @@ public final class InGamePayloads {
         });
         registrar.playToServer(TabletRequest.TYPE, TabletRequest.CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) ai.ezfox.cccloud.tablet.TabletService.request(player, payload);
+        });
+        registrar.playToServer(TabletNotify.TYPE, TabletNotify.CODEC, (payload, context) -> {
+            if (context.player() instanceof ServerPlayer player) ai.ezfox.cccloud.tablet.TabletService.setNotify(player, payload);
         });
         registrar.playToServer(OpenTablet.TYPE, OpenTablet.CODEC, (payload, context) -> {
             if (context.player() instanceof ServerPlayer player) ai.ezfox.cccloud.tablet.TabletService.openFromKey(player);

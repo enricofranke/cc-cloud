@@ -151,13 +151,26 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
     }
 
     private void alerts() {
+        // Advanced tablet: pop-ups for this mainframe's alerts while the tablet is carried, also with the screen closed
+        if (menu.isAdvanced()) rows.add(new Row(ROW, (c, x, y, w) -> {
+            c.toggle(x + 4, y + 3, menu.alertsOn, true, () -> {
+                menu.alertsOn = !menu.alertsOn;
+                ClientPacketDistributor.sendToServer(new InGamePayloads.TabletNotify(menu.containerId, menu.alertsOn));
+            });
+            c.text(Component.translatable("cccloud.tablet.alerts_popup").getString(), x + 32, y + 5, CloudGui.TEXT, w - 36);
+        }));
         var alerts = view.getAsJsonArray("alerts");
         if (alerts.isEmpty()) textRow(Component.translatable("cccloud.tablet.no_alerts"), CloudGui.TEXT_DIM);
+        var titles = new HashMap<String, String>();
+        for (var u : view.getAsJsonArray("uplinks")) titles.put(str(u.getAsJsonObject(), "uplinkId"), str(u.getAsJsonObject(), "title"));
         for (var a : alerts) {
             var alert = a.getAsJsonObject();
             String level = str(alert, "level");
-            int color = level.equals("crit") ? CloudGui.RED : level.equals("warn") ? CloudGui.YELLOW : CloudGui.TEXT;
+            int color = level.equals("crit") || level.equals("error") ? CloudGui.RED : level.equals("warn") ? CloudGui.YELLOW : CloudGui.TEXT;
             textRow(Component.literal(str(alert, "text")), color);
+            long seconds = Math.max(0, (System.currentTimeMillis() - num(alert, "ts")) / 1000);
+            String source = titles.getOrDefault(str(alert, "uplinkId"), "");
+            textRow(Component.literal((source.isEmpty() ? "" : source + " · ") + ago(seconds)), CloudGui.TEXT_DIM);
         }
     }
 

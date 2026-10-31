@@ -57,6 +57,11 @@ public final class DashboardModel {
                 uplinks.clear();
                 if (m.has("uplinks")) for (var u : m.getAsJsonArray("uplinks")) put(u.getAsJsonObject());
                 layout = m.has("layout") ? m.get("layout") : JsonNull.INSTANCE;
+                // the server's alert history, oldest first (absent: nothing was alerted since the server started)
+                if (m.get("alerts") instanceof JsonArray history) {
+                    alerts.clear();
+                    for (var alert : history) if (alert instanceof JsonObject a) addAlert(a);
+                }
                 hasSnapshot = true;
             }
             case "uplink" -> put(m);
@@ -79,10 +84,7 @@ public final class DashboardModel {
                     if (m.has(key)) mainframe.add(key, m.get(key));
                 }
             }
-            case "alert" -> {
-                alerts.addFirst(m);
-                while (alerts.size() > MAX_ALERTS) alerts.removeLast();
-            }
+            case "alert" -> addAlert(m);
             case "role" -> {
                 canControl = m.has("canControl") && m.get("canControl").getAsBoolean();
                 if (m.has("role")) mainframe.add("role", m.get("role"));
@@ -96,6 +98,11 @@ public final class DashboardModel {
             }
         }
         return true;
+    }
+
+    private void addAlert(JsonObject alert) {
+        alerts.addFirst(alert);
+        while (alerts.size() > MAX_ALERTS) alerts.removeLast();
     }
 
     private boolean setValue(String uplinkId, String widgetId, JsonElement value) {

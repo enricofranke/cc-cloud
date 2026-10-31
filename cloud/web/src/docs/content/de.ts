@@ -714,6 +714,8 @@ Ein Handgerät, das dein Dashboard **im Spiel** öffnet – ein eigenes Fenster 
 - Funktioniert in Netzwerk-Reichweite jedes Knotens (Mainframe oder Relay). Das **Advanced Cloud Tablet** funktioniert zusätzlich überall, wo ein Ender Relay hinreicht.
 - Nutzt **deine Rolle** auf diesem Mainframe: Viewer schauen zu, Operatoren steuern, Admins bearbeiten.
 - Optionale Taste zum Öffnen (standardmäßig nicht belegt; unter Steuerung einstellen), solange das Tablet im Inventar oder in einem Curios-Slot ist.
+- Der Tab **Alerts** zeigt die letzten Meldungen des Mainframes, auch die aus der Zeit, in der das Tablet zu war (bis zum Neustart des Servers). Du siehst, was deine Rolle sehen darf, wie im Dashboard.
+- Mit einem **Advanced Cloud Tablet** im Inventar oder Curios-Slot erscheinen Meldungen seines Mainframes als Toast, auch bei geschlossenem Tablet. Ein Schalter oben im Tab Alerts stellt das für dieses Tablet ab. Kommen viele Meldungen auf einmal, zählt der Toast den Rest mit.
 - Hergestellt aus einem CC-Pocket-Computer und einem Cloud Core (Advanced: dazu Gold und eine Enderperle).
 
 ## Cloud Display {#display}

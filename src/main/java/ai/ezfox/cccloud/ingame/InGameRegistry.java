@@ -55,6 +55,9 @@ public final class InGameRegistry {
     static {
         TESTS.register("tablet_range", () -> ai.ezfox.cccloud.tablet.TabletGameTests::range);
         TESTS.register("tablet_actions", () -> ai.ezfox.cccloud.tablet.TabletGameTests::actions);
+        TESTS.register("tablet_buttons", () -> ai.ezfox.cccloud.tablet.TabletGameTests::buttons);
+        TESTS.register("tablet_alert_history", () -> ai.ezfox.cccloud.tablet.TabletGameTests::alertHistory);
+        TESTS.register("tablet_alert_toasts", () -> ai.ezfox.cccloud.tablet.TabletGameTests::alertToasts);
         TESTS.register("display_forming", () -> ai.ezfox.cccloud.display.DisplayGameTests::forming);
         TESTS.register("display_content", () -> ai.ezfox.cccloud.display.DisplayGameTests::content);
         TESTS.register("display_reload", () -> ai.ezfox.cccloud.display.DisplayGameTests::reload);

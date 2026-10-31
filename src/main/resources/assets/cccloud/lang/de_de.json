@@ -551,6 +551,8 @@
   "cccloud.tablet.empty": "Noch keine Karten.",
   "cccloud.tablet.untitled": "Ohne Titel",
   "cccloud.tablet.no_alerts": "Keine Meldungen.",
+  "cccloud.tablet.alerts_popup": "Meldungen als Pop-up zeigen, solange ich das Tablet trage",
+  "cccloud.tablet.alert_more": "+%s weitere",
   "cccloud.tablet.ok": "OK",
   "cccloud.tablet.cancel": "Abbrechen",
   "cccloud.tablet.confirm": "Sicher?",

@@ -551,6 +551,8 @@
   "cccloud.tablet.empty": "No cards yet.",
   "cccloud.tablet.untitled": "Untitled",
   "cccloud.tablet.no_alerts": "No alerts.",
+  "cccloud.tablet.alerts_popup": "Show alerts as pop-ups while I carry this tablet",
+  "cccloud.tablet.alert_more": "+%s more",
   "cccloud.tablet.ok": "OK",
   "cccloud.tablet.cancel": "Cancel",
   "cccloud.tablet.confirm": "Sure?",

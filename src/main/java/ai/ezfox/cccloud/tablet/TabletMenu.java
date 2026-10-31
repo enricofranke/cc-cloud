@@ -17,6 +17,8 @@ public class TabletMenu extends CloudMenu {
     private final String mainframeName;
     private final boolean advanced;
     private final boolean canControl;
+    /** Client side: this tablet's alert toasts are on (the switch in the Alerts tab changes it). */
+    public boolean alertsOn = true;
     /** Client side: the dashboard as the browser would see it. */
     public final DashboardModel model = new DashboardModel();
 
@@ -32,14 +34,16 @@ public class TabletMenu extends CloudMenu {
         this.mainframeName = buf.readUtf(128);
         this.advanced = buf.readBoolean();
         this.canControl = buf.readBoolean();
+        this.alertsOn = buf.readBoolean();
     }
 
-    static void writeOpen(RegistryFriendlyByteBuf buf, BlockPos pos, String mainframeName, boolean advanced, boolean canControl) {
+    static void writeOpen(RegistryFriendlyByteBuf buf, BlockPos pos, String mainframeName, boolean advanced, boolean canControl, boolean alertsOn) {
         buf.writeBlockPos(pos);
         buf.writeUtf("{}", MAX_VIEW);
         buf.writeUtf(mainframeName, 128);
         buf.writeBoolean(advanced);
         buf.writeBoolean(canControl);
+        buf.writeBoolean(alertsOn);
     }
 
     public String mainframeName() {

@@ -498,7 +498,12 @@ export class MainframeConn {
           this.info.value = normalizeInfo(msg.mainframe);
           this.uplinks.value = msg.uplinks.map(normalizeUplink).filter(Boolean) as Uplink[];
           this.structure.value++;
-          if (Array.isArray(msg.alerts)) this.alerts.value = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
+          if (Array.isArray(msg.alerts)) {
+            const titles = new Map(this.uplinks.value.map((u) => [u.uplinkId, u.title]));
+            const history = msg.alerts.map(normalizeAlert).filter(Boolean).slice(-50) as Alert[];
+            for (const a of history) if (!a.uplinkTitle && a.uplinkId) a.uplinkTitle = titles.get(a.uplinkId);
+            this.alerts.value = history;
+          }
           this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
           this.network.value = normalizeNetwork(msg.network);
           this.redstone.value = normalizeRedstone(msg.redstone);
