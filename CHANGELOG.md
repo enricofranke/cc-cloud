@@ -14,6 +14,13 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 ### Layout editor
 - **Programs started while the editor is open show up in it.** Before, their new cards and widgets only appeared after
   leaving the editor, and saving kept the old view of the card.
+### Cloud Displays
+- **New screen on the dashboard** (settings, Cloud Displays): every display of the mainframe with position, size, status
+  and a preview. Pick what it shows, switch in-world clicks, unlink, without walking there. Needs "Edit the layout".
+- **Custom cards and whole pages on a display**, not only one original card.
+- **Restricted cards on a display, if you want them:** a per-display choice with a clear warning, only for players who
+  may see those cards. It ends as soon as the player who made it loses that right. Works in the display's screen too.
+- **A display says "Mainframe offline"** when the mainframe is off, without power or disabled.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.

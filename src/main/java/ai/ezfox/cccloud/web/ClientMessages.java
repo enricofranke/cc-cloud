@@ -23,7 +23,7 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, CardSettings, Unlock, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, DisplayCommand, CardSettings, Unlock, Pong, Invalid {
     }
 
     /**
@@ -129,6 +129,17 @@ public final class ClientMessages {
     public record RedstoneDevice(String reqId, UUID deviceId, @Nullable String name, @Nullable String group) implements Message {
     }
 
+    /**
+     * Cloud Displays of this mainframe: {@code {"t":"display","reqId","op":"list"}} and, for one display ({@code id} from
+     * the list), {@code "op":"set"} with at least one of {@code target} ("" = nothing, a section id, {@code c:<card>},
+     * {@code p:<page>}), {@code interactive}, {@code allowRestricted}, or {@code "op":"unlink"}. A request, not a
+     * broadcast, so positions only go to whoever asks and may see them. Needs {@code layout.edit}; answered with
+     * {@code display_result}.
+     */
+    public record DisplayCommand(String reqId, String op, @Nullable UUID id, @Nullable String target, @Nullable Boolean interactive,
+                                 @Nullable Boolean allowRestricted) implements Message {
+    }
+
     /** Only the type and request id of a message (for the hard deny of share sessions). */
     public record Peek(@Nullable String t, @Nullable String reqId) {
     }
@@ -183,6 +194,7 @@ public final class ClientMessages {
             case SceneCommand s -> true;
             case RedstoneOverride r -> true;
             case RedstoneDevice r -> true;
+            case DisplayCommand d -> !d.op().equals("list");
             case CardSettings c -> true;
             case Production p -> p.op().equals("pin") || p.op().equals("unpin");
             case Storage s -> STORAGE_WRITE_OPS.contains(s.op());
@@ -274,6 +286,7 @@ public final class ClientMessages {
                     || (group != null && !ai.ezfox.cccloud.rsdevice.RsDevice.validText(group.strip()))
                     ? new Invalid("invalid_message", reqId) : new RedstoneDevice(reqId, deviceId, name == null ? null : name.strip(), group == null ? null : group.strip());
             }
+            case "display" -> parseDisplay(obj);
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);
             case "query" -> parseQuery(obj);
@@ -295,6 +308,31 @@ public final class ClientMessages {
             }
             default -> new Invalid("invalid_message", null);
         };
+    }
+
+    private static Message parseDisplay(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        String op = string(obj, "op");
+        var invalid = new Invalid("invalid_message", reqId);
+        if (op == null) return invalid;
+        if (op.equals("list")) return obj.keySet().stream().allMatch(k -> k.equals("t") || k.equals("reqId") || k.equals("op")) ? new DisplayCommand(reqId, op, null, null, null, null) : invalid;
+        if (!op.equals("set") && !op.equals("unlink")) return invalid;
+        var allowed = op.equals("set") ? java.util.Set.of("t", "reqId", "op", "id", "target", "interactive", "allowRestricted") : java.util.Set.of("t", "reqId", "op", "id");
+        if (!allowed.containsAll(obj.keySet())) return invalid;
+        UUID id = parseUuid(string(obj, "id"));
+        if (id == null) return invalid;
+        if (op.equals("unlink")) return new DisplayCommand(reqId, op, id, null, null, null);
+        if (obj.has("target") && !(obj.get("target") instanceof com.google.gson.JsonPrimitive p && p.isString())) return invalid;
+        String target = string(obj, "target");
+        if (target != null && !ai.ezfox.cccloud.display.DisplayCompose.validTarget(target)) return invalid;
+        Boolean interactive = flag(obj, "interactive"), restricted = flag(obj, "allowRestricted");
+        boolean flagsOk = (interactive != null || !obj.has("interactive")) && (restricted != null || !obj.has("allowRestricted"));
+        return !flagsOk || target == null && interactive == null && restricted == null ? invalid : new DisplayCommand(reqId, op, id, target, interactive, restricted);
+    }
+
+    private static @Nullable Boolean flag(JsonObject obj, String key) {
+        return obj.get(key) instanceof com.google.gson.JsonPrimitive p && p.isBoolean() ? p.getAsBoolean() : null;
     }
 
     private static Message parseAction(JsonObject obj) {

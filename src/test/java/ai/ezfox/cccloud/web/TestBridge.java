@@ -99,6 +99,12 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.StorageResult display(AuthStore.Device device, UUID mainframeId, ClientMessages.DisplayCommand message) {
+        dispatched.add("display:" + message.op());
+        return new GameBridge.StorageResult(null, null);
+    }
+
+    @Override
     public GameBridge.RuleResult ruleCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.RuleCommand command) {
         dispatched.add(command.op());
         return new GameBridge.RuleResult(null, null, null);

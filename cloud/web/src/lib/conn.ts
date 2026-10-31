@@ -3,6 +3,7 @@
 // Framework agnostic: state is exposed as signals so the UI and the tests can
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
+import { normalizeDisplays, type DisplayChange, type DisplayRow } from "./displays.ts";
 import { presetHas } from "./permissions.ts";
 import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
@@ -270,6 +271,7 @@ export class MainframeConn {
   private layoutReqs = new Map<string, { resolve: (server?: LayoutDoc) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private queries = new Map<string, { resolve: (r: QueryResult) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   /** storage card v2: storage_result / craft_plan */
+  private displayReqs = new Map<string, { resolve: (d: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private storageReqs = new Map<string, { resolve: (d: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private pendingMeta = new Map<string, Pending>();
   private requests = new Map<string, { key: string; label: string; timer: ReturnType<typeof setTimeout>; onResult?: ActionExtra["onResult"] }>();
@@ -706,6 +708,15 @@ export class MainframeConn {
         else r.reject(new Error(typeof msg.error === "string" ? msg.error : "rejected"));
         break;
       }
+      case "display_result": {
+        const r = this.displayReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.displayReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok === true) r.resolve(msg.data);
+        else r.reject(new Error(typeof msg.error === "string" ? msg.error : "rejected"));
+        break;
+      }
       case "layout":
         this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
         break;
@@ -888,6 +899,36 @@ export class MainframeConn {
       }, timeoutMs);
       this.netReqs.set(reqId, { resolve, reject, timer });
     });
+  }
+
+  /** Cloud Displays: {"t":"display"} → display_result. A request, so positions never travel to anyone who didn't ask. Needs layout.edit. */
+  private displayRequest(body: Record<string, unknown>, timeoutMs: number): Promise<any> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("layout.edit");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "display", reqId, ...body })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.displayReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.displayReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
+  /** The linked Cloud Displays of this mainframe (positions only with view.positions). */
+  listDisplays(timeoutMs = 8000): Promise<DisplayRow[]> {
+    return this.displayRequest({ op: "list" }, timeoutMs).then((d) => normalizeDisplays(d?.displays));
+  }
+
+  /** Changes what a display shows and how; only the given fields change. */
+  setDisplay(id: string, change: DisplayChange, timeoutMs = 8000): Promise<void> {
+    return this.displayRequest({ op: "set", id, ...change }, timeoutMs);
+  }
+
+  /** Unlinks a display from this mainframe (also needs network.link). */
+  unlinkDisplay(id: string, timeoutMs = 8000): Promise<void> {
+    return this.displayRequest({ op: "unlink", id }, timeoutMs);
   }
 
   /** v0.5 E: opens (or refreshes) the terminal of the computer behind a card. Frames arrive in `terminals`. */
@@ -1114,6 +1155,11 @@ export class MainframeConn {
         r.reject(new Error("disconnected"));
         reqs.delete(id);
       }
+    for (const [id, r] of this.displayReqs) {
+      clearTimeout(r.timer);
+      r.reject(new Error("disconnected"));
+      this.displayReqs.delete(id);
+    }
     for (const [id, r] of this.netReqs) {
       clearTimeout(r.timer);
       r.reject(new Error("disconnected"));
@@ -1433,6 +1479,7 @@ export function normalizeUplink(u: any): Uplink | null {
     mode: u.mode === "auto" || u.mode === "lua" || u.mode === "direct" ? u.mode : undefined,
     ...(typeof u.template === "string" && /^[a-z0-9_]{1,32}$/.test(u.template) ? { template: u.template } : {}),
     ...(u.loaded === false ? { loaded: false, online: false } : {}),
+    ...(u.restricted === true ? { restricted: true } : {}),
     ...(u.loaded === false && typeof u.lastSeen === "number" && Number.isFinite(u.lastSeen) ? { lastSeen: u.lastSeen } : {}),
     ...(normalizeBlocked(u.blocked) ? { blocked: normalizeBlocked(u.blocked) } : {}),
     ...(normalizeBlockedWidgets(u.blockedWidgets) ? { blockedWidgets: normalizeBlockedWidgets(u.blockedWidgets) } : {}),

@@ -1,7 +1,11 @@
 package ai.ezfox.cccloud.display;
 
 import ai.ezfox.cccloud.CCCloud;
+import ai.ezfox.cccloud.access.Perm;
+import ai.ezfox.cccloud.ingame.InGameAccess;
 import ai.ezfox.cccloud.ingame.InGameRegistry;
+import ai.ezfox.cccloud.uplink.Json;
+import ai.ezfox.cccloud.web.WebHub;
 import java.util.Objects;
 import java.util.UUID;
 import net.minecraft.core.BlockPos;
@@ -24,14 +28,17 @@ import org.jspecify.annotations.Nullable;
  * from the front) owns the content. The configuration (mainframe, section, interactive) is copied to every block of a
  * rectangle so it survives when a rectangle grows or splits.
  * <p>
- * The origin reads its section's snapshot from the hub at most 4 times per second and sends it with the block entity
- * update packet when it changed; the client renders it ({@code DisplayRenderer}).
+ * The origin reads its section's snapshot from the hub at most 4 times per second (custom cards and pages, composed by
+ * {@link DisplayCompose}, once per second) and sends it with the block entity update packet when it changed; the client
+ * renders it ({@code DisplayRenderer}).
  */
 public class CloudDisplayBlockEntity extends BlockEntity {
     public static final int MAX_WIDTH = 8;
     public static final int MAX_HEIGHT = 6;
     /** Ticks between snapshot reads (4 per second at most). */
     static final int SYNC_INTERVAL = 5;
+    /** Ticks between composing a custom card or page: it walks the whole layout. */
+    static final int COMPOSE_INTERVAL = 20;
     /** Max snapshot JSON sent to clients (a bigger section shows "too large"). */
     static final int MAX_JSON = 48 * 1024;
 
@@ -49,6 +56,11 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     private String mainframeName = "";
     private String sectionId = "";
     private boolean interactive;
+    /**
+     * Restricted sections may be shown: a deliberate choice per display, by someone who may see them. Re-checked live
+     * against {@link #configuredBy} when reading.
+     */
+    private boolean allowRestricted;
     /** The admin who chose what this display shows; the content stops when they lose access to the mainframe. */
     private @Nullable UUID configuredBy;
 
@@ -56,6 +68,8 @@ public class CloudDisplayBlockEntity extends BlockEntity {
     private String content = "";
     private int contentVersion;
     private int ticks;
+    /** Server: the mainframe whose {@link DisplayRegistry} entry this block holds. */
+    private @Nullable UUID listedAt;
 
     public CloudDisplayBlockEntity(BlockPos pos, BlockState state) {
         super(InGameRegistry.DISPLAY_BE.get(), pos, state);
@@ -199,7 +213,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
                 m.sendUpdate();
             }
         }
-        ticks = SYNC_INTERVAL; // refresh the content soon
+        ticks = COMPOSE_INTERVAL; // refresh the content soon
     }
 
     private void copyConfig(CloudDisplayBlockEntity from) {
@@ -207,6 +221,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         mainframeName = from.mainframeName;
         sectionId = from.sectionId;
         interactive = from.interactive;
+        allowRestricted = from.allowRestricted;
         configuredBy = from.configuredBy;
     }
 
@@ -295,12 +310,16 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         return interactive;
     }
 
+    public boolean allowRestricted() {
+        return allowRestricted;
+    }
+
     public @Nullable UUID configuredBy() {
         return configuredBy;
     }
 
     /** Sets the configuration on every block of the rectangle (server). */
-    public void configure(@Nullable UUID mainframe, String name, String section, boolean interactive, @Nullable UUID by) {
+    public void configure(@Nullable UUID mainframe, String name, String section, boolean interactive, boolean allowRestricted, @Nullable UUID by) {
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 var m = at(x, y);
@@ -309,13 +328,46 @@ public class CloudDisplayBlockEntity extends BlockEntity {
                 m.mainframeName = name;
                 m.sectionId = section;
                 m.interactive = interactive;
+                m.allowRestricted = allowRestricted;
                 m.configuredBy = by;
                 m.setChanged();
                 m.sendUpdate();
             }
         }
         var origin = origin();
-        if (origin != null) origin.ticks = SYNC_INTERVAL;
+        if (origin != null) {
+            origin.ticks = COMPOSE_INTERVAL;
+            origin.syncRegistry();
+        }
+    }
+
+    /** Keeps this block's {@link DisplayRegistry} entry right (origins only: the origin stands for the rectangle). */
+    private void syncRegistry() {
+        if (level == null || level.isClientSide()) return;
+        UUID mainframe = isOrigin() ? mainframeId : null;
+        if (listedAt != null && !listedAt.equals(mainframe)) DisplayRegistry.forget(listedAt, displayId());
+        listedAt = mainframe;
+        if (mainframe != null) {
+            DisplayRegistry.track(mainframe, this, new DisplayRegistry.Info(displayId(), dimension(), getBlockPos(), width, height, sectionId, interactive, allowRestricted));
+        }
+    }
+
+    public UUID displayId() {
+        return DisplayRegistry.id(dimension(), getBlockPos());
+    }
+
+    private String dimension() {
+        return level == null ? "" : level.dimension().identifier().toString();
+    }
+
+    @Override
+    public void setRemoved() {
+        super.setRemoved();
+        if (level == null || level.isClientSide() || listedAt == null) return;
+        // broken, or just its chunk unloading
+        if (removing) DisplayRegistry.forget(listedAt, displayId());
+        else DisplayRegistry.unloaded(listedAt, displayId(), this);
+        listedAt = null;
     }
 
     // ---- content ---------------------------------------------------------------------------------------------------
@@ -339,8 +391,13 @@ public class CloudDisplayBlockEntity extends BlockEntity {
             needsValidating = false;
             validate();
         }
-        if (!isOrigin() || ++ticks < SYNC_INTERVAL) return;
+        if (!isOrigin()) {
+            if (listedAt != null) syncRegistry();
+            return;
+        }
+        if (++ticks < (DisplayCompose.isComposite(sectionId) ? COMPOSE_INTERVAL : SYNC_INTERVAL)) return;
         ticks = 0;
+        syncRegistry();
         String json = readContent();
         if (!json.equals(content)) {
             content = json;
@@ -348,20 +405,32 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         }
     }
 
-    /** The section's snapshot as JSON, or an error object; restricted (canControl-only) sections are never shown. */
+    /**
+     * What the display shows as JSON, or an error object. A display is public: restricted sections only with the
+     * per-display choice, and only while the player who made it may still see them; private values never (the hub's
+     * public form).
+     */
     String readContent() {
         if (mainframeId == null) return error("unlinked");
         if (sectionId.isEmpty()) return error("no_section");
-        // Only what the configuring player may see (at least viewer) and never restricted sections: a display is public.
         var server = level == null ? null : level.getServer();
-        if (server == null || configuredBy == null
-            || !ai.ezfox.cccloud.ingame.InGameAccess.has(server, configuredBy, mainframeId, ai.ezfox.cccloud.access.Perm.VIEW)) {
-            return error("no_rights");
+        var perms = server == null || configuredBy == null ? java.util.Set.<Perm>of() : InGameAccess.perms(server, configuredBy, mainframeId);
+        if (!perms.contains(Perm.VIEW)) return error("no_rights");
+        var info = WebHub.INSTANCE.info(mainframeId);
+        if (info == null || !info.online() || !info.enabled()) return error("offline");
+        boolean restricted = allowRestricted && WebHub.seesRestricted(perms);
+        if (DisplayCompose.isComposite(sectionId)) {
+            var source = WebHub.INSTANCE.displaySource(mainframeId);
+            var composed = DisplayCompose.compose(sectionId, source.layout(), source.sections(), id -> restricted || !source.restricted().contains(id));
+            if (composed.section() == null) return error("missing");
+            if (composed.filtered() > 0 && composed.section().getAsJsonArray("widgets").isEmpty()) return error("restricted");
+            String text = Json.GSON.toJson(composed.section());
+            return text.length() > MAX_JSON ? error("too_large") : text;
         }
         // The hub's text of the section (built once per change, shared): displays poll it every few ticks.
-        String json = ai.ezfox.cccloud.web.WebHub.INSTANCE.sectionText(mainframeId, sectionId);
+        String json = WebHub.INSTANCE.sectionText(mainframeId, sectionId);
         if (json == null) return error("missing");
-        if (ai.ezfox.cccloud.web.WebHub.INSTANCE.isRestricted(mainframeId, sectionId)) return error("restricted");
+        if (!restricted && WebHub.INSTANCE.isRestricted(mainframeId, sectionId)) return error("restricted");
         return json.length() > MAX_JSON ? error("too_large") : json;
     }
 
@@ -387,6 +456,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         output.putString("mainframe_name", mainframeName);
         output.putString("section", sectionId);
         output.putBoolean("interactive", interactive);
+        output.putBoolean("allow_restricted", allowRestricted);
         output.storeNullable("configured_by", UUIDUtil.STRING_CODEC, configuredBy);
     }
 
@@ -415,6 +485,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         mainframeName = input.getStringOr("mainframe_name", "");
         sectionId = input.getStringOr("section", "");
         interactive = input.getBooleanOr("interactive", false);
+        allowRestricted = input.getBooleanOr("allow_restricted", false);
         configuredBy = input.read("configured_by", UUIDUtil.STRING_CODEC).orElse(configuredBy);
         // Client: the update packet carries the content too.
         String newContent = input.getStringOr("content", content);

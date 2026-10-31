@@ -721,7 +721,9 @@ A handheld item that opens your dashboard **in-game** – a native screen with t
 A display block that shows one dashboard card or page **in the world**, like a CC monitor.
 
 - Place several next to each other to form a larger screen (rectangles up to **8 × 6**).
-- Right-click to choose the card or page in its screen. It is read-only by default; operators can allow **clickable buttons** – then right-clicking a button on the display presses it.
+- Sneak + right-click to choose the card in its screen, or use **Cloud Displays** in the dashboard settings (needs “Edit the layout”): it lists every display with position, size, status and a preview. It can show an original card, one of your own cards or a whole page. It is read-only by default; operators can allow **clickable buttons** – then right-clicking a button on the display presses it.
+- **Restricted cards** (server, claims, waystones) stay off displays unless you allow them on that one display. Only players who may see them can do that, and **everyone in front of the display can read them**. It stops as soon as the player who allowed it loses that right.
+- When the mainframe is off, without power or disabled, the display says **Mainframe offline**. Range and dimension don't matter: a linked display works anywhere.
 - Updates at most 4× per second and is not drawn further than 48 blocks away, so it stays cheap for the server and your FPS.
 
 ## Wireless redstone {#redstone}

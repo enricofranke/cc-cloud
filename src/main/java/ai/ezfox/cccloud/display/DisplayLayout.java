@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
  * and deterministic (no font metrics), so the client renderer and the server's click hit-test agree. Unit tested.
  * <p>
  * Layout: a title line, then the widgets in order in a grid of columns at least 80 px wide; charts, lists (watchlist, jobs)
- * and the redstone sides take a full row. Widgets that do not fit are counted in {@link Result#hidden()}.
+ * the redstone sides and the card headings of a composed page take a full row. Widgets that do not fit are counted in {@link Result#hidden()}.
  */
 public final class DisplayLayout {
     public static final int PX_PER_BLOCK = 64;
@@ -75,7 +75,7 @@ public final class DisplayLayout {
 
     static boolean isFullWidth(String type) {
         return switch (type) {
-            case "chart", "watchlist", "jobs", "redstone_sides" -> true;
+            case "chart", "watchlist", "jobs", "redstone_sides", "heading" -> true;
             default -> false;
         };
     }
@@ -83,6 +83,7 @@ public final class DisplayLayout {
     static int height(String type, JsonObject widget) {
         return switch (type) {
             case "chart" -> 44;
+            case "heading" -> 12;
             case "watchlist", "jobs" -> {
                 int rows = widget.has("value") && widget.get("value").isJsonArray() ? widget.getAsJsonArray("value").size() : 0;
                 yield 12 + Math.max(1, Math.min(5, rows)) * 10;

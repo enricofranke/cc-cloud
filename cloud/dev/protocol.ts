@@ -133,6 +133,8 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("card_settings"), reqId: z.string().min(1).max(64), uplinkId: entityId, settings: z.record(z.string(), z.unknown()) }).strict(),
   // Cloud Redstone devices: rename / regroup (network.link); plain text ≤ 32, at least one of name/group
   z.object({ t: z.literal("rs_device"), reqId: z.string().min(1).max(64), deviceId: entityId, name: z.string().max(32).optional(), group: z.string().max(32).optional() }).strict(),
+  // Cloud Displays (layout.edit): op list, or set / unlink one display (the handler checks the target)
+  z.object({ t: z.literal("display"), reqId: z.string().min(1).max(64), op: z.enum(["list", "set", "unlink"]), id: entityId.optional(), target: z.string().max(64).optional(), interactive: z.boolean().optional(), allowRestricted: z.boolean().optional() }).strict(),
   z.object({
     t: z.literal("query"),
     reqId: z.string().min(1).max(64),

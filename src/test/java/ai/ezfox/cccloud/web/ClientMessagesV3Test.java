@@ -22,6 +22,34 @@ class ClientMessagesV3Test {
     }
 
     @Test
+    void displayCommands() {
+        var list = assertInstanceOf(ClientMessages.DisplayCommand.class, ClientMessages.parse("{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"list\"}"));
+        assertFalse(ClientMessages.isWrite(list), "the list only reads");
+        var set = assertInstanceOf(ClientMessages.DisplayCommand.class,
+            ClientMessages.parse("{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"target\":\"c:wall\",\"interactive\":true,\"allowRestricted\":false}"));
+        assertEquals("c:wall", set.target());
+        assertEquals(true, set.interactive());
+        assertEquals(false, set.allowRestricted());
+        assertTrue(ClientMessages.isWrite(set));
+        assertInstanceOf(ClientMessages.DisplayCommand.class, ClientMessages.parse("{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"target\":\"\"}"));
+        assertInstanceOf(ClientMessages.DisplayCommand.class, ClientMessages.parse("{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"unlink\",\"id\":\"" + U + "\"}"));
+        for (var bad : new String[]{
+            "{\"t\":\"display\",\"reqId\":\"r\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"drop\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"list\",\"id\":\"" + U + "\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"x\",\"interactive\":true}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"target\":\"../x\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"target\":5}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"interactive\":\"yes\"}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"set\",\"id\":\"" + U + "\",\"interactive\":true,\"extra\":1}",
+            "{\"t\":\"display\",\"reqId\":\"r\",\"op\":\"unlink\",\"id\":\"" + U + "\",\"target\":\"\"}"}) {
+            assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse(bad), bad);
+        }
+        assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse("{\"t\":\"display\",\"op\":\"list\"}"), "reqId required");
+    }
+
+    @Test
     void productionRequests() {
         var overview = assertInstanceOf(ClientMessages.Production.class, ClientMessages.parse("{\"t\":\"production\",\"reqId\":\"p\",\"op\":\"overview\"}"));
         assertEquals("overview", overview.op());

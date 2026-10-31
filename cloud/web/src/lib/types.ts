@@ -120,6 +120,8 @@ export interface Uplink {
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
   groups?: { id: string; title?: string; page?: string; cols?: number }[];
+  /** only sent to sessions with view.positions (Server, claims, waystones …); never on a display unless that display allows it */
+  restricted?: boolean;
   /** claim guard: the machine is in another team's claim, so nothing is read or controlled (no widgets) */
   blocked?: Blocked;
   /** claim guard on a Cloud Redstone card: widget id → why that device is blocked (its widgets keep their last value) */

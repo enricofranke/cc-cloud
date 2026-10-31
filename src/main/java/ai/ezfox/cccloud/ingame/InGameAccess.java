@@ -31,6 +31,11 @@ public final class InGameAccess {
         return Access.resolver(server).resolve(player, mainframeId).perms().contains(perm);
     }
 
+    /** The permissions of a player who may be offline (the player who configured a display). */
+    public static java.util.Set<Perm> perms(MinecraftServer server, UUID player, UUID mainframeId) {
+        return Access.resolver(server).resolve(player, mainframeId).perms();
+    }
+
     public static boolean canView(ServerPlayer player, UUID mainframeId) {
         return has(player, mainframeId, Perm.VIEW);
     }

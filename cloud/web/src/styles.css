@@ -9116,3 +9116,95 @@ body.rz-nwse * {
   gap: 6px;
   margin-top: 8px;
 }
+/* Cloud Displays */
+.dp-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.dp-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.dp-main {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.dp-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dp-size {
+  font-size: 16px;
+}
+.dp-where {
+  margin: 0;
+}
+.dp-ok {
+  color: var(--green);
+  border-color: currentColor;
+}
+.dp-field {
+  display: grid;
+  gap: 4px;
+}
+.dp-field select {
+  max-width: 100%;
+}
+.dp-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dp-unlink {
+  justify-self: start;
+}
+.dp-preview {
+  margin: 0;
+  max-width: 100%;
+}
+.dp-frame {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  background: #111;
+  border: 3px solid #5a5a5a;
+  border-radius: 2px;
+}
+.dp-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: top left;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.dp-blank {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  text-align: center;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+.dp-preview figcaption {
+  margin-top: 6px;
+  max-width: 340px;
+}
