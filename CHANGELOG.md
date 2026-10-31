@@ -19,6 +19,17 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - One crafting request can now ask for up to 100,000 items (`maxCraftAmount`, was 4,096). An existing server keeps its
   config value.
 
+### Devices stay paired
+- **Sneak + right-click on a mainframe with a Link Card no longer removes every paired device.** It happened without a
+  question, in the same move that picks a machine for a probe. Removing devices now only works in the Devices tab of
+  the mainframe screen or by command. The click stores the mainframe on the card, like without sneaking.
+
+### Analyzer across dimensions
+- **An ender link to another dimension is visible:** a purple beam at the relay, and nearby the HUD names the dimension
+  and the signal. It was not drawn at all.
+- **The route of a device stays in your dimension.** It drew lines to the coordinates of relays in another dimension.
+- **With no node of yours around, the HUD says which dimension your network is in** instead of showing nothing.
+
 ### In-game overlay
 - **The overlay no longer shows what is inside another team's claim.** Holding a relay, uplink, Link Card or analyzer drew
   devices, lines and rings through walls, which worked as an X-ray of that base. Unclaimed land stays visible.

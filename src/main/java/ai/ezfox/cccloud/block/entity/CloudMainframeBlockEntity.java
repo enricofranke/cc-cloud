@@ -641,16 +641,6 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         }
     }
 
-    public void revokeTokens(Player player) {
-        if (!has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) {
-            player.sendSystemMessage(Component.translatable("cccloud.mainframe.not_owner").withStyle(ChatFormatting.RED));
-            return;
-        }
-        if (!(level instanceof ServerLevel serverLevel)) return;
-        var removed = revoke(serverLevel, "all", player.getGameProfile().name());
-        player.sendSystemMessage(Component.translatable("cccloud.mainframe.revoked_all", removed.size()).withStyle(ChatFormatting.YELLOW));
-    }
-
     /** Revokes devices by name or "all", disconnects them and writes an audit line. */
     public List<AuthStore.Device> revoke(ServerLevel level, String nameOrAll, String by) {
         var removed = WebAuthData.get(level.getServer()).revoke(mainframeId, nameOrAll);

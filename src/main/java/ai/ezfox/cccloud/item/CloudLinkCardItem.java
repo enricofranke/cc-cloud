@@ -40,10 +40,6 @@ public class CloudLinkCardItem extends Item {
             if (level.isClientSide()) return InteractionResult.SUCCESS;
             var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
             if (mainframe == null || player == null) return InteractionResult.FAIL;
-            if (player.isSecondaryUseActive()) {
-                mainframe.revokeTokens(player);
-                return InteractionResult.SUCCESS;
-            }
             var link = new MainframeLink(GlobalPos.of(level.dimension(), mainframe.getBlockPos()), mainframe.getMainframeId());
             stack.set(ModRegistry.LINKED_MAINFRAME.get(), link);
             player.sendSystemMessage(Component.translatable("cccloud.link_card.stored", link.describe()).withStyle(ChatFormatting.AQUA));

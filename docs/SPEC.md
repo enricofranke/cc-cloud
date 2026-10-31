@@ -99,7 +99,7 @@ There is no external relay. The mod itself hosts the dashboard on the Minecraft 
   - deltas: `{"t":"value","uplinkId","id","value"}` (since 0.10 the hub sends all values of a flush as one `{"t":"values","s":{uplinkId:{widgetId:value}}}`, see "Scaling"), `{"t":"uplink",...full uplink...}`, `{"t":"uplink_removed","uplinkId"}`, `{"t":"state","online","enabled"}`, `{"t":"alert","uplinkId","text","level","ts"}`, `{"t":"action_result","reqId","ok","error?"}`
   - `{"t":"ping"}` every 20 s.
 - Client → server: `{"t":"action","reqId":"...","uplinkId","id","value"}`, `{"t":"pong"}`. The server rejects actions while the mainframe is offline or disabled, and limits each client to 10 actions per second. `online` here = the mainframe exists, is loaded and is not redstone-killed.
-- Tokens can be revoked: sneak + right-click the mainframe with a Link Card → revoke all tokens (later a GUI).
+- Tokens are revoked in the mainframe screen (Devices tab: Revoke, Revoke all) or with the revoke command.
 
 ## Repo layout
 - `src/main/java/ai/ezfox/cccloud/**` – mod code (Java 25)
