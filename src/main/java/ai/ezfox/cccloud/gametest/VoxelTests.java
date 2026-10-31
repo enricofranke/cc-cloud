@@ -57,7 +57,7 @@ public final class VoxelTests {
         int cx = abs.getX() >> 4, cy = abs.getY() >> 4, cz = abs.getZ() >> 4;
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.VoxelResult>[] result = new CompletableFuture[1];
         UUID viewer = UUID.randomUUID();
-        VoxelService.clearForTest();
+        VoxelService.clearForTest(null);
         // stage 2: stone has stored textures (as if a client had uploaded them), the ore never gets a texture request
         var textures = ai.ezfox.cccloud.voxel.BlockTextureService.store();
         var px = new int[256];
@@ -150,7 +150,7 @@ public final class VoxelTests {
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId()) != null,
                 "mainframe online with its network"))
             .thenExecute(() -> {
-                VoxelService.clearForTest();
+                VoxelService.clearForTest(mainframe.getMainframeId());
                 step[0] = VoxelService.encode(level, section, mainframe.getMainframeId());
             })
             .thenWaitUntil(() -> helper.assertTrue(step[0] != null && step[0].isDone(), "built"))
@@ -335,7 +335,7 @@ public final class VoxelTests {
                 helper.assertTrue(idAt(fromMemory, ore).equals("minecraft:stone"), "the X-ray guard holds for last known terrain: " + idAt(fromMemory, ore));
                 helper.assertTrue(idAt(fromMemory, spot).equals("minecraft:diamond_block"), "the block of the last visit: " + idAt(fromMemory, spot));
                 hash[1] = fromMemory.hash();
-                VoxelService.clearForTest();
+                VoxelService.clearForTest(id);
                 batch[2] = ask(server, owner.getUUID(), id, dim, section, null);
             })
             .thenWaitUntil(() -> helper.assertTrue(ready(batch[2]), "answer from disk"))
@@ -434,7 +434,7 @@ public final class VoxelTests {
                     "the relay is part of the network");
             })
             .thenExecute(() -> {
-                VoxelService.clearForTest();
+                VoxelService.clearForTest(id);
                 step[0] = VoxelService.serve(level, section, live, id);
             })
             .thenWaitUntil(() -> helper.assertTrue(ready(step[0]), "live"))
@@ -450,7 +450,7 @@ public final class VoxelTests {
             })
             .thenWaitUntil(() -> helper.assertTrue(VoxelService.idleForTest(server) && disk.column(id, dim, cx, cz).containsKey(cy), "written"))
             .thenExecute(() -> {
-                VoxelService.clearForTest();
+                VoxelService.clearForTest(id);
                 step[2] = VoxelService.serve(level, section, stale, id);
                 step[3] = VoxelService.serve(level, List.of(new int[]{cx + 1, cy, cz}), stale, id);
             })

@@ -922,6 +922,14 @@ public final class VoxelService {
         CACHE.clear();
     }
 
+    /** Test hook for GameTests, which run side by side: only this mainframe's sections (null: those of no mainframe) leave the memory cache. */
+    public static void clearForTest(@Nullable UUID mainframe) {
+        String suffix = "|" + mainframe;
+        synchronized (CACHE) {
+            CACHE.keySet().removeIf(key -> key.endsWith(suffix));
+        }
+    }
+
     /** Test hook: this world's disk cache. */
     public static VoxelDisk diskForTest(MinecraftServer server) {
         return disk(server);
