@@ -438,7 +438,7 @@
   "cccloud.configuration.mapTileMaxAgeDays": "Kartenkacheln: Tage auf der Festplatte",
   "cccloud.configuration.voxelCacheMaxAgeDays": "Voxel-Gelände: Tage auf der Festplatte",
   "cccloud.configuration.voxelCacheMainframeMB": "Voxel-Gelände: MB pro Mainframe",
-  "cccloud.configuration.voxelCacheTotalMB": "Voxel-Gelände: MB insgesamt"
+  "cccloud.configuration.voxelCacheTotalMB": "Voxel-Gelände: MB insgesamt",
   "cccloud.configuration.map": "Karte",
   "block.cccloud.fiber_cable": "Glasfaserkabel",
   "block.cccloud.fiber_junction": "Glasfaser-Verteiler",
