@@ -8,13 +8,18 @@ export interface Item {
   count: number;
   craftable: boolean;
 }
+/** Crafts the items only allow part of: at most this many (item details, "Only 37 of 100 possible"). */
+const SHORT: Record<string, number> = { "ae2:logic_processor": 37 };
+
 export interface Job {
   jobId: string;
   name: string;
   displayName: string;
   count: number;
-  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
+  status: "queued" | "running" | "waiting" | "stuck" | "done" | "failed" | "cancelled";
   progress: number;
+  retryable?: boolean;
+  missing?: { name: string; displayName: string; have: number; need: number }[];
   /** progress per tick */
   speed: number;
   notify?: boolean;
@@ -150,7 +155,7 @@ export function search(items: Map<string, Item>, q: string) {
   return { rows: all.slice(0, MAX_ROWS).map(({ name, displayName, count, craftable }) => ({ name, displayName, count, craftable })), truncated: all.length > MAX_ROWS };
 }
 
-export type CraftResult = { ok: true; jobId: string } | { ok: false; error: "not_craftable" | "no_cpu" | "missing_resources" | "too_many" | "unknown_item" };
+export type CraftResult = { ok: true; jobId: string; missing?: Job["missing"] } | { ok: false; error: "not_craftable" | "no_cpu" | "not_enough_items" | "too_many" | "unknown_item" };
 
 export class FakeAe2 {
   readonly items = buildItems();
@@ -181,6 +186,8 @@ export class FakeAe2 {
     this.watch[0].min = 50_000;
     this.jobs.push(
       { jobId: "1001", name: "ae2:logic_processor", displayName: "Logic Processor", count: 64, status: "running", progress: 0.45, speed: 0.03 },
+      // like the mod: no progress for craftStuckSeconds; Retry cancels it and asks for the same craft again
+      { jobId: "1002", name: "ae2:engineering_processor", displayName: "Engineering Processor", count: 32, status: "stuck", progress: 0.1, speed: 0, error: "no_machine", retryable: true, source: "dashboard" },
       { jobId: "1000", name: "minecraft:glass", displayName: "Glass", count: 512, status: "done", progress: 1, speed: 0 },
     );
   }
@@ -215,6 +222,8 @@ export class FakeAe2 {
       notify: !!j.notify,
       source: j.source ?? "dashboard",
       ...(j.error ? { error: j.error } : {}),
+      ...(j.retryable ? { retryable: true } : {}),
+      ...(j.missing ? { missing: j.missing } : {}),
     };
   }
   jobRows() {
@@ -286,14 +295,25 @@ export class FakeAe2 {
           job: j ? { name: j.name, displayName: j.displayName, count: j.count, progress: Math.round(j.progress * 100) / 100, elapsedMs: Date.now() - (j.started ?? Date.now()) } : null,
         };
       }),
-      tasks: this.jobs.filter((j) => j.status === "running" || j.status === "queued").map((j) => ({ id: j.jobId, name: j.name, displayName: j.displayName, count: j.count, progress: Math.round(j.progress * 100) / 100, own: true })),
+      tasks: this.jobs.filter((j) => j.status === "running" || j.status === "queued" || j.status === "stuck").map((j) => ({ id: j.jobId, name: j.name, displayName: j.displayName, count: j.count, progress: Math.round(j.progress * 100) / 100, own: true, stuck: j.status === "stuck" })),
     };
   }
   cancel(jobId: string): { ok: boolean; error?: string } {
     const j = this.jobs.find((x) => x.jobId === jobId.replace(/^cpu-\d+:/, ""));
-    if (!j || (j.status !== "running" && j.status !== "queued")) return { ok: false, error: "unknown_item" };
+    if (!j || (j.status !== "running" && j.status !== "queued" && j.status !== "stuck" && j.status !== "waiting")) return { ok: false, error: "unknown_item" };
     j.status = "cancelled";
     return { ok: true };
+  }
+  /** Stuck job: cancel, then the same craft again (docs/SPEC.md "Stuck crafts"). */
+  retry(jobId: string): { ok: boolean; error?: string; jobId?: string } {
+    const j = this.jobs.find((x) => x.jobId === jobId);
+    if (!j) return { ok: false, error: "unknown_job" };
+    if (j.status !== "stuck") return { ok: false, error: "not_stuck" };
+    if (!j.retryable) return { ok: false, error: "not_retryable" };
+    j.status = "cancelled";
+    j.retryable = false;
+    const r = this.craft(j.name, j.count, !!j.notify);
+    return r.ok ? { ok: true, jobId: r.jobId } : { ok: false, error: r.error };
   }
   favorite(name: string, on: boolean): { ok: boolean; error?: string } {
     if (!this.items.has(name)) return { ok: false, error: "unknown_item" };
@@ -322,6 +342,13 @@ export class FakeAe2 {
     w.cooldownUntil = 0;
     return { ok: true };
   }
+  /** How many the items allow, like BridgeCore.maxCraftable: null for a craft without a reliable number. */
+  maxCraftable(name: string, count: number): { max: number | null; exact: boolean } {
+    if (name === "enderio:octadic_capacitor") return { max: null, exact: false };
+    const limit = name === "ae2:singularity" ? 0 : SHORT[name];
+    return limit === undefined ? { max: null, exact: false } : { max: Math.min(limit, count), exact: true };
+  }
+
   /** Craft plan: two ingredients per item, made up but stable. */
   preview(name: string, count: number) {
     const it = this.items.get(name);
@@ -341,11 +368,13 @@ export class FakeAe2 {
     const first = pick(h, count * 2);
     const ings = [first, pick(h >>> 5, count, first)];
     const missingAll = name === "ae2:singularity" || name === "enderio:octadic_capacitor";
+    // short: the items only allow SHORT_MAX of this craft
+    const limit = SHORT[name];
     const entries = ings.map((g, i) => {
       const need = count * (i === 0 ? 2 : 1);
-      const stored = Math.min(g.count, need);
-      const toCraft = g.craftable ? need - stored : 0;
-      const missing = missingAll ? need : g.craftable ? 0 : need - stored;
+      const stored = limit !== undefined && !missingAll ? Math.min(need, limit * (i === 0 ? 2 : 1)) : Math.min(g.count, need);
+      const toCraft = g.craftable && limit === undefined ? need - stored : 0;
+      const missing = missingAll ? need : limit !== undefined ? need - stored : g.craftable ? 0 : need - stored;
       return { name: g.name, displayName: g.displayName, stored, toCraft, missing };
     });
     entries.unshift({ name, displayName: it.displayName, stored: 0, toCraft: count, missing: 0 });
@@ -369,7 +398,17 @@ export class FakeAe2 {
     if (!it) return { ok: false, error: "unknown_item" };
     if (!it.craftable) return { ok: false, error: "not_craftable" };
     if (!Number.isInteger(count) || count < 1 || count > MAX_CRAFT) return { ok: false, error: "too_many" };
-    if (name === "ae2:singularity" || name === "enderio:octadic_capacitor") return { ok: false, error: "missing_resources" };
+    const plan = this.preview(name, count);
+    // auto-stock keeps its own failure count and pause, it never waits as an order
+    if (plan.ok && plan.plan.missing && source === "autostock") return { ok: false, error: "not_enough_items" };
+    if (plan.ok && plan.plan.missing) {
+      // like the mod: refused by AE2/RS, taken as an order that waits for its items and starts by itself
+      const missing = plan.plan.entries.filter((e) => e.missing > 0).map((e) => ({ name: e.name, displayName: e.displayName, have: e.stored, need: e.stored + e.missing }));
+      const order: Job = { jobId: String(++this.seq), name, displayName: it.displayName, count, status: "waiting", progress: 0, speed: 0, notify, source, error: "not_enough_items", missing };
+      this.jobs.unshift(order);
+      if (this.jobs.length > 12) this.jobs.length = 12;
+      return { ok: true, jobId: order.jobId, missing };
+    }
     if (this.jobs.filter((j) => j.status === "running" || j.status === "queued").length >= CPUS + 1) return { ok: false, error: "no_cpu" };
     const running = this.jobs.filter((j) => j.status === "running").length;
     const job: Job = {

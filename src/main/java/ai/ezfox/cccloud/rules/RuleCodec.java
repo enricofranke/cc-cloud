@@ -129,6 +129,10 @@ public final class RuleCodec {
                 if (player != null && !kind.equals("any") && !kind.equals("player")) throw new Invalid("a player name needs kind player");
                 yield new Rule.SensorTrigger(string(obj, "uplinkId", UUID_RE, "uplinkId"), player != null ? "player" : kind, player);
             }
+            case "craft_stuck" -> {
+                keys(obj, Set.of("type", "uplinkId"), "when");
+                yield new Rule.CraftStuckTrigger(string(obj, "uplinkId", UUID_RE, "uplinkId"));
+            }
             default -> throw new Invalid("unknown trigger " + type);
         };
     }
@@ -236,6 +240,7 @@ public final class RuleCodec {
                 o.addProperty("time", t.time());
                 yield o;
             }
+            case Rule.CraftStuckTrigger t -> obj("type", "craft_stuck", "uplinkId", t.uplinkId());
             case Rule.SensorTrigger t -> {
                 var o = obj("type", "sensor", "uplinkId", t.uplinkId(), "kind", t.kind());
                 if (t.player() != null) o.addProperty("player", t.player());

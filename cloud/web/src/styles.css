@@ -2405,6 +2405,112 @@ pre {
 .js-waiting {
   color: var(--yellow);
 }
+.js-stuck {
+  color: #fff;
+  background: var(--red);
+  border-radius: 4px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+.mini-badge.stuck {
+  color: #fff;
+  background: var(--red);
+}
+.job-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.missing-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+.missing-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 0;
+}
+.missing-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-short {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--red);
+  border-radius: 8px;
+}
+.plan-short-title {
+  margin: 0;
+  font-weight: 700;
+  color: var(--red);
+}
+.plan-short-max {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+.sfm {
+  display: grid;
+  gap: 10px;
+}
+.sfm .codeblock pre {
+  max-height: 50vh;
+  overflow: auto;
+}
+.sfm-lines ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sfm-err li {
+  color: var(--red);
+}
+.sfm-warn li {
+  color: var(--yellow);
+}
+.sfm-edit {
+  width: 100%;
+  min-height: 40vh;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+}
+.sfm-file {
+  cursor: pointer;
+}
+.sfm-count {
+  margin: 0;
+  font-weight: 600;
+}
+.sfm-diff {
+  margin: 0;
+  padding: 8px;
+  max-height: 40vh;
+  overflow: auto;
+  border: 1px solid var(--line, #444);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.sfm-del {
+  color: var(--red);
+}
+.sfm-add {
+  color: var(--green);
+}
+.sfm-pin {
+  display: grid;
+  gap: 8px;
+  max-width: 240px;
+}
 .js-running {
   color: var(--cyan);
 }
@@ -2436,6 +2542,7 @@ pre {
   background: var(--green);
 }
 .st-failed .job-fill,
+.st-stuck .job-fill,
 .st-cancelled .job-fill {
   background: var(--red);
 }

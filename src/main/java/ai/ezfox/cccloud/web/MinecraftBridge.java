@@ -220,6 +220,32 @@ public final class MinecraftBridge implements GameBridge {
         return section == null ? "unknown_uplink" : section.handleCardSettings(message.settings(), device.name() + " (" + device.playerName() + ")");
     }
 
+    @Override
+    public GameBridge.StorageResult cardDetail(AuthStore.Device device, UUID mainframeId, ClientMessages.CardDetail message) {
+        String error = check(device, mainframeId, AccessGate.Kind.CARD_DETAIL.perm);
+        if (error == null) error = checkUplink(mainframeId, message.uplinkId());
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        return CloudNetwork.section(message.uplinkId()).handleCardDetail();
+    }
+
+    @Override
+    public GameBridge.StorageResult cardWrite(AuthStore.Device device, UUID mainframeId, ClientMessages.CardWrite message) {
+        // checked again here, on the server thread: rights can change while the editor is open
+        String error = check(device, mainframeId, AccessGate.Kind.CARD_DETAIL.perm);
+        if (error == null) error = check(device, mainframeId, AccessGate.Kind.CARD_WRITE.perm);
+        if (error == null) error = checkUplink(mainframeId, message.uplinkId());
+        if (error != null) return GameBridge.StorageResult.fail(error);
+        var section = CloudNetwork.section(message.uplinkId());
+        var result = section.handleCardWrite(message.op(), message.text(), message.force());
+        if (result.error() == null && !message.op().equals("check")) {
+            String text = device.name() + " (" + device.playerName() + ") " + (message.op().equals("undo") ? "undid the last program change on " : "wrote a new program to ")
+                + section.getTitle() + " (" + message.uplinkId().toString().substring(0, 8) + ")" + (message.force() ? ", with errors" : "");
+            WebAuthData.access(server).audit(mainframeId, text);
+            CloudLog.LOGGER.info("[cccloud] {} on {}", text, mainframeName(mainframeId));
+        }
+        return result;
+    }
+
     /** Mainframe online + enabled, uplink loaded and linked to that mainframe. Null if all is fine. */
     private static @Nullable String checkUplink(UUID mainframeId, UUID uplinkId) {
         return SectionChecks.check(mainframeId, uplinkId);
@@ -380,7 +406,8 @@ public final class MinecraftBridge implements GameBridge {
         String error = check(device, mainframeId, AccessGate.storagePerm(request.op()));
         if (error == null) error = SectionChecks.check(mainframeId, request.uplinkId());
         if (error != null) return GameBridge.StorageResult.fail(error);
-        var result = ai.ezfox.cccloud.bridge.StorageService.handle(mainframeId, request.uplinkId(), request.widgetId(), request.op(), request.args());
+        var result = ai.ezfox.cccloud.bridge.StorageService.handle(mainframeId, request.uplinkId(), request.widgetId(), request.op(), request.args(),
+            device.name() + " (" + device.playerName() + ")");
         if (result.error() == null && !ClientMessages.STORAGE_READ_OPS.contains(request.op())) {
             CloudLog.LOGGER.info("[cccloud] {} ({}) storage {} on {}: {}", device.name(), device.playerName(), request.op(), mainframeName(mainframeId), request.args());
         }
@@ -395,8 +422,9 @@ public final class MinecraftBridge implements GameBridge {
             done.accept(GameBridge.StorageResult.fail(error));
             return;
         }
-        ai.ezfox.cccloud.bridge.StorageService.preview(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(),
-            r -> done.accept(new GameBridge.StorageResult(r.error(), r.data())));
+        java.util.function.Consumer<ai.ezfox.cccloud.bridge.StorageService.Result> answer = r -> done.accept(new GameBridge.StorageResult(r.error(), r.data()));
+        if (request.max()) ai.ezfox.cccloud.bridge.StorageService.maxCraftable(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(), answer);
+        else ai.ezfox.cccloud.bridge.StorageService.preview(mainframeId, request.uplinkId(), request.widgetId(), request.name(), request.count(), answer);
     }
 
     @Override

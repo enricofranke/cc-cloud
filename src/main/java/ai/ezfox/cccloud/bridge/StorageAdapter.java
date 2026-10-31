@@ -44,7 +44,7 @@ public interface StorageAdapter {
 
     /**
      * Plans and starts a crafting job. {@code done} must be called exactly once, from {@link #tick()} or directly, with
-     * either a job handle or an error code ({@code not_craftable}, {@code no_cpu}, {@code missing_resources},
+     * either a job handle or an error code ({@code not_craftable}, {@code no_cpu}, {@code not_enough_items},
      * {@code offline}, {@code timeout}, {@code busy}).
      */
     void startCraft(Item item, long count, String user, Consumer<CraftOutcome> done);
@@ -124,20 +124,33 @@ public interface StorageAdapter {
     record Totals(long itemsUsed, @Nullable Long itemsTotal, long typesUsed, @Nullable Long typesTotal, long fluidsUsed, @Nullable Long fluidsTotal) {
     }
 
-    record CraftOutcome(@Nullable Object handle, @Nullable String error) {
+    /** @param missing the plan's entries when {@code error} is {@code not_enough_items} (those with something missing count) */
+    record CraftOutcome(@Nullable Object handle, @Nullable String error, List<PlanEntry> missing) {
         public static CraftOutcome started(Object handle) {
-            return new CraftOutcome(handle, null);
+            return new CraftOutcome(handle, null, List.of());
         }
 
         public static CraftOutcome failed(String error) {
-            return new CraftOutcome(null, error);
+            return new CraftOutcome(null, error, List.of());
+        }
+
+        public static CraftOutcome missing(List<PlanEntry> entries) {
+            return new CraftOutcome(null, "not_enough_items", entries.stream().filter(e -> e.missing() > 0).toList());
         }
     }
 
-    /** @param status running, done, failed or cancelled; progress 0..1. */
-    record JobState(String status, double progress) {
+    /**
+     * @param status running, done, failed or cancelled; progress 0..1
+     * @param reason what the mod says the job is waiting for, if anything ({@code not_enough_items}, {@code no_machine},
+     *               {@code machine_rejected}, {@code machine_locked}, {@code suspended}); shown once the job is stuck
+     */
+    record JobState(String status, double progress, @Nullable String reason) {
+        public JobState(String status, double progress) {
+            this(status, progress, null);
+        }
     }
 
-    record NetworkJob(String id, Item item, long count, double progress) {
+    /** @param reason as in {@link JobState} */
+    record NetworkJob(String id, Item item, long count, double progress, @Nullable String reason) {
     }
 }

@@ -22,6 +22,8 @@ public enum Perm {
     SCRIPTS_RUN("scripts.run", "scripts"),
     SCRIPTS_DELETE("scripts.delete", "scripts"),
     TERMINAL("terminal", "scripts"),
+    /** Write the program of a machine from the dashboard (Super Factory Manager disks); also needs {@code view.positions}. */
+    DEVICE_PROGRAM("device.program", "scripts"),
     LAYOUT_EDIT("layout.edit", "manage"),
     RULES_EDIT("rules.edit", "rules"),
     RULES_TOGGLE("rules.toggle", "rules"),

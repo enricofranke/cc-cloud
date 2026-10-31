@@ -60,6 +60,11 @@ public final class RuleEngine {
             return null;
         }
 
+        /** Stuck crafts on the storage behind a card, or null while it is unknown (not loaded, blocked by a claim). */
+        default @Nullable StuckFeed stuckCrafts(String uplinkId) {
+            return null;
+        }
+
         /** The mainframe is loaded and online (rules can act). Only schedules are evaluated otherwise. */
         default boolean available() {
             return true;
@@ -71,6 +76,14 @@ public final class RuleEngine {
         }
     }
 
+    /** What a craft stuck trigger sees: the newest report and the recent ones (oldest first). */
+    public record StuckFeed(long lastSeq, List<StuckHit> stuck) {
+    }
+
+    /** @param what e.g. "64× Iron Ingot" */
+    public record StuckHit(long seq, String what) {
+    }
+
     /** What a sensor trigger saw: the newest sequence number and the recent "entered" events (oldest first). */
     public record SensorFeed(long lastSeq, List<SensorHit> entered) {
     }
@@ -80,14 +93,18 @@ public final class RuleEngine {
 
     /**
      * What a run's actions may refer to: {@code {who}} in alert texts, with player names ({@code who}, for operators and
-     * push) and without ({@code whoPublic}, for viewers and share links).
+     * push) and without ({@code whoPublic}, for viewers and share links); {@code {item}} is what a stuck craft makes.
      */
-    public record Context(String who, String whoPublic) {
+    public record Context(String who, String whoPublic, String item) {
         public static final Context NONE = new Context("someone", "someone");
 
-        /** Replaces {@code {who}} in an alert text. */
+        public Context(String who, String whoPublic) {
+            this(who, whoPublic, "a craft");
+        }
+
+        /** Replaces {@code {who}} and {@code {item}} in an alert text. */
         public String fill(String text, boolean names) {
-            return text.replace("{who}", names ? who : whoPublic);
+            return text.replace("{who}", names ? who : whoPublic).replace("{item}", item);
         }
     }
 
@@ -342,6 +359,22 @@ public final class RuleEngine {
                 state.seq = feed.lastSeq();
                 if (hits.isEmpty()) yield Fire.NONE;
                 state.context = new Context(ai.ezfox.cccloud.sensor.SensorText.who(hits, true), ai.ezfox.cccloud.sensor.SensorText.who(hits, false));
+                yield Fire.DUE;
+            }
+            case Rule.CraftStuckTrigger t -> {
+                state.context = null;
+                var feed = world.stuckCrafts(t.uplinkId());
+                if (feed == null) yield Fire.NONE; // not loaded: keep the position
+                if (state.seq < 0 || feed.lastSeq() < state.seq) {
+                    // first look (or the bridge was reloaded): only what comes from now on fires
+                    state.seq = feed.lastSeq();
+                    yield Fire.NONE;
+                }
+                var items = new ArrayList<String>();
+                for (var hit : feed.stuck()) if (hit.seq() > state.seq) items.add(hit.what());
+                state.seq = feed.lastSeq();
+                if (items.isEmpty()) yield Fire.NONE;
+                state.context = new Context("someone", "someone", String.join(", ", items));
                 yield Fire.DUE;
             }
             case Rule.TimeTrigger t -> {

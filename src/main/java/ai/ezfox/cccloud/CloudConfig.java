@@ -90,6 +90,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue MAX_WIDGETS_WITH_PAGES;
     public static final ModConfigSpec.IntValue MAX_CRAFT_AMOUNT;
     public static final ModConfigSpec.IntValue AUTO_STOCK_BATCH;
+    public static final ModConfigSpec.IntValue CRAFT_STUCK_SECONDS;
     public static final ModConfigSpec.BooleanValue VOXEL_VIEW;
     public static final ModConfigSpec.ConfigValue<String> MAP_SLICES;
     public static final ModConfigSpec.IntValue VOXEL_RADIUS;
@@ -369,6 +370,10 @@ public final class CloudConfig {
         AUTO_STOCK_BATCH = b.comment("Auto-stock (level maintainer): the largest amount one automatic craft request may ask for.")
             .translation("cccloud.configuration.autoStockBatch")
             .defineInRange("autoStockBatch", 64, 1, 4096);
+        CRAFT_STUCK_SECONDS = b.comment("A crafting job with no progress for this many seconds (or that never started) counts as stuck: red badge, one alert, rule trigger.",
+                "Keep it above your slowest machine. 0 = never.")
+            .translation("cccloud.configuration.craftStuckSeconds")
+            .defineInRange("craftStuckSeconds", 60, 0, 86_400);
         b.pop();
 
         b.push("map");

@@ -39,7 +39,11 @@ public final class AccessGate {
         /** v0.10 scenes: create, edit, delete (running is a button action). */
         SCENE_EDIT(Perm.RULES_EDIT),
         /** Cloud Redstone devices: rename / regroup from the dashboard (like linking them). */
-        RS_DEVICE(Perm.NETWORK_LINK);
+        RS_DEVICE(Perm.NETWORK_LINK),
+        /** A card's restricted details, e.g. a Factory Manager's program: the same right as the restricted cards ({@link WebHub#seesRestricted}). */
+        CARD_DETAIL(Perm.VIEW_POSITIONS),
+        /** Writing a machine's program; needs {@link #CARD_DETAIL} as well. */
+        CARD_WRITE(Perm.DEVICE_PROGRAM);
 
         public final Perm perm;
 
@@ -102,10 +106,10 @@ public final class AccessGate {
         return widgetId.equals("redstone") || widgetId.endsWith("_redstone");
     }
 
-    /** Storage card v2 operations: reading needs storage.search, cancelling storage.craft, favorites act.buttons. */
+    /** Storage card v2 operations: reading needs storage.search, cancelling and retrying storage.craft, favorites act.buttons. */
     public static Perm storagePerm(String op) {
         return switch (op) {
-            case "cancel" -> Perm.STORAGE_CRAFT;
+            case "cancel", "retry" -> Perm.STORAGE_CRAFT;
             case "favorite" -> Perm.ACT_BUTTONS;
             case "autostock" -> Perm.STORAGE_AUTOSTOCK;
             default -> Perm.STORAGE_SEARCH;
@@ -165,6 +169,8 @@ public final class AccessGate {
             case "query" -> "query_result";
             case "layout_set" -> "layout_result";
             case "card_settings" -> "card_settings_result";
+            case "card_detail" -> "card_detail_result";
+            case "card_write" -> "card_write_result";
             case "net_unlink" -> "net_result";
             case "rs_override", "rs_device" -> "rs_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";

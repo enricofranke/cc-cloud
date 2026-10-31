@@ -1,4 +1,5 @@
 // v0.2 storage widgets (AE2 / Refined Storage bridges): item_search, watchlist, jobs.
+import { jobCancellable, jobStatusText, parseMissing } from "../lib/jobs.ts";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { MainframeConn, ActionOutcome } from "../lib/conn.ts";
 import { REJECT_TEXT } from "../lib/conn.ts";
@@ -8,7 +9,7 @@ import { fmtCount } from "../lib/format.ts";
 import { pushToast } from "../lib/ui.ts";
 import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
-import { AutoStockSheet, ItemDetailSheet, STATE_TEXT, StorageBrowser, type Tab } from "./StorageV2.tsx";
+import { AutoStockSheet, ItemDetailSheet, JobNote, RetryButton, STATE_TEXT, StorageBrowser, type Tab } from "./StorageV2.tsx";
 
 // ------------------------------------------------------------------ helpers
 const full = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -19,7 +20,7 @@ const str = (v: unknown, d = "") => (typeof v === "string" ? v : d);
 export const CRAFT_ERRORS: Record<string, string> = {
   not_craftable: "There is no crafting pattern for this item in the network.",
   no_cpu: "All crafting CPUs are busy. Try again when a job has finished.",
-  missing_resources: "Not enough ingredients in the network for this amount. Try a smaller amount.",
+  not_enough_items: "Not enough items, and too many orders are already waiting. Cancel one first.",
   too_many: "That amount is too large.",
   unknown_item: "This item is not in the network any more.",
   already_watched: "This item is already on the watchlist.",
@@ -49,11 +50,13 @@ function jobRows(w: Widget): JobRow[] {
           name: str(r.name),
           displayName: str(r.displayName) || undefined,
           count: num(r.count),
-          status: (["queued", "running", "waiting", "done", "failed", "cancelled"].includes(str(r.status)) ? r.status : "queued") as JobRow["status"],
+          status: (["queued", "running", "waiting", "stuck", "done", "failed", "cancelled"].includes(str(r.status)) ? r.status : "queued") as JobRow["status"],
           progress: Math.min(1, Math.max(0, num(r.progress))),
           ...(["dashboard", "lua", "autostock", "rule"].includes(str(r.source)) ? { source: r.source as JobRow["source"] } : {}),
           ...(r.notify === true ? { notify: true } : {}),
           ...(str(r.error) ? { error: str(r.error).slice(0, 200) } : {}),
+          ...(r.retryable === true ? { retryable: true } : {}),
+          ...(Array.isArray(r.missing) ? { missing: parseMissing(r.missing) } : {}),
         }))
         .filter((r) => r.jobId || r.name)
     : [];
@@ -599,20 +602,22 @@ function WatchAdd(props: { w: Widget; uplink: Uplink; conn: MainframeConn; exist
 }
 
 // --------------------------------------------------------------------- jobs
-// "waiting": an auto-stock request that found no free crafting CPU; it is planned again later (not a failure).
-const STATUS_TEXT: Record<JobRow["status"], string> = { queued: "Queued", running: "Running", waiting: "Waiting for CPU", done: "Done", failed: "Failed", cancelled: "Cancelled" };
+// "waiting": planned again later, not a failure: an auto-stock request without a free crafting CPU, or an order that waits
+// for its items. "stuck": no progress for the configured time.
 
 export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: MainframeConn }) {
   const rows = jobRows(w);
   const [browse, setBrowse] = useState(false);
   const searchW = uplink?.widgets.find((x) => x.type === "item_search");
   const active = rows.filter((r) => r.status === "running" || r.status === "queued").length;
+  const stuck = rows.filter((r) => r.status === "stuck").length;
   return (
     <section class="store-sec store-half" aria-label={w.label ?? "Crafting jobs"}>
       <header class="sec-head">
         <h4 class="sec-title">
           {w.label ?? "Crafting jobs"}
           {active > 0 && <span class="mini-badge run">{active} active</span>}
+          {stuck > 0 && <span class="mini-badge stuck">{stuck} stuck</span>}
         </h4>
       </header>
       {rows.length === 0 ? (
@@ -639,8 +644,9 @@ export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: M
                     </span>
                   )}
                 </span>
-                <span class={`job-status js-${j.status}`}>{STATUS_TEXT[j.status]}</span>
-                {conn && uplink && conn.can("storage.craft") && (j.status === "running" || j.status === "queued") && (
+                <span class={`job-status js-${j.status}`}>{jobStatusText(j)}</span>
+                {conn && uplink && j.retryable && conn.can("storage.craft") && <RetryButton conn={conn} uplink={uplink} widgetId={searchW?.id} job={j} />}
+                {conn && uplink && conn.can("storage.craft") && jobCancellable(j) && (
                   <button type="button" class="icon-btn sm" aria-label={`Cancel ${j.displayName ?? j.name}`} title="Cancel" onClick={() => conn.storage(uplink.uplinkId, "cancel", { jobId: j.jobId }, searchW?.id).catch(() => {})}>
                     ×
                   </button>
@@ -649,6 +655,7 @@ export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: M
               <div class="job-bar" role="progressbar" aria-label={`${j.displayName ?? j.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
                 <span class="job-fill" style={{ width: `${Math.round((j.status === "done" ? 1 : j.progress) * 100)}%` }} />
               </div>
+              <JobNote job={j} />
             </li>
           ))}
         </ul>

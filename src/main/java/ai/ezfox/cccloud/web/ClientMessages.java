@@ -23,7 +23,7 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, CardSettings, Unlock, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, CardSettings, CardDetail, CardWrite, Unlock, Pong, Invalid {
     }
 
     /**
@@ -40,6 +40,28 @@ public final class ClientMessages {
      */
     public record CardSettings(String reqId, UUID uplinkId, JsonObject settings) implements Message {
     }
+
+    /**
+     * A card's restricted details, read on demand and never pushed: {@code {"t":"card_detail","reqId","uplinkId"}} →
+     * {@code card_detail_result} with {@code detail} (a Factory Manager's program and its errors). Needs
+     * {@code view.positions}; share links and API keys cannot send it.
+     */
+    public record CardDetail(String reqId, UUID uplinkId) implements Message {
+    }
+
+    /**
+     * Writes a machine's program: {@code {"t":"card_write","reqId","uplinkId","op":"check"|"save"|"undo","text?","force?","pin?"}}
+     * → {@code card_write_result}. {@code check} compiles without saving; {@code save} refuses to replace a working
+     * program with a broken one unless {@code force}. Needs {@code view.positions} and {@code device.program}; saving and
+     * undo also the mainframe PIN when one is set.
+     */
+    public record CardWrite(String reqId, UUID uplinkId, String op, @Nullable String text, boolean force, @Nullable String pin) implements Message {
+    }
+
+    /** Longest program accepted from the dashboard, in characters. */
+    public static final int MAX_PROGRAM = 32 * 1024;
+    /** Longest {@code card_write} message (a program with most characters escaped is refused as too large). */
+    static final int MAX_CARD_WRITE_FRAME = 64 * 1024;
 
     /** Card settings are small: at most this many characters of JSON. */
     static final int MAX_CARD_SETTINGS = 2048;
@@ -65,7 +87,7 @@ public final class ClientMessages {
 
     /** Storage operations that only read (browse, craftables, fluids, item, cpus). */
     public static final java.util.Set<String> STORAGE_READ_OPS = java.util.Set.of("browse", "craftables", "fluids", "item", "cpus");
-    public static final java.util.Set<String> STORAGE_OPS = java.util.Set.of("browse", "craftables", "fluids", "item", "cpus", "cancel", "favorite", "autostock");
+    public static final java.util.Set<String> STORAGE_OPS = java.util.Set.of("browse", "craftables", "fluids", "item", "cpus", "cancel", "retry", "favorite", "autostock");
 
     /**
      * Storage card v2: {@code {"t":"storage","reqId","uplinkId","id?","op",…}} → {@code storage_result}. The op's
@@ -83,7 +105,7 @@ public final class ClientMessages {
     }
 
     /** {@code {"t":"craft_preview","reqId","uplinkId","id?","name","count"}} → {@code craft_plan}. */
-    public record CraftPreview(String reqId, UUID uplinkId, @Nullable String widgetId, String name, long count) implements Message {
+    public record CraftPreview(String reqId, UUID uplinkId, @Nullable String widgetId, String name, long count, boolean max) implements Message {
     }
 
     /**
@@ -165,8 +187,8 @@ public final class ClientMessages {
     public record PairRequest(String code, String name) {
     }
 
-    /** Storage card operations that change something (cancel a job, favorites, the watchlist); the others only read. */
-    static final java.util.Set<String> STORAGE_WRITE_OPS = java.util.Set.of("cancel", "favorite", "autostock");
+    /** Storage card operations that change something (cancel or retry a job, favorites, the watchlist); the others only read. */
+    static final java.util.Set<String> STORAGE_WRITE_OPS = java.util.Set.of("cancel", "retry", "favorite", "autostock");
 
     /**
      * Whether a message changes something in the game or the mainframe's settings (controls, layout, rules, scenes,
@@ -184,6 +206,8 @@ public final class ClientMessages {
             case RedstoneOverride r -> true;
             case RedstoneDevice r -> true;
             case CardSettings c -> true;
+            case CardDetail c -> false;
+            case CardWrite c -> !c.op().equals("check");
             case Production p -> p.op().equals("pin") || p.op().equals("unpin");
             case Storage s -> STORAGE_WRITE_OPS.contains(s.op());
             case Terminal t -> !t.op().equals("term_close");
@@ -223,7 +247,7 @@ public final class ClientMessages {
         if (obj == null) return new Invalid(text.length() > MAX_FRAME ? "too_large" : "invalid_message", null);
         String t = string(obj, "t");
         if (t == null) return new Invalid("invalid_message", null);
-        if (text.length() > MAX_FRAME && !"layout_set".equals(t)) return new Invalid("too_large", null);
+        if (text.length() > MAX_FRAME && !"layout_set".equals(t) && !("card_write".equals(t) && text.length() <= MAX_CARD_WRITE_FRAME)) return new Invalid("too_large", null);
         return switch (t) {
             case "auth" -> {
                 String token = string(obj, "token");
@@ -286,6 +310,13 @@ public final class ClientMessages {
                 yield uplinkId == null || extra || settings == null || !settings.isJsonObject() || settings.toString().length() > MAX_CARD_SETTINGS
                     ? new Invalid("invalid_message", reqId) : new CardSettings(reqId, uplinkId, settings.getAsJsonObject());
             }
+            case "card_detail" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+                yield uplinkId == null ? new Invalid("invalid_message", reqId) : new CardDetail(reqId, uplinkId);
+            }
+            case "card_write" -> parseCardWrite(obj);
             case "layout_set" -> parseLayoutSet(obj);
             case "unlock" -> {
                 String reqId = string(obj, "reqId");
@@ -295,6 +326,23 @@ public final class ClientMessages {
             }
             default -> new Invalid("invalid_message", null);
         };
+    }
+
+    private static Message parseCardWrite(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        UUID uplinkId = parseUuid(string(obj, "uplinkId"));
+        String op = string(obj, "op");
+        String text = string(obj, "text");
+        String pin = string(obj, "pin");
+        var force = obj.get("force");
+        boolean extra = obj.keySet().stream().anyMatch(k -> !java.util.Set.of("t", "reqId", "uplinkId", "op", "text", "force", "pin").contains(k));
+        if (uplinkId == null || extra || op == null || !java.util.Set.of("check", "save", "undo").contains(op)) return new Invalid("invalid_message", reqId);
+        if (op.equals("undo") ? text != null : text == null) return new Invalid("invalid_message", reqId);
+        if (text != null && text.length() > MAX_PROGRAM) return new Invalid("too_large", reqId);
+        if (force != null && !(force.isJsonPrimitive() && force.getAsJsonPrimitive().isBoolean())) return new Invalid("invalid_message", reqId);
+        if (pin != null && !AuthStore.isValidPin(pin)) return new Invalid("wrong_pin", reqId);
+        return new CardWrite(reqId, uplinkId, op, text, force != null && force.getAsBoolean(), pin);
     }
 
     private static Message parseAction(JsonObject obj) {
@@ -345,7 +393,7 @@ public final class ClientMessages {
         if (uplinkId == null || (id != null && !Json.isValidId(id)) || !Op.isItemName(name) || count == null || !count.isJsonPrimitive()
             || !count.getAsJsonPrimitive().isNumber() || count.getAsDouble() != Math.rint(count.getAsDouble()) || count.getAsDouble() < 1
             || count.getAsDouble() > Integer.MAX_VALUE) return new Invalid("invalid_message", reqId);
-        return new CraftPreview(reqId, uplinkId, id, name, count.getAsLong());
+        return new CraftPreview(reqId, uplinkId, id, name, count.getAsLong(), obj.has("max") && obj.get("max").isJsonPrimitive() && obj.get("max").getAsBoolean());
     }
 
     private static Message parseRule(String t, JsonObject obj) {

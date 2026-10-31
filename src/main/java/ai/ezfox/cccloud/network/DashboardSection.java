@@ -32,4 +32,14 @@ public interface DashboardSection {
     default @Nullable String handleCardSettings(com.google.gson.JsonObject settings, String user) {
         return "unsupported";
     }
+
+    /** A card's restricted details ({@code card_detail}). Server thread; the web layer has checked the rights. */
+    default ai.ezfox.cccloud.web.GameBridge.StorageResult handleCardDetail() {
+        return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unsupported");
+    }
+
+    /** Checks or writes a machine's program ({@code card_write}). Server thread; the web layer has checked rights and PIN. */
+    default ai.ezfox.cccloud.web.GameBridge.StorageResult handleCardWrite(String op, @Nullable String text, boolean force) {
+        return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unsupported");
+    }
 }

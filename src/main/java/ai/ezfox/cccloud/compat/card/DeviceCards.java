@@ -152,6 +152,27 @@ public final class DeviceCards {
         }
     }
 
+    /** The card's restricted details ({@code card_detail}), or {@code unsupported}. */
+    public static ai.ezfox.cccloud.web.GameBridge.StorageResult detail(DeviceCard card) {
+        try {
+            var detail = card.detail();
+            return detail == null ? ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unsupported") : new ai.ezfox.cccloud.web.GameBridge.StorageResult(null, detail);
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unavailable");
+        }
+    }
+
+    /** Checks or writes the machine's program ({@code card_write}). */
+    public static ai.ezfox.cccloud.web.GameBridge.StorageResult write(DeviceCard card, String op, @org.jspecify.annotations.Nullable String text, boolean force) {
+        try {
+            return card.write(op, text, force);
+        } catch (LinkageError | RuntimeException e) {
+            disable(providerOf(card), e);
+            return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unavailable");
+        }
+    }
+
     /** The card's settings info for the dashboard, or null (none, or the call failed). */
     public static com.google.gson.@Nullable JsonObject settingsInfo(DeviceCard card) {
         try {

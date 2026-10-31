@@ -6,8 +6,12 @@ import ai.ezfox.cccloud.compat.card.CardWidgets;
 import ai.ezfox.cccloud.compat.card.DeviceCard;
 import ai.ezfox.cccloud.compat.card.DeviceCards;
 import ai.ezfox.cccloud.uplink.Widget;
+import ai.ezfox.cccloud.web.GameBridge;
 import ca.teamdman.sfm.common.blockentity.ManagerBlockEntity;
 import ca.teamdman.sfm.common.item.DiskItem;
+import ca.teamdman.sfml.program_builder.ProgramBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.core.BlockPos;
@@ -20,6 +24,10 @@ import org.jspecify.annotations.Nullable;
  * program), program name, average tick time, compile errors and warnings (count + the first error) and queued redstone
  * pulses; a warn alert once when the program becomes invalid. No on/off control: SFM has none – taking the disk out is
  * its off switch.
+ * <p>
+ * The program itself tells the base's layout (labels, sides, sometimes coordinates), so it is no card value: it is read
+ * on demand ({@link Manager#detail}, {@code view.positions}) and written from the dashboard ({@link Manager#write},
+ * {@code device.program}). A write compiles first, and keeps the old program for one undo while the card lives.
  */
 public final class SfmCards {
     public static final String STATE = "state";
@@ -29,6 +37,10 @@ public final class SfmCards {
     public static final String WARNINGS = "warnings";
     public static final String LAST_ERROR = "last_error";
     public static final String PULSES = "pulses";
+    /** Program text sent to the dashboard, in characters (a disk can hold more than the dashboard accepts back). */
+    static final int MAX_TEXT = 256 * 1024;
+    /** Errors and warnings sent, each. */
+    static final int MAX_LINES = 64;
 
     private SfmCards() {
     }
@@ -54,6 +66,8 @@ public final class SfmCards {
 
     static final class Manager extends BlockCard<ManagerBlockEntity> {
         private @Nullable String lastState;
+        /** What the last write replaced: undo restores it once. Memory only. */
+        private @Nullable String previous;
 
         Manager(ServerLevel level, BlockPos pos, Direction side, ManagerBlockEntity m) {
             super(level, pos, side, m);
@@ -80,6 +94,63 @@ public final class SfmCards {
                 .label(LAST_ERROR, "First error", "span", 2)
                 .label(PULSES, "Queued redstone pulses")
                 .build();
+        }
+
+        @Override
+        public JsonObject detail() {
+            var json = new JsonObject();
+            var disk = be.getDisk();
+            json.addProperty("state", describe(be.getState()));
+            json.addProperty("disk", !disk.isEmpty());
+            json.addProperty("undo", previous != null);
+            if (disk.isEmpty()) return json;
+            String name = DiskItem.getProgramName(disk);
+            json.addProperty("name", name == null ? "" : name);
+            String program = be.getProgramStringOrEmptyIfNull();
+            boolean truncated = program.length() > MAX_TEXT;
+            json.addProperty("program", truncated ? program.substring(0, MAX_TEXT) : program);
+            json.addProperty("truncated", truncated);
+            json.add("errors", lines(DiskItem.getErrors(disk)));
+            json.add("warnings", lines(DiskItem.getWarnings(disk)));
+            return json;
+        }
+
+        private static JsonArray lines(List<? extends net.minecraft.network.chat.Component> list) {
+            var array = new JsonArray();
+            for (var line : list) if (array.size() < MAX_LINES) array.add(line.getString());
+            return array;
+        }
+
+        private static JsonArray compile(String text) {
+            var array = new JsonArray();
+            for (var error : new ProgramBuilder(text).useCache(false).build().metadata().errors()) {
+                if (array.size() < MAX_LINES) array.add(net.minecraft.network.chat.MutableComponent.create(error).getString());
+            }
+            return array;
+        }
+
+        @Override
+        public GameBridge.StorageResult write(String op, @Nullable String text, boolean force) {
+            var disk = be.getDisk();
+            if (disk.isEmpty()) return GameBridge.StorageResult.fail("no_disk");
+            if (op.equals("undo")) {
+                if (previous == null) return GameBridge.StorageResult.fail("nothing_to_undo");
+                be.setProgram(previous);
+                previous = null;
+                return new GameBridge.StorageResult(null, detail());
+            }
+            if (text == null || text.isBlank()) return GameBridge.StorageResult.fail("empty");
+            String program = text.replace("\r\n", "\n");
+            var errors = compile(program);
+            var checked = new JsonObject();
+            checked.add("errors", errors);
+            if (op.equals("check")) return new GameBridge.StorageResult(null, checked);
+            String current = be.getProgramStringOrEmptyIfNull();
+            // a broken program never replaces a working one by accident
+            if (!errors.isEmpty() && !force && be.getState() == ManagerBlockEntity.State.RUNNING) return new GameBridge.StorageResult("compile_failed", checked);
+            previous = current;
+            be.setProgram(program);
+            return new GameBridge.StorageResult(null, detail());
         }
 
         @Override

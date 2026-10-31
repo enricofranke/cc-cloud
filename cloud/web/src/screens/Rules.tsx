@@ -308,6 +308,8 @@ function freshCheck(type: string, uplinks: Uplink[]): Trigger {
       return { type: "schedule", days: ["mon", "tue", "wed", "thu", "fri"], at: "07:00" };
     case "sensor":
       return { type: "sensor", uplinkId: sensorUplinks(uplinks)[0]?.uplinkId ?? "", kind: "any" };
+    case "craft_stuck":
+      return { type: "craft_stuck", uplinkId: storageUplinks(uplinks)[0]?.uplinkId ?? "" };
     default:
       return { type: "widget", uplinkId: nu?.uplinkId ?? "", widgetId: nu ? numericWidgets(nu)[0].id : "", op: ">", value: 0 };
   }
@@ -319,6 +321,7 @@ const TRIGGERS: [string, string][] = [
   ["power", "mainframe power"],
   ["offline", "a card goes offline"],
   ["sensor", "an Advanced Sensor detects …"],
+  ["craft_stuck", "a craft gets stuck"],
   ["interval", "every … minutes"],
   ["schedule", "on days at a time"],
   ["time", "an in-game time of day"],
@@ -393,6 +396,11 @@ function RuleEditor(props: { conn: MainframeConn; initial: Rule; before: Rule | 
               <UplinkSelect value={when.uplinkId} list={uplinks} onChange={(uplinkId) => set({ when: { ...when, uplinkId } })} />
             </div>
           )}
+          {when.type === "craft_stuck" && (
+            <div class="rule-fields">
+              <UplinkSelect value={when.uplinkId} list={storageUplinks(uplinks)} label="Storage card" onChange={(uplinkId) => set({ when: { ...when, uplinkId } })} />
+            </div>
+          )}
           {when.type === "sensor" && (
             <div class="rule-fields">
               <UplinkSelect value={when.uplinkId} list={sensorUplinks(uplinks)} label="Advanced Cloud Sensor" onChange={(uplinkId) => set({ when: { ...when, uplinkId } })} />
@@ -465,6 +473,10 @@ function RuleEditor(props: { conn: MainframeConn; initial: Rule; before: Rule | 
                 ? "In-game time only passes while the server runs – there is no catch-up after a restart."
                 : "After a restart one missed run is made up (within 24 h by default). While the mainframe is unloaded or offline, runs are skipped and logged."}{" "}
               <DocsLink to="/docs/automation#schedules">Schedules</DocsLink>
+            </p>
+          ) : when.type === "craft_stuck" ? (
+            <p class="muted small">
+              Fires once per job, when it has not moved for a while. An order waiting for its items is not stuck. Write <code>{"{item}"}</code> in an alert to name the craft.
             </p>
           ) : when.type === "sensor" ? (
             <p class="muted small">

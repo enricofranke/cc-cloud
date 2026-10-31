@@ -155,9 +155,13 @@ export const clientMessage = z.discriminatedUnion("t", [
     reqId: z.string().min(1).max(64),
     uplinkId: entityId,
     id: widgetId.optional(),
-    op: z.enum(["browse", "craftables", "fluids", "item", "cpus", "cancel", "favorite", "autostock"]),
+    op: z.enum(["browse", "craftables", "fluids", "item", "cpus", "cancel", "retry", "favorite", "autostock"]),
   }).passthrough(),
-  z.object({ t: z.literal("craft_preview"), reqId: z.string().min(1).max(64), uplinkId: entityId, id: widgetId.optional(), name: itemName, count: z.number().int() }),
+  z.object({ t: z.literal("craft_preview"), reqId: z.string().min(1).max(64), uplinkId: entityId, id: widgetId.optional(), name: itemName, count: z.number().int(), max: z.boolean().optional() }),
+  // a card's restricted details (view.positions), read on demand
+  z.object({ t: z.literal("card_detail"), reqId: z.string().min(1).max(64), uplinkId: entityId }).strict(),
+  // a machine's program (view.positions + device.program; saving also the PIN)
+  z.object({ t: z.literal("card_write"), reqId: z.string().min(1).max(64), uplinkId: entityId, op: z.enum(["check", "save", "undo"]), text: z.string().max(32 * 1024).optional(), force: z.boolean().optional(), pin: z.string().regex(/^\d{4,8}$/).optional() }).strict(),
   z.object({ t: z.literal("auth"), token: z.string().min(1).max(128), mainframeId: z.string().max(64).optional() }),
   z.object({ t: z.literal("auth_share"), id: z.string().min(1).max(64), secret: z.string().min(1).max(128) }),
 ]);

@@ -43,7 +43,8 @@ public final class StorageService {
         return null;
     }
 
-    public static Result handle(UUID mainframeId, UUID uplinkId, @Nullable String widgetId, String op, JsonObject args) {
+    /** @param user who asks, for the craft log and the job row of a retry */
+    public static Result handle(UUID mainframeId, UUID uplinkId, @Nullable String widgetId, String op, JsonObject args, String user) {
         // claim guard: a storage in a chunk another team claimed is neither read nor changed
         if (CloudNetwork.section(uplinkId) instanceof ai.ezfox.cccloud.claims.ClaimGuard.Guarded guarded
             && ai.ezfox.cccloud.claims.ClaimGuard.check(guarded) != null) {
@@ -66,6 +67,15 @@ public final class StorageService {
                 String jobId = str(args, "jobId");
                 if (!keys(args, Set.of("jobId")) || jobId == null || jobId.length() > 64) yield Result.fail("invalid");
                 yield core.cancelAny(jobId) ? Result.ok(new JsonObject()) : Result.fail("unknown_job");
+            }
+            case "retry" -> {
+                String jobId = str(args, "jobId");
+                if (!keys(args, Set.of("jobId")) || jobId == null || jobId.length() > 64) yield Result.fail("invalid");
+                var ticket = core.retryCraft(jobId, user);
+                if (ticket.error() != null) yield Result.fail(ticket.error());
+                var data = new JsonObject();
+                data.addProperty("jobId", ticket.jobId());
+                yield Result.ok(data);
             }
             case "favorite" -> {
                 String name = str(args, "name");
@@ -179,7 +189,8 @@ public final class StorageService {
         var tasks = new JsonArray();
         for (var row : core.jobRows(BridgeCore.MAX_JOBS + 32)) {
             var job = row.getAsJsonObject();
-            if (!"running".equals(job.get("status").getAsString()) && !"queued".equals(job.get("status").getAsString())) continue;
+            String status = job.get("status").getAsString();
+            if (!status.equals("running") && !status.equals("queued") && !status.equals("stuck")) continue;
             var task = new JsonObject();
             task.add("id", job.get("jobId"));
             task.add("name", job.get("name"));
@@ -187,10 +198,27 @@ public final class StorageService {
             task.add("count", job.get("count"));
             task.add("progress", job.get("progress"));
             task.addProperty("own", job.has("user"));
+            task.addProperty("stuck", status.equals("stuck"));
             tasks.add(task);
         }
         data.add("tasks", tasks);
         return data;
+    }
+
+    /** How many of a craft the items allow (craft_preview with {@code max}): {@code {"max":n|null,"exact":bool}}. */
+    public static void maxCraftable(UUID mainframeId, UUID uplinkId, @Nullable String widgetId, String name, long count, Consumer<Result> done) {
+        var core = coreFor(mainframeId, uplinkId, widgetId);
+        if (core == null) {
+            done.accept(Result.fail("unavailable"));
+            return;
+        }
+        core.maxCraftable(name, count, max -> {
+            var json = new JsonObject();
+            if (max.max() == null) json.add("max", com.google.gson.JsonNull.INSTANCE);
+            else json.add("max", Json.number(max.max()));
+            json.addProperty("exact", max.exact());
+            done.accept(Result.ok(json));
+        });
     }
 
     /** Craft preview (craft_plan): calls back with the plan document once the calculation finished. */

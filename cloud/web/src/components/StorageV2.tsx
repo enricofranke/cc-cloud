@@ -1,6 +1,7 @@
 // Storage card v2 (docs/SPEC.md "Storage card v2"): browse grid with favourites,
 // craftables, fluids, CPUs & jobs, item details with a 24 h sparkline, craft
 // preview with "notify me", and the auto-stock (level maintainer) editor.
+import { jobCancellable, jobReason, jobStatusText, planMissing, type MissingItem } from "../lib/jobs.ts";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { CpuInfo, CraftPlan, ItemDoc, JobInfo, MainframeConn, StockState, StorageRow } from "../lib/conn.ts";
 import { REJECT_TEXT } from "../lib/conn.ts";
@@ -21,7 +22,10 @@ export const STORAGE_ERRORS: Record<string, string> = {
   rate_limited: "Too many requests – slow down a little.",
   not_craftable: "There is no crafting pattern for this item.",
   no_cpu: "All crafting CPUs are busy. Try again when a job has finished.",
-  missing_resources: "Not enough ingredients in the network for this amount.",
+  not_enough_items: "Not enough items, and too many orders are already waiting. Cancel one first.",
+  not_stuck: "This job is moving again.",
+  not_retryable: "Only crafts started here can be retried.",
+  unknown_job: "This job is gone.",
   too_many: "That amount is too large.",
   timeout: "No answer from the server.",
   disconnected: "Not connected.",
@@ -201,6 +205,8 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
   const [loading, setLoading] = useState(false);
   const [notify, setNotify] = useState(true);
   const [state, setState] = useState<{ kind: "idle" | "sending" } | { kind: "error"; text: string }>({ kind: "idle" });
+  /** How many the items allow, once a plan came back short. */
+  const [possible, setPossible] = useState<{ count: number; max: number; exact: boolean } | null>(null);
   const count = custom ? Math.floor(Number(custom)) : amount;
   const valid = Number.isInteger(count) && count >= 1 && count <= props.max;
   useEffect(() => {
@@ -219,13 +225,33 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
       clearTimeout(t);
     };
   }, [count]);
-  const start = () => {
+  useEffect(() => {
+    setPossible(null);
+    if (!plan?.missing || plan.count !== count || count < 2) return;
+    let stop = false;
+    const t = setTimeout(() => {
+      conn
+        .craftMax(uplink.uplinkId, item.name, count, props.widgetId)
+        .then((r) => !stop && r.max !== null && setPossible({ count, max: r.max, exact: r.exact }))
+        .catch(() => {}); // no number rather than a guess
+    }, 400);
+    return () => {
+      stop = true;
+      clearTimeout(t);
+    };
+  }, [plan]);
+  const start = (amount = count) => {
     if (!props.craftWidget) return;
     setState({ kind: "sending" });
-    const sent = conn.action(uplink.uplinkId, props.craftWidget, { op: "craft", name: item.name, count, notify }, false, {
+    const sent = conn.action(uplink.uplinkId, props.craftWidget, { op: "craft", name: item.name, count: amount, notify }, false, {
       onResult: (r) => {
         if (r.ok) {
-          pushToast({ level: "info", title: `Crafting ${full(count)}× ${item.displayName} started`, text: `${r.jobId ? `Job #${r.jobId}. ` : ""}${notify ? "You get a notice when it is done." : "Progress shows under crafting jobs."}` });
+          const waits = r.missing !== undefined;
+          pushToast({
+            level: "info",
+            title: waits ? `Ordered ${full(amount)}× ${item.displayName}` : `Crafting ${full(amount)}× ${item.displayName} started`,
+            text: waits ? "It waits for its items and starts by itself once they are there." : `${r.jobId ? `Job #${r.jobId}. ` : ""}${notify ? "You get a notice when it is done." : "Progress shows under crafting jobs."}`,
+          });
           props.onClose();
         } else setState({ kind: "error", text: storageError(r.error ?? "failed") });
         return true;
@@ -289,7 +315,19 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
                   {plan.cpu ? (plan.cpu.enough ? `${plan.cpu.available} CPU${plan.cpu.available === 1 ? "" : "s"} free` : "No free CPU – the job waits in the queue") : ""}
                   {plan.bytes ? ` · ${fmtCount(plan.bytes)} bytes` : ""}
                 </p>
-                {plan.missing && <p class="form-error">Some ingredients are missing – the craft would fail. Craft a smaller amount or get the missing items first.</p>}
+                {plan.missing && (
+                  <div class="plan-short" role="alert">
+                    <p class="plan-short-title">Not enough items</p>
+                    <MissingList items={planMissing(plan.entries)} />
+                    {possible && possible.max > 0 && (
+                      <p class="plan-short-max">
+                        {possible.exact ? "Only" : "At least"} {full(possible.max)} of {full(possible.count)} possible with current items
+                      </p>
+                    )}
+                    {possible?.max === 0 && <p class="plan-short-max">None possible with current items</p>}
+                    <p class="muted small">You can order it anyway: the order waits and starts by itself once the items are there.</p>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -302,8 +340,18 @@ export function CraftSheet(props: { conn: MainframeConn; uplink: Uplink; craftWi
               {state.text}
             </p>
           )}
-          <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={readOnly || !valid || !plan || plan.missing || state.kind === "sending" || !props.craftWidget} onClick={start}>
-            <span>{state.kind === "sending" ? "Starting…" : `Craft ${valid ? full(count) : ""}×`}</span>
+          {plan?.missing && possible && possible.max > 0 && (
+            <button type="button" class="pxbtn pxbtn-gold pxbtn-wide" disabled={readOnly || state.kind === "sending" || !props.craftWidget} onClick={() => start(possible.max)}>
+              <span>Craft {full(possible.max)}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            class={plan?.missing ? "btn btn-wide" : "pxbtn pxbtn-gold pxbtn-wide"}
+            disabled={readOnly || !valid || !plan || state.kind === "sending" || !props.craftWidget}
+            onClick={() => start()}
+          >
+            <span>{state.kind === "sending" ? "Starting…" : plan?.missing ? "Order anyway" : `Craft ${valid ? full(count) : ""}×`}</span>
           </button>
           {readOnly && <p class="muted small">You can preview; starting jobs needs the “Craft” permission.</p>}
       </>
@@ -397,7 +445,55 @@ export function ItemDetailSheet(props: { conn: MainframeConn; uplink: Uplink; wi
   );
 }
 
-const JOB_TEXT: Record<JobInfo["status"], string> = { queued: "Queued", running: "Running", waiting: "Waiting for CPU", done: "Done", failed: "Failed", cancelled: "Cancelled" };
+/** What is missing: icon, name, have / need. */
+export function MissingList({ items }: { items: MissingItem[] }) {
+  return (
+    <ul class="missing-list">
+      {items.map((m) => (
+        <li key={m.name}>
+          <ItemIcon name={m.name} displayName={m.displayName} size={20} />
+          <span class="missing-name">{m.displayName}</span>
+          <span class="mono t-red">
+            {fmtCount(m.have)} / {fmtCount(m.need)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Why a job does not move, and what it waits for. */
+export function JobNote({ job }: { job: { status: JobInfo["status"]; error?: string; missing?: MissingItem[] } }) {
+  const reason = jobReason(job);
+  return (
+    <>
+      {reason && <p class={`job-note ${job.status === "stuck" ? "t-red" : "muted"}`}>{reason}</p>}
+      {job.missing && job.missing.length > 0 && job.status !== "done" && job.status !== "cancelled" && <MissingList items={job.missing} />}
+    </>
+  );
+}
+
+/** Cancels a stuck job and asks for the same craft again (storage.craft). */
+export function RetryButton({ conn, uplink, widgetId, job }: { conn: MainframeConn; uplink: Uplink; widgetId?: string; job: { jobId: string; name: string; displayName?: string } }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      class="btn btn-small"
+      disabled={busy}
+      title="Cancel this job and start the same craft again"
+      aria-label={`Retry ${job.displayName ?? job.name}`}
+      onClick={async () => {
+        setBusy(true);
+        await conn.storage(uplink.uplinkId, "retry", { jobId: job.jobId }, widgetId).catch((e) => pushToast({ level: "warn", title: "Retry did not work", text: storageError(e) }));
+        setBusy(false);
+      }}
+    >
+      Retry
+    </button>
+  );
+}
+
 function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: MainframeConn; uplink: Uplink; widgetId?: string }) {
   const [cancelling, setCancelling] = useState<string | null>(null);
   return (
@@ -411,8 +507,9 @@ function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: Main
               {j.source === "autostock" && <span class="mini-badge run">auto</span>}
               {j.notify && <span class="mini-badge" title="You get a notice when it finishes">🔔</span>}
             </span>
-            <span class={`job-status js-${j.status}`}>{JOB_TEXT[j.status]}</span>
-            {(j.status === "running" || j.status === "queued") && conn.can("storage.craft") && (
+            <span class={`job-status js-${j.status}`}>{jobStatusText(j)}</span>
+            {j.retryable && conn.can("storage.craft") && <RetryButton conn={conn} uplink={uplink} widgetId={widgetId} job={j} />}
+            {jobCancellable(j) && conn.can("storage.craft") && (
               <button
                 type="button"
                 class="btn btn-small btn-danger-ghost"
@@ -430,7 +527,7 @@ function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: Main
           <div class="job-bar" role="progressbar" aria-label={`${j.displayName ?? j.name} progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(j.progress * 100)}>
             <span class="job-fill" style={{ width: `${Math.round((j.status === "done" ? 1 : j.progress) * 100)}%` }} />
           </div>
-          {j.error && j.status !== "waiting" && <p class="muted small">{j.error}</p>}
+          <JobNote job={j} />
         </li>
       ))}
     </ul>

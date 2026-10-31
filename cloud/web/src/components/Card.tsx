@@ -132,6 +132,16 @@ function TermLoader(props: TermProps) {
   return C ? <C {...props} /> : null;
 }
 
+type SfmProps = { conn: MainframeConn; uplinkId: string; title: string; onClose: () => void };
+let SfmComp: ComponentType<SfmProps> | null = null;
+function SfmLoader(props: SfmProps) {
+  const [C, setC] = useState<ComponentType<SfmProps> | null>(() => SfmComp);
+  useEffect(() => {
+    if (!C) import("./SfmProgram.tsx").then((m) => setC(() => (SfmComp = m.default)));
+  }, []);
+  return C ? <C {...props} /> : null;
+}
+
 type HistoryProps = { conn: MainframeConn; uplink: Uplink; w: Widget; onClose: () => void };
 let HistoryComp: ComponentType<HistoryProps> | null = null;
 function HistoryLoader(props: HistoryProps) {
@@ -233,6 +243,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
   const [scripts, setScripts] = useState(false);
   const [hist, setHist] = useState<ResolvedWidget | null>(null);
   const [term, setTerm] = useState(false);
+  const [program, setProgram] = useState(false);
   const shown = card.widgets.filter((w) => !w.hidden);
   return (
     <article
@@ -279,6 +290,11 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
             <span aria-hidden="true">{"</>"}</span>
           </button>
         )}
+        {!edit && !viewOnly && !card.custom && !blocked && card.uplink.template === "sfm_manager" && conn.can("view.positions") && online && (
+          <button type="button" class="icon-btn card-scripts" title="Program" aria-label={`Program of ${card.title || "this manager"}`} onClick={() => setProgram(true)}>
+            <span aria-hidden="true">{"</>"}</span>
+          </button>
+        )}
         {onEdit && !edit && (
           <button type="button" class="icon-btn card-pencil" aria-label={`Edit ${card.title || "this card"}`} title="Edit this card" onClick={() => onEdit(card.key)}>
             <span aria-hidden="true">✎</span>
@@ -310,6 +326,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
         </div>
       )}
       {term && <TermLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setTerm(false)} />}
+      {program && <SfmLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || "Factory Manager"} onClose={() => setProgram(false)} />}
       {hist && <HistoryLoader conn={conn} uplink={hist.uplink} w={hist.w} onClose={() => setHist(null)} />}
       {scripts && <ScriptsLoader conn={conn} uplinkId={card.uplink.uplinkId} title={card.title || card.uplink.title || "Computer"} onClose={() => setScripts(false)} />}
       {!near ? (

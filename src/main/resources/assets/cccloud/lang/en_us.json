@@ -435,6 +435,7 @@
   "cccloud.configuration.apiStreamsPerKey": "Event streams per key",
   "cccloud.script.note": "[CC: Cloud] %s (%s) %s on %s",
   "cccloud.configuration.autoStockBatch": "Auto-stock batch size",
+  "cccloud.configuration.craftStuckSeconds": "Stuck craft after (seconds)",
   "cccloud.configuration.mapSlices": "Cave slices on the map",
   "cccloud.configuration.voxelView": "Voxel view",
   "cccloud.configuration.voxelRadius": "Voxel view radius",

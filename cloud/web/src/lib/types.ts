@@ -1,3 +1,4 @@
+import type { JobStatus, MissingItem } from "./jobs.ts";
 export type Scalar = number | boolean | string | null;
 export type WidgetType =
   | "button" | "toggle" | "slider" | "gauge" | "label"
@@ -47,7 +48,11 @@ export interface JobRow {
   name: string;
   displayName?: string;
   count: number;
-  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
+  status: JobStatus;
+  /** a stuck job started from the dashboard can be retried */
+  retryable?: boolean;
+  /** what an order waits for */
+  missing?: MissingItem[];
   progress: number;
   source?: "dashboard" | "lua" | "autostock" | "rule";
   notify?: boolean;

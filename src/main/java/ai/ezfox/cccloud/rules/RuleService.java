@@ -372,6 +372,15 @@ public final class RuleService {
             public RuleEngine.@Nullable SensorFeed sensor(String uplinkId) {
                 return sensorFeed(id, uplinkId);
             }
+
+            @Override
+            public RuleEngine.@Nullable StuckFeed stuckCrafts(String uplinkId) {
+                var core = storage(id, uplinkId);
+                if (core == null) return null;
+                var hits = new ArrayList<RuleEngine.StuckHit>();
+                for (var e : core.stuckSince(0)) hits.add(new RuleEngine.StuckHit(e.seq(), e.count() + "× " + e.displayName()));
+                return new RuleEngine.StuckFeed(core.stuckSeq(), hits);
+            }
         };
     }
 

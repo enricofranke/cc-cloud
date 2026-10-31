@@ -157,6 +157,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         // Plain-HTTP internet access with internetRequirePin: writes from an internet address need the PIN first (actions
         // and opening a terminal carry the PIN themselves and are checked in their handlers).
         if (instance.internet.pinRequired(ip) && ClientMessages.isWrite(message) && !(message instanceof ClientMessages.Action)
+            && !(message instanceof ClientMessages.CardWrite)
             && !(message instanceof ClientMessages.Terminal t && t.op().equals("term_open"))) {
             String locked = remoteLock(current, mainframeId);
             if (locked != null) {
@@ -187,6 +188,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RedstoneDevice device -> redstoneDevice(current, device);
             case ClientMessages.CardSettings settings -> cardSettings(current, settings);
+            case ClientMessages.CardDetail detail -> cardDetail(current, detail);
+            case ClientMessages.CardWrite write -> cardWrite(current, write);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
             case ClientMessages.Production request -> production(current, request);
@@ -485,7 +488,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                 }
                 result.whenComplete((r, ex) -> {
                     var outcome = ex != null || r == null ? ActionResult.fail("internal_error") : r;
-                    sendResult(action.reqId(), outcome.error(), "jobId", outcome.jobId());
+                    sendActionOutcome(action.reqId(), outcome);
                 });
             });
         } catch (RejectedExecutionException e) {
@@ -824,6 +827,130 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         }
     }
 
+    /** Program reads and checks: 2 at once, 1 per second. */
+    private final TokenBucket cardWriteLimit = new TokenBucket(2, 1);
+
+    /** A card's restricted details, on demand ({@code view.positions}); the bridge checks the rights again on the server thread. */
+    private void cardDetail(AuthStore.Device current, ClientMessages.CardDetail message) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.CARD_DETAIL);
+        if (denied != null) {
+            sendStorage("card_detail_result", "detail", message.reqId(), GameBridge.StorageResult.fail(denied));
+            return;
+        }
+        if (!storageLimit.tryAcquire()) {
+            sendStorage("card_detail_result", "detail", message.reqId(), GameBridge.StorageResult.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.StorageResult result;
+                try {
+                    result = instance.bridge.cardDetail(current, mainframeId, message);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while reading card details from {}", ip, e);
+                    result = GameBridge.StorageResult.fail("internal_error");
+                }
+                sendStorage("card_detail_result", "detail", message.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendStorage("card_detail_result", "detail", message.reqId(), GameBridge.StorageResult.fail("offline"));
+        }
+    }
+
+    /**
+     * Checks or writes a machine's program ({@code view.positions} + {@code device.program}). Saving and undo go through
+     * the mainframe PIN like opening a terminal: with a PIN set it must come with the message, and from an internet
+     * address in plain-HTTP mode nothing is written without one.
+     */
+    private void cardWrite(AuthStore.Device current, ClientMessages.CardWrite message) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.CARD_DETAIL);
+        if (denied == null) denied = AccessGate.check(role, perms, AccessGate.Kind.CARD_WRITE);
+        if (denied != null) {
+            sendCardWriteError(message.reqId(), denied, null, null);
+            return;
+        }
+        if (!cardWriteLimit.tryAcquire()) {
+            sendCardWriteError(message.reqId(), "rate_limited", null, null);
+            return;
+        }
+        UUID mainframe = mainframeId;
+        if (message.op().equals("check")) {
+            runCardWrite(current, message);
+            return;
+        }
+        boolean remote = instance.internet.pinRequired(ip);
+        if (!instance.auth.hasPin(mainframe)) {
+            if (remote) sendCardWriteError(message.reqId(), "remote_no_pin", null, null);
+            else runCardWrite(current, message);
+            return;
+        }
+        if (remote && instance.internet.blocked(ip)) {
+            sendCardWriteError(message.reqId(), "rate_limited", null, null);
+            return;
+        }
+        long lockedFor = instance.auth.pinLockedFor(current.tokenHash());
+        if (lockedFor > 0) {
+            sendCardWriteError(message.reqId(), "pin_locked", "retryAfter", lockedFor);
+            return;
+        }
+        if (message.pin() == null) {
+            sendCardWriteError(message.reqId(), "pin_required", null, null);
+            return;
+        }
+        try {
+            instance.pinExecutor.execute(() -> {
+                var check = instance.auth.checkPin(mainframe, current.tokenHash(), message.pin());
+                switch (check.result()) {
+                    case OK -> {
+                        remoteUnlocked(current, mainframe);
+                        runCardWrite(current, message);
+                    }
+                    case NOT_SET -> {
+                        if (remote) sendCardWriteError(message.reqId(), "remote_no_pin", null, null);
+                        else runCardWrite(current, message);
+                    }
+                    case WRONG -> {
+                        instance.internet.failure(ip);
+                        sendCardWriteError(message.reqId(), "wrong_pin", "attemptsLeft", check.attemptsLeft());
+                    }
+                    case LOCKED -> {
+                        sendCardWriteError(message.reqId(), "pin_locked", "retryAfter", check.retryAfterSeconds());
+                        instance.bridge.serverExecutor().execute(() -> instance.bridge.onPinLockout(current, mainframe, ip));
+                    }
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            sendCardWriteError(message.reqId(), "offline", null, null);
+        }
+    }
+
+    private void runCardWrite(AuthStore.Device current, ClientMessages.CardWrite message) {
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                GameBridge.StorageResult result;
+                try {
+                    result = instance.bridge.cardWrite(current, mainframeId, message);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while writing a program from {}", ip, e);
+                    result = GameBridge.StorageResult.fail("internal_error");
+                }
+                sendStorage("card_write_result", "detail", message.reqId(), result);
+            });
+        } catch (RejectedExecutionException e) {
+            sendCardWriteError(message.reqId(), "offline", null, null);
+        }
+    }
+
+    private void sendCardWriteError(String reqId, String error, @Nullable String key, @Nullable Number value) {
+        var json = new JsonObject();
+        json.addProperty("t", "card_write_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", false);
+        json.addProperty("error", error);
+        if (key != null) json.addProperty(key, value);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
     private void sendTypedResult(String type, String reqId, @Nullable String error) {
         var json = new JsonObject();
         json.addProperty("t", type);
@@ -973,6 +1100,23 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
 
     private void sendResult(@Nullable String reqId, @Nullable String error, @Nullable String extraKey, long extraValue) {
         sendResult(reqId, error, extraKey, (Object) extraValue);
+    }
+
+    /** An action's outcome: a craft answers with its job id, an order that waits for items also with what is missing. */
+    private void sendActionOutcome(@Nullable String reqId, ActionResult outcome) {
+        if (outcome.missing() == null) {
+            sendResult(reqId, outcome.error(), "jobId", outcome.jobId());
+            return;
+        }
+        var json = new JsonObject();
+        json.addProperty("t", "action_result");
+        if (reqId != null) json.addProperty("reqId", reqId);
+        json.addProperty("ok", outcome.error() == null);
+        if (outcome.error() != null) json.addProperty("error", outcome.error());
+        if (outcome.jobId() != null) json.addProperty("jobId", outcome.jobId());
+        json.addProperty("waiting", "not_enough_items");
+        json.add("missing", outcome.missing());
+        send(List.of(Json.GSON.toJson(json)));
     }
 
     private void sendResult(@Nullable String reqId, @Nullable String error, @Nullable String extraKey, @Nullable Object extraValue) {

@@ -135,7 +135,7 @@ public final class AccessResolver {
         if (scripts && api) return r;
         var perms = EnumSet.noneOf(Perm.class);
         perms.addAll(r.perms());
-        if (!scripts) perms.removeAll(EnumSet.of(Perm.SCRIPTS_UPLOAD, Perm.SCRIPTS_RUN, Perm.SCRIPTS_DELETE, Perm.TERMINAL));
+        if (!scripts) perms.removeAll(EnumSet.of(Perm.SCRIPTS_UPLOAD, Perm.SCRIPTS_RUN, Perm.SCRIPTS_DELETE, Perm.TERMINAL, Perm.DEVICE_PROGRAM));
         if (!api) perms.remove(Perm.API_KEYS);
         return new Resolution(r.role(), r.source(), r.teamRank(), perms);
     }

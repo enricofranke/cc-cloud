@@ -1375,6 +1375,37 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return null;
     }
 
+    /** A device card's restricted details; never from a machine in a chunk another team claimed. */
+    @Override
+    public ai.ezfox.cccloud.web.GameBridge.StorageResult handleCardDetail() {
+        var card = readableCard();
+        if (card == null) return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail(cardRefusal());
+        return ai.ezfox.cccloud.compat.card.DeviceCards.detail(card);
+    }
+
+    /** Writes a device card's program; never to a machine in a chunk another team claimed. */
+    @Override
+    public ai.ezfox.cccloud.web.GameBridge.StorageResult handleCardWrite(String op, @Nullable String text, boolean force) {
+        var card = readableCard();
+        if (card == null) return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail(cardRefusal());
+        return ai.ezfox.cccloud.compat.card.DeviceCards.write(card, op, text, force);
+    }
+
+    private ai.ezfox.cccloud.compat.card.@Nullable DeviceCard readableCard() {
+        if (cardBlocked() || !isOnline()) return null;
+        synchronized (this) {
+            return deviceCard;
+        }
+    }
+
+    private boolean cardBlocked() {
+        return ai.ezfox.cccloud.script.ComputerTarget.blocked(this);
+    }
+
+    private String cardRefusal() {
+        return cardBlocked() ? ai.ezfox.cccloud.claims.ClaimGuard.ERROR : isOnline() ? "unsupported" : "uplink_offline";
+    }
+
     public synchronized void setTitle(String title) {
         if (this.title.equals(title)) return;
         this.title = title;
