@@ -184,6 +184,8 @@ neoForge {
             systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
             // ./gradlew runGameTestServer -PskipLoadTest skips the timing-sensitive load test (its own batch otherwise).
             if (project.hasProperty("skipLoadTest")) systemProperty 'cccloud.skipLoadTest', 'true'
+            // ./gradlew runGameTestServer -PvoxelBench -PgameTests=cccloud:voxel_disk_bench measures the last known terrain (docs/SPEC.md)
+            if (project.hasProperty("voxelBench")) systemProperty 'cccloud.voxelBench', 'true'
             // ./gradlew runGameTestServer -PscaleTest runs only the scale benchmark (docs/SPEC.md "Scaling"); sizes with
             // -PscaleTestBig=500 -PscaleTestMainframes=10 -PscaleTestDevices=100 -PscaleTestBrowsers=50 -PscaleTestBigBrowsers=10
             // -PscaleTestSeconds=30 -PscaleTestBaseline=10 -PscaleTestHold=0 (s, for tools/e2e/scale-render.mjs) -PscaleTestStrict=true

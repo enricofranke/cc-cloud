@@ -190,6 +190,11 @@ public final class CloudNetwork {
         } catch (RuntimeException e) {
             CCCloud.LOGGER.error("[cccloud] Could not load the removed mainframes", e);
         }
+        try {
+            ai.ezfox.cccloud.voxel.VoxelService.serverStarted(srv);
+        } catch (RuntimeException e) {
+            CCCloud.LOGGER.error("[cccloud] Could not load the voxel view areas", e);
+        }
         CloudWebServer.start(event.getServer());
     }
 

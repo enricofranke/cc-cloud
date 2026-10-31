@@ -169,6 +169,9 @@ const EN = {
   "sc.res.not_allowed": "missing permission",
   "sc.res.pin_required": "needs the PIN",
   "sc.res.offline": "mainframe offline",
+  // ---- 3D view
+  "net.lastSeen": "Terrain from the last visit",
+  "net.lastSeenHint": "Part of this terrain is not loaded right now. It shows how it looked when it was last loaded; ores look like stone.",
   "sc.res.unknown_widget": "control gone",
   "sc.res.unknown_uplink": "card gone",
   "sc.res.uplink_offline": "card offline",
@@ -480,6 +483,9 @@ const DE: Record<Key, string> = {
   "sc.res.not_allowed": "fehlende Berechtigung",
   "sc.res.pin_required": "braucht die PIN",
   "sc.res.offline": "Mainframe offline",
+  // ---- 3D-Ansicht
+  "net.lastSeen": "Gelände vom letzten Besuch",
+  "net.lastSeenHint": "Ein Teil dieses Geländes ist gerade nicht geladen. Es zeigt den Stand von dem Moment, als es zuletzt geladen war; Erze sehen aus wie Stein.",
   "sc.res.unknown_widget": "Bedienelement weg",
   "sc.res.unknown_uplink": "Karte weg",
   "sc.res.uplink_offline": "Karte offline",

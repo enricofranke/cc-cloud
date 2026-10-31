@@ -1005,7 +1005,7 @@ The 2D network map gets a real top-down map of the world as background, like a M
 ### "Crazy 3D": voxel view of the base (requested 2026-10-23)
 On top of the 3D network view: render the actual blocks around the network as voxels.
 - Endpoint `GET /api/voxels/<dim>/<cx>/<cy>/<cz>` returns one 16³ section around network nodes: palette (block id → map color + flags: transparent/fluid/emissive) + run-length encoded indices. Only **exposed** blocks (at least one face touching air/transparent) are sent, so the view shows the base and caves but cannot be used as an ore X-ray.
-- Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded or saved chunks only, never generate/force-load; a section budget per device (see "Voxel view – batch API"); server-side cache validated by the sections' content; config `voxelView` (default true).
+- Limits: operator role; only sections within 64 blocks (config `voxelRadius`, max 128) of a node of that mainframe's network; loaded chunks and the last known state of chunks that are not loaded, never generate/force-load; a section budget per device (see "Voxel view – batch API"); server-side cache validated by the sections' content; config `voxelView` (default true).
 - Stage 1 (now): colored voxels with map colors, greedy meshing in a Web Worker, ambient occlusion, emissive blocks glow, water translucent, day/night toggle; our devices drawn with their real models on top; clickable as in the 3D view; clipping plane / Y-slider to cut through floors of a base.
 - Stage 2: real block textures – game clients upload block face textures the same way they upload item icons (validated PNG, size caps), the server builds an atlas, and the web renders textured voxels (see "Voxel view – stage 2").
 - Performance budget: ≤ 150k triangles on phones, LOD by distance, frustum culling, 60 fps target; falls back to the plain 3D/2D map without WebGL2.
@@ -1027,7 +1027,8 @@ On top of the 3D network view: render the actual blocks around the network as vo
   ```
   - `runs` are unsigned LEB128 varint pairs `(runLength, paletteIndex)` covering all 4096 cells in the order `x + 16·z + 256·y`.
   - Index 0 = nothing (air or hidden); index n = `palette[n-1]`.
-  - `204` when the section's chunk is not loaded.
+  - `"old":true` when the section is its last known state (see "Voxel view – last known terrain").
+  - `204` when the section's chunk is not loaded and nothing is known of it.
   - `Cache-Control: private, max-age=5`.
 - **Anti X-ray:** only exposed blocks are sent: at least one face touches air or a non-occluding block (glass, leaves, fluids…). Neighbors in chunks that are not loaded count as solid, so chunk borders do not leak either.
 - **Server cost and cache** (same for the batch API):
@@ -1040,9 +1041,9 @@ On top of the 3D network view: render the actual blocks around the network as vo
     filter, X-ray guard, encoding). So any block change – by players, machines, commands or block movers, with or
     without neighbor updates – shows on the next request, and unchanged sections are never rebuilt. 8192 sections per
     server are kept (per mainframe, because of the ore rule).
-  - There is no disk cache and no background pre-warming: building a whole base (~500 sections) takes well under a
-    second of background CPU (140 ms for the showcase base, see "Voxel view – loading measurements"), and an unread
-    cache would only cost memory.
+  - Nothing is built ahead for loaded chunks: building a whole base (~500 sections) takes well under a second of
+    background CPU (140 ms for the showcase base, see "Voxel view – loading measurements"). Only chunks that are not
+    loaded have a disk cache (see "Voxel view – last known terrain").
 
 #### Voxel view – batch API (mod side, implemented 2026-10-30)
 Loading a base one section per request was slow: ~500 requests, rate limited to 120 per minute per IP (shared with the
@@ -1053,7 +1054,8 @@ browser.
   what the browser already has. Anything else → `400 {"error":"invalid"}`.
 - **Access** as for single sections, checked per section: `view.positions` (else `403 not_allowed` for the whole
   request), `voxelView` (`404 disabled`), unknown dimension `404`; per section `out_of_range` (beyond `voxelRadius`)
-  and `claimed` (another team's claim) are statuses in the answer.
+  and `claimed` (another team's claim) are statuses in the answer. A mainframe with no known area yet (it is not
+  loaded and was not online with this version) answers `empty` instead of `out_of_range`, so browsers keep their copy.
 - **Limits:** one request of the 120 API requests per minute per IP, and as many sections of the device's section
   budget as it asks for (2048, refilled at 256 per second; `429 {"error":"rate_limited","retryAfter":s}` when the
   batch does not fit). Loading a whole base therefore never waits, while a client cannot make the server build more
@@ -1070,7 +1072,10 @@ browser.
     the batch palette) and `"l"` (byte length of its runs). The runs of the `ok` sections follow the header in order;
     they are the LEB128 pairs `(run length, index)` of the single-section format, index n = `palette[p[n-1]]`.
   - `same`: the hash the browser sent is current; `"h"` and `"p"` only (the palette refreshes colours and textures).
-  - `empty`: the chunk is not loaded (or the section is outside the world) – try again later; a cached copy may stay.
+  - `ok` and `same` also have `"old":true` when the section is its last known state. The field is optional, so the
+    version stays 1: an older dashboard simply draws these sections.
+  - `empty`: the chunk is not loaded and nothing is known of it (or the section is outside the world) – try again
+    later; a cached copy may stay.
   - `out_of_range`, `claimed`: refused for this section; the browser drops its copy.
   The content hash covers the palette and the runs, so it changes exactly when what the browser would draw changes.
 - **Server work:** the access checks and copying the containers on the server thread (see above), building, the
@@ -1123,11 +1128,72 @@ right after a server start (empty server caches, JIT cold), runs 2–3 with warm
 - On a busy machine (load average 50–130, earlier the same day) the same "after" build loaded the base in 2.0–3.0 s
   (reload 0.4–0.9 s) against 210–283 s before.
 
+#### Voxel view – last known terrain (implemented 2026-10-31)
+Reported on the ATM11 test server: with the mainframe's chunk unloaded, Network → 3D showed the device models on an empty
+background. The server answered `out_of_range` for everything (a mainframe that is not loaded has no network result, so no
+view points), the browser dropped its cached sections for that answer, and only loaded chunks could be read anyway. Now
+the terrain is saved and unloaded areas still show.
+- **Live stays as it was:** a section whose chunk is loaded and inside the live view takes the exact, content-validated
+  path above. Everything else is answered from memory, then from disk.
+- **Disk cache:** `<world>/cccloud/voxels/<mainframe>/<dimension>/<cx>_<cz>.bin`, one file per chunk column (a chunk unload
+  is one write, a base a few dozen files), written atomically (temp + move) by one background thread that merges into the
+  column; format and strict reading in `VoxelDisk` (other versions or damaged files count as empty and are replaced; the
+  content hash is computed again on reading). Sections are ore-free (see the X-ray guard below).
+- **What replaces what:** a section stays when its content (own blocks plus the touching neighbor layers) is unchanged,
+  and also when its blocks are unchanged and the new build knows fewer neighbors. Chunks unload one after the other, so
+  most builds miss a neighbor; without this rule every unload would rewrite the column and bring back seams.
+- **Filling it:** every section the live path builds goes there, so a look at the base is enough. Without anyone looking:
+  a chunk that unloads inside a mainframe's area is built in the background. `ChunkEvent.Unload` comes on the server
+  thread after the chunk was saved and nothing writes to it any more, so its own sections are used without a copy; only
+  the neighbors in the four chunks around it are copied, and over a budget of 0.5 ms per tick (a whole area unloading at
+  once) they are left out, which only costs blocks exposed across the chunk border. "Is this chunk in any area" is one
+  map lookup per region of 8×8 chunks (`VoxelAreas`, rebuilt in the background when an area changes), so a chunk elsewhere
+  costs nothing more. Over 2 ms per tick the chunk itself only goes in a queue of at most 512 and waits for the next ticks.
+  At most 512 snapshots wait for the 2 background threads; beyond either limit they are dropped (the section stays as it
+  was). Unchanged sections are not built or written. Nothing is ever loaded or generated. At server stop what is loaded
+  of every area is copied once, because chunks with tickets never unload.
+- **The last known area:** a network that is not loaded has no live view, so `VoxelAreas` keeps per mainframe and
+  dimension where its reachable nodes and devices were the last time it was online, plus linked devices whose chunk is
+  not loaded (the map shows those as `unloaded`, and the dashboard asks for the terrain around them). It follows the
+  network with every published map, stays as it was while the mainframe is offline (an offline mainframe reaches no
+  nodes), and a removed mainframe has none. A section only in this area is served from the caches even when its chunk is
+  loaded. Relays in unloaded chunks are not on the map, so the dashboard does not ask for the terrain around them.
+- **After a restart:** the area is saved in `<mainframe>/area.gz` together with the last published network map (both
+  forms, at most 2 MB; on a change of the area, else every 10 minutes). At server start the map goes to the hub for
+  every mainframe that is not removed, with the mainframe `offline` and the rest `unloaded`, so a dashboard has its map
+  and 3D view before the mainframe's chunk loads; the first network pass of a loaded mainframe replaces it.
+- **Limits:** `map.voxelCacheMaxAgeDays` (default 30, 0 = keep): a column neither written nor read for that many days
+  goes, a mainframe's `area.gz` with its last column once it is that old too (server start, once a day, on change).
+  `map.voxelCacheMainframeMB` (default 32) and `map.voxelCacheTotalMB` (default 512, 0 = no terrain on disk): the columns
+  used longest ago go first, down to 90 % of the cap, on the write that crosses it and at the sweep; sizes count 4 KB
+  blocks. A typical base stays far below this, see the measurements below. A purge deletes the mainframe's folder.
+- **Dashboard:** the batch marks these sections (`"old":true`), the 3D view shows "Terrain from the last visit" next
+  to the switches once loading is done, and asks for every section again when the mainframe goes or comes back, so the
+  view moves between live and last known on its own. `/cccloud map stats` has a third line for snapshots, sections built
+  and served, and the bytes on disk.
+- **Open:** an area nobody loaded since the update stays empty (chunks are never read from region files for this).
+
+**Measurements** (`./gradlew runGameTestServer -PvoxelBench -PgameTests=cccloud:voxel_disk_bench`, 2026-10-31, a mainframe
+at the default radius of 64 on default terrain, 69 chunks in the area, on a machine at load ~35; times are CPU time of the thread):
+- **Server thread per unload:** a chunk outside every area 20 ns (one lookup). A chunk in an area 18–37 µs without
+  neighbors, 124–222 µs with them; the very first one 5.5 ms (class loading, once per server). Per tick at most
+  `TICK_BUDGET_NANOS` (0.5 ms) with neighbors and `TICK_LIMIT_NANOS` (2 ms) in all, plus the one chunk that crosses it;
+  the rest of a large area waits for the next ticks (queue of 512 chunks). Nothing is dropped at this size.
+- **Disk:** 69 column files, 264 sections (165 with blocks), 38 KB of data, about 148 B per section; 276 KB on a file
+  system with 4 KB blocks. The 32 MB cap holds around 8,000 such columns.
+- **Completeness:** the first fill, with most neighbors left out over the budget, knows 99.6 % of the exposed blocks of
+  the live view (47,172 of 47,379), and 99.99 % after one look at the live view.
+- **Second unload:** 260 of 264 sections unchanged, so nothing is written. After a reload of the chunks up to 40 sections
+  are built again once, because the block palette comes back in a different order.
+- **Cold view of 464 sections:** live from a cold memory cache 242–754 ms until the answer (3.1–4.7 ms server thread, 150 ms
+  background); from disk with a cold memory cache 33–42 ms (0.7–1.0 ms, 23–28 ms); from memory 26 ms.
+
 #### X-ray guard for slices and voxels (security review M4)
 - Config `map.mapSlices`: `auto` (default: on in singleplayer and for LAN-only dashboards, off with `webAllowInternet`), `on`, `off`. Disabled → `404 disabled` for slice tiles.
 - Slice tiles only within 32 blocks (Y) of one of the mainframe's nodes/devices → else `403 out_of_range`.
 - Chunks claimed by another team (FTB Chunks; the player is not a member or ally) are never sampled for slices (transparent) and voxel sections there answer `403 claimed`.
 - Ores (`#c:ores`) appear as stone in slices and voxels unless the ore touches air **and** is within 16 blocks of one of the requesting mainframe's nodes/devices. Slice tiles are therefore cached per mainframe and player, voxel sections per mainframe.
+- Last known voxel sections never show an ore: what is stored (and what the memory cache keeps for this path) is an ore-free variant, because the nodes that decide ore visibility may have changed since or be unknown. What comes from disk also passes the ore tag again. docs/SECURITY.md "Map, voxels and X-ray" has the reasoning.
 
 #### Voxel view – stage 2: block textures (mod side, implemented)
 Game clients with the mod read the block textures and upload them, like item icons (same opt-in: client config `shareIconRenders`); the server builds one texture atlas; voxel responses say which tile each face uses. Blocks without textures keep the map colour (stage 1).
@@ -1267,7 +1333,7 @@ The storage behind a card: a linked bridge section, an uplink in direct mode (St
 A misclick or a griefer must not wipe a whole dashboard setup.
 - **Identity in the item.** A broken mainframe drops its item with the data component `cccloud:mainframe_identity` = `{id, owner}` (loot `copy_components` from the block entity's implicit components; pick-block with data does the same). The owner name is only for the tooltip ("Mainframe 1a2b3c4d · Owner: Steve"); ownership always comes from the server. Placing it restores the **same mainframe id**, so devices, accounts and roles, PIN, layout, rules, scenes, production statistics, API keys and push targets are back, and uplinks/bridges reconnect by id (they also update the position stored in their link). The block entity data that only the block had is kept server-side with the removal record: owner, dashboard switch and the linked-device list. **Upgrade cards keep dropping** as separate items (no shulker-box inventory); the FE buffer is not kept.
 - **Ownership.** The restored mainframe belongs to its original owner, whoever places it; the placer gets no role from placing. Placing an item of a mainframe that currently stands somewhere is refused ("This mainframe already stands: …"); the placer's mainframe limit does not apply to a restore, and removed mainframes do not count against their owner's limit. An item whose data was purged (or from another server) places a new mainframe with a new id for the placer.
-- **Retention.** Removing the block (any way: player, explosion, block mover, command) records the mainframe in `data/cccloud/removed_mainframes.dat` and deletes nothing. Config `mainframeRetentionDays` (default 7, 0 = delete at once like before): when the window ends, or with `/cccloud mainframe purge <id>`, everything is deleted (pairing code, PIN, devices, accounts/roles/shares, rules, scenes, production, API keys, push targets, cached sections, its cave slices in the map tile cache, layout) and dashboards are disconnected (4404). Expired entries are checked every minute and at server start. Meanwhile the dashboard keeps its sessions and shows the mainframe offline with `reason:"removed"` and `removedUntil` (ms) in the `state` message and snapshot (status "Removed" with the restore hint and the deletion date); all actions fail as for an unloaded mainframe.
+- **Retention.** Removing the block (any way: player, explosion, block mover, command) records the mainframe in `data/cccloud/removed_mainframes.dat` and deletes nothing. Config `mainframeRetentionDays` (default 7, 0 = delete at once like before): when the window ends, or with `/cccloud mainframe purge <id>`, everything is deleted (pairing code, PIN, devices, accounts/roles/shares, rules, scenes, production, API keys, push targets, cached sections, its cave slices in the map tile cache, its last known terrain, layout) and dashboards are disconnected (4404). Expired entries are checked every minute and at server start. Meanwhile the dashboard keeps its sessions and shows the mainframe offline with `reason:"removed"` and `removedUntil` (ms) in the `state` message and snapshot (status "Removed" with the restore hint and the deletion date); all actions fail as for an unloaded mainframe.
 - **Recovery without an item.** `/cccloud mainframe recover` lists the removed mainframes the player owns (all of them for server admins: `cccloud.admin.manage`, op level 2), with the deletion date and a click to recover; `/cccloud mainframe recover <id>` (8-character prefix or full id) gives an item bound to it. Owners get one item per removal and only when the break dropped none (creative, or no fitting tool); when the item may have dropped (survival break with drops, explosion, machine, command) only a server admin can hand out another one, so recovering never yields an extra mainframe. `/cccloud mainframe purge <id>`: owner or server admin.
 - **Misclick guard.** Config `mainframeBreakProtection` (default true), checked in NeoForge's `BreakBlockEvent` (player breaks only): in creative the mainframe only breaks while sneaking (otherwise an action-bar hint "Sneak to break the Cloud Mainframe"); in survival only the owner, players with the admin role on it and server admins may break it (others get a hint). Claim mods (FTB Chunks, Open Parties and Claims) cancel the same event for foreign claims; this is an extra layer that also covers unclaimed land.
 - GameTests (`cccloud:ingame` batch): `mainframe_break_restore`, `mainframe_break_guard`, `mainframe_retention_purge`, `mainframe_recover_command`.
@@ -1975,7 +2041,7 @@ used anyway. Values that could not be applied keep their old state and stay "cha
 | `[power]` | `mainframeMaxInputFE`; `relayBufferFE` & co. (input rate = buffer/50) | fixed when the block entity was made | follow the config every tick |
 | `[production]` | `trackedItemsPerStorage` | only for new trackers | trackers start again with the new cap |
 | `[store]` | `scriptStoreKey` | verified index cached 5 min per URL, also after a key change | cache keyed by URL and key; cleared on reload |
-| `[map]` | `mapTileMaxAgeDays` | next daily sweep | sweep at once |
+| `[map]` | `mapTileMaxAgeDays`, `voxelCacheMaxAgeDays`, `voxelCacheMainframeMB`, `voxelCacheTotalMB` | next daily sweep | sweep at once |
 | `[icons]` | `renderIconsOnServer`, `downloadVanillaAssets`, `vanillaAssetsJar` (added with the server icon renderer) | read at server start | vanilla source opened again (downloaded once if newly allowed), then a server render pass for what is still missing; off stops a running pass (`ConfigPlan.ICONS`, `IconService.reconfigure`) |
 | `[push]` | `pushAllowedHosts` | retries used the list from the first attempt | read for every attempt |
 | integrations `[cards]` | `deviceCards`, `storageCards`, `genericCardExcludes`, `mffsRequirePin` | detection-time (a shown card kept its kind and its PIN flag) | every uplink detects its device and wired machine cards again |

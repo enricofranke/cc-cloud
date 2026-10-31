@@ -317,7 +317,10 @@ public final class NetworkService {
                 continue;
             }
             PUBLISHED.put(id, new Published(key, now));
-            WebHub.INSTANCE.publishNetwork(id, toJson(mainframe, result, true), toJson(mainframe, result, false));
+            var full = toJson(mainframe, result, true);
+            var stripped = toJson(mainframe, result, false);
+            WebHub.INSTANCE.publishNetwork(id, full, stripped);
+            ai.ezfox.cccloud.voxel.VoxelAreas.update(mainframe, result, full, stripped);
         }
         // Relays serving any network (from every network's last result)
         SERVING.clear();

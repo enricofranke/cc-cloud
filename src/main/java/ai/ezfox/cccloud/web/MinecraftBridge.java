@@ -432,20 +432,23 @@ public final class MinecraftBridge implements GameBridge {
         if (level == null) return CompletableFuture.completedFuture(new GameBridge.VoxelBatchResult(404, null, false, "unknown_dimension"));
         var status = new ai.ezfox.cccloud.voxel.VoxelBatch.Status[sections.size()];
         var build = new java.util.ArrayList<int[]>();
+        var lastKnown = new java.util.BitSet();
         var claims = new java.util.HashMap<Long, Boolean>();
-        var points = ai.ezfox.cccloud.voxel.VoxelService.viewPoints(mainframeId, dim);
+        var view = ai.ezfox.cccloud.voxel.VoxelService.view(server, mainframeId, dim);
         for (int i = 0; i < sections.size(); i++) {
             int[] s = sections.get(i);
-            if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(points, s[0], s[1], s[2])) {
-                status[i] = ai.ezfox.cccloud.voxel.VoxelBatch.Status.OUT_OF_RANGE;
+            boolean live = view.liveAt(s[0], s[1], s[2]);
+            if (!live && !view.knownAt(s[0], s[1], s[2])) {
+                status[i] = view.unknown() ? ai.ezfox.cccloud.voxel.VoxelBatch.Status.EMPTY : ai.ezfox.cccloud.voxel.VoxelBatch.Status.OUT_OF_RANGE;
             } else if (claims.computeIfAbsent(net.minecraft.world.level.ChunkPos.pack(s[0], s[2]),
                 k -> ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, s[0], s[2], player))) {
                 status[i] = ai.ezfox.cccloud.voxel.VoxelBatch.Status.CLAIMED;
             } else {
+                lastKnown.set(build.size(), !live);
                 build.add(s);
             }
         }
-        return ai.ezfox.cccloud.voxel.VoxelService.encode(level, build, mainframeId).thenApplyAsync(encoded -> {
+        return ai.ezfox.cccloud.voxel.VoxelService.serve(level, build, lastKnown, mainframeId).thenApplyAsync(encoded -> {
             var t0 = ai.ezfox.cccloud.map.MapStats.start();
             var out = new java.util.ArrayList<ai.ezfox.cccloud.voxel.VoxelBatch.Section>(sections.size());
             int next = 0;
@@ -453,12 +456,17 @@ public final class MinecraftBridge implements GameBridge {
                 int[] s = sections.get(i);
                 ai.ezfox.cccloud.voxel.VoxelBatch.Status st = status[i];
                 ai.ezfox.cccloud.voxel.VoxelSection.Encoded data = null;
+                boolean old = false;
                 if (st == null) {
-                    data = encoded.get(next++);
-                    if (data == null) st = ai.ezfox.cccloud.voxel.VoxelBatch.Status.EMPTY;
-                    else st = data.hashHex().equals(have.get(i)) ? ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME : ai.ezfox.cccloud.voxel.VoxelBatch.Status.OK;
+                    var served = encoded.get(next++);
+                    if (served == null) st = ai.ezfox.cccloud.voxel.VoxelBatch.Status.EMPTY;
+                    else {
+                        data = served.data();
+                        old = served.lastSeen();
+                        st = data.hashHex().equals(have.get(i)) ? ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME : ai.ezfox.cccloud.voxel.VoxelBatch.Status.OK;
+                    }
                 }
-                out.add(new ai.ezfox.cccloud.voxel.VoxelBatch.Section(s[0], s[1], s[2], st, data));
+                out.add(new ai.ezfox.cccloud.voxel.VoxelBatch.Section(s[0], s[1], s[2], st, data, old));
             }
             byte[] body = ai.ezfox.cccloud.voxel.VoxelBatch.write(dim, out, ai.ezfox.cccloud.voxel.BlockTextureService::decorate);
             if (gzip) body = ai.ezfox.cccloud.voxel.VoxelBatch.gzip(body);
@@ -477,13 +485,16 @@ public final class MinecraftBridge implements GameBridge {
         }
         var level = ai.ezfox.cccloud.map.MapTileService.level(server, dim);
         if (level == null) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(404, null, "unknown_dimension"));
-        if (!ai.ezfox.cccloud.voxel.VoxelService.allowed(mainframeId, dim, cx, cy, cz)) {
+        var view = ai.ezfox.cccloud.voxel.VoxelService.view(server, mainframeId, dim);
+        boolean live = view.liveAt(cx, cy, cz);
+        if (!live && !view.knownAt(cx, cy, cz)) {
+            if (view.unknown()) return CompletableFuture.completedFuture(new GameBridge.VoxelResult(204, null, null));
             return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "out_of_range"));
         }
         if (ai.ezfox.cccloud.map.XrayGuard.claimedByOther(level, cx, cz, player)) {
             return CompletableFuture.completedFuture(new GameBridge.VoxelResult(403, null, "claimed"));
         }
-        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz, mainframeId)
+        return ai.ezfox.cccloud.voxel.VoxelService.section(level, cx, cy, cz, mainframeId, !live)
             .thenApply(json -> {
                 if (json == null) return new GameBridge.VoxelResult(204, null, null);
                 var copy = json.deepCopy(); // the cached section stays undecorated; textures may arrive later

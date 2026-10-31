@@ -121,7 +121,7 @@ public interface GameBridge {
     /** 2D map tile (view.positions, within 512 blocks of the mainframe's network). Server thread; completes later. */
     CompletableFuture<MapResult> mapTile(AuthStore.Device device, UUID mainframeId, String dim, boolean slice, int y, int tx, int tz);
 
-    /** Voxel view section: status 200 (json), 204 (not loaded), 403/404 (error). */
+    /** Voxel view section: status 200 (json), 204 (not loaded and nothing known of it), 403/404 (error). */
     record VoxelResult(int status, @Nullable JsonObject json, @Nullable String error) {
     }
 

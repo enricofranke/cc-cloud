@@ -93,6 +93,8 @@ export interface BatchSection {
   /** raw runs (ok only); a copy, safe to keep or transfer */
   runs?: Uint8Array;
   exposed?: number;
+  /** the last known state: the chunk is not loaded right now (ok and same) */
+  old?: boolean;
 }
 export interface Batch {
   dim: string;
@@ -118,6 +120,8 @@ export function decodeBatch(buf: Uint8Array): Batch {
     const s: BatchSection = { cx: c[0], cy: c[1], cz: c[2], status: e.s };
     if (e.s === "ok" || e.s === "same") {
       if (typeof e.h !== "string" || !/^[0-9a-f]{16}$/.test(e.h) || !Array.isArray(e.p) || e.p.length > 4095) throw new Error("bad section");
+      if (e.old !== undefined && e.old !== true) throw new Error("bad section");
+      if (e.old) s.old = true;
       s.hash = e.h;
       s.palette = e.p.map((i: unknown) => {
         const v = int(i);
@@ -136,6 +140,16 @@ export function decodeBatch(buf: Uint8Array): Batch {
   }
   if (at !== buf.length) throw new Error("trailing bytes");
   return { dim: String(h.dim), sections };
+}
+
+/**
+ * Keeps the set of sections that show their last known state: "ok" and "same" say so themselves, a section refused now
+ * is not shown any more, and "empty" changes nothing (what is shown stays).
+ */
+export function trackLastSeen(lastSeen: Set<string>, s: BatchSection) {
+  const k = `${s.cx},${s.cy},${s.cz}`;
+  if (s.old) lastSeen.add(k);
+  else if (s.status !== "empty") lastSeen.delete(k);
 }
 
 /** World lookup across sections. */

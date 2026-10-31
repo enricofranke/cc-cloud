@@ -94,6 +94,9 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> MAP_SLICES;
     public static final ModConfigSpec.IntValue VOXEL_RADIUS;
     public static final ModConfigSpec.IntValue MAP_TILE_MAX_AGE_DAYS;
+    public static final ModConfigSpec.IntValue VOXEL_CACHE_MAX_AGE_DAYS;
+    public static final ModConfigSpec.IntValue VOXEL_CACHE_MAINFRAME_MB;
+    public static final ModConfigSpec.IntValue VOXEL_CACHE_TOTAL_MB;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DISABLED_TEAM_PROVIDERS;
     public static final ModConfigSpec.BooleanValue RULES_ENABLED;
     public static final ModConfigSpec.BooleanValue PUSH_ENABLED;
@@ -387,6 +390,18 @@ public final class CloudConfig {
                 "deleted at once.")
             .translation("cccloud.configuration.mapTileMaxAgeDays")
             .defineInRange("mapTileMaxAgeDays", 30, 0, 3650);
+        VOXEL_CACHE_MAX_AGE_DAYS = b.comment("Voxel terrain cached on disk (<world>/cccloud/voxels), which is what the 3D view shows of chunks that are not loaded: a",
+                "chunk that was neither updated nor shown for this many days is deleted (checked at server start, once a day and when this value changes).",
+                "0 keeps it forever. A purged mainframe's terrain is deleted at once.")
+            .translation("cccloud.configuration.voxelCacheMaxAgeDays")
+            .defineInRange("voxelCacheMaxAgeDays", 30, 0, 3650);
+        VOXEL_CACHE_MAINFRAME_MB = b.comment("Voxel terrain on disk: most megabytes per mainframe; the chunks shown longest ago go first. A typical base takes well under 1 MB.")
+            .translation("cccloud.configuration.voxelCacheMainframeMB")
+            .defineInRange("voxelCacheMainframeMB", 32, 1, 4096);
+        VOXEL_CACHE_TOTAL_MB = b.comment("Voxel terrain on disk: most megabytes for all mainframes together. 0 keeps nothing on disk, so the 3D view only shows the",
+                "last known terrain of chunks the server still has in memory.")
+            .translation("cccloud.configuration.voxelCacheTotalMB")
+            .defineInRange("voxelCacheTotalMB", 512, 0, 65536);
         b.pop();
 
         b.push("rules");

@@ -89,6 +89,22 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Every jar knows its build:** version, git commit and a `-dirty` mark for uncommitted changes. `/cccloud version` shows
   it, and the server log names it at start. `./gradlew build -PdevBuild=5` makes a test build `1.0.0-beta.2+dev5`, so the
   mod list and the file name show it too.
+### 3D view: the terrain stays when chunks are not loaded
+- **Network → 3D with the mainframe's chunk unloaded showed the device models on an empty background.** The server has no
+  view of a network that is not loaded, so it answered "out of range" for everything and the browser even dropped what it
+  had. Now the terrain is saved: whenever a chunk near a network unloads, and whenever the view builds a section, it goes
+  to `<world>/cccloud/voxels/<mainframe>/`, and unloaded areas show their last known state, also after a server restart
+  (the network map survives the restart too). Loaded chunks stay exact and live.
+- The view says **Terrain from the last visit** while part of it is not live, and updates by itself when the mainframe
+  comes back.
+- **Safe by design:** the saved terrain never contains ores (they show as stone: what may show near your nodes depends on
+  those nodes, which can change), each mainframe has its own folder, and claims, roles and the range are checked on every
+  request. Purging a mainframe deletes its folder. docs/SECURITY.md has the details.
+- **Cheap for the server:** an unloading chunk outside every network costs one map lookup; one in a view area costs
+  microseconds on the server thread, everything else runs in the background with bounded queues, and nothing is ever
+  loaded or generated for this.
+- New config, live with `/cccloud config reload`: `voxelCacheMaxAgeDays` (30), `voxelCacheMainframeMB` (32),
+  `voxelCacheTotalMB` (512, 0 = nothing on disk). `/cccloud map stats` has a line for it.
 
 ### CC: Cloud Connect – an HTTPS address with one command
 - **`/cccloud internet connect mybase`** gives your dashboard the address **https://mybase.cccloud.dev**: HTTPS, from

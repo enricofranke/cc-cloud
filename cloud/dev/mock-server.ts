@@ -2675,7 +2675,8 @@ export async function createMockServer(opts: MockOptions = {}) {
         if (!sec) voxelCache.set(key, (sec = JSON.stringify(voxelSection(dim, cx, cy, cz))));
         const v = JSON.parse(sec) as { palette: { id: string; color: number; flags: number }[]; runs: string; exposed: number };
         const data = { palette: v.palette, runs: new Uint8Array(Buffer.from(v.runs, "base64")), exposed: v.exposed };
-        return { cx, cy, cz, status: have && have === sectionHash(data) ? "same" : "ok", data };
+        // the mock has no chunks: with the mainframe offline everything counts as last known terrain
+        return { cx, cy, cz, status: have && have === sectionHash(data) ? "same" : "ok", data, old: !g.m.online };
       });
       const raw = encodeBatch(dim, out);
       const gz = /\bgzip\b/.test(String(req.headers["accept-encoding"] ?? ""));
