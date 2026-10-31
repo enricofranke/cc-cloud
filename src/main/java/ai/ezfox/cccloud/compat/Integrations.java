@@ -57,6 +57,7 @@ public final class Integrations {
         test("storage_sophisticated_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::sophisticatedController);
         test("storage_occultism_actuator", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::occultismActuator);
         test("storage_functionalstorage_controller", () -> ai.ezfox.cccloud.compat.storage.StorageGameTests::functionalStorageController);
+        test("storage_sophisticated_backpack", () -> ai.ezfox.cccloud.compat.storage.BackpackGameTests::backpack);
 
         // 2. Advanced AE quantum computer.
         optional("advanced_ae", () -> ai.ezfox.cccloud.compat.advancedae.AdvancedAeCards::init);
@@ -120,6 +121,14 @@ public final class Integrations {
         optional("strainers", () -> ai.ezfox.cccloud.compat.strainers.StrainerCards::init);
         optional("pipez", () -> ai.ezfox.cccloud.compat.pipez.PipeCards::init);
         optional("classicpipes", () -> ai.ezfox.cccloud.compat.classicpipes.PipeNetworkCards::init);
+        // Wave 5: magic, progress and world mods.
+        optional("neovitae", () -> ai.ezfox.cccloud.compat.neovitae.NeoVitaeCards::init);
+        optional("thaumaturge", () -> ai.ezfox.cccloud.compat.thaumaturge.ThaumaturgeCards::init);
+        optional("appliedthaumaturge", () -> ai.ezfox.cccloud.compat.appliedthaumaturge.AppliedThaumaturgeCards::init);
+        optional("silentgear", () -> ai.ezfox.cccloud.compat.silentgear.SilentGearCards::init);
+        optional("apothic_enchanting", () -> ai.ezfox.cccloud.compat.apothicenchanting.LibraryCards::init);
+        optional("iceandfire", () -> ai.ezfox.cccloud.compat.iceandfire.DragonForgeCards::init);
+        optional("ftbranks", () -> ai.ezfox.cccloud.compat.ftbranks.RanksCard::init);
 
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,

@@ -87,6 +87,15 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   stepcrafter: { cat: "storage", icon: "stepcrafter:step_crafting_monitor" },
   refinedtypes: { cat: "storage", icon: "refinedtypes:network_energizer" },
   enderthing: { cat: "storage", icon: "enderthing:key_chest" },
+  // wave 5
+  neovitae: { cat: "magic", icon: "neovitae:ara_vitae" },
+  thaumaturge: { cat: "magic", icon: "thaumaturge:jar_normal" },
+  appliedthaumaturge: { cat: "magic", icon: "appliedthaumaturge:arcane_assembler" },
+  silentgear: { cat: "machines", icon: "silentgear:alloy_forge" },
+  apothic_enchanting: { cat: "magic", icon: "apothic_enchanting:library" },
+  iceandfire: { cat: "world", icon: "iceandfire:dragonforge_fire_core" },
+  ftbranks: { cat: "server", icon: "minecraft:command_block" },
+  sophisticatedbackpacks: { cat: "storage", icon: "sophisticatedbackpacks:backpack" },
 };
 
 /** The generic cards that work with almost any mod. */

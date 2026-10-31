@@ -323,6 +323,8 @@
   "cccloud.configuration.peripheralCard": "Peripherie-Karte für andere CC-Peripheriegeräte",
   "cccloud.configuration.peripheralPollSeconds": "Peripherie-Karte: Sekunden zwischen Abfragen",
   "cccloud.configuration.warpsCard": "Warps-Karte (FTB Essentials)",
+  "cccloud.configuration.animaCard": "Anima-Karte (Neo Vitae)",
+  "cccloud.configuration.ranksCard": "Ränge-Karte (FTB Ranks)",
   "cccloud.configuration.mffsRequirePin": "MFFS-Feldschalter braucht die PIN",
   "cccloud.configuration.server": "Server & Team",
   "cccloud.configuration.serverCard": "Server-Karte an Mainframes",

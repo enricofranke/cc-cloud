@@ -32,7 +32,9 @@ public final class StorageControllers {
         "cookingforblockheads", Map.of(
             "fridge", "Fridge", "*_fridge", "Fridge",
             "cabinet", "Kitchen Cabinet", "*_cabinet", "Kitchen Cabinet",
-            "counter", "Kitchen Counter", "*_counter", "Kitchen Counter"));
+            "counter", "Kitchen Counter", "*_counter", "Kitchen Counter"),
+        // wave 5: a backpack placed on the ground (it exposes its inventory; "*_backpack" = any tier)
+        "sophisticatedbackpacks", Map.of("backpack", "Backpack", "*_backpack", "Backpack"));
 
     static final Map<String, Map<String, String>> FLUID_BLOCKS = Map.of(
         "dimstorage", Map.of("dimensional_tank", "Dimensional Tank"));

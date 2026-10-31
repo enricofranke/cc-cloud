@@ -49,6 +49,7 @@ public final class ProbeTests {
     public static void registerTestCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(Capabilities.Energy.BLOCK, BlockEntityType.BEACON, (be, side) -> side == null ? INTERNAL : null);
         event.registerBlockEntity(Capabilities.Energy.BLOCK, BlockEntityType.ENCHANTING_TABLE, (be, side) -> side == Direction.UP ? TOP_ONLY : null);
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, BlockEntityType.BELL, (be, side) -> side == Direction.UP ? TOP_ONLY : null);
     }
 
     /** Claim stand-in (GameTest runs only). */
@@ -198,18 +199,19 @@ public final class ProbeTests {
      */
     public static void sideFallbackAndHint(GameTestHelper helper) {
         BlockPos beacon = new BlockPos(1, 1, 2);
-        BlockPos table = new BlockPos(3, 1, 2);
+        BlockPos bell = new BlockPos(3, 1, 2);
         helper.setBlock(beacon, Blocks.BEACON);
-        helper.setBlock(table, Blocks.ENCHANTING_TABLE);
+        // A bell, not an enchanting table: Apothic Enchanting gives the vanilla table an item capability of its own.
+        helper.setBlock(bell, Blocks.BELL);
         helper.setBlock(beacon.north(), ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.SOUTH));
-        helper.setBlock(table.north(), ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.SOUTH));
+        helper.setBlock(bell.north(), ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.SOUTH));
         var onBeacon = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(beacon.north()));
-        var onTable = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(table.north()));
+        var onBell = (CloudUplinkBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bell.north()));
         helper.succeedWhen(() -> {
             helper.assertTrue("energy".equals(onBeacon.deviceKind()), "side lookup falls back to the internal view: " + onBeacon.deviceKind());
             helper.assertTrue(onBeacon.exposedElsewhere() == null, "no hint when there is a card");
-            helper.assertTrue(onTable.deviceKind().isEmpty(), "nothing on the north face, nothing inside: no card");
-            helper.assertTrue(onTable.exposedElsewhere() == Direction.UP, "the hint names the top: " + onTable.exposedElsewhere());
+            helper.assertTrue(onBell.deviceKind().isEmpty(), "nothing on the north face, nothing inside: no card");
+            helper.assertTrue(onBell.exposedElsewhere() == Direction.UP, "the hint names the top: " + onBell.exposedElsewhere());
         });
     }
 

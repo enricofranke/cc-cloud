@@ -24,6 +24,8 @@ public final class IntegrationConfig {
     public static final ModConfigSpec.BooleanValue WAYSTONES_CARD;
     public static final ModConfigSpec.BooleanValue QUESTS_CARD;
     public static final ModConfigSpec.BooleanValue WARPS_CARD;
+    public static final ModConfigSpec.BooleanValue ANIMA_CARD;
+    public static final ModConfigSpec.BooleanValue RANKS_CARD;
 
     static {
         var b = new ai.ezfox.cccloud.config.MarkedBuilder();
@@ -86,6 +88,12 @@ public final class IntegrationConfig {
         WARPS_CARD = b.comment("FTB Essentials: a read-only Warps card with the server's warps, their dimension and coordinates (needs view.positions).")
             .translation("cccloud.configuration.warpsCard")
             .define("warpsCard", true);
+        ANIMA_CARD = b.comment("Neo Vitae: an Anima card with the EV of the mainframe's owner (needs view.positions).")
+            .translation("cccloud.configuration.animaCard")
+            .define("animaCard", true);
+        RANKS_CARD = b.comment("FTB Ranks: a read-only Ranks card with the server's ranks and how many online players have them (needs view.positions).")
+            .translation("cccloud.configuration.ranksCard")
+            .define("ranksCard", true);
         b.pop();
         SPEC = b.build();
     }

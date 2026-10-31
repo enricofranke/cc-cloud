@@ -142,6 +142,22 @@ Controls follow the [permissions](accounts.md): buttons and switches need “Use
 | The Undergarden (`undergarden`) | 26.1.2-0.9.8 | Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether) | – | unit tests; not in a dev world |
 | All the Modium (`allthemodium`) | 26.1.2-4.2.0 | Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges | – | unit tests; not in a dev world |
 
+### Wave 5 – magic, progress and world
+
+| Mod | Version | What the card shows | Controls | Tested |
+|---|---|---|---|---|
+| Neo Vitae (`neovitae`) | 1.1.38 | **Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards. | none | yes (lone altar, ritual stone and forge; Anima card with EV set through the mod) |
+| Thaumaturge (`thaumaturge`) | 1.0.2 | **Essentia** for warded and void jars and the reservoir: fill gauge and what is inside. **Aura Node**: type, state, aspects against the node's base, vis and flux of the chunk. **Runic Matrix**: crafting state, stability, essentia still to pay, chunk aura; warn alert when an infusion turns unstable. **Crucible**: heat, water, essentia and its limit. | none | yes (jar, node with aspects, lone matrix, crucible; a running infusion was not tested) |
+| Applied Thaumaturge (`appliedthaumaturge`) | 1.0.0 | The bridge between Thaumaturge and AE2. **Arcane Assembler**: status, progress, vis it can draw, link to a vis source, patterns. **ME Essentia** for the Essentia Interface and Infusion Provider: network online, the essentia stored in the ME network. | none | yes (assembler, Essentia Interface; offline, without an ME network) |
+| Silent Gear (`silentgear`) | 4.2.3 | **Machine** for the alloy makers (Alloy Forge, Crude and Super Mixer, Recrystallizer, Refabricator), Metal Press, Material Grader and Salvager: status, progress, what goes in, what comes out. **Starlight Charger**: charge, progress. | none | yes (Alloy Forge and Metal Press; Starlight Charger; the running progress was not tested) |
+| Apothic Enchanting (`apothic_enchanting`) | 2.1.0 | **Library of Alexandria** and **Library of the End**: how many enchantments are stored and the fullest ones, with the level you can take out against the highest seen and the points behind it. | none | yes (book deposited through the mod, row read back) |
+| Ice And Fire Community Edition (`iceandfire`) | 2.2-beta.4 | **Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show. | none | yes (lone fire core; a built forge with a dragon was not tested) |
+| FTB Ranks (`ftbranks`) | 26.1.2.4 | **Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`. | none | yes (ranks from the mod's manager) |
+| Sophisticated Backpacks (`sophisticatedbackpacks`) | 3.26.11 | A placed backpack is a **Storage** card with count and search, through its item capability and the shared storage controller list. Backpacks worn by a player are not covered. | as Storage card | yes (placed iron backpack, 100 ingots inserted through the capability) |
+| Roots Classic (`rootsclassic`) | 1.6.7 | not in this wave: altar ritual and imbuer progress are public getters, a real card is possible | – | – |
+| Mahou Tsukai (`mahoutsukai`) | 1.36.36 | not in this wave: mana is a player attachment, a restricted card is possible | – | – |
+| Spice of Life: Carrot Edition (`solcarrot`) | 1.19.0 | not in this wave: `FoodList` needs the player object, so a restricted card would only work while the owner is online | – | – |
+
 ### Tech and logistics
 
 | Mod | Version | What the card shows | Controls | Tested |
@@ -180,6 +196,22 @@ Controls follow the [permissions](accounts.md): buttons and switches need “Use
 - **Iron Jetpacks** (`ironjetpacks`): no blocks
 - **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
 - **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
+- **Apotheosis** (`apotheosis`): the Gem Case exposes an item capability, so the Peripheral card applies; the reforging, augmenting and salvaging tables are crafting screens without state
+- **Apothic Attributes** (`apothic_attributes`): a library, no block entities
+- **Silent's Gems** (`silentgems`): gems and teleporters; a teleporter only holds a destination, no power or progress to watch
+- **Potions Master** (`potionsmaster`): no block entities, the mortar is a plain block
+- **Iron's Arms 'n Artifice** (`irons_artifice`): no block entities
+- **Iron's Gems 'n Jewelry** (`irons_jewelry`): no block entities
+- **FTB Ultimine** (`ftbultimine`): no blocks, a per-player toggle
+- **FTB Filter System** (`ftbfiltersystem`): an item filter other mods read
+- **Lootr** (`lootr`): contents are per player and only exist once a player opens the chest; showing them would spoil the loot
+- **Hellish Trials** (`hellish_trials`): worldgen, three classes
+- **Aquaculture 2** (`aquaculture`): Tackle Box and Neptune's Bounty expose an item capability, so the Peripheral card applies
+- **Starcatcher** (`starcatcher`): the tackle box exposes an item capability (Peripheral card); catches are player attachments, a restricted card is possible
+- **Jonn's Trophies** (`trophymanager`): a trophy is a mounted mob or item, nothing changes
+- **Artifacts** (`artifacts`): items
+- **Comforts** (`comforts`): sleeping bags and hammocks, used like beds
+- **Baubley Heart Canisters** (`bhc`): items
 - **Integrated Terminals** (`integratedterminals`): its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents
 - **Cable Tiers** (`cabletiers`): faster versions of RS devices (disk drives, interfaces, importers, exporters, autocrafters) on the RS network; their contents and jobs show through the RS Cloud Bridge
 - **Extra Disks** (`extradisks`): bigger RS disks and storage blocks; capacity and contents show through the RS Cloud Bridge

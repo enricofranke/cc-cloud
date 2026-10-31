@@ -45,6 +45,15 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Enderthing:** Ender Key Chests as searchable storage cards. Private chests stay private.
 - Checked and left out, with the reasons in the compatibility list: Cable Tiers and Extra Disks (the RS Cloud Bridge covers
   them), Laser Bridges, Universal Grid and the mods that only add items.
+### Magic, progress and world mods
+- **Neo Vitae:** Ara Vitae (blood, tier, progress), Master Ritual Stone and Hellfire Forge cards, and an Anima card with your EV (only for those allowed to see positions). New server setting `animaCard`.
+- **Thaumaturge:** Essentia, Aura Node, Runic Matrix and Crucible cards, with a warning when an infusion turns unstable.
+- **Applied Thaumaturge:** Arcane Assembler card and an ME Essentia card with the essentia stored in the ME network.
+- **Silent Gear:** one Machine card for the alloy makers, Metal Press, Material Grader and Salvager, plus a Starlight Charger card.
+- **Apothic Enchanting:** Library card with the stored enchantments, their levels and points.
+- **Ice and Fire:** Dragon Forge card with state, progress, inputs and output.
+- **FTB Ranks:** a Ranks card with power and online counts (only for those allowed to see positions). New server setting `ranksCard`.
+- **Sophisticated Backpacks:** placed backpacks are Storage cards with search.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.

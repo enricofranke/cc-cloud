@@ -792,6 +792,276 @@
    "skipped": true
   },
   {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Neo Vitae",
+   "id": "neovitae",
+   "version": "1.1.38",
+   "what": "**Ara Vitae** (the blood altar): status, tier, blood gauge and mB, recipe progress, the item on it, rune bonuses; warn alert when a recipe runs out of blood. **Master Ritual Stone**: ritual, running or suspended by redstone, running time, EV cost. **Hellfire Forge**: status, spiritus against what the recipe needs, progress, output. **Anima** mainframe card (restricted, `view.positions`): the EV (the mod's life points) of the mainframe's owner with a 60-minute chart, also while the owner is offline; config `world.animaCard`. Blood tanks and batteries stay on the generic Tank and Energy cards.",
+   "controls": "none",
+   "tested": "yes (lone altar, ritual stone and forge; Anima card with EV set through the mod)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Thaumaturge",
+   "id": "thaumaturge",
+   "version": "1.0.2",
+   "what": "**Essentia** for warded and void jars and the reservoir: fill gauge and what is inside. **Aura Node**: type, state, aspects against the node's base, vis and flux of the chunk. **Runic Matrix**: crafting state, stability, essentia still to pay, chunk aura; warn alert when an infusion turns unstable. **Crucible**: heat, water, essentia and its limit.",
+   "controls": "none",
+   "tested": "yes (jar, node with aspects, lone matrix, crucible; a running infusion was not tested)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Applied Thaumaturge",
+   "id": "appliedthaumaturge",
+   "version": "1.0.0",
+   "what": "The bridge between Thaumaturge and AE2. **Arcane Assembler**: status, progress, vis it can draw, link to a vis source, patterns. **ME Essentia** for the Essentia Interface and Infusion Provider: network online, the essentia stored in the ME network.",
+   "controls": "none",
+   "tested": "yes (assembler, Essentia Interface; offline, without an ME network)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Silent Gear",
+   "id": "silentgear",
+   "version": "4.2.3",
+   "what": "**Machine** for the alloy makers (Alloy Forge, Crude and Super Mixer, Recrystallizer, Refabricator), Metal Press, Material Grader and Salvager: status, progress, what goes in, what comes out. **Starlight Charger**: charge, progress.",
+   "controls": "none",
+   "tested": "yes (Alloy Forge and Metal Press; Starlight Charger; the running progress was not tested)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Apothic Enchanting",
+   "id": "apothic_enchanting",
+   "version": "2.1.0",
+   "what": "**Library of Alexandria** and **Library of the End**: how many enchantments are stored and the fullest ones, with the level you can take out against the highest seen and the points behind it.",
+   "controls": "none",
+   "tested": "yes (book deposited through the mod, row read back)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Ice And Fire Community Edition",
+   "id": "iceandfire",
+   "version": "2.2-beta.4",
+   "what": "**Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show.",
+   "controls": "none",
+   "tested": "yes (lone fire core; a built forge with a dragon was not tested)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "FTB Ranks",
+   "id": "ftbranks",
+   "version": "26.1.2.4",
+   "what": "**Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`.",
+   "controls": "none",
+   "tested": "yes (ranks from the mod's manager)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Sophisticated Backpacks",
+   "id": "sophisticatedbackpacks",
+   "version": "3.26.11",
+   "what": "A placed backpack is a **Storage** card with count and search, through its item capability and the shared storage controller list. Backpacks worn by a player are not covered.",
+   "controls": "as Storage card",
+   "tested": "yes (placed iron backpack, 100 ingots inserted through the capability)",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Apotheosis",
+   "id": "apotheosis",
+   "version": "9.1.0",
+   "what": "no own card: the Gem Case exposes an item capability, so the Peripheral card applies; the reforging, augmenting and salvaging tables are crafting screens without state",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Apothic Attributes",
+   "id": "apothic_attributes",
+   "version": "3.1.0",
+   "what": "skipped: a library, no block entities",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Silent's Gems",
+   "id": "silentgems",
+   "version": "5.1.4",
+   "what": "skipped: gems and teleporters; a teleporter only holds a destination, no power or progress to watch",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Potions Master",
+   "id": "potionsmaster",
+   "version": "2.0.0",
+   "what": "skipped: no block entities, the mortar is a plain block",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Iron's Arms 'n Artifice",
+   "id": "irons_artifice",
+   "version": "1.1.0",
+   "what": "skipped: no block entities",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Iron's Gems 'n Jewelry",
+   "id": "irons_jewelry",
+   "version": "2.0.2.1",
+   "what": "skipped: no block entities",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "FTB Ultimine",
+   "id": "ftbultimine",
+   "version": "26.1.2.5",
+   "what": "skipped: no blocks, a per-player toggle",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "FTB Filter System",
+   "id": "ftbfiltersystem",
+   "version": "26.1.2.2",
+   "what": "skipped: an item filter other mods read",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Lootr",
+   "id": "lootr",
+   "version": "1.23.38",
+   "what": "skipped: contents are per player and only exist once a player opens the chest; showing them would spoil the loot",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Hellish Trials",
+   "id": "hellish_trials",
+   "version": "1.0.7",
+   "what": "skipped: worldgen, three classes",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Aquaculture 2",
+   "id": "aquaculture",
+   "version": "2.9.2",
+   "what": "no own card: Tackle Box and Neptune's Bounty expose an item capability, so the Peripheral card applies",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Starcatcher",
+   "id": "starcatcher",
+   "version": "3.3.8.1",
+   "what": "no own card yet: the tackle box exposes an item capability (Peripheral card); catches are player attachments, a restricted card is possible",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Jonn's Trophies",
+   "id": "trophymanager",
+   "version": "3.0.0",
+   "what": "skipped: a trophy is a mounted mob or item, nothing changes",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Artifacts",
+   "id": "artifacts",
+   "version": "15.1.3",
+   "what": "skipped: items",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Comforts",
+   "id": "comforts",
+   "version": "15.0.0",
+   "what": "skipped: sleeping bags and hammocks, used like beds",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Baubley Heart Canisters",
+   "id": "bhc",
+   "version": "1.7.3",
+   "what": "skipped: items",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Roots Classic",
+   "id": "rootsclassic",
+   "version": "1.6.7",
+   "what": "not in this wave: altar ritual and imbuer progress are public getters, a real card is possible",
+   "controls": "–",
+   "tested": "–",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Mahou Tsukai",
+   "id": "mahoutsukai",
+   "version": "1.36.36",
+   "what": "not in this wave: mana is a player attachment, a restricted card is possible",
+   "controls": "–",
+   "tested": "–",
+   "skipped": false
+  },
+  {
+   "group": "Wave 5 – magic, progress and world",
+   "mod": "Spice of Life: Carrot Edition",
+   "id": "solcarrot",
+   "version": "1.19.0",
+   "what": "not in this wave: `FoodList` needs the player object, so a restricted card would only work while the owner is online",
+   "controls": "–",
+   "tested": "–",
+   "skipped": false
+  },
+  {
    "group": "Tech and logistics",
    "mod": "Integrated Tunnels",
    "id": "integratedtunnels",

@@ -365,6 +365,23 @@ def integrationMods = [
     stepcrafter         : ["curse.maven:stepcrafter-1398054:${stepcrafter_curse_file}", "maven.modrinth:refined-storage:${rs_modrinth_version}"],
     refinedtypes        : ["curse.maven:refinedtypes-1327983:${refinedtypes_curse_file}", "maven.modrinth:refined-storage:${rs_modrinth_version}"],
     enderthing          : ["curse.maven:enderthing-244421:${enderthing_curse_file}"],
+    // Wave 5.
+    neovitae            : ["curse.maven:neovitae-1404763:${neovitae_curse_file}", "maven.modrinth:geckolib:${geckolib_modrinth_version}",
+                           "curse.maven:modonomicon-538392:${modonomicon_curse_file}"],
+    thaumaturge         : ["curse.maven:thaumaturge-1628024:${thaumaturge_curse_file}", "top.theillusivec4.curios:curios-neoforge:${curios_version}",
+                           "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
+    // The Thaumaturge bridge to AE2 (compiled against the full AE2 jar, like ME Requester).
+    appliedthaumaturge  : ["curse.maven:appliedthaumaturge-1718689:${appliedthaumaturge_curse_file}", "curse.maven:thaumaturge-1628024:${thaumaturge_curse_file}",
+                           "org.appliedenergistics:appliedenergistics2:${ae2_version}", "org.appliedenergistics:guideme:${guideme_version}",
+                           "top.theillusivec4.curios:curios-neoforge:${curios_version}", "curse.maven:lithostitched-936015:${lithostitched_curse_file}"],
+    silentgear          : ["curse.maven:silentgear-297039:${silentgear_curse_file}", "curse.maven:silentlib-242998:${silentlib_curse_file}"],
+    apothicenchanting   : ["curse.maven:apothicenchanting-1063926:${apothicenchanting_curse_file}", "maven.modrinth:placebo:${placebo_modrinth_version}",
+                           "curse.maven:apothicattributes-898963:${apothicattributes_curse_file}"],
+    iceandfire          : ["curse.maven:iceandfire-1040076:${iceandfire_curse_file}", "curse.maven:uranus-1010827:${uranus_curse_file}",
+                           "curse.maven:jupiter-1072905:${jupiter_curse_file}"],
+    ftbranks            : ["dev.ftb.mods:ftb-ranks-neoforge:${ftbranks_version}", "dev.ftb.mods:ftb-library-neoforge:${ftblibrary_version}"],
+    sophisticatedbackpacks: ["curse.maven:sophisticatedbackpacks-422301:${sophisticatedbackpacks_curse_file}",
+                             "curse.maven:sophisticatedcore-618298:${sophisticatedcore_curse_file}"],
     curios         : ["top.theillusivec4.curios:curios-neoforge:${curios_version}"],
     // The tooltip plugin (compat/jade); Jade only checks its providers on a physical client: use runClient.
     jade           : ["maven.modrinth:jade:${jade_modrinth_version}"],
