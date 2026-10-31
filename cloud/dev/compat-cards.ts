@@ -1094,4 +1094,16 @@ export const COMPAT_CARDS: SampleCard[] = [
       button("cancel", "Cancel all tasks", { confirm: true, color: "red" }),
     ],
   },
+
+  // Refined Types
+  {
+    key: "refinedtypes_energizer",
+    mod: "refinedtypes",
+    title: "Network Energizer",
+    template: "refinedtypes_energizer",
+    widgets: [
+      percent("reserve", "Reserve on Energy Disks", { color: "green", icon: "bolt", warn: 10, crit: 3 }, 64.0),
+      label("energy", "Stored", "64.0 M / 100 M FE"),
+    ],
+  },
 ];

@@ -890,6 +890,16 @@
    "controls": "Cancel all tasks (`act.buttons`, confirm)",
    "tested": "partly: a monitor without a network (card, \"Not active\", Cancel refused); a task needs a full RS network with patterns",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Refined Types",
+   "id": "refinedtypes",
+   "version": "1.0.2",
+   "what": "**Network Energizer** card: the FE reserve on Energy Disks that keeps the RS network alive, as a gauge and amount; warn alert once below 10 %. Energy, Soul, Source and Essentia storage live on RS disks and show through the RS Cloud Bridge.",
+   "controls": "none: the redstone mode is a screen setting without a public setter",
+   "tested": "partly: lone energizer (\"No Energy Disks\"); a reserve needs an RS network with Energy Disks",
+   "skipped": false
   }
  ]
 }
