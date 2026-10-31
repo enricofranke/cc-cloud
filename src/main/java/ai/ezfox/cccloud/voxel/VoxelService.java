@@ -550,7 +550,7 @@ public final class VoxelService {
         }
         var t0 = MapStats.start();
         boolean neighbors = budgetUsed < TICK_BUDGET_NANOS;
-        if (snapshot(level, chunk, hits, MAX_SNAPSHOTS, true, neighbors)) budgetUsed += MapStats.LAST_KNOWN.snapshot(t0, neighbors);
+        budgetUsed += snapshot(level, chunk, hits, MAX_SNAPSHOTS, true, neighbors) ? MapStats.LAST_KNOWN.snapshot(t0, neighbors) : System.nanoTime() - t0[0];
     }
 
     private static boolean budgetLeft(MinecraftServer server) {
@@ -567,7 +567,7 @@ public final class VoxelService {
         while (!DEFERRED.isEmpty() && budgetLeft(server)) {
             var next = DEFERRED.poll();
             var t0 = MapStats.start();
-            if (snapshot(next.level(), next.chunk(), next.hits(), MAX_SNAPSHOTS, true, false)) budgetUsed += MapStats.LAST_KNOWN.snapshot(t0, false);
+            budgetUsed += snapshot(next.level(), next.chunk(), next.hits(), MAX_SNAPSHOTS, true, false) ? MapStats.LAST_KNOWN.snapshot(t0, false) : System.nanoTime() - t0[0];
         }
     }
 

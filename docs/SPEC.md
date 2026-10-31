@@ -1135,7 +1135,8 @@ the terrain is saved and unloaded areas still show.
   the neighbors in the four chunks around it are copied, and over a budget of 0.5 ms per tick (a whole area unloading at
   once) they are left out, which only costs blocks exposed across the chunk border. "Is this chunk in any area" is one
   map lookup per region of 8×8 chunks (`VoxelAreas`, rebuilt in the background when an area changes), so a chunk elsewhere
-  costs nothing more. At most 512 snapshots wait for the 2 background threads; more are dropped (the section stays as it
+  costs nothing more. Over 2 ms per tick the chunk itself only goes in a queue of at most 512 and waits for the next ticks.
+  At most 512 snapshots wait for the 2 background threads; beyond either limit they are dropped (the section stays as it
   was). Unchanged sections are not built or written. Nothing is ever loaded or generated. At server stop what is loaded
   of every area is copied once, because chunks with tickets never unload.
 - **The last known area:** a network that is not loaded has no live view, so `VoxelAreas` keeps per mainframe and
@@ -1150,7 +1151,7 @@ the terrain is saved and unloaded areas still show.
   and 3D view before the mainframe's chunk loads; the first network pass of a loaded mainframe replaces it.
 - **Limits:** `map.voxelCacheMaxAgeDays` (default 30, 0 = keep): a column neither written nor read for that many days
   goes, a mainframe's `area.gz` with its last column once it is that old too (server start, once a day, on change).
-  `map.voxelCacheMainframeMB` (default 32) and `map.voxelCacheTotalMB` (default 512, 0 = nothing on disk): the columns
+  `map.voxelCacheMainframeMB` (default 32) and `map.voxelCacheTotalMB` (default 512, 0 = no terrain on disk): the columns
   used longest ago go first, down to 90 % of the cap, on the write that crosses it and at the sweep; sizes count 4 KB
   blocks. A typical base stays far below this, see the measurements below. A purge deletes the mainframe's folder.
 - **Dashboard:** the batch marks these sections (`"old":true`), the 3D view shows "Terrain from the last visit" next
@@ -1159,7 +1160,20 @@ the terrain is saved and unloaded areas still show.
   and served, and the bytes on disk.
 - **Open:** an area nobody loaded since the update stays empty (chunks are never read from region files for this).
 
-MEASUREMENTS_PLACEHOLDER
+**Measurements** (`./gradlew runGameTestServer -PvoxelBench -PgameTests=cccloud:voxel_disk_bench`, 2026-10-31, a mainframe
+at the default radius of 64 on default terrain, 69 chunks in the area, on a machine at load ~35; times are CPU time of the thread):
+- **Server thread per unload:** a chunk outside every area 20 ns (one lookup). A chunk in an area 18–37 µs without
+  neighbors, 124–222 µs with them; the very first one 5.5 ms (class loading, once per server). Per tick at most
+  `TICK_BUDGET_NANOS` (0.5 ms) with neighbors and `TICK_LIMIT_NANOS` (2 ms) in all, plus the one chunk that crosses it;
+  the rest of a large area waits for the next ticks (queue of 512 chunks). Nothing is dropped at this size.
+- **Disk:** 69 column files, 264 sections (165 with blocks), 38 KB of data, about 148 B per section; 276 KB on a file
+  system with 4 KB blocks. The 32 MB cap holds around 8,000 such columns.
+- **Completeness:** the first fill, with most neighbors left out over the budget, knows 99.6 % of the exposed blocks of
+  the live view (47,172 of 47,379), and 99.99 % after one look at the live view.
+- **Second unload:** 260 of 264 sections unchanged, so nothing is written. After a reload of the chunks up to 40 sections
+  are built again once, because the block palette comes back in a different order.
+- **Cold view of 464 sections:** live from a cold memory cache 242–754 ms until the answer (3.1–4.7 ms server thread, 150 ms
+  background); from disk with a cold memory cache 33–42 ms (0.7–1.0 ms, 23–28 ms); from memory 26 ms.
 
 #### X-ray guard for slices and voxels (security review M4)
 - Config `map.mapSlices`: `auto` (default: on in singleplayer and for LAN-only dashboards, off with `webAllowInternet`), `on`, `off`. Disabled → `404 disabled` for slice tiles.
