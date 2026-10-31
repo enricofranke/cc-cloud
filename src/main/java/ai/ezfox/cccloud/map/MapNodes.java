@@ -29,12 +29,24 @@ public final class MapNodes {
      * @param viewPositions whether the player has {@code view.positions} on a mainframe; other networks are left out
      */
     public static JsonObject build(List<Network> networks, Predicate<UUID> viewPositions) {
+        return build(networks, viewPositions, (dim, x, y, z) -> false);
+    }
+
+    /** A place the player must not see into (another team's claim): like the Cloud Analyzer, a waypoint is an X-ray. */
+    @FunctionalInterface
+    public interface Hidden {
+        boolean at(String dim, double x, double y, double z);
+    }
+
+    /** As {@link #build(List, Predicate)}, without the nodes and devices at {@code hidden} places. */
+    public static JsonObject build(List<Network> networks, Predicate<UUID> viewPositions, Hidden hidden) {
         var array = new JsonArray();
         boolean truncated = false;
         outer:
         for (var net : networks) {
             if (!viewPositions.test(net.mainframeId())) continue;
             for (var node : net.result().nodes()) {
+                if (hidden.at(node.dim(), node.x(), node.y(), node.z())) continue;
                 if (array.size() >= MAX_NODES) {
                     truncated = true;
                     break outer;
@@ -42,6 +54,7 @@ public final class MapNodes {
                 array.add(entry(net, node.id(), node.type().id, node.dim(), node.x(), node.y(), node.z()));
             }
             for (var device : net.result().devices()) {
+                if (hidden.at(device.dim(), device.x(), device.y(), device.z())) continue;
                 if (array.size() >= MAX_NODES) {
                     truncated = true;
                     break outer;
