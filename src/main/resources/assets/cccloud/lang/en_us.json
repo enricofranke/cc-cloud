@@ -555,7 +555,7 @@
   "cccloud.tablet.alert_more": "+%s more",
   "cccloud.tablet.ok": "OK",
   "cccloud.tablet.cancel": "Cancel",
-  "cccloud.tablet.confirm": "Sure?",
+  "cccloud.tablet.confirm": "Click again to confirm",
   "cccloud.tablet.set": "Set",
   "cccloud.tablet.search": "Search",
   "cccloud.tablet.side.top": "Top",

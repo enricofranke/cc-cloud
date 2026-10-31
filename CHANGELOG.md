@@ -14,6 +14,12 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   dashboard that reconnects gets the same history. Restricted cards' alerts and player names stay filtered as on the web.
 - **Alert pop-ups:** with an Advanced Cloud Tablet in your inventory or Curios slot, your mainframe's alerts appear as a
   toast, also with the tablet closed. At most 3 at once, then one every 4 seconds; a switch in the Alerts tab turns them off.
+- **Buttons with a confirmation work.** The hint after the first click pushed the whole list down, so the second click
+  landed on the button above: Reboot, Shut down, scenes and "All on" with a confirmation seemed dead or pressed the wrong
+  button. Now the button stays where it is and says "Click again to confirm".
+- **Messages stay visible when you scrolled down:** errors like "Read-only" and the PIN prompt were at the top of the list,
+  out of sight. Errors float over the list now, the PIN prompt scrolls into view with the cursor in it and Enter sends it.
+- The Computer card's Turn on, Reboot and Shut down are greyed out when they make no sense, as on the dashboard.
 
 ### Fixes
 - **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.

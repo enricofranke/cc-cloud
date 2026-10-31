@@ -714,6 +714,7 @@ A handheld item that opens your dashboard **in-game** – a native screen with t
 - Works within network range of any node (mainframe or relay). The **Advanced Cloud Tablet** also works anywhere an Ender Relay reaches.
 - Uses **your role** on that mainframe: viewers watch, operators control, admins edit.
 - Optional key binding to open it (unbound by default; set it under Controls) while the tablet is in your inventory or a Curios slot.
+- Buttons that ask for confirmation say **Click again to confirm** after the first click; click them again within 3 seconds. Buttons with a PIN ask for it at the top of the list.
 - The **Alerts** tab shows the latest alerts of the mainframe, also those from while the tablet was closed (kept until the server restarts). You see what your role may see, as on the dashboard.
 - With an **Advanced Cloud Tablet** in your inventory or a Curios slot, alerts of its mainframe pop up as a toast, even with the tablet closed. A switch at the top of the Alerts tab turns that off for this tablet. If many alerts come at once, the toast counts the rest.
 - Crafted from a CC pocket computer and a Cloud Core (advanced: plus gold and an ender pearl).
