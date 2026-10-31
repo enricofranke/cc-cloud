@@ -4,6 +4,13 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Upgrades by right-click
+- **Right-click a mainframe with an upgrade in your hand and it goes in.** The Quantum Core goes to its own slot, cards
+  and the Chunk Anchor to the first free one. A higher tier replaces a card of the same type and the old card comes back
+  to you; the same or a lower tier is refused, and so is a full mainframe. The action bar says what happened. The right
+  is the same as for the Upgrades tab: players without "Manage devices" change nothing, and a claim mod that refuses the
+  click still wins.
+
 ### CC: Cloud Connect – an HTTPS address with one command
 - **`/cccloud internet connect mybase`** gives your dashboard the address **https://mybase.cccloud.dev**: HTTPS, from
   anywhere, with no port forwarding, no domain and no proxy (server owner, op level 4). The server keeps one outbound

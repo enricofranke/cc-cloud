@@ -670,7 +670,7 @@ New in v0.7: mainframe upgrades for big bases, the **Cloud Tablet** for the dash
 
 ## Mainframe upgrades {#upgrades}
 
-The mainframe has **4 upgrade slots** in its screen (hoppers cannot insert). Without upgrades it handles:
+The mainframe has **4 upgrade slots** in its screen (hoppers cannot insert). To install one, right-click the mainframe with the upgrade in your hand, or put it in on the Upgrades tab. A higher tier replaces a card of the same type and you get the old card back; the same or a lower tier is refused. You need the same right as for the Upgrades tab (“Manage devices”). Without upgrades it handles:
 
 | Limit | Without upgrades |
 |---|---|

@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:ingame",
+  "function": "cccloud:upgrades_click_rights",
+  "max_ticks": 600,
+  "structure": "cccloud:test_floor"
+}

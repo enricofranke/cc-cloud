@@ -818,7 +818,7 @@ public interface TeamProvider {
 ## v0.7 – Upgrades, wired links, wireless redstone, tablet, display, 3D map, quests (approved 2026-10-23)
 
 ### Mainframe upgrades (ATM progression)
-The mainframe gets 4 upgrade slots (in its screen; hoppers cannot insert). Base limits without upgrades (config):
+The mainframe gets 4 upgrade slots (in its screen, or by right-clicking it with an upgrade; hoppers cannot insert). Base limits without upgrades (config):
 | Limit | Base |
 |---|---|
 | connected devices (uplinks + bridges + relays) | 16 |

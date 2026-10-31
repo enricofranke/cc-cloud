@@ -254,6 +254,8 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("cable_ender_fiber", () -> ai.ezfox.cccloud.gametest.CableTests::enderFiberAcrossDimensions);
         TEST_FUNCTIONS.register("upgrades_effects_capacity", () -> ai.ezfox.cccloud.gametest.UpgradeTests::effectsAndCapacity);
         TEST_FUNCTIONS.register("upgrades_chunk_anchor", () -> ai.ezfox.cccloud.gametest.UpgradeTests::chunkAnchor);
+        TEST_FUNCTIONS.register("upgrades_click_install", () -> ai.ezfox.cccloud.gametest.UpgradeTests::clickInstall);
+        TEST_FUNCTIONS.register("upgrades_click_rights", () -> ai.ezfox.cccloud.gametest.UpgradeTests::clickRights);
         TEST_FUNCTIONS.register("config_live_reload", () -> ai.ezfox.cccloud.gametest.ConfigReloadTests::liveReload);
         TEST_FUNCTIONS.register("wireless_redstone", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstone);
         TEST_FUNCTIONS.register("wireless_redstone_load", () -> ai.ezfox.cccloud.gametest.UpgradeTests::wirelessRedstoneAfterLoad);
