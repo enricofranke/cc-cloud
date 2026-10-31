@@ -23,6 +23,8 @@ public enum ConfigPlan {
     STORE,
     /** {@code mapTileMaxAgeDays}: sweep the map tile cache with the new age now. */
     MAP_SWEEP,
+    /** {@code voxelCache*}: sweep the voxel disk cache with the new age and caps now. */
+    VOXEL_SWEEP,
     /** A feature switch the dashboard reads from {@code GET /api/config}: tell open dashboards to fetch it again. */
     FEATURES,
     /** Team providers / FTB Teams trust: re-check every open session's role now (not within 5 s). */
@@ -45,6 +47,7 @@ public enum ConfigPlan {
             if (key.startsWith("cards.")) plan.add(CARDS);
             if (key.startsWith("store.")) plan.add(STORE);
             if (key.equals("map.mapTileMaxAgeDays")) plan.add(MAP_SWEEP);
+            if (key.startsWith("map.voxelCache")) plan.add(VOXEL_SWEEP);
             if (FEATURE_KEYS.contains(key)) plan.add(FEATURES);
             if (key.equals("teams.disabledTeamProviders") || key.equals("server.ftbTeamsTrust")) plan.add(ACCESS);
             if (key.startsWith("icons.")) plan.add(ICONS);

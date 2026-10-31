@@ -38,6 +38,9 @@ class ConfigPlanTest {
         assertEquals(EnumSet.of(ConfigPlan.NETWORK), ConfigPlan.of(List.of("upgrades.chunkAnchor")), "read live in the mainframe tick");
         assertEquals(EnumSet.of(ConfigPlan.CARDS, ConfigPlan.NETWORK), ConfigPlan.of(List.of("cards.mffsRequirePin")));
         assertEquals(EnumSet.of(ConfigPlan.MAP_SWEEP, ConfigPlan.NETWORK), ConfigPlan.of(List.of("map.mapTileMaxAgeDays")));
+        for (String key : List.of("map.voxelCacheMaxAgeDays", "map.voxelCacheMainframeMB", "map.voxelCacheTotalMB")) {
+            assertEquals(EnumSet.of(ConfigPlan.VOXEL_SWEEP, ConfigPlan.NETWORK), ConfigPlan.of(List.of(key)), key + ": the disk cache follows at once");
+        }
         assertEquals(EnumSet.of(ConfigPlan.ACCESS, ConfigPlan.NETWORK), ConfigPlan.of(List.of("teams.disabledTeamProviders")));
         for (String key : List.of("icons.renderIconsOnServer", "icons.downloadVanillaAssets", "icons.vanillaAssetsJar")) {
             assertEquals(EnumSet.of(ConfigPlan.ICONS, ConfigPlan.NETWORK), ConfigPlan.of(List.of(key)), key + ": vanilla source and server renderer again");

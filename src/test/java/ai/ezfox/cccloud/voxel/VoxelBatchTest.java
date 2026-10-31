@@ -36,6 +36,24 @@ class VoxelBatchTest {
     }
 
     @Test
+    void lastKnownSectionsAreMarked() {
+        var a = room(true);
+        byte[] bytes = VoxelBatch.write("minecraft:overworld", List.of(
+            new VoxelBatch.Section(1, 0, 0, VoxelBatch.Status.OK, a, true),
+            new VoxelBatch.Section(2, 0, 0, VoxelBatch.Status.SAME, a, true),
+            new VoxelBatch.Section(3, 0, 0, VoxelBatch.Status.OK, a)), null);
+        assertEquals(VoxelBatch.VERSION, bytes[4], "an optional field: older dashboards simply draw these sections");
+        assertEquals(1, VoxelBatch.VERSION);
+        var read = VoxelBatch.read(bytes);
+        assertTrue(read.get(0).old());
+        assertTrue(read.get(1).old());
+        assertFalse(read.get(2).old());
+        int len = ((bytes[5] & 0xFF) << 24) | ((bytes[6] & 0xFF) << 16) | ((bytes[7] & 0xFF) << 8) | (bytes[8] & 0xFF);
+        var header = JsonParser.parseString(new String(bytes, 9, len, StandardCharsets.UTF_8)).getAsJsonObject();
+        assertFalse(header.getAsJsonArray("sections").get(2).getAsJsonObject().has("old"), "live sections do not carry it");
+    }
+
+    @Test
     void layoutAndRoundTrip() {
         var a = room(true);
         var b = room(false);

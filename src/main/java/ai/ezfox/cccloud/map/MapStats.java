@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.LongAdder;
  * Counters for the map tiles and the voxel view, shown by {@code /cccloud map stats} (server admins): requests, items
  * (tiles / voxel sections), cache hits, time on the server thread and on background threads, bytes sent and 429s. Used
  * to measure loading and the tick impact (server-thread time per tick since the last reset). Cheap: atomic adds only.
+ * {@link LastKnown} counts the voxel view's terrain of chunks that are not loaded (snapshots on unload, the disk cache).
  */
 public final class MapStats {
     /** One endpoint's counters. */
@@ -56,6 +57,34 @@ public final class MapStats {
         }
     }
 
+    /** The voxel view's last known terrain: unload snapshots and the disk cache. */
+    public static final class LastKnown {
+        /** chunks in a view area that were copied when they unloaded */
+        public final LongAdder snapshots = new LongAdder();
+        /** ... that were not, because the server thread's budget or the queue was used up */
+        public final LongAdder dropped = new LongAdder();
+        /** wall-clock time on the server thread for the snapshots */
+        public final LongAdder snapshotNanos = new LongAdder();
+        /** sections built from snapshots, and those skipped because nothing changed */
+        public final LongAdder built = new LongAdder();
+        public final LongAdder unchanged = new LongAdder();
+        /** sections answered from memory or disk because they cannot be read live */
+        public final LongAdder served = new LongAdder();
+        /** column files read */
+        public final LongAdder reads = new LongAdder();
+
+        void reset() {
+            for (var a : new LongAdder[]{snapshots, dropped, snapshotNanos, built, unchanged, served, reads}) a.reset();
+        }
+
+        String line(long diskBytes) {
+            long n = Math.max(1, snapshots.sum());
+            return String.format(Locale.ROOT, "Voxel terrain: %d chunk snapshots on unload (%d dropped, %.1f µs each on the server thread), %d sections built, %d unchanged; "
+                + "%d sections served as last known, %d files read; %.1f MB on disk", snapshots.sum(), dropped.sum(), snapshotNanos.sum() / 1e3 / n, built.sum(), unchanged.sum(),
+                served.sum(), reads.sum(), diskBytes / 1048576.0);
+        }
+    }
+
     private static final java.lang.management.ThreadMXBean THREADS = java.lang.management.ManagementFactory.getThreadMXBean();
 
     /** CPU time of the current thread in ns (wall clock where the JVM cannot measure it). */
@@ -70,6 +99,9 @@ public final class MapStats {
 
     public static final Counters TILES = new Counters();
     public static final Counters VOXELS = new Counters();
+    public static final LastKnown LAST_KNOWN = new LastKnown();
+    /** Bytes of the voxel disk cache, set by whoever owns it. */
+    public static volatile java.util.function.LongSupplier voxelDiskBytes = () -> 0;
     private static volatile int resetTick;
 
     private MapStats() {
@@ -78,12 +110,13 @@ public final class MapStats {
     public static void reset(int tick) {
         TILES.reset();
         VOXELS.reset();
+        LAST_KNOWN.reset();
         resetTick = tick;
     }
 
-    /** Two lines (tiles, voxels) for the admin command. */
+    /** Three lines (tiles, voxels, last known terrain) for the admin command. */
     public static String[] report(int tick) {
         long ticks = Math.max(0, tick - resetTick);
-        return new String[]{TILES.line("Map tiles", ticks), VOXELS.line("Voxels", ticks)};
+        return new String[]{TILES.line("Map tiles", ticks), VOXELS.line("Voxels", ticks), LAST_KNOWN.line(voxelDiskBytes.getAsLong())};
     }
 }

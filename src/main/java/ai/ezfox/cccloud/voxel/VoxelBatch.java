@@ -24,7 +24,9 @@ import org.jspecify.annotations.Nullable;
  * {@code "l"} (byte length of its runs); their runs follow the header in section order. {@code same} sections (the
  * client's hash is current) carry {@code "h"} and {@code "p"} only. The runs are the unsigned varint pairs
  * {@code (run length, palette index)} of {@link VoxelSection} (index n = {@code palette[p[n-1]]}, 0 = nothing).
- * Pure Java, unit tested.
+ * {@code ok} and {@code same} sections whose chunk could not be read live also have {@code "old":true} (the last known
+ * terrain, docs/SPEC.md "Voxel view – last known terrain"); it is optional, so the version stays 1 and older dashboards
+ * simply draw them. Pure Java, unit tested.
  */
 public final class VoxelBatch {
     public static final byte[] MAGIC = {'C', 'C', 'V', 'B'};
@@ -37,7 +39,7 @@ public final class VoxelBatch {
         OK("ok"),
         /** the client's hash is current */
         SAME("same"),
-        /** the chunk is not loaded (or outside the world): nothing to show now */
+        /** the chunk is not loaded and nothing is known of it (or it is outside the world): nothing to show now */
         EMPTY("empty"),
         OUT_OF_RANGE("out_of_range"),
         CLAIMED("claimed");
@@ -54,8 +56,11 @@ public final class VoxelBatch {
         }
     }
 
-    /** One section of a response; {@code data} for OK and SAME. */
-    public record Section(int cx, int cy, int cz, Status status, VoxelSection.@Nullable Encoded data) {
+    /** One section of a response; {@code data} for OK and SAME, {@code old} for the last known state of a section. */
+    public record Section(int cx, int cy, int cz, Status status, VoxelSection.@Nullable Encoded data, boolean old) {
+        public Section(int cx, int cy, int cz, Status status, VoxelSection.@Nullable Encoded data) {
+            this(cx, cy, cz, status, data, false);
+        }
     }
 
     private VoxelBatch() {
@@ -96,6 +101,7 @@ public final class VoxelBatch {
                     p.add(i);
                 }
                 e.add("p", p);
+                if (s.old()) e.addProperty("old", true);
                 if (s.status() == Status.OK) {
                     e.addProperty("n", data.exposed());
                     e.addProperty("l", data.runs().length);
@@ -133,7 +139,7 @@ public final class VoxelBatch {
     }
 
     /** A decoded section (tests, documentation of the format): palette entries as JSON, indices per cell. */
-    public record Decoded(int cx, int cy, int cz, Status status, @Nullable String hash, List<JsonObject> palette, int @Nullable [] cells, int exposed) {
+    public record Decoded(int cx, int cy, int cz, Status status, @Nullable String hash, List<JsonObject> palette, int @Nullable [] cells, int exposed, boolean old) {
     }
 
     /** Reads a batch (for tests and as the reference of the format). */
@@ -163,7 +169,7 @@ public final class VoxelBatch {
                 for (int v : cells) if (v > entries.size()) throw new IllegalArgumentException("index out of palette");
             }
             out.add(new Decoded(c.get(0).getAsInt(), c.get(1).getAsInt(), c.get(2).getAsInt(), status, e.has("h") ? e.get("h").getAsString() : null,
-                entries, cells, exposed));
+                entries, cells, exposed, e.has("old") && e.get("old").getAsBoolean()));
         }
         if (at != data.length) throw new IllegalArgumentException("trailing bytes");
         return out;

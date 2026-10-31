@@ -118,6 +118,7 @@ public final class ConfigReload {
         }
         if (plan.contains(ConfigPlan.STORE)) ai.ezfox.cccloud.script.StoreTrust.clearCache();
         if (plan.contains(ConfigPlan.MAP_SWEEP)) ai.ezfox.cccloud.map.MapTileService.sweepNow(server);
+        if (plan.contains(ConfigPlan.VOXEL_SWEEP)) ai.ezfox.cccloud.voxel.VoxelService.sweepNow(server);
         if (plan.contains(ConfigPlan.FEATURES)) {
             ai.ezfox.cccloud.web.WebHub.INSTANCE.broadcastConfigChanged();
             notes.add("Open dashboards reload the server's feature switches");
