@@ -85,7 +85,6 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   iceandfire: { cat: "world", icon: "iceandfire:dragonforge_fire_core" },
   ftbranks: { cat: "server", icon: "minecraft:command_block" },
   sophisticatedbackpacks: { cat: "storage", icon: "sophisticatedbackpacks:backpack" },
-  // wave 5 end
 };
 
 /** The generic cards that work with almost any mod. */

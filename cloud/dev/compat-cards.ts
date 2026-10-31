@@ -827,8 +827,6 @@ export const COMPAT_CARDS: SampleCard[] = [
     ],
   },
 
-  // wave 5 end
-
   // Witchery
   {
     key: "witchery_altar",

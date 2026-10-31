@@ -1520,7 +1520,6 @@ Manifest: docs/COMPAT.md "Wave 5", the whole pack in docs/ATM11_COVERAGE.md.
 - **Ice and Fire (`compat/iceandfire`):** device card `iceandfire_forge`. The cook time has no getter, so `cookTime` is read by reflection; if that fails the bar stays 0.
 - **FTB Ranks (`compat/ftbranks`):** the restricted mainframe card `ftbranks_ranks` (config `world.ranksCard`), read every 10 s. A server's rank setup is not for everyone, so it follows `view.positions`; it holds counts and no player names.
 - **Sophisticated Backpacks:** a line in `StorageControllers`; no code of its own apart from the GameTest.
-<!-- wave5 spec -->
 
 ## v0.10 – Scenes, schedules, production statistics, public API (requested 2026-10-30)
 Four features on top of the rules engine, the long-term statistics and the permission model. Same rules as before: deny by default, every check on the server thread with the live rights, strict schemas (unknown keys are an error), bounded sizes and rate limits, share sessions get nothing.

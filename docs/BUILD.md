@@ -137,7 +137,6 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | `iceandfire` | Ice And Fire CE 2.2-beta.4 | Uranus, Jupiter | `compat/iceandfire` (reflection for `cookTime`) |
 | `ftbranks` | FTB Ranks 26.1.2.4 | FTB Library | `compat/ftbranks` (`FTBRanksAPI`) |
 | `sophisticatedbackpacks` | Sophisticated Backpacks 3.26.11 | Sophisticated Core | `compat/storage` (`StorageControllers`) |
-<!-- wave5 build -->
 
 The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
 

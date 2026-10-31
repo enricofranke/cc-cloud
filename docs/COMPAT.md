@@ -190,7 +190,25 @@ Checked against the jars of All the Mods 11 for MC 26.1.2 with `javap` (CurseFor
 | Ice And Fire Community Edition (`iceandfire`) | 2.2-beta.4 | **Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show. | none | yes (lone fire core; a built forge with a dragon was not tested) |
 | FTB Ranks (`ftbranks`) | 26.1.2.4 | **Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`. | none | yes (ranks from the mod's manager) |
 | Sophisticated Backpacks (`sophisticatedbackpacks`) | 3.26.11 | A placed backpack is a **Storage** card with count and search, through its item capability and the shared storage controller list. Backpacks worn by a player are not covered. | as Storage card | yes (placed iron backpack, 100 ingots inserted through the capability) |
-<!-- wave5 rows -->
+| Apotheosis (`apotheosis`) | 9.1.0 | no own card: the Gem Case exposes an item capability, so the Peripheral card applies; the reforging, augmenting and salvaging tables are crafting screens without state | – | – |
+| Apothic Attributes (`apothic_attributes`) | 3.1.0 | skipped: a library, no block entities | – | – |
+| Silent's Gems (`silentgems`) | 5.1.4 | skipped: gems and teleporters; a teleporter only holds a destination, no power or progress to watch | – | – |
+| Potions Master (`potionsmaster`) | 2.0.0 | skipped: no block entities, the mortar is a plain block | – | – |
+| Iron's Arms 'n Artifice (`irons_artifice`) | 1.1.0 | skipped: no block entities | – | – |
+| Iron's Gems 'n Jewelry (`irons_jewelry`) | 2.0.2.1 | skipped: no block entities | – | – |
+| FTB Ultimine (`ftbultimine`) | 26.1.2.5 | skipped: no blocks, a per-player toggle | – | – |
+| FTB Filter System (`ftbfiltersystem`) | 26.1.2.2 | skipped: an item filter other mods read | – | – |
+| Lootr (`lootr`) | 1.23.38 | skipped: contents are per player and only exist once a player opens the chest; showing them would spoil the loot | – | – |
+| Hellish Trials (`hellish_trials`) | 1.0.7 | skipped: worldgen, three classes | – | – |
+| Aquaculture 2 (`aquaculture`) | 2.9.2 | no own card: Tackle Box and Neptune's Bounty expose an item capability, so the Peripheral card applies | – | – |
+| Starcatcher (`starcatcher`) | 3.3.8.1 | no own card yet: the tackle box exposes an item capability (Peripheral card); catches are player attachments, a restricted card is possible | – | – |
+| Jonn's Trophies (`trophymanager`) | 3.0.0 | skipped: a trophy is a mounted mob or item, nothing changes | – | – |
+| Artifacts (`artifacts`) | 15.1.3 | skipped: items | – | – |
+| Comforts (`comforts`) | 15.0.0 | skipped: sleeping bags and hammocks, used like beds | – | – |
+| Baubley Heart Canisters (`bhc`) | 1.7.3 | skipped: items | – | – |
+| Roots Classic (`rootsclassic`) | 1.6.7 | not in this wave: altar ritual and imbuer progress are public getters, a real card is possible | – | – |
+| Mahou Tsukai (`mahoutsukai`) | 1.36.36 | not in this wave: mana is a player attachment, a restricted card is possible | – | – |
+| Spice of Life: Carrot Edition (`solcarrot`) | 1.19.0 | not in this wave: `FoodList` needs the player object, so a restricted card would only work while the owner is online | – | – |
 
 ### Peripheral card
 

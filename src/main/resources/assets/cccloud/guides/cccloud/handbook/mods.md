@@ -154,6 +154,9 @@ Controls follow the [permissions](accounts.md): buttons and switches need “Use
 | Ice And Fire Community Edition (`iceandfire`) | 2.2-beta.4 | **Dragon Forge** (fire, ice and lightning core): whether the multiblock stands, whether a dragon is breathing on it, progress, the two inputs and the output; info alert when a run finishes. The forge is fed by a dragon, so there is no fuel or energy to show. | none | yes (lone fire core; a built forge with a dragon was not tested) |
 | FTB Ranks (`ftbranks`) | 26.1.2.4 | **Ranks** mainframe card (restricted, `view.positions`): the server's ranks, strongest first, with their power and how many online players have them. Counts only, no names. Read every 10 s; config `world.ranksCard`. | none | yes (ranks from the mod's manager) |
 | Sophisticated Backpacks (`sophisticatedbackpacks`) | 3.26.11 | A placed backpack is a **Storage** card with count and search, through its item capability and the shared storage controller list. Backpacks worn by a player are not covered. | as Storage card | yes (placed iron backpack, 100 ingots inserted through the capability) |
+| Roots Classic (`rootsclassic`) | 1.6.7 | not in this wave: altar ritual and imbuer progress are public getters, a real card is possible | – | – |
+| Mahou Tsukai (`mahoutsukai`) | 1.36.36 | not in this wave: mana is a player attachment, a restricted card is possible | – | – |
+| Spice of Life: Carrot Edition (`solcarrot`) | 1.19.0 | not in this wave: `FoodList` needs the player object, so a restricted card would only work while the owner is online | – | – |
 
 ### No card of their own
 
@@ -182,6 +185,22 @@ Controls follow the [permissions](accounts.md): buttons and switches need “Use
 - **Iron Jetpacks** (`ironjetpacks`): no blocks
 - **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
 - **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
+- **Apotheosis** (`apotheosis`): the Gem Case exposes an item capability, so the Peripheral card applies; the reforging, augmenting and salvaging tables are crafting screens without state
+- **Apothic Attributes** (`apothic_attributes`): a library, no block entities
+- **Silent's Gems** (`silentgems`): gems and teleporters; a teleporter only holds a destination, no power or progress to watch
+- **Potions Master** (`potionsmaster`): no block entities, the mortar is a plain block
+- **Iron's Arms 'n Artifice** (`irons_artifice`): no block entities
+- **Iron's Gems 'n Jewelry** (`irons_jewelry`): no block entities
+- **FTB Ultimine** (`ftbultimine`): no blocks, a per-player toggle
+- **FTB Filter System** (`ftbfiltersystem`): an item filter other mods read
+- **Lootr** (`lootr`): contents are per player and only exist once a player opens the chest; showing them would spoil the loot
+- **Hellish Trials** (`hellish_trials`): worldgen, three classes
+- **Aquaculture 2** (`aquaculture`): Tackle Box and Neptune's Bounty expose an item capability, so the Peripheral card applies
+- **Starcatcher** (`starcatcher`): the tackle box exposes an item capability (Peripheral card); catches are player attachments, a restricted card is possible
+- **Jonn's Trophies** (`trophymanager`): a trophy is a mounted mob or item, nothing changes
+- **Artifacts** (`artifacts`): items
+- **Comforts** (`comforts`): sleeping bags and hammocks, used like beds
+- **Baubley Heart Canisters** (`bhc`): items
 
 This page is generated from the compatibility manifest (docs/COMPAT.md in the source), so it is always up to date with the mod.
 

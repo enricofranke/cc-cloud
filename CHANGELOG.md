@@ -13,7 +13,6 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Ice and Fire:** Dragon Forge card with state, progress, inputs and output.
 - **FTB Ranks:** a Ranks card with power and online counts (only for those allowed to see positions). New server setting `ranksCard`.
 - **Sophisticated Backpacks:** placed backpacks are Storage cards with search.
-<!-- wave5 log -->
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
