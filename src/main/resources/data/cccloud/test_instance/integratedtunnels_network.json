@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "integratedtunnels"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:integratedtunnels_network",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

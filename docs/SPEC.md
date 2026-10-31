@@ -1510,6 +1510,9 @@ Manifest: docs/COMPAT.md "Wave 4".
 - **Mainframe cards of wave 4:** `dummies` (Training Dummy DPS meter; counts `LivingDamageEvent.Post` on `DummyEntity` itself, streaks of hits less than 5 s apart, at most 1024 tracked dummies) and `warps` (FTB Essentials, config `world.warpsCard`), both restricted.
 - **Dimensions:** the network snapshot gains `"dims":{"<dim>":{"minY","maxY","ceiling"?}}` (from the server's levels, only dimensions on the map). The dashboard's dimension names and icons (`web/src/lib/dims.ts`), slice/cut ranges, and the slice default for dimensions with a roof use it; without `dims` (older mods) it falls back to vanilla ranges.
 
+### Tech and logistics – networks without an item capability (2026-10-31)
+Manifest: docs/COMPAT.md "Tech and logistics". Cards for item networks that have no aggregated item capability on a block extend `compat/card/ScannedItemsCard`: the subclass counts the network's items, the base keeps the scan to every 100 ticks and answers the read-only item search like `ItemStorageCard`. Integrated Tunnels reads ID's wildcard-channel index (`IPositionedAddonsNetworkIngredients.getChannel(-1)`), which also schedules ID's observer; the Panels card registers first, so a cable with Display Panels keeps it.
+
 ## v0.10 – Scenes, schedules, production statistics, public API (requested 2026-10-30)
 Four features on top of the rules engine, the long-term statistics and the permission model. Same rules as before: deny by default, every check on the server thread with the live rights, strict schemas (unknown keys are an error), bounded sizes and rate limits, share sessions get nothing.
 

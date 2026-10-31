@@ -172,16 +172,6 @@
    "skipped": false
   },
   {
-   "group": "Storage controllers",
-   "mod": "Integrated Terminals / Tunnels",
-   "id": "",
-   "version": "",
-   "what": "–: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card",
-   "controls": "",
-   "tested": "–",
-   "skipped": true
-  },
-  {
    "group": "Applied Energistics add-ons",
    "mod": "Advanced AE",
    "id": "advanced_ae",
@@ -817,6 +807,26 @@
    "id": "mininggadgets",
    "version": "1.19.3",
    "what": "skipped: only the modification table, without energy, progress or switch",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Tunnels",
+   "id": "integratedtunnels",
+   "version": "1.13.1",
+   "what": "**Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card.",
+   "controls": "none (read-only)",
+   "tested": "yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Terminals",
+   "id": "integratedterminals",
+   "version": "1.10.0",
+   "what": "no own card: its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents",
    "controls": "–",
    "tested": "–",
    "skipped": true

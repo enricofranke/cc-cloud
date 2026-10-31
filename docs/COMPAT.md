@@ -29,7 +29,6 @@ and the block ids, no mod classes (`compat/storage`). Config `cards.storageCards
 | Sophisticated Storage (`sophisticatedstorage`) | 1.5.121 | Controller | Storage | yes (controller + chest) |
 | Occultism (`occultism`) | 1.256.1 | Dimensional Storage Actuator (all four variants) | Storage | yes (wave 3: actuator alone, 100 iron ingots; runtime Modonomicon, Curios, GeckoLib) |
 | DimStorage (`dimstorage`) | 10.0.1 | Dimensional Chest / Dimensional Tank | Storage / Tank (fill %, fluid, mB) | yes (both) |
-| Integrated Terminals / Tunnels | – | – | skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 | – |
 
 ### 2. Applied Energistics add-ons
 
@@ -188,6 +187,17 @@ The fallback for every mod: if CC: Tweaked offers a block as a peripheral, an up
 ### Dimensions
 
 The network snapshot carries `dims: {"<id>": {minY, maxY, ceiling?}}` for every dimension on the map. The dashboard names the ATM11 dimensions (Aether, Undergarden, Mining Dimension, The Other, The Beyond, Moon, Earth Orbit, Dream/Nightmare/Mirror World, Reality Marble, Spatial Storage, ...), gives each tab a pixel icon (guessed from the id for unknown ones), fits the slice and cut sliders to the dimension's height and opens dimensions with a roof on a slice. Ender Relays and Ender Fiber Links never cared about the dimension.
+
+## Tech and logistics (2026-10-31)
+
+Checked against the jars of All the Mods 11 for MC 26.1.2 (CurseForge files of the instance, see docs/BUILD.md "Tech and logistics"). Every card is a soft dependency in `compat/<modid>`; GameTests run with `-PintegrationMods=<key>`.
+
+### Tech and logistics
+
+| Mod (id) | Version | What | Controls | Tested |
+| --- | --- | --- | --- | --- |
+| Integrated Tunnels (`integratedtunnels`) | 1.13.1 | **Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card. | none (read-only) | yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search) |
+| Integrated Terminals (`integratedterminals`) | 1.10.0 | no own card: its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents | – | – |
 
 ## Not in this wave
 Nothing left from the v0.8 list.

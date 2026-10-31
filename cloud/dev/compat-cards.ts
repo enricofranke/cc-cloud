@@ -983,4 +983,19 @@ export const COMPAT_CARDS: SampleCard[] = [
       button("backup_now", "Backup now", { confirm: true, color: "yellow" }),
     ],
   },
+
+  // Integrated Tunnels
+  {
+    key: "integratedtunnels_network",
+    mod: "integratedtunnels",
+    title: "Item Network",
+    template: "integratedtunnels_network",
+    widgets: [
+      label("items", "Total items", "1.24 M", { span: 2 }),
+      label("types", "Item types", "846", { span: 2 }),
+      label("fluids", "Fluids", "412 k mB, 3 types", { span: 2 }),
+      label("interfaces", "Interfaces", "14", { span: 2 }),
+      itemSearch("search", "Search network"),
+    ],
+  },
 ];

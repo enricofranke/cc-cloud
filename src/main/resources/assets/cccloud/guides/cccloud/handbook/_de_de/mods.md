@@ -144,9 +144,14 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | The Undergarden (`undergarden`) | 26.1.2-0.9.8 | Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether) | – | unit tests; not in a dev world |
 | All the Modium (`allthemodium`) | 26.1.2-4.2.0 | Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges | – | unit tests; not in a dev world |
 
+### Tech and logistics
+
+| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
+|---|---|---|---|---|
+| Integrated Tunnels (`integratedtunnels`) | 1.13.1 | **Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card. | none (read-only) | yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search) |
+
 ### Ohne eigene Karte
 
-- **Integrated Terminals / Tunnels**: –: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card
 - **ExtendedAE** (`extendedae`): no level maintainer or CPU-like block; its machines (assemblers, pattern providers) are covered by the ME bridge's job list
 - **AE2 Infinity Booster / Network Analyzer**: nothing to show (range card / client-side analyzer)
 - **Silent Gear Metalworks** (`sgearmetalworks`): adds only recipes to the Productive Metalworks foundry, no blocks of its own
@@ -171,6 +176,7 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 - **Iron Jetpacks** (`ironjetpacks`): no blocks
 - **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
 - **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
+- **Integrated Terminals** (`integratedterminals`): its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents
 
 Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
 

@@ -76,6 +76,9 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   aether_ii: { cat: "world", icon: "minecraft:feather" },
   undergarden: { cat: "world", icon: "minecraft:moss_block" },
   allthemodium: { cat: "world", icon: "minecraft:netherite_pickaxe" },
+  // tech and logistics
+  integratedtunnels: { cat: "logistics", icon: "integratedtunnels:part_interface_item" },
+  integratedterminals: { cat: "logistics", icon: "integratedterminals:part_terminal_storage" },
 };
 
 /** The generic cards that work with almost any mod. */
