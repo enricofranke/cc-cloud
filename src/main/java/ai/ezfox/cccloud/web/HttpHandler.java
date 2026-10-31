@@ -9,11 +9,14 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpChunkedInput;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
@@ -21,10 +24,17 @@ import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.handler.codec.http.websocketx.WebSocketDecoderConfig;
 import io.netty.handler.codec.http.websocketx.WebSocketFrameAggregator;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
+import io.netty.handler.stream.ChunkedNioFile;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -667,6 +677,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case API_PREFLIGHT -> ApiHandler.preflight(this, instance, ctx, req);
             case ICON -> icon(ctx, req, ip, path);
             case RECIPES -> recipes(ctx, req, ip);
+            case DOWNLOAD -> download(ctx, req, ip);
             case CONFIG -> {
                 var config = PublicConfig.json();
                 // internetAccess (the dashboard shows a permanent warning in plain-HTTP mode) and whether this client is
@@ -798,6 +809,112 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                     req.release();
                 }
             }));
+    }
+
+    // ---- /api/download/cccloud.jar ------------------------------------------------------------------------------------
+
+    /** Jar downloads per IP: a few at once (friends behind one router, a retry), then 6 per hour. */
+    static final int DOWNLOAD_BURST = 6;
+    static final double DOWNLOAD_RATE = 6 / 3600.0;
+    /** Downloads running at once; fewer through the tunnel, which they share with the dashboards. */
+    static final int MAX_DOWNLOADS = 8;
+    static final int MAX_TUNNEL_DOWNLOADS = 2;
+    /** Size of the pieces read from the file. */
+    static final int DOWNLOAD_CHUNK = 64 * 1024;
+    /** A download that moves nothing for this long ends. */
+    static final int DOWNLOAD_STALL_S = 30;
+    /**
+     * The type of the jar through CC: Cloud Connect. The relay passes listed types only and has none for a jar
+     * ({@code connect/src/filter.ts}); text/plain is its plain download: it sends the bytes unchanged with
+     * {@code Content-Disposition: attachment}, so the browser saves them under the name in the URL.
+     */
+    static final String TUNNEL_JAR_TYPE = "text/plain; charset=utf-8";
+
+    /**
+     * This server's CC: Cloud jar, for players with another build (public, the mod is open source and the file holds no
+     * secrets; the path is fixed, nothing of the request reaches the file system). Streamed in pieces at the pace of the
+     * client, so a jar is never held in memory per connection.
+     */
+    private void download(ChannelHandlerContext ctx, FullHttpRequest req, String ip) {
+        var jar = instance.bridge.modJar();
+        if (jar == null) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_available"));
+            return;
+        }
+        boolean head = req.method().equals(HttpMethod.HEAD);
+        boolean tunnel = TunnelBridge.isTunnel(ctx.channel());
+        if (!head && instance.downloads.get() >= (tunnel ? MAX_TUNNEL_DOWNLOADS : MAX_DOWNLOADS)) {
+            var response = json(HttpResponseStatus.SERVICE_UNAVAILABLE, error("busy"));
+            response.headers().set(HttpHeaderNames.RETRY_AFTER, "5");
+            write(ctx, req, response);
+            return;
+        }
+        if (instance.downloadLimits.size() > 10_000) instance.downloadLimits.clear();
+        var bucket = instance.downloadLimits.computeIfAbsent(ip, k -> new TokenBucket(DOWNLOAD_BURST, DOWNLOAD_RATE));
+        if (!bucket.tryAcquire()) {
+            var response = json(HttpResponseStatus.TOO_MANY_REQUESTS, error("rate_limited"));
+            response.headers().set(HttpHeaderNames.RETRY_AFTER, String.valueOf((int) Math.ceil(bucket.secondsUntil(1))));
+            write(ctx, req, response);
+            return;
+        }
+        long size;
+        FileChannel file = null;
+        try {
+            size = Files.size(jar);
+            if (!head) file = FileChannel.open(jar, StandardOpenOption.READ);
+        } catch (IOException e) {
+            CloudLog.LOGGER.warn("[cccloud] Could not read the mod jar {}: {}", jar, e.toString());
+            sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+            return;
+        }
+        if (head) {
+            var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.EMPTY_BUFFER);
+            jarHeaders(response, jar, size, tunnel);
+            write(ctx, req, response);
+            return;
+        }
+        streamJar(ctx, req, jar, file, size, tunnel);
+    }
+
+    private void jarHeaders(HttpResponse response, Path jar, long size, boolean tunnel) {
+        var h = response.headers();
+        h.set(HttpHeaderNames.CONTENT_TYPE, tunnel ? TUNNEL_JAR_TYPE : "application/java-archive");
+        h.set(HttpHeaderNames.CONTENT_DISPOSITION, attachment(jar.getFileName().toString()));
+        h.set(HttpHeaderNames.CONTENT_LENGTH, size);
+        h.set(HttpHeaderNames.CACHE_CONTROL, "no-store");
+    }
+
+    /** {@code attachment; filename="…"} with the file's name; anything that could break the header becomes "_". */
+    static String attachment(String fileName) {
+        return "attachment; filename=\"" + fileName.replaceAll("[^A-Za-z0-9._+-]", "_") + "\"";
+    }
+
+    private void streamJar(ChannelHandlerContext ctx, FullHttpRequest req, Path jar, FileChannel file, long size, boolean tunnel) {
+        ChunkedNioFile chunks;
+        try {
+            chunks = new ChunkedNioFile(file, 0, size, DOWNLOAD_CHUNK);
+        } catch (IOException e) {
+            CloudLog.LOGGER.warn("[cccloud] Could not read the mod jar {}: {}", jar, e.toString());
+            try {
+                file.close();
+            } catch (IOException ignored) {
+                // nothing was sent yet
+            }
+            sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+            return;
+        }
+        instance.downloads.incrementAndGet();
+        ctx.channel().closeFuture().addListener(f -> instance.downloads.decrementAndGet());
+        var pipeline = ctx.pipeline();
+        // The read timeout would end a slow download: the client only receives from here on. Stalled writes end it instead.
+        if (pipeline.get("idle") != null) pipeline.replace("idle", "idle", new IdleStateHandler(true, 0, DOWNLOAD_STALL_S, 0, TimeUnit.SECONDS));
+        pipeline.addBefore(ctx.name(), "download", new ChunkedWriteHandler());
+        var response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+        jarHeaders(response, jar, size, tunnel);
+        addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), policy.ssl() != null);
+        response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
+        ctx.write(response);
+        ctx.writeAndFlush(new HttpChunkedInput(chunks)).addListener(ChannelFutureListener.CLOSE);
     }
 
     // ---- /api/pair ---------------------------------------------------------------------------------------------------

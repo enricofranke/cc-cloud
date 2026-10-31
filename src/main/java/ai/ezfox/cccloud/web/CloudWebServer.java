@@ -519,6 +519,12 @@ public final class CloudWebServer {
         return (tls ? "https://" : "http://") + host + ":" + port;
     }
 
+    /** The running dashboard serves the mod's jar right now ({@code webJarDownload} on, and the mod is a jar file). */
+    public static boolean jarAvailable() {
+        var instance = current;
+        return isRunning() && instance != null && instance.bridge.modJar() != null;
+    }
+
     /** All dashboard URLs for the in-game screen: publicUrl first, then every LAN address of the host. */
     public static List<String> dashboardUrls() {
         var instance = current;

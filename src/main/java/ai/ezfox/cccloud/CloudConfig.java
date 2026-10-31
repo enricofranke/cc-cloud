@@ -21,6 +21,7 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_TRUSTED_PROXIES;
     public static final ModConfigSpec.BooleanValue WEB_TRUST_CLOUDFLARE_HEADER;
     public static final ModConfigSpec.BooleanValue WEB_COMPRESSION;
+    public static final ModConfigSpec.BooleanValue WEB_JAR_DOWNLOAD;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> WEB_ALLOWED_HOSTS;
     public static final ModConfigSpec.ConfigValue<String> TLS_CERT_PATH;
     public static final ModConfigSpec.ConfigValue<String> TLS_KEY_PATH;
@@ -196,6 +197,10 @@ public final class CloudConfig {
                 "shrinks about 5-10x; costs some CPU on the web server's threads (never on the server thread) and ~300 KB per open browser.")
             .translation("cccloud.configuration.webCompression")
             .define("webCompression", true);
+        WEB_JAR_DOWNLOAD = b.comment("Serve this server's CC: Cloud jar at /api/download/cccloud.jar. Players whose jar differs from the server's get the link",
+                "in chat when they join; false = they get the message without a link. Public like the rest of the mod (no secrets), limited per IP.")
+            .translation("cccloud.configuration.webJarDownload")
+            .define("webJarDownload", true);
         WEB_ALLOWED_HOSTS = b.comment("Extra host names the dashboard may be opened with (the Host header). IP addresses, localhost, *.local/*.lan names",
                 "and the host of publicUrl always work; other names are refused (protection against DNS rebinding).")
             .translation("cccloud.configuration.webAllowedHosts")

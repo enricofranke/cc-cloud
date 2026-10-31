@@ -31,6 +31,14 @@ public interface GameBridge {
      */
     ai.ezfox.cccloud.access.AccessResolver.Resolution authorize(AuthStore.Device device, UUID mainframeId, String ip);
 
+    /**
+     * This server's CC: Cloud jar for {@code /api/download/cccloud.jar} (any thread), or null: switched off with
+     * {@code webJarDownload}, or no jar file at all (dev runs load the mod from folders).
+     */
+    default java.nio.file.@Nullable Path modJar() {
+        return null;
+    }
+
     /** Shows the in-game approval prompt for a pending device. */
     void requestApproval(AuthStore.Pending pending);
 

@@ -4,6 +4,10 @@ import ai.ezfox.cccloud.BuildInfo;
 import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.CloudLog;
 import ai.ezfox.cccloud.Edition;
+import ai.ezfox.cccloud.connect.ConnectService;
+import ai.ezfox.cccloud.web.CloudWebServer;
+import ai.ezfox.cccloud.web.IpUtil;
+import ai.ezfox.cccloud.web.PairingText;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -29,7 +33,8 @@ import org.jspecify.annotations.Nullable;
  * else notices: Minecraft never downloads mods, and NeoForge only compares channels. The client names its build right
  * after joining ({@link Hello}, sent by {@code client/ClientHello}); the server compares it with its own
  * ({@link BuildCheck}). On a difference, or when no hello arrives within 10 seconds (a client from before this check), the
- * player gets a chat message with both versions and the server logs it. It never keeps anyone out.
+ * player gets a chat message with both versions and a link to the server's jar, and the server logs it. It never keeps
+ * anyone out.
  */
 public final class JoinCheck {
     /** Client → server: which build this client is. */
@@ -101,15 +106,31 @@ public final class JoinCheck {
     private static void notify(ServerPlayer player, @Nullable String client) {
         Component theirs = client != null ? Component.literal(client) : JoinText.text(player, "cccloud.join.older");
         player.sendSystemMessage(JoinText.text(player, "cccloud.join.mismatch", theirs, BuildInfo.id()).withStyle(ChatFormatting.GOLD));
-        player.sendSystemMessage(JoinText.text(player, "cccloud.join.no_link").withStyle(ChatFormatting.GRAY));
+        String url = jarUrl(player);
+        player.sendSystemMessage(url != null
+            ? JoinText.text(player, "cccloud.join.update").withStyle(ChatFormatting.GRAY).append(downloadLink(player, url))
+            : JoinText.text(player, "cccloud.join.no_link").withStyle(ChatFormatting.GRAY));
     }
 
-    /** {@code /cccloud version}: the server's build; a click copies it. */
+    private static Component downloadLink(ServerPlayer player, String url) {
+        return PairingText.openLink(url, JoinText.text(player, "cccloud.join.download"));
+    }
+
+    /** The link to the server's jar this player can open, or null (no dashboard they reach, or the download is off). */
+    private static @Nullable String jarUrl(ServerPlayer player) {
+        if (!CloudWebServer.jarAvailable()) return null;
+        return PairingText.jarUrl(PairingText.reachableUrl(ConnectService.preferredUrl(null), CloudWebServer.publicUrl(), CloudWebServer.dashboardUrl(),
+            IpUtil.isLan(player.getIpAddress())));
+    }
+
+    /** {@code /cccloud version}: the server's build (a click copies it) and, for a player, the link to its jar. */
     public static void showVersion(CommandSourceStack source) {
         var player = source.getPlayer();
         String build = BuildInfo.id();
-        source.sendSystemMessage(JoinText.text(player, "cccloud.join.version", Component.literal(build).withStyle(style -> style.withColor(ChatFormatting.GOLD)
+        var line = JoinText.text(player, "cccloud.join.version", Component.literal(build).withStyle(style -> style.withColor(ChatFormatting.GOLD)
             .withClickEvent(new ClickEvent.CopyToClipboard(build))
-            .withHoverEvent(new HoverEvent.ShowText(JoinText.text(player, "cccloud.join.copy"))))));
+            .withHoverEvent(new HoverEvent.ShowText(JoinText.text(player, "cccloud.join.copy")))));
+        String url = player == null ? null : jarUrl(player);
+        source.sendSystemMessage(url == null ? line : line.append(downloadLink(player, url)));
     }
 }

@@ -77,6 +77,7 @@
   "cccloud.configuration.webAllowInternet": "Zugriff aus dem Internet erlauben",
   "cccloud.configuration.webTrustCloudflareHeader": "CF-Connecting-IP vertrauen (nur Cloudflare Tunnel)",
   "cccloud.configuration.webCompression": "Dashboard-Updates komprimieren",
+  "cccloud.configuration.webJarDownload": "CC: Cloud-Jar zum Download anbieten",
   "cccloud.configuration.webAllowedHosts": "Erlaubte Hostnamen",
   "cccloud.configuration.webTrustedProxies": "Vertrauenswürdige Proxys",
   "cccloud.configuration.tlsCertPath": "TLS-Zertifikat (PEM)",
