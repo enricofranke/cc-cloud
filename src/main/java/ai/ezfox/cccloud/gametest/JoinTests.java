@@ -12,6 +12,7 @@ import java.util.UUID;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
@@ -43,7 +44,8 @@ public final class JoinTests {
         var player = new ServerPlayer(server, helper.getLevel(), cookie.gameProfile(), cookie.clientInformation()) {
             @Override
             public void sendSystemMessage(Component message) {
-                chat.add(message.getString());
+                // GameTest reports every finished test to all players: only the join check's lines count
+                if (message.getContents() instanceof TranslatableContents text && text.getKey().startsWith("cccloud.join.")) chat.add(message.getString());
                 super.sendSystemMessage(message);
             }
         };
