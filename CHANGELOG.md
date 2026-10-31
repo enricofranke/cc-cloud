@@ -11,6 +11,10 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 ### Fixes
 - **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.
 
+### Layout editor
+- **Programs started while the editor is open show up in it.** Before, their new cards and widgets only appeared after
+  leaving the editor, and saving kept the old view of the card.
+
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
 

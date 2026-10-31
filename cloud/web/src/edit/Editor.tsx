@@ -42,7 +42,7 @@ import { pushToast } from "../lib/ui.ts";
 import { Card, placeVars, type CardEdit, type Edge } from "../components/Card.tsx";
 import { Tabs } from "../components/PageTabs.tsx";
 import { ConfirmDialog, Sheet } from "../components/Overlays.tsx";
-import { canRedo, canUndo, createHistory, current, isDirty, push, redo, undo, type History } from "./history.ts";
+import { canRedo, canUndo, createHistory, current, isDirty, push, redo, replaceCurrent, undo, type History } from "./history.ts";
 import { Flip, springTo } from "./motion.ts";
 import { PICKUP_HELP, describe, kbdStep, type Kind } from "./keyboard.ts";
 import { CardSettings, ShortcutHelp, SourcePicker, Toolbox, WidgetSettings, WIDGET_KINDS, draftWidget, type WidgetKind } from "./Panels.tsx";
@@ -124,6 +124,14 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   const { conn } = props;
   const [hist, setHist] = useState<History<ResolvedPage[]>>(() => createHistory(resolveLayout(props.uplinks, conn.layout.value, { includeHidden: true })));
   const [preview, setPreview] = useState<ResolvedPage[] | null>(null);
+  // a program started while the editor is open: its new pages, cards and widgets join the draft
+  const structure = props.uplinks.map((u) => `${u.uplinkId}:${u.title}:${u.widgets.map((w) => `${w.id}/${w.type}/${w.opts?.group ?? ""}/${w.opts?.page ?? ""}`).join()}:${JSON.stringify([u.pages, u.groups])}`).join("|");
+  const seenStructure = useRef(structure);
+  useEffect(() => {
+    if (seenStructure.current === structure) return;
+    seenStructure.current = structure;
+    setHist((h) => replaceCurrent(h, resolveLayout(props.uplinks, snapshotLayout(current(h), props.uplinks), { includeHidden: true })));
+  }, [structure]);
   const pages = preview ?? current(hist);
   const page = pages.find((p) => p.id === props.page) ?? pages[0];
   const [sel, setSel] = useState<Set<string>>(new Set());

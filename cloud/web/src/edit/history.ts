@@ -32,5 +32,10 @@ export function push<T>(h: History<T>, next: T, key?: string, now = Date.now(), 
 
 export const undo = <T>(h: History<T>): History<T> => (canUndo(h) ? { ...h, index: h.index - 1, lastKey: undefined } : h);
 export const redo = <T>(h: History<T>): History<T> => (canRedo(h) ? { ...h, index: h.index + 1, lastKey: undefined } : h);
+/** Swaps the current state for a newer version of itself (no undo step, stays clean when it was clean). */
+export function replaceCurrent<T>(h: History<T>, next: T): History<T> {
+  const stack = h.stack.map((s, i) => (i === h.index ? next : s));
+  return { ...h, stack, initial: h.initial === current(h) ? next : h.initial };
+}
 /** Dirty = differs from the state the editor started with. */
 export const isDirty = <T>(h: History<T>) => current(h) !== h.initial;

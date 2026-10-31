@@ -119,6 +119,14 @@ describe("layout v2", () => {
     expect(r.icon).toBe("flame"); // guessed from the title
   });
 
+  it("takes in widgets of a program started while the editor is open", () => {
+    const draft = moveCardTo(resolveLayout(uplinks, null, { includeHidden: true }), "f", "main", 0, 0);
+    const next = uplinks.map((u, i) => (i === 0 ? { ...u, widgets: [...u.widgets, { id: "added", type: "label", label: "Added" }] } : u)) as typeof uplinks;
+    const merged = resolveLayout(next, snapshotLayout(draft, next), { includeHidden: true });
+    expect(merged.flatMap((p) => p.cards).flatMap((c) => c.widgets).some((w) => w.w.id === "added")).toBe(true);
+    expect(merged.flatMap((p) => p.cards).find((c) => c.key === "f")!.box).toEqual(draft.flatMap((p) => p.cards).find((c) => c.key === "f")!.box);
+  });
+
   it("holds a widget at its minimum height and leaves the neighbour alone", () => {
     const pages = resolveLayout(uplinks, null);
     const before = findWidget(pages, "r/cool")!.widget.box;
