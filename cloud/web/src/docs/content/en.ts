@@ -599,7 +599,16 @@ Signal = 1 − distance / range, shown as 0–100 % and bars. Below 15 % a link 
 - **Advanced Cloud Relay** – longer range for nodes and devices.
 - **Ender Relay** – links to other Ender Relays at any distance and **across dimensions** (e.g. to the Nether). Link Ender Relays into a group with the Link Card.
 
-Place a relay, then link it like any device: Link Card on the mainframe, then on the relay.
+Place a relay and give it FE: it carries your network by itself, no linking needed. Only Ender Relays are linked into a group with the Link Card (on the mainframe, then on the relay).
+
+### Relays belong to your team {#relay-team}
+
+A relay belongs to the player who placed it. It carries the networks of its owner, the owner's team and the team's allies (FTB Teams, scoreboard teams; without a team mod only your own). Other teams can't route over it, it pays no FE for them, and it doesn't show up on their topology, map, 3D view or mainframe screen.
+
+- Right-click a relay: **Shared with** says who it carries. Its owner (or a server admin) can switch it to **Everyone** – for a public relay at spawn, say – and back to **Team**.
+- An Ender Relay only joins the group of a mainframe it carries: another team can't pull your Ender Relay into theirs.
+- Relays placed before this rule (1.0.0-beta.1 and older) have no owner and carry every network, as before. Break one and place it again to make it your team's.
+- Server admins can make **Everyone** the default: \`relayShareDefault = "everyone"\` in \`[network]\` of the server config (applies at once).
 
 ### Cloud Relay
 ${recipe(R.relay)}
@@ -962,6 +971,8 @@ Roles come from several sources – the **highest one wins**: the owner, roles g
 ## Teams {#teams}
 
 A mainframe can be assigned to a team from **FTB Teams**, **Open Parties and Claims** or a vanilla scoreboard team. Each team rank maps to a role on that mainframe (defaults: owner/officer/leader → admin, member → operator, ally → viewer). When someone joins or leaves the team, their access changes right away.
+
+Your [relays](/docs/network#relay-team) carry your team's and your allies' networks too, and no one else's unless you share them with everyone.
 
 ## The Access page {#access}
 

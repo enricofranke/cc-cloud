@@ -123,7 +123,10 @@ public final class ConfigReload {
             notes.add("Open dashboards reload the server's feature switches");
         }
         if (plan.contains(ConfigPlan.ACCESS)) CloudWebServer.recheckAll();
-        if (plan.contains(ConfigPlan.NETWORK)) ai.ezfox.cccloud.network.NetworkService.markDirty();
+        if (plan.contains(ConfigPlan.NETWORK)) {
+            // relayShareDefault and the team providers decide which relays carry which network
+            ai.ezfox.cccloud.relay.RelayShares.teamsChanged();
+        }
         if (plan.contains(ConfigPlan.ICONS)) {
             var icons = ai.ezfox.cccloud.icons.IconService.current();
             String note = icons == null ? null : icons.reconfigure();

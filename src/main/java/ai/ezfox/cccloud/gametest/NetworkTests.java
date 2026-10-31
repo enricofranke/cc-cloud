@@ -198,4 +198,161 @@ public final class NetworkTests {
             .thenSucceed();
     }
 
+
+    // ---- relays belong to a team (docs/SPEC.md "Relays belong to a team") ---------------------------------------------
+
+    /** Places a relay the way a player does (setPlacedBy records the owner), full of FE, serving only these mainframes. */
+    static CloudRelayBlockEntity ownedRelay(GameTestHelper helper, BlockPos pos, Block block, Player owner, java.util.UUID... mainframes) {
+        var level = helper.getLevel();
+        var state = block.defaultBlockState();
+        level.setBlock(pos, state, Block.UPDATE_ALL);
+        block.setPlacedBy(level, pos, state, owner, new net.minecraft.world.item.ItemStack(block));
+        if (!(level.getBlockEntity(pos) instanceof CloudRelayBlockEntity relay)) throw helper.assertionException("relay missing at " + pos);
+        relay.fillForTest();
+        relay.restrictForTest(mainframes); // tests run side by side: other tests' networks never see it
+        return relay;
+    }
+
+    /** A mock player with its own name (makeMockPlayer names every player alike; scoreboard teams go by name). */
+    static Player namedPlayer(GameTestHelper helper, String name) {
+        var id = java.util.UUID.nameUUIDFromBytes(("cccloud-test:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return new Player(helper.getLevel(), new com.mojang.authlib.GameProfile(id, name)) {
+            @Override
+            public GameType gameMode() {
+                return GameType.SURVIVAL;
+            }
+
+            @Override
+            public boolean isClientAuthoritative() {
+                return false;
+            }
+        };
+    }
+
+    private static boolean inNetwork(java.util.UUID mainframeId, CloudRelayBlockEntity relay) {
+        var result = NetworkService.result(mainframeId);
+        return result != null && result.nodes().stream().anyMatch(n -> n.id().equals(relay.relayId().toString()));
+    }
+
+    private static boolean onMap(java.util.UUID mainframeId, CloudRelayBlockEntity relay) {
+        var json = ai.ezfox.cccloud.web.WebHub.INSTANCE.networkForTest(mainframeId, true);
+        return json != null && json.toString().contains(relay.relayId().toString());
+    }
+
+    /**
+     * Two owners side by side (Enrico's team relay between both bases): only Enrico's network routes over it and only his
+     * map shows it; Steini cannot link through it, change it or join it to his Ender group. Same scoreboard team: it
+     * carries Steini too, and stops when he leaves. "Share with: Everyone" (owner only) carries every network. A relay
+     * without an owner (placed before relays had owners) carries everyone.
+     */
+    public static void relayTeams(GameTestHelper helper) {
+        var level = helper.getLevel();
+        var server = level.getServer();
+        String tag = Integer.toHexString(helper.absolutePos(BlockPos.ZERO).hashCode() & 0xffff);
+        var enrico = namedPlayer(helper, "cc_enrico_" + tag);
+        var steini = namedPlayer(helper, "cc_steini_" + tag);
+        for (var p : List.of(enrico, steini)) server.services().nameToIdCache().add(new net.minecraft.server.players.NameAndId(p.getUUID(), p.getGameProfile().name()));
+        var mfA = CloudGameTests.placeMainframe(helper, enrico, new BlockPos(1, 0, 1));
+        var mfB = CloudGameTests.placeMainframe(helper, steini, new BlockPos(3, 0, 3));
+        for (var m : List.of(mfA, mfB)) {
+            m.setEnabled(true);
+            CloudGameTests.keepPowered(helper, m);
+        }
+        var linkA = new MainframeLink(GlobalPos.of(level.dimension(), mfA.getBlockPos()), mfA.getMainframeId());
+        var linkB = new MainframeLink(GlobalPos.of(level.dimension(), mfB.getBlockPos()), mfB.getMainframeId());
+        var base = mfA.getBlockPos();
+        var relayPos = base.above(80);
+        var upA = base.above(120);
+        var upB = base.above(120).east(2);
+        var enderPos = helper.absolutePos(new BlockPos(0, 1, 4));
+        var legacyPos = helper.absolutePos(new BlockPos(4, 1, 0));
+        var relay = ownedRelay(helper, relayPos, ModRegistry.CLOUD_RELAY.get(), enrico, mfA.getMainframeId(), mfB.getMainframeId());
+        uplink(level, upA);
+        uplink(level, upB);
+        var scoreboard = server.getScoreboard();
+        String teamName = "cccloud_r" + tag;
+
+        helper.startSequence()
+            .thenIdle(3)
+            .thenExecute(() -> {
+                helper.assertTrue(enrico.getUUID().equals(relay.owner()) && !relay.legacy(), "the placer owns the relay");
+                helper.assertTrue(relay.effectiveShare() == ai.ezfox.cccloud.network.graph.RelaySharing.Share.TEAM, "team by default");
+                uplinkAt(helper, level, upA).bind(linkA, enrico);
+                helper.assertTrue(uplinkAt(helper, level, upA).getLink() != null, "Enrico links through his own relay");
+                uplinkAt(helper, level, upB).bind(linkB, steini);
+                helper.assertTrue(uplinkAt(helper, level, upB).getLink() == null, "Steini cannot link through Enrico's relay");
+                helper.assertTrue(!relay.mayChangeShare(steini) && relay.mayChangeShare(enrico), "only the owner changes the setting");
+                helper.assertTrue("relay_not_owner".equals(ai.ezfox.cccloud.gui.GuiActions.relay("share", "everyone", true, relay.mayChangeShare(steini),
+                    relay.legacy(), share -> "changed")), "Steini's screen action is refused");
+            })
+            .thenWaitUntil(() -> {
+                var route = NetworkService.route(uplinkAt(helper, level, upA).getUplinkId());
+                helper.assertTrue(route != null && route.connected() && route.path().contains(relay.relayId().toString()), "Enrico routes over his relay: " + route);
+                helper.assertTrue(inNetwork(mfA.getMainframeId(), relay) && onMap(mfA.getMainframeId(), relay), "Enrico's map shows it");
+                helper.assertTrue(!inNetwork(mfB.getMainframeId(), relay) && !onMap(mfB.getMainframeId(), relay), "Steini's topology/map/3D never show it");
+                var screen = NetworkService.screenNetwork(mfB);
+                helper.assertTrue(screen != null && !screen.json().toString().contains("\"relay\""), "nor his mainframe screen");
+                helper.assertTrue(NetworkService.isServing(relay.relayId()), "the relay serves Enrico");
+            })
+            .thenExecute(() -> {
+                // Same scoreboard team: the relay carries Steini's network too (scoreboard teams have no events: the
+                // game re-asks within 10 s; the test does what a team event does).
+                var team = scoreboard.getPlayerTeam(teamName) != null ? scoreboard.getPlayerTeam(teamName) : scoreboard.addPlayerTeam(teamName);
+                scoreboard.addPlayerToTeam(enrico.getGameProfile().name(), team);
+                scoreboard.addPlayerToTeam(steini.getGameProfile().name(), team);
+                ai.ezfox.cccloud.relay.RelayShares.teamsChanged();
+                helper.assertTrue(relay.carries(steini.getUUID()), "a team mate's network is carried");
+                uplinkAt(helper, level, upB).bind(linkB, steini);
+                helper.assertTrue(uplinkAt(helper, level, upB).getLink() != null, "Steini links through his team mate's relay");
+            })
+            .thenWaitUntil(() -> {
+                var route = NetworkService.route(uplinkAt(helper, level, upB).getUplinkId());
+                helper.assertTrue(route != null && route.connected() && route.path().contains(relay.relayId().toString()), "team route: " + route);
+                helper.assertTrue(onMap(mfB.getMainframeId(), relay), "now on Steini's map");
+            })
+            .thenExecute(() -> {
+                scoreboard.removePlayerFromTeam(steini.getGameProfile().name(), scoreboard.getPlayerTeam(teamName));
+                ai.ezfox.cccloud.relay.RelayShares.teamsChanged();
+            })
+            .thenWaitUntil(() -> {
+                var route = NetworkService.route(uplinkAt(helper, level, upB).getUplinkId());
+                helper.assertTrue(route != null && !route.connected(), "left the team: no route over the relay any more: " + route);
+                helper.assertTrue(!onMap(mfB.getMainframeId(), relay), "and gone from Steini's map");
+            })
+            .thenExecute(() -> {
+                // The owner shares it with everyone (the relay screen's "Share with").
+                String error = ai.ezfox.cccloud.gui.GuiActions.relay("share", "everyone", true, relay.mayChangeShare(enrico), relay.legacy(), share -> {
+                    relay.setShare(share, enrico.getGameProfile().name());
+                    return null;
+                });
+                helper.assertTrue(error == null && relay.share() == ai.ezfox.cccloud.network.graph.RelaySharing.Share.EVERYONE, "owner shares it: " + error);
+            })
+            .thenWaitUntil(() -> {
+                var route = NetworkService.route(uplinkAt(helper, level, upB).getUplinkId());
+                helper.assertTrue(route != null && route.connected() && route.path().contains(relay.relayId().toString()), "an everyone relay carries Steini: " + route);
+            })
+            .thenExecute(() -> {
+                // Ender groups: Steini cannot pull Enrico's Ender Relay into his group; Enrico can.
+                var ender = ownedRelay(helper, enderPos, ModRegistry.ENDER_RELAY.get(), enrico, mfA.getMainframeId(), mfB.getMainframeId());
+                ender.bindEnder(linkB, steini);
+                helper.assertTrue(ender.enderGroup() == null, "another team's mainframe does not join Enrico's Ender Relay");
+                ender.bindEnder(linkA, enrico);
+                helper.assertTrue(mfA.getMainframeId().equals(ender.enderGroup()), "the owner links it");
+                // A relay without an owner (saved before relays had owners) carries every network.
+                level.setBlock(legacyPos, ModRegistry.CLOUD_RELAY.get().defaultBlockState(), Block.UPDATE_ALL);
+                var legacy = (CloudRelayBlockEntity) level.getBlockEntity(legacyPos);
+                if (legacy != null) legacy.restrictForTest(mfA.getMainframeId(), mfB.getMainframeId());
+                helper.assertTrue(legacy != null && legacy.legacy() && legacy.carries(steini.getUUID()) && legacy.carries(enrico.getUUID()),
+                    "legacy relay carries everyone");
+                helper.assertTrue("relay_legacy".equals(ai.ezfox.cccloud.gui.GuiActions.relay("share", "team", true, true, legacy.legacy(), share -> "changed")),
+                    "it has no setting");
+            })
+            .thenExecute(() -> {
+                var team = scoreboard.getPlayerTeam(teamName);
+                if (team != null) scoreboard.removePlayerTeam(team);
+                clear(level, upA, upB);
+                for (var pos : List.of(relayPos, enderPos, legacyPos)) level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            })
+            .thenSucceed();
+    }
 }

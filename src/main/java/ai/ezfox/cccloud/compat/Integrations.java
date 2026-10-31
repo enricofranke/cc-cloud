@@ -118,6 +118,7 @@ public final class Integrations {
         optional("ftbteams", () -> () -> {
             ai.ezfox.cccloud.compat.ftbteams.FtbTeamsSource.init();
             test("ftbteams_trust", () -> ai.ezfox.cccloud.compat.ftbteams.FtbTeamsGameTests::trust);
+            test("ftbteams_relay", () -> ai.ezfox.cccloud.compat.ftbteams.FtbTeamsGameTests::relay);
         });
         optional("ftbchunks", () -> ai.ezfox.cccloud.compat.ftbchunks.ClaimsCard::init);
         optional("simplebackups", () -> ai.ezfox.cccloud.compat.simplebackups.BackupsCard::init);

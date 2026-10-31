@@ -280,4 +280,25 @@ class GuiActionsTest {
         assertEquals("not_owner", GuiActions.uplink("unlink", "", true, layout, ops), "unlinking still needs network.link");
         assertEquals("not_supported", GuiActions.uplink("rename", "A", true, layout, () -> null), "screens without a card");
     }
+
+    @Test
+    void relayShareOnlyOwnerOrAdmin() {
+        var set = new ai.ezfox.cccloud.network.graph.RelaySharing.Share[1];
+        GuiActions.RelayOps ops = share -> {
+            set[0] = share;
+            return null;
+        };
+        assertNull(GuiActions.relay("share", "everyone", true, true, false, ops));
+        assertEquals(ai.ezfox.cccloud.network.graph.RelaySharing.Share.EVERYONE, set[0]);
+        assertNull(GuiActions.relay("share", "team", true, true, false, ops));
+        assertEquals(ai.ezfox.cccloud.network.graph.RelaySharing.Share.TEAM, set[0]);
+        set[0] = null;
+        assertEquals("relay_not_owner", GuiActions.relay("share", "everyone", true, false, false, ops), "another team's player");
+        assertEquals("relay_legacy", GuiActions.relay("share", "team", true, true, true, ops), "a relay without an owner has no setting");
+        assertEquals("invalid_argument", GuiActions.relay("share", "Everyone", true, true, false, ops));
+        assertEquals("invalid_argument", GuiActions.relay("share", "", true, true, false, ops));
+        assertEquals("no_screen", GuiActions.relay("share", "team", false, true, false, ops));
+        assertEquals("unknown_action", GuiActions.relay("unlink", "", true, true, false, ops), "relays are not unlinked");
+        assertNull(set[0], "nothing was changed by a refused action");
+    }
 }

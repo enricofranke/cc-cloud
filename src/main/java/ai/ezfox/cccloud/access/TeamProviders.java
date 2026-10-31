@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -41,6 +42,25 @@ public final class TeamProviders {
         var provider = PROVIDERS.get(id);
         if (provider == null || disabled.get().contains(id) || !provider.available()) return null;
         return provider;
+    }
+
+    /**
+     * Whether {@code player} is in a team that {@code teamOf} is a member of, with any rank (owner, officer, member or
+     * ally, by provider): FTB Teams parties and their allies, scoreboard teams, any registered provider. A team where
+     * {@code teamOf} is only an ally is not theirs (allies are one way). Relays carry the networks of such players
+     * (docs/SPEC.md "Relays belong to a team"). A failing provider counts as "not in the team". Pure.
+     */
+    public static boolean sameTeamOrAlly(Iterable<TeamProvider> providers, UUID teamOf, UUID player) {
+        for (var provider : providers) {
+            try {
+                for (var team : provider.teamsOf(teamOf)) {
+                    if ("ally".equals(provider.rankOf(team.id(), teamOf))) continue;
+                    if (provider.rankOf(team.id(), player) != null) return true;
+                }
+            } catch (RuntimeException | LinkageError ignored) {
+            }
+        }
+        return false;
     }
 
     /** Enabled and available providers in display order. */

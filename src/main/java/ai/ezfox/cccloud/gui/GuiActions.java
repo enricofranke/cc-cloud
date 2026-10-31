@@ -132,6 +132,11 @@ public final class GuiActions {
         }
     }
 
+    /** Executes relay screen actions (server thread): null on success or an error code. */
+    public interface RelayOps {
+        @Nullable String share(ai.ezfox.cccloud.network.graph.RelaySharing.Share share);
+    }
+
     private GuiActions() {
     }
 
@@ -211,6 +216,23 @@ public final class GuiActions {
         }
         if (!canUnlink) return "not_owner";
         return ops.redstone(mode, channel);
+    }
+
+    /**
+     * Relay screen: {@code share} with arg {@code team} or {@code everyone} ("Share with"). Only the relay's owner and
+     * server admins may change it; a relay without an owner carries every network and has no setting.
+     *
+     * @param mayShare the player owns the relay or has {@code cccloud.admin.manage}, checked live on the server
+     * @param legacy   the relay has no owner
+     */
+    public static @Nullable String relay(String action, String arg, boolean screenOpen, boolean mayShare, boolean legacy, RelayOps ops) {
+        if (!"share".equals(action)) return "unknown_action";
+        if (!screenOpen) return "no_screen";
+        var share = ai.ezfox.cccloud.network.graph.RelaySharing.Share.byId(arg);
+        if (share == null) return "invalid_argument";
+        if (!mayShare) return "relay_not_owner";
+        if (legacy) return "relay_legacy";
+        return ops.share(share);
     }
 
     /** A card title from the screen: plain text without control characters, trimmed, at most 48 characters; null if invalid. */

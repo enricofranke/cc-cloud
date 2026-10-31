@@ -418,6 +418,17 @@ public final class GuiViews {
         json.addProperty("nodeRange", type.nodeRange());
         json.addProperty("deviceRange", type.deviceRange());
         if (type == ai.ezfox.cccloud.relay.RelayType.ENDER) json.addProperty("enderLinked", relay.enderGroup() != null);
+        // Who it carries: its owner's team (default) or everyone; relays without an owner carry everyone and have no setting.
+        if (relay.legacy()) {
+            json.addProperty("legacy", true);
+        } else {
+            String owner = relay.ownerName();
+            if (owner.isEmpty() && player.level().getServer() != null) owner = ai.ezfox.cccloud.access.CloudPermissions.nameOf(player.level().getServer(), relay.owner());
+            json.addProperty("owner", owner);
+            json.addProperty("share", relay.effectiveShare().id());
+            json.addProperty("shareDefault", relay.share() == null);
+            json.addProperty("canShare", relay.mayChangeShare(player));
+        }
         String id = relay.relayId().toString();
         var networks = new JsonArray();
         int others = 0;

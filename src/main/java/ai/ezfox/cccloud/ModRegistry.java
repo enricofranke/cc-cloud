@@ -246,6 +246,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("mainframe_never_powered", () -> ai.ezfox.cccloud.gametest.PowerTests::neverPowered);
         TEST_FUNCTIONS.register("network_routing", () -> ai.ezfox.cccloud.gametest.NetworkTests::routing);
         TEST_FUNCTIONS.register("network_ender", () -> ai.ezfox.cccloud.gametest.NetworkTests::enderAcrossDimensions);
+        TEST_FUNCTIONS.register("network_relay_team", () -> ai.ezfox.cccloud.gametest.NetworkTests::relayTeams);
         TEST_FUNCTIONS.register("cable_cc_wired", () -> ai.ezfox.cccloud.gametest.CableTests::ccCable);
         TEST_FUNCTIONS.register("cable_prefers_cable", () -> ai.ezfox.cccloud.gametest.CableTests::prefersCable);
         TEST_FUNCTIONS.register("cable_fiber_connections", () -> ai.ezfox.cccloud.gametest.CableTests::fiberConnections);
