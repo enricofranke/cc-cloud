@@ -4,6 +4,26 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Dashboard: build it yourself
+- **A pencil on every card** opens that card for editing right where it is: its settings float next to it and the other
+  cards step back. The settings have sizes S to XL, width and height, page, and a list of the card's widgets.
+- **The toolbox** floats above the grid. Cards: an empty card, ready-made cards built from what your base really
+  publishes (Overview, Energy, Trends, Status lights, Controls, Storage) and the cards of other pages. Widgets: every
+  widget type. Hidden: what you hid. Drag anything onto the grid or click it; drag a card or widget onto the toolbox to
+  hide it, Undo is in the message.
+- **New widgets without Lua:** drag a type onto a card or free space and pick its data. The picker lists everything in
+  your base that fits, with live values. A switch, a button or a slider controls the same machine as the original.
+
+### Storage
+- **Items, Craft, Fluids and CPUs are buttons on the card**, there is no extra Browse step.
+- One crafting request can now ask for up to 100,000 items (`maxCraftAmount`, was 4,096). An existing server keeps its
+  config value.
+
+### In-game overlay
+- **The overlay no longer shows what is inside another team's claim.** Holding a relay, uplink, Link Card or analyzer drew
+  devices, lines and rings through walls, which worked as an X-ray of that base. Unclaimed land stays visible.
+- **A mainframe's range ring is yellow**, so it stands apart from the relays' rings.
+
 ### Dashboard: more room on big screens
 - **The dashboard grows to 2400 px** (it stopped at 1280 px, half of a 2560 px monitor stayed empty).
 - **The layout editor's settings float above the grid** in their own window instead of taking a column, so opening them

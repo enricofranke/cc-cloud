@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { collides, compact, flowPack, freeSpot, moveItem, resizeItem, insertItem, type GridItem } from "../web/src/lib/grid.ts";
 import {
   COLS,
+  DRAFT_WIDGET,
+  bindDraft,
   findWidget,
   migrateLayout,
   moveCardTo,
@@ -11,12 +13,15 @@ import {
   newCardWithWidgets,
   normalizeLayout,
   removeCustomCard,
+  removeView,
   resizeCard,
   resizeWidget,
   resolveLayout,
   snapshotLayout,
   updateCard,
   updateWidget,
+  viewSources,
+  withDraftWidget,
   type LayoutDoc,
 } from "../web/src/lib/layout.ts";
 import { createHistory, current, isDirty, push, redo, undo, canRedo } from "../web/src/edit/history.ts";
@@ -260,5 +265,40 @@ describe("spring", () => {
     expect(Math.max(...p)).toBeGreaterThan(100);
     expect(Math.max(...p)).toBeLessThan(115);
     expect(p.length).toBeLessThan(60);
+  });
+});
+
+describe("views built in the editor", () => {
+  const u: Uplink = { uplinkId: "u1", title: "Reactor", online: true, widgets: [{ id: "temp", type: "gauge", label: "Temp", value: 640, opts: { max: 1200, unit: "K" } }, { id: "power", type: "toggle", label: "Power", value: true }] };
+  const doc = (): LayoutDoc => normalizeLayout({ v: 2, pages: [], cards: { "c:a": { title: "Mine", page: "main", x: 0, y: 0, w: 4, h: 6 } }, widgets: { "v:w1": { card: "c:a", src: "u1/temp", as: "chart", x: 0, y: 0, w: 12, h: 5 }, "v:w2": { card: "c:a", src: "gone/x", as: "gauge" } } });
+  const custom = (ups: Uplink[], d = doc()) => resolveLayout(ups, d, { includeHidden: true }).flatMap((p) => p.cards).find((c) => c.key === "c:a")!;
+  it("resolves as its type, keeps the source's id and uplink, and stays offline without a source", () => {
+    const [chart, gone] = custom([u]).widgets;
+    expect(chart).toMatchObject({ key: "v:w1", uplink: { uplinkId: "u1" }, view: { src: "u1/temp", as: "chart" } });
+    expect(chart.w).toMatchObject({ id: "temp", type: "chart" });
+    expect(chart.w.history?.at(-1)).toBe(640);
+    expect(gone.uplink.online).toBe(false);
+  });
+  it("survives a save and resolve round trip", () => {
+    const saved = snapshotLayout(resolveLayout([u], doc(), { includeHidden: true }), [u]);
+    expect(saved.widgets["v:w1"]).toMatchObject({ card: "c:a", src: "u1/temp", as: "chart" });
+    expect(custom([u], normalizeLayout(saved)).widgets.map((w) => w.key)).toEqual(custom([u]).widgets.map((w) => w.key));
+  });
+  it("a new widget lands via the draft and gets its source", () => {
+    const pages = resolveLayout([u], doc(), { includeHidden: true });
+    const base = withDraftWidget(pages, "main", { id: "draft", type: "toggle", label: "Switch" }, "auto");
+    const placed = newCardWithWidgets(base, [DRAFT_WIDGET], "main");
+    const bound = bindDraft(placed.pages, u, u.widgets[1], "toggle");
+    expect(bound.flatMap((p) => p.cards).some((c) => c.key === "c:draft")).toBe(false);
+    const w = bound.flatMap((p) => p.cards).find((c) => c.key === placed.key)!.widgets[0];
+    expect(w).toMatchObject({ key: "v:w3", hidden: false, uplink: { uplinkId: "u1" }, view: { src: "u1/power", as: "toggle" } });
+    expect(w.w.id).toBe("power");
+  });
+  it("sources fit the type, deleting a custom card deletes its views", () => {
+    expect(viewSources([u], "gauge").map((s) => s.widget.id)).toEqual(["temp"]);
+    expect(viewSources([u], "toggle").map((s) => s.widget.id)).toEqual(["power"]);
+    const pages = resolveLayout([u], doc(), { includeHidden: true });
+    expect(findWidget(removeCustomCard(pages, "c:a"), "v:w1")).toBeUndefined();
+    expect(findWidget(removeView(pages, "v:w1"), "v:w1")).toBeUndefined();
   });
 });

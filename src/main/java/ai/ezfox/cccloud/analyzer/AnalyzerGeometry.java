@@ -54,6 +54,17 @@ public final class AnalyzerGeometry {
      * (already filtered by role) within {@link #RADIUS}, at most {@link #MAX_ELEMENTS}, nearest first.
      */
     public static JsonObject build(List<Network> networks, String dim, double x, double y, double z, Map<String, int[]> ranges) {
+        return build(networks, dim, x, y, z, ranges, (px, py, pz) -> false);
+    }
+
+    /** A place in the player's dimension the player must not see into (another team's claim). */
+    @FunctionalInterface
+    public interface Hidden {
+        boolean at(double x, double y, double z);
+    }
+
+    /** Nodes and devices at {@code hidden} places are left out, and with them their links and bubbles. */
+    public static JsonObject build(List<Network> networks, String dim, double x, double y, double z, Map<String, int[]> ranges, Hidden hidden) {
         var nodes = new JsonArray();
         var devices = new JsonArray();
         var links = new JsonArray();
@@ -66,6 +77,7 @@ public final class AnalyzerGeometry {
             var signals = new HashMap<String, Double>();
             for (var link : result.links()) signals.put(key(link.a(), link.b()), link.signal());
             for (var node : result.nodes()) {
+                if (node.dim().equals(dim) && hidden.at(node.x(), node.y(), node.z())) continue;
                 positions.put(node.id(), new double[]{node.x(), node.y(), node.z()});
                 if (!node.dim().equals(dim)) continue;
                 double d = dist(node.x(), node.y(), node.z(), x, y, z);
@@ -88,6 +100,7 @@ public final class AnalyzerGeometry {
                 candidates.add(new Candidate(d, "n", n));
             }
             for (var device : result.devices()) {
+                if (device.dim().equals(dim) && hidden.at(device.x(), device.y(), device.z())) continue;
                 positions.put(device.id(), new double[]{device.x(), device.y(), device.z()});
                 if (!device.dim().equals(dim)) continue;
                 double d = dist(device.x(), device.y(), device.z(), x, y, z);

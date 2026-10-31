@@ -49,17 +49,17 @@ const pageKey = (id: string) => `cccloud.page.${id}`;
 const LAZY_CARDS = 24;
 
 /** A card is rendered again only when its own widgets changed (see lib/hydrate.ts). */
-type CardProps = { card: ResolvedCard; conn: MainframeConn; locked: boolean; lazy: boolean };
+type CardProps = { card: ResolvedCard; conn: MainframeConn; locked: boolean; lazy: boolean; onEdit?: (key: string) => void };
 class MemoCard extends Component<CardProps> {
   shouldComponentUpdate(next: CardProps) {
     return next.card !== this.props.card || next.locked !== this.props.locked || next.conn !== this.props.conn || next.lazy !== this.props.lazy;
   }
   render(p: CardProps) {
-    return <Card card={p.card} conn={p.conn} locked={p.locked} lazy={p.lazy} />;
+    return <Card card={p.card} conn={p.conn} locked={p.locked} lazy={p.lazy} onEdit={p.onEdit} />;
   }
 }
 
-export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolean; editing: boolean; onExitEdit: () => void }) {
+export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolean; editing: boolean; onExitEdit: () => void; focusCard?: string; onEdit: (key: string) => void }) {
   const { conn } = props;
   const isPhone = useMedia("(max-width: 719px)");
   const narrow = useMedia("(max-width: 1099px)");
@@ -123,7 +123,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   }, [wantCard, cardThere]);
 
   if (props.editing)
-    return <EditorLoader conn={conn} uplinks={raw.map((u) => hydrator.adapted(u))} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} />;
+    return <EditorLoader conn={conn} uplinks={raw.map((u) => hydrator.adapted(u))} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} focusCard={props.focusCard} />;
 
   return (
     <>
@@ -152,7 +152,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
       ) : (
         <div class={`pgrid ${narrow ? "narrow" : ""} ${props.dim ? "grid-dim" : ""}`}>
           {page.cards.map((c) => (
-            <MemoCard key={c.key} card={hydrator.card(c, byUplink)} conn={conn} locked={props.locked} lazy={page.cards.length > LAZY_CARDS} />
+            <MemoCard key={c.key} card={hydrator.card(c, byUplink)} conn={conn} locked={props.locked} lazy={page.cards.length > LAZY_CARDS} onEdit={conn.can("layout.edit") && !conn.isShare ? props.onEdit : undefined} />
           ))}
         </div>
       )}
@@ -161,7 +161,7 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
   );
 }
 
-type EditorProps = { conn: MainframeConn; uplinks: Uplink[]; page: string; onPage: (id: string) => void; isPhone: boolean; narrow: boolean; network: boolean; onExit: () => void };
+type EditorProps = { conn: MainframeConn; uplinks: Uplink[]; page: string; onPage: (id: string) => void; isPhone: boolean; narrow: boolean; network: boolean; onExit: () => void; focusCard?: string };
 let EditorComp: ComponentType<EditorProps> | null = null;
 function EditorLoader(props: EditorProps) {
   const [C, setC] = useState<ComponentType<EditorProps> | null>(() => EditorComp);

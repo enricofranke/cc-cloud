@@ -35,6 +35,9 @@ public final class LayoutValidator {
     public static final Set<String> ACCENTS = Set.of("gold", "cyan", "green", "yellow", "red", "purple", "orange", "gray");
     public static final Set<String> STYLES = Set.of("comfortable", "compact");
     public static final Set<String> DISPLAYS = Set.of("dial", "bar", "number", "row", "big", "line", "sparkline", "chip", "lamp");
+    /** v2: widget types a view {@code v:<id>} can show its source as (the keys of WidgetType). */
+    public static final Set<String> VIEW_TYPES = Set.of("button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs", "chart",
+        "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log");
     /** v2: columns of the page grid and of every card's widget grid. */
     public static final int COLS = 12;
     public static final int MAX_CARD_H = 60;
@@ -43,8 +46,11 @@ public final class LayoutValidator {
     /** v2: the smallest readable card width (of 12). */
     public static final int MIN_CARD_W = 3;
     public static final String CUSTOM_PREFIX = "c:";
+    /** v2: a widget built in the dashboard, a second view of a published widget ({@code src}, shown {@code as} a type). */
+    public static final String VIEW_PREFIX = "v:";
     private static final Pattern PAGE_ID = Pattern.compile("[A-Za-z0-9_-]{1,32}");
     private static final Pattern CUSTOM_CARD = Pattern.compile("c:[A-Za-z0-9_-]{1,24}");
+    private static final Pattern VIEW = Pattern.compile("v:[A-Za-z0-9_-]{1,24}");
 
     /** @param error {@code too_large} or {@code invalid_layout}; {@code detail} is the JSON path of the first problem. */
     public record Result(@Nullable JsonObject layout, @Nullable String error, @Nullable String detail) {
@@ -114,8 +120,16 @@ public final class LayoutValidator {
                     keys(widget, path, Set.of("order", "span", "label", "hidden"), false);
                     v1(widget, path);
                 } else {
-                    keys(widget, path, Set.of("card", "x", "y", "w", "h", "label", "hidden", "color", "icon", "display"), false);
+                    boolean view = entry.getKey().startsWith(VIEW_PREFIX);
+                    keys(widget, path, view ? Set.of("card", "src", "as", "x", "y", "w", "h", "label", "hidden", "color", "icon", "display")
+                        : Set.of("card", "x", "y", "w", "h", "label", "hidden", "color", "icon", "display"), false);
                     box(widget, path, 1, MAX_WIDGET_H);
+                    if (view) {
+                        if (!VIEW.matcher(entry.getKey()).matches() || !widget.has("card")) throw new Invalid(path);
+                        String src = string(widget.get("src"), path + ".src");
+                        if (src.indexOf('/') < 1 || src.length() > MAX_KEY) throw new Invalid(path + ".src");
+                        if (!VIEW_TYPES.contains(string(widget.get("as"), path + ".as"))) throw new Invalid(path + ".as");
+                    }
                     if (widget.has("card")) {
                         String card = string(widget.get("card"), path + ".card");
                         if (card.isEmpty() || card.length() > MAX_KEY) throw new Invalid(path + ".card");

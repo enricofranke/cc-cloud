@@ -145,6 +145,8 @@ function HistoryLoader(props: HistoryProps) {
 export interface CardEdit {
   selected: Set<string>;
   cardSelected: boolean;
+  /** the card being edited: the other cards step back */
+  focused: boolean;
   /** keys hidden while their ghost is dragged */
   dragging: Set<string>;
   /** where a dragged widget would land in this card */
@@ -213,7 +215,7 @@ function unobserve(el: Element) {
   lazyObserver?.unobserve(el);
 }
 
-export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren; edit?: CardEdit; lazy?: boolean }) {
+export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy, onEdit }: { card: ResolvedCard; conn: MainframeConn; locked: boolean; viewOnly?: boolean; children?: ComponentChildren; edit?: CardEdit; lazy?: boolean; onEdit?: (key: string) => void }) {
   const card = viewOnly ? { ...full, widgets: full.widgets.filter((w) => !ACTION_ONLY.has(w.w.type)) } : full;
   const ref = useRef<HTMLElement>(null);
   const [near, setNear] = useState(!lazy || !!edit);
@@ -235,7 +237,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
   return (
     <article
       ref={ref}
-      class={`card accent-${card.color} style-${card.style} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
+      class={`card accent-${card.color} style-${card.style} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.focused ? "is-focus" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
       aria-label={card.title}
       data-card={card.key}
       style={placeVars(card.box)}
@@ -277,10 +279,15 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
             <span aria-hidden="true">{"</>"}</span>
           </button>
         )}
+        {onEdit && !edit && (
+          <button type="button" class="icon-btn card-pencil" aria-label={`Edit ${card.title || "this card"}`} title="Edit this card" onClick={() => onEdit(card.key)}>
+            <span aria-hidden="true">✎</span>
+          </button>
+        )}
         {edit && (
           <span class="card-tools" onPointerDown={(e) => e.stopPropagation()}>
-            <button type="button" class="icon-btn sm" aria-label={`Settings for ${card.title}`} title="Settings" onClick={() => edit.onCardSettings(card)}>
-              ⚙
+            <button type="button" class="icon-btn sm ed-pencil" aria-label={`Settings for ${card.title}`} title="Edit this card" onClick={() => edit.onCardSettings(card)}>
+              ✎
             </button>
             <button type="button" class="icon-btn sm" aria-label={`Hide ${card.title}`} title="Hide card" onClick={() => edit.onHideCard(card)}>
               ×
@@ -343,8 +350,8 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy 
               {edit && (
                 <>
                   <span class="w-tools" onPointerDown={(e) => e.stopPropagation()}>
-                    <button type="button" class="icon-btn xs" tabIndex={-1} aria-label={`Settings for ${rw.label}`} title="Settings" onClick={(e) => (e.stopPropagation(), edit.onWidgetSettings(rw))}>
-                      ⚙
+                    <button type="button" class="icon-btn xs" tabIndex={-1} aria-label={`Settings for ${rw.label}`} title="Edit" onClick={(e) => (e.stopPropagation(), edit.onWidgetSettings(rw))}>
+                      ✎
                     </button>
                     <button type="button" class="icon-btn xs" tabIndex={-1} aria-label={`Hide ${rw.label}`} title="Hide" onClick={(e) => (e.stopPropagation(), edit.onHideWidget(rw))}>
                       ×

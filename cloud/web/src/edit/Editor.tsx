@@ -1,30 +1,36 @@
 // WYSIWYG layout editor (lazy chunk): edit directly on the live cards.
 // Cards sit on a 12-column page grid, widgets on a 12-column grid inside their
 // card. Pointer drag (mouse, pen, touch long-press), resize from edges and the
-// corner, keyboard drag & drop, multi-select, undo/redo, Add gallery and a
-// settings panel. Motion is transform-only: the dragged item is a fixed ghost
+// corner, keyboard drag & drop, multi-select, undo/redo, a floating toolbox and
+// a settings panel anchored at the card being edited. Motion is transform-only: the dragged item is a fixed ghost
 // that follows the pointer, the rest reflows with FLIP, drops settle with a spring.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Uplink } from "../lib/types.ts";
 import {
   COLS,
+  DRAFT_WIDGET,
   MAX_LAYOUT_BYTES,
   MIN_CARD_W,
   minWidgetW,
   addPage,
+  addViewsCard,
+  bindDraft,
   findWidget,
   layoutSize,
   moveCard,
   moveCardTo,
   moveWidgetsTo,
   newCardWithWidgets,
+  rebindView,
+  removeView,
   resizeCard,
   resizeWidget,
   resolveLayout,
   snapshotLayout,
   updateCard,
   updateWidget,
+  withDraftWidget,
   type Box,
   type ResolvedCard,
   type ResolvedPage,
@@ -38,7 +44,8 @@ import { ConfirmDialog, Sheet } from "../components/Overlays.tsx";
 import { canRedo, canUndo, createHistory, current, isDirty, push, redo, undo, type History } from "./history.ts";
 import { Flip, springTo } from "./motion.ts";
 import { PICKUP_HELP, describe, kbdStep, type Kind } from "./keyboard.ts";
-import { AddGallery, CardSettings, ShortcutHelp, WidgetSettings } from "./Panels.tsx";
+import { CardSettings, ShortcutHelp, SourcePicker, Toolbox, WidgetSettings, WIDGET_KINDS, draftWidget, type WidgetKind } from "./Panels.tsx";
+import { cardTemplates } from "./templates.ts";
 import { keepBlockedWidgets } from "../lib/claims.ts";
 
 const SAVE_ERRORS: Record<string, string> = {
@@ -100,6 +107,10 @@ interface Drag {
   tab: string | null;
   tabSince: number;
   raf: number;
+  /** a new widget from the toolbox: it still needs its data source */
+  draft?: WidgetKind;
+  /** over the toolbox: dropping hides it */
+  hide: boolean;
 }
 
 const vibrate = (ms: number) => {
@@ -108,16 +119,20 @@ const vibrate = (ms: number) => {
   } catch {}
 };
 
-export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; page: string; onPage: (id: string) => void; isPhone: boolean; narrow: boolean; network: boolean; onExit: () => void }) {
+export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; page: string; onPage: (id: string) => void; isPhone: boolean; narrow: boolean; network: boolean; onExit: () => void; focusCard?: string }) {
   const { conn } = props;
   const [hist, setHist] = useState<History<ResolvedPage[]>>(() => createHistory(resolveLayout(props.uplinks, conn.layout.value, { includeHidden: true })));
   const [preview, setPreview] = useState<ResolvedPage[] | null>(null);
   const pages = preview ?? current(hist);
   const page = pages.find((p) => p.id === props.page) ?? pages[0];
   const [sel, setSel] = useState<Set<string>>(new Set());
-  const [selCard, setSelCard] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"settings" | "add" | "help" | null>(null);
+  const [selCard, setSelCard] = useState<string | null>(props.focusCard ?? null);
+  const [panel, setPanel] = useState<"settings" | "help" | null>(props.focusCard ? "settings" : null);
   const [sideAt, setSideAt] = useState({ x: 0, y: 0 });
+  const [tray, setTray] = useState(!props.isPhone);
+  const [trayAt, setTrayAt] = useState({ x: 0, y: 0 });
+  const [hideHover, setHideHover] = useState(false);
+  const [picker, setPicker] = useState<{ kind: WidgetKind; pages?: ResolvedPage[]; rebind?: string } | null>(null);
   const [dragging, setDragging] = useState<Set<string>>(new Set());
   const [badge, setBadge] = useState<{ key: string; text: string; warn?: boolean } | null>(null);
   const [tabHover, setTabHover] = useState<string | null>(null);
@@ -128,6 +143,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   const [announce, setAnnounce] = useState("");
   const [kbd, setKbd] = useState<{ kind: Kind; key: string; base: ResolvedPage[] } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const sideRef = useRef<HTMLElement>(null);
   const flip = useMemo(() => new Flip(() => gridRef.current), []);
   const flipPending = useRef(false);
   const drag = useRef<Drag | null>(null);
@@ -165,7 +181,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   });
 
   // ------------------------------------------------------------ pointer drag
-  const begin = (e: PointerEvent, kind: Kind, keys: string[], el: HTMLElement, source: "grid" | "gallery", gallery?: ResolvedPage[]) => {
+  const begin = (e: PointerEvent, kind: Kind, keys: string[], el: HTMLElement, source: "grid" | "gallery", gallery?: ResolvedPage[], draft?: WidgetKind) => {
     if (e.button !== 0 || drag.current || kbd) return;
     const rect = el.getBoundingClientRect();
     const grid = kind === "widget" ? (el.closest("[data-wgrid]") as HTMLElement | null) : gridRef.current;
@@ -204,6 +220,8 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
       tab: null,
       tabSince: 0,
       raf: 0,
+      draft,
+      hide: false,
     };
     drag.current = d;
     if (d.touch) d.timer = window.setTimeout(() => activate(d), 320);
@@ -266,17 +284,16 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     if ((speed < 0 && scrollY > 0) || (speed > 0 && scrollY < maxScroll)) window.scrollBy(0, Math.max(-24, Math.min(24, speed)));
     target(d);
   };
-  /** The side panel floats over the grid: dragging its header moves it off the card being edited. */
-  const moveSide = (e: PointerEvent) => {
+  /** The floating panels: dragging the header moves them off the cards below. */
+  const moveFloat = (e: PointerEvent, at: { x: number; y: number }, set: (p: { x: number; y: number }) => void) => {
     if ((e.target as HTMLElement).closest("button")) return;
     const head = e.currentTarget as HTMLElement;
     const box = head.parentElement!.getBoundingClientRect();
     const top = (document.querySelector(".ed-bar")?.getBoundingClientRect().bottom ?? 0) + 8;
-    const start = sideAt;
     const move = (m: PointerEvent) =>
-      setSideAt({
-        x: start.x + Math.max(8 - box.left, Math.min(innerWidth - 8 - box.right, m.clientX - e.clientX)),
-        y: start.y + Math.max(top - box.top, Math.min(innerHeight - 48 - box.top, m.clientY - e.clientY)),
+      set({
+        x: at.x + Math.max(8 - box.left, Math.min(innerWidth - 8 - box.right, m.clientX - e.clientX)),
+        y: at.y + Math.max(top - box.top, Math.min(innerHeight - 48 - box.top, m.clientY - e.clientY)),
       });
     const up = () => head.removeEventListener("pointermove", move);
     head.setPointerCapture(e.pointerId);
@@ -285,6 +302,20 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     head.addEventListener("pointercancel", up, { once: true });
   };
   const target = (d: Drag) => {
+    const box = d.source === "grid" ? document.querySelector("[data-tray]")?.getBoundingClientRect() : undefined;
+    const hide = !!box && d.x >= box.left && d.x <= box.right && d.y >= box.top && d.y <= box.bottom;
+    if (hide !== d.hide) {
+      d.hide = hide;
+      setHideHover(hide);
+    }
+    if (hide) {
+      if (d.targetKey !== "hide") {
+        d.targetKey = "hide";
+        d.result = null;
+        showPreview(null);
+      }
+      return;
+    }
     const el = document.elementFromPoint(d.x, d.y) as HTMLElement | null;
     const tab = el?.closest<HTMLElement>("[data-tab]")?.dataset.tab ?? null;
     if (tab !== d.tab) {
@@ -389,15 +420,22 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     document.body.classList.remove("dnd-active");
     setTabHover(null);
     setDropZone(false);
+    setHideHover(false);
     if (!d.active) return;
     justDragged.current = Date.now();
     let final: ResolvedPage[] | null = null;
-    if (drop && d.tab) {
+    if (drop && d.hide) {
+      final = d.keys.reduce((p, k) => (d.kind === "widget" ? updateWidget(p, k, { hidden: true }) : updateCard(p, k, { hidden: true })), d.base);
+      hiddenToast(d.kind === "widget" ? "Widget hidden" : "Card hidden");
+    } else if (drop && d.tab) {
       // dropped on a page tab: onto that page (widgets get a new card there)
       final = d.kind === "widget" ? newCardWithWidgets(d.base, d.keys, d.tab).pages : moveCardTo(d.base, d.keys[0], d.tab);
       props.onPage(d.tab);
     } else if (drop) final = d.result;
-    if (final) {
+    if (final && d.draft) {
+      showPreview(final);
+      setPicker({ kind: d.draft, pages: final });
+    } else if (final) {
       commit(final);
       vibrate(8);
       setAnnounce(`Dropped. ${describe(final, d.kind, d.keys[0])}`);
@@ -431,7 +469,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   // a blocking touchmove listener must exist before the gesture starts, or the browser scrolls anyway
   // A smaller window must not strand the moved side panel outside it.
   useEffect(() => {
-    const reset = () => setSideAt({ x: 0, y: 0 });
+    const reset = () => (setSideAt({ x: 0, y: 0 }), setTrayAt({ x: 0, y: 0 }));
     addEventListener("resize", reset);
     return () => removeEventListener("resize", reset);
   }, []);
@@ -572,12 +610,10 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
       } else if (!typing && !mod && e.key === "?") {
         setPanel((p) => (p === "help" ? null : "help"));
       } else if (!typing && !mod && e.key.toLowerCase() === "a" && !kbd) {
-        setPanel("add");
-      } else if (e.key === "Escape" && !kbd && !drag.current && !confirm) {
-        if (sel.size || selCard) {
-          setSel(new Set());
-          setSelCard(null);
-        } else if (panel && !props.isPhone) setPanel(null);
+        openTray();
+      } else if (e.key === "Escape" && !kbd && !drag.current && !confirm && !picker) {
+        if (sel.size || selCard) closeSide();
+        else if (panel && !props.isPhone) setPanel(null);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -630,12 +666,40 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
       ok: () => commit(resolveLayout(props.uplinks, null, { includeHidden: true })),
     });
 
+  // ------------------------------------------------------- toolbox and panels
+  const closeSide = () => {
+    setSel(new Set());
+    setSelCard(null);
+    setPanel(null);
+  };
+  const openTray = () => {
+    closeSide();
+    setTray(true);
+  };
+  const hiddenToast = (title: string) =>
+    pushToast({ level: "info", title, text: "It is under Hidden in the toolbox.", action: { label: "Undo", run: () => setHist(undo) } });
+  const pickDone = () => {
+    setPicker(null);
+    setPreview(null);
+  };
+  /** A click on a widget type: into the card being edited, else into a new card. */
+  const addKind = (kind: WidgetKind, into?: string) => {
+    const base = withDraftWidget(current(hist), page.id, draftWidget(kind), kind.display);
+    const card = base.flatMap((p) => p.cards).find((c) => c.key === into);
+    const next = card ? moveWidgetsTo(base, [DRAFT_WIDGET], card.key, 0, bottom(card.widgets.filter((w) => !w.hidden).map((w) => ({ id: w.key, ...w.box })))) : newCardWithWidgets(base, [DRAFT_WIDGET], page.id).pages;
+    showPreview(next);
+    setPicker({ kind, pages: next });
+  };
+  const templates = useMemo(() => cardTemplates(props.uplinks), [props.uplinks]);
+
   // ----------------------------------------------------------- card wiring
   const selectedWidget = sel.size === 1 ? findWidget(pages, [...sel][0]) : undefined;
   const selectedCard = selCard ? pages.flatMap((p) => p.cards).find((c) => c.key === selCard) : undefined;
+  const focusKey = panel === "settings" ? selectedWidget?.card.key ?? selectedCard?.key ?? null : null;
   const editFor = (card: ResolvedCard): CardEdit => ({
     selected: sel,
     cardSelected: selCard === card.key,
+    focused: focusKey === card.key,
     dragging,
     placeholder: null,
     badge,
@@ -684,41 +748,55 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     },
     onHideCard: (c) => {
       commit(updateCard(current(hist), c.key, { hidden: true }));
-      pushToast({ level: "info", title: "Card hidden", text: `${c.title} is in Add now – drag it back any time.` });
+      hiddenToast("Card hidden");
     },
     onHideWidget: (rw) => {
       commit(updateWidget(current(hist), rw.key, { hidden: true }));
       setSel(new Set());
+      hiddenToast("Widget hidden");
     },
     onKeyDown: itemKey,
   });
 
   const shown = page.cards.filter((c) => !c.hidden);
   const hiddenCount = pages.reduce((n, p) => n + p.cards.filter((c) => c.hidden).length + p.cards.reduce((m, c) => m + c.widgets.filter((w) => w.hidden).length, 0), 0);
+  const tools = (
+    <Toolbox
+      pages={current(hist)}
+      page={page.id}
+      uplinks={props.uplinks}
+      conn={conn}
+      templates={templates}
+      cardFromTemplate={(t) => addViewsCard(current(hist), page.id, t)}
+      emptyCard={() => newCardWithWidgets(current(hist), [], page.id)}
+      onAdd={(next) => Date.now() - justDragged.current > 250 && commit(next)}
+      onDragStart={(e, kind, key, el, base) => begin(e, kind, [key], el, "gallery", base)}
+      onKindDown={(e, kind, el) => begin(e, "widget", [DRAFT_WIDGET], el, "gallery", withDraftWidget(current(hist), page.id, draftWidget(kind), kind.display), kind)}
+      onKind={(kind) => Date.now() - justDragged.current > 250 && addKind(kind)}
+      onNewPage={() => {
+        const r = addPage(current(hist), "New page", "star");
+        commit(r.pages);
+        props.onPage(r.id);
+      }}
+    />
+  );
   const side =
-    panel === "add" ? (
-      <AddGallery
-        pages={current(hist)}
-        page={page.id}
-        conn={conn}
-        onAdd={(next) => commit(next)}
-        onDragStart={(e, kind, key, el, base) => begin(e, kind, [key], el, "gallery", base)}
-        onNewCard={() => {
-          const r = newCardWithWidgets(current(hist), [], page.id);
-          commit(r.pages);
-          setSelCard(r.key);
-          setPanel("settings");
-        }}
-        onNewPage={() => {
-          const r = addPage(current(hist), "New page", "star");
-          commit(r.pages);
-          props.onPage(r.id);
-        }}
-      />
-    ) : panel === "help" ? (
+    panel === "help" ? (
       <ShortcutHelp />
     ) : panel === "settings" && selectedWidget ? (
-      <WidgetSettings key={selectedWidget.widget.key} found={selectedWidget} pages={current(hist)} conn={conn} onChange={(next, key) => commit(next, key, false)} />
+      <WidgetSettings
+        key={selectedWidget.widget.key}
+        found={selectedWidget}
+        pages={current(hist)}
+        conn={conn}
+        onChange={(next, key) => commit(next, key, false)}
+        onRebind={() => setPicker({ kind: WIDGET_KINDS.find((k) => k.type === selectedWidget.widget.view?.as) ?? WIDGET_KINDS[0], rebind: selectedWidget.widget.key })}
+        onRemove={() => {
+          commit(removeView(current(hist), selectedWidget.widget.key));
+          setSel(new Set());
+          setSelCard(selectedWidget.card.key);
+        }}
+      />
     ) : panel === "settings" && selectedCard ? (
       <CardSettings
         key={selectedCard.key}
@@ -728,14 +806,40 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
         onPage={props.onPage}
         conn={conn}
         uplink={props.uplinks.find((u) => u.uplinkId === selectedCard.uplink.uplinkId)}
+        onWidget={(key) => {
+          setSel(new Set([key]));
+          setSelCard(null);
+        }}
+        onAddWidget={(kind) => addKind(kind, selectedCard.key)}
       />
-    ) : panel === "settings" ? (
-      <div class="ed-empty">
-        <b>Nothing selected</b>
-        <p class="muted small">Click a widget or a card to change it here. Shift-click selects several widgets to move them together.</p>
-      </div>
     ) : null;
-  const sideTitle = panel === "add" ? "Add" : panel === "help" ? "Keyboard & mouse" : selectedWidget ? "Widget" : selectedCard ? "Card" : "Settings";
+  const sideTitle = panel === "help" ? "Keyboard & mouse" : selectedWidget ? selectedWidget.widget.label : selectedCard ? selectedCard.title || "Card" : "Settings";
+  // the panel sits next to the card it edits (left of it near the right edge) and follows it
+  const anchored = !!focusKey && !props.isPhone;
+  useEffect(() => setSideAt({ x: 0, y: 0 }), [focusKey]);
+  useLayoutEffect(() => {
+    if (!anchored) return;
+    const place = () => {
+      const card = document.querySelector(`[data-card="${CSS.escape(focusKey!)}"]`)?.getBoundingClientRect();
+      const box = sideRef.current;
+      if (!card || !box) return;
+      const w = box.offsetWidth;
+      const top = (document.querySelector(".ed-bar")?.getBoundingClientRect().bottom ?? 0) + 8;
+      let left = card.right + 12;
+      if (left + w > innerWidth - 8) left = card.left - w - 12;
+      if (left < 8) left = innerWidth - w - 8;
+      box.style.left = `${left}px`;
+      box.style.top = `${Math.max(top, Math.min(card.top, innerHeight - box.offsetHeight - 8))}px`;
+    };
+    place();
+    // once the FLIP of a reflow is through
+    const later = setTimeout(place, 320);
+    addEventListener("scroll", place, { passive: true });
+    return () => {
+      clearTimeout(later);
+      removeEventListener("scroll", place);
+    };
+  });
 
   return (
     <div class="editor">
@@ -745,8 +849,8 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
           {dirty && <span class="ed-dirty">unsaved</span>}
         </span>
         <span class="ed-tools">
-          <button type="button" class="btn btn-small ed-add" onClick={() => setPanel(panel === "add" ? null : "add")} aria-pressed={panel === "add"}>
-            + Add{hiddenCount ? ` (${hiddenCount})` : ""}
+          <button type="button" class="btn btn-small ed-add" onClick={() => (tray && !panel ? setTray(false) : openTray())} aria-pressed={tray && !panel}>
+            Toolbox{hiddenCount ? ` (${hiddenCount})` : ""}
           </button>
           <button type="button" class="icon-btn" aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)" disabled={!canUndo(hist)} onClick={() => setHist(undo)}>
             ↶
@@ -800,7 +904,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
               </button>
             </div>
           )}
-          <div class={`pgrid editing ${props.narrow ? "narrow" : ""}`} data-pgrid ref={gridRef}>
+          <div class={`pgrid editing ${props.narrow ? "narrow" : ""} ${focusKey ? "has-focus" : ""}`} data-pgrid ref={gridRef} onClick={(e) => e.target === e.currentTarget && focusKey && closeSide()}>
             {shown.map((c) => (
               <Card key={c.key} card={c} conn={conn} locked={false} edit={editFor(c)} />
             ))}
@@ -809,7 +913,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
                 {shown.length === 0 ? (
                   <>
                     <b>This page is empty</b>
-                    <span>Drag cards or widgets here – from another page via its tab, or from + Add.</span>
+                    <span>Drag cards or widgets here from the toolbox, or from another page via its tab.</span>
                   </>
                 ) : (
                   <span>Drop here for a new card</span>
@@ -819,21 +923,62 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
           </div>
         </div>
         {side && !props.isPhone && (
-          <aside class={`ed-side ${dragging.size ? "through" : ""}`} aria-label={sideTitle} style={{ transform: `translate(${sideAt.x}px, ${sideAt.y}px)` }}>
-            <header class="ed-side-head" title="Drag to move" onPointerDown={moveSide}>
+          <aside key={anchored ? "card" : "help"} ref={sideRef} class={`ed-side ${anchored ? "anchored" : ""} ${dragging.size ? "through" : ""}`} aria-label={sideTitle} style={{ transform: `translate(${sideAt.x}px, ${sideAt.y}px)` }}>
+            <header class="ed-side-head" title="Drag to move" onPointerDown={(e) => moveFloat(e, sideAt, setSideAt)}>
+              {selectedWidget && panel === "settings" && (
+                <button
+                  type="button"
+                  class="icon-btn sm"
+                  aria-label="Back to the card"
+                  onClick={() => {
+                    setSelCard(selectedWidget.card.key);
+                    setSel(new Set());
+                  }}
+                >
+                  ←
+                </button>
+              )}
               <b>{sideTitle}</b>
-              <button type="button" class="icon-btn sm" aria-label="Close panel" onClick={() => setPanel(null)}>
+              <button type="button" class="icon-btn sm" aria-label="Close panel" onClick={closeSide}>
                 ×
               </button>
             </header>
             <div class="ed-side-body">{side}</div>
           </aside>
         )}
+        {tray && !panel && !props.isPhone && (
+          <aside data-tray class={`ed-side ed-tray ${dragging.size && !hideHover ? "through" : ""} ${hideHover ? "drop-hide" : ""}`} aria-label="Toolbox" style={{ transform: `translate(${trayAt.x}px, ${trayAt.y}px)` }}>
+            <header class="ed-side-head" title="Drag to move" onPointerDown={(e) => moveFloat(e, trayAt, setTrayAt)}>
+              <b>Toolbox</b>
+              <button type="button" class="icon-btn sm" aria-label="Close toolbox" onClick={() => setTray(false)}>
+                ×
+              </button>
+            </header>
+            <div class="ed-side-body">{hideHover ? <p class="ed-hide-note">Drop here to hide</p> : tools}</div>
+          </aside>
+        )}
       </div>
       {side && props.isPhone && (
-        <Sheet title={sideTitle} onClose={() => setPanel(null)}>
+        <Sheet title={sideTitle} onClose={closeSide}>
           {side}
         </Sheet>
+      )}
+      {tray && !panel && props.isPhone && (
+        <Sheet title="Toolbox" onClose={() => setTray(false)}>
+          {tools}
+        </Sheet>
+      )}
+      {picker && (
+        <SourcePicker
+          kind={picker.kind}
+          uplinks={props.uplinks}
+          onClose={pickDone}
+          onPick={(uplink, widget) => {
+            if (picker.rebind) commit(rebindView(current(hist), picker.rebind, uplink, widget), undefined, false);
+            else if (picker.pages) commit(bindDraft(picker.pages, uplink, widget, picker.kind.type));
+            setPicker(null);
+          }}
+        />
       )}
       <div class="sr-only" aria-live="assertive">
         {announce}

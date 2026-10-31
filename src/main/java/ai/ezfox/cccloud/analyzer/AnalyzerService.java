@@ -3,6 +3,7 @@ package ai.ezfox.cccloud.analyzer;
 import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.bridge.BridgeRegistry;
+import ai.ezfox.cccloud.claims.ClaimGuard;
 import ai.ezfox.cccloud.ingame.InGameAccess;
 import ai.ezfox.cccloud.ingame.InGamePayloads;
 import ai.ezfox.cccloud.network.CloudNetwork;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
@@ -26,8 +28,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
  * Sends the Cloud Analyzer overlay data to players who hold the analyzer, a Link Card or a cloud device item: only
- * networks where they have the {@code view.positions} permission (AccessResolver), only within {@link AnalyzerGeometry#RADIUS} blocks,
- * at most {@link AnalyzerGeometry#MAX_ELEMENTS} elements. Checked every 10 ticks; sent when it changed and at least
+ * networks where they have the {@code view.positions} permission (AccessResolver), nothing inside the claim of a team they
+ * do not belong to (the overlay draws through walls, so it would be an X-ray of that base; also for operators), only
+ * within {@link AnalyzerGeometry#RADIUS} blocks, at most {@link AnalyzerGeometry#MAX_ELEMENTS} elements. Checked every 10 ticks; sent when it changed and at least
  * every 2 s while held; an empty payload once when the player stops holding such an item. Server thread only.
  */
 public final class AnalyzerService {
@@ -115,8 +118,11 @@ public final class AnalyzerService {
             networks.add(new AnalyzerGeometry.Network(id.toString(), mainframe.getDisplayName(), result, names, statuses));
         }
         var p = player.position();
-        var json = AnalyzerGeometry.build(networks, player.level().dimension().identifier().toString(), p.x, p.y, p.z, ranges());
-        json.add("probes", probes(networks, player.level()));
+        var level = player.level();
+        var self = List.of(player.getUUID());
+        AnalyzerGeometry.Hidden hidden = (x, y, z) -> ClaimGuard.blockedAt(level, BlockPos.containing(x, y, z), self);
+        var json = AnalyzerGeometry.build(networks, level.dimension().identifier().toString(), p.x, p.y, p.z, ranges(), hidden);
+        json.add("probes", probes(networks, level, hidden));
         return json;
     }
 
@@ -124,7 +130,7 @@ public final class AnalyzerService {
      * Cloud Probes of the shown networks in the player's dimension and what they read: {@code [[x,y,z, tx,ty,tz]]} (block
      * centres), drawn as a thin line. Within 128 blocks, at most 64.
      */
-    static com.google.gson.JsonArray probes(List<AnalyzerGeometry.Network> networks, net.minecraft.world.level.Level level) {
+    static com.google.gson.JsonArray probes(List<AnalyzerGeometry.Network> networks, net.minecraft.world.level.Level level, AnalyzerGeometry.Hidden hidden) {
         var array = new com.google.gson.JsonArray();
         for (var net : networks) {
             for (var device : net.result().devices()) {
@@ -133,6 +139,7 @@ public final class AnalyzerService {
                     || probe.getLevel() != level || probe.remoteTarget() == null) continue;
                 var a = probe.getBlockPos().getCenter();
                 var b = probe.remoteTarget().getCenter();
+                if (hidden.at(a.x, a.y, a.z) || hidden.at(b.x, b.y, b.z)) continue;
                 var line = new com.google.gson.JsonArray();
                 for (double v : new double[]{a.x, a.y, a.z, b.x, b.y, b.z}) line.add(v);
                 array.add(line);

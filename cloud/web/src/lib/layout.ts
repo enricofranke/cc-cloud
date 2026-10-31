@@ -7,7 +7,7 @@
 // rows grow when the content is taller). Widgets can move into other cards and
 // into custom cards ("c:<id>"). v1 documents (order + span) are migrated on read.
 // Pure functions only, so the editor logic is unit-testable.
-import type { Uplink, Widget } from "./types.ts";
+import { WIDGET_TYPES, type Uplink, type Widget, type WidgetType } from "./types.ts";
 import { bottom, clampItem, compact, flowPack, freeSpot, insertItem, moveItem, placeAll, resizeItem, type GridItem } from "./grid.ts";
 
 export const LAYOUT_VERSION = 2;
@@ -42,6 +42,8 @@ export const DISPLAYS_FOR: Record<string, Display[]> = {
   indicator: ["chip", "lamp"],
 };
 export const CUSTOM_PREFIX = "c:";
+/** A widget built in the editor: a second view "v:<id>" of a widget a computer or device publishes. */
+export const VIEW_PREFIX = "v:";
 
 export interface Box {
   x: number;
@@ -73,6 +75,9 @@ export interface WidgetPatch extends Partial<Box> {
   color?: Accent;
   icon?: IconName;
   display?: Display;
+  /** views only: the published widget it shows (`<uplinkId>/<widgetId>`) and the type it shows it as */
+  src?: string;
+  as?: WidgetType;
   /** v1 only (migrated on read) */
   order?: number;
   span?: number;
@@ -110,6 +115,8 @@ export interface ResolvedWidget {
   color?: Accent;
   icon?: IconName;
   display: Display;
+  /** set on views: the published widget behind it */
+  view?: { src: string; as: WidgetType };
 }
 export interface ResolvedCard {
   key: string; // layout.cards key
@@ -235,6 +242,11 @@ export function normalizeLayout(raw: unknown): LayoutDoc {
       if ((DISPLAYS as readonly string[]).includes(w.display) && w.display !== "auto") patch.display = w.display;
       if (int(w.order, 0, 10_000) !== undefined) patch.order = int(w.order, 0, 10_000);
       if (int(w.span, 1, 4) !== undefined) patch.span = int(w.span, 1, 4);
+      if (k.startsWith(VIEW_PREFIX)) {
+        if (!/^v:[A-Za-z0-9_-]{1,24}$/.test(k) || !str(w.src) || w.src.length > 160 || !(WIDGET_TYPES as readonly string[]).includes(w.as)) continue;
+        patch.src = w.src;
+        patch.as = w.as;
+      }
       out.widgets[k] = patch;
     }
   return out;
@@ -275,6 +287,62 @@ export function guessIcon(title: string, widgets: Widget[]): IconName | undefine
   for (const [re, icon] of rules) if (re.test(t)) return icon;
   if (widgets.some((w) => w.type === "chart")) return "chart";
   return undefined;
+}
+
+/** Which published widget types a view of each type can show. */
+const NUMBERS: WidgetType[] = ["gauge", "progress", "chart", "slider", "number"];
+export const VIEW_SOURCES: Record<WidgetType, WidgetType[]> = {
+  gauge: NUMBERS,
+  progress: ["progress", "gauge", "slider", "number"],
+  chart: NUMBERS,
+  label: ["label", ...NUMBERS, "select", "buttons", "text", "indicator", "toggle"],
+  indicator: ["indicator", "toggle"],
+  toggle: ["toggle"],
+  button: ["button"],
+  slider: ["slider"],
+  number: ["number", "slider"],
+  select: ["select", "buttons"],
+  buttons: ["buttons", "select"],
+  text: ["text"],
+  item_search: ["item_search"],
+  watchlist: ["watchlist"],
+  jobs: ["jobs"],
+  redstone_sides: ["redstone_sides"],
+  sensor_log: ["sensor_log"],
+};
+const CHART_POINTS = 60;
+const views = new WeakMap<Widget, Map<WidgetType, Widget>>();
+const samples = new Map<string, number[]>();
+
+/**
+ * The published widget as a view of type `as`; the id stays, so actions and live values go to the same widget. The same
+ * object for the same source object (a memoised card only renders when a value changed). A chart of a value without
+ * history records it while the page is open.
+ */
+export function viewWidget(uplinkId: string, source: Widget, as: WidgetType): Widget {
+  if (source.type === as) return source;
+  let byType = views.get(source);
+  if (!byType) views.set(source, (byType = new Map()));
+  const known = byType.get(as);
+  if (known) return known;
+  const last = source.type === "chart" ? source.history?.at(-1) : source.value;
+  const value = typeof last === "number" || typeof last === "boolean" || typeof last === "string" ? last : undefined;
+  const w: Widget = { ...source, type: as, value };
+  if (as === "label" && typeof value === "number") w.value = `${Number.isInteger(value) ? value : value.toFixed(1)}${source.opts?.unit ? ` ${source.opts.unit}` : ""}`;
+  if (as === "chart") {
+    const key = `${uplinkId}/${source.id}`;
+    const seen = samples.get(key) ?? [];
+    if (typeof value === "number") seen.push(value);
+    samples.set(key, seen.slice(-CHART_POINTS));
+    w.history = samples.get(key);
+  }
+  byType.set(as, w);
+  return w;
+}
+
+/** The widgets of the base a view of type `as` can show, device by device. */
+export function viewSources(uplinks: Uplink[], as: WidgetType) {
+  return uplinks.flatMap((u) => (u.blocked ? [] : u.widgets.filter((w) => VIEW_SOURCES[as].includes(w.type)).map((w) => ({ uplink: u, widget: w }))));
 }
 
 export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts: { includeHidden?: boolean } = {}): ResolvedPage[] {
@@ -358,6 +426,34 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
   for (const [key, patch] of Object.entries(doc.cards)) {
     if (!key.startsWith(CUSTOM_PREFIX) || cards.has(key)) continue;
     cards.set(key, { ...makeCard(key, STUB, "New card", undefined, undefined, false, {}), custom: true });
+  }
+  // views built in the editor live in a card of their own choice; with their source gone they stay as an offline widget
+  const byId = new Map(uplinks.map((u) => [u.uplinkId, u]));
+  for (const [key, wp] of Object.entries(doc.widgets)) {
+    if (!key.startsWith(VIEW_PREFIX) || !wp.src || !wp.as || !wp.card || !cards.has(wp.card)) continue;
+    const slash = wp.src.indexOf("/");
+    const uplinkId = wp.src.slice(0, slash);
+    const id = wp.src.slice(slash + 1);
+    const u = byId.get(uplinkId);
+    const source = u?.widgets.find((w) => w.id === id);
+    const w = source ? viewWidget(uplinkId, source, wp.as) : { id, type: wp.as };
+    const offered = DISPLAYS_FOR[wp.as];
+    const display: Display = wp.display && offered?.includes(wp.display) ? wp.display : offered?.[0] ?? "auto";
+    widgets.push({
+      key,
+      w,
+      uplink: source ? u! : { ...STUB, uplinkId, online: false },
+      home: "",
+      label: wp.label || w.label || id,
+      box: { x: wp.x ?? 0, y: wp.y ?? 0, w: wp.w ?? defaultWidgetW(wp.as), h: wp.h ?? defaultWidgetH(wp.as, display) },
+      placed: hasBox(wp),
+      hidden: wp.hidden === true,
+      ...(wp.color ? { color: wp.color } : {}),
+      ...(wp.icon ? { icon: wp.icon } : {}),
+      display,
+      order: 5000,
+      view: { src: wp.src, as: wp.as },
+    });
   }
   // widgets moved into another card
   for (const w of widgets) {
@@ -473,6 +569,7 @@ function fullSnapshot(pages: ResolvedPage[]): LayoutDoc {
       for (const w of c.widgets) {
         doc.widgets[w.key] = {
           ...(c.key !== w.home ? { card: c.key } : {}),
+          ...(w.view ? { src: w.view.src, as: w.view.as } : {}),
           ...w.box,
           ...(w.label !== (w.w.label || w.w.id) ? { label: w.label } : {}),
           ...(w.hidden ? { hidden: true } : {}),
@@ -715,6 +812,86 @@ export function newCardWithWidgets(pages: ResolvedPage[], widgetKeys: string[], 
   applyCards(page, insertItem(others, { id: key, ...card.box }, COLS));
   next = moveWidgetsTo(next, widgetKeys, key, 0, 0);
   return { pages: next, key };
+}
+
+const DRAFT_CARD = `${CUSTOM_PREFIX}draft`;
+export const DRAFT_WIDGET = `${VIEW_PREFIX}draft`;
+
+/**
+ * A new widget while it is being dragged in: a stand-in in a hidden carrier card, so the normal moves place it (the empty
+ * carrier disappears with the first move). `bindDraft` turns it into a real view once its data source is picked.
+ */
+export function withDraftWidget(pages: ResolvedPage[], pageId: string, w: Widget, display: Display): ResolvedPage[] {
+  const next = newCardWithWidgets(pages, [], pageId).pages;
+  const fresh = next.flatMap((p) => p.cards).find((c) => c.custom && !pages.some((p) => p.cards.some((x) => x.key === c.key)));
+  if (!fresh) return pages;
+  fresh.key = DRAFT_CARD;
+  fresh.hidden = true;
+  fresh.widgets = [{ key: DRAFT_WIDGET, w, uplink: fresh.uplink, home: "", label: w.label ?? w.id, box: { x: 0, y: 0, w: defaultWidgetW(w.type), h: defaultWidgetH(w.type, display) }, hidden: true, display }];
+  return next;
+}
+
+const viewId = (pages: ResolvedPage[]) => {
+  const all = new Set(pages.flatMap((p) => p.cards.flatMap((c) => c.widgets.map((w) => w.key))));
+  let n = 1;
+  while (all.has(`${VIEW_PREFIX}w${n}`)) n++;
+  return `${VIEW_PREFIX}w${n}`;
+};
+
+const sourceView = (key: string, uplink: Uplink, source: Widget, as: WidgetType) => {
+  const w = viewWidget(uplink.uplinkId, source, as);
+  return { key, w, uplink, label: source.label ?? source.id, view: { src: `${uplink.uplinkId}/${source.id}`, as } };
+};
+
+export function bindDraft(pages: ResolvedPage[], uplink: Uplink, source: Widget, as: WidgetType): ResolvedPage[] {
+  const next = clone(pages);
+  const f = findWidget(next, DRAFT_WIDGET);
+  if (!f) return pages;
+  const view = sourceView(viewId(next), uplink, source, as);
+  Object.assign(f.widget, view);
+  return resizeWidget(next, view.key, Math.max(f.widget.box.w, minWidgetW(as)), Math.max(f.widget.box.h, defaultWidgetH(as, f.widget.display)));
+}
+
+/** A view shows other data now; position, size and looks stay. */
+export function rebindView(pages: ResolvedPage[], key: string, uplink: Uplink, source: Widget): ResolvedPage[] {
+  const next = clone(pages);
+  const f = findWidget(next, key);
+  if (!f?.widget.view) return pages;
+  Object.assign(f.widget, sourceView(key, uplink, source, f.widget.view.as));
+  return next;
+}
+
+export interface ViewPick {
+  uplink: Uplink;
+  widget: Widget;
+  as: WidgetType;
+  display?: Display;
+}
+
+/** A ready-made card: a new custom card of views, at (x, y) or the first free spot. */
+export function addViewsCard(pages: ResolvedPage[], pageId: string, spec: { title: string; color: Accent; icon: IconName; w: number; picks: ViewPick[] }, x?: number, y?: number): { pages: ResolvedPage[]; key: string } {
+  const r = newCardWithWidgets(pages, [], pageId, x, y, spec.title);
+  const next = clone(r.pages);
+  const f = findCard(next, r.key);
+  if (!f) return r;
+  Object.assign(f.card, { color: spec.color, icon: spec.icon });
+  for (const p of spec.picks) {
+    const display = p.display ?? DISPLAYS_FOR[p.as]?.[0] ?? "auto";
+    f.card.widgets.push({ ...sourceView(viewId(next), p.uplink, p.widget, p.as), home: "", box: { x: 0, y: 0, w: defaultWidgetW(p.as), h: defaultWidgetH(p.as, display) }, hidden: false, display });
+  }
+  applyWidgets(f.card, flowPack(wItems(f.card.widgets), COLS));
+  applyCards(f.page, resizeItem(asItems(f.page.cards), r.key, Math.min(COLS, spec.w), Math.max(3, Math.min(MAX_CARD_H, CARD_CHROME_H + bottom(wItems(f.card.widgets)))), COLS, MAX_CARD_H));
+  return { pages: next, key: r.key };
+}
+
+export function removeView(pages: ResolvedPage[], key: string): ResolvedPage[] {
+  const next = clone(pages);
+  const f = findWidget(next, key);
+  if (!f?.widget.view) return pages;
+  f.card.widgets = f.card.widgets.filter((w) => w !== f.widget);
+  applyWidgets(f.card, compact(wItems(f.card.widgets)));
+  fitCard(f.page, f.card, true);
+  return next;
 }
 
 /** Adds an empty custom card (from the Add gallery). */

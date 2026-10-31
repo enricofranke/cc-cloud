@@ -165,6 +165,7 @@ export function Dashboard({ id }: { id: string }) {
     }
   }, [conn?.store.value, conn?.status.value]);
   const [editing, setEditing] = useState(false);
+  const [editCard, setEditCard] = useState<string | undefined>();
   const [powerOpen, setPowerOpen] = useState(false);
   const st = statusOf(conn);
   const retryAt = conn?.nextRetryAt.value ?? null;
@@ -217,7 +218,7 @@ export function Dashboard({ id }: { id: string }) {
           {unread > 0 && <span class="badge badge-dot">{unread > 9 ? "9+" : unread}</span>}
         </button>
         {conn.can("layout.edit") && conn.status.value === "open" && sectionCount > 0 && (
-          <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => (editing ? window.dispatchEvent(new Event("cccloud:edit-exit")) : setEditing(true))}>
+          <button type="button" class={`icon-btn ${editing ? "on" : ""}`} aria-label={editing ? "Leave layout editor" : "Edit layout"} aria-pressed={editing} onClick={() => (editing ? window.dispatchEvent(new Event("cccloud:edit-exit")) : (setEditCard(undefined), setEditing(true)))}>
             <IconPencil />
           </button>
         )}
@@ -296,7 +297,7 @@ export function Dashboard({ id }: { id: string }) {
         ) : sectionCount === 0 ? (
           <SetupGuide />
         ) : (
-          <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.can("layout.edit")} onExitEdit={() => setEditing(false)} />
+          <Pages conn={conn} locked={locked} dim={st.kind !== "online"} editing={editing && conn.can("layout.edit")} onExitEdit={() => setEditing(false)} focusCard={editCard} onEdit={(key) => (setEditCard(key), setEditing(true))} />
         )}
       </main>
 

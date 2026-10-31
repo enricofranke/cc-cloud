@@ -65,6 +65,8 @@ const box = (maxH: number) => ({
   w: z.number().int().min(1).max(12).optional(),
   h: z.number().int().min(1).max(maxH).optional(),
 });
+/** what a view "v:<id>" may show its source as: every widget type */
+const VIEW_TYPES = ["button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs", "chart", "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log"];
 const layoutV2 = z.strictObject({
   v: z.literal(2),
   pages: pagesSchema,
@@ -93,9 +95,16 @@ const layoutV2 = z.strictObject({
         color: z.enum(ACCENTS).optional(),
         icon: z.enum(ICONS).optional(),
         display: z.enum(DISPLAYS).optional(),
+        src: layoutKey.optional(),
+        as: z.string().optional(),
       })
       .refine((w) => w.x === undefined || w.w === undefined || w.x + w.w <= 12, "widget wider than the grid"),
-  ).refine((w) => Object.keys(w).length <= MAX_LAYOUT_WIDGETS, "too many widgets"),
+  ).superRefine((widgets, ctx) => {
+    for (const [k, w] of Object.entries(widgets)) {
+      const view = k.startsWith("v:");
+      if (view ? !/^v:[A-Za-z0-9_-]{1,24}$/.test(k) || !w.card || !w.src || !w.as || !VIEW_TYPES.includes(w.as) : w.src !== undefined || w.as !== undefined) ctx.addIssue({ code: "custom", message: `bad view ${k}` });
+    }
+  }).refine((w) => Object.keys(w).length <= MAX_LAYOUT_WIDGETS, "too many widgets"),
 });
 export const layoutDoc = z.discriminatedUnion("v", [layoutV1, layoutV2]);
 export type LayoutDocument = z.infer<typeof layoutDoc>;

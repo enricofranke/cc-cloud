@@ -438,7 +438,7 @@ function JobList({ jobs, conn, uplink, widgetId }: { jobs: JobInfo[]; conn: Main
 }
 
 // ------------------------------------------------------------------- browser
-type Tab = "items" | "craftable" | "fluids" | "cpus";
+export type Tab = "items" | "craftable" | "fluids" | "cpus";
 export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; widgetId?: string; initialTab?: Tab; onClose: () => void }) {
   const { conn, uplink } = props;
   const [tab, setTab] = useState<Tab>(props.initialTab ?? "items");
@@ -519,7 +519,7 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
 
   if (open) return <ItemDetailSheet conn={conn} uplink={uplink} widgetId={props.widgetId} name={open.name} displayName={open.displayName} onClose={props.onClose} onBack={() => (setOpen(null), loadPage(0))} />;
   return (
-    <Sheet title={`${uplink.title || "Storage"} – browse`} onClose={props.onClose} wide tall>
+    <Sheet title={uplink.title || "Storage"} onClose={props.onClose} wide tall>
       <div class="sb">
         <div class="nd-tabs" role="tablist" aria-label="Storage">
           {(
@@ -558,10 +558,10 @@ export function StorageBrowser(props: { conn: MainframeConn; uplink: Uplink; wid
             <ul class="sb-grid" aria-busy={loading}>
               {rows.map((r) => (
                 <li key={r.name} class={`sb-tile ${r.favorite ? "fav" : ""}`}>
-                  <button type="button" class="sb-open" onClick={() => setOpen(r)} title={`${r.displayName} – ${full(r.count)}`}>
+                  <button type="button" class="sb-open" onClick={() => setOpen(r)} title={`${r.displayName} – ${full(r.count)} in the network`}>
                     <ItemIcon name={r.name} displayName={r.displayName} size={32} />
                     <span class="sb-name">{r.displayName}</span>
-                    <span class={`sb-count ${r.count === 0 ? "zero" : ""}`}>{fmtCount(r.count)}</span>
+                    <span class={`sb-count ${r.count === 0 ? "zero" : ""}`} title="Amount in the network">×{fmtCount(r.count)}</span>
                     {r.craftable && <span class="sb-craft" title="Craftable" aria-label="craftable">⚒</span>}
                   </button>
                   <button type="button" class={`sb-fav ${r.favorite ? "on" : ""}`} aria-pressed={!!r.favorite} aria-label={`${r.favorite ? "Unpin" : "Pin"} ${r.displayName}`} disabled={!conn.can("act.buttons")} onClick={() => toggleFav(r)}>

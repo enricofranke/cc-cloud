@@ -29,6 +29,10 @@ class AnalyzerGeometryTest {
         assertFalse(ids.contains("x"), "a node 900 blocks away is not sent");
         assertEquals(1, json.getAsJsonArray("devices").size());
         var other = AnalyzerGeometry.build(List.of(net), "minecraft:the_nether", 0, 64, 0, Map.of());
+        var claimed = AnalyzerGeometry.build(List.of(net), OW, 0, 64, 0, Map.of(), (x, y, z) -> true);
+        assertEquals(0, claimed.getAsJsonArray("nodes").size(), "nothing inside a hidden place");
+        assertEquals(0, claimed.getAsJsonArray("devices").size());
+        assertEquals(0, claimed.getAsJsonArray("links").size());
         assertEquals(0, other.getAsJsonArray("nodes").size(), "other dimensions are not sent");
         assertTrue(json.getAsJsonArray("links").size() >= 1);
     }

@@ -1,7 +1,7 @@
-// Side panels of the layout editor: widget/card settings with live preview,
-// the Add gallery (hidden items with live previews, every widget type with its
-// Lua one-liner, new card/page) and the shortcut help.
-import { useState } from "preact/hooks";
+// Floating panels of the layout editor: widget/card settings with live preview,
+// the toolbox (ready-made cards, every widget type, hidden items), the picker
+// for a new widget's data source and the shortcut help.
+import { useMemo, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Uplink, Widget, WidgetType } from "../lib/types.ts";
 import {
@@ -15,6 +15,7 @@ import {
   minWidgetW,
   defaultWidgetH,
   defaultWidgetW,
+  viewSources,
   moveCardTo,
   moveWidgetsTo,
   removeCustomCard,
@@ -24,6 +25,7 @@ import {
   updateWidget,
   type Accent,
   type Display,
+  type IconName,
   type ResolvedCard,
   type ResolvedPage,
   type ResolvedWidget,
@@ -32,6 +34,8 @@ import { WidgetView, placeVars } from "../components/Card.tsx";
 import { IconPicker } from "../components/PageTabs.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { CopyButton } from "../components/CodeBlock.tsx";
+import { Sheet } from "../components/Overlays.tsx";
+import type { CardTemplate } from "./templates.ts";
 
 type Found = { page: ResolvedPage; card: ResolvedCard; widget: ResolvedWidget };
 
@@ -97,7 +101,7 @@ function LivePreview({ rw, conn }: { rw: ResolvedWidget; conn: MainframeConn }) 
   );
 }
 
-export function WidgetSettings({ found, pages, conn, onChange }: { found: Found; pages: ResolvedPage[]; conn: MainframeConn; onChange: (p: ResolvedPage[], key?: string) => void }) {
+export function WidgetSettings({ found, pages, conn, onChange, onRebind, onRemove }: { found: Found; pages: ResolvedPage[]; conn: MainframeConn; onChange: (p: ResolvedPage[], key?: string) => void; onRebind: () => void; onRemove: () => void }) {
   const { widget: rw, card } = found;
   const k = rw.key;
   const [label, setLabel] = useState(rw.label);
@@ -123,6 +127,13 @@ export function WidgetSettings({ found, pages, conn, onChange }: { found: Found;
           {rw.w.type} · from {rw.uplink.title || "an uplink"} · id {rw.w.id}
         </span>
       </label>
+      {rw.view && (
+        <div class="ed-row">
+          <button type="button" class="btn btn-small" onClick={onRebind}>
+            Change data
+          </button>
+        </div>
+      )}
       {displays && (
         <div class="field">
           <span class="field-label">Display</span>
@@ -176,6 +187,11 @@ export function WidgetSettings({ found, pages, conn, onChange }: { found: Found;
         <button type="button" class="btn btn-small" onClick={() => onChange(updateWidget(pages, k, { hidden: true }))}>
           Hide widget
         </button>
+        {rw.view && (
+          <button type="button" class="btn btn-small btn-danger-ghost" onClick={onRemove}>
+            Delete widget
+          </button>
+        )}
       </div>
     </div>
   );
@@ -310,6 +326,8 @@ export function CardSettings({
   onPage,
   conn,
   uplink,
+  onWidget,
+  onAddWidget,
 }: {
   card: ResolvedCard;
   pages: ResolvedPage[];
@@ -318,6 +336,8 @@ export function CardSettings({
   conn?: MainframeConn;
   /** the card's uplink as the server sends it now (the editor keeps the state it was opened with) */
   uplink?: Uplink;
+  onWidget: (key: string) => void;
+  onAddWidget: (kind: WidgetKind) => void;
 }) {
   const k = card.key;
   const [title, setTitle] = useState(card.title);
@@ -340,6 +360,44 @@ export function CardSettings({
         <span class="field-hint">{card.custom ? "Your own card – it can hold widgets from any computer." : `From ${card.uplink.title || "an uplink"}.`}</span>
       </label>
       <div class="field">
+        <span class="field-label">Size</span>
+        <div class="seg-ctl seg-wide" role="radiogroup" aria-label="Card size">
+          {SIZES.map((z) => (
+            <button key={z.name} type="button" role="radio" aria-checked={card.box.w === z.w} class={card.box.w === z.w ? "on" : ""} onClick={() => onChange(resizeCard(pages, k, z.w, Math.max(z.h, card.box.h)))}>
+              {z.name}
+            </button>
+          ))}
+        </div>
+        <div class="ed-size">
+          <Stepper label="Width" value={card.box.w} min={MIN_CARD_W} max={COLS} onChange={(w) => onChange(resizeCard(pages, k, w, card.box.h))} />
+          <Stepper label="Height" value={card.box.h} min={3} max={MAX_CARD_H} onChange={(h) => onChange(resizeCard(pages, k, card.box.w, h))} />
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">Widgets</span>
+        {card.widgets.some((w) => !w.hidden) && (
+          <ul class="ed-wlist">
+            {card.widgets
+              .filter((w) => !w.hidden)
+              .map((w) => (
+                <li key={w.key}>
+                  <button type="button" class="ed-wrow" onClick={() => onWidget(w.key)}>
+                    <span>{w.label}</span>
+                    <span aria-hidden="true">✎</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        )}
+        <div class="ed-kinds" role="group" aria-label="Add a widget">
+          {WIDGET_KINDS.slice(0, 8).map((kind) => (
+            <button key={kind.id} type="button" class="chip" onClick={() => onAddWidget(kind)}>
+              + {kind.name}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div class="field">
         <span class="field-label">Style</span>
         <div class="seg-ctl seg-wide" role="radiogroup" aria-label="Card style">
           {CARD_STYLES.map((s) => (
@@ -356,13 +414,6 @@ export function CardSettings({
       <div class="field">
         <span class="field-label">Icon</span>
         <IconPicker value={card.icon} onChange={(i) => onChange(updateCard(pages, k, { icon: i }))} />
-      </div>
-      <div class="field">
-        <span class="field-label">Size (of {COLS} columns)</span>
-        <div class="ed-size">
-          <Stepper label="Width" value={card.box.w} min={MIN_CARD_W} max={COLS} onChange={(w) => onChange(resizeCard(pages, k, w, card.box.h))} />
-          <Stepper label="Height" value={card.box.h} min={3} max={MAX_CARD_H} onChange={(h) => onChange(resizeCard(pages, k, card.box.w, h))} />
-        </div>
       </div>
       <label class="field">
         <span class="field-label">Page</span>
@@ -434,112 +485,148 @@ const DEMO: Widget[] = [
 ];
 const DEMO_UPLINK: Uplink = { uplinkId: "__demo", title: "Demo", online: true, widgets: DEMO };
 
-export function AddGallery(props: {
+const SIZES = [
+  { name: "S", w: 3, h: 6 },
+  { name: "M", w: 4, h: 9 },
+  { name: "L", w: 6, h: 11 },
+  { name: "XL", w: 8, h: 14 },
+];
+
+export interface WidgetKind {
+  id: string;
+  type: WidgetType;
+  display: Display;
+  name: string;
+  hint: string;
+  icon: IconName;
+}
+export const WIDGET_KINDS: WidgetKind[] = [
+  { id: "stat", type: "gauge", display: "number", name: "Number", hint: "One value, big and clear", icon: "chart" },
+  { id: "bar", type: "gauge", display: "bar", name: "Bar", hint: "How full something is", icon: "drop" },
+  { id: "dial", type: "gauge", display: "dial", name: "Dial", hint: "A value on a scale", icon: "gear" },
+  { id: "chart", type: "chart", display: "line", name: "Chart", hint: "Values over time", icon: "chart" },
+  { id: "toggle", type: "toggle", display: "auto", name: "Switch", hint: "On and off", icon: "lever" },
+  { id: "button", type: "button", display: "auto", name: "Button", hint: "Runs an action", icon: "button" },
+  { id: "lamp", type: "indicator", display: "lamp", name: "Lamp", hint: "Shows a state", icon: "lamp" },
+  { id: "label", type: "label", display: "row", name: "Label", hint: "Any value as text", icon: "eye" },
+  { id: "slider", type: "slider", display: "auto", name: "Slider", hint: "Set a value", icon: "gear" },
+  { id: "number", type: "number", display: "auto", name: "Number input", hint: "Type a value", icon: "gear" },
+  { id: "select", type: "select", display: "auto", name: "Choice", hint: "Pick from a list", icon: "gear" },
+  { id: "buttons", type: "buttons", display: "auto", name: "Button row", hint: "One of several options", icon: "button" },
+  { id: "text", type: "text", display: "auto", name: "Text field", hint: "Send a text", icon: "gear" },
+  { id: "search", type: "item_search", display: "auto", name: "Item search", hint: "Search the storage network", icon: "box" },
+  { id: "watch", type: "watchlist", display: "auto", name: "Watchlist", hint: "Items you keep an eye on", icon: "box" },
+  { id: "jobs", type: "jobs", display: "auto", name: "Crafting jobs", hint: "What is being crafted", icon: "box" },
+  { id: "sides", type: "redstone_sides", display: "auto", name: "Redstone sides", hint: "All six sides of a computer", icon: "lever" },
+  { id: "log", type: "sensor_log", display: "auto", name: "Sensor log", hint: "What a sensor saw", icon: "sensor" },
+];
+
+/** What a new widget shows while it is dragged in, before it has a data source. */
+export function draftWidget(kind: WidgetKind): Widget {
+  const demo = DEMO.find((w) => w.type === kind.type);
+  return demo ? { ...demo, id: "draft", label: kind.name } : { id: "draft", type: "label", label: kind.name, value: "Pick its data" };
+}
+
+function Row({ icon, title, hint, onDown, onClick }: { icon: IconName; title: string; hint: string; onDown: (e: PointerEvent) => void; onClick: () => void }) {
+  return (
+    <li class="ed-tool" tabIndex={0} role="button" onPointerDown={onDown} onClick={onClick} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onClick())}>
+      <PixelIcon name={icon} size={18} />
+      <span class="ed-tool-text">
+        <b>{title}</b>
+        <small>{hint}</small>
+      </span>
+    </li>
+  );
+}
+
+type TrayTab = "cards" | "widgets" | "hidden";
+
+export function Toolbox(props: {
   pages: ResolvedPage[];
   page: string;
+  uplinks: Uplink[];
   conn: MainframeConn;
+  templates: CardTemplate[];
+  /** what a card would change to on this page, and its key */
+  cardFromTemplate: (t: CardTemplate) => { pages: ResolvedPage[]; key: string };
+  emptyCard: () => { pages: ResolvedPage[]; key: string };
   onAdd: (p: ResolvedPage[]) => void;
   onDragStart: (e: PointerEvent, kind: "card" | "widget", key: string, el: HTMLElement, base: ResolvedPage[]) => void;
-  onNewCard: () => void;
+  onKindDown: (e: PointerEvent, kind: WidgetKind, el: HTMLElement) => void;
+  onKind: (kind: WidgetKind) => void;
   onNewPage: () => void;
 }) {
   const { pages } = props;
   const hiddenCards = pages.flatMap((p) => p.cards.filter((c) => c.hidden).map((c) => ({ c, p })));
   const hiddenWidgets = pages.flatMap((p) => p.cards.flatMap((c) => c.widgets.filter((w) => w.hidden).map((w) => ({ w, c }))));
-  const [tab, setTab] = useState<"hidden" | "types">(hiddenCards.length + hiddenWidgets.length ? "hidden" : "types");
+  const others = pages.filter((p) => p.id !== props.page).flatMap((p) => p.cards.filter((c) => !c.hidden).map((c) => ({ c, p })));
+  const [tab, setTab] = useState<TrayTab>("cards");
+  const hiddenCount = hiddenCards.length + hiddenWidgets.length;
+  const drag = (make: () => { pages: ResolvedPage[]; key: string }) => (e: PointerEvent) => {
+    const r = make();
+    props.onDragStart(e, "card", r.key, e.currentTarget as HTMLElement, r.pages);
+  };
+  const tabs: [TrayTab, string][] = [
+    ["cards", "Cards"],
+    ["widgets", "Widgets"],
+    ["hidden", `Hidden${hiddenCount ? ` (${hiddenCount})` : ""}`],
+  ];
   return (
     <div class="ed-gallery">
-      <div class="ed-row">
-        <button type="button" class="btn btn-small" onClick={props.onNewCard}>
-          + Empty card
-        </button>
-        <button type="button" class="btn btn-small" onClick={props.onNewPage}>
-          + Page
-        </button>
+      <div class="nd-tabs" role="tablist" aria-label="Toolbox">
+        {tabs.map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} class={`nd-tab ${tab === id ? "on" : ""}`} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
       </div>
-      <div class="nd-tabs" role="tablist" aria-label="Add">
-        <button type="button" role="tab" aria-selected={tab === "hidden"} class={`nd-tab ${tab === "hidden" ? "on" : ""}`} onClick={() => setTab("hidden")}>
-          Hidden ({hiddenCards.length + hiddenWidgets.length})
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "types"} class={`nd-tab ${tab === "types" ? "on" : ""}`} onClick={() => setTab("types")}>
-          All widget types
-        </button>
-      </div>
-      {tab === "hidden" && (
+      {tab === "cards" && (
         <>
-          {!hiddenCards.length && !hiddenWidgets.length && <p class="muted small">Nothing is hidden. Hide cards or widgets with × – they wait here until you drag them back.</p>}
-          {hiddenCards.length > 0 && <h4 class="ed-h">Cards</h4>}
           <ul class="ed-items">
-            {hiddenCards.map(({ c, p }) => (
-              <li
-                key={c.key}
-                class="ed-item ed-item-card"
-                onPointerDown={(e) => {
-                  if ((e.target as HTMLElement).closest("button")) return;
-                  const base = updateCard(pages, c.key, { hidden: false });
-                  props.onDragStart(e, "card", c.key, e.currentTarget as HTMLElement, moveCardTo(base, c.key, props.page));
-                }}
-              >
-                <span class="ed-item-head">
-                  <PixelIcon name={c.icon ?? "box"} size={14} />
-                  <b>{c.title}</b>
-                  <span class="muted small">
-                    {c.widgets.length} widgets · {p.title}
-                  </span>
-                </span>
-                <button type="button" class="btn btn-small" onClick={() => props.onAdd(moveCardTo(updateCard(pages, c.key, { hidden: false }), c.key, props.page))}>
-                  Show here
-                </button>
-              </li>
+            <Row icon="box" title="Empty card" hint="Fill it with widgets yourself" onDown={drag(props.emptyCard)} onClick={() => props.onAdd(props.emptyCard().pages)} />
+            {props.templates.map((t) => (
+              <Row key={t.id} icon={t.icon} title={t.title} hint={t.hint} onDown={drag(() => props.cardFromTemplate(t))} onClick={() => props.onAdd(props.cardFromTemplate(t).pages)} />
             ))}
           </ul>
-          {hiddenWidgets.length > 0 && <h4 class="ed-h">Widgets</h4>}
+          {others.length > 0 && <h4 class="ed-h">On other pages</h4>}
           <ul class="ed-items">
-            {hiddenWidgets.map(({ w, c }) => (
-              <li key={w.key} class="ed-item" onPointerDown={(e) => !(e.target as HTMLElement).closest("button") && props.onDragStart(e, "widget", w.key, e.currentTarget as HTMLElement, pages)}>
-                <div class="ed-item-prev wgrid">
-                  <div class={`wcell t-${w.w.type} d-${w.display}`} style={placeVars({ ...w.box, x: 0, y: 0, w: 12 })}>
-                    <div class="wcontent" inert>
-                      <WidgetView rw={w} conn={props.conn} locked />
-                    </div>
-                  </div>
-                </div>
-                <span class="ed-item-foot">
-                  <span class="muted small">
-                    {w.label} · {c.title}
-                  </span>
-                  <button type="button" class="btn btn-small" onClick={() => props.onAdd(updateWidget(pages, w.key, { hidden: false }))}>
-                    Show
-                  </button>
-                </span>
-              </li>
+            {others.map(({ c, p }) => (
+              <Row key={c.key} icon={c.icon ?? "box"} title={c.title} hint={p.title} onDown={drag(() => ({ pages: moveCardTo(pages, c.key, props.page), key: c.key }))} onClick={() => props.onAdd(moveCardTo(pages, c.key, props.page))} />
             ))}
           </ul>
-          {hiddenWidgets.length > 0 && <p class="muted small">Drag a widget onto a card, onto empty space (new card) or onto a page tab – or press Show.</p>}
+          <button type="button" class="btn btn-small" onClick={props.onNewPage}>
+            + Page
+          </button>
         </>
       )}
-      {tab === "types" && (
+      {tab === "widgets" && (
         <>
-          <p class="muted small">Widgets come from the Lua program on a computer. Every type, live – add one line to your script and it appears on its card.</p>
+          <p class="muted small">Drag one onto a card or onto free space, then pick its data.</p>
           <ul class="ed-items">
-            {DEMO.map((w) => {
-              const rw: ResolvedWidget = { key: `__demo/${w.id}`, w, uplink: DEMO_UPLINK, home: "", label: w.label ?? w.id, box: { x: 0, y: 0, w: 12, h: defaultWidgetH(w.type) }, hidden: false, display: DISPLAYS_FOR[w.type]?.[0] ?? "auto" };
-              return (
-                <li key={w.id} class="ed-item">
-                  <div class="ed-item-prev wgrid">
-                    <div class={`wcell t-${w.type}`} style={placeVars(rw.box)}>
-                      <div class="wcontent" inert>
-                        <WidgetView rw={rw} conn={props.conn} locked />
-                      </div>
-                    </div>
-                  </div>
-                  <span class="ed-item-foot">
-                    <code class="ed-lua">{LUA[w.type]}</code>
-                    <CopyButton text={LUA[w.type]} />
-                  </span>
-                </li>
-              );
+            {WIDGET_KINDS.map((k) => (
+              <Row key={k.id} icon={k.icon} title={k.name} hint={k.hint} onDown={(e) => props.onKindDown(e, k, e.currentTarget as HTMLElement)} onClick={() => props.onKind(k)} />
+            ))}
+          </ul>
+        </>
+      )}
+      {tab === "hidden" && (
+        <>
+          {!hiddenCount && <p class="muted small">Nothing is hidden. Drag a card or widget here to hide it.</p>}
+          <ul class="ed-items">
+            {hiddenCards.map(({ c, p }) => {
+              const show = () => ({ pages: moveCardTo(updateCard(pages, c.key, { hidden: false }), c.key, props.page), key: c.key });
+              return <Row key={c.key} icon={c.icon ?? "box"} title={c.title} hint={`${c.widgets.length} widgets · ${p.title}`} onDown={drag(show)} onClick={() => props.onAdd(show().pages)} />;
             })}
+            {hiddenWidgets.map(({ w, c }) => (
+              <Row
+                key={w.key}
+                icon={w.icon ?? "gear"}
+                title={w.label}
+                hint={c.title}
+                onDown={(e) => props.onDragStart(e, "widget", w.key, e.currentTarget as HTMLElement, pages)}
+                onClick={() => props.onAdd(updateWidget(pages, w.key, { hidden: false }))}
+              />
+            ))}
           </ul>
         </>
       )}
@@ -547,10 +634,61 @@ export function AddGallery(props: {
   );
 }
 
+const shown = (w: Widget) => {
+  const v = w.type === "chart" ? w.history?.at(-1) : w.value ?? w.opts?.value;
+  if (typeof v === "boolean") return v ? "ON" : "OFF";
+  if (typeof v === "number") return `${Number.isInteger(v) ? v : v.toFixed(1)}${w.opts?.unit ? ` ${w.opts.unit}` : ""}`;
+  return typeof v === "string" ? v : "";
+};
+
+/** "Where does the data come from?": every widget of the base this kind can show, with its live value. */
+export function SourcePicker({ kind, uplinks, onPick, onClose }: { kind: WidgetKind; uplinks: Uplink[]; onPick: (uplink: Uplink, widget: Widget) => void; onClose: () => void }) {
+  const [q, setQ] = useState("");
+  const all = useMemo(() => viewSources(uplinks, kind.type), [uplinks, kind]);
+  const needle = q.trim().toLowerCase();
+  const list = needle ? all.filter((s) => `${s.uplink.title} ${s.widget.label ?? s.widget.id}`.toLowerCase().includes(needle)) : all;
+  const groups = [...new Set(list.map((s) => s.uplink))];
+  const lua = LUA[kind.type];
+  return (
+    <Sheet title={`${kind.name}: where does the data come from?`} onClose={onClose}>
+      {all.length > 6 && <input class="input" type="search" placeholder="Search…" value={q} maxLength={64} aria-label="Search data" onInput={(e) => setQ((e.target as HTMLInputElement).value)} />}
+      {!all.length && (
+        <div class="ed-form">
+          <p class="muted small">Nothing in your base offers this yet. It appears here once a device or a program publishes it.</p>
+          <span class="ed-item-foot">
+            <code class="ed-lua">{lua}</code>
+            <CopyButton text={lua} />
+          </span>
+        </div>
+      )}
+      {all.length > 0 && !list.length && <p class="muted small">No match.</p>}
+      {groups.map((u) => (
+        <div key={u.uplinkId} class="ed-src-group">
+          <h4 class="ed-h">{u.title || "Uplink"}</h4>
+          <ul class="ed-items">
+            {list
+              .filter((s) => s.uplink === u)
+              .map((s) => (
+                <li key={s.widget.id}>
+                  <button type="button" class="ed-src" onClick={() => onPick(s.uplink, s.widget)}>
+                    <span>{s.widget.label ?? s.widget.id}</span>
+                    <span class="mono muted">{shown(s.widget)}</span>
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ))}
+      {kind.type === "chart" && all.some((s) => s.widget.type !== "chart") && <p class="muted small">Values without a history start recording while the dashboard is open.</p>}
+    </Sheet>
+  );
+}
+
 export function ShortcutHelp() {
   const rows: [string, string][] = [
     ["Drag a card header / a widget", "Move it (others make room)"],
     ["Drag onto empty space", "A widget gets its own new card"],
+    ["Drag onto the toolbox", "Hide it"],
     ["Drag onto a page tab", "Move it to that page (hover to open the page)"],
     ["Drag an edge or corner", "Resize – the badge shows the size"],
     ["Shift-click widgets", "Select several, then drag one to move all"],
@@ -565,7 +703,7 @@ export function ShortcutHelp() {
     ["Delete", "Hide the focused item"],
     ["Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z", "Undo, redo"],
     ["Ctrl/⌘ + S", "Save"],
-    ["A", "Open Add"],
+    ["A", "Open the toolbox"],
     ["?", "This help"],
   ];
   return (

@@ -362,7 +362,7 @@ public final class CloudConfig {
         b.push("bridges");
         MAX_CRAFT_AMOUNT = b.comment("Largest amount one crafting request from the dashboard or Lua may ask for (ME/RS Cloud Bridge).")
             .translation("cccloud.configuration.maxCraftAmount")
-            .defineInRange("maxCraftAmount", 4096, 1, 1_000_000);
+            .defineInRange("maxCraftAmount", 100_000, 1, 1_000_000);
         AUTO_STOCK_BATCH = b.comment("Auto-stock (level maintainer): the largest amount one automatic craft request may ask for.")
             .translation("cccloud.configuration.autoStockBatch")
             .defineInRange("autoStockBatch", 64, 1, 4096);

@@ -8968,3 +8968,138 @@ body.rz-nwse * {
 .sensor-zone {
   margin: 0;
 }
+
+/* ============================================================ layout toolbox */
+.card-pencil {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.card:hover .card-pencil,
+.card:focus-within .card-pencil {
+  opacity: 1;
+}
+@media (hover: none) {
+  .card-pencil {
+    opacity: 0.7;
+  }
+}
+.card-editing .card-tools .ed-pencil {
+  color: var(--cyan);
+}
+.card-editing .card-tools {
+  opacity: 1;
+}
+.card-editing .card-tools .ed-pencil ~ .icon-btn {
+  opacity: 0;
+}
+.card-editing:hover .card-tools .ed-pencil ~ .icon-btn,
+.card-editing:focus-within .card-tools .ed-pencil ~ .icon-btn {
+  opacity: 1;
+}
+/* the card being edited stays, the others step back */
+.pgrid.has-focus > .card {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.pgrid.has-focus > .card.is-focus {
+  opacity: 1;
+  border-color: var(--cyan);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--cyan) 45%, transparent),
+    var(--shadow);
+}
+.ed-side.anchored {
+  right: auto;
+}
+.ed-side-head b {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ed-tray.drop-hide {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 18%, var(--panel));
+}
+.ed-hide-note {
+  margin: 0;
+  padding: 32px 0;
+  color: var(--text);
+  text-align: center;
+}
+.ed-tool {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--cyan);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+.ed-tool:hover,
+.ed-tool:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+}
+.ed-tool-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--text);
+}
+.ed-tool-text small {
+  color: var(--muted);
+}
+.ed-wlist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+.ed-wrow,
+.ed-src {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ed-wrow:hover,
+.ed-src:hover {
+  border-color: var(--cyan);
+}
+.ed-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ed-kinds .chip {
+  font: 500 12px system-ui, sans-serif;
+}
+.ed-src-group {
+  margin-top: 10px;
+}
+.ed-src-group .ed-items {
+  gap: 4px;
+  margin-top: 6px;
+}
+.store-quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}

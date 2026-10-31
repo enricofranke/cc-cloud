@@ -20,6 +20,16 @@ class LayoutValidatorTest {
     }
 
     @Test
+    void viewsNeedASourceAndAType() {
+        String head = "{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{";
+        assertTrue(validate(head + "\"v:w1\":{\"card\":\"c:a\",\"src\":\"u/temp\",\"as\":\"gauge\",\"display\":\"number\"}}}").ok());
+        assertFalse(validate(head + "\"v:w1\":{\"card\":\"c:a\",\"as\":\"gauge\"}}}").ok(), "no source");
+        assertFalse(validate(head + "\"v:w1\":{\"card\":\"c:a\",\"src\":\"u/temp\",\"as\":\"rocket\"}}}").ok(), "unknown type");
+        assertFalse(validate(head + "\"v:w1\":{\"src\":\"u/temp\",\"as\":\"gauge\"}}}").ok(), "no card");
+        assertFalse(validate(head + "\"u/temp\":{\"src\":\"u/other\"}}}").ok(), "only views have a source");
+    }
+
+    @Test
     void acceptsTheSpecExample() {
         var result = validate(VALID);
         assertTrue(result.ok(), String.valueOf(result.detail()));

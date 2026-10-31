@@ -168,8 +168,10 @@ public final class AnalyzerOverlay {
     private static int bubble(AnalyzerGeometry.PNode node, Vec3 eye) {
         var center = new Vec3(node.x(), node.y(), node.z());
         double distance = center.distanceTo(eye);
-        int color = node.reachable() ? 0x904FC3D7 : 0x60E06666;
-        int dim = node.reachable() ? 0x404FC3D7 : 0x30E06666;
+        // a mainframe's ring is yellow, so it stands apart from the relays' rings around the same base
+        int tint = "mainframe".equals(node.type()) ? YELLOW & 0x00FFFFFF : CYAN & 0x00FFFFFF;
+        int color = node.reachable() ? 0x90000000 | tint : 0x60E06666;
+        int dim = node.reachable() ? 0x40000000 | tint : 0x30E06666;
         if (mode == Mode.RINGS) {
             Gizmos.circle(center, (float) node.deviceRange(), GizmoStyle.stroke(color, 2f));
             Gizmos.circle(center, (float) node.nodeRange(), GizmoStyle.stroke(dim, 1f));

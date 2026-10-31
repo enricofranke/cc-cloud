@@ -4,7 +4,7 @@
 // current widget and uplink objects. The connection gives unchanged sections and widgets their old identity, so a card
 // whose widgets did not change keeps its object too and a memoised <Card> is not rendered again: a value delta costs
 // one pass over the widgets of the current page instead of resolving and rendering every card.
-import type { ResolvedCard, ResolvedWidget } from "./layout.ts";
+import { viewWidget, type ResolvedCard, type ResolvedWidget } from "./layout.ts";
 import type { Uplink, Widget } from "./types.ts";
 
 interface Live {
@@ -47,7 +47,8 @@ export class Hydrator {
       const r = byUplink.get(rw.uplink.uplinkId);
       if (!r) return rw;
       const e = this.entry(r);
-      const w = e.byId.get(rw.w.id) ?? rw.w;
+      const live = e.byId.get(rw.w.id);
+      const w = live && rw.view ? viewWidget(rw.uplink.uplinkId, live, rw.view.as) : live ?? rw.w;
       if (w === rw.w && e.u === rw.uplink) return rw;
       changed = true;
       return { ...rw, w, uplink: e.u };

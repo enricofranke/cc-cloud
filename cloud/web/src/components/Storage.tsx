@@ -8,7 +8,7 @@ import { fmtCount } from "../lib/format.ts";
 import { pushToast } from "../lib/ui.ts";
 import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
-import { AutoStockSheet, ItemDetailSheet, STATE_TEXT, StorageBrowser } from "./StorageV2.tsx";
+import { AutoStockSheet, ItemDetailSheet, STATE_TEXT, StorageBrowser, type Tab } from "./StorageV2.tsx";
 
 // ------------------------------------------------------------------ helpers
 const full = (n: number) => Math.round(n).toLocaleString("en-US");
@@ -106,7 +106,7 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<ItemRow | null>(null);
   const [classic, setClassic] = useState(false);
-  const [browse, setBrowse] = useState(false);
+  const [browse, setBrowse] = useState<Tab | null>(null);
   const canSearch = conn.status.value === "open" && !!conn.info.value?.online && uplink.online;
   const res = useItemSearch(conn, uplink.uplinkId, canSearch ? w.id : undefined, q);
   const watch = uplink.widgets.find((x) => x.type === "watchlist");
@@ -139,11 +139,6 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
           onInput={(e) => setQ((e.target as HTMLInputElement).value)}
         />
         {res.loading && <span class="search-spin" aria-label="Searching" />}
-        {!q && canSearch && (
-          <button type="button" class="btn btn-small sb-browse" onClick={() => setBrowse(true)} title="Browse all items, craftables, fluids, CPUs">
-            Browse
-          </button>
-        )}
         {q && !res.loading && (
           <button
             type="button"
@@ -158,6 +153,22 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
           </button>
         )}
       </div>
+      {canSearch && !q && (
+        <div class="store-quick" role="group" aria-label="Open the storage">
+          {(
+            [
+              ["items", "Items"],
+              ["craftable", "Craft"],
+              ["fluids", "Fluids"],
+              ["cpus", "CPUs"],
+            ] as const
+          ).map(([tab, label]) => (
+            <button key={tab} type="button" class="btn btn-small" onClick={() => setBrowse(tab)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {res.error && <p class="store-note warn">{res.error}</p>}
       {!q.trim() && !res.error && <p class="store-note">Type an item name or id, e.g. “iron”, “processor” or “ae2:”.</p>}
@@ -189,7 +200,7 @@ export function ItemSearch({ w, uplink, conn, locked }: { w: Widget; uplink: Upl
       )}
       {res.truncated && <p class="store-note">Showing the first {res.rows.length} results – type more to narrow it down.</p>}
 
-      {browse && <StorageBrowser conn={conn} uplink={uplink} widgetId={w.id} onClose={() => setBrowse(false)} />}
+      {browse && <StorageBrowser conn={conn} uplink={uplink} widgetId={w.id} initialTab={browse} onClose={() => setBrowse(null)} />}
       {open && !classic && (
         <ItemDetailSheet conn={conn} uplink={uplink} widgetId={w.id} name={open.name} displayName={open.displayName} onClose={() => setOpen(null)} onFallback={() => setClassic(true)} />
       )}

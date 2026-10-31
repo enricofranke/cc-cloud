@@ -107,6 +107,18 @@ export function Toasts() {
             <div class="toast-title">{t.title}</div>
             <div class="toast-text">{t.text}</div>
           </div>
+          {t.action && (
+            <button
+              type="button"
+              class="btn btn-small"
+              onClick={() => {
+                t.action!.run();
+                dismissToast(t.id);
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
           <button type="button" class="icon-btn toast-close" aria-label="Dismiss" onClick={() => dismissToast(t.id)}>
             <IconClose size={16} />
           </button>

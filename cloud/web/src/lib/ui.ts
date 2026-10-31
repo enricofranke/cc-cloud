@@ -120,6 +120,7 @@ export interface Toast {
   title: string;
   text: string;
   sticky?: boolean;
+  action?: { label: string; run: () => void };
 }
 
 export const toasts = signal<Toast[]>([]);
