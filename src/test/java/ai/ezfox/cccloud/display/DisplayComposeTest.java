@@ -30,8 +30,9 @@ class DisplayComposeTest {
             + "{'id':'temp','type':'gauge','label':'Temp','opts':{'unit':'C','max':100},'value':40},"
             + "{'id':'hist','type':'chart','label':'Heat','history':[1,2,3]},"
             + "{'id':'run','type':'toggle','label':'Run','value':true},"
-            + "{'id':'stop','type':'button','label':'Stop','opts':{'group':'ctl'}}"
-            + "],'groups':[{'id':'ctl','title':'Controls','page':'ops'}],'blockedWidgets':{'run':{'kind':'claim'}}}"));
+            + "{'id':'stop','type':'button','label':'Stop','opts':{'group':'ctl'}},"
+            + "{'id':'fuel','type':'gauge','label':'Fuel','opts':{'group':'more'}}"
+            + "],'groups':[{'id':'ctl','title':'Controls','page':'ops'},{'id':'more','title':'More','page':'ops'}],'blockedWidgets':{'run':{'kind':'claim'}}}"));
         map.put(SERVER, json("{'uplinkId':'" + SERVER + "','title':'Server','online':false,'restricted':true,'widgets':["
             + "{'id':'tps','type':'label','label':'TPS','value':'20'}]}"));
         return map;

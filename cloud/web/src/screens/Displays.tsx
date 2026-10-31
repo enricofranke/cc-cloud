@@ -7,6 +7,7 @@ import type { MainframeConn } from "../lib/conn.ts";
 import { dimLabel } from "../lib/dims.ts";
 import { previewCards, previewFrame, targetOptions, type DisplayChange, type DisplayRow, type DisplayStatus } from "../lib/displays.ts";
 import { lang, t, type Key } from "../lib/i18n.ts";
+import { Hydrator } from "../lib/hydrate.ts";
 import { resolveLayout, type ResolvedPage } from "../lib/layout.ts";
 import type { Uplink } from "../lib/types.ts";
 import { navigate, pushToast } from "../lib/ui.ts";
@@ -45,6 +46,11 @@ const errText = (e: unknown) => {
 
 export default function DisplaysScreen({ id }: { id: string }) {
   const conn = getConn(id);
+  // resolved when the structure or layout changes; value deltas only swap in the live widgets (docs/SPEC.md "Scaling")
+  const hydrator = useMemo(() => new Hydrator((u) => u), [conn]);
+  const structure = conn?.structure.value;
+  const layout = conn?.layout.value ?? null;
+  const pages = useMemo(() => (conn ? resolveLayout(conn.uplinks.peek(), layout) : []), [conn, structure, layout]);
   const [rows, setRows] = useState<DisplayRow[] | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const refresh = useRef<() => void>(() => {});
@@ -70,10 +76,7 @@ export default function DisplaysScreen({ id }: { id: string }) {
     };
   }, [conn, canEdit]);
   if (!conn) return null;
-  // the preview follows live values; the layout is resolved once per structure or layout change
-  const uplinks = conn.uplinks.value;
-  const layout = conn.layout.value;
-  const pages = resolveLayout(uplinks, layout);
+  const uplinks = conn.uplinks.value; // the previews follow live values
   return (
     <main class="page page-narrow-wide displays-page" id="main" tabIndex={-1} lang={lang.value}>
       <div class="page-head acc-head">
@@ -103,7 +106,7 @@ export default function DisplaysScreen({ id }: { id: string }) {
       ) : (
         <ul class="dp-list">
           {rows.map((d) => (
-            <DisplayItem key={d.id} d={d} conn={conn} uplinks={uplinks} pages={pages} onChanged={() => refresh.current()} />
+            <DisplayItem key={d.id} d={d} conn={conn} uplinks={uplinks} pages={pages} hydrator={hydrator} onChanged={() => refresh.current()} />
           ))}
         </ul>
       )}
@@ -112,11 +115,12 @@ export default function DisplaysScreen({ id }: { id: string }) {
   );
 }
 
-function DisplayItem({ d, conn, uplinks, pages, onChanged }: { d: DisplayRow; conn: MainframeConn; uplinks: Uplink[]; pages: ResolvedPage[]; onChanged: () => void }) {
+function DisplayItem({ d, conn, uplinks, pages, hydrator, onChanged }: { d: DisplayRow; conn: MainframeConn; uplinks: Uplink[]; pages: ResolvedPage[]; hydrator: Hydrator; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<"restricted" | "unlink" | null>(null);
   const layout = conn.layout.value;
-  const options = useMemo(() => targetOptions(uplinks, layout, d.allowRestricted), [uplinks, layout, d.allowRestricted]);
+  const structure = conn.structure.value;
+  const options = useMemo(() => targetOptions(conn.uplinks.peek(), layout, d.allowRestricted), [conn, structure, layout, d.allowRestricted]);
   const run = async (f: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -190,7 +194,7 @@ function DisplayItem({ d, conn, uplinks, pages, onChanged }: { d: DisplayRow; co
           </button>
         )}
       </div>
-      <Preview d={d} conn={conn} uplinks={uplinks} pages={pages} />
+      <Preview d={d} conn={conn} uplinks={uplinks} pages={pages} hydrator={hydrator} />
       {confirm === "restricted" && (
         <ConfirmDialog
           title={t("dp.allowTitle")}
@@ -233,9 +237,10 @@ function Switch({ label, on, disabled, onChange }: { label: string; on: boolean;
   );
 }
 
-function Preview({ d, conn, uplinks, pages }: { d: DisplayRow; conn: MainframeConn; uplinks: Uplink[]; pages: ResolvedPage[] }) {
+function Preview({ d, conn, uplinks, pages, hydrator }: { d: DisplayRow; conn: MainframeConn; uplinks: Uplink[]; pages: ResolvedPage[]; hydrator: Hydrator }) {
   const f = previewFrame(d.w, d.h);
-  const cards = d.status === "ok" ? previewCards(d.target, uplinks, pages, d.allowRestricted) : null;
+  const byUplink = new Map(uplinks.map((u) => [u.uplinkId, u]));
+  const cards = d.status === "ok" ? previewCards(d.target, uplinks, pages, d.allowRestricted)?.map((c) => hydrator.card(c, byUplink)) : null;
   return (
     <figure class="dp-preview">
       <div class="dp-frame" style={{ width: `${f.frameW}px`, height: `${f.frameH}px` }} aria-label={t("dp.preview")}>
