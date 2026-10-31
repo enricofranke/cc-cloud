@@ -29,6 +29,22 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 ### Factory Manager
 - **Program view:** the button on a Factory Manager card shows the program with all errors and warnings, for sessions that may see coordinates.
 - **Edit and import:** with the new permission `device.program` (admin and owner), edit or paste SFML or load a .sfml, .sfm or .txt file. It compiles first, shows old and new line counts and the changes, keeps a broken program out unless you confirm, needs the PIN if the mainframe has one, and Undo restores the old one once. Written to the audit log.
+### More tech and logistics mods
+- **Integrated Tunnels:** an uplink on a logic cable shows the whole network: items, item types, fluids, interfaces and
+  an item search. Integrated Terminals show the same network, so they need no card of their own.
+- **Integrated Crafting:** an uplink on the cable with a Crafting Interface lists the network's crafting jobs and what each
+  waits for, with a Cancel all button.
+- **Classic Pipes:** an uplink on a networked pipe shows the logistics network: items with a search, craftable types, requests
+  under way and what stocking pipes are short of.
+- **Pipez:** a pipe's sides, targets, upgrade, filters and rate. With an upgrade that has a redstone mode the dashboard can
+  switch the pipe, "Always off" is its off switch. An uplink only holds on a configured pipe.
+- **BBL Strainers:** what the Strainer is doing, progress, input, mesh, fluid and output.
+- **Trash Cans:** what a can takes, its last deleted stacks and a switch between allow and deny list.
+- **Stepcrafter:** the Step Crafting Monitor as a card, with its tasks and Cancel all.
+- **Refined Types:** the Network Energizer's energy reserve, with a warning before the network runs out.
+- **Enderthing:** Ender Key Chests as searchable storage cards. Private chests stay private.
+- Checked and left out, with the reasons in the compatibility list: Cable Tiers and Extra Disks (the RS Cloud Bridge covers
+  them), Laser Bridges, Universal Grid and the mods that only add items.
 
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.

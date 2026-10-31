@@ -172,16 +172,6 @@
    "skipped": false
   },
   {
-   "group": "Storage controllers",
-   "mod": "Integrated Terminals / Tunnels",
-   "id": "",
-   "version": "",
-   "what": "–: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card",
-   "controls": "",
-   "tested": "–",
-   "skipped": true
-  },
-  {
    "group": "Applied Energistics add-ons",
    "mod": "Advanced AE",
    "id": "advanced_ae",
@@ -363,16 +353,6 @@
   },
   {
    "group": "Logistics",
-   "mod": "LaserIO, Pipez",
-   "id": "",
-   "version": "",
-   "what": "skipped: pipes/nodes without state worth a card (no buffers, no machine status)",
-   "controls": "–",
-   "tested": "–",
-   "skipped": true
-  },
-  {
-   "group": "Logistics",
    "mod": "Logistics Networks",
    "id": "logisticsnetworks",
    "version": "1.13.0",
@@ -537,16 +517,6 @@
    "id": "",
    "version": "1.0.1",
    "what": "skipped: an RS2 network node; the RS Cloud Bridge already shows the network",
-   "controls": "–",
-   "tested": "–",
-   "skipped": true
-  },
-  {
-   "group": "Wave 3 – more ATM11 machines",
-   "mod": "Trash Cans, Item Collectors",
-   "id": "",
-   "version": "1.1.1a / 1.1.12a",
-   "what": "skipped: no state worth a card (a trash can is always empty; a collector only has a filter and a range)",
    "controls": "–",
    "tested": "–",
    "skipped": true
@@ -817,6 +787,206 @@
    "id": "mininggadgets",
    "version": "1.19.3",
    "what": "skipped: only the modification table, without energy, progress or switch",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Tunnels",
+   "id": "integratedtunnels",
+   "version": "1.13.1",
+   "what": "**Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card.",
+   "controls": "none (read-only)",
+   "tested": "yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Terminals",
+   "id": "integratedterminals",
+   "version": "1.10.0",
+   "what": "no own card: its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Integrated Crafting",
+   "id": "integratedcrafting",
+   "version": "1.7.1",
+   "what": "**Crafting Jobs** card from an uplink on a logic cable that carries a Crafting Interface: jobs by state, up to 6 rows (\"12× Stick – Missing ingredients\"), interfaces, recipes; warn alert once on invalid inputs, info alert when the last job is done. Any other cable of the network shows the Item Network card.",
+   "controls": "Cancel all jobs (`act.buttons`, confirm)",
+   "tested": "yes (a job handed to the interface shows its row, Cancel all removes it; no job runs to completion, nothing is behind the interface)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Classic Pipes",
+   "id": "classicpipes",
+   "version": "1.1.7",
+   "what": "**Pipe Network** card from an uplink on any networked pipe (routing, request, provider, stocking and so on): what the Request Pipe's list offers (items, types, craftable types) with an item search, pipes, requests under way, what stocking pipes are short of; warn alert once when something goes missing. Destinations are not shown.",
+   "controls": "none: a request needs a player and a pipe to deliver to",
+   "tested": "yes (request pipe and provider pipe on a chest: 24 redstone counted and found)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Pipez",
+   "id": "pipez",
+   "version": "1.2.31",
+   "what": "**Pipe** card for item, fluid, energy, gas and universal pipes: status (running, not extracting, no targets, stopped by redstone, switched off), extracting sides, number of targets, upgrade, filters, rate per pipe type. A pipe only has data once it is configured, so an uplink holds on a pipe with an extracting or disconnected side and drops off when the last one is cleared. No coordinates.",
+   "controls": "with an upgrade that allows it: the redstone mode on every extracting side (Ignored / Off when powered / On when powered / Always off), select with confirm, `act.redstone`. Without one there is no select: a dashboard switch would skip the upgrade.",
+   "tested": "yes (item pipe between two chests, Advanced upgrade, switched off)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "BBL Strainers",
+   "id": "strainers",
+   "version": "6.13.0",
+   "what": "**Strainer** card: status (straining, no input, no mesh, no fluid, output full), progress, input, mesh, fluid, output slots; warn alert once when the output is full. Progress comes from the block's saved data, the mod has no getter.",
+   "controls": "none: the strainer has no switch",
+   "tested": "yes (gravel, diamond mesh and water: it strains)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Trash Cans",
+   "id": "trashcans",
+   "version": "1.1.1a",
+   "what": "**Trash Can** card for all four cans: what it takes, the item can's last 6 deleted stacks (the can keeps them, so you see what went in), energy limit.",
+   "controls": "allow or deny list for items and fluids (toggle, `act.buttons`). The card never restores deleted items.",
+   "tested": "yes (item can: 32 dirt pushed in, filter mode switched)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Stepcrafter",
+   "id": "stepcrafter",
+   "version": "1.0.3",
+   "what": "**Step Crafting Monitor** card: state, tasks, up to 6 rows (\"64× Iron Ingot – Running 42 %\"); warn alert once when a task runs out of ingredients or the network is full, info alert when the last task finishes. Step Crafters and Requesters themselves are configured in their screens.",
+   "controls": "Cancel all tasks (`act.buttons`, confirm)",
+   "tested": "partly: a monitor without a network (card, \"Not active\", Cancel refused); a task needs a full RS network with patterns",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Refined Types",
+   "id": "refinedtypes",
+   "version": "1.0.2",
+   "what": "**Network Energizer** card: the FE reserve on Energy Disks that keeps the RS network alive, as a gauge and amount; warn alert once below 10 %. Energy, Soul, Source and Essentia storage live on RS disks and show through the RS Cloud Bridge.",
+   "controls": "none: the redstone mode is a screen setting without a public setter",
+   "tested": "partly: lone energizer (\"No Energy Disks\"); a reserve needs an RS network with Energy Disks",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Enderthing",
+   "id": "enderthing",
+   "version": "1.10.2",
+   "what": "Ender Key Chests as **Storage** cards with item search (the inventory behind the key). A private chest belongs to one player and gets no card, viewers would see that player's items.",
+   "controls": "none",
+   "tested": "yes (key chest with 100 iron ingots, made private: the card goes away)",
+   "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Cable Tiers",
+   "id": "cabletiers",
+   "version": "1.0.3",
+   "what": "no own card: faster versions of RS devices (disk drives, interfaces, importers, exporters, autocrafters) on the RS network; their contents and jobs show through the RS Cloud Bridge",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Extra Disks",
+   "id": "extradisks",
+   "version": "26.1.1",
+   "what": "no own card: bigger RS disks and storage blocks; capacity and contents show through the RS Cloud Bridge",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Laser Bridges",
+   "id": "laserbridges",
+   "version": "6.2",
+   "what": "skipped: no block entity, a source only has a `powered` block state set by redstone; Cloud Redstone can switch it",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Universal Grid",
+   "id": "universalgrid",
+   "version": "1.0.2",
+   "what": "skipped: a handheld RS grid, no block entity",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Refined Fluid Substitution",
+   "id": "refinedfluidsubstitution",
+   "version": "1.0.1",
+   "what": "skipped: mixins into RS autocrafting, no block entity of its own",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Applied Sticks , Refined Sticks (`refinedsticks`)",
+   "id": "appliedsticks",
+   "version": "2.0.4 / 2.0.7",
+   "what": "skipped: handheld storage sticks, no block entity",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Building Gadgets 2",
+   "id": "buildinggadgets2",
+   "version": "1.4.6",
+   "what": "skipped: gadgets are items; the Template Manager only holds a template in a screen and render blocks exist for a moment",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Construction Sticks , Tool Belt (`toolbelt`), Crafting on a Stick (`crafting_on_a_stick`)",
+   "id": "constructionstick",
+   "version": "3.2.1 / 2.9.5 / 1.1",
+   "what": "skipped: items only, no block entity",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "FastFurnace , FastWorkbench (`fastbench`)",
+   "id": "fastfurnace",
+   "version": "10.0.0",
+   "what": "skipped: recipe speed-ups; FastFurnace is one mixin, vanilla furnaces keep their CC peripheral",
+   "controls": "–",
+   "tested": "–",
+   "skipped": true
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Simple Magnets , Utilitarian (`utilitarian`)",
+   "id": "simplemagnets",
+   "version": "1.1.12 / 0.22.0",
+   "what": "no own card in this pass: the Demagnetization Coil (range, filter) and Redstone Clock (rate) have values a card could show; Utilitarian's Fluid Hopper exposes no fluid capability, so the Tank card does not apply; the TPS Meter repeats the Server card",
    "controls": "–",
    "tested": "–",
    "skipped": true

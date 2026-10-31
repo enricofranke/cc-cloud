@@ -124,6 +124,21 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | `trainingdummy` | Training Dummy 1.9.0+mc26.1.2 | – | `compat/trainingdummy` (`DummyEntity`, `LivingDamageEvent.Post`) |
 | `ftbessentials` | FTB Essentials 26.1.2.5 (`dev.ftb.mods:ftb-essentials-neoforge`, maven.ftb.dev) | FTB Library | `compat/ftbessentials` (warp manager) |
 
+### Tech and logistics (docs/COMPAT.md "Tech and logistics")
+CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cursemaven. File ids live in `gradle.properties`.
+
+| Key (`-PintegrationMods=`) | Mod (version) | Extra runtime jars | Compile use |
+| --- | --- | --- | --- |
+| `integratedtunnels` | Integrated Tunnels 1.13.1 | Integrated Dynamics, Cyclops Core, Common Capabilities | `compat/integratedtunnels` (network capabilities; `PartHelpers` in the GameTest) |
+| `integratedcrafting` | Integrated Crafting 1.7.1 | Integrated Dynamics, Integrated Tunnels, Cyclops Core, Common Capabilities | `compat/integratedcrafting` (`ICraftingNetwork`; the GameTest uses the mod's own `GameTestHelpersIntegratedCrafting`) |
+| `classicpipes` | Classic Pipes 1.1.7 | – | `compat/classicpipes` (`NetworkedPipeEntity`, `PipeNetwork.requestItemList`) |
+| `pipez` | Pipez 1.2.31 | – | `compat/pipez` (`PipeLogicTileEntity`, `RedstoneMode`) |
+| `strainers` | BBL Strainers 6.13.0 | BBL Core 12.6.12 | `compat/strainers` (`StrainerBlockEntity`) |
+| `trashcans` | Trash Cans 1.1.1a | SuperMartijn642's Core Lib, Config Lib | `compat/trashcans` (`TrashCanBlockEntity`) |
+| `stepcrafter` | Stepcrafter 1.0.3 | Refined Storage | `compat/stepcrafter` (`StepCraftingMonitorBlockEntity`) |
+| `refinedtypes` | Refined Types 1.0.2 | Refined Storage | `compat/refinedtypes` (`NetworkEnergizerBlockEntity.getMenuData`) |
+| `enderthing` | Enderthing 1.10.2 | – | `compat/enderthing` (`EnderKeyChestBlockEntity.isPrivate`) |
+
 The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
 
 ```sh

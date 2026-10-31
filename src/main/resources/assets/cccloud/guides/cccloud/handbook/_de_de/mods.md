@@ -144,20 +144,31 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 | The Undergarden (`undergarden`) | 26.1.2-0.9.8 | Network map: name, icon and height range; it has a roof, so the 2D map opens on a slice at the network's height instead of the bedrock roof (like the Nether) | – | unit tests; not in a dev world |
 | All the Modium (`allthemodium`) | 26.1.2-4.2.0 | Network map: Mining Dimension, The Other and The Beyond (y −128 to 383) with names, icons and height ranges | – | unit tests; not in a dev world |
 
+### Tech and logistics
+
+| Mod | Version | Was die Karte zeigt | Steuerung | Getestet |
+|---|---|---|---|---|
+| Integrated Tunnels (`integratedtunnels`) | 1.13.1 | **Item Network** card from an uplink on any logic cable of a network with item or fluid interfaces: total items, item types, fluids, interfaces and an item search over the whole network. It reads the index ID keeps for its terminals (every channel), so a big network costs no storage scan; the index fills a moment after the first read. A cable with Display Panels keeps its Panels card. | none (read-only) | yes (cable, Item Interface on a chest: 40 iron ingots counted and found in the search) |
+| Integrated Crafting (`integratedcrafting`) | 1.7.1 | **Crafting Jobs** card from an uplink on a logic cable that carries a Crafting Interface: jobs by state, up to 6 rows ("12× Stick – Missing ingredients"), interfaces, recipes; warn alert once on invalid inputs, info alert when the last job is done. Any other cable of the network shows the Item Network card. | Cancel all jobs (`act.buttons`, confirm) | yes (a job handed to the interface shows its row, Cancel all removes it; no job runs to completion, nothing is behind the interface) |
+| Classic Pipes (`classicpipes`) | 1.1.7 | **Pipe Network** card from an uplink on any networked pipe (routing, request, provider, stocking and so on): what the Request Pipe's list offers (items, types, craftable types) with an item search, pipes, requests under way, what stocking pipes are short of; warn alert once when something goes missing. Destinations are not shown. | none: a request needs a player and a pipe to deliver to | yes (request pipe and provider pipe on a chest: 24 redstone counted and found) |
+| Pipez (`pipez`) | 1.2.31 | **Pipe** card for item, fluid, energy, gas and universal pipes: status (running, not extracting, no targets, stopped by redstone, switched off), extracting sides, number of targets, upgrade, filters, rate per pipe type. A pipe only has data once it is configured, so an uplink holds on a pipe with an extracting or disconnected side and drops off when the last one is cleared. No coordinates. | with an upgrade that allows it: the redstone mode on every extracting side (Ignored / Off when powered / On when powered / Always off), select with confirm, `act.redstone`. Without one there is no select: a dashboard switch would skip the upgrade. | yes (item pipe between two chests, Advanced upgrade, switched off) |
+| BBL Strainers (`strainers`) | 6.13.0 | **Strainer** card: status (straining, no input, no mesh, no fluid, output full), progress, input, mesh, fluid, output slots; warn alert once when the output is full. Progress comes from the block's saved data, the mod has no getter. | none: the strainer has no switch | yes (gravel, diamond mesh and water: it strains) |
+| Trash Cans (`trashcans`) | 1.1.1a | **Trash Can** card for all four cans: what it takes, the item can's last 6 deleted stacks (the can keeps them, so you see what went in), energy limit. | allow or deny list for items and fluids (toggle, `act.buttons`). The card never restores deleted items. | yes (item can: 32 dirt pushed in, filter mode switched) |
+| Stepcrafter (`stepcrafter`) | 1.0.3 | **Step Crafting Monitor** card: state, tasks, up to 6 rows ("64× Iron Ingot – Running 42 %"); warn alert once when a task runs out of ingredients or the network is full, info alert when the last task finishes. Step Crafters and Requesters themselves are configured in their screens. | Cancel all tasks (`act.buttons`, confirm) | partly: a monitor without a network (card, "Not active", Cancel refused); a task needs a full RS network with patterns |
+| Refined Types (`refinedtypes`) | 1.0.2 | **Network Energizer** card: the FE reserve on Energy Disks that keeps the RS network alive, as a gauge and amount; warn alert once below 10 %. Energy, Soul, Source and Essentia storage live on RS disks and show through the RS Cloud Bridge. | none: the redstone mode is a screen setting without a public setter | partly: lone energizer ("No Energy Disks"); a reserve needs an RS network with Energy Disks |
+| Enderthing (`enderthing`) | 1.10.2 | Ender Key Chests as **Storage** cards with item search (the inventory behind the key). A private chest belongs to one player and gets no card, viewers would see that player's items. | none | yes (key chest with 100 iron ingots, made private: the card goes away) |
+
 ### Ohne eigene Karte
 
-- **Integrated Terminals / Tunnels**: –: skipped: their networks expose no aggregated inventory capability on a block (only through ID parts/variables); see item 7 card
 - **ExtendedAE** (`extendedae`): no level maintainer or CPU-like block; its machines (assemblers, pattern providers) are covered by the ME bridge's job list
 - **AE2 Infinity Booster / Network Analyzer**: nothing to show (range card / client-side analyzer)
 - **Silent Gear Metalworks** (`sgearmetalworks`): adds only recipes to the Productive Metalworks foundry, no blocks of its own
 - **Mystical Automation** (`mysticalautomation`): its machines only expose energy, so the generic Energy card applies
-- **LaserIO, Pipez**: pipes/nodes without state worth a card (no buffers, no machine status)
 - **Logistics Networks** (`logisticsnetworks`): it talks to CC: Tweaked natively (peripherals), so a Lua program on an uplink covers it
 - **Stellaris** (`stellaris`): fluid tanks via the generic Tank card, generators via the Energy card where they expose the capabilities (not verified in a test); rockets are entities
 - **Theurgy** (`theurgy`): its machines (calcination oven, distiller, incubator, accumulators) were not examined in depth; tanks are covered by the Tank card, powered blocks by the Energy card
 - **Reliquary** (`reliquary`): altar, apothecary cauldron and pedestals are short crafting steps; not examined in depth
 - **Interdimensional Wireless Transmitter**: an RS2 network node; the RS Cloud Bridge already shows the network
-- **Trash Cans, Item Collectors**: no state worth a card (a trash can is always empty; a collector only has a filter and a range)
 - **Just Dire Things**: its generators/collectors are covered by the generic Energy/Tank cards where they expose the capabilities; no extra state examined
 - **Nullscape** (`nullscape`): it reshapes the End's terrain (same dimension `minecraft:the_end`), which the map already handles
 - **DeepNull Reforged** (`deepnullreforged`): not a dimension but a Dank Null-style item storage you carry; nothing a block card could show
@@ -171,6 +182,17 @@ Die Beschreibungen in den Tabellen stammen aus dem Kompatibilitäts-Verzeichnis 
 - **Iron Jetpacks** (`ironjetpacks`): no blocks
 - **Power Armor** (`power_armor`): the compressor and the armor modification table expose energy, so the generic Energy card applies; the compressor's redstone setting has no effect in this version
 - **Mining Gadgets** (`mininggadgets`): only the modification table, without energy, progress or switch
+- **Integrated Terminals** (`integratedterminals`): its terminals are parts that show the network Integrated Tunnels indexes, so the Item Network card covers the same contents
+- **Cable Tiers** (`cabletiers`): faster versions of RS devices (disk drives, interfaces, importers, exporters, autocrafters) on the RS network; their contents and jobs show through the RS Cloud Bridge
+- **Extra Disks** (`extradisks`): bigger RS disks and storage blocks; capacity and contents show through the RS Cloud Bridge
+- **Laser Bridges** (`laserbridges`): no block entity, a source only has a `powered` block state set by redstone; Cloud Redstone can switch it
+- **Universal Grid** (`universalgrid`): a handheld RS grid, no block entity
+- **Refined Fluid Substitution** (`refinedfluidsubstitution`): mixins into RS autocrafting, no block entity of its own
+- **Applied Sticks , Refined Sticks (`refinedsticks`)** (`appliedsticks`): handheld storage sticks, no block entity
+- **Building Gadgets 2** (`buildinggadgets2`): gadgets are items; the Template Manager only holds a template in a screen and render blocks exist for a moment
+- **Construction Sticks , Tool Belt (`toolbelt`), Crafting on a Stick (`crafting_on_a_stick`)** (`constructionstick`): items only, no block entity
+- **FastFurnace , FastWorkbench (`fastbench`)** (`fastfurnace`): recipe speed-ups; FastFurnace is one mixin, vanilla furnaces keep their CC peripheral
+- **Simple Magnets , Utilitarian (`utilitarian`)** (`simplemagnets`): the Demagnetization Coil (range, filter) and Redstone Clock (rate) have values a card could show; Utilitarian's Fluid Hopper exposes no fluid capability, so the Tank card does not apply; the TPS Meter repeats the Server card
 
 Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellcode) erzeugt und passt damit immer zur Mod.
 

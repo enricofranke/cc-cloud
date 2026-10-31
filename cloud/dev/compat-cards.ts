@@ -983,4 +983,142 @@ export const COMPAT_CARDS: SampleCard[] = [
       button("backup_now", "Backup now", { confirm: true, color: "yellow" }),
     ],
   },
+
+  // Integrated Tunnels
+  {
+    key: "integratedtunnels_network",
+    mod: "integratedtunnels",
+    title: "Item Network",
+    template: "integratedtunnels_network",
+    widgets: [
+      label("items", "Total items", "1.24 M", { span: 2 }),
+      label("types", "Item types", "846", { span: 2 }),
+      label("fluids", "Fluids", "412 k mB, 3 types", { span: 2 }),
+      label("interfaces", "Interfaces", "14", { span: 2 }),
+      itemSearch("search", "Search network"),
+    ],
+  },
+
+  // Integrated Crafting
+  {
+    key: "integratedcrafting_jobs",
+    mod: "integratedcrafting",
+    title: "Crafting Jobs",
+    template: "integratedcrafting_jobs",
+    widgets: [
+      label("status", "Status", "1 processing, 1 missing ingredients"),
+      label("interfaces", "Crafting interfaces", "6", { span: 2 }),
+      label("recipes", "Recipes", "148", { span: 2 }),
+      label("job_0", "Job 1", "64× Iron Ingot – Processing"),
+      label("job_1", "Job 2", "12× Stick – Missing ingredients"),
+      button("cancel", "Cancel all jobs", { confirm: true, color: "red" }),
+    ],
+  },
+
+  // Classic Pipes
+  {
+    key: "classicpipes_network",
+    mod: "classicpipes",
+    title: "Pipe Network",
+    template: "classicpipes_network",
+    widgets: [
+      label("status", "Status", "Connected"),
+      label("items", "Total items", "18.2 k", { span: 2 }),
+      label("types", "Item types", "212", { span: 2 }),
+      label("craftable", "Craftable types", "9", { span: 2 }),
+      label("pipes", "Pipes", "27", { span: 2 }),
+      label("requests", "Requests under way", "64× Iron Ingot"),
+      label("missing", "Stocking short of", "Nothing"),
+      itemSearch("search", "Search network"),
+    ],
+  },
+
+  // Pipez
+  {
+    key: "pipez_pipe",
+    mod: "pipez",
+    title: "Item Pipe",
+    template: "pipez_pipe",
+    widgets: [
+      label("status", "Status", "Running"),
+      label("extracting", "Extracting from", "West", { span: 2 }),
+      label("targets", "Targets", "3", { span: 2 }),
+      label("upgrade", "Upgrade", "Advanced", { span: 2 }),
+      label("filters", "Filters", "1", { span: 2 }),
+      label("rate", "Rate", "32 items / 5 ticks"),
+      select("redstone", "Redstone mode", ["Ignored", "Off when powered", "On when powered", "Always off"], { confirm: true }, "Ignored"),
+    ],
+  },
+
+  // BBL Strainers
+  {
+    key: "strainers_strainer",
+    mod: "strainers",
+    title: "Strainer",
+    template: "strainers_strainer",
+    widgets: [
+      label("status", "Status", "Straining"),
+      progress("progress", "Progress", 0, 100, "%", {}, 62),
+      label("input", "Input", "48× Gravel", { span: 2 }),
+      label("mesh", "Mesh", "1× Diamond Mesh", { span: 2 }),
+      label("fluid", "Fluid", "6.40 k / 16.0 k mB Water", { span: 2 }),
+      label("output", "Output slots", "7 / 50", { span: 2 }),
+      indicator("output_full", "Output full", "red", "gray", false),
+    ],
+  },
+
+  // Trash Cans
+  {
+    key: "trashcans_can",
+    mod: "trashcans",
+    title: "Item Trash Can",
+    template: "trashcans_can",
+    widgets: [
+      label("handles", "Takes", "Items"),
+      toggle("item_allow", "Items: only what the filter lists", {}, false),
+      label("deleted_0", "Deleted last", "32× Dirt", { span: 2 }),
+      label("deleted_1", "Before that", "64× Cobblestone", { span: 2 }),
+    ],
+  },
+
+  // Stepcrafter
+  {
+    key: "stepcrafter_monitor",
+    mod: "stepcrafter",
+    title: "Step Crafting Monitor",
+    template: "stepcrafter_monitor",
+    widgets: [
+      label("status", "Status", "2 tasks"),
+      label("task_0", "Task 1", "64× Iron Ingot – Running 42 %"),
+      label("task_1", "Task 2", "16× Glass – Missing ingredients"),
+      button("cancel", "Cancel all tasks", { confirm: true, color: "red" }),
+    ],
+  },
+
+  // Refined Types
+  {
+    key: "refinedtypes_energizer",
+    mod: "refinedtypes",
+    title: "Network Energizer",
+    template: "refinedtypes_energizer",
+    widgets: [
+      percent("reserve", "Reserve on Energy Disks", { color: "green", icon: "bolt", warn: 10, crit: 3 }, 64.0),
+      label("energy", "Stored", "64.0 M / 100 M FE"),
+    ],
+  },
+
+  // Enderthing
+  {
+    key: "enderthing_storage",
+    mod: "enderthing",
+    title: "Ender Key Chest",
+    template: "enderthing_storage",
+    widgets: [
+      percent("storage", "Storage used", { warn: 85, crit: 95 }, 37.0),
+      label("items", "Total items", "1.20 k / 3.24 k"),
+      label("types", "Item types", "18"),
+      label("slots", "Slots used", "10 / 27"),
+      itemSearch("search", "Search storage"),
+    ],
+  },
 ];

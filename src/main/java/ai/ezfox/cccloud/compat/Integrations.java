@@ -109,6 +109,18 @@ public final class Integrations {
         optional("trainingdummy", () -> ai.ezfox.cccloud.compat.trainingdummy.DummiesCard::init);
         optional("ftbessentials", () -> ai.ezfox.cccloud.compat.ftbessentials.WarpsCard::init);
 
+        // Tech and logistics. In this order: a cable with Display Panels keeps its Panels card, a cable with a Crafting
+        // Interface shows the jobs, any other cable of the network the items.
+        optional("integratedcrafting", () -> ai.ezfox.cccloud.compat.integratedcrafting.CraftingJobsCards::init);
+        optional("integratedtunnels", () -> ai.ezfox.cccloud.compat.integratedtunnels.ItemNetworkCards::init);
+        optional("enderthing", () -> ai.ezfox.cccloud.compat.enderthing.EnderChestCards::init);
+        optional("refinedtypes", () -> ai.ezfox.cccloud.compat.refinedtypes.EnergizerCards::init);
+        optional("stepcrafter", () -> ai.ezfox.cccloud.compat.stepcrafter.StepCraftingCards::init);
+        optional("trashcans", () -> ai.ezfox.cccloud.compat.trashcans.TrashCanCards::init);
+        optional("strainers", () -> ai.ezfox.cccloud.compat.strainers.StrainerCards::init);
+        optional("pipez", () -> ai.ezfox.cccloud.compat.pipez.PipeCards::init);
+        optional("classicpipes", () -> ai.ezfox.cccloud.compat.classicpipes.PipeNetworkCards::init);
+
         // B. Server & team.
         ai.ezfox.cccloud.compat.server.MainframeCards.register(ai.ezfox.cccloud.compat.server.ServerCard.KIND,
             () -> IntegrationConfig.get(IntegrationConfig.SERVER_CARD), m -> new ai.ezfox.cccloud.compat.server.ServerCard(m.getLevel().getServer()));

@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "integratedcrafting"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:integratedcrafting_jobs",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}
