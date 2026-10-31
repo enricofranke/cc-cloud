@@ -1624,6 +1624,15 @@ pre {
   margin: 0 0 16px;
   font-size: 14px;
 }
+.mf-rename {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mf-rename .input {
+  flex: 1;
+  min-width: 0;
+}
 .facts dt {
   color: var(--muted);
 }

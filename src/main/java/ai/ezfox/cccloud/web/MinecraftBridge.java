@@ -298,6 +298,16 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public @Nullable String renameMainframe(AuthStore.Device device, UUID mainframeId, ClientMessages.MainframeRename message) {
+        String error = check(device, mainframeId, AccessGate.Kind.MAINFRAME_RENAME.perm);
+        if (error != null) return error;
+        var mainframe = CloudNetwork.mainframe(mainframeId);
+        if (mainframe == null) return "unloaded"; // the block holds the name
+        mainframe.rename(message.name(), device.playerName());
+        return null;
+    }
+
+    @Override
     public @Nullable String redstoneDevice(AuthStore.Device device, UUID mainframeId, ClientMessages.RedstoneDevice message) {
         String error = check(device, mainframeId, AccessGate.Kind.RS_DEVICE.perm);
         if (error != null) return error;

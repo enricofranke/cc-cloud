@@ -43,4 +43,21 @@ class ClientMessagesV3Test {
         }
         assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse("{\"t\":\"production\",\"op\":\"overview\"}"), "reqId required");
     }
+
+    @Test
+    void mainframeRename() {
+        var ok = assertInstanceOf(ClientMessages.MainframeRename.class, ClientMessages.parse("{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"  North Base \"}"));
+        assertEquals("North Base", ok.name(), "stripped");
+        assertTrue(ClientMessages.isWrite(ok), "a write: asks for the PIN from the internet");
+        assertEquals("", assertInstanceOf(ClientMessages.MainframeRename.class, ClientMessages.parse("{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"\"}")).name(), "default name");
+        for (var bad : new String[]{
+            "{\"t\":\"mainframe_rename\",\"reqId\":\"r\"}",
+            "{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"" + "x".repeat(33) + "\"}",
+            "{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"a\\nb\"}",
+            "{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"§cred\"}",
+            "{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"a\",\"extra\":1}",
+            "{\"t\":\"mainframe_rename\",\"name\":\"a\"}"}) {
+            assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse(bad), bad);
+        }
+    }
 }

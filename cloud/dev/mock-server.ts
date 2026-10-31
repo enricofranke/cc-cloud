@@ -116,6 +116,8 @@ interface PendingPairing {
 interface Mainframe {
   id: string;
   name: string;
+  /** The name before the first rename ("" renames back to it). */
+  defaultName?: string;
   online: boolean;
   enabled: boolean;
   code: string;
@@ -2095,6 +2097,24 @@ export async function createMockServer(opts: MockOptions = {}) {
           cu.cardSettings.settings = { show, charts: Array.isArray(st.charts) ? st.charts : [], toggle: st.toggle ?? null, pin: st.pin !== false };
           log(`${c.user} changed the settings of card ${cu.title}`);
           return cres(true);
+        }
+        if (msg.t === "mainframe_rename") {
+          const mres = (ok: boolean, error?: string) => sendTo(ws, { t: "mainframe_result", reqId: msg.reqId, ok, ...(error ? { error } : {}) });
+          const rd = denied(c, "layout.edit");
+          if (rd) return mres(false, rd);
+          const name = msg.name.trim();
+          // eslint-disable-next-line no-control-regex
+          if (/[\u0000-\u001f\u007f-\u009f]/.test(name)) return mres(false, "invalid_name");
+          const before = m.name;
+          m.defaultName ??= before;
+          m.name = name || m.defaultName;
+          if (m.name !== before) {
+            for (const n of m.net?.nodes ?? []) if (n.type === "mainframe") n.name = m.name;
+            broadcast(m, { t: "state", online: m.online, enabled: m.enabled, name: m.name });
+            if (m.net) broadcastNetwork(m);
+          }
+          log(`${c.user} renamed the mainframe: ${before} → ${m.name}`);
+          return mres(true);
         }
         if (msg.t === "rs_device") {
           // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown

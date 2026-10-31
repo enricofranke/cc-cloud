@@ -8,6 +8,11 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Easier to read:** button and tab text is crisp on the light buttons, grey text is brighter, and a caption is only cut
   when it really does not fit next to its value.
 
+### Mainframes
+- **Rename a mainframe** in its screen or in the dashboard's settings, with the "Edit the layout" permission. Up to 32
+  characters; empty goes back to the default name. The dashboard, tablets, displays, the network map and the mainframe
+  list follow right away, the audit log records it, and the name survives breaking and restoring the mainframe.
+
 ### Cloud Tablet
 - **The Alerts tab shows what happened.** The server keeps the latest 50 alerts of each mainframe, so opening the tablet
   shows them, with their card and age. Before, the tab only showed alerts that fired while you were looking at it. A

@@ -48,7 +48,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 
 ## Alerts
 
-Programs send alerts with `cloud.alert(text, level)`. They pop up as toasts and are kept in the **bell** log. Info toasts fade; warn and crit stay until dismissed. Tap **Enable notifications** in the alert log to get system notifications for crit alerts while the tab is in the background.
+Programs send alerts with `cloud.alert(text, level)`. They pop up as toasts and are kept in the **bell** log. Info toasts fade; warn and crit stay until dismissed. Tap **Enable notifications** in the alert log to get system notifications for crit alerts while the tab is in the background. The log comes from the server, so a browser that reconnects still has the latest 50 (until the server restarts). On a [Cloud Tablet](upgrades.md) they are on the Alerts tab.
 
 ## PIN-protected controls
 

@@ -359,4 +359,73 @@ public final class TabletGameTests {
             })
             .thenSucceed();
     }
+
+    /**
+     * Renaming a mainframe: in its screen (layout.edit, viewers refused) and from the dashboard's bridge; the name reaches
+     * the hub and an open tablet live, the network map, a display, the audit log, survives a save and comes back with a
+     * removed mainframe; "" gives the default name back.
+     */
+    public static void rename(GameTestHelper helper) {
+        capture();
+        var setup = mainframe(helper, "tablet_rename_owner");
+        var viewer = player(helper, "tablet_rename_viewer");
+        var hub = ai.ezfox.cccloud.web.WebHub.INSTANCE;
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var displayPos = helper.absolutePos(new net.minecraft.core.BlockPos(6, 1, 6));
+        var defaultName = setup.mainframe().getDisplayName();
+        var ops = new ai.ezfox.cccloud.gui.GuiActions.MainframeOps[1];
+        helper.startSequence()
+            .thenExecute(() -> {
+                grant(helper, setup, viewer, Role.VIEWER);
+                ops[0] = ai.ezfox.cccloud.gui.GuiNetwork.opsForTest(setup.owner(), setup.mainframe());
+                level.setBlock(displayPos, InGameRegistry.CLOUD_DISPLAY.get().defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(hub.info(setup.id()) != null && InGameRange.covered(setup.id(), level, setup.owner().position()), "published"))
+            .thenExecute(() -> {
+                var display = (ai.ezfox.cccloud.display.CloudDisplayBlockEntity) level.getBlockEntity(displayPos);
+                display.configure(setup.id(), defaultName, "", false, setup.owner().getUUID());
+                var tablet = new ItemStack(InGameRegistry.CLOUD_TABLET.get());
+                tablet.set(ModRegistry.LINKED_MAINFRAME.get(), setup.link());
+                open(helper, setup.owner(), setup.id(), tablet, 83);
+                var viewerPerms = ai.ezfox.cccloud.ingame.InGameAccess.resolve(viewer, setup.id()).perms();
+                var ownerPerms = ai.ezfox.cccloud.ingame.InGameAccess.resolve(setup.owner(), setup.id()).perms();
+                helper.assertTrue("not_owner".equals(ai.ezfox.cccloud.gui.GuiActions.mainframe("rename", "Mine", true, viewerPerms, ops[0])), "viewers may not rename");
+                helper.assertTrue("invalid_name".equals(ai.ezfox.cccloud.gui.GuiActions.mainframe("rename", "x".repeat(33), true, ownerPerms, ops[0])), "too long");
+                helper.assertTrue("invalid_name".equals(ai.ezfox.cccloud.gui.GuiActions.mainframe("rename", "§cRed", true, ownerPerms, ops[0])), "no formatting");
+                helper.assertTrue(setup.mainframe().getDisplayName().equals(defaultName), "nothing changed yet");
+                helper.assertTrue(ai.ezfox.cccloud.gui.GuiActions.mainframe("rename", "  North Base ", true, ownerPerms, ops[0]) == null, "the owner may");
+                helper.assertTrue("North Base".equals(setup.mainframe().getDisplayName()), "renamed: " + setup.mainframe().getDisplayName());
+            })
+            .thenWaitUntil(() -> {
+                helper.assertTrue("North Base".equals(hub.info(setup.id()).name()), "the hub knows the name");
+                helper.assertTrue(received(setup.owner(), "\"name\":\"North Base\""), "an open tablet gets it live");
+                var network = hub.networkForTest(setup.id(), true);
+                helper.assertTrue(network != null && network.toString().contains("North Base"), "the network map follows: " + network);
+                var display = (ai.ezfox.cccloud.display.CloudDisplayBlockEntity) level.getBlockEntity(displayPos);
+                helper.assertTrue("North Base".equals(display.mainframeName()), "the display follows: " + display.mainframeName());
+            })
+            .thenExecute(() -> {
+                var audit = ai.ezfox.cccloud.web.WebAuthData.access(server).auditMap().get(setup.id());
+                helper.assertTrue(audit != null && audit.toString().contains("renamed the mainframe"), "audit log: " + audit);
+                var device = ai.ezfox.cccloud.web.InGameClients.device(viewer, setup.id(), "tablet");
+                helper.assertTrue("read_only".equals(ai.ezfox.cccloud.web.InGameClients.renameMainframe(server, device, "Mine")), "the bridge checks layout.edit");
+                var tag = setup.mainframe().saveWithFullMetadata(level.registryAccess());
+                helper.assertTrue("North Base".equals(tag.getStringOr("custom_name", "")), "saved with the block");
+                var owner = ai.ezfox.cccloud.web.InGameClients.device(setup.owner(), setup.id(), "tablet");
+                helper.assertTrue(ai.ezfox.cccloud.web.InGameClients.renameMainframe(server, owner, "") == null, "dashboard path, empty name");
+                helper.assertTrue(defaultName.equals(setup.mainframe().getDisplayName()), "back to the default name");
+                helper.assertTrue(ai.ezfox.cccloud.web.InGameClients.renameMainframe(server, owner, "South Base") == null, "dashboard path");
+            })
+            .thenWaitUntil(() -> helper.assertTrue("South Base".equals(hub.info(setup.id()).name()), "hub follows the dashboard path"))
+            .thenExecute(() -> {
+                level.setBlock(setup.mainframe().getBlockPos(), net.minecraft.world.level.block.Blocks.AIR.defaultBlockState(), net.minecraft.world.level.block.Block.UPDATE_ALL);
+                var retention = ai.ezfox.cccloud.block.MainframeRetention.get(server);
+                var entry = retention.entry(setup.id());
+                helper.assertTrue(entry != null && "South Base".equals(entry.name()), "a removed mainframe keeps its name for restoring: " + entry);
+                helper.assertTrue("South Base".equals(ai.ezfox.cccloud.block.MainframeRetention.name(entry)), "and is listed under it");
+                ai.ezfox.cccloud.block.MainframeRetention.purge(server, setup.id());
+            })
+            .thenSucceed();
+    }
 }

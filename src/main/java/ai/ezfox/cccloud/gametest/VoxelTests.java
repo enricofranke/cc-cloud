@@ -370,7 +370,7 @@ public final class VoxelTests {
                 // removed: its view ends at once, also from the caches
                 var retention = MainframeRetention.get(server);
                 retention.removed(id, new MainframeRetention.Entry(java.util.Optional.of(owner.getUUID()), "vlk_owner", System.currentTimeMillis(), GlobalPos.of(level.dimension(), base),
-                    false, false, true, Map.of()));
+                    false, false, true, Map.of(), ""));
                 batch[5] = ask(server, owner.getUUID(), id, dim, section, null);
             })
             .thenWaitUntil(() -> helper.assertTrue(ready(batch[5]), "answer"))

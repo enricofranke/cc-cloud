@@ -320,6 +320,14 @@ public class CloudDisplayBlockEntity extends BlockEntity {
 
     // ---- content ---------------------------------------------------------------------------------------------------
 
+    /** Follows a renamed mainframe (origin; on every block, so it survives splitting). */
+    private void refreshMainframeName() {
+        if (mainframeId == null) return;
+        var info = ai.ezfox.cccloud.web.WebHub.INSTANCE.info(mainframeId);
+        if (info == null || info.name().isEmpty() || info.name().equals(mainframeName)) return;
+        configure(mainframeId, info.name(), sectionId, interactive, configuredBy);
+    }
+
     /** The JSON the display shows (origin): the section snapshot or {"error":...}. */
     public String content() {
         return content;
@@ -341,6 +349,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         }
         if (!isOrigin() || ++ticks < SYNC_INTERVAL) return;
         ticks = 0;
+        refreshMainframeName();
         String json = readContent();
         if (!json.equals(content)) {
             content = json;

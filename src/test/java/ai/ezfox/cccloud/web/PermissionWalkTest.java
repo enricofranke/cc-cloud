@@ -176,6 +176,7 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"query\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"id\":\"search\",\"q\":\"iron\"}", Perm.STORAGE_SEARCH);
         cases.put("{\"t\":\"card_settings\",\"reqId\":\"r\",\"uplinkId\":\"" + direct + "\",\"settings\":{\"show\":[\"getEnergy\"]}}", Perm.LAYOUT_EDIT);
         cases.put("{\"t\":\"layout_set\",\"reqId\":\"r\",\"layout\":{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{}}}", Perm.LAYOUT_EDIT);
+        cases.put("{\"t\":\"mainframe_rename\",\"reqId\":\"r\",\"name\":\"Main base\"}", Perm.LAYOUT_EDIT);
         cases.put("{\"t\":\"net_unlink\",\"reqId\":\"r\",\"nodeId\":\"" + lua + "\"}", Perm.NETWORK_LINK);
         cases.put("{\"t\":\"rule_set\",\"reqId\":\"r\",\"rule\":{}}", Perm.RULES_EDIT);
         cases.put("{\"t\":\"rs_override\",\"reqId\":\"r\",\"channel\":\"door\",\"level\":15,\"seconds\":30}", Perm.ACT_REDSTONE);

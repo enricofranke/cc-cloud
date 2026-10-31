@@ -1602,6 +1602,10 @@ public final class WebHub {
     }
 
     private static void put(View view, String key, JsonObject message) {
+        // a state message replaces the pending one: a rename in it must not get lost (power updates come every second)
+        if (view.outbox.get(key) instanceof JsonObject old && key.equals("state") && old.has("name") && !message.has("name")) {
+            message.add("name", old.get("name"));
+        }
         view.outbox.remove(key);
         view.outbox.put(key, message);
     }

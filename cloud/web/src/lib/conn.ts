@@ -144,6 +144,7 @@ interface Pending {
 export const REJECT_TEXT: Record<string, string> = {
   offline: "The mainframe is offline.",
   disabled: "The dashboard is switched off in-game.",
+  invalid_name: "Names are up to 32 characters of plain text.",
   rate_limited: "Too many actions – slow down a little.",
   uplink_offline: "This uplink is offline.",
   unknown_uplink: "This uplink no longer exists.",
@@ -701,6 +702,7 @@ export class MainframeConn {
         break;
       }
       case "rs_result":
+      case "mainframe_result":
       case "card_settings_result":
       case "net_result": {
         const r = this.netReqs.get(String(msg.reqId ?? ""));
@@ -887,6 +889,24 @@ export class MainframeConn {
       const no = this.deniedCode("network.link");
       if (no) return reject(new Error(no));
       if (!this.send({ t: "rs_device", reqId, deviceId, ...change })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.netReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      this.netReqs.set(reqId, { resolve, reject, timer });
+    });
+  }
+
+  /**
+   * Renames this mainframe ({"t":"mainframe_rename"} → mainframe_result); "" = back to the default name. Needs
+   * layout.edit. Every client gets the new name as a `state` delta.
+   */
+  renameMainframe(name: string, timeoutMs = 8000): Promise<void> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.deniedCode("layout.edit");
+      if (no) return reject(new Error(no));
+      if (!this.send({ t: "mainframe_rename", reqId, name })) return reject(new Error("disconnected"));
       const timer = setTimeout(() => {
         this.netReqs.delete(reqId);
         reject(new Error("timeout"));

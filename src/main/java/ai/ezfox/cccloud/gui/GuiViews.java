@@ -64,6 +64,8 @@ public final class GuiViews {
         for (var p : resolution.perms()) permsJson.add(p.id);
         json.add("perms", permsJson);
         json.addProperty("name", mainframe.getDisplayName());
+        json.addProperty("customName", mainframe.getCustomName());
+        json.addProperty("canRename", resolution.has(ai.ezfox.cccloud.access.Perm.LAYOUT_EDIT));
         var pos = mainframe.getBlockPos();
         json.addProperty("pos", pos.getX() + " " + pos.getY() + " " + pos.getZ());
         json.addProperty("status", mainframe.isPowered() ? "killed" : !mainframe.hasPower() ? "no_power" : mainframe.status().getSerializedName());

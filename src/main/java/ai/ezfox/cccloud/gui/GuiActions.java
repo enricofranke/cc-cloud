@@ -17,6 +17,7 @@ import org.jspecify.annotations.Nullable;
  */
 public final class GuiActions {
     public static final int MAX_ARG = 64;
+    public static final int MAX_MAINFRAME_NAME = 32;
     private static final Pattern PENDING_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
     private static final Pattern DEVICE_ID = Pattern.compile("[0-9a-f]{" + AuthStore.DEVICE_ID_LENGTH + "}");
     private static final Pattern PLAYER_NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
@@ -28,7 +29,9 @@ public final class GuiActions {
     public enum Mainframe {
         TOGGLE_DASHBOARD(Perm.POWER_TOGGLE), NEW_CODE(Perm.DEVICES_MANAGE), APPROVE(Perm.DEVICES_MANAGE), DENY(Perm.DEVICES_MANAGE),
         REVOKE(Perm.DEVICES_MANAGE), REVOKE_ALL(Perm.DEVICES_MANAGE), TRUST(Perm.ACCESS_MANAGE), UNTRUST(Perm.ACCESS_MANAGE),
-        SET_ROLE(Perm.ACCESS_MANAGE), PIN_SET(Perm.PIN_MANAGE), PIN_CLEAR(Perm.PIN_MANAGE), LINK_ACCOUNT(null);
+        SET_ROLE(Perm.ACCESS_MANAGE), PIN_SET(Perm.PIN_MANAGE), PIN_CLEAR(Perm.PIN_MANAGE), LINK_ACCOUNT(null),
+        /** The mainframe's name, arg = the name, empty = the default; the same right as renaming a card. */
+        RENAME(Perm.LAYOUT_EDIT);
 
         /** The permission on the mainframe this action needs (null: any player who may use the mod). */
         public final @Nullable Perm perm;
@@ -101,6 +104,11 @@ public final class GuiActions {
         @Nullable String setPin(String pin);
 
         @Nullable String clearPin();
+
+        /** The mainframe's name (validated plain text, empty = back to the default). */
+        default @Nullable String renameMainframe(String name) {
+            return "not_supported";
+        }
     }
 
     public interface UplinkOps {
@@ -173,6 +181,10 @@ public final class GuiActions {
             case PIN_SET -> AuthStore.isValidPin(arg) ? ops.setPin(arg) : "invalid_pin";
             case PIN_CLEAR -> arg.isEmpty() ? ops.clearPin() : "invalid_argument";
             case LINK_ACCOUNT -> "invalid_argument"; // handled above
+            case RENAME -> {
+                String name = mainframeName(arg);
+                yield name == null ? "invalid_name" : ops.renameMainframe(name);
+            }
         };
     }
 
@@ -236,6 +248,21 @@ public final class GuiActions {
     }
 
     /** A card title from the screen: plain text without control characters, trimmed, at most 48 characters; null if invalid. */
+    /**
+     * The name of a mainframe from a screen or the dashboard: stripped, plain text of at most {@link #MAX_MAINFRAME_NAME}
+     * characters (no control characters, no § formatting), empty = the default name. Null if it is not valid.
+     */
+    public static @Nullable String mainframeName(@Nullable String arg) {
+        if (arg == null) return null;
+        String name = arg.strip();
+        if (name.length() > MAX_MAINFRAME_NAME) return null;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (Character.isISOControl(c) || c == '§') return null;
+        }
+        return name;
+    }
+
     static @Nullable String cardTitle(String arg) {
         if (arg.length() > ai.ezfox.cccloud.uplink.Limits.TITLE) return null;
         for (int i = 0; i < arg.length(); i++) {

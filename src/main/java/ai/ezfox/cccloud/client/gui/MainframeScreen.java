@@ -19,6 +19,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
     private static final int PROBE_COLOR = 0xFFB48AE8;
     private final EditBox trustName;
     private final EditBox pin;
+    private final EditBox nameBox;
 
     public MainframeScreen(MainframeMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -34,8 +35,13 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         pin.setFilter(s -> s.matches("[0-9]*"));
         pin.addFormatter((text, offset) -> FormattedCharSequence.forward("•".repeat(text.length()), net.minecraft.network.chat.Style.EMPTY));
         pin.setHint(Component.translatable("cccloud.gui.pin_hint").withColor(CloudGui.TEXT_DIM));
+        nameBox = new EditBox(font, 0, 0, 80, 10, Component.translatable("cccloud.gui.mainframe_name"));
+        nameBox.setBordered(false);
+        nameBox.setMaxLength(ai.ezfox.cccloud.gui.GuiActions.MAX_MAINFRAME_NAME);
+        nameBox.setHint(Component.translatable("cccloud.gui.mainframe_name_hint").withColor(CloudGui.TEXT_DIM));
         editBoxes.add(trustName);
         editBoxes.add(pin);
+        editBoxes.add(nameBox);
     }
 
     @Override
@@ -451,6 +457,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
             textRow(Component.translatable("cccloud.gui.icons", String.format("%,d", done), String.format("%,d", total)),
                 done >= total ? CloudGui.TEXT_DIM : CloudGui.CYAN);
         }
+        mainframeName();
         linkAccount();
         if (!manage()) {
             textRow(Component.translatable("cccloud.gui.readonly_hint"), CloudGui.TEXT_DIM);
@@ -642,6 +649,26 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         return true;
     }
 
+    /** The mainframe's name (layout.edit): the field follows the server until it is focused; empty = the default name. */
+    private void mainframeName() {
+        if (!bool(view, "canRename")) return;
+        heading("cccloud.gui.mainframe_name");
+        rows.add(new Row(ROW + 2, (c, x, y, w) -> {
+            String current = str(view, "customName");
+            if (!nameBox.isFocused() && !nameBox.getValue().equals(current)) nameBox.setValue(current);
+            var rename = Component.translatable("cccloud.gui.card.rename");
+            int bw = c.buttonWidth(rename);
+            c.edit(nameBox, x + 2, y + 2, w - bw - 10);
+            c.button(x + w - bw - 3, y + 2, rename, CloudGui.ButtonStyle.NORMAL, !nameBox.getValue().strip().equals(current), this::rename);
+        }));
+    }
+
+    private void rename() {
+        send("rename", nameBox.getValue().strip());
+        nameBox.setFocused(false);
+        setFocused(null);
+    }
+
     /** "Link this browser": an account code for the player (all mainframes where they have a role). */
     private void linkAccount() {
         heading("cccloud.gui.link_browser");
@@ -675,6 +702,7 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
     protected void onEnter(EditBox box) {
         if (box == trustName) addTrusted();
         else if (box == pin) setPin();
+        else if (box == nameBox) rename();
     }
 
     private void showLocalNotice(String code) {

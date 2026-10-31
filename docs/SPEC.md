@@ -886,6 +886,11 @@ Upgrade cards (stack effects by tier, one card per type counts – the highest t
 - Override (needs `act.redstone`): client → `{"t":"rs_override","reqId","channel","level":0-15,"seconds":1-86400|null}` (null = until reset); `level:null` clears the override. Server → `{"t":"rs_result","reqId","ok","error?"}` (`not_allowed | read_only | forbidden | invalid_channel | invalid_argument | too_many_channels | rate_limited | offline`), then a `redstone` delta. An override may create a channel that has no transmitter yet. Every override is written to the mainframe's audit log.
 - Power breakdown items may now include `anchor` (Chunk Anchor FE) and `efficiency` (negative, saved FE); unknown keys should be shown with their key as label.
 
+### Renaming a mainframe
+- A mainframe is called `Mainframe @ x y z` until it is renamed, in the Mainframe screen (Overview, action `rename`) or the dashboard's settings sheet. Needs `layout.edit`, like a card's title. Plain text, stripped, at most 32 characters, no control characters, no `§`; empty = back to the default name.
+- Client → `{"t":"mainframe_rename","reqId","name"}`, strict; invalid → `invalid_message`. Server → `{"t":"mainframe_result","reqId","ok","error?"}` (`read_only | not_allowed | forbidden | unloaded | rate_limited | offline`; `unloaded`: the name is stored in the block). A write for the internet PIN gate.
+- The block stores it (`custom_name`), the retention entry keeps it for a removed mainframe, every change goes to the audit log. Dashboards, share links and open tablets get a `state` delta with `name` (a pending state message keeps the name when a later one replaces it), the network map republishes (the name is part of its publish key), displays follow within 5 ticks, and the saved mainframe list follows through the dashboard's connection.
+
 ### Cloud Tablet (item)
 - Handheld item, opens the dashboard **in-game** (a native screen that renders the same cards/widgets with MC widgets – not a browser). Works within network range of any node (or anywhere in Ender range with an advanced tablet). Uses the player's role on that mainframe. Keybind to open (default unbound) when the tablet is in the inventory/curios slot.
 - Normal and advanced tier; recipe from a CC pocket computer + cloud core (+ gold/ender pearl for advanced).
@@ -1434,7 +1439,7 @@ Roles stay as presets, but every grant can be customized with individual permiss
   - crafting through `item_search`: `storage.craft`;
   - watchlist edits: `storage.autostock`;
   - `query`: `storage.search`;
-  - `layout_set`: `layout.edit`;
+  - `layout_set`, `mainframe_rename`: `layout.edit`;
   - `net_unlink`: `network.link`;
   - `rule_set` and `rule_delete`: `rules.edit`;
   - `rule_enable` and `rule_run`: `rules.toggle`;

@@ -23,7 +23,7 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, CardSettings, Unlock, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, MainframeRename, CardSettings, Unlock, Pong, Invalid {
     }
 
     /**
@@ -129,6 +129,14 @@ public final class ClientMessages {
     public record RedstoneDevice(String reqId, UUID deviceId, @Nullable String name, @Nullable String group) implements Message {
     }
 
+    /**
+     * {@code {"t":"mainframe_rename","reqId","name"}}: renames the mainframe, plain text of at most 32 characters, ""
+     * = the default name ({@link ai.ezfox.cccloud.gui.GuiActions#mainframeName}). Needs {@code layout.edit}; answered
+     * with {@code mainframe_result}, every client gets the name as a {@code state} delta.
+     */
+    public record MainframeRename(String reqId, String name) implements Message {
+    }
+
     /** Only the type and request id of a message (for the hard deny of share sessions). */
     public record Peek(@Nullable String t, @Nullable String reqId) {
     }
@@ -183,6 +191,7 @@ public final class ClientMessages {
             case SceneCommand s -> true;
             case RedstoneOverride r -> true;
             case RedstoneDevice r -> true;
+            case MainframeRename m -> true;
             case CardSettings c -> true;
             case Production p -> p.op().equals("pin") || p.op().equals("unpin");
             case Storage s -> STORAGE_WRITE_OPS.contains(s.op());
@@ -273,6 +282,13 @@ public final class ClientMessages {
                     || (name != null && !ai.ezfox.cccloud.rsdevice.RsDevice.validText(name.strip()))
                     || (group != null && !ai.ezfox.cccloud.rsdevice.RsDevice.validText(group.strip()))
                     ? new Invalid("invalid_message", reqId) : new RedstoneDevice(reqId, deviceId, name == null ? null : name.strip(), group == null ? null : group.strip());
+            }
+            case "mainframe_rename" -> {
+                String reqId = string(obj, "reqId");
+                if (reqId == null || !REQ_ID.matcher(reqId).matches()) yield new Invalid("invalid_message", null);
+                String name = ai.ezfox.cccloud.gui.GuiActions.mainframeName(string(obj, "name"));
+                boolean extra = obj.keySet().stream().anyMatch(k -> !java.util.Set.of("t", "reqId", "name").contains(k));
+                yield name == null || extra ? new Invalid("invalid_message", reqId) : new MainframeRename(reqId, name);
             }
             case "pong", "ping" -> new Pong();
             case "action" -> parseAction(obj);

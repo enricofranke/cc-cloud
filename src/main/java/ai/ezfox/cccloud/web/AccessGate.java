@@ -39,7 +39,9 @@ public final class AccessGate {
         /** v0.10 scenes: create, edit, delete (running is a button action). */
         SCENE_EDIT(Perm.RULES_EDIT),
         /** Cloud Redstone devices: rename / regroup from the dashboard (like linking them). */
-        RS_DEVICE(Perm.NETWORK_LINK);
+        RS_DEVICE(Perm.NETWORK_LINK),
+        /** The mainframe's name (like a card's title). */
+        MAINFRAME_RENAME(Perm.LAYOUT_EDIT);
 
         public final Perm perm;
 
@@ -167,6 +169,7 @@ public final class AccessGate {
             case "card_settings" -> "card_settings_result";
             case "net_unlink" -> "net_result";
             case "rs_override", "rs_device" -> "rs_result";
+            case "mainframe_rename" -> "mainframe_result";
             case "rule_set", "rule_delete", "rule_enable", "rule_run" -> "rule_result";
             case "scene_set", "scene_delete" -> "scene_result";
             case "production" -> "production_result";

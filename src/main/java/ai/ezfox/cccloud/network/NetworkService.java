@@ -303,7 +303,7 @@ public final class NetworkService {
             // The map JSON is the expensive part (two forms, ~1 KB per device): built only when this network changed, or
             // at least once a minute for the slow parts (power numbers, names) - docs/SPEC.md "Scaling".
             var key = new PublishKey(result, Set.copyOf(over), mainframe.isOnline(), mainframe.isEnabled(), mainframe.reason(),
-                Set.copyOf(mainframe.getLinkedUplinks().keySet()), namesHash(id, mainframe.getLinkedUplinks().keySet()), probeTargets(result));
+                Set.copyOf(mainframe.getLinkedUplinks().keySet()), 31 * namesHash(id, mainframe.getLinkedUplinks().keySet()) + mainframe.getDisplayName().hashCode(), probeTargets(result));
             var last = PUBLISHED.get(id);
             long now = System.currentTimeMillis();
             if (last != null && last.key().equals(key) && now - last.at() < REPUBLISH_MS) {

@@ -95,6 +95,10 @@ Without Allthemodium the vibranium ingots are 4 diamonds and 2 netherite scrap (
 
 A redstone signal on either half is a **kill switch**: the mainframe goes offline until the signal is gone.
 
+### Rename the mainframe
+
+A new mainframe is named after its position. Give it a name in its screen (**Name** on the Overview tab) or on the dashboard under **Settings** next to the name. You need the permission “Edit the layout”. Up to 32 characters; an empty name goes back to the position. Dashboards, tablets, displays and the network map follow right away.
+
 ### Breaking and moving the mainframe
 
 The mainframe keeps its identity in its item. Break it (pickaxe) and place the item again – anywhere, also in another base – and it is the **same mainframe**: devices, accounts, PIN, layout, rules, scenes and API keys are back, and linked uplinks and bridges reconnect by themselves. It still belongs to its owner, whoever places it. Upgrade cards drop as separate items; put them back in.

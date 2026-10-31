@@ -66,7 +66,9 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
 
     @Override
     protected Component rightTitle() {
-        return Component.literal(menu.mainframeName());
+        // live: the mainframe may be renamed while the tablet is open
+        var mainframe = view.get("mainframe") instanceof JsonObject m ? str(m, "name") : "";
+        return Component.literal(mainframe.isEmpty() ? menu.mainframeName() : mainframe);
     }
 
     @Override

@@ -104,14 +104,38 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     }
 
     private @Nullable String displayName;
+    /** The name given in its screen or on the dashboard; empty = named after its position. */
+    private String customName = "";
 
     public String getDisplayName() {
-        // The position never changes for a block entity: build the name once (it is read every tick)
+        // Read every tick: built once, until it is renamed
         if (displayName == null) {
             var p = getBlockPos();
-            displayName = "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ();
+            displayName = customName.isEmpty() ? "Mainframe @ " + p.getX() + " " + p.getY() + " " + p.getZ() : customName;
         }
         return displayName;
+    }
+
+    public String getCustomName() {
+        return customName;
+    }
+
+    /**
+     * Renames the mainframe ({@code name} validated by {@link ai.ezfox.cccloud.gui.GuiActions#mainframeName}, empty = the
+     * default name) and writes it to the audit log. Dashboards and open tablets get it as a state delta, the network map
+     * with its next update, displays with their next content refresh.
+     */
+    public void rename(String name, String by) {
+        if (name.equals(customName)) return;
+        String before = getDisplayName();
+        customName = name;
+        displayName = null;
+        setChanged();
+        ai.ezfox.cccloud.network.NetworkService.markDirty(mainframeId);
+        if (level instanceof ServerLevel serverLevel) {
+            WebAuthData.access(serverLevel.getServer()).audit(mainframeId, by + " renamed the mainframe: " + before + " → " + getDisplayName());
+        }
+        CCCloud.LOGGER.info("[cccloud] {} renamed {} to {}", by, before, getDisplayName());
     }
 
     public ai.ezfox.cccloud.upgrade.MainframeUpgrades upgrades() {
@@ -159,6 +183,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         enabled = input.getBooleanOr("enabled", true);
         owner = input.read("owner", UUIDUtil.STRING_CODEC).orElse(null);
         ownerName = input.getStringOr("owner_name", "");
+        customName = input.getStringOr("custom_name", "");
+        displayName = null;
         legacyTrusted.clear();
         input.read("trusted", NameAndId.CODEC.listOf()).ifPresent(list -> list.forEach(t -> legacyTrusted.put(t.id(), t.name())));
         linkedUplinks.clear();
@@ -187,6 +213,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         output.putBoolean("enabled", enabled);
         output.storeNullable("owner", UUIDUtil.STRING_CODEC, owner);
         output.putString("owner_name", ownerName);
+        if (!customName.isEmpty()) output.putString("custom_name", customName);
         net.minecraft.world.ContainerHelper.saveAllItems(output.child("upgrades"), upgrades.getItems());
         if (!anchorChunks.isEmpty()) {
             output.store("anchor_chunks", com.mojang.serialization.Codec.STRING.listOf(),
@@ -236,6 +263,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         owner = entry.owner().orElse(null);
         ownerName = entry.ownerName();
         enabled = entry.enabled();
+        customName = entry.name();
+        displayName = null;
         linkedUplinks.clear();
         linkedUplinks.putAll(entry.uplinks());
         setChanged();
@@ -319,7 +348,7 @@ public class CloudMainframeBlockEntity extends BlockEntity {
             }
             // Keep everything for the retention time: placing the item (or a recovered one) brings it back.
             var entry = new ai.ezfox.cccloud.block.MainframeRetention.Entry(java.util.Optional.ofNullable(owner), ownerName, System.currentTimeMillis(),
-                GlobalPos.of(serverLevel.dimension(), pos), breakerDrops == null || breakerDrops, false, enabled, Map.copyOf(linkedUplinks));
+                GlobalPos.of(serverLevel.dimension(), pos), breakerDrops == null || breakerDrops, false, enabled, Map.copyOf(linkedUplinks), customName);
             ai.ezfox.cccloud.block.MainframeRetention.get(server).removed(mainframeId, entry);
             CCCloud.LOGGER.info("[cccloud] {} ({}, owner {}) was removed; its data is kept for {} day(s) – place its item again or use "
                 + "/cccloud mainframe recover to restore it", getDisplayName(), mainframeId, ownerName, CloudConfig.get(CloudConfig.MAINFRAME_RETENTION_DAYS));

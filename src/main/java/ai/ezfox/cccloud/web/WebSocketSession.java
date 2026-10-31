@@ -186,6 +186,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.NetUnlink unlink -> netUnlink(current, unlink);
             case ClientMessages.RedstoneOverride override -> redstoneOverride(current, override);
             case ClientMessages.RedstoneDevice device -> redstoneDevice(current, device);
+            case ClientMessages.MainframeRename rename -> renameMainframe(current, rename);
             case ClientMessages.CardSettings settings -> cardSettings(current, settings);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
@@ -767,6 +768,33 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             });
         } catch (RejectedExecutionException e) {
             sendTypedResult("rs_result", override.reqId(), "offline");
+        }
+    }
+
+    /** Mainframe rename (layout.edit): {@code mainframe_result}; every client follows through a {@code state} delta. */
+    private void renameMainframe(AuthStore.Device current, ClientMessages.MainframeRename message) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.MAINFRAME_RENAME);
+        if (denied != null) {
+            sendTypedResult("mainframe_result", message.reqId(), denied);
+            return;
+        }
+        if (!actionLimit.tryAcquire()) {
+            sendTypedResult("mainframe_result", message.reqId(), "rate_limited");
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                String error;
+                try {
+                    error = instance.bridge.renameMainframe(current, mainframeId, message);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while renaming a mainframe from {}", ip, e);
+                    error = "internal_error";
+                }
+                sendTypedResult("mainframe_result", message.reqId(), error);
+            });
+        } catch (RejectedExecutionException e) {
+            sendTypedResult("mainframe_result", message.reqId(), "offline");
         }
     }
 

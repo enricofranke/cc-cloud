@@ -157,6 +157,7 @@ class ShareSessionTest {
         samples.put(ClientMessages.Action.class, new String[]{"{\"t\":\"action\",\"reqId\":\"a1\",\"uplinkId\":\"" + uplink + "\",\"id\":\"temp\",\"value\":1}", "action_result"});
         samples.put(ClientMessages.Query.class, new String[]{"{\"t\":\"query\",\"reqId\":\"q1\",\"uplinkId\":\"" + uplink + "\",\"id\":\"search\",\"q\":\"iron\"}", "query_result"});
         samples.put(ClientMessages.LayoutSet.class, new String[]{"{\"t\":\"layout_set\",\"reqId\":\"l1\",\"layout\":{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{}}}", "layout_result"});
+        samples.put(ClientMessages.MainframeRename.class, new String[]{"{\"t\":\"mainframe_rename\",\"reqId\":\"m1\",\"name\":\"Mine now\"}", "mainframe_result"});
         samples.put(ClientMessages.NetUnlink.class, new String[]{"{\"t\":\"net_unlink\",\"reqId\":\"n1\",\"nodeId\":\"" + uplink + "\"}", "net_result"});
         samples.put(ClientMessages.RedstoneOverride.class, new String[]{"{\"t\":\"rs_override\",\"reqId\":\"o1\",\"channel\":\"door\",\"level\":1}", "rs_result"});
         samples.put(ClientMessages.RedstoneDevice.class, new String[]{"{\"t\":\"rs_device\",\"reqId\":\"d1\",\"deviceId\":\"" + uplink + "\",\"name\":\"Hall\"}", "rs_result"});
