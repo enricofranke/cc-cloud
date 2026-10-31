@@ -1189,7 +1189,7 @@ function toValue(v: unknown): WidgetValue {
       .filter((r) => r && typeof r === "object" && !Array.isArray(r))
       .map((r) => {
         const out: Row = {};
-        for (const [k, x] of Object.entries(r as object)) if (x === null || ["string", "number", "boolean"].includes(typeof x)) out[k] = x as Row[string];
+        for (const [k, x] of Object.entries(r as object)) if (x === null || ["string", "number", "boolean"].includes(typeof x) || (k === "missing" && Array.isArray(x))) out[k] = x as Row[string]; // a job row's missing items (parseMissing)
         return out;
       });
   }

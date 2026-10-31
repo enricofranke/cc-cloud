@@ -141,6 +141,18 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public GameBridge.StorageResult cardDetail(AuthStore.Device device, UUID mainframeId, ClientMessages.CardDetail message) {
+        dispatched.add("card_detail:" + message.uplinkId());
+        return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());
+    }
+
+    @Override
+    public GameBridge.StorageResult cardWrite(AuthStore.Device device, UUID mainframeId, ClientMessages.CardWrite message) {
+        dispatched.add("card_write:" + message.op());
+        return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());
+    }
+
+    @Override
     public void craftPreview(AuthStore.Device device, UUID mainframeId, ClientMessages.CraftPreview request, java.util.function.Consumer<GameBridge.StorageResult> done) {
         dispatched.add("preview:" + request.name());
         done.accept(new GameBridge.StorageResult(null, new com.google.gson.JsonObject()));

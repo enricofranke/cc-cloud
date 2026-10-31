@@ -30,7 +30,17 @@ The bridge uses the network's own power, no FE for the mainframe.
 
 ## Crafting from the dashboard
 
-Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, missing ingredients, amount too large (limit `maxCraftAmount`, default 4096). Only devices with control rights can craft.
+Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit `maxCraftAmount`, default 4096). Only devices with control rights can craft.
+
+**Not enough items:** the dialog lists what is missing with have / need and, when the mod can tell, how many are possible now – **Craft 37** makes just those. **Order anyway** keeps the whole amount: it waits as *Waiting for items* and starts by itself once the items are there. Orders survive a restart, up to 8 per bridge, and you can cancel them. A Lua `craft()` or a rule waits the same way; `getCraftingJobs()` shows the `missing` list.
+
+**Stuck:** a job that has not moved for `craftStuckSeconds` (server config, default 60, 0 = off) gets a red **Stuck** badge with the reason, one alert, and can start a rule (“a craft gets stuck”). AE2 does not say which machine hangs, so set it above your slowest machine. **Retry** cancels the job and asks for the same craft again; it is only offered for crafts started in the dashboard, because a Lua program or rule may request it again itself.
+
+## Factory Manager program
+
+The **\</>** button on a Factory Manager card shows the program on its disk, with every error and warning and a copy button. It tells your base's layout, so it needs “See coordinates”, and never appears on share links or displays.
+
+With **Write machine programs** (`device.program`, admin and owner) you can edit it, paste SFML or load a .sfml, .sfm or .txt file of up to 32 KB. **Check and review** compiles it and shows the old and new line count and what changed. A program with errors is only written if you confirm it, because the manager stops running. The PIN is asked if the mainframe has one, every write lands in the audit log, and **Undo last change** restores the old program once, until the server restarts.
 
 ## Watchlist
 

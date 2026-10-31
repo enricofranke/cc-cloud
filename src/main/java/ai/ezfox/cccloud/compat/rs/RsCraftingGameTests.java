@@ -24,15 +24,84 @@ public final class RsCraftingGameTests {
     private RsCraftingGameTests() {
     }
 
+    private static final BlockPos BRIDGE = new BlockPos(3, 1, 2);
+    private static final BlockPos AUTOCRAFTER = new BlockPos(1, 2, 2); // on top of the controller (the autocrafter does not connect on its front face)
+
     public static void crafting(GameTestHelper helper) {
+        StorageV2TestSupport.run(helper, setup(helper), () -> core(helper), () -> addLogs(helper)).thenSucceed();
+    }
+
+    /** Not enough items: RS only starts a successful preview, so the craft waits as an order and starts once the logs arrive. */
+    public static void order(GameTestHelper helper) {
+        var planks = StorageV2TestSupport.PLANKS;
+        var job = new String[1];
+        setup(helper)
+            .thenWaitUntil(() -> helper.assertTrue(core(helper).isCraftable(planks), "pattern known"))
+            .thenExecute(() -> {
+                var ticket = core(helper).craft(planks, 4, "Steve", false, "dashboard");
+                helper.assertTrue(ticket.error() == null, "taken as an order: " + ticket.error());
+                job[0] = ticket.jobId();
+            })
+            .thenWaitUntil(() -> {
+                var row = row(helper, job[0]);
+                helper.assertTrue(row.get("status").getAsString().equals("waiting") && row.get("error").getAsString().equals("not_enough_items"), "waiting: " + row);
+                helper.assertTrue(row.toString().contains("minecraft:oak_log"), "names the logs: " + row);
+            })
+            .thenExecute(() -> {
+                addLogs(helper);
+                core(helper).advanceTicksForTest(1300);
+            })
+            .thenWaitUntil(() -> {
+                var item = core(helper).getItem(planks);
+                helper.assertTrue(item != null && item.count() >= 4, "the order started by itself: " + item + " " + core(helper).jobRows(16));
+            })
+            .thenSucceed();
+    }
+
+    /** A real RS hang: the autocrafter goes away under the running task. The job turns stuck, and is reported once. */
+    public static void stuck(GameTestHelper helper) {
+        var planks = StorageV2TestSupport.PLANKS;
+        var job = new String[1];
+        setup(helper)
+            .thenWaitUntil(() -> helper.assertTrue(core(helper).isCraftable(planks), "pattern known"))
+            .thenExecute(() -> addLogs(helper))
+            .thenExecute(() -> {
+                var ticket = core(helper).craft(planks, 400, "Steve", false, "dashboard");
+                helper.assertTrue(ticket.error() == null, "craft accepted: " + ticket.error());
+                job[0] = ticket.jobId();
+                helper.setBlock(AUTOCRAFTER, net.minecraft.world.level.block.Blocks.AIR);
+            })
+            .thenIdle(25)
+            .thenExecute(() -> core(helper).advanceTicksForTest(1300))
+            .thenWaitUntil(() -> helper.assertTrue(row(helper, job[0]).get("status").getAsString().equals("stuck"), "stuck: " + core(helper).jobRows(16)))
+            .thenIdle(45)
+            .thenExecute(() -> helper.assertTrue(core(helper).stuckSeq() == 1, "reported once: " + core(helper).stuckSeq() + " " + row(helper, job[0])))
+            .thenSucceed();
+    }
+
+    private static com.google.gson.JsonObject row(GameTestHelper helper, String jobId) {
+        for (var row : core(helper).jobRows(16)) if (row.getAsJsonObject().get("jobId").getAsString().equals(jobId)) return row.getAsJsonObject();
+        throw helper.assertionException("no row for job " + jobId + ": " + core(helper).jobRows(16));
+    }
+
+    private static ai.ezfox.cccloud.bridge.BridgeCore core(GameTestHelper helper) {
+        return ((RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(BRIDGE))).bridgeCore();
+    }
+
+    private static void addLogs(GameTestHelper helper) {
+        var be = (RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(BRIDGE));
+        long inserted = be.node().getNetwork().getComponent(StorageNetworkComponent.class).insert(new ItemResource(Items.OAK_LOG), 64, Action.EXECUTE, Actor.EMPTY);
+        helper.assertTrue(inserted == 64, "logs inserted: " + inserted);
+    }
+
+    /** The network with the pattern in the autocrafter, once connected. */
+    private static net.minecraft.gametest.framework.GameTestSequence setup(GameTestHelper helper) {
         var controller = new BlockPos(1, 1, 2);
         var storageBlock = new BlockPos(2, 1, 2);
-        var bridge = new BlockPos(3, 1, 2);
-        var autocrafter = new BlockPos(1, 2, 2); // on top of the controller (the autocrafter does not connect on its front face)
         helper.setBlock(controller, BridgeTestSupport.block(helper, "refinedstorage:creative_controller"));
         helper.setBlock(storageBlock, BridgeTestSupport.block(helper, "refinedstorage:1k_storage_block"));
-        helper.setBlock(bridge, RsCompat.BLOCK.get());
-        helper.setBlock(autocrafter, BridgeTestSupport.block(helper, "refinedstorage:autocrafter"));
+        helper.setBlock(BRIDGE, RsCompat.BLOCK.get());
+        helper.setBlock(AUTOCRAFTER, BridgeTestSupport.block(helper, "refinedstorage:autocrafter"));
 
         var stacks = new ArrayList<ItemStack>();
         stacks.add(new ItemStack(Items.OAK_LOG));
@@ -40,21 +109,13 @@ public final class RsCraftingGameTests {
         var pattern = new ItemStack(com.refinedmods.refinedstorage.common.content.Items.INSTANCE.getPattern());
         pattern.set(DataComponents.INSTANCE.getPatternState(), new PatternState(UUID.randomUUID(), PatternType.CRAFTING));
         pattern.set(DataComponents.INSTANCE.getCraftingPatternState(), new CraftingPatternState(false, CraftingInput.ofPositioned(3, 3, stacks)));
-
-        java.util.function.Supplier<ai.ezfox.cccloud.bridge.BridgeCore> core = () -> ((RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridge))).bridgeCore();
-        Runnable addLogs = () -> {
-            var be = (RsBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(bridge));
-            long inserted = be.node().getNetwork().getComponent(StorageNetworkComponent.class).insert(new ItemResource(Items.OAK_LOG), 64, Action.EXECUTE, Actor.EMPTY);
-            helper.assertTrue(inserted == 64, "logs inserted: " + inserted);
-        };
-        var sequence = helper.startSequence()
-            .thenWaitUntil(() -> helper.assertTrue(core.get().isConnected(), "RS network up"))
+        return helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(core(helper).isConnected(), "RS network up"))
             .thenExecute(() -> {
                 // Insert the pattern once the autocrafter is part of the network.
-                var crafterBe = (AutocrafterBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(autocrafter));
+                var crafterBe = (AutocrafterBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(AUTOCRAFTER));
                 crafterBe.getPatternContainer().setItem(0, pattern);
                 crafterBe.getPatternContainer().setChanged();
             });
-        StorageV2TestSupport.run(helper, sequence, core, addLogs).thenSucceed();
     }
 }

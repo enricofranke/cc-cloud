@@ -162,7 +162,7 @@ describe("stuck crafts and orders (mock)", () => {
     await sleep(30);
     const jobs = conn.uplinks.value.find((u) => u.uplinkId === ME)!.widgets.find((w) => w.id === "jobs")!.value as JobInfo[];
     const order = jobs.find((j) => j.jobId === outcome.jobId)!;
-    expect(order).toMatchObject({ status: "waiting", error: "not_enough_items" });
+    expect(order).toMatchObject({ status: "waiting", error: "not_enough_items", missing: [expect.objectContaining({ have: expect.any(Number) }), expect.anything()] });
     await conn.storage(ME, "cancel", { jobId: order.jobId });
   });
 });

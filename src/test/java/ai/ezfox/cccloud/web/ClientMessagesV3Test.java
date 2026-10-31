@@ -43,4 +43,23 @@ class ClientMessagesV3Test {
         }
         assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse("{\"t\":\"production\",\"op\":\"overview\"}"), "reqId required");
     }
+
+    @Test
+    void parsesCardProgramMessages() {
+        String up = "\"uplinkId\":\"" + U + "\"";
+        var detail = ClientMessages.parse("{\"t\":\"card_detail\",\"reqId\":\"r\"," + up + "}");
+        assertInstanceOf(ClientMessages.CardDetail.class, detail);
+        assertFalse(ClientMessages.isWrite(detail), "reading is no write");
+        var save = ClientMessages.parse("{\"t\":\"card_write\",\"reqId\":\"r\"," + up + ",\"op\":\"save\",\"text\":\"x\",\"force\":true,\"pin\":\"1234\"}");
+        var write = assertInstanceOf(ClientMessages.CardWrite.class, save);
+        assertTrue(write.force());
+        assertTrue(ClientMessages.isWrite(save));
+        assertFalse(ClientMessages.isWrite(ClientMessages.parse("{\"t\":\"card_write\",\"reqId\":\"r\"," + up + ",\"op\":\"check\",\"text\":\"x\"}")), "a check changes nothing");
+        assertInstanceOf(ClientMessages.CardWrite.class, ClientMessages.parse("{\"t\":\"card_write\",\"reqId\":\"r\"," + up + ",\"op\":\"undo\"}"));
+        String tooLong = "x".repeat(ClientMessages.MAX_PROGRAM + 1);
+        assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse("{\"t\":\"card_write\",\"reqId\":\"r\"," + up + ",\"op\":\"save\",\"text\":\"" + tooLong + "\"}"));
+        assertInstanceOf(ClientMessages.Invalid.class, ClientMessages.parse("{\"t\":\"card_write\",\"reqId\":\"r\"," + up + ",\"op\":\"delete\"}"));
+        var max = ClientMessages.parse("{\"t\":\"craft_preview\",\"reqId\":\"r\"," + up + ",\"name\":\"minecraft:stick\",\"count\":4,\"max\":true}");
+        assertTrue(assertInstanceOf(ClientMessages.CraftPreview.class, max).max());
+    }
 }

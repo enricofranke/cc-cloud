@@ -48,6 +48,7 @@ public final class SfmCards {
     public static void init() {
         DeviceCards.register("sfm", DeviceCards.SPECIFIC, SfmCards::detect);
         Integrations.test("sfm_manager", () -> SfmGameTests::manager);
+        Integrations.test("sfm_program", () -> SfmGameTests::program);
     }
 
     static @Nullable DeviceCard detect(ServerLevel level, BlockPos pos, Direction side) {

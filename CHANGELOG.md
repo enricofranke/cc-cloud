@@ -4,6 +4,15 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Crafting
+- **Stuck crafts:** a craft with no progress for `craftStuckSeconds` (default 60) shows a red **Stuck** badge with the reason, alerts once and can start a rule ("a craft gets stuck"). **Retry** cancels it and asks for the same craft again (dashboard crafts only).
+- **Not enough items never blocks an order.** The craft dialog lists what is missing with have / need, and says how many are possible right now, with a one-click **Craft 37** next to **Order anyway**. An order waits as "Waiting for items", starts by itself once the items are there, survives a restart and can be cancelled. Lua and rules get the same.
+- The error code `missing_resources` is now `not_enough_items`, in job rows too. Auto-stock keeps failing and pausing as before.
+
+### Factory Manager
+- **Program view:** the button on a Factory Manager card shows the program with all errors and warnings, for sessions that may see coordinates.
+- **Edit and import:** with the new permission `device.program` (admin and owner), edit or paste SFML or load a .sfml, .sfm or .txt file. It compiles first, shows old and new line counts and the changes, keeps a broken program out unless you confirm, needs the PIN if the mainframe has one, and Undo restores the old one once. Written to the audit log.
+
 ### In-game help
 - **Hold G on any CC: Cloud item** in a tooltip, like in AE2: the handbook opens on the page for that item.
 

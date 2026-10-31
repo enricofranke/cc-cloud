@@ -924,7 +924,17 @@ Die Bridge nutzt den Strom des Netzwerks, kein FE vom Mainframe.
 
 ## Craften im Dashboard {#crafting}
 
-Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, fehlende Zutaten, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
+Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
+
+**Nicht genug Items:** Der Dialog zeigt, was fehlt (vorhanden / nötig) und, wenn der Mod es sagen kann, wie viele jetzt möglich sind – **Craft 37** macht genau diese. **Order anyway** behält die ganze Menge: Der Auftrag wartet als *Waiting for items* und startet von selbst, sobald die Items da sind. Bestellungen überleben einen Neustart, bis zu 8 pro Bridge, und lassen sich abbrechen. Ein Lua-\`craft()\` oder eine Regel wartet genauso; \`getCraftingJobs()\` zeigt die Liste \`missing\`.
+
+**Stuck:** Ein Auftrag, der sich \`craftStuckSeconds\` lang nicht bewegt (Server-Config, Standard 60, 0 = aus), bekommt ein rotes **Stuck**-Abzeichen mit Grund, einen Alarm und kann eine Regel starten („a craft gets stuck“). AE2 sagt nicht, welche Maschine hängt, also den Wert über die langsamste Maschine legen. **Retry** bricht den Auftrag ab und fordert denselben Craft neu an; das gibt es nur für Crafts aus dem Dashboard, weil ein Lua-Programm oder eine Regel selbst neu anfragen kann.
+
+## Factory-Manager-Programm {#sfm-program}
+
+Der Knopf **</>** auf einer Factory-Manager-Karte zeigt das Programm auf der Disk mit allen Fehlern und Warnungen und einem Kopier-Knopf. Es verrät den Aufbau der Basis, braucht daher „See coordinates“ und erscheint nie auf Share-Links oder Displays.
+
+Mit **Write machine programs** (\`device.program\`, Admin und Besitzer) lässt es sich bearbeiten, SFML einfügen oder eine .sfml-, .sfm- oder .txt-Datei bis 32 KB laden. **Check and review** kompiliert und zeigt alte und neue Zeilenzahl und die Änderungen. Ein Programm mit Fehlern wird nur nach Bestätigung geschrieben, denn dann läuft der Manager nicht mehr. Die PIN wird abgefragt, wenn der Mainframe eine hat, jeder Schreibvorgang steht im Audit-Log, und **Undo last change** stellt das alte Programm einmal wieder her, bis zum Server-Neustart.
 
 ## Merkliste {#watchlist}
 

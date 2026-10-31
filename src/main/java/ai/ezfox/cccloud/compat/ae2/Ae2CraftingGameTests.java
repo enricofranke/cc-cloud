@@ -84,6 +84,94 @@ public final class Ae2CraftingGameTests {
             .thenSucceed();
     }
 
+    /**
+     * A real AE2 hang: a pattern with no assembler to run it. The job turns {@code stuck} after the configured time with
+     * one report, Retry cancels it and asks for the same craft again, and it finishes once the assembler is there.
+     */
+    public static void stuck(GameTestHelper helper) {
+        network(helper, true, false);
+        var planks = StorageV2TestSupport.PLANKS;
+        var job = new String[1];
+        var first = new String[1];
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(core(helper).isConnected() && core(helper).isCraftable(planks), "pattern for oak planks known"))
+            .thenExecute(() -> addLogs(helper))
+            .thenIdle(5)
+            .thenExecute(() -> {
+                var ticket = core(helper).craft(planks, 4, "Steve", false, "dashboard");
+                helper.assertTrue(ticket.error() == null, "craft accepted: " + ticket.error());
+                job[0] = first[0] = ticket.jobId();
+            })
+            .thenWaitUntil(() -> helper.assertTrue(status(helper, job[0]).equals("running"), "running: " + core(helper).jobRows(16)))
+            .thenIdle(40)
+            .thenExecute(() -> helper.assertTrue(status(helper, job[0]).equals("running") && core(helper).stuckSeq() == 0, "not stuck yet"))
+            .thenExecute(() -> core(helper).advanceTicksForTest(1300))
+            .thenWaitUntil(() -> helper.assertTrue(status(helper, job[0]).equals("stuck"), "stuck: " + core(helper).jobRows(16)))
+            .thenIdle(45)
+            .thenExecute(() -> {
+                helper.assertTrue(core(helper).stuckSeq() == 1, "reported once: " + core(helper).stuckSeq());
+                var row = row(helper, job[0]);
+                helper.assertTrue(row.get("retryable").getAsBoolean() && row.has("error"), "a retryable row with a reason: " + row);
+                helper.setBlock(new BlockPos(1, 1, 4), BridgeTestSupport.block(helper, "ae2:molecular_assembler"));
+            })
+            .thenIdle(5)
+            .thenExecute(() -> {
+                var again = core(helper).retryCraft(job[0], "Steve");
+                helper.assertTrue(again.error() == null, "retried: " + again.error());
+                job[0] = again.jobId();
+            })
+            .thenWaitUntil(() -> {
+                helper.assertTrue(status(helper, first[0]).equals("cancelled"), "old job cancelled: " + core(helper).jobRows(16));
+                var item = core(helper).getItem(planks);
+                helper.assertTrue(item != null && item.count() >= 4, "crafted after the retry: " + item + " " + core(helper).jobRows(16));
+            })
+            .thenSucceed();
+    }
+
+    /**
+     * Not enough items: AE2 refuses the simulated plan, so the craft waits as an order with what it misses (no failure,
+     * no stuck report), the maximum search answers 0, and the order starts by itself once the logs arrive.
+     */
+    public static void order(GameTestHelper helper) {
+        network(helper, true);
+        var planks = StorageV2TestSupport.PLANKS;
+        var job = new String[1];
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(core(helper).isConnected() && core(helper).isCraftable(planks), "pattern for oak planks known"))
+            .thenExecute(() -> {
+                var ticket = core(helper).craft(planks, 4, "Steve", false, "dashboard");
+                helper.assertTrue(ticket.error() == null, "taken as an order: " + ticket.error());
+                job[0] = ticket.jobId();
+            })
+            .thenWaitUntil(() -> {
+                var row = row(helper, job[0]);
+                helper.assertTrue(row.get("status").getAsString().equals("waiting") && row.get("error").getAsString().equals("not_enough_items"), "waiting: " + row);
+                var missing = row.getAsJsonArray("missing");
+                helper.assertTrue(missing != null && missing.toString().contains("minecraft:oak_log"), "names the logs: " + row);
+            })
+            .thenExecute(() -> core(helper).advanceTicksForTest(1300))
+            .thenIdle(45)
+            .thenExecute(() -> {
+                helper.assertTrue(status(helper, job[0]).equals("waiting") && core(helper).stuckSeq() == 0, "a waiting order is not stuck: " + core(helper).jobRows(16));
+                addLogs(helper);
+                core(helper).advanceTicksForTest(1300);
+            })
+            .thenWaitUntil(() -> {
+                var item = core(helper).getItem(planks);
+                helper.assertTrue(item != null && item.count() >= 4, "the order started by itself: " + item + " " + core(helper).jobRows(16));
+            })
+            .thenSucceed();
+    }
+
+    private static com.google.gson.JsonObject row(GameTestHelper helper, String jobId) {
+        for (var row : core(helper).jobRows(16)) if (row.getAsJsonObject().get("jobId").getAsString().equals(jobId)) return row.getAsJsonObject();
+        throw helper.assertionException("no row for job " + jobId + ": " + core(helper).jobRows(16));
+    }
+
+    private static String status(GameTestHelper helper, String jobId) {
+        return row(helper, jobId).get("status").getAsString();
+    }
+
     private static ai.ezfox.cccloud.bridge.BridgeCore core(GameTestHelper helper) {
         return ((MeBridgeBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(BRIDGE))).bridgeCore();
     }
@@ -96,8 +184,13 @@ public final class Ae2CraftingGameTests {
     }
 
     /** The network; {@code withCpu} adds the 1k crafting storage (one CPU). */
-    @SuppressWarnings("unchecked")
     private static void network(GameTestHelper helper, boolean withCpu) {
+        network(helper, withCpu, true);
+    }
+
+    /** {@code withAssembler} false: the pattern is known, but no machine can run it. */
+    @SuppressWarnings("unchecked")
+    private static void network(GameTestHelper helper, boolean withCpu, boolean withAssembler) {
         var energy = new BlockPos(1, 1, 2);
         var drive = new BlockPos(2, 1, 2);
         var provider = new BlockPos(1, 1, 3);
@@ -107,7 +200,7 @@ public final class Ae2CraftingGameTests {
         helper.setBlock(BRIDGE, Ae2Compat.BLOCK.get());
         if (withCpu) helper.setBlock(CPU, BridgeTestSupport.block(helper, "ae2:1k_crafting_storage"));
         helper.setBlock(provider, BridgeTestSupport.block(helper, "ae2:pattern_provider"));
-        helper.setBlock(assembler, BridgeTestSupport.block(helper, "ae2:molecular_assembler"));
+        if (withAssembler) helper.setBlock(assembler, BridgeTestSupport.block(helper, "ae2:molecular_assembler"));
 
         var cell = BuiltInRegistries.ITEM.getValue(Identifier.parse("ae2:item_storage_cell_1k"));
         var handler = helper.getLevel().getCapability(Capabilities.Item.BLOCK, helper.absolutePos(drive), null);
