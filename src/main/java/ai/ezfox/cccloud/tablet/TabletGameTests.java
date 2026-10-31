@@ -384,7 +384,7 @@ public final class TabletGameTests {
             .thenWaitUntil(() -> helper.assertTrue(hub.info(setup.id()) != null && InGameRange.covered(setup.id(), level, setup.owner().position()), "published"))
             .thenExecute(() -> {
                 var display = (ai.ezfox.cccloud.display.CloudDisplayBlockEntity) level.getBlockEntity(displayPos);
-                display.configure(setup.id(), defaultName, "", false, setup.owner().getUUID());
+                display.configure(setup.id(), defaultName, "", false, false, setup.owner().getUUID());
                 var tablet = new ItemStack(InGameRegistry.CLOUD_TABLET.get());
                 tablet.set(ModRegistry.LINKED_MAINFRAME.get(), setup.link());
                 open(helper, setup.owner(), setup.id(), tablet, 83);

@@ -377,7 +377,7 @@ public class CloudDisplayBlockEntity extends BlockEntity {
         if (mainframeId == null) return;
         var info = ai.ezfox.cccloud.web.WebHub.INSTANCE.info(mainframeId);
         if (info == null || info.name().isEmpty() || info.name().equals(mainframeName)) return;
-        configure(mainframeId, info.name(), sectionId, interactive, configuredBy);
+        configure(mainframeId, info.name(), sectionId, interactive, allowRestricted, configuredBy);
     }
 
     /** The JSON the display shows (origin): the section snapshot or {"error":...}. */
