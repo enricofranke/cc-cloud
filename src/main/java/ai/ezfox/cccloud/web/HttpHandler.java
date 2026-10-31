@@ -68,7 +68,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     /** The forwarded client IP this connection counts against (behind a trusted proxy), or null. */
     private @Nullable String countedClient;
-    /** The connection became a public API event stream: nothing else is served on it. */
+    /** The connection became a public API event stream or a jar download: nothing else is served on it. */
     volatile boolean streaming;
 
     /** The rules this connection was accepted under (kept until it closes; a reload with new rules closes it). */
@@ -913,6 +913,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
             return;
         }
+        streaming = true;
         instance.downloads.incrementAndGet();
         ctx.channel().closeFuture().addListener(f -> instance.downloads.decrementAndGet());
         var pipeline = ctx.pipeline();

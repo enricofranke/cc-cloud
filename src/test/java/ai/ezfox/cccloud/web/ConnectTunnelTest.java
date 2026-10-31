@@ -221,6 +221,9 @@ class ConnectTunnelTest {
         assertEquals(200, status);
         assertEquals(HttpHandler.TUNNEL_JAR_TYPE, type, "connect/src/filter.ts refuses every jar type");
         assertArrayEquals(jar, body.toByteArray());
+        long free = System.currentTimeMillis() + 5000;
+        while (instance.downloads.get() != 0 && System.currentTimeMillis() < free) Thread.sleep(10);
+        assertEquals(0, instance.downloads.get(), "the local side closed the connection, the slot is free again");
     }
 
     @Test

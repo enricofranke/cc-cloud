@@ -222,6 +222,16 @@ class DownloadRouteTest {
     }
 
     @Test
+    void nothingElseIsServedOnADownload() throws Exception {
+        try (var socket = stalledDownload()) {
+            socket.getOutputStream().write(("GET " + PATH + " HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n").getBytes(StandardCharsets.US_ASCII)); // pipelined
+            long until = System.currentTimeMillis() + 5000;
+            while (instance.downloads.get() != 0 && System.currentTimeMillis() < until) Thread.sleep(10);
+            assertEquals(0, instance.downloads.get(), "the connection was closed, not a second download started on it");
+        }
+    }
+
+    @Test
     void aSlowClientIsNotCutByTheReadTimeout() throws Exception {
         var ordinary = new EmbeddedChannel();
         instance.initPipeline(ordinary);

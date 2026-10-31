@@ -323,8 +323,9 @@ forwarded.
 listed types only and has none for a jar, so the mod sends the jar as `text/plain` on tunnel connections, the relay's own
 download type: the relay forces `Content-Disposition: attachment` and a CSP with `sandbox`, nothing is rendered, and the
 bytes pass unchanged. A server could always send any bytes this way, so this opens nothing new on the relay. Each download
-counts against the name's 2 GB per day: one address can use about 150 MB per day (6 per hour, 4 MB each), so it takes many
-addresses to use up a name's budget, which then answers `daily_limit` until the next UTC day.
+counts against the name's 2 GB per day, and one address can use about 600 MB of that per day (6 per hour, 4 MB each). A few
+addresses together could use up the budget, and the name then answers `daily_limit` until the next UTC day; other public
+routes (recipes, icons) allow the same, so this is no new kind of risk, and `webJarDownload = false` closes this one.
 
 **Residual.** Trust in the relay operator and Cloudflare (above). A malicious server can still show misleading text in
 its own dashboard or images through its icon route; names can be squatted until they expire; the relay is a single
