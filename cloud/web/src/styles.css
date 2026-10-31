@@ -565,6 +565,7 @@ pre {
 
 /* ---------------------------------------------------------------- dashboard grid */
 .page-dash {
+  max-width: 2400px;
   padding-top: 14px;
 }
 .grid {
@@ -6208,7 +6209,7 @@ fieldset.field {
 .editor {
   --ed-side: 320px;
 }
-/* gauges scale with their cell (narrow cards, side panel open) */
+/* gauges scale with their cell (narrow cards) */
 .wcell .gauge-value {
   font-size: clamp(13px, 17cqi, 26px);
 }
@@ -6281,23 +6282,28 @@ fieldset.field {
 .ed-main {
   display: block;
 }
-.editor.with-side .ed-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--ed-side);
-  gap: 16px;
-  align-items: start;
-}
+/* Floats above the grid instead of taking a column: cards keep their width and it never reads as one of them. */
 .ed-side {
-  position: sticky;
-  top: calc(var(--head-h) + env(safe-area-inset-top) + 70px);
-  max-height: calc(100dvh - var(--head-h) - 90px);
+  position: fixed;
+  z-index: 30;
+  top: calc(var(--head-h) + env(safe-area-inset-top) + 76px);
+  right: max(16px, env(safe-area-inset-right));
+  width: var(--ed-side);
+  max-height: calc(100dvh - var(--head-h) - env(safe-area-inset-top) - 92px);
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--line-2);
-  border-radius: 6px;
-  background: var(--panel);
-  box-shadow: var(--shadow);
+  border: 1px solid color-mix(in srgb, var(--cyan) 45%, var(--line-2));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.35);
   overflow: hidden;
+  transition: opacity 0.15s;
+}
+/* a drag passes through it, so the cells below stay reachable */
+.ed-side.through {
+  opacity: 0.25;
+  pointer-events: none;
 }
 .ed-side-head {
   display: flex;
@@ -6305,7 +6311,12 @@ fieldset.field {
   justify-content: space-between;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
-  background: var(--panel-2);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.ed-side-head:active {
+  cursor: grabbing;
 }
 .ed-side-body {
   padding: 12px 14px 16px;
@@ -8071,7 +8082,8 @@ body.rz-nwse * {
 .ed-file.on .ed-file-tools {
   display: flex;
 }
-.ed-main {
+/* Scoped: unscoped, this boxed the layout editor's grid too. */
+.lua-editor .ed-main {
   position: relative;
   min-height: 0;
   min-width: 0;
@@ -8095,7 +8107,7 @@ body.rz-nwse * {
     flex-direction: column;
     height: 78vh;
   }
-  .ed-main {
+  .lua-editor .ed-main {
     flex: 1 1 auto;
     min-height: 280px;
   }

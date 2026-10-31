@@ -14,7 +14,7 @@ const modOf = (name: string) => (name.includes(":") ? name.split(":")[0] : "");
 
 export const STORAGE_ERRORS: Record<string, string> = {
   unavailable: "The storage is not reachable right now (bridge missing or its chunk not loaded).",
-  offline: "The mainframe is offline.",
+  offline: "The storage network is not connected. Check the Cloud Bridge and that the controller has power.",
   unknown_item: "This item is not in the network any more.",
   invalid: "That value is not valid.",
   rate_limited: "Too many requests – slow down a little.",

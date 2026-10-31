@@ -4,6 +4,15 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Dashboard: more room on big screens
+- **The dashboard grows to 2400 px** (it stopped at 1280 px, half of a 2560 px monitor stayed empty).
+- **The layout editor's settings float above the grid** in their own window instead of taking a column, so opening them
+  no longer squeezes the cards and they don't read as one more card. Drag the window by its header; during a drag it
+  turns see-through and lets the drop through. The accent colours show in colour again and the panel no longer scrolls
+  sideways or jumps when you click an icon.
+- A storage network that is not connected no longer says "The mainframe is offline": it names the storage network, the
+  bridge and the controller.
+
 ### Upgrades by right-click
 - **Right-click a mainframe with an upgrade in your hand and it goes in.** The Quantum Core goes to its own slot, cards
   and the Chunk Anchor to the first free one. A higher tier replaces a card of the same type and the old card comes back

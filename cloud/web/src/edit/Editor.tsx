@@ -117,6 +117,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [selCard, setSelCard] = useState<string | null>(null);
   const [panel, setPanel] = useState<"settings" | "add" | "help" | null>(null);
+  const [sideAt, setSideAt] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState<Set<string>>(new Set());
   const [badge, setBadge] = useState<{ key: string; text: string; warn?: boolean } | null>(null);
   const [tabHover, setTabHover] = useState<string | null>(null);
@@ -265,6 +266,24 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     if ((speed < 0 && scrollY > 0) || (speed > 0 && scrollY < maxScroll)) window.scrollBy(0, Math.max(-24, Math.min(24, speed)));
     target(d);
   };
+  /** The side panel floats over the grid: dragging its header moves it off the card being edited. */
+  const moveSide = (e: PointerEvent) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    const head = e.currentTarget as HTMLElement;
+    const box = head.parentElement!.getBoundingClientRect();
+    const top = (document.querySelector(".ed-bar")?.getBoundingClientRect().bottom ?? 0) + 8;
+    const start = sideAt;
+    const move = (m: PointerEvent) =>
+      setSideAt({
+        x: start.x + Math.max(8 - box.left, Math.min(innerWidth - 8 - box.right, m.clientX - e.clientX)),
+        y: start.y + Math.max(top - box.top, Math.min(innerHeight - 48 - box.top, m.clientY - e.clientY)),
+      });
+    const up = () => head.removeEventListener("pointermove", move);
+    head.setPointerCapture(e.pointerId);
+    head.addEventListener("pointermove", move);
+    head.addEventListener("pointerup", up, { once: true });
+    head.addEventListener("pointercancel", up, { once: true });
+  };
   const target = (d: Drag) => {
     const el = document.elementFromPoint(d.x, d.y) as HTMLElement | null;
     const tab = el?.closest<HTMLElement>("[data-tab]")?.dataset.tab ?? null;
@@ -410,6 +429,12 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
     });
   };
   // a blocking touchmove listener must exist before the gesture starts, or the browser scrolls anyway
+  // A smaller window must not strand the moved side panel outside it.
+  useEffect(() => {
+    const reset = () => setSideAt({ x: 0, y: 0 });
+    addEventListener("resize", reset);
+    return () => removeEventListener("resize", reset);
+  }, []);
   useEffect(() => {
     document.addEventListener("touchmove", blockTouch, { passive: false });
     return () => {
@@ -713,7 +738,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   const sideTitle = panel === "add" ? "Add" : panel === "help" ? "Keyboard & mouse" : selectedWidget ? "Widget" : selectedCard ? "Card" : "Settings";
 
   return (
-    <div class={`editor ${panel && !props.isPhone ? "with-side" : ""}`}>
+    <div class="editor">
       <div class="ed-bar" role="toolbar" aria-label="Layout editor">
         <span class="ed-title">
           <span class="edit-dot" /> Edit layout
@@ -794,8 +819,8 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
           </div>
         </div>
         {side && !props.isPhone && (
-          <aside class="ed-side" aria-label={sideTitle}>
-            <header class="ed-side-head">
+          <aside class={`ed-side ${dragging.size ? "through" : ""}`} aria-label={sideTitle} style={{ transform: `translate(${sideAt.x}px, ${sideAt.y}px)` }}>
+            <header class="ed-side-head" title="Drag to move" onPointerDown={moveSide}>
               <b>{sideTitle}</b>
               <button type="button" class="icon-btn sm" aria-label="Close panel" onClick={() => setPanel(null)}>
                 ×
