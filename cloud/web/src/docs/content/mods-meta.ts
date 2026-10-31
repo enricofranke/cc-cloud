@@ -84,6 +84,7 @@ export const MOD_META: Record<string, { cat: ModCategory; icon: string }> = {
   pipez: { cat: "logistics", icon: "pipez:item_pipe" },
   strainers: { cat: "machines", icon: "strainers:strainer" },
   trashcans: { cat: "logistics", icon: "trashcans:item_trash_can" },
+  stepcrafter: { cat: "storage", icon: "stepcrafter:step_crafting_monitor" },
 };
 
 /** The generic cards that work with almost any mod. */

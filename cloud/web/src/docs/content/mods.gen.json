@@ -880,6 +880,16 @@
    "controls": "allow or deny list for items and fluids (toggle, `act.buttons`). The card never restores deleted items.",
    "tested": "yes (item can: 32 dirt pushed in, filter mode switched)",
    "skipped": false
+  },
+  {
+   "group": "Tech and logistics",
+   "mod": "Stepcrafter",
+   "id": "stepcrafter",
+   "version": "1.0.3",
+   "what": "**Step Crafting Monitor** card: state, tasks, up to 6 rows (\"64× Iron Ingot – Running 42 %\"); warn alert once when a task runs out of ingredients or the network is full, info alert when the last task finishes. Step Crafters and Requesters themselves are configured in their screens.",
+   "controls": "Cancel all tasks (`act.buttons`, confirm)",
+   "tested": "partly: a monitor without a network (card, \"Not active\", Cancel refused); a task needs a full RS network with patterns",
+   "skipped": false
   }
  ]
 }

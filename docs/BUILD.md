@@ -135,6 +135,7 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | `pipez` | Pipez 1.2.31 | – | `compat/pipez` (`PipeLogicTileEntity`, `RedstoneMode`) |
 | `strainers` | BBL Strainers 6.13.0 | BBL Core 12.6.12 | `compat/strainers` (`StrainerBlockEntity`) |
 | `trashcans` | Trash Cans 1.1.1a | SuperMartijn642's Core Lib, Config Lib | `compat/trashcans` (`TrashCanBlockEntity`) |
+| `stepcrafter` | Stepcrafter 1.0.3 | Refined Storage | `compat/stepcrafter` (`StepCraftingMonitorBlockEntity`) |
 
 The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
 

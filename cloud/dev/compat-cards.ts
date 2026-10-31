@@ -1080,4 +1080,18 @@ export const COMPAT_CARDS: SampleCard[] = [
       label("deleted_1", "Before that", "64× Cobblestone", { span: 2 }),
     ],
   },
+
+  // Stepcrafter
+  {
+    key: "stepcrafter_monitor",
+    mod: "stepcrafter",
+    title: "Step Crafting Monitor",
+    template: "stepcrafter_monitor",
+    widgets: [
+      label("status", "Status", "2 tasks"),
+      label("task_0", "Task 1", "64× Iron Ingot – Running 42 %"),
+      label("task_1", "Task 2", "16× Glass – Missing ingredients"),
+      button("cancel", "Cancel all tasks", { confirm: true, color: "red" }),
+    ],
+  },
 ];
