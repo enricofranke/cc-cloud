@@ -5,8 +5,8 @@ import { gunzipSync } from "node:zlib";
 import { voxelSection } from "../dev/world-sim.ts";
 import { encodeBatch, sectionHash } from "../dev/voxel-batch.ts";
 import { createMockServer, type MockServer } from "../dev/mock-server.ts";
-import { VoxelWorld, decodeBatch, decodeRunBytes, decodeRuns, meshRegion, regionOwner, sectionsAround, type PaletteEntry } from "../web/src/network/voxels.ts";
-import { voxelProgress, type VoxelStatus } from "../web/src/lib/net3d.ts";
+import { VoxelWorld, decodeBatch, decodeRunBytes, decodeRuns, meshRegion, regionOwner, sectionsAround, trackLastSeen, type PaletteEntry } from "../web/src/network/voxels.ts";
+import { voxelLastSeen, voxelProgress, type VoxelStatus } from "../web/src/lib/net3d.ts";
 
 const load = (world: VoxelWorld, cx: number, cy: number, cz: number) => {
   const s = voxelSection("minecraft:overworld", cx, cy, cz);
@@ -90,6 +90,44 @@ describe("voxel batch format", () => {
     expect(first.runs![0]).not.toBe(0);
   });
 
+  it("marks the last known state of sections and stays strict about it", () => {
+    const a = section(0, -4, 0);
+    const buf = encodeBatch("minecraft:overworld", [
+      { cx: 0, cy: -4, cz: 0, status: "ok", data: a, old: true },
+      { cx: 1, cy: -4, cz: 0, status: "same", data: a, old: true },
+      { cx: 2, cy: -4, cz: 0, status: "ok", data: a },
+    ]);
+    expect(buf[4]).toBe(1); // an optional field: the version stays
+    const d = decodeBatch(buf);
+    expect(d.sections.map((s) => s.old)).toEqual([true, true, undefined]);
+    const evil = new TextEncoder().encode(JSON.stringify({ dim: "x", palette: [], sections: [{ c: [0, 0, 0], s: "same", h: "0123456789abcdef", p: [], old: 1 }] }));
+    const bad = new Uint8Array(9 + evil.length);
+    bad.set([0x43, 0x43, 0x56, 0x42, 1, 0, 0, evil.length >> 8, evil.length & 255]);
+    bad.set(evil, 9);
+    expect(() => decodeBatch(bad)).toThrow(/bad section/);
+  });
+
+  it("keeps track of the sections that show their last known state", () => {
+    const seen = new Set<string>();
+    const s = (status: "ok" | "same" | "empty" | "out_of_range" | "claimed", old?: boolean) => ({ cx: 1, cy: 2, cz: 3, status, ...(old ? { old } : {}) });
+    trackLastSeen(seen, s("ok", true));
+    expect([...seen]).toEqual(["1,2,3"]);
+    trackLastSeen(seen, s("empty"));
+    expect(seen.size).toBe(1); // what is shown stays
+    trackLastSeen(seen, s("same"));
+    expect(seen.size).toBe(0); // the chunk is loaded again and nothing changed
+    trackLastSeen(seen, s("same", true));
+    expect(seen.size).toBe(1);
+    trackLastSeen(seen, s("ok"));
+    expect(seen.size).toBe(0);
+    trackLastSeen(seen, s("ok", true));
+    trackLastSeen(seen, s("out_of_range"));
+    expect(seen.size).toBe(0); // refused: not shown any more
+    trackLastSeen(seen, s("ok", true));
+    trackLastSeen(seen, s("claimed"));
+    expect(seen.size).toBe(0);
+  });
+
   it("refuses malformed batches", () => {
     const good = encodeBatch("minecraft:overworld", [{ cx: 0, cy: -4, cz: 0, status: "ok", data: section(0, -4, 0) }]);
     expect(() => decodeBatch(good.slice(0, good.length - 1))).toThrow(); // runs cut short
@@ -141,7 +179,10 @@ describe("voxel loading order and workers", () => {
   });
 
   it("tells the truth while loading", () => {
-    const st = (o: Partial<VoxelStatus>): VoxelStatus => ({ loaded: 0, total: 100, cached: 0, triangles: 0, building: false, waiting: false, unavailable: false, ...o });
+    const st = (o: Partial<VoxelStatus>): VoxelStatus => ({ loaded: 0, total: 100, cached: 0, lastSeen: 0, triangles: 0, building: false, waiting: false, unavailable: false, ...o });
+    expect(voxelLastSeen(st({ lastSeen: 12 }))).toBe(true);
+    expect(voxelLastSeen(st({ lastSeen: 0 }))).toBe(false);
+    expect(voxelLastSeen(st({ lastSeen: 12, unavailable: true }))).toBe(false);
     expect(voxelProgress(st({ loaded: 37 }))).toBe("Loading blocks 37 %");
     expect(voxelProgress(st({ loaded: 37, cached: 90 }))).toBe("Updating blocks 37 %");
     expect(voxelProgress(st({ loaded: 37, waiting: true }))).toBe("Server busy – waiting (37 %)");

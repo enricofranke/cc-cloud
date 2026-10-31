@@ -320,7 +320,8 @@ class View3D {
           }, 120);
         };
       }
-      if (!prev?.voxels || prev.voxels.dim !== props.voxels.dim || prev.voxels.mf !== props.voxels.mf || prev.voxels.radius !== props.voxels.radius) this.voxels.load(props.voxels);
+      const was = prev?.voxels;
+      if (!was || was.dim !== props.voxels.dim || was.mf !== props.voxels.mf || was.radius !== props.voxels.radius || was.online !== props.voxels.online) this.voxels.load(props.voxels);
       this.voxels.group.visible = true;
       this.voxels.setClip(props.clipY);
       this.voxels.setNight(props.night);

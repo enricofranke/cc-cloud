@@ -260,6 +260,8 @@ export interface VoxelStatus {
   total: number;
   /** sections shown from the browser cache before the server answered */
   cached: number;
+  /** sections that show their last known state (their chunk is not loaded right now) */
+  lastSeen: number;
   triangles: number;
   /** workers are still meshing */
   building: boolean;
@@ -280,4 +282,9 @@ export function voxelProgress(s: VoxelStatus): string {
     return s.cached > 0 ? `Updating blocks ${pct} %` : `Loading blocks ${pct} %`;
   }
   return s.building ? "Building blocks…" : "";
+}
+
+/** Some of the terrain shown is from the last visit (docs/SPEC.md "Voxel view – last known terrain"). */
+export function voxelLastSeen(s: VoxelStatus): boolean {
+  return !s.unavailable && s.lastSeen > 0;
 }

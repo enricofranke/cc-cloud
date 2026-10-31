@@ -58,7 +58,8 @@ import { DocsLink } from "../components/DocsLink.tsx";
 import { Card } from "../components/Card.tsx";
 import { resolveLayout } from "../lib/layout.ts";
 import { fetchTerrain, type Terrain } from "../lib/api.ts";
-import { hasWebGL, searchNodes, voxelProgress, type VoxelStatus } from "../lib/net3d.ts";
+import { hasWebGL, searchNodes, voxelLastSeen, voxelProgress, type VoxelStatus } from "../lib/net3d.ts";
+import { t } from "../lib/i18n.ts";
 import type { View3DProps } from "./Network3D.tsx";
 
 // ------------------------------------------------------------------- 3D view
@@ -989,6 +990,7 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
           focus: { ...mfNode.pos! },
           radius: 40,
           budget: isPhone ? 150_000 : 450_000,
+          online: !!conn.info.value?.online,
         }
       : null;
   const defaultClip = clampY((mfNode?.pos?.y ?? 64) + 5);
@@ -1154,6 +1156,11 @@ export default function NetworkPage({ conn, onOpenCard }: { conn: MainframeConn;
                 {voxStatus && voxelProgress(voxStatus) && (
                   <span class="muted small vox-progress" role="status">
                     {voxelProgress(voxStatus)}
+                  </span>
+                )}
+                {voxStatus && !voxelProgress(voxStatus) && voxelLastSeen(voxStatus) && (
+                  <span class="muted small vox-progress" role="status" title={t("net.lastSeenHint")}>
+                    {t("net.lastSeen")}
                   </span>
                 )}
               </>

@@ -16,6 +16,8 @@ export interface OutSection {
   cz: number;
   status: BatchStatus;
   data?: EncodedSection;
+  /** the last known state of a chunk that is not loaded */
+  old?: boolean;
 }
 
 /** 16 hex digits over palette and runs (like the mod: the value only has to change with the content). */
@@ -34,6 +36,7 @@ export function encodeBatch(dim: string, sections: OutSection[]): Uint8Array {
     const e: Record<string, unknown> = { c: [s.cx, s.cy, s.cz], s: s.status };
     if (s.data && (s.status === "ok" || s.status === "same")) {
       e.h = sectionHash(s.data);
+      if (s.old) e.old = true;
       e.p = s.data.palette.map((p) => {
         const k = `${p.id}|${p.color}|${p.flags}`;
         let i = index.get(k);

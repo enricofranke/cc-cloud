@@ -23,7 +23,7 @@ import {
   Vector3,
   type Material,
 } from "three";
-import { decodeBatch, sectionsAround, type MeshData, type PaletteEntry, type RegionMesh } from "./voxels.ts";
+import { decodeBatch, sectionsAround, trackLastSeen, type MeshData, type PaletteEntry, type RegionMesh } from "./voxels.ts";
 import type { VoxelStatus } from "../lib/net3d.ts";
 import { clearVoxelCache, keyOf, readScope, scopeOf, writeSections, type CachedSection } from "../lib/voxelcache.ts";
 
@@ -37,6 +37,8 @@ export interface VoxelSource {
   radius: number;
   /** triangle budget (phones ~150k) */
   budget: number;
+  /** the mainframe is online: when this changes, every section is checked again (live or last known) */
+  online: boolean;
 }
 
 const BATCH = 64;
@@ -73,6 +75,8 @@ export class VoxelLayer {
   private queue: [number, number, number][] = [];
   /** hash per section key, from the cache or the server */
   private have = new Map<string, string>();
+  /** sections the server answered with their last known state (the chunk is not loaded right now) */
+  private lastSeen = new Set<string>();
   private inflight = 0;
   private pausedUntil = 0;
   private timer = 0;
@@ -122,9 +126,10 @@ export class VoxelLayer {
 
   /** Starts (or restarts, e.g. another dimension) loading around the nodes. */
   load(src: VoxelSource) {
-    const same = this.src && this.src.mf === src.mf && this.src.dim === src.dim && this.src.radius === src.radius;
+    const prev = this.src;
+    const same = prev && prev.mf === src.mf && prev.dim === src.dim && prev.radius === src.radius;
     this.src = src;
-    if (same) return this.pump();
+    if (same) return prev.online === src.online ? this.pump() : this.refresh();
     this.clear();
     const gen = ++this.gen;
     for (const w of this.workers) w.postMessage({ type: "reset", gen });
@@ -134,6 +139,7 @@ export class VoxelLayer {
     this.cached = 0;
     this.unavailable = false;
     this.have.clear();
+    this.lastSeen.clear();
     // the browser cache first (shown at once), then the server with the cached hashes; never wait long for the cache
     const scope = scopeOf(src.mf, src.dim);
     let started = false;
@@ -170,6 +176,21 @@ export class VoxelLayer {
       });
   }
 
+  /**
+   * The mainframe came back or went: asks for every section again with the hashes this view has. What is shown stays
+   * until the answers arrive; only what changed comes back with data.
+   */
+  private refresh() {
+    const src = this.src!;
+    this.queue = sectionsAround(src.nodes, src.radius, src.focus);
+    this.total = this.queue.length;
+    this.loaded = 0;
+    this.cached = this.have.size;
+    this.unavailable = false;
+    this.onChange();
+    this.pump();
+  }
+
   setClip(y: number | null) {
     this.clip.constant = y === null ? 10_000 : y;
   }
@@ -187,6 +208,7 @@ export class VoxelLayer {
       loaded: this.loaded,
       total: this.total,
       cached: this.cached,
+      lastSeen: this.lastSeen.size,
       triangles: this.triangles,
       building: this.busy.some(Boolean),
       waiting: this.queue.length > 0 && performance.now() < this.pausedUntil,
@@ -254,6 +276,7 @@ export class VoxelLayer {
       const t = Date.now();
       for (const s of batch.sections) {
         const k = skey(s.cx, s.cy, s.cz);
+        trackLastSeen(this.lastSeen, s);
         if (s.status === "ok" && s.runs && s.palette && s.hash) {
           const had = this.have.has(k);
           this.have.set(k, s.hash);
@@ -266,7 +289,7 @@ export class VoxelLayer {
             del.push(keyOf(scope, s.cx, s.cy, s.cz));
           }
         }
-        // "same": already shown from the cache; "empty": not loaded now (a cached copy stays)
+        // "same": already shown from the cache; "empty": not loaded and unknown now (a cached copy stays)
       }
       if (show.length) this.post({ type: "sections", list: show });
       if (drop.length) this.post({ type: "drop", list: drop });
