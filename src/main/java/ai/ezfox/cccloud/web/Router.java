@@ -29,7 +29,7 @@ public final class Router {
 
     public enum Id {
         PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, ICON, RECIPES, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
+        SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, ICON, RECIPES, DOWNLOAD, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
         API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
 
         /** The v0.10 public API ({@code /api/v1/…}): only exists while {@code apiEnabled=true}. */
@@ -79,7 +79,7 @@ public final class Router {
     public record Route(Id id, HttpMethod method, Pattern path, Access access, String example) {
         boolean matches(HttpMethod m, String p) {
             if (!path.matcher(p).matches()) return false;
-            return method.equals(m) || (id == Id.STATIC && m.equals(HttpMethod.HEAD));
+            return method.equals(m) || ((id == Id.STATIC || id == Id.DOWNLOAD) && m.equals(HttpMethod.HEAD));
         }
     }
 
@@ -148,6 +148,9 @@ public final class Router {
         new Route(Id.ICON, HttpMethod.GET, Pattern.compile("/api/icon/[a-z0-9_.-]{1,64}/[a-z0-9_./-]{1,512}\\.png"), Access.PUBLIC, "/api/icon/minecraft/iron_ingot.png"),
         // The live recipes of CC: Cloud items for /docs (public like the docs and icons: game data, no secrets).
         new Route(Id.RECIPES, HttpMethod.GET, Pattern.compile("/api/recipes"), Access.PUBLIC, "/api/recipes"),
+        // This server's own CC: Cloud jar, for the join check's chat link (public: open source, no secrets). Under /api/
+        // because CC: Cloud Connect forwards nothing else to a server.
+        new Route(Id.DOWNLOAD, HttpMethod.GET, Pattern.compile("/api/download/cccloud\\.jar"), Access.PUBLIC, "/api/download/cccloud.jar"),
         // The upgrade itself is public; every WebSocket message except auth/pong is denied until the auth message succeeded.
         new Route(Id.WEBSOCKET, HttpMethod.GET, Pattern.compile("/ws/client"), Access.PUBLIC, "/ws/client"),
         // Static files: everything that is not under /api/ or /ws/.

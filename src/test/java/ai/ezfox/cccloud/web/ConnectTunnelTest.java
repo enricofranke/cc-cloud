@@ -64,7 +64,8 @@ import org.junit.jupiter.api.io.TempDir;
  * dashboard instance is LAN-only, as by default: tunnel traffic still gets in, with the relay's client IP.
  */
 class ConnectTunnelTest {
-    private final WebInstance instance = new WebInstance(new TestBridge(), new AuthStore(System::currentTimeMillis, () -> {
+    private final TestBridge game = new TestBridge();
+    private final WebInstance instance = new WebInstance(game, new AuthStore(System::currentTimeMillis, () -> {
     }), new AccessStore(System::currentTimeMillis, () -> {
     }), null, List.of(), false, "http://127.0.0.1", 0);
     private TunnelBridge bridge;
@@ -182,6 +183,73 @@ class ConnectTunnelTest {
         relay.send(request(3, "POST", "/api/pair", "203.0.113.7", List.<String[]>of(new String[]{"content-type", "application/json"}),
             "{\"code\":\"ABCD-EFGH\",\"name\":\"phone\"}".getBytes(StandardCharsets.UTF_8)));
         assertEquals(403, answer(3).status());
+    }
+
+    /** The mod's jar as the relay receives it: frames within the protocol, the type its filter lets through, every byte. */
+    @Test
+    void theJarThroughTheTunnel() throws Exception {
+        byte[] jar = new byte[4_200_000]; // the size of the real jar
+        new java.util.Random(7).nextBytes(jar);
+        game.modJar = java.nio.file.Files.write(dir.resolve("cccloud-1.0.0-beta.2.jar"), jar);
+        connect("abc");
+        awaitState(ConnectStatus.State.CONNECTED);
+
+        relay.send(request(1, "GET", "/api/download/cccloud.jar", "203.0.113.7", List.of(), new byte[0]));
+        var body = new java.io.ByteArrayOutputStream();
+        var type = "";
+        int status = -1;
+        boolean ended = false;
+        long until = System.currentTimeMillis() + 20_000;
+        while (!ended && System.currentTimeMillis() < until) {
+            var f = relay.binary(1, 100);
+            if (f == null) continue;
+            switch (f.type) {
+                case TunnelProtocol.HTTP_HEAD -> {
+                    var json = JsonParser.parseString(f.text()).getAsJsonObject();
+                    status = json.get("s").getAsInt();
+                    for (var e : json.getAsJsonArray("h")) if (e.getAsJsonArray().get(0).getAsString().equals("content-type")) type = e.getAsJsonArray().get(1).getAsString();
+                }
+                case TunnelProtocol.HTTP_BODY -> {
+                    assertTrue(f.payload.length <= 64 * 1024, "one frame: " + f.payload.length);
+                    body.write(f.payload);
+                }
+                case TunnelProtocol.HTTP_END -> ended = true;
+                default -> fail("frame " + f.type + ": " + f.text());
+            }
+        }
+        assertTrue(ended, "the answer ended");
+        assertEquals(200, status);
+        assertEquals(HttpHandler.TUNNEL_JAR_TYPE, type, "connect/src/filter.ts refuses every jar type");
+        assertArrayEquals(jar, body.toByteArray());
+        long free = System.currentTimeMillis() + 5000;
+        while (instance.downloads.get() != 0 && System.currentTimeMillis() < free) Thread.sleep(10);
+        assertEquals(0, instance.downloads.get(), "the local side closed the connection, the slot is free again");
+    }
+
+    @Test
+    void headOfTheJarAndTheLimitsThroughTheTunnel() throws Exception {
+        game.modJar = java.nio.file.Files.write(dir.resolve("cccloud.jar"), new byte[1000]);
+        connect("abc");
+        awaitState(ConnectStatus.State.CONNECTED);
+        relay.send(request(1, "HEAD", "/api/download/cccloud.jar", "203.0.113.7", List.of(), new byte[0]));
+        var head = answer(1);
+        assertEquals(200, head.status());
+        assertEquals("", head.body());
+
+        // the tunnel has its own, lower limit of downloads at once
+        instance.downloads.set(HttpHandler.MAX_TUNNEL_DOWNLOADS);
+        relay.send(request(2, "GET", "/api/download/cccloud.jar", "203.0.113.7", List.of(), new byte[0]));
+        assertEquals(503, answer(2).status());
+        instance.downloads.set(0);
+
+        // a jar over the relay's limit is refused at once instead of breaking off after 16 MB
+        try (var big = java.nio.channels.FileChannel.open(game.modJar, java.nio.file.StandardOpenOption.WRITE)) {
+            big.write(java.nio.ByteBuffer.wrap(new byte[1]), ai.ezfox.cccloud.connect.TunnelStreams.MAX_RESPONSE); // sparse
+        }
+        relay.send(request(3, "GET", "/api/download/cccloud.jar", "203.0.113.7", List.of(), new byte[0]));
+        var tooBig = answer(3);
+        assertEquals(413, tooBig.status());
+        assertTrue(tooBig.body().contains("too_large"), tooBig.body());
     }
 
     @Test

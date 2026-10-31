@@ -60,6 +60,10 @@ public final class CloudCommand {
         dispatcher.register(Commands.literal("cccloud")
             .executes(CloudCommand::help)
             .then(Commands.literal("help").executes(CloudCommand::help))
+            .then(Commands.literal("version").executes(c -> {
+                ai.ezfox.cccloud.join.JoinCheck.showVersion(c.getSource());
+                return 1;
+            }))
             .then(Commands.literal("status").executes(CloudCommand::status)
                 .then(Commands.argument("mainframe", StringArgumentType.word()).suggests(CloudCommand::suggestMainframes).executes(CloudCommand::select)))
             .then(Commands.literal("test-token").requires(src -> Boolean.getBoolean("cccloud.devCommands") && src.getEntity() == null && src.source == src.getServer())
@@ -222,7 +226,7 @@ public final class CloudCommand {
             {"status", "/cccloud status"}, {"link", "/cccloud link"}, {"devices", "/cccloud devices"}, {"approve", "/cccloud approve"},
             {"deny", "/cccloud deny"}, {"role", "/cccloud role "}, {"trust", "/cccloud trust "}, {"pin", "/cccloud pin set "},
             {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}, {"recover", "/cccloud mainframe recover"},
-            {"internet", "/cccloud internet"}};
+            {"internet", "/cccloud internet"}, {"version", "/cccloud version"}};
         for (var e : entries) {
             String command = e[1];
             source.sendSystemMessage(Component.literal(command.trim()).withStyle(style -> style.withColor(ChatFormatting.GOLD)

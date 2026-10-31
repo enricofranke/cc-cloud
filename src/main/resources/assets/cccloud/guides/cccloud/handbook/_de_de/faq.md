@@ -69,6 +69,18 @@ Das Icon gibt es noch nicht. Auf einem dedizierten Server zeichnet der Server be
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit `/cccloud pin set` ändern.
 
+## „Deine Version ist nicht die des Servers"
+
+Deine CC: Cloud-Jar ist nicht der Build, den der Server hat. Minecraft lädt nie Mods von einem Server, und Test-Builds tragen alle dieselbe Versionsnummer, also sagt es dir sonst niemand. Du kannst weiterspielen, aber Karten, Bildschirme und neue Blöcke können sich seltsam verhalten, bis beide gleich sind.
+
+- **Klicke im Chat auf [Jar des Servers herunterladen]** oder hol dir den Link mit `/cccloud version` noch einmal. Es ist genau die Jar, die auf dem Server läuft.
+- **Tausche sie aus:** Lösche die alte CC: Cloud-Jar aus deinem `mods`-Ordner – zwei Kopien laden nicht –, leg die neue hinein und starte das Spiel neu.
+- **Kein Link?** Das Dashboard ist von deinem Standort aus nicht erreichbar (nur LAN oder ausgeschaltet), oder der Server-Besitzer hat den Download mit `webJarDownload = false` abgeschaltet. Frag ihn nach der Jar.
+- **Dein Browser warnt vor dem Download?** Das tun Browser bei `.jar`-Dateien und bei allem über einfaches HTTP. Der Link kommt von dem Server, auf dem du spielst.
+- **Über CC: Cloud Connect** wird die Datei als `cccloud.jar` gespeichert, ohne Version im Namen. Es ist dieselbe Datei.
+
+Für Server-Besitzer: `/cccloud version` zeigt den Build des Servers, das Server-Log nennt jeden Spieler mit einem anderen, und die Jar ist auf 6 Downloads pro Stunde je Adresse begrenzt.
+
 ## Keine Quests nach der Installation
 
 - Der Server braucht **FTB Quests** und die normale Jar `cccloud-<version>.jar` – die Modpack-Edition fügt nie Quests hinzu.

@@ -25,6 +25,16 @@ attaches all three files (CI, below).
 
 Dev runs (`runServer`, `runGameTestServer`) serve the dashboard on port **18787** (`-Dcccloud.devWebPort`), so they do not collide with a game running on the same machine; the real default stays 8787.
 
+## Test builds and the build id
+Every jar carries a build id in `cccloud-build.properties`: `<mod version>-<git short hash>`, plus `-dirty` with
+uncommitted changes in `src`, `integration`, `build.gradle` or `gradle.properties`. The join check compares it, so a
+player gets told when their jar is not the server's, even with the same version number (docs/SPEC.md "Join check and build
+id"). `/cccloud version` shows it.
+
+`./gradlew build -PdevBuild=5` makes the mod version `1.0.0-beta.2+dev5`: the launcher's mod list and all three downloads
+show it (`cccloud-1.0.0-beta.2+dev5.jar`). Local only; tags never use it, the release workflow expects
+`cccloud-<version>.jar`.
+
 ## Optional storage mods (Cloud Bridges)
 The bridges compile against the versions in All the Mods 11. No local jars are needed; Gradle downloads them:
 
@@ -181,6 +191,8 @@ python3 preview/build_viewer.py                                      # preview/v
 - Advanced Cloud Sensor (docs/SPEC.md "Advanced Cloud Sensor"): unit tests `sensor/*Test` (filter, log, tracker and zone, alerts and summary text, card and actions), `SensorTriggerTest`, `WebHubPrivateValuesTest`, `AdvancedSensorGraphTest`; GameTests `sensor_*` (zombie and villager entering, team and filters, redstone, a rule with `{who}`, claims (through the claim guard's `TestClaims`; with the sensor's own chunk claimed the sensor is blocked), names hidden for viewers, alert rate limit); fake players are handed to the scan through `AdvancedSensor.TEST_ENTITIES` (they are not in the world's entity list) and the cooldowns use a per-sensor test clock; web `advanced-sensor.test.ts`.
 - Claim guard (2026-10-30, docs/SECURITY.md "Claims"): unit tests `ClaimRuleTest` (the rule: own team, ally, foreign team, unclaimed, no owner, no operator bypass; the pass budget; team names) and `WebHubClaimTeamTest` (the team's name only for sessions with `view.positions`), web `claims.test.ts`; GameTests `claim_guard` (an uplink on a machine, a wired machine card and a Cloud Switch are blocked when another team claims their chunks, refuse actions, work again as allies and after the unclaim; with the GameTest claim mod `TestClaims`), `probe_guards` and `map_tiles` (now through the shared guard), and with `-PintegrationMods=ftbchunks` `ftbchunks_claim_guard` (the same with real FTB Chunks claims and FTB Teams allies). Real claims affect every test around them, so the FTB Chunks tests run in test environments of their own (`cccloud:claims`, `cccloud:claims_card`) and unclaim when they end: `./gradlew runGameTestServer -PintegrationMods=ftbchunks -PskipLoadTest '-PgameTests=cccloud:ftbchunks_*'`.
 - Headless smoke test (with and without `-PstorageMods`): enable RCON for localhost in `run/server.properties` (`enable-rcon=true`, `server-ip=127.0.0.1`, a random `rcon.password`; `run/` is not committed), start `runServer` until `Done`, check the log for `[cccloud]` errors and "Dashboard web server listening", probe the WebSocket on port 18787 (a tiny auth frame gets `unauthorized`/4401, a 9 KB frame before auth gets 1009), then send `stop` over RCON (Gradle does not forward stdin) and check for "Dashboard web server stopped", exit code 0 and that ports 18787/25565/25575 are free.
+
+- Join check (docs/SPEC.md "Join check and build id"): unit tests `BuildInfoTest`, `BuildCheckTest` (same or other build, 10 seconds, one message per join, clean ids), `JoinTextTest` (fallback texts for old clients), `DownloadRouteTest` (the route on the real pipeline, limits, a client that does not read), `PairingTextTest` (which address), `ConnectTunnelTest` (the jar through the tunnel); opt-in `ConnectDevRelayTest` sends it through the real relay under `wrangler dev`; GameTest `join_check` (`-PgameTests=cccloud:join_check`: silent client, other build, same build, `/cccloud version`, NeoForge's negotiator with a client without the channel).
 
 ### Headless test servers
 - Set `pause-when-empty-seconds=-1` in `server.properties`: otherwise the server pauses without players and approvals, dashboard actions and rules wait.

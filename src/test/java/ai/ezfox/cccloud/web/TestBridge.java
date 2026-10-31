@@ -23,6 +23,14 @@ class TestBridge implements GameBridge {
         return Runnable::run;
     }
 
+    /** The jar behind /api/download/cccloud.jar (null: the download is off). */
+    volatile java.nio.file.@Nullable Path modJar;
+
+    @Override
+    public java.nio.file.@Nullable Path modJar() {
+        return modJar;
+    }
+
     /** Optional: exact permissions (else the preset of the role). */
     BiFunction<AuthStore.Device, UUID, java.util.Set<ai.ezfox.cccloud.access.Perm>> perms = null;
 

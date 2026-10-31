@@ -37,6 +37,28 @@ public final class PairingText {
         return base + "/#/m/" + mainframeId + "?card=" + sectionId;
     }
 
+    /** Where a dashboard address serves the server's CC: Cloud jar, or null without an address. */
+    public static @Nullable String jarUrl(@Nullable String dashboardUrl) {
+        if (dashboardUrl == null || dashboardUrl.isBlank()) return null;
+        String base = dashboardUrl.endsWith("/") ? dashboardUrl.substring(0, dashboardUrl.length() - 1) : dashboardUrl;
+        return base + "/api/download/cccloud.jar";
+    }
+
+    /**
+     * The address a player can open: CC: Cloud Connect like every chat link (it works from anywhere), else the dashboard
+     * address for a player on the server's network and the internet link for anyone else. Null: nothing this player reaches.
+     *
+     * @param connectUrl  the Connect address while it is online, else null or ""
+     * @param internetUrl {@code publicUrl}, the domain or the public IP; "" without internet access
+     * @param dashboardUrl {@code publicUrl}, else the server's own LAN address
+     * @param onLan       the player comes from a LAN address
+     */
+    public static @Nullable String reachableUrl(@Nullable String connectUrl, String internetUrl, String dashboardUrl, boolean onLan) {
+        if (connectUrl != null && !connectUrl.isBlank()) return connectUrl;
+        String url = onLan ? dashboardUrl : internetUrl;
+        return url.isBlank() ? null : url;
+    }
+
     /** " [label]" in aqua, underlined, opening {@code url} on click (empty if the URL is invalid). */
     public static MutableComponent openLink(String url, Component label) {
         URI uri;

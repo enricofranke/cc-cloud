@@ -24,6 +24,8 @@ Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the `mods` folder 
 | `cccloud-<version>-modpack.jar` | you make a modpack: the same mod, but it never touches the quest book. |
 | `cccloud-quests-atm11-<version>.zip` | you make a modpack or install the quests by hand: the quest chapters. |
 
+Client and server need the **same CC: Cloud build**. If yours differs, you are still let in, and the chat tells you when you join – with a link to the server's jar. See [your version is not the server's](faq.md).
+
 ### Quests (FTB Quests)
 
 With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German.

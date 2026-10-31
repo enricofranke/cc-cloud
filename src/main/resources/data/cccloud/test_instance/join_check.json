@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "cccloud:ingame",
+  "function": "cccloud:join_check",
+  "max_ticks": 400,
+  "structure": "cccloud:test_floor"
+}

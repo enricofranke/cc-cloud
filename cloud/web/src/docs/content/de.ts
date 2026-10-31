@@ -22,6 +22,8 @@ Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den \`mods\`-Ordn
 | \`cccloud-<version>-modpack.jar\` | du ein Modpack baust: dieselbe Mod, aber sie fasst das Questbuch nie an. |
 | \`cccloud-quests-atm11-<version>.zip\` | du ein Modpack baust oder die Quests von Hand installierst: die Quest-Kapitel. |
 
+Client und Server brauchen **denselben CC: Cloud-Build**. Weicht deiner ab, kommst du trotzdem rein, und der Chat sagt es dir beim Beitreten – mit einem Link zur Jar des Servers. Siehe [Deine Version ist nicht die des Servers](/docs/faq#version-mismatch).
+
 ### Quests (FTB Quests) {#quests}
 
 Mit **FTB Quests** bekommst du zwei Quest-Kapitel: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch.
@@ -1335,6 +1337,18 @@ Das Icon gibt es noch nicht. Auf einem dedizierten Server zeichnet der Server be
 ## Falsche PIN / gesperrt {#pin-locked}
 
 Nach 5 falschen PINs ist das Gerät 5 Minuten gesperrt. Der Besitzer kann die PIN mit \`/cccloud pin set\` ändern.
+
+## „Deine Version ist nicht die des Servers" {#version-mismatch}
+
+Deine CC: Cloud-Jar ist nicht der Build, den der Server hat. Minecraft lädt nie Mods von einem Server, und Test-Builds tragen alle dieselbe Versionsnummer, also sagt es dir sonst niemand. Du kannst weiterspielen, aber Karten, Bildschirme und neue Blöcke können sich seltsam verhalten, bis beide gleich sind.
+
+- **Klicke im Chat auf [Jar des Servers herunterladen]** oder hol dir den Link mit \`/cccloud version\` noch einmal. Es ist genau die Jar, die auf dem Server läuft.
+- **Tausche sie aus:** Lösche die alte CC: Cloud-Jar aus deinem \`mods\`-Ordner – zwei Kopien laden nicht –, leg die neue hinein und starte das Spiel neu.
+- **Kein Link?** Das Dashboard ist von deinem Standort aus nicht erreichbar (nur LAN oder ausgeschaltet), oder der Server-Besitzer hat den Download mit \`webJarDownload = false\` abgeschaltet. Frag ihn nach der Jar.
+- **Dein Browser warnt vor dem Download?** Das tun Browser bei \`.jar\`-Dateien und bei allem über einfaches HTTP. Der Link kommt von dem Server, auf dem du spielst.
+- **Über CC: Cloud Connect** wird die Datei als \`cccloud.jar\` gespeichert, ohne Version im Namen. Es ist dieselbe Datei.
+
+Für Server-Besitzer: \`/cccloud version\` zeigt den Build des Servers, das Server-Log nennt jeden Spieler mit einem anderen, und die Jar ist auf 6 Downloads pro Stunde je Adresse begrenzt.
 
 ## Keine Quests nach der Installation {#no-quests}
 

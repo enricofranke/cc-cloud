@@ -1,5 +1,6 @@
 package ai.ezfox.cccloud.web;
 
+import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.CloudLog;
 import ai.ezfox.cccloud.access.Access;
 import ai.ezfox.cccloud.access.AccessResolver;
@@ -39,6 +40,16 @@ public final class MinecraftBridge implements GameBridge {
     @Override
     public Executor serverExecutor() {
         return server;
+    }
+
+    @Override
+    public java.nio.file.@Nullable Path modJar() {
+        if (!CloudConfig.get(CloudConfig.WEB_JAR_DOWNLOAD)) return null;
+        var info = net.neoforged.fml.ModList.get().getModFileById(ai.ezfox.cccloud.CCCloud.MODID);
+        if (info == null) return null;
+        var path = info.getFile().getFilePath();
+        // dev runs load the mod from folders; a path inside another jar is no file to serve
+        return path.getFileSystem() == java.nio.file.FileSystems.getDefault() && java.nio.file.Files.isRegularFile(path) ? path : null;
     }
 
     private AccessResolver resolver() {

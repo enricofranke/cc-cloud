@@ -59,6 +59,8 @@ public class CCCloud {
         ai.ezfox.cccloud.recipes.RecipeCatalog.init();
         // CC: Cloud Connect: https://<name>.cccloud.dev through an outbound tunnel (internetAccess = connect)
         ai.ezfox.cccloud.connect.ConnectService.init();
+        // Tells a player whose CC: Cloud jar is not the server's build (join/).
+        ai.ezfox.cccloud.join.JoinCheck.init(modEventBus);
         ai.ezfox.cccloud.voxel.BlockTextureService.init(modEventBus);
         // Config changes apply while the server runs (file watcher or /cccloud config reload): docs/SPEC.md "Live config".
         ai.ezfox.cccloud.config.ConfigReload.init(modEventBus);

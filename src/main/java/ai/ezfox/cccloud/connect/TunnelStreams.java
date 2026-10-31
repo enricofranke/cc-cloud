@@ -61,7 +61,7 @@ public final class TunnelStreams {
     /** Requests waiting for a slot, in total. */
     static final int MAX_WAITING = 256;
     /** One answer at most (the relay's limit). */
-    static final long MAX_RESPONSE = 16L * 1024 * 1024;
+    public static final long MAX_RESPONSE = 16L * 1024 * 1024;
     /** Body chunk size on the tunnel. */
     static final int CHUNK = 64 * 1024;
     /** A dashboard message at most (server to browser). */
