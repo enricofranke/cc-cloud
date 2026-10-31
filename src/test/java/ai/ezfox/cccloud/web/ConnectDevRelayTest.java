@@ -45,7 +45,11 @@ class ConnectDevRelayTest {
         String name = "itest-" + UUID.randomUUID().toString().substring(0, 8);
         String host = name + ".localhost";
 
-        var instance = new WebInstance(new TestBridge(), new AuthStore(System::currentTimeMillis, () -> {
+        var game = new TestBridge();
+        byte[] jar = new byte[4_200_000]; // the size of the real jar
+        new java.util.Random(7).nextBytes(jar);
+        game.modJar = java.nio.file.Files.write(dir.resolve("cccloud-test.jar"), jar);
+        var instance = new WebInstance(game, new AuthStore(System::currentTimeMillis, () -> {
         }), new AccessStore(System::currentTimeMillis, () -> {
         }), null, List.of(), false, "http://127.0.0.1", 0);
         var bridge = TunnelBridge.forTest(instance);
@@ -74,6 +78,14 @@ class ConnectDevRelayTest {
             String unauthorized = get(port, host, "/api/mainframes");
             assertTrue(unauthorized.startsWith("HTTP/1.1 401"), unauthorized);
 
+            // the mod's jar: the relay forwards /api, passes the bytes unchanged and makes it a download
+            byte[] raw = getRaw(port, host, "/api/download/cccloud.jar");
+            int end = headEnd(raw);
+            String head = new String(raw, 0, end, StandardCharsets.ISO_8859_1);
+            assertTrue(head.startsWith("HTTP/1.1 200"), head);
+            assertTrue(head.toLowerCase().contains("content-disposition: attachment"), head);
+            assertArrayEquals(jar, dechunk(java.util.Arrays.copyOfRange(raw, end, raw.length), head), "the file, byte for byte");
+
             // give the name back: free again
             assertEquals("released", client.release().get());
             String check = get(port, "connect.localhost", "/api/check/" + name);
@@ -93,6 +105,35 @@ class ConnectDevRelayTest {
                 .getBytes(StandardCharsets.US_ASCII));
             socket.getOutputStream().flush();
             return read(socket.getInputStream());
+        }
+    }
+
+    private static byte[] getRaw(int port, String host, String path) throws Exception {
+        try (var socket = new Socket("127.0.0.1", port)) {
+            socket.setSoTimeout(30_000);
+            socket.getOutputStream().write(("GET " + path + " HTTP/1.1\r\nHost: " + host + ":" + port + "\r\nX-Dev-Host: " + host + ":" + port + "\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n")
+                .getBytes(StandardCharsets.US_ASCII));
+            return socket.getInputStream().readAllBytes();
+        }
+    }
+
+    private static int headEnd(byte[] raw) {
+        for (int i = 3; i < raw.length; i++) if (raw[i - 3] == '\r' && raw[i - 2] == '\n' && raw[i - 1] == '\r' && raw[i] == '\n') return i + 1;
+        return fail("no end of the headers");
+    }
+
+    /** The body as sent, whether the relay answered with a length or with chunks. */
+    private static byte[] dechunk(byte[] body, String head) {
+        if (!head.toLowerCase().contains("transfer-encoding: chunked")) return body;
+        var out = new ByteArrayOutputStream();
+        int at = 0;
+        while (true) {
+            int line = at;
+            while (body[line] != '\r') line++;
+            int size = Integer.parseInt(new String(body, at, line - at, StandardCharsets.US_ASCII).trim(), 16);
+            if (size == 0) return out.toByteArray();
+            out.write(body, line + 2, size);
+            at = line + 2 + size + 2;
         }
     }
 

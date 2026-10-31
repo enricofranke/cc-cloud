@@ -867,6 +867,12 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
             return;
         }
+        if (tunnel && size > ai.ezfox.cccloud.connect.TunnelStreams.MAX_RESPONSE) {
+            // said at once instead of breaking off after 16 MB
+            sendJson(ctx, req, HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, error("too_large"));
+            closeQuietly(file);
+            return;
+        }
         if (head) {
             var response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.EMPTY_BUFFER);
             jarHeaders(response, jar, size, tunnel);
@@ -889,17 +895,21 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         return "attachment; filename=\"" + fileName.replaceAll("[^A-Za-z0-9._+-]", "_") + "\"";
     }
 
+    private static void closeQuietly(@Nullable FileChannel file) {
+        try {
+            if (file != null) file.close();
+        } catch (IOException ignored) {
+            // it was only read
+        }
+    }
+
     private void streamJar(ChannelHandlerContext ctx, FullHttpRequest req, Path jar, FileChannel file, long size, boolean tunnel) {
         ChunkedNioFile chunks;
         try {
             chunks = new ChunkedNioFile(file, 0, size, DOWNLOAD_CHUNK);
         } catch (IOException e) {
             CloudLog.LOGGER.warn("[cccloud] Could not read the mod jar {}: {}", jar, e.toString());
-            try {
-                file.close();
-            } catch (IOException ignored) {
-                // nothing was sent yet
-            }
+            closeQuietly(file);
             sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
             return;
         }
@@ -914,7 +924,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         addSecurityHeaders(response, req.headers().get(HttpHeaderNames.HOST), policy.ssl() != null);
         response.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE);
         ctx.write(response);
-        ctx.writeAndFlush(new HttpChunkedInput(chunks)).addListener(ChannelFutureListener.CLOSE);
+        // The tunnel's local side closes after the last piece; closing here could overtake pieces it has not read yet.
+        ctx.writeAndFlush(new HttpChunkedInput(chunks)).addListener(f -> {
+            if (!tunnel || !f.isSuccess()) ctx.close();
+        });
     }
 
     // ---- /api/pair ---------------------------------------------------------------------------------------------------
