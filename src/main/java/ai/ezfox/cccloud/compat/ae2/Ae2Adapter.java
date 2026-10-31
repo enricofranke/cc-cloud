@@ -246,7 +246,7 @@ final class Ae2Adapter implements StorageAdapter {
             String name = cpu.getName() != null ? cpu.getName().getString() : "CPU " + i;
             list.add(new Cpu("cpu-" + i, name, cpu.getCoProcessors(), cpu.getAvailableStorage(), cpu.isBusy(), item,
                 status == null ? 0 : status.crafting().amount(),
-                status == null || status.totalItems() <= 0 ? 0 : (double) status.progress() / status.totalItems(),
+                status == null ? 0 : progress(status),
                 status == null ? 0 : status.elapsedTimeNanos() / 1_000_000));
         }
         return list;
@@ -314,9 +314,11 @@ final class Ae2Adapter implements StorageAdapter {
             plan = p.future().get();
         } catch (Exception e) {
             CCCloud.LOGGER.warn("[cccloud] AE2 crafting calculation failed", e);
-            return CraftOutcome.failed("missing_resources");
+            return CraftOutcome.failed("not_enough_items");
         }
-        if (plan == null || plan.simulation()) return CraftOutcome.failed("missing_resources");
+        if (plan == null) return CraftOutcome.failed("not_enough_items");
+        // AE2 refuses a simulated plan (INCOMPLETE_PLAN): the bridge keeps the order waiting (BridgeCore) and plans it again.
+        if (plan.simulation()) return CraftOutcome.missing(toPlan(plan).entries());
         var grid = grid();
         if (grid == null) return CraftOutcome.failed("offline");
         var cs = grid.getCraftingService();
@@ -326,7 +328,7 @@ final class Ae2Adapter implements StorageAdapter {
         if (!result.successful()) {
             var code = result.errorCode();
             return CraftOutcome.failed(code == CraftingSubmitErrorCode.MISSING_INGREDIENT || code == CraftingSubmitErrorCode.INCOMPLETE_PLAN
-                ? "missing_resources" : "no_cpu");
+                ? "not_enough_items" : "no_cpu");
         }
         ICraftingCPU cpu = null;
         for (var candidate : cs.getCpus()) {
@@ -350,10 +352,14 @@ final class Ae2Adapter implements StorageAdapter {
         if (h.cpu() != null && h.cpu().isBusy()) {
             var status = h.cpu().getJobStatus();
             if (status != null && status.crafting().what().equals(h.key())) {
-                return new JobState("running", status.totalItems() <= 0 ? 0 : (double) status.progress() / status.totalItems());
+                return new JobState("running", progress(status), status.suspended() ? "suspended" : null);
             }
         }
         return new JobState("done", 1);
+    }
+
+    private static double progress(appeng.api.networking.crafting.CraftingJobStatus status) {
+        return status.totalItems() <= 0 ? 0 : (double) status.progress() / status.totalItems();
     }
 
     @Override
@@ -386,8 +392,7 @@ final class Ae2Adapter implements StorageAdapter {
             if (!cpu.isBusy() || own.contains(cpu)) continue;
             var status = cpu.getJobStatus();
             if (status == null || !(status.crafting().what() instanceof AEItemKey key)) continue;
-            double progress = status.totalItems() <= 0 ? 0 : (double) status.progress() / status.totalItems();
-            list.add(new NetworkJob("cpu-" + i, key.getItem(), status.crafting().amount(), progress));
+            list.add(new NetworkJob("cpu-" + i, key.getItem(), status.crafting().amount(), progress(status), status.suspended() ? "suspended" : null));
         }
         return list;
     }

@@ -80,7 +80,7 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
     public record OnlineCheck(String uplinkId) implements Check {
     }
 
-    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger, ScheduleTrigger, SensorTrigger {
+    public sealed interface Trigger permits CheckTrigger, OfflineTrigger, IntervalTrigger, TimeTrigger, ScheduleTrigger, SensorTrigger, CraftStuckTrigger {
     }
 
     /**
@@ -109,6 +109,10 @@ public record Rule(String id, String name, boolean enabled, int cooldown, Trigge
         }
     }
 
+
+    /** Fires when a craft on the storage behind this card gets stuck; {@code {item}} in an alert text is what it crafts. */
+    public record CraftStuckTrigger(String uplinkId) implements Trigger {
+    }
 
     /** Fires when the check becomes true (edge). */
     public record CheckTrigger(Check check) implements Trigger {

@@ -4,6 +4,7 @@ import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.block.CloudStatus;
 import ai.ezfox.cccloud.bridge.StorageAdapter;
 import com.refinedmods.refinedstorage.api.autocrafting.calculation.CancellationToken;
+import com.refinedmods.refinedstorage.api.autocrafting.status.TaskStatus;
 import com.refinedmods.refinedstorage.api.autocrafting.preview.Preview;
 import com.refinedmods.refinedstorage.api.autocrafting.preview.PreviewType;
 import com.refinedmods.refinedstorage.api.autocrafting.task.TaskId;
@@ -289,17 +290,18 @@ final class RsAdapter implements StorageAdapter {
             preview = p.future().get();
         } catch (Exception e) {
             CCCloud.LOGGER.warn("[cccloud] RS autocrafting preview failed", e);
-            return CraftOutcome.failed("missing_resources");
+            return CraftOutcome.failed("not_enough_items");
         }
         if (preview.isEmpty()) return CraftOutcome.failed("not_craftable");
         var type = preview.get().type();
-        if (type == PreviewType.MISSING_RESOURCES) return CraftOutcome.failed("missing_resources");
+        // RS2 only starts a task it can pay for: the bridge keeps the order waiting (BridgeCore) and plans it again.
+        if (type == PreviewType.MISSING_RESOURCES) return CraftOutcome.missing(toPlan(preview.get()).entries());
         if (type != PreviewType.SUCCESS) return CraftOutcome.failed(type == PreviewType.CANCELLED ? "timeout" : "not_craftable");
         var network = network();
         if (network == null) return CraftOutcome.failed("offline");
         Optional<TaskId> task = network.getComponent(AutocraftingNetworkComponent.class)
             .startTask(p.resource(), p.count(), new PlayerActor(p.user()), false, new DeadlineToken(START_BUDGET_NANOS));
-        return task.<CraftOutcome>map(CraftOutcome::started).orElseGet(() -> CraftOutcome.failed("missing_resources"));
+        return task.<CraftOutcome>map(CraftOutcome::started).orElseGet(() -> CraftOutcome.failed("not_enough_items"));
     }
 
     @Override
@@ -310,9 +312,30 @@ final class RsAdapter implements StorageAdapter {
             if (!status.info().id().equals(handle)) continue;
             if (status.state() == TaskState.COMPLETED) return new JobState("done", 1);
             double pct = status.percentageCompleted();
-            return new JobState("running", pct > 1 ? pct / 100 : pct);
+            return new JobState("running", pct > 1 ? pct / 100 : pct, reason(status));
         }
         return new JobState("done", 1);
+    }
+
+    /** What the autocrafting monitor shows as the problem of a task, or null. */
+    private static @Nullable String reason(TaskStatus status) {
+        if (status.state() == TaskState.EXTRACTING_INITIAL_RESOURCES) return "not_enough_items";
+        for (var item : status.items()) {
+            switch (item.type()) {
+                case NONE_FOUND -> {
+                    return "no_machine";
+                }
+                case REJECTED -> {
+                    return "machine_rejected";
+                }
+                case LOCKED -> {
+                    return "machine_locked";
+                }
+                default -> {
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -332,7 +355,7 @@ final class RsAdapter implements StorageAdapter {
         for (var status : network.getComponent(AutocraftingNetworkComponent.class).getStatuses()) {
             if (own.contains(status.info().id()) || !(status.info().resource() instanceof ItemResource item)) continue;
             double pct = status.percentageCompleted();
-            list.add(new NetworkJob(status.info().id().id().toString().substring(0, 8), item.item(), status.info().amount(), pct > 1 ? pct / 100 : pct));
+            list.add(new NetworkJob(status.info().id().id().toString().substring(0, 8), item.item(), status.info().amount(), pct > 1 ? pct / 100 : pct, reason(status)));
         }
         return list;
     }

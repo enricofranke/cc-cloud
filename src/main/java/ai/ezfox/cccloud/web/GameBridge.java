@@ -53,6 +53,16 @@ public interface GameBridge {
         return "unsupported";
     }
 
+    /** A card's restricted details (view.positions), read on demand. */
+    default StorageResult cardDetail(AuthStore.Device device, UUID mainframeId, ClientMessages.CardDetail message) {
+        return StorageResult.fail("unsupported");
+    }
+
+    /** Checks or writes a machine's program (view.positions + device.program); audited. The PIN was checked by the caller. */
+    default StorageResult cardWrite(AuthStore.Device device, UUID mainframeId, ClientMessages.CardWrite message) {
+        return StorageResult.fail("unsupported");
+    }
+
     /** Runs an item search on an item_search widget (read-only, any role from viewer up). */
     QueryResult dispatchQuery(AuthStore.Device device, UUID mainframeId, ClientMessages.Query query);
 

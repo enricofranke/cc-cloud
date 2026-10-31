@@ -118,7 +118,7 @@ describe("storage protocol", () => {
     craft("b", "ae2:fluix_crystal", MAX_CRAFT + 1);
     expect(await c.next((m) => m.reqId === "b")).toMatchObject({ ok: false, error: "too_many" });
     craft("c", "ae2:singularity", 1);
-    expect(await c.next((m) => m.reqId === "c")).toMatchObject({ ok: false, error: "missing_resources" });
+    expect(await c.next((m) => m.reqId === "c")).toMatchObject({ ok: true }); // not enough items: taken as an order
     craft("d1", "ae2:fluix_crystal", 1);
     craft("d2", "ae2:fluix_crystal", 1);
     craft("d3", "ae2:fluix_crystal", 1);

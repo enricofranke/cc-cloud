@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, ME, type MockServer } from "../dev/mock-server.ts";
 import { FakeAe2 } from "../dev/ae2-sim.ts";
-import { MainframeConn, type CpuInfo, type ItemDoc, type StorageRow } from "../web/src/lib/conn.ts";
+import { MainframeConn, type ActionOutcome, type CpuInfo, type ItemDoc, type JobInfo, type StorageRow } from "../web/src/lib/conn.ts";
+import { jobReason, jobStatusText, planMissing } from "../web/src/lib/jobs.ts";
 import { sleep } from "./helpers.ts";
 
 let mock: MockServer | undefined;
@@ -124,5 +125,55 @@ describe("auto-stock (level maintainer)", () => {
       expect(ae.watch.find((w) => w.name === it.name)).toMatchObject({ state: "waiting_cpu" });
     }
     expect(ae.jobs.some((j) => j.source === "autostock" && j.status === "failed")).toBe(false);
+  });
+});
+
+describe("stuck crafts and orders (mock)", () => {
+  const start = async () => (mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, log: () => {} }));
+  it("shows a stuck job and retries the same craft", async () => {
+    await start();
+    const conn = await connect();
+    const jobs = () => (conn.uplinks.value.find((u) => u.uplinkId === ME)?.widgets.find((w) => w.id === "jobs")?.value ?? []) as JobInfo[];
+    for (let i = 0; i < 100 && !jobs().length; i++) await sleep(5);
+    const job = jobs().find((j) => j.status === "stuck")!;
+    expect(job).toMatchObject({ error: "no_machine", retryable: true, source: "dashboard" });
+    const r = await conn.storage<{ jobId: string }>(ME, "retry", { jobId: job.jobId });
+    expect(r.jobId).toBeTruthy();
+    await expect(conn.storage(ME, "retry", { jobId: job.jobId })).rejects.toThrow("not_stuck");
+    await sleep(30);
+    expect(jobs().find((j) => j.jobId === job.jobId)?.status).toBe("cancelled");
+    expect(jobs().find((j) => j.jobId === r.jobId)?.name).toBe(job.name);
+  });
+  it("keeps a viewer out of retry", async () => {
+    await start();
+    const viewer = await connect({ role: "viewer" });
+    await expect(viewer.storage(ME, "retry", { jobId: "1002" })).rejects.toThrow();
+  });
+  it("takes a craft without enough items as a waiting order, cancellable, with a reliable maximum", async () => {
+    await start();
+    const conn = await connect();
+    const plan = await conn.craftPreview(ME, "ae2:logic_processor", 100);
+    expect(plan.missing).toBe(true);
+    expect(await conn.craftMax(ME, "ae2:logic_processor", 100)).toEqual({ max: 37, exact: true });
+    expect((await conn.craftMax(ME, "enderio:octadic_capacitor", 100)).max).toBeNull();
+    const outcome = await new Promise<ActionOutcome>((resolve) => conn.action(ME, conn.uplinks.value.find((u) => u.uplinkId === ME)!.widgets.find((w) => w.id === "search")!, { op: "craft", name: "ae2:logic_processor", count: 100 }, false, { onResult: resolve }));
+    expect(outcome.ok).toBe(true);
+    expect(outcome.missing?.[0]).toMatchObject({ have: expect.any(Number), need: expect.any(Number) });
+    await sleep(30);
+    const jobs = conn.uplinks.value.find((u) => u.uplinkId === ME)!.widgets.find((w) => w.id === "jobs")!.value as JobInfo[];
+    const order = jobs.find((j) => j.jobId === outcome.jobId)!;
+    expect(order).toMatchObject({ status: "waiting", error: "not_enough_items", missing: [expect.objectContaining({ have: expect.any(Number) }), expect.anything()] });
+    await conn.storage(ME, "cancel", { jobId: order.jobId });
+  });
+});
+
+describe("job texts", () => {
+  it("names a wait for items and a stuck reason", () => {
+    expect(jobStatusText({ status: "waiting", error: "not_enough_items" })).toBe("Waiting for items");
+    expect(jobStatusText({ status: "waiting" })).toBe("Waiting for CPU");
+    expect(jobReason({ status: "stuck", error: "no_machine" })).toMatch(/machine/);
+    expect(jobReason({ status: "stuck" })).toBe("No progress");
+    expect(jobReason({ status: "waiting", error: "not_enough_items" })).toBeNull();
+    expect(planMissing([{ name: "a", displayName: "A", stored: 3, missing: 4 }, { name: "b", displayName: "B", stored: 1, missing: 0 }])).toEqual([{ name: "a", displayName: "A", have: 3, need: 7 }]);
   });
 });

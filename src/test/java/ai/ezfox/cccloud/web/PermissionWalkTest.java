@@ -196,6 +196,9 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"cancel\",\"jobId\":\"abc\"}", Perm.STORAGE_CRAFT);
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"favorite\",\"name\":\"minecraft:stick\",\"on\":true}", Perm.ACT_BUTTONS);
         cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"autostock\",\"name\":\"minecraft:stick\",\"min\":5,\"target\":10,\"autoCraft\":true}", Perm.STORAGE_AUTOSTOCK);
+        cases.put("{\"t\":\"storage\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"op\":\"retry\",\"jobId\":\"abc\"}", Perm.STORAGE_CRAFT);
+        cases.put("{\"t\":\"card_detail\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\"}", Perm.VIEW_POSITIONS);
+        cases.put("{\"t\":\"card_write\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"op\":\"save\",\"text\":\"x\",\"force\":false}", Perm.DEVICE_PROGRAM);
         cases.put("{\"t\":\"term_open\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\"}", Perm.TERMINAL);
         cases.put("{\"t\":\"term_input\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"events\":[{\"type\":\"char\",\"c\":\"a\"}]}", Perm.TERMINAL);
         cases.put("{\"t\":\"craft_preview\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:stick\",\"count\":4}", Perm.STORAGE_CRAFT);
@@ -224,6 +227,14 @@ class PermissionWalkTest {
             assertTrue(bridge.dispatched.isEmpty(), "never reached the game without " + e.getValue().id);
 
             granted = EnumSet.of(Perm.VIEW, e.getValue());
+            if (e.getValue() == Perm.DEVICE_PROGRAM) {
+                // writing a program needs the right to read it as well
+                channel = connect();
+                channel.writeInbound(new TextWebSocketFrame(e.getKey()));
+                channel.runPendingTasks();
+                assertEquals("read_only", result(drain(channel), "r").get("error").getAsString(), "no write without view.positions");
+                granted.add(Perm.VIEW_POSITIONS);
+            }
             channel = connect();
             bridge.dispatched.clear();
             channel.writeInbound(new TextWebSocketFrame(e.getKey()));

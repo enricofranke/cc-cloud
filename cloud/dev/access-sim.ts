@@ -54,7 +54,7 @@ export const PERMS: { id: string; group: string }[] = [
   ["view", "view"], ["view.positions", "view"],
   ["act.buttons", "act"], ["act.redstone", "act"], ["power.toggle", "act"],
   ["storage.search", "storage"], ["storage.craft", "storage"], ["storage.autostock", "storage"],
-  ["scripts.upload", "scripts"], ["scripts.run", "scripts"], ["scripts.delete", "scripts"], ["terminal", "scripts"],
+  ["scripts.upload", "scripts"], ["scripts.run", "scripts"], ["scripts.delete", "scripts"], ["terminal", "scripts"], ["device.program", "scripts"],
   ["layout.edit", "automation"], ["rules.edit", "automation"], ["rules.toggle", "automation"], ["push.manage", "automation"],
   ["devices.manage", "manage"], ["network.link", "manage"], ["access.manage", "manage"], ["shares.create", "manage"], ["pin.manage", "manage"], ["api.keys", "manage"],
 ].map(([id, group]) => ({ id, group }));

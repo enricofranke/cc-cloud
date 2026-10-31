@@ -46,6 +46,52 @@ class SensorTriggerTest {
         return RuleEngineTest.rule("{\"name\":\"r\",\"cooldown\":5,\"when\":" + when + ",\"then\":[{\"type\":\"alert\",\"text\":\"{who} betritt den Reaktorraum\"}]}");
     }
 
+    /** "A craft gets stuck": schema; fires once per stuck job, not for what happened before the rule first looked. */
+    @Test
+    void craftStuck() {
+        var parsed = RuleCodec.parse(JsonParser.parseString("{\"name\":\"n\",\"when\":{\"type\":\"craft_stuck\",\"uplinkId\":\"" + U
+            + "\"},\"then\":[{\"type\":\"alert\",\"text\":\"{item} hangs\"}]}"), 1);
+        assertNull(parsed.error());
+        var rule = parsed.rule().withId("0a1b2c3d");
+        assertEquals(rule, RuleCodec.parse(RuleCodec.toJson(rule), 1).rule(), "round trip");
+        var extra = RuleCodec.parse(JsonParser.parseString("{\"name\":\"n\",\"when\":{\"type\":\"craft_stuck\",\"uplinkId\":\"" + U
+            + "\",\"x\":1},\"then\":[{\"type\":\"alert\",\"text\":\"t\"}]}"), 1);
+        assertNotNull(extra.error());
+
+        var engine = new RuleEngine();
+        var world = new StuckWorld();
+        var rules = List.of(rule);
+        world.stuck("64× Old");
+        assertTrue(engine.tick(rules, world).isEmpty(), "what was stuck before does not fire");
+        world.stuck("32× Engineering Processor");
+        world.now += 1000;
+        assertEquals(1, engine.tick(rules, world).size());
+        assertEquals(List.of("32× Engineering Processor hangs | 32× Engineering Processor hangs"), world.alerts);
+        world.now += 10_000;
+        assertTrue(engine.tick(rules, world).isEmpty(), "once per job");
+    }
+
+    static final class StuckWorld extends RuleEngineTest.FakeWorld {
+        long seq;
+        final List<RuleEngine.StuckHit> hits = new ArrayList<>();
+        final List<String> alerts = new ArrayList<>();
+
+        void stuck(String what) {
+            hits.add(new RuleEngine.StuckHit(++seq, what));
+        }
+
+        @Override
+        public RuleEngine.@Nullable StuckFeed stuckCrafts(String uplinkId) {
+            return new RuleEngine.StuckFeed(seq, List.copyOf(hits));
+        }
+
+        @Override
+        public @Nullable String run(Rule rule, Rule.Action action, RuleEngine.Context context) {
+            if (action instanceof Rule.AlertAction a) alerts.add(context.fill(a.text(), true) + " | " + context.fill(a.text(), false));
+            return super.run(rule, action);
+        }
+    }
+
     @Test
     void schema() {
         var parsed = RuleCodec.parse(JsonParser.parseString("{\"name\":\"n\",\"when\":{\"type\":\"sensor\",\"uplinkId\":\"" + U

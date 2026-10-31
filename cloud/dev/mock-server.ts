@@ -14,6 +14,8 @@ import { isLanHost } from "../web/src/lib/security.ts";
 import { FakeAe2, search } from "./ae2-sim.ts";
 import { mockIcon } from "./icons.ts";
 import { COMPAT_CARDS } from "./compat-cards.ts";
+
+const SFM_SAMPLE = `NAME "Ore processing"\n\nEVERY 20 TICKS DO\n    INPUT raw_iron FROM chests\n    OUTPUT TO furnaces TOP SIDE\nEND\n`;
 import { FakeTerminal } from "./terminal-sim.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
@@ -175,11 +177,11 @@ interface Mainframe {
   echoResultValue?: boolean;
   onAction?: (uplinkId: string, id: string, value: Scalar, user: string) => void;
   /** Structured operations (craft / watchlist). Synchronous so the result can carry a jobId. */
-  onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string };
+  onOp?: (uplinkId: string, id: string, op: OpValue, user: string) => { ok: boolean; error?: string; jobId?: string; missing?: object[] };
   onQuery?: (uplinkId: string, id: string, q: string) => { rows: object[]; truncated: boolean } | undefined;
   /** Storage card v2: storage ops and craft previews */
   onStorage?: (uplinkId: string, op: string, p: Record<string, unknown>, user: string) => { ok: boolean; error?: string; data?: object } | undefined;
-  onPreview?: (uplinkId: string, name: string, count: number) => { ok: boolean; error?: string; plan?: object } | undefined;
+  onPreview?: (uplinkId: string, name: string, count: number, max?: boolean) => { ok: boolean; error?: string; plan?: object } | undefined;
   tick?: () => void;
   /** script import: one file system per uplink that sits on a computer */
   computers?: Map<string, ComputerFs>;
@@ -248,6 +250,8 @@ export interface MockOptions {
   /** webAllowInternet=false. All test traffic is loopback, so the mock decides by the Host header. */
   lanOnly?: boolean;
   pin?: string;
+  /** Writing a machine's program asks for the PIN (a mainframe with a PIN set). */
+  requirePin?: boolean;
   pinLockMs?: number;
   log?: (m: string) => void;
 }
@@ -281,6 +285,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   const approveDelayMs = opts.approveDelayMs ?? 3000;
   const pairTtlMs = opts.pairTtlMs ?? 120_000;
   const pin = opts.pin ?? "1234";
+  const sfmPrograms = new Map<string, { program: string; previous: string | null }>();
   const pinLockMs = opts.pinLockMs ?? 5 * 60_000;
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const later = (ms: number, fn: () => void) => {
@@ -1248,7 +1253,7 @@ export async function createMockServer(opts: MockOptions = {}) {
         const r = ae2.craft(op.name, op.count, (op as { notify?: boolean }).notify === true);
         if (r.ok) {
           later(actionDelayMs, publish);
-          later(actionDelayMs, () => alert(base, ME, `${user} started crafting ${op.count.toLocaleString("en-US")}× ${ae2.items.get(op.name)?.displayName}`, "info"));
+          later(actionDelayMs, () => alert(base, ME, `${user} ${r.missing ? "ordered" : "started crafting"} ${op.count.toLocaleString("en-US")}× ${ae2.items.get(op.name)?.displayName}`, "info"));
         }
         return r;
       }
@@ -1280,6 +1285,11 @@ export async function createMockServer(opts: MockOptions = {}) {
           return { ok: true, data: ae2.cpus() };
         case "cancel":
           return done(ae2.cancel(String(p.jobId ?? "")));
+        case "retry": {
+          const r = ae2.retry(String(p.jobId ?? ""));
+          if (r.ok) later(actionDelayMs, publish);
+          return r.ok ? { ok: true, data: { jobId: r.jobId } } : r;
+        }
         case "favorite":
           return done(ae2.favorite(String(p.name ?? ""), p.on === true));
         case "autostock":
@@ -1287,7 +1297,7 @@ export async function createMockServer(opts: MockOptions = {}) {
       }
       return { ok: false, error: "invalid" };
     };
-    base.onPreview = (uplinkId, name, count) => (uplinkId === ME ? ae2.preview(name, count) : undefined);
+    base.onPreview = (uplinkId, name, count, max) => (uplinkId === ME ? (max ? { ok: true, plan: ae2.maxCraftable(name, count) } : ae2.preview(name, count)) : undefined);
     const reactorTick = base.tick;
     base.tick = () => {
       reactorTick?.();
@@ -1910,7 +1920,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
           const type =
-            t === "action" ? "action_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "display" ? "display_result" : t === "card_settings" ? "card_settings_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
+            t === "action" ? "action_result" : t === "display" ? "display_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "card_settings" ? "card_settings_result" : t === "card_detail" ? "card_detail_result" : t === "card_write" ? "card_write_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -2174,6 +2184,37 @@ export async function createMockServer(opts: MockOptions = {}) {
           log(`${c.user} changed a Cloud Display`);
           return dres(true);
         }
+        if (msg.t === "card_detail" || msg.t === "card_write") {
+          // a Factory Manager's program: read on demand (view.positions), written with device.program and the PIN
+          const type = msg.t === "card_detail" ? "card_detail_result" : "card_write_result";
+          const reply = (body: object) => sendTo(ws, { t: type, reqId: msg.reqId, ...body });
+          const pd = denied(c, "view.positions") ?? (msg.t === "card_write" ? denied(c, "device.program") : null);
+          if (pd) return reply({ ok: false, error: pd });
+          const pu = m.uplinks.get(msg.uplinkId);
+          if (!pu) return reply({ ok: false, error: "unknown_uplink" });
+          if (pu.template !== "sfm_manager") return reply({ ok: false, error: "unsupported" });
+          const prog = (sfmPrograms.get(msg.uplinkId) ?? { program: SFM_SAMPLE, previous: null as string | null });
+          sfmPrograms.set(msg.uplinkId, prog);
+          const errorsOf = (text: string) => (text.split("\n").filter((l) => /^\s*EVERY\b/i.test(l)).length === text.split("\n").filter((l) => /^\s*END\b/i.test(l)).length && /^\s*EVERY\b/im.test(text) ? [] : ["Line 1: every EVERY needs its END"]);
+          const doc = () => ({ state: errorsOf(prog.program).length ? "Program has errors" : "Running", disk: true, undo: prog.previous !== null, name: "Ore processing", program: prog.program, truncated: false, errors: errorsOf(prog.program), warnings: ["Label furnace_east is not on any block"] });
+          if (msg.t === "card_detail") return reply({ ok: true, detail: doc() });
+          if (msg.op === "check") return msg.text?.trim() ? reply({ ok: true, detail: { errors: errorsOf(msg.text) } }) : reply({ ok: false, error: "empty" });
+          if (opts.requirePin && !msg.pin) return reply({ ok: false, error: "pin_required" });
+          if (opts.requirePin && msg.pin !== pin) return reply({ ok: false, error: "wrong_pin", attemptsLeft: 4 });
+          if (msg.op === "undo") {
+            if (prog.previous === null) return reply({ ok: false, error: "nothing_to_undo" });
+            prog.program = prog.previous;
+            prog.previous = null;
+            return reply({ ok: true, detail: doc() });
+          }
+          if (!msg.text?.trim()) return reply({ ok: false, error: "empty" });
+          const errs = errorsOf(msg.text);
+          if (errs.length && !msg.force && !errorsOf(prog.program).length) return reply({ ok: false, error: "compile_failed", detail: { errors: errs } });
+          prog.previous = prog.program;
+          prog.program = msg.text;
+          log(`${c.user} wrote a new program to ${pu.title}`);
+          return reply({ ok: true, detail: doc() });
+        }
         if (msg.t === "rs_device") {
           // the mock world has no Cloud Redstone devices: rights are checked, the device is unknown
           const rd = denied(c, "network.link");
@@ -2232,11 +2273,11 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (!su) return reply({ ok: false, error: "unavailable" });
           if (su.loaded === false || !su.online) return reply({ ok: false, error: "unavailable" });
           const sop = (msg as { op?: string }).op ?? "";
-          const need = t === "craft_preview" || sop === "cancel" ? "storage.craft" : sop === "autostock" ? "storage.autostock" : sop === "favorite" ? "act.buttons" : "storage.search";
+          const need = t === "craft_preview" || sop === "cancel" || sop === "retry" ? "storage.craft" : sop === "autostock" ? "storage.autostock" : sop === "favorite" ? "act.buttons" : "storage.search";
           const sd = denied(c, need);
           if (sd) return reply({ ok: false, error: sd });
           if (t === "craft_preview") {
-            const r = m.onPreview?.(msg.uplinkId, msg.name, msg.count);
+            const r = m.onPreview?.(msg.uplinkId, msg.name, msg.count, msg.max === true);
             return reply(r ?? { ok: false, error: "unavailable" });
           }
           const { t: _t, reqId: _r, uplinkId: _u, id: _i, op, ...params } = msg as Record<string, unknown>;
@@ -2305,7 +2346,7 @@ export async function createMockServer(opts: MockOptions = {}) {
           if (!op.success || !allowed.includes(op.data.op)) return result(msg.reqId, false, "invalid_value");
           const r = m.onOp?.(msg.uplinkId, msg.id, op.data, c.user) ?? { ok: false, error: "unavailable" };
           log(`${c.user} ${op.data.op} ${u.title}/${w.id} ${JSON.stringify(op.data)} -> ${r.ok ? "ok" : r.error}`);
-          return result(msg.reqId, r.ok, r.error, r.jobId ? { jobId: r.jobId } : {});
+          return result(msg.reqId, r.ok, r.error, { ...(r.jobId ? { jobId: r.jobId } : {}), ...(r.missing ? { waiting: "not_enough_items", missing: r.missing } : {}) });
         }
         if (w.type === "jobs") return result(msg.reqId, false, "not_interactive");
         const value = coerce(w, msg.value as Scalar | undefined);

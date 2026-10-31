@@ -36,6 +36,18 @@ public final class BridgeCore {
     public static final int MAX_JOBS = 16;
     /** Job rows shown on the dashboard. */
     public static final int JOB_ROWS = 8;
+    /** A craft that cannot run yet for lack of items: an order, it waits for them (never fails, never stuck). */
+    public static final String NOT_ENOUGH = "not_enough_items";
+    /** Orders kept waiting per bridge; one more fails. Saved with the bridge. */
+    public static final int MAX_ORDERS = 8;
+    /** How often a waiting order looks at its missing items (ticks). */
+    public static final int ORDER_RETRY = 600;
+    /** A waiting order is planned again at least this often, even if its missing items did not change (ticks). */
+    public static final int ORDER_FULL_RETRY = 6000;
+    /** Rows of what is missing in a job row. */
+    public static final int MISSING_ROWS = 8;
+    /** A "how many are possible" search gives up after this long (ticks). */
+    public static final int MAX_SEARCH_TICKS = 400;
     private static final int SLOW_INTERVAL = 20;
 
     private final StorageAdapter adapter;
@@ -56,8 +68,25 @@ public final class BridgeCore {
     private volatile boolean claimPaused;
     /** Items of jobs that finished {@code done} since the last {@link #takeCrafted()} (v0.10 production statistics). */
     private final Map<String, Long> crafted = new HashMap<>();
+    /** Network jobs (terminals) that are being watched for stalls: id, item and amount → the watch. */
+    private final Map<String, StuckWatch> networkWatches = new HashMap<>();
+    private int stuckSeq;
+    private final ArrayDeque<StuckEvent> stuckEvents = new ArrayDeque<>();
 
     public record Alert(int seq, String text, String level) {
+    }
+
+    /** A job that was reported as stuck: what the rule trigger "craft stuck" sees. */
+    public record StuckEvent(int seq, String displayName, long count) {
+    }
+
+    /**
+     * How many of a craft the current items allow.
+     *
+     * @param max   an amount known to work, null when there is no reliable number
+     * @param exact {@code max} is the maximum, not only an amount that works
+     */
+    public record MaxResult(@Nullable Long max, boolean exact) {
     }
 
     /** A craft request: immediate error, or a job id plus the result once the job is planned. */
@@ -81,6 +110,19 @@ public final class BridgeCore {
         @Nullable String error;
         @Nullable Object handle;
         @Nullable CompletableFuture<ActionResult> reply;
+        final StuckWatch watch;
+        /** What the mod last said the job waits for. */
+        @Nullable String reason;
+        /** Kept until it can start: it could not be planned for lack of items (never for auto-stock, see {@link Watchlist}). */
+        boolean order;
+        /** A plan is being calculated. */
+        boolean planning;
+        long lastPlan;
+        long nextPlan;
+        /** Stored amount of the missing items at the last plan: nothing changed, nothing to plan. */
+        long missingHave;
+        boolean noticed;
+        List<StorageAdapter.PlanEntry> missing = List.of();
 
         Job(String id, String name, String displayName, long count, String user, long created) {
             this.id = id;
@@ -89,10 +131,15 @@ public final class BridgeCore {
             this.count = count;
             this.user = user;
             this.created = created;
+            this.watch = new StuckWatch(created);
         }
 
         boolean finished() {
             return status.equals("done") || status.equals("failed") || status.equals("cancelled");
+        }
+
+        boolean stuck() {
+            return !finished() && watch.stuck();
         }
     }
 
@@ -141,17 +188,27 @@ public final class BridgeCore {
     }
 
     private void slowTick() {
+        long stuckLimit = claimPaused ? 0 : CloudConfig.get(CloudConfig.CRAFT_STUCK_SECONDS) * 20L;
         for (var job : jobs) {
-            if (job.handle == null || job.finished()) continue;
-            var state = adapter.jobState(job.handle);
-            job.status = state.status();
-            job.progress = Math.max(0, Math.min(1, state.progress()));
-            if (job.status.equals("done") && crafted.size() < 1024) crafted.merge(job.name, job.count, Long::sum);
-            if (job.notify && job.finished()) {
-                if (job.status.equals("done")) addAlert("Crafted " + job.count + "× " + job.displayName, "info");
-                else addAlert("Crafting " + job.status + ": " + job.count + "× " + job.displayName, "warn");
+            if (job.finished()) continue;
+            if (job.handle != null) {
+                var state = adapter.jobState(job.handle);
+                job.status = state.status();
+                job.progress = Math.max(0, Math.min(1, state.progress()));
+                job.reason = state.reason();
+                if (job.reason != null) job.missing = List.of();
+                if (job.status.equals("done") && crafted.size() < 1024) crafted.merge(job.name, job.count, Long::sum);
+                if (job.notify && job.finished()) {
+                    if (job.status.equals("done")) addAlert("Crafted " + job.count + "× " + job.displayName, "info");
+                    else addAlert("Crafting " + job.status + ": " + job.count + "× " + job.displayName, "warn");
+                }
+                if (job.finished()) continue;
             }
+            if (waitingForItems(job)) job.watch.started(tick); // an order may wait forever: that is not a hanging job
+            else if (job.watch.update(tick, job.progress, stuckLimit)) reportStuck(job.displayName, job.count, stuckReason(job));
         }
+        watchNetworkJobs(stuckLimit);
+        if (isConnected() && !claimPaused) retryOrders();
         if (!watchlist.isEmpty() && isConnected() && !claimPaused) {
             // Auto-stock (level maintainer): server side, no computer needed.
             var log = watchlist.autoStock(System.currentTimeMillis() + clockOffsetForTest, CloudConfig.get(CloudConfig.AUTO_STOCK_BATCH), new Watchlist.Crafter() {
@@ -180,18 +237,124 @@ public final class BridgeCore {
 
                 @Override
                 public void discard(String jobId) {
-                    jobs.removeIf(job -> job.id.equals(jobId) && job.status.equals(Watchlist.WAITING));
+                    jobs.removeIf(job -> job.id.equals(jobId) && job.status.equals(Watchlist.WAITING) && !job.order);
                 }
             });
             for (String line : log) CCCloud.LOGGER.info("[cccloud] Auto-stock on the {} bridge: {}", kind, line);
             if (!log.isEmpty()) setChanged.run();
         }
         // Waiting rows of entries that were removed or switched off.
-        if (jobs.stream().anyMatch(job -> job.status.equals(Watchlist.WAITING))) {
+        if (jobs.stream().anyMatch(job -> job.status.equals(Watchlist.WAITING) && !job.order)) {
             var followed = watchlist.jobIds();
-            jobs.removeIf(job -> job.status.equals(Watchlist.WAITING) && !followed.contains(job.id));
+            jobs.removeIf(job -> job.status.equals(Watchlist.WAITING) && !job.order && !followed.contains(job.id));
         }
         if (!watchlist.isEmpty() && isConnected() && !claimPaused) checkWatchlist();
+    }
+
+    /** The craft cannot go on for lack of items: an order waiting for them, or a task the mod holds back for them. */
+    private static boolean waitingForItems(Job job) {
+        return NOT_ENOUGH.equals(job.reason) || job.order && job.status.equals(Watchlist.WAITING) && NOT_ENOUGH.equals(job.error);
+    }
+
+    /**
+     * AE2 and RS2 both refuse a plan with missing items, so a waiting order is planned again here, one per slow pass and
+     * only when one of its missing items changed (or after {@link #ORDER_FULL_RETRY}: what is missing can be something
+     * that only shows in a new plan), so that waiting orders cost nothing while nothing happens.
+     */
+    private void retryOrders() {
+        if (planningCount() >= MAX_PENDING_CRAFTS) return;
+        for (var it = jobs.descendingIterator(); it.hasNext(); ) {
+            var job = it.next();
+            if (!job.order || !job.status.equals(Watchlist.WAITING) || job.planning || tick < job.nextPlan) continue;
+            job.nextPlan = tick + ORDER_RETRY;
+            if (!job.missing.isEmpty() && missingHave(job) == job.missingHave && tick - job.lastPlan < ORDER_FULL_RETRY) continue;
+            var item = ItemNames.byName(job.name);
+            if (item == null) continue;
+            plan(job, item);
+            return;
+        }
+    }
+
+    private long missingHave(Job job) {
+        long sum = 0;
+        for (var entry : job.missing) sum += adapter.itemCount(entry.item());
+        return sum;
+    }
+
+    private long planningCount() {
+        return jobs.stream().filter(j -> j.planning).count();
+    }
+
+    private static JsonArray missingRows(List<StorageAdapter.PlanEntry> missing) {
+        var array = new JsonArray();
+        for (var entry : missing) {
+            if (array.size() >= MISSING_ROWS) break;
+            var row = new JsonObject();
+            row.addProperty("name", ItemNames.id(entry.item()));
+            row.addProperty("displayName", ItemNames.displayName(entry.item()));
+            row.add("have", Json.number(entry.stored()));
+            row.add("need", Json.number(entry.stored() + entry.missing()));
+            array.add(row);
+        }
+        return array;
+    }
+
+    private static String missingText(List<StorageAdapter.PlanEntry> missing) {
+        var text = new StringBuilder();
+        for (var entry : missing.subList(0, Math.min(3, missing.size()))) {
+            text.append(text.isEmpty() ? "" : ", ").append(entry.missing()).append("× ").append(ItemNames.displayName(entry.item()));
+        }
+        return missing.size() > 3 ? text + ", …" : text.toString();
+    }
+
+    /** Why a job is stuck: offline, what the mod says, what kept it from starting, else {@code no_progress}. */
+    private String stuckReason(Job job) {
+        if (!isConnected()) return "offline";
+        if (job.reason != null) return job.reason;
+        if (job.handle != null) return "no_progress";
+        return job.error != null ? job.error : "planning";
+    }
+
+    /** One alert and one rule event per job; the job rows show the state for as long as it lasts. */
+    private void reportStuck(String displayName, long count, String reason) {
+        addAlert("Crafting stuck: " + count + "× " + displayName + " (" + StuckWatch.text(reason) + ")", "warn");
+        stuckEvents.addLast(new StuckEvent(++stuckSeq, displayName, count));
+        while (stuckEvents.size() > 16) stuckEvents.removeFirst();
+    }
+
+    /** Crafts started elsewhere on the network (terminals) get stuck too; they only show, a retry is not ours to make. */
+    private void watchNetworkJobs(long stuckLimit) {
+        if (!isConnected()) return;
+        var seen = new java.util.HashSet<String>();
+        for (var job : adapter.networkJobs(ownHandles())) {
+            String key = networkKey(job);
+            seen.add(key);
+            var watch = networkWatches.computeIfAbsent(key, k -> new StuckWatch(tick));
+            double progress = Math.max(0, Math.min(1, job.progress()));
+            if (watch.update(tick, progress, stuckLimit)) reportStuck(ItemNames.displayName(job.item()), job.count(), job.reason() != null ? job.reason() : "no_progress");
+        }
+        networkWatches.keySet().retainAll(seen);
+    }
+
+    private static String networkKey(StorageAdapter.NetworkJob job) {
+        return job.id() + "|" + ItemNames.id(job.item()) + "|" + job.count();
+    }
+
+    private List<Object> ownHandles() {
+        var handles = new ArrayList<Object>();
+        for (var job : jobs) if (job.handle != null) handles.add(job.handle);
+        return handles;
+    }
+
+    /** Stuck reports newer than {@code seq}, oldest first (rule trigger "craft stuck"). */
+    public List<StuckEvent> stuckSince(int seq) {
+        var list = new ArrayList<StuckEvent>();
+        for (var event : stuckEvents) if (event.seq() > seq) list.add(event);
+        return list;
+    }
+
+    public int stuckSeq() {
+        return stuckSeq;
     }
 
     /** Claim guard (docs/SECURITY.md "Claims"): pauses auto-stock and the watchlist while the bridge is blocked. */
@@ -242,7 +405,7 @@ public final class BridgeCore {
         for (var e : jobRows(limit)) {
             var row = e.getAsJsonObject();
             String status = row.get("status").getAsString();
-            if (!status.equals("running") && !status.equals("queued")) continue;
+            if (!status.equals("running") && !status.equals("queued") && !status.equals("stuck")) continue;
             var task = new JsonObject();
             task.add("name", row.get("name"));
             task.add("displayName", row.get("displayName"));
@@ -348,15 +511,18 @@ public final class BridgeCore {
      * @param source dashboard, lua, autostock or rule (shown in the job rows)
      */
     public CraftTicket craft(String name, long count, String user, boolean notify, String source) {
-        String error = null;
-        var item = ItemNames.byName(name);
-        if (!isConnected()) error = "offline";
-        else if (item == null) error = "unknown_item";
-        else if (count < 1 || count > maxCraftAmount()) error = "too_many";
-        else if (!adapter.isCraftable(item)) error = "not_craftable";
-        else if (jobs.stream().filter(j -> j.status.equals("queued")).count() >= MAX_PENDING_CRAFTS) error = "busy";
+        String error = craftError(name, count, null);
         if (error != null) return new CraftTicket(error, null, CompletableFuture.completedFuture(ActionResult.fail(error)));
 
+        var item = ItemNames.byName(name);
+        // A script or rule asking again for what it already ordered follows the same order.
+        if (source.equals("lua") || source.equals("rule")) {
+            for (var job : jobs) {
+                if (job.order && job.status.equals(Watchlist.WAITING) && job.name.equals(ItemNames.id(item)) && job.source.equals(source)) {
+                    return new CraftTicket(null, job.id, CompletableFuture.completedFuture(new ActionResult(null, job.id, missingRows(job.missing))));
+                }
+            }
+        }
         var job = new Job(UUID.randomUUID().toString().substring(0, 8), ItemNames.id(item), ItemNames.displayName(item), count, user, tick);
         job.notify = notify;
         job.source = source;
@@ -369,6 +535,34 @@ public final class BridgeCore {
         return new CraftTicket(null, job.id, reply);
     }
 
+    /** Why a craft cannot be requested right now, or null; {@code replaced} is a job about to go away (it does not count as planning). */
+    private @Nullable String craftError(String name, long count, @Nullable Job replaced) {
+        var item = ItemNames.byName(name);
+        if (!isConnected()) return "offline";
+        if (item == null) return "unknown_item";
+        if (count < 1 || count > maxCraftAmount()) return "too_many";
+        if (!adapter.isCraftable(item)) return "not_craftable";
+        if (jobs.stream().filter(j -> j != replaced && j.planning).count() >= MAX_PENDING_CRAFTS) return "busy";
+        return null;
+    }
+
+    /**
+     * Retry of a stuck craft: cancels the job and requests the same craft again, with the same "notify me". Only jobs
+     * started from the dashboard: a Lua program or a rule follows its own job and may ask again by itself, and auto-stock
+     * plans its next request when a job is cancelled. Nothing is cancelled if the new request would be refused.
+     */
+    public CraftTicket retryCraft(String jobId, String user) {
+        for (var job : jobs) {
+            if (!job.id.equals(jobId)) continue;
+            String error = !job.stuck() || waitingForItems(job) ? "not_stuck" : !job.source.equals("dashboard") ? "not_retryable" : craftError(job.name, job.count, job);
+            if (error == null && !cancelCraft(jobId)) error = "unknown_job";
+            if (error != null) return new CraftTicket(error, null, CompletableFuture.completedFuture(ActionResult.fail(error)));
+            CCCloud.LOGGER.info("[cccloud] {} retries the stuck job {} on the {} bridge", user, jobId, kind);
+            return craft(job.name, job.count, user, job.notify, "dashboard");
+        }
+        return new CraftTicket("unknown_job", null, CompletableFuture.completedFuture(ActionResult.fail("unknown_job")));
+    }
+
     /**
      * Auto-stock request. Without a free crafting CPU the job waits instead of failing (one row per item, no failure
      * counted); the next request of that item plans the same job again. Same for every bridge: AE2 reports a missing
@@ -378,7 +572,7 @@ public final class BridgeCore {
     CraftTicket autoStockCraft(String name, long count) {
         Job waiting = null;
         for (var job : jobs) {
-            if (job.status.equals(Watchlist.WAITING) && job.name.equals(name)) {
+            if (job.status.equals(Watchlist.WAITING) && !job.order && job.name.equals(name)) {
                 waiting = job;
                 break;
             }
@@ -393,7 +587,7 @@ public final class BridgeCore {
             jobs.remove(waiting);
             return new CraftTicket(error, null, CompletableFuture.completedFuture(ActionResult.fail(error)));
         }
-        if (jobs.stream().filter(j -> j.status.equals("queued")).count() >= MAX_PENDING_CRAFTS) {
+        if (planningCount() >= MAX_PENDING_CRAFTS) {
             return new CraftTicket("busy", null, CompletableFuture.completedFuture(ActionResult.fail("busy")));
         }
         waiting.count = count;
@@ -409,23 +603,63 @@ public final class BridgeCore {
             waitForCpu(job);
             return;
         }
-        job.status = "queued";
-        job.error = null;
+        // a waiting order keeps its row while it looks again
+        if (!job.order) {
+            job.status = "queued";
+            job.error = null;
+        }
+        job.planning = true;
+        job.lastPlan = tick;
         adapter.startCraft(item, job.count, job.user, outcome -> {
+            job.planning = false;
+            if (job.finished()) {
+                // Cancelled while it was still planning: it must not start after all.
+                if (outcome.handle() != null) adapter.cancel(outcome.handle());
+                return;
+            }
             if (autoStock && "no_cpu".equals(outcome.error())) {
                 waitForCpu(job);
+            } else if (outcome.error() != null && (job.order || !autoStock && NOT_ENOUGH.equals(outcome.error()) && orderCount() < MAX_ORDERS)) {
+                waitForItems(job, outcome);
             } else if (outcome.error() != null) {
                 job.status = "failed";
                 job.error = outcome.error();
+                job.missing = outcome.missing();
                 complete(job, ActionResult.fail(outcome.error()));
                 if (job.notify) addAlert("Crafting failed: " + job.count + "× " + job.displayName + " (" + outcome.error() + ")", "warn");
             } else {
                 job.handle = outcome.handle();
                 job.status = "running";
+                job.error = null;
+                job.missing = List.of();
+                job.order = false;
+                job.watch.started(tick);
                 complete(job, new ActionResult(null, job.id));
             }
             setChanged.run();
         });
+    }
+
+    private long orderCount() {
+        return jobs.stream().filter(j -> j.order).count();
+    }
+
+    /**
+     * Nothing could be planned for lack of items: the order is taken anyway and waits (dashboard, Lua, rules alike), with
+     * one notice. Once it waits, any other plan error (no CPU right now, a pattern gone for a moment) only keeps it waiting.
+     */
+    private void waitForItems(Job job, StorageAdapter.CraftOutcome outcome) {
+        job.order = true;
+        job.status = Watchlist.WAITING;
+        job.error = outcome.error();
+        if (!outcome.missing().isEmpty() || NOT_ENOUGH.equals(outcome.error())) job.missing = outcome.missing();
+        job.missingHave = missingHave(job);
+        job.nextPlan = tick + ORDER_RETRY;
+        complete(job, new ActionResult(null, job.id, missingRows(job.missing)));
+        if (!job.noticed && NOT_ENOUGH.equals(job.error)) {
+            job.noticed = true;
+            addAlert("Waiting for items: " + job.count + "× " + job.displayName + (job.missing.isEmpty() ? "" : " (missing " + missingText(job.missing) + ")"), "info");
+        }
     }
 
     private void waitForCpu(Job job) {
@@ -452,6 +686,12 @@ public final class BridgeCore {
                     break;
                 }
             }
+            if (victim == null) {
+                for (var it = jobs.descendingIterator(); it.hasNext() && victim == null; ) {
+                    var job = it.next();
+                    if (!job.order) victim = job;
+                }
+            }
             if (victim == null) victim = jobs.peekLast();
             jobs.remove(victim);
             if (victim.reply != null) victim.reply.complete(ActionResult.fail("busy"));
@@ -464,6 +704,7 @@ public final class BridgeCore {
             if (job.handle != null && !adapter.cancel(job.handle)) return false;
             job.status = "cancelled";
             complete(job, ActionResult.fail("cancelled"));
+            if (job.order) setChanged.run();
             return true;
         }
         return false;
@@ -471,37 +712,49 @@ public final class BridgeCore {
 
     /**
      * Rows for the jobs widget and getCraftingJobs(): newest first, own jobs plus other jobs running on the network. An
-     * auto-stock job without a free CPU is {@code waiting} (error {@code no_cpu}).
+     * auto-stock job without a free CPU is {@code waiting} (error {@code no_cpu}). A job without progress for
+     * {@code craftStuckSeconds} is {@code stuck}, whatever it was doing; {@code error} then holds the reason, and
+     * {@code retryable} says whether the dashboard offers Retry ({@link #retryCraft}). An order without its items is
+     * never stuck: {@code waiting} with {@code not_enough_items} and {@code missing} (also on a failed row).
      */
     public JsonArray jobRows(int limit) {
         var array = new JsonArray();
-        var handles = new ArrayList<Object>();
         for (var job : jobs) {
-            if (job.handle != null) handles.add(job.handle);
-            if (array.size() >= limit) continue;
+            if (array.size() >= limit) break;
             var row = new JsonObject();
             row.addProperty("jobId", job.id);
             row.addProperty("name", job.name);
             row.addProperty("displayName", job.displayName);
             row.add("count", Json.number(job.count));
-            row.addProperty("status", job.status);
+            boolean items = waitingForItems(job);
+            boolean stuck = !items && job.stuck();
+            row.addProperty("status", items ? Watchlist.WAITING : stuck ? "stuck" : job.status);
             row.add("progress", Json.number(Math.round((job.status.equals("done") ? 1 : job.progress) * 100) / 100.0));
-            if (job.error != null) row.addProperty("error", job.error);
+            String error = items ? NOT_ENOUGH : stuck ? stuckReason(job) : job.error;
+            if (error != null) row.addProperty("error", error);
+            if (stuck) row.addProperty("retryable", job.source.equals("dashboard"));
+            if (!job.missing.isEmpty()) row.add("missing", missingRows(job.missing));
             row.addProperty("user", job.user);
             row.addProperty("notify", job.notify);
             row.addProperty("source", job.source);
             array.add(row);
         }
         if (isConnected() && array.size() < limit) {
-            for (var job : adapter.networkJobs(handles)) {
+            for (var job : adapter.networkJobs(ownHandles())) {
                 if (array.size() >= limit) break;
                 var row = new JsonObject();
                 row.addProperty("jobId", job.id());
                 row.addProperty("name", ItemNames.id(job.item()));
                 row.addProperty("displayName", ItemNames.displayName(job.item()));
                 row.add("count", Json.number(job.count()));
-                row.addProperty("status", "running");
+                var watch = networkWatches.get(networkKey(job));
+                boolean stuck = watch != null && watch.stuck();
+                row.addProperty("status", stuck ? "stuck" : "running");
                 row.add("progress", Json.number(Math.round(Math.max(0, Math.min(1, job.progress())) * 100) / 100.0));
+                if (stuck) {
+                    row.addProperty("error", job.reason() != null ? job.reason() : "no_progress");
+                    row.addProperty("retryable", false);
+                }
                 array.add(row);
             }
         }
@@ -535,6 +788,19 @@ public final class BridgeCore {
         var fav = new JsonArray();
         favorites.forEach(fav::add);
         json.add("fav", fav);
+        var orders = new JsonArray();
+        for (var job : jobs) {
+            if (!job.order || !job.status.equals(Watchlist.WAITING)) continue;
+            var order = new JsonObject();
+            order.addProperty("id", job.id);
+            order.addProperty("name", job.name);
+            order.add("count", Json.number(job.count));
+            order.addProperty("user", job.user);
+            order.addProperty("notify", job.notify);
+            order.addProperty("source", job.source);
+            orders.add(order);
+        }
+        if (!orders.isEmpty()) json.add("orders", orders);
         return Json.GSON.toJson(json);
     }
 
@@ -546,7 +812,26 @@ public final class BridgeCore {
             if (parsed.isJsonObject() && parsed.getAsJsonObject().get("fav") instanceof JsonArray fav) {
                 for (var e : fav) if (favorites.size() < MAX_FAVORITES && Op.isItemName(e.getAsString())) favorites.add(e.getAsString());
             }
+            if (parsed.isJsonObject() && parsed.getAsJsonObject().get("orders") instanceof JsonArray orders) loadOrders(orders);
         } catch (RuntimeException ignored) {
+        }
+    }
+
+    /** Orders saved with the bridge come back waiting: they are planned again when the bridge ticks. */
+    private void loadOrders(JsonArray orders) {
+        for (var e : orders) {
+            if (orderCount() >= MAX_ORDERS) return;
+            var order = e.getAsJsonObject();
+            var item = ItemNames.byName(order.get("name").getAsString());
+            if (item == null) continue;
+            var job = new Job(order.get("id").getAsString(), ItemNames.id(item), ItemNames.displayName(item), order.get("count").getAsLong(), order.get("user").getAsString(), tick);
+            job.order = true;
+            job.noticed = true;
+            job.status = Watchlist.WAITING;
+            job.error = NOT_ENOUGH;
+            job.notify = order.get("notify").getAsBoolean();
+            job.source = order.get("source").getAsString();
+            jobs.addLast(job);
         }
     }
 
@@ -601,6 +886,7 @@ public final class BridgeCore {
 
     /** Pending previews per bridge (each runs a crafting calculation). */
     private int previews;
+    private boolean maxSearching;
 
     /** Plans a craft without starting it (storage v2 craft_preview). Server thread; done runs on the server thread. */
     public void preview(String name, long count, java.util.function.Consumer<StorageAdapter.Plan> done) {
@@ -617,6 +903,49 @@ public final class BridgeCore {
                 done.accept(plan);
             });
         }
+    }
+
+    /**
+     * How many of a craft are possible with the items there are now, by simulating amounts below {@code count} (which
+     * was just planned with something missing); see {@link MaxSearch}. Each step is the same asynchronous calculation as
+     * a preview and counts against the same limit, one search at a time per bridge. Whatever goes wrong gives no number
+     * rather than a guess. Server thread; done runs on the server thread.
+     */
+    public void maxCraftable(String name, long count, java.util.function.Consumer<MaxResult> done) {
+        var item = ItemNames.byName(name);
+        if (item == null || !isConnected() || count < 1 || count > maxCraftAmount() || maxSearching) {
+            done.accept(new MaxResult(null, false));
+            return;
+        }
+        maxSearching = true;
+        maxStep(item, new MaxSearch(count), tick, done);
+    }
+
+    private void maxStep(Item item, MaxSearch search, long started, java.util.function.Consumer<MaxResult> done) {
+        long amount = search.next();
+        boolean late = tick - started > MAX_SEARCH_TICKS;
+        if (amount < 0 || late || previews >= MAX_PENDING_CRAFTS || !isConnected()) {
+            maxSearching = false;
+            boolean finished = amount < 0;
+            done.accept(search.best() > 0 || finished && search.exact() ? new MaxResult(search.best(), finished && search.exact()) : new MaxResult(null, false));
+            return;
+        }
+        previews++;
+        adapter.preview(item, amount, plan -> {
+            previews--;
+            if (plan.error() != null) {
+                maxSearching = false;
+                done.accept(new MaxResult(null, false));
+                return;
+            }
+            search.result(amount, !plan.missing());
+            maxStep(item, search, started, done);
+        });
+    }
+
+    /** GameTest hook: lets the stuck time pass without waiting. */
+    public void advanceTicksForTest(long ticks) {
+        tick += ticks;
     }
 
     /** Cancels a bridge job or a network job / CPU from {@code cpus}. */

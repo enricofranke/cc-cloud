@@ -24,7 +24,9 @@ export type Trigger =
   | { type: "time"; time: number }
   | { type: "schedule"; days: Day[]; at: string }
   /** an Advanced Cloud Sensor reports something entering its zone; `player` only with kind player/any */
-  | { type: "sensor"; uplinkId: string; kind?: TriggerKind; player?: string };
+  | { type: "sensor"; uplinkId: string; kind?: TriggerKind; player?: string }
+  /** a craft on this storage stops moving */
+  | { type: "craft_stuck"; uplinkId: string };
 export type Condition = Check | { type: "online"; uplinkId: string };
 export type Action =
   | { type: "redstone"; uplinkId: string; side: Side; value: number }
@@ -164,6 +166,8 @@ export function validateRule(r: Rule, uplinks: Uplink[], maxCraft = 4096, ctx: R
       case "schedule":
         if (!validDays(c.days)) return `${where}: pick at least one day.`;
         return validAt(c.at) ? null : `${where}: the time looks like 07:30 (24 h).`;
+      case "craft_stuck":
+        return up(c.uplinkId) ? null : `${where}: pick a storage card.`;
       case "sensor":
         if (!up(c.uplinkId)) return `${where}: pick an Advanced Cloud Sensor.`;
         if (c.kind && !TRIGGER_KINDS.includes(c.kind)) return `${where}: pick what it should detect.`;
@@ -235,6 +239,8 @@ export function describeCheck(c: Trigger | Condition, uplinks: Uplink[]): string
       return `${card(c.uplinkId)} goes offline`;
     case "online":
       return `${card(c.uplinkId)} is online`;
+    case "craft_stuck":
+      return `a craft on ${card(c.uplinkId)} gets stuck`;
     case "sensor":
       return `${card(c.uplinkId)} detects ${c.player ? `the player ${c.player}` : TRIGGER_KIND_TEXT[c.kind ?? "any"]}`;
   }

@@ -117,9 +117,10 @@ public final class BridgePeripheral implements IPeripheral {
     }
 
     /**
-     * {@code craft(name, count)} → {ok=true, jobId} or {ok=false, error}. Planning happens in the background; a job that
-     * cannot be planned (missing_resources, no_cpu) shows up as failed in getCraftingJobs(). Auto-stock jobs without a
-     * free CPU show up as waiting instead.
+     * {@code craft(name, count)} → {ok=true, jobId} or {ok=false, error}. Planning happens in the background: a job
+     * without enough items is no failure but a waiting order (status waiting, error not_enough_items, missing =
+     * {name, displayName, have, need} in getCraftingJobs()) that starts by itself; no_cpu shows up as failed. Auto-stock
+     * jobs without a free CPU show up as waiting instead.
      */
     @LuaFunction(mainThread = true)
     public final Map<String, Object> craft(String name, long count) {
@@ -141,7 +142,7 @@ public final class BridgePeripheral implements IPeripheral {
         return error == null ? new Object[]{true} : new Object[]{null, error};
     }
 
-    /** Recent jobs, newest first: {jobId, name, displayName, count, status, progress, error?}. */
+    /** Recent jobs, newest first: {jobId, name, displayName, count, status, progress, error?, missing?}. */
     @LuaFunction(mainThread = true)
     public final Object getCraftingJobs() {
         return Optional.ofNullable(Json.toLua(core().jobRows(BridgeCore.MAX_JOBS + 16))).orElse(Map.of());

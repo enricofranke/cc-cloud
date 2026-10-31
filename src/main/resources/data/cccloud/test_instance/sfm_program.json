@@ -1,0 +1,13 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "sfm"
+    }
+  ],
+  "type": "minecraft:function",
+  "environment": "cccloud:integrations",
+  "function": "cccloud:sfm_program",
+  "max_ticks": 2400,
+  "structure": "cccloud:test_floor"
+}

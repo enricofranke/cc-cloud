@@ -85,6 +85,24 @@ public abstract class DeviceCard {
         return "unsupported";
     }
 
+    /**
+     * Restricted details of the machine, read on demand ({@code card_detail}, needs {@code view.positions}) and never
+     * part of a card's values: e.g. a Factory Manager's program, which tells the base's layout. Server thread.
+     *
+     * @return the details, or null if the card has none
+     */
+    public com.google.gson.@Nullable JsonObject detail() {
+        return null;
+    }
+
+    /**
+     * Checks or writes the machine's program ({@code card_write}, op {@code check|save|undo}). Server thread; the web
+     * layer has checked rights, PIN and claims.
+     */
+    public ai.ezfox.cccloud.web.GameBridge.StorageResult write(String op, @Nullable String text, boolean force) {
+        return ai.ezfox.cccloud.web.GameBridge.StorageResult.fail("unsupported");
+    }
+
     /** Where a card writes its values and alerts. */
     public interface CardOutput {
         void value(String widgetId, JsonElement value);

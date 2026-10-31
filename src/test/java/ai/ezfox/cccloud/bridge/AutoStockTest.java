@@ -157,7 +157,7 @@ class AutoStockTest {
             list.autoStock(now, 64, crafter);
             String job = "job" + i;
             crafter.status.put(job, "failed");
-            crafter.errors.put(job, "missing_resources");
+            crafter.errors.put(job, "not_enough_items");
             now += Watchlist.COOLDOWN_MS;
             list.autoStock(now, 64, crafter);
             if (i < 2) assertEquals("missing", list.info(IRON).state(), "failure " + (i + 1));

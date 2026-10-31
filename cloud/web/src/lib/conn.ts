@@ -4,6 +4,7 @@
 // both observe it. Handles reconnect with backoff, ping/pong, optimistic
 // values with rollback, and the offline/disabled/unauthorized states.
 import { normalizeDisplays, type DisplayChange, type DisplayRow } from "./displays.ts";
+import { parseMissing, type JobStatus, type MissingItem } from "./jobs.ts";
 import { presetHas } from "./permissions.ts";
 import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
@@ -43,11 +44,15 @@ export interface JobInfo {
   name: string;
   displayName: string;
   count: number;
-  status: "queued" | "running" | "waiting" | "done" | "failed" | "cancelled";
+  status: JobStatus;
   progress: number;
   error?: string;
   notify?: boolean;
   source?: "dashboard" | "lua" | "autostock" | "rule";
+  /** a stuck job started from the dashboard can be retried */
+  retryable?: boolean;
+  /** what an order waits for */
+  missing?: MissingItem[];
 }
 export type StockState = "idle" | "crafting" | "waiting_cpu" | "missing" | "paused";
 export interface ItemDoc extends StorageRow {
@@ -77,6 +82,8 @@ export interface ActionOutcome {
   retryAfter?: number;
   /** Set by successful craft actions. */
   jobId?: string;
+  /** A craft taken as an order: it waits for these items. */
+  missing?: MissingItem[];
   /** Optional: the widget's value after the handler ran (confirms an optimistic change). */
   value?: unknown;
 }
@@ -587,6 +594,7 @@ export class MainframeConn {
           attemptsLeft: typeof msg.attemptsLeft === "number" ? msg.attemptsLeft : undefined,
           retryAfter: typeof msg.retryAfter === "number" ? msg.retryAfter : undefined,
           jobId: msg.jobId != null ? String(msg.jobId) : undefined,
+          ...(msg.waiting ? { missing: parseMissing(msg.missing) } : {}),
           ...("value" in msg ? { value: msg.value } : {}),
         });
         this.queryFailed(String(msg.reqId ?? ""), typeof msg.error === "string" ? msg.error : "rejected");
@@ -721,13 +729,15 @@ export class MainframeConn {
         this.layout.value = msg.layout && typeof msg.layout === "object" ? normalizeLayout(msg.layout) : null;
         break;
       case "storage_result":
-      case "craft_plan": {
+      case "craft_plan":
+      case "card_detail_result":
+      case "card_write_result": {
         const r = this.storageReqs.get(String(msg.reqId ?? ""));
         if (!r) return;
         this.storageReqs.delete(String(msg.reqId));
         clearTimeout(r.timer);
-        if (msg.ok === true) r.resolve(msg.t === "craft_plan" ? msg.plan : (msg.data ?? {}));
-        else r.reject(new Error(typeof msg.error === "string" ? msg.error : "failed"));
+        if (msg.ok === true) r.resolve(msg.t === "craft_plan" ? msg.plan : msg.t === "storage_result" ? (msg.data ?? {}) : (msg.detail ?? {}));
+        else r.reject(Object.assign(new Error(typeof msg.error === "string" ? msg.error : "failed"), { attemptsLeft: msg.attemptsLeft, retryAfter: msg.retryAfter, detail: msg.detail }));
         return;
       }
       case "layout_result": {
@@ -1071,6 +1081,18 @@ export class MainframeConn {
   storage<T = any>(uplinkId: string, op: string, params: Record<string, unknown> = {}, id?: string, timeoutMs = 6000): Promise<T> {
     return this.storageCall({ t: "storage", uplinkId, ...(id ? { id } : {}), op, ...params }, timeoutMs);
   }
+  /** How many of a craft the items allow: several simulated plans on the server, so a longer wait. Null max = no reliable number. */
+  craftMax(uplinkId: string, name: string, count: number, id?: string): Promise<{ max: number | null; exact: boolean }> {
+    return this.storageCall({ t: "craft_preview", uplinkId, ...(id ? { id } : {}), name, count, max: true }, 30000);
+  }
+  /** A card's restricted details, read on demand ({"t":"card_detail"} → card_detail_result). Needs view.positions. */
+  cardDetail<T>(uplinkId: string): Promise<T> {
+    return this.storageCall({ t: "card_detail", uplinkId }, 8000);
+  }
+  /** Checks or writes a machine's program ({"t":"card_write"} → card_write_result). Needs device.program, and the PIN to save. */
+  cardWrite<T>(uplinkId: string, op: "check" | "save" | "undo", opts: { text?: string; force?: boolean; pin?: string } = {}): Promise<T> {
+    return this.storageCall({ t: "card_write", uplinkId, op, ...opts }, 8000);
+  }
   /** Craft preview: {"t":"craft_preview"} → craft_plan.plan. */
   craftPreview(uplinkId: string, name: string, count: number, id?: string): Promise<CraftPlan> {
     return this.storageCall({ t: "craft_preview", uplinkId, ...(id ? { id } : {}), name, count }, 8000);
@@ -1213,7 +1235,7 @@ function toValue(v: unknown): WidgetValue {
       .filter((r) => r && typeof r === "object" && !Array.isArray(r))
       .map((r) => {
         const out: Row = {};
-        for (const [k, x] of Object.entries(r as object)) if (x === null || ["string", "number", "boolean"].includes(typeof x)) out[k] = x as Row[string];
+        for (const [k, x] of Object.entries(r as object)) if (x === null || ["string", "number", "boolean"].includes(typeof x) || (k === "missing" && Array.isArray(x))) out[k] = x as Row[string]; // a job row's missing items (parseMissing)
         return out;
       });
   }
