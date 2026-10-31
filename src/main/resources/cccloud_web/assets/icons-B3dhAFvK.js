@@ -1,0 +1,1 @@
+var e=/^[a-z0-9_.-]+$/;function t(t){let n=t.indexOf(`:`);if(n<=0)return null;let r=t.slice(0,n),i=t.slice(n+1).split(`/`);return!e.test(r)||!i.every(t=>e.test(t)&&t!==`.`&&t!==`..`)?null:`/api/icon/${r}/${i.map(encodeURIComponent).join(`/`)}.png`}function n(e){let t=e.split(`:`)[0]||e,n=0;for(let e=0;e<t.length;e++)n=n*31+t.charCodeAt(e)>>>0;return n%360}export{n,t};

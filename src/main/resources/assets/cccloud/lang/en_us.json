@@ -717,6 +717,7 @@
   "cccloud.gui.card.empty": "Nothing on this card yet",
   "cccloud.gui.card.on": "On",
   "cccloud.gui.card.off": "Off",
+  "cccloud.gui.card.canvas": "Open the dashboard to see it",
   "cccloud.gui.card.search": "Search…",
   "cccloud.gui.card.entries": "%s entries",
   "cccloud.gui.card.custom_title": "Renamed on the dashboard (was “%s”).",

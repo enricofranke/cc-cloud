@@ -44,6 +44,9 @@ const MAPS: Record<IconName | "network" | "relay" | "ender" | "uplink" | "probe"
 
 type DimOnly = "overworld" | "cloud" | "cave" | "moon" | "planet" | "globe";
 
+/** The 8×8 mask of an icon ("#" = set), for drawing it on a canvas. */
+export const pixelIconMask = (name: string): string[] | undefined => (Object.hasOwn(MAPS, name) ? (MAPS as Record<string, string[]>)[name] : undefined);
+
 export function PixelIcon({ name, size = 16, class: cls }: { name: IconName | string | undefined; size?: number; class?: string }) {
   const map = name && (MAPS as Record<string, string[]>)[name];
   if (!map) return null;

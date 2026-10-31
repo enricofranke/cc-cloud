@@ -10,6 +10,7 @@ import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch, computed } from "@preact/signals";
+import { isCanvasValue } from "./canvas.ts";
 import { WIDGET_TYPES, type Blocked, type CardSettingsInfo, type ClaimsOverlay, type DimInfo, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
@@ -1513,7 +1514,7 @@ export function normalizeUplink(u: any): Uplink | null {
           type: w.type,
           label: typeof w.label === "string" ? w.label : undefined,
           opts: w.opts && typeof w.opts === "object" && !Array.isArray(w.opts) ? w.opts : {},
-          value: w.value === undefined ? undefined : toValue(w.value),
+          value: w.value === undefined ? undefined : valueOf(w.type, w.value),
         };
         if (w.type === "chart") {
           // history either as `history` or as an array value
@@ -1533,7 +1534,16 @@ export function normalizeUplink(u: any): Uplink | null {
       ? u.groups
           .filter((g: any) => g && typeof g.id === "string")
           .slice(0, 32)
-          .map((g: any) => ({ id: g.id, title: str(g.title), page: str(g.page), cols: typeof g.cols === "number" ? g.cols : undefined }))
+          .map((g: any) => ({
+            id: g.id,
+            title: str(g.title),
+            page: str(g.page),
+            cols: typeof g.cols === "number" ? g.cols : undefined,
+            // layout hints from Lua: resolveLayout checks their ranges
+            ...Object.fromEntries(["x", "y", "w", "h", "order"].filter((k) => typeof g[k] === "number").map((k) => [k, g[k]])),
+            color: str(g.color),
+            icon: str(g.icon),
+          }))
       : undefined,
   };
 }
@@ -1550,8 +1560,10 @@ function withValue(w: Widget, raw: unknown): Widget {
         : w.history ?? [];
     return { ...w, history, value: history.at(-1) ?? null };
   }
-  return { ...w, value: toValue(raw) };
+  return { ...w, value: valueOf(w.type, raw) };
 }
+/** A frame stays as it is here: it is checked command by command when it is drawn (lib/canvas.ts). */
+const valueOf = (type: string, raw: unknown): WidgetValue => (type === "canvas" ? (isCanvasValue(raw) ? raw : null) : toValue(raw));
 const chartCap = (w: Widget) => Math.min(300, Math.max(2, typeof w.opts?.points === "number" ? w.opts.points : 60));
 function numbers(raw: unknown[], cap: number) {
   return raw.filter((x): x is number => typeof x === "number" && Number.isFinite(x)).slice(-cap);

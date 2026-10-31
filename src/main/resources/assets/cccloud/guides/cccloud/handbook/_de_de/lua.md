@@ -112,9 +112,71 @@ cloud.indicator("running", "Running", {value=true, onColor="green", page="power"
 ```
 
 - `cloud.page(id, title, {icon=})` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
-- `cloud.group(id, title, {page=, cols=1..4})` – eine Karte; Widgets kommen mit `group=` hinein.
-- Jedes Widget akzeptiert außerdem `page`, `group`, `span` (1–4), `order` (0–10000), `color` und `icon`.
+- `cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})` – eine Karte; Widgets kommen mit `group=` hinein.
+- Jedes Widget akzeptiert außerdem `page`, `group`, `span` (1–4), `order` (0–10000), `color`, `icon` und eine Box `x`, `y`, `w`, `h`.
 - Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
+
+### Größere Layouts
+
+Seiten und Karten liegen auf einem Raster mit 12 Spalten, die Widgets in einer Karte ebenso. Mit `x`, `y`, `w` und `h` sagt ein Skript, wohin sie kommen (eine Zeile ist etwa 32 px hoch). Alle vier setzen die Karte fest; `w` allein bestimmt nur ihre Breite. Kartenfarben: gold, cyan, green, yellow, red, purple, orange, gray.
+
+```lua
+dash:page("plant", "Plant", {icon="flame"})
+dash:group("map", "Base map", {page="plant", x=0, y=0, w=8, h=14, color="purple", icon="star"})
+dash:group("log", "Readings", {page="plant", x=8, y=0, w=4, h=14})
+dash:gauge("temp", "Core", {group="log", w=6, h=6})
+dash:gauge("fuel", "Fuel", {group="log", x=6, y=0, w=6, h=6})
+```
+
+So starten die Karten eines Skripts. Was jemand im [Layout-Editor](dashboard.md) anordnet, hat Vorrang und bleibt auch, wenn das Skript neu startet.
+
+## Canvas: die eigene Karte zeichnen
+
+Ein Canvas ist eine Fläche in einer Karte, auf die dein Programm zeichnet: Fließbilder, Karten, eigene Diagramme, kleine Spiele. Das kann kein festes Widget. Probier `cloud-mimic`, `cloud-map`, `cloud-snake` und `cloud-overview` aus.
+
+```lua
+local ui = require("cloud.ui")
+local dash = ui.connect()
+local x = 80
+local map = dash:canvas("map", "Base map", {width=160, height=90, input="click", bg="panel"}, function(user, ev)
+  x = ev.x -- ev.type is "click", ev.x and ev.y are pixels of the canvas
+end)
+dash:every(0.5, function()
+  map:clear()
+  map:line(0, 45, 160, 45, "line")
+  map:circle(x, 45, 6, "cyan")
+  map:text(4, 4, "Marker at " .. x, "text")
+  map:item(140, 4, "minecraft:iron_ingot", 16)
+  map:draw() -- sends everything since clear() as one frame
+end)
+dash:run()
+```
+
+`dash:canvas(id, label, opts, handler)` kennt `width` (16–480, Standard 160), `height` (16–320, Standard 90), `bg`, `input`, `pin`, `confirm` und die Layout-Optionen. Koordinaten sind Pixel des Canvas, oben links ist 0, 0. Das Dashboard skaliert ihn auf die Karte.
+
+| `cloud.ui` | Zeichnet |
+|---|---|
+| `clear([color])` | beginnt ein neues Bild |
+| `rect(x, y, w, h, color)`, `box(x, y, w, h, color, [line])` | gefülltes Rechteck, Umriss |
+| `line(x1, y1, x2, y2, color, [line])` | Linie, bis 16 breit |
+| `circle(x, y, r, color)`, `ring(x, y, r, color, [line])` | gefüllter Kreis, Umriss |
+| `pixel(x, y, color)` | ein Pixel |
+| `text(x, y, text, color, {size=8, align="l"})` | reiner Text, Größe 6–64, align "l", "c" oder "r" |
+| `gradient(x, y, w, h, from, to, ["h"\|"v"])` | Farbverlauf |
+| `icon(x, y, name, [size], [color])` | ein mitgeliefertes Icon |
+| `item(x, y, "minecraft:iron_ingot", [size])` | das Icon eines Items, bis zu 64 pro Bild |
+| `bitmap(x, y, rows, [scale])` | Zeilen aus paint-Farben 0–f, ein Leerzeichen ist durchsichtig |
+| `draw()` | sendet das Bild, gibt seine Größe in Bytes zurück |
+
+**Farben:** `bg`, `panel`, `text`, `dim`, `line`, `accent`, `gold`, `cyan`, `green`, `yellow`, `red`, `purple`, `orange` und `gray` folgen dem hellen oder dunklen Design des Dashboards. CCs Farbnamen und `colors.red` usw. gehen auch, ebenso `"#rrggbb"` oder `"#rrggbbaa"`.
+
+**Eingabe:** Mit `input="click"` bekommt der Handler `(user, {type="click", x=, y=})`. Mit `input="drag"` kommen `down`, mehrere `drag` und ein `up`. Eingaben brauchen dasselbe Recht wie ein Knopf (`act.buttons`). `pin` und `confirm` wirken wie bei einem Knopf und brauchen `input="click"`. Teilen-Links zeigen den Canvas ohne Eingabe. Teilen-Links, die Zahlen ausblenden, zeigen gar keinen Canvas, weil er jede Zahl zeichnen kann.
+
+**Grenzen:** 4 Canvas pro Uplink, 1024 Befehle und 24 KB pro Bild, 128 Zeichen pro Text. Ruf `draw()` so oft auf, wie du möchtest: Es gehen 10 Bilder pro Sekunde je Canvas, 64 KB/s je Uplink und 256 KB/s je Mainframe hinaus. Ein Bild über der Grenze wartet, das neueste gewinnt, also kommt das zuletzt Gezeichnete immer an. Ein Bild, das eine Regel verletzt, ist ein Fehler in deinem Programm.
+
+Bilder werden nicht gespeichert: Nach einem Neustart wartet die Karte, bis dein Programm wieder zeichnet. Cloud Tablets und Cloud Displays zeigen statt des Canvas einen Hinweis.
+
+Ohne `cloud.ui`: `cloud.canvas(id, label, opts)` und `cloud.draw(id, commands)`, mit Befehlen wie `{"r", 0, 0, 10, 10, "red"}`. Die Operationen stehen in `help cloud`.
 
 ## Meldungen und Status
 
@@ -138,6 +200,8 @@ Ein Computer neben dem Mainframe kann ihn auslesen:
 | `getUplinks()` | Liste von \{id, title, online, loaded, x, y, z, dimension\} |
 | `getEnergy()`, `getEnergyCapacity()`, `getEnergyUsage()` | gespeicherte FE, Puffergröße, FE/t |
 | `getNetwork()` | \{nodes, links, routes\} – siehe [Netzwerk](network.md) |
+| `getCards()` | die Karten, die ein Programm lesen darf: Liste von \{id, title, online, kind, widgets (Anzahl)\}, höchstens 256 |
+| `getCard(id)` | eine Karte: \{id, title, online, kind, widgets=\{\{id, type, label, value, unit, min, max, warn, crit\}, …\}\} |
 
 ```lua
 local mf = peripheral.find("cloud_mainframe")
@@ -150,6 +214,22 @@ print(("Power: %d / %d FE, %d FE/t"):format(mf.getEnergy(), mf.getEnergyCapacity
 ```
 
 Der Kopplungscode ist aus Lua nie lesbar.
+
+### Andere Karten lesen
+
+Ein Programm am Peripheral des Mainframes kann die Werte von Maschinenkarten zu einem eigenen Dashboard zusammenführen. Probier `cloud-overview` aus.
+
+```lua
+local mf = peripheral.find("cloud_mainframe")
+for _, card in ipairs(mf.getCards()) do
+  print(card.id, card.title, card.online, card.widgets)
+end
+-- by title and widget id:
+local values = require("cloud.ui").readCards(mf)
+print(values["Reactor"].temp)
+```
+
+Ein Computer hat keinen Besitzer, darum liest ein Programm, was ein Betrachter sieht: **nie** eingeschränkte Karten (Server, Claims, Backups und ähnliche), Spielernamen nur in ihrer öffentlichen Form und eine blockierte Karte ohne Werte. Zum Lesen braucht es einen Computer neben dem Mainframe oder in seinem Kabelnetz. Höchstens 10 Lesevorgänge pro Sekunde; darüber geben `getCards` und `getCard` `nil, "rate_limited"` zurück.
 
 ## Bridges
 

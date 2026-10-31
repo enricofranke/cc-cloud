@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Box, ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
 import { DISPLAYS_FOR, captionOf, withLayoutColor } from "../lib/layout.ts";
+import { CanvasWidget } from "./Canvas.tsx";
 import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
@@ -108,6 +109,8 @@ export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget;
       return <RedstoneSides {...p} />;
     case "sensor_log":
       return <SensorLog w={w} />;
+    case "canvas":
+      return <CanvasWidget {...p} />;
   }
 }
 

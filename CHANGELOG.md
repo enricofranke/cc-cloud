@@ -4,6 +4,16 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Lua: more than drag and drop
+- **Canvas widget:** a program draws its own card with lines, shapes, text, gradients, icons, item icons and bitmaps.
+  The dashboard scales it and follows the light or dark theme. Clicks and drags come back as events, with the same
+  rights, PIN and confirm as a button. Share links show it without input.
+- **Cards from Lua:** `cloud.group` and every widget take a place on the 12-column grid. Groups also take a colour, an
+  icon and an order. The layout editor still has the last word.
+- **Read other cards:** `getCards()` and `getCard(id)` on the mainframe peripheral read what a viewer sees, never
+  restricted cards.
+- **New programs:** `cloud-mimic`, `cloud-map`, `cloud-snake` and `cloud-overview`, also in the script import's examples.
+
 ### In-game screens
 - **Easier to read:** button and tab text is crisp on the light buttons, grey text is brighter, and a caption is only cut
   when it really does not fit next to its value.

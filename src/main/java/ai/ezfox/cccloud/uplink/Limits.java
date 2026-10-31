@@ -39,6 +39,41 @@ public final class Limits {
     public static final double NUMBER_DEFAULT_MIN = -2_147_483_648d;
     public static final double NUMBER_DEFAULT_MAX = 2_147_483_647d;
 
+    // Canvas widget (docs/SPEC.md "Canvas widget")
+    /** Canvas surface in logical pixels. */
+    public static final int CANVAS_MIN_SIZE = 16;
+    public static final int CANVAS_MAX_WIDTH = 480;
+    public static final int CANVAS_MAX_HEIGHT = 320;
+    public static final int CANVAS_DEFAULT_WIDTH = 160;
+    public static final int CANVAS_DEFAULT_HEIGHT = 90;
+    /** Canvases of one uplink. */
+    public static final int CANVAS_PER_UPLINK = 4;
+    /** Commands of one frame. */
+    public static final int CANVAS_COMMANDS = 1024;
+    /** One frame as JSON, in bytes. */
+    public static final int CANVAS_FRAME_BYTES = 24 * 1024;
+    /** Coordinates and sizes in a command stay within this (drawing partly outside the surface is fine). */
+    public static final int CANVAS_COORD = 4096;
+    public static final int CANVAS_TEXT = 128;
+    public static final int CANVAS_FONT_MIN = 6;
+    public static final int CANVAS_FONT_MAX = 64;
+    public static final int CANVAS_ICON_MIN = 4;
+    public static final int CANVAS_ICON_MAX = 96;
+    public static final double CANVAS_LINE_MAX = 16;
+    /** Item icons of one frame (each one can mean one request for an image). */
+    public static final int CANVAS_ITEMS = 64;
+    /** Points of one pixel command. */
+    public static final int CANVAS_PIXELS = 512;
+    /** Colour characters of one bitmap command. */
+    public static final int CANVAS_BITMAP = 16 * 1024;
+    /** Game ticks between two frames of one canvas (10 frames per second). */
+    public static final int CANVAS_FRAME_TICKS = 2;
+    /** Frame bytes per second of one uplink and of one mainframe; frames over budget wait, the newest one wins. */
+    public static final int CANVAS_UPLINK_BYTES_PER_SECOND = 64 * 1024;
+    public static final int CANVAS_MAINFRAME_BYTES_PER_SECOND = 256 * 1024;
+    /** A section with canvas frames is published as a whole at most this often (game ticks): a snapshot carries its frames. */
+    public static final int CANVAS_STRUCTURE_TICKS = 20;
+
     private Limits() {
     }
 }

@@ -213,6 +213,19 @@ class AccessApiTest {
     }
 
     @Test
+    void shareLinksShowCanvasesUnlessNumbersAreHidden() {
+        var uplink = new JsonObject();
+        uplink.addProperty("uplinkId", "u1");
+        var canvas = widget("map", "canvas", null);
+        var widgets = new com.google.gson.JsonArray();
+        widgets.add(canvas);
+        uplink.add("widgets", widgets);
+        var scope = ShareFilter.Scope.of(Set.of(ShareFilter.cardKeyOf("u1", canvas)));
+        assertEquals(1, ShareFilter.uplink(uplink, scope, false).getAsJsonArray("widgets").size());
+        assertNull(ShareFilter.uplink(uplink, scope, true), "a canvas can draw any number");
+    }
+
+    @Test
     void shareFilterFollowsV2CustomCards() {
         var uplink = new JsonObject();
         uplink.addProperty("uplinkId", "u1");

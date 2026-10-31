@@ -1,12 +1,22 @@
 // Example gallery for script import: the repo's examples/*.lua plus the ROM's
-// cloud-demo, bundled at build time (raw text, in the lazy scripts chunk).
+// cloud-demo and canvas programs, bundled at build time (raw text, in the lazy scripts chunk).
 import { describeScript, titleOf } from "../lib/scripts.ts";
 
-const files = import.meta.glob(["../../../../examples/*.lua", "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-demo.lua"], {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
+const files = import.meta.glob(
+  [
+    "../../../../examples/*.lua",
+    "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-demo.lua",
+    "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-mimic.lua",
+    "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-map.lua",
+    "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-snake.lua",
+    "../../../../src/main/resources/data/computercraft/lua/rom/programs/cloud-overview.lua",
+  ],
+  {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  },
+) as Record<string, string>;
 
 export interface Example {
   name: string;

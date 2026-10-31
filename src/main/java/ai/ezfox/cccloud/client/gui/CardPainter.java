@@ -147,6 +147,7 @@ final class CardPainter {
                 sparkline(g, right - textW - 4 - sw, y + 1, sw, 8, h);
                 rightText(g, font, text, right, ty, CloudGui.TEXT, textW);
             }
+            case "canvas" -> rightText(g, font, Component.translatable("cccloud.gui.card.canvas").getString(), right, ty, CloudGui.TEXT_DIM, area);
             case "item_search" -> field(g, font, vx, right, y, Component.translatable("cccloud.gui.card.search").getString());
             case "watchlist", "jobs" -> rightText(g, font, Component.translatable("cccloud.gui.card.entries", p.has("c") ? p.get("c").getAsInt() : 0).getString(),
                 right, ty, CloudGui.TEXT, area);

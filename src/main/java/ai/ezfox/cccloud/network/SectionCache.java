@@ -70,6 +70,8 @@ public final class SectionCache extends SavedData {
     public void store(UUID mainframeId, JsonObject snapshot) {
         String id = snapshot.get("uplinkId").getAsString();
         String json = snapshot.toString();
+        // canvas frames are the only big part a script controls: without them the card still stays on the dashboard
+        if (json.length() > MAX_BYTES) json = ai.ezfox.cccloud.uplink.CanvasFrame.snapshotWithoutFrames(snapshot).toString();
         if (json.length() > MAX_BYTES) return;
         var map = sections.computeIfAbsent(mainframeId, k -> new LinkedHashMap<>());
         if (!map.containsKey(id) && map.size() >= MAX_SECTIONS) return;

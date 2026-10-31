@@ -278,6 +278,7 @@ public class TabletScreen extends CloudScreen<TabletMenu> {
             }
             case "redstone_sides" -> redstone(uplinkId, id, label, value, opts, enabled);
             case "sensor_log" -> sensorLog(label, value);
+            case "canvas" -> textRow(Component.literal(label.isEmpty() ? "" : label + ": ").append(Component.translatable("cccloud.gui.card.canvas")), CloudGui.TEXT_DIM);
             default -> textRow(Component.literal(label + " (" + type + ")"), CloudGui.TEXT_DIM);
         }
     }

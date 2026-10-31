@@ -204,7 +204,9 @@ public final class MinecraftBridge implements GameBridge {
             if (r != null && r.ok()) {
                 ai.ezfox.cccloud.api.CloudEvents.action(new ai.ezfox.cccloud.api.CloudEvents.Action(mainframeId, action.uplinkId(), sectionTitle, action.id(),
                     action.value(), device.player(), device.playerName(), device.name()));
-                CloudLog.LOGGER.info("[cccloud] {} ({}) pressed {} = {}{}", device.name(), device.playerName(), target, value, r.jobId() != null ? " (job " + r.jobId() + ")" : "");
+                // a drag is many actions in a row: its start and end are enough for the log
+                boolean drag = action.op() instanceof ai.ezfox.cccloud.uplink.Op.CanvasInput input && input.kind().equals("drag");
+                if (!drag) CloudLog.LOGGER.info("[cccloud] {} ({}) pressed {} = {}{}", device.name(), device.playerName(), target, value, r.jobId() != null ? " (job " + r.jobId() + ")" : "");
             } else {
                 CloudLog.LOGGER.info("[cccloud] Rejected action of {} ({}) on {} = {}: {}", device.name(), ip, target, value, r == null ? ex : r.error());
             }

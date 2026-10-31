@@ -37,7 +37,7 @@ public final class LayoutValidator {
     public static final Set<String> DISPLAYS = Set.of("dial", "bar", "number", "row", "big", "line", "sparkline", "chip", "lamp");
     /** v2: widget types a view {@code v:<id>} can show its source as (the keys of WidgetType). */
     public static final Set<String> VIEW_TYPES = Set.of("button", "toggle", "slider", "gauge", "label", "item_search", "watchlist", "jobs", "chart",
-        "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log");
+        "progress", "indicator", "select", "number", "text", "buttons", "redstone_sides", "sensor_log", "canvas");
     /** v2: columns of the page grid and of every card's widget grid. */
     public static final int COLS = 12;
     public static final int MAX_CARD_H = 60;
@@ -156,7 +156,7 @@ public final class LayoutValidator {
         if (type == null) return 1;
         return switch (type) {
             case "item_search", "watchlist", "jobs", "redstone_sides", "sensor_log" -> 6;
-            case "chart" -> 4;
+            case "chart", "canvas" -> 4;
             case "gauge" -> 2;
             default -> 3;
         };

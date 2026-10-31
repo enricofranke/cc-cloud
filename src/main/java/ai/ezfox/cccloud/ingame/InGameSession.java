@@ -76,7 +76,9 @@ public final class InGameSession implements HubSession {
     @Override
     public void send(List<String> messages) {
         if (closed) return;
-        for (var message : messages) {
+        for (var raw : messages) {
+            String message = ai.ezfox.cccloud.uplink.CanvasFrame.withoutFrames(raw); // the tablet shows a hint instead of a canvas
+            if (message == null) continue;
             if (size.incrementAndGet() > MAX_QUEUED) {
                 overflow = true;
                 size.decrementAndGet();

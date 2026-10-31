@@ -151,7 +151,12 @@ class WidgetFactoryV2Test {
         assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.page("p", "x".repeat(Limits.TITLE + 1), null));
         assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.page("p", "P", Map.of("icon", "nope")));
         assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("cols", 5.0)));
-        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("color", "red")));
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("colour", "red")));
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("color", "pink")));
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("x", 9.0, "w", 6.0)), "wider than the grid");
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("w", 1.0)), "narrower than a card can be");
+        var card = WidgetFactory.group("g", "G", Map.of("x", 0.0, "y", 2.0, "w", 8.0, "h", 12.0, "color", "purple", "icon", "star", "order", 5.0));
+        assertEquals("{\"id\":\"g\",\"title\":\"G\",\"x\":0,\"y\":2,\"w\":8,\"h\":12,\"color\":\"purple\",\"icon\":\"star\",\"order\":5}", card.toString());
     }
 
     @Test

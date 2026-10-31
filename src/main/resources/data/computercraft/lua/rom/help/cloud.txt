@@ -11,12 +11,12 @@ dash:run()
 
 Handlers run in their own coroutines (up to 8 at once), so sleep() inside a handler only pauses that handler; other buttons and the dash:every timers keep working. For repeating work prefer dash:every over loops with sleep.
 
-Examples: run "cloud-demo" (every widget) or "cloud-storage" (storage dashboard for an ME/RS Cloud Bridge).
+Examples: run "cloud-demo" (every widget), "cloud-storage" (storage dashboard for an ME/RS Cloud Bridge), "cloud-mimic" (reactor diagram on a canvas), "cloud-map" (network map), "cloud-snake" (a game) or "cloud-overview" (reads the other cards).
 
 Raw peripheral (local cloud = peripheral.find("cloud_uplink")):
 cloud.setTitle(text)
 cloud.page(id, title, {icon=})          pages/tabs; allows up to 64 widgets
-cloud.group(id, title, {page=, cols=1..4})
+cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})
 cloud.button(id, label, {confirm, pin})
 cloud.toggle(id, label, {value, confirm, pin})
 cloud.slider(id, label, {min, max, step, value, unit, pin})
@@ -32,16 +32,25 @@ cloud.buttons(id, label, {options={"A","B","C"}})
 cloud.itemSearch(id, label, {bridge="me_cloud_bridge_0", max})
 cloud.watchlist(id, label, {bridge=...})
 cloud.jobs(id, label, {bridge=...})
+cloud.canvas(id, label, {width=160, height=90, bg, input="click"|"drag", pin, confirm})   at most 4 per uplink
+cloud.draw(id, commands)   replaces what a canvas shows, see Canvas below
 cloud.set(id, value)   cloud.setMany({id=value, ...})
 cloud.remove(id)   cloud.clear()
 cloud.alert(text, level)   cloud.notify(text, level)   level: info, warn, crit (max 1/s)
 cloud.isOnline()   cloud.getClients()   cloud.getLastClientSeen()
 
-Every widget also takes the layout options page, group, span (1-4), order (0-10000), color (cyan, green, yellow, red, gray) and icon (home bolt flame drop box fan lock warning gear chart star leaf heart cpu shield pick lever button lamp sensor).
+Every widget also takes the layout options page, group, span (1-4), order (0-10000), color (cyan, green, yellow, red, gray), icon (home bolt flame drop box fan lock warning gear chart star leaf heart cpu shield pick lever button lamp sensor) and a box on the 12-column grid: x, y, w, h. Groups take x, y, w, h, order, color (also gold, purple, orange) and icon. The layout editor wins over all of these.
+
+Canvas with cloud.ui: local c = dash:canvas("map", "Map", {width=160, height=90, input="click"}, function(user, ev) print(ev.type, ev.x, ev.y) end)
+c:clear([color])  c:rect(x,y,w,h,color)  c:box(x,y,w,h,color,[line])  c:line(x1,y1,x2,y2,color,[line])  c:circle(x,y,r,color)  c:ring(x,y,r,color,[line])  c:pixel(x,y,color)  c:text(x,y,text,color,{size=,align=})  c:gradient(x,y,w,h,from,to,["h"|"v"])  c:icon(x,y,name,[size],[color])  c:item(x,y,"minecraft:stone",[size])  c:bitmap(x,y,rows,[scale])  c:draw()
+Raw commands for cloud.draw: {"c",color} {"r",x,y,w,h,color} {"R",x,y,w,h,color,[line]} {"l",x1,y1,x2,y2,color,[line]} {"o",x,y,r,color} {"O",x,y,r,color,[line]} {"p",color,x,y,x,y,...} {"t",x,y,text,color,[size],["l"|"c"|"r"]} {"g",x,y,w,h,from,to,["h"|"v"]} {"i",x,y,icon,[size],[color]} {"s",x,y,item,[size]} {"b",x,y,width,data,[scale]}
+Colors: bg panel text dim line accent gold cyan green yellow red purple orange gray, CC's color names and colors.* values, "#rrggbb", "#rrggbbaa". Limits: 1024 commands, 24 KB per frame; 10 frames per second per canvas, 64 KB/s per uplink, 256 KB/s per mainframe (the newest frame waits).
 Numeric widgets (gauge, progress, chart, slider, number, indicator) also take history="1h"|"24h"|"7d"|"30d": long-term statistics in the dashboard (kept as long as the mainframe's Memory upgrade allows; base 1 h).
 
 Events: os.pullEvent("cloud_action") returns "cloud_action", id, value, user, side. Buttons send true, toggles a boolean, sliders and number inputs a number, select and buttons the chosen option, text inputs a string. A craft started from an itemSearch widget sends a table {op="craft", name, count, jobId}.
 
 Limits: ids are 1-32 characters of a-z, 0-9 and _. 32 widgets per uplink (64 with pages), titles and labels 48 characters, text values 256.
+
+Cloud Mainframe peripheral: isEnabled(), isOnline(), setEnabled(on), getUplinks(), getEnergy(), getEnergyCapacity(), getEnergyUsage(), getNetwork(), getCards(), getCard(id). getCards and getCard read what a viewer sees, never restricted cards, 10 reads per second.
 
 Cloud Bridges (ME / RS, need Applied Energistics 2 or Refined Storage): isConnected(), getEnergy(), getMaxEnergy(), getEnergyUsage(), getStorage(), listItems([filter], [limit]), findItems(query, [limit]), getItem(name), isCraftable(name), craft(name, count), getCraftingJobs(), cancelCraft(jobId), listFluids([limit]). An uplink placed directly on a bridge shows a ready-made Storage dashboard without any code.

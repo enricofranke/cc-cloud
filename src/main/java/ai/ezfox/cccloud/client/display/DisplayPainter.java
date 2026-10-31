@@ -136,6 +136,10 @@ final class DisplayPainter {
                 }
                 if (list.isEmpty()) g.text("-", x + 2, ry, DIM);
             }
+            case "canvas" -> {
+                g.text(GlyphCanvas.fit(label, w), x, y, DIM);
+                g.text(GlyphCanvas.fit(I18n.get("cccloud.gui.card.canvas"), w), x, y + 11, DIM);
+            }
             case "sensor_log" -> {
                 // the public form (displays never get player names): summary, then the newest events
                 var o = value != null && value.isJsonObject() ? value.getAsJsonObject() : new JsonObject();

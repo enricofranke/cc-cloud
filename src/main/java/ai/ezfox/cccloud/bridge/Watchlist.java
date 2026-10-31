@@ -110,6 +110,7 @@ public final class Watchlist {
             case Op.Craft craft -> "invalid_value";
             case Op.AutoStock set -> setAutoStock(set.name(), set.min(), set.target(), set.autoCraft(), itemExists);
             case Op.SetOutput set -> "invalid_value";
+            case Op.CanvasInput input -> "invalid_value";
         };
     }
 

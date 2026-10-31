@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * What a share-link viewer may see (docs/SPEC.md v0.6 "Share links"): only the shared cards (by card key, or every
  * card on a shared page, resolved like the dashboard's {@code resolveLayout}), never {@code item_search} widgets, and
- * with {@code hideNumbers} no {@code label}/{@code text}/{@code number} widgets. No network map, no positions.
+ * with {@code hideNumbers} no {@code label}/{@code text}/{@code number}/{@code canvas} widgets. No network map, no positions.
  * Layout v2: a widget counts for the card it was moved into ({@code widgets[key].card}, if that card exists), and custom
  * cards ({@code c:<id>}) are shared by key or by their page.
  * Pure Java, unit tested.
@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
 public final class ShareFilter {
     public static final String DEFAULT_PAGE = "main";
     private static final Set<String> ALWAYS_HIDDEN = Set.of("item_search");
-    private static final Set<String> NUMBERS = Set.of("label", "text", "number");
+    private static final Set<String> NUMBERS = Set.of("label", "text", "number", "canvas");
     private static final String CUSTOM_PREFIX = "c:";
 
     private ShareFilter() {

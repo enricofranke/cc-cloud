@@ -173,6 +173,34 @@ public final class UplinkPeripheral implements IPeripheral {
         addBridgeWidget(WidgetType.JOBS, computer, args);
     }
 
+    /**
+     * {@code canvas(id, label, {width=160, height=90, bg, input="click"|"drag", pin, confirm})} – a surface the script
+     * draws on with {@link #draw}. At most four per uplink.
+     */
+    @LuaFunction
+    public final void canvas(IArguments args) throws LuaException {
+        checkEditable();
+        String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
+        if (uplink.canvasCount(id) >= Limits.CANVAS_PER_UPLINK) throw new LuaException("too many canvases (max " + Limits.CANVAS_PER_UPLINK + " per uplink)");
+        add(WidgetType.CANVAS, args);
+    }
+
+    /**
+     * {@code draw(id, commands)} – replaces what a canvas shows (docs/SPEC.md "Canvas widget"). Call it as often as you
+     * like: frames beyond the limits (10 per second per canvas, 64 KB/s per uplink, 256 KB/s per mainframe) wait and only
+     * the newest one is sent. Returns the frame's size in bytes.
+     */
+    @LuaFunction
+    public final int draw(IArguments args) throws LuaException {
+        String id = wrap(() -> WidgetFactory.checkId(args.get(0)));
+        var widget = uplink.getWidget(id);
+        if (widget == null) throw new LuaException("no widget with id '" + id + "'");
+        if (widget.type() != WidgetType.CANVAS) throw new LuaException(widget.type().id() + " '" + id + "' is not a canvas");
+        var frame = wrap(() -> ai.ezfox.cccloud.uplink.CanvasFrame.parse(args.get(1)));
+        if (!uplink.queueFrame(id, frame.value(), frame.bytes())) throw new LuaException("no canvas with id '" + id + "'");
+        return frame.bytes();
+    }
+
     /** Updates the value of a widget. Cheap: only marks the value dirty (charts sample it every opts.interval). */
     @LuaFunction
     public final void set(IArguments args) throws LuaException {

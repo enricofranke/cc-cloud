@@ -315,6 +315,8 @@ public final class WebHub {
         final Set<String> sectionIds = ConcurrentHashMap.newKeySet();
         /** uplinkIds of the sections with long-term statistics (their widgets are in {@link Section#history}). */
         final Set<String> historySections = new LinkedHashSet<>();
+        /** Canvas frame bytes of the whole mainframe (docs/SPEC.md "Canvas widget"). */
+        final TokenBucket canvasBytes = new TokenBucket(2 * ai.ezfox.cccloud.uplink.Limits.CANVAS_FRAME_BYTES, ai.ezfox.cccloud.uplink.Limits.CANVAS_MAINFRAME_BYTES_PER_SECOND);
         /** v0.5: sections only sent to devices with canControl (snapshot {@code "restricted":true}, e.g. the Server card). */
         final Set<String> restricted = new java.util.HashSet<>();
         /** Structural messages (sections, state, layout, alerts …), coalesced by key, in order. */
@@ -770,6 +772,28 @@ public final class WebHub {
             }
         }
         return list;
+    }
+
+    /**
+     * What a program on the mainframe's own peripheral may read: the sections a plain viewer sees, in that form (no
+     * restricted section, private values replaced). Shared objects, never change them. Any thread.
+     */
+    public List<JsonObject> viewerSections(UUID mainframeId) {
+        var list = new ArrayList<JsonObject>();
+        var view = views.get(mainframeId);
+        if (view == null) return list;
+        List<Section> visible = new ArrayList<>();
+        synchronized (view) {
+            for (var entry : view.uplinks.entrySet()) if (!view.restricted.contains(entry.getKey())) visible.add(entry.getValue());
+        }
+        for (var section : visible) list.add(section.json(false));
+        return list;
+    }
+
+    /** Takes canvas frame bytes from the mainframe's budget: false = the frame waits. */
+    public boolean tryCanvasBytes(UUID mainframeId, int bytes) {
+        var view = views.get(mainframeId);
+        return view == null || view.canvasBytes.tryAcquire(bytes);
     }
 
     /** Number of published sections of a mainframe. */

@@ -469,6 +469,7 @@ const LUA: Record<WidgetType, string> = {
   jobs: "-- added by an ME/RS Cloud Bridge card",
   redstone_sides: "-- the automatic Computer card",
   sensor_log: "-- an Advanced Cloud Sensor's card",
+  canvas: 'local map = dash:canvas("map", "Base map", { width = 160, height = 90 })',
 };
 const DEMO: Widget[] = [
   { id: "gauge", type: "gauge", label: "Gauge", value: 72, opts: { min: 0, max: 100, unit: "%", warn: 80 } },

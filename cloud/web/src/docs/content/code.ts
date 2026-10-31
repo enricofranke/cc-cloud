@@ -34,6 +34,36 @@ cloud.gauge("temp", "Temperature", {max=1200, unit="K", warn=900, crit=1100, gro
 cloud.chart("load", "Load", {min=0, max=100, unit="%", points=120, group="core", span=2})
 cloud.indicator("running", "Running", {value=true, onColor="green", page="power"})`;
 
+export const LUA_CANVAS = `local ui = require("cloud.ui")
+local dash = ui.connect()
+local x = 80
+local map = dash:canvas("map", "Base map", {width=160, height=90, input="click", bg="panel"}, function(user, ev)
+  x = ev.x -- ev.type is "click", ev.x and ev.y are pixels of the canvas
+end)
+dash:every(0.5, function()
+  map:clear()
+  map:line(0, 45, 160, 45, "line")
+  map:circle(x, 45, 6, "cyan")
+  map:text(4, 4, "Marker at " .. x, "text")
+  map:item(140, 4, "minecraft:iron_ingot", 16)
+  map:draw() -- sends everything since clear() as one frame
+end)
+dash:run()`;
+
+export const LUA_CARDS = `local mf = peripheral.find("cloud_mainframe")
+for _, card in ipairs(mf.getCards()) do
+  print(card.id, card.title, card.online, card.widgets)
+end
+-- by title and widget id:
+local values = require("cloud.ui").readCards(mf)
+print(values["Reactor"].temp)`;
+
+export const LUA_COMPOSE = `dash:page("plant", "Plant", {icon="flame"})
+dash:group("map", "Base map", {page="plant", x=0, y=0, w=8, h=14, color="purple", icon="star"})
+dash:group("log", "Readings", {page="plant", x=8, y=0, w=4, h=14})
+dash:gauge("temp", "Core", {group="log", w=6, h=6})
+dash:gauge("fuel", "Fuel", {group="log", x=6, y=0, w=6, h=6})`;
+
 export const LUA_SETMANY = `cloud.setMany({temp = 812, load = 64, running = true})`;
 
 export const LUA_MAINFRAME = `local mf = peripheral.find("cloud_mainframe")
