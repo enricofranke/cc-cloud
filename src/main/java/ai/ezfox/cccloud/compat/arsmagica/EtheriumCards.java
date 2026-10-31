@@ -68,6 +68,7 @@ public final class EtheriumCards {
         @Override
         public List<Widget> widgets() {
             var w = new CardWidgets();
+            if (types().isEmpty()) w.label("status", "Status"); // an altar before it is built: no card at all would look broken
             for (var type : types()) {
                 String n = name(type);
                 w.percent("etherium_" + n, Fmt.title(n) + " etherium", "color", "cyan");
@@ -79,6 +80,7 @@ public final class EtheriumCards {
         @Override
         public void refresh(CardOutput out) {
             var handler = (EtheriumHandler) be;
+            if (types().isEmpty()) out.text("status", "No etherium source");
             for (var type : types()) {
                 String n = name(type);
                 int amount = handler.getAmount(type), max = handler.getMaxAmount(type);
