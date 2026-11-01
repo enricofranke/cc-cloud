@@ -58,19 +58,19 @@ public final class ReportCommand {
 
     /** {@code feedback <text>}. */
     static LiteralArgumentBuilder<CommandSourceStack> feedback() {
-        return Commands.literal("feedback")
+        return Commands.literal("feedback").requires(ReportCommand::mayUse)
             .then(Commands.argument("text", StringArgumentType.greedyString()).executes(ReportCommand::feedback));
     }
 
     /** {@code feedback-send <id>}: the [Send] of a message that was shown. */
     static LiteralArgumentBuilder<CommandSourceStack> feedbackSend() {
-        return Commands.literal("feedback-send")
+        return Commands.literal("feedback-send").requires(ReportCommand::mayUse)
             .then(Commands.argument("id", StringArgumentType.word()).executes(ReportCommand::feedbackSend));
     }
 
     /** {@code feedback-discard <id>}: its [Discard]. */
     static LiteralArgumentBuilder<CommandSourceStack> feedbackDiscard() {
-        return Commands.literal("feedback-discard")
+        return Commands.literal("feedback-discard").requires(ReportCommand::mayUse)
             .then(Commands.argument("id", StringArgumentType.word()).executes(ReportCommand::feedbackDiscard));
     }
 
@@ -78,6 +78,12 @@ public final class ReportCommand {
         if (src.permissions().hasPermission(Permissions.COMMANDS_OWNER)) return true;
         var player = src.getPlayer();
         return player != null && src.getServer().isSingleplayerOwner(player.nameAndId());
+    }
+
+    /** Banned players and players without {@code cccloud.use} send nothing, as in the dashboard. */
+    private static boolean mayUse(CommandSourceStack src) {
+        var player = src.getPlayer();
+        return player == null || ai.ezfox.cccloud.access.Access.has(player, ai.ezfox.cccloud.access.ServerPermissions.Node.USE);
     }
 
     private static String sender(CommandSourceStack src) {
