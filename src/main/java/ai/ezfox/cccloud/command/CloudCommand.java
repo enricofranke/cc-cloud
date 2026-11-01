@@ -116,6 +116,11 @@ public final class CloudCommand {
             .then(Commands.literal("link").executes(CloudCommand::link))
             // internetAccess in one setting: status for admins, switching for the server owner
             .then(InternetCommand.node())
+            // crash reports, usage stats and feedback: docs/PRIVACY.md
+            .then(ReportCommand.reports())
+            .then(ReportCommand.feedback())
+            .then(ReportCommand.feedbackSend())
+            .then(ReportCommand.feedbackDiscard())
             // Removed mainframes (docs/SPEC.md "Mainframe removal"): list, hand out the item again, delete the data now.
             .then(Commands.literal("mainframe")
                 .then(Commands.literal("recover").executes(CloudCommand::listRemoved)
@@ -227,7 +232,7 @@ public final class CloudCommand {
             {"status", "/cccloud status"}, {"link", "/cccloud link"}, {"devices", "/cccloud devices"}, {"approve", "/cccloud approve"},
             {"deny", "/cccloud deny"}, {"role", "/cccloud role "}, {"trust", "/cccloud trust "}, {"pin", "/cccloud pin set "},
             {"select", "/cccloud select "}, {"devices_here", "/cccloud devices here"}, {"recover", "/cccloud mainframe recover"},
-            {"internet", "/cccloud internet"}, {"version", "/cccloud version"}};
+            {"internet", "/cccloud internet"}, {"reports", "/cccloud reports"}, {"feedback", "/cccloud feedback "}, {"version", "/cccloud version"}};
         for (var e : entries) {
             String command = e[1];
             source.sendSystemMessage(Component.literal(command.trim()).withStyle(style -> style.withColor(ChatFormatting.GOLD)

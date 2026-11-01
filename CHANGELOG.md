@@ -4,6 +4,17 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Crash reports, usage stats and feedback
+- **Help improve CC: Cloud, if you want to.** A server owner can agree to send crash reports of the mod and anonymous usage
+  stats, each on its own. Off by default: without a yes nothing is sent, nothing is read and no connection is opened. The
+  question comes once, in the dashboard and on the mainframe screen, with an equal Yes and No, and a No stays a No.
+- **See exactly what goes out.** "Show exactly what would be sent" and `/cccloud reports show` show the real payloads.
+- **Take it back any time** with `/cccloud reports off` or in the dashboard's settings. It works at once.
+- **Send feedback** from the dashboard's settings or with `/cccloud feedback <text>`. You see the exact message and confirm
+  each one. Technical info stays out unless you tick the box.
+- **No personal data.** No names, UUIDs, addresses, worlds, files, coordinates, chat, Lua code, items or tokens, and no
+  install id. Every field is listed in `docs/PRIVACY.md`. Reports are deleted after 90 days.
+
 ### Lua: more than drag and drop
 - **Canvas widget:** a program draws its own card with lines, shapes, text, gradients, icons, item icons and bitmaps.
   The dashboard scales it and follows the light or dark theme. Clicks and drags come back as events, with the same

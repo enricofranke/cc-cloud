@@ -19,6 +19,7 @@ import { CapacityLine } from "../components/Capacity.tsx";
 import { feature } from "../lib/config.ts";
 import { lang, setLang, t } from "../lib/i18n.ts";
 import { Sheet } from "../components/Overlays.tsx";
+import { FeedbackSheet, ReportsPrompt, ReportsSheet, useReports } from "../components/Reports.tsx";
 import { IconBack, IconBell, IconGear, IconLock, IconPower, IconWifiOff, IconAlert, IconPencil } from "../components/Icons.tsx";
 
 function useNow(active: boolean) {
@@ -194,10 +195,12 @@ export function Dashboard({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [editCard, setEditCard] = useState<string | undefined>();
   const [powerOpen, setPowerOpen] = useState(false);
+  const [reportSheet, setReportSheet] = useState<"reports" | "feedback" | null>(null);
   const st = statusOf(conn);
   const retryAt = conn?.nextRetryAt.value ?? null;
   const pinLock = conn?.pinLockedUntil.value ?? 0;
   const now = useNow(retryAt != null || pinLock > Date.now());
+  const [reports, setReports] = useReports(id, entry?.token ?? "", st.kind === "online");
 
   useEffect(() => {
     // a linked account's mainframes arrive a moment after start
@@ -217,6 +220,8 @@ export function Dashboard({ id }: { id: string }) {
   return (
     <>
       <RemoteUnlock conn={conn} />
+      {reportSheet === "reports" && reports && <ReportsSheet id={id} token={entry.token} doc={reports} onChange={setReports} onClose={() => setReportSheet(null)} />}
+      {reportSheet === "feedback" && <FeedbackSheet id={id} token={entry.token} onClose={() => setReportSheet(null)} />}
       <header class="dash-head">
         <button type="button" class="icon-btn" aria-label="Back to mainframes" onClick={() => navigate("/")}>
           <IconBack />
@@ -314,6 +319,7 @@ export function Dashboard({ id }: { id: string }) {
             </div>
           </div>
         )}
+        {reports && <ReportsPrompt id={id} token={entry.token} doc={reports} onChange={setReports} onShow={() => setReportSheet("reports")} />}
 
         {st.kind === "connecting" && sectionCount === 0 ? (
           <div class="grid">
@@ -437,6 +443,16 @@ export function Dashboard({ id }: { id: string }) {
             {conn.store.value && conn.can("scripts.upload") && (
               <button type="button" class="link-btn" onClick={() => (setSheet(null), setStore({}))}>
                 Script Store
+              </button>
+            )}
+            {reports?.feedback && (
+              <button type="button" class="link-btn" onClick={() => (setSheet(null), setReportSheet("feedback"))}>
+                {t("rp.fb.title")}
+              </button>
+            )}
+            {reports?.canDecide && (
+              <button type="button" class="link-btn" onClick={() => (setSheet(null), setReportSheet("reports"))}>
+                {t("rp.settings")}
               </button>
             )}
             {!conn.can("access.manage") && !conn.can("shares.create") && conn.role.value && <span class="muted small">Access and share links need the matching permissions.</span>}

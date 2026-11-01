@@ -46,6 +46,8 @@ Schau den Mainframe an und gib ein:
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
 /cccloud pin clear
+/cccloud reports status|on|off|show
+/cccloud feedback <text>
 ```
 
 ## PIN
@@ -219,6 +221,26 @@ Was mit dem Dashboard passiert:
 - **Item-Icons** (`[icons]`): Der Server öffnet die Vanilla-Texturen neu (lädt sie einmal, wenn du den Download gerade erlaubt hast) und zeichnet die Icons, die noch fehlen; das Ausschalten des Server-Renderers stoppt ihn, die gezeichneten Icons bleiben.
 
 Eine Datei mit Syntaxfehler ersetzt NeoForge durch die Standardwerte (mit einer Sicherungskopie daneben) – die Standardwerte sind nur LAN, es öffnet sich also nichts aus Versehen.
+
+## Absturzberichte, Nutzungsstatistik und Feedback
+
+CC: Cloud kann Berichte an seinen Entwickler senden. **Ohne ein Ja wird nichts gesendet.** Die Entscheidung liegt beim Betreiber des Servers: einem Operator der Stufe 4, der Konsole oder dem Spieler, der eine Einzelspielerwelt hostet. Wenn du unter 16 bist, frag zuerst deine Eltern. Einzelheiten stehen in der [Datenschutzerklärung](https://cccloud.dev/de/legal/privacy/).
+
+| | Absturzberichte | Nutzungsstatistik |
+|---|---|---|
+| **Was** | Fehler von CC: Cloud selbst: der Fehler, Stellen im Code, Versionen | Versionen, Betriebssystem-Familie, grobe Anzahlen, Internet-Modus, aktive Integrationen |
+| **Wie oft** | höchstens 5 pro Lauf, 1 pro Fehler am Tag | höchstens einmal am Tag |
+| **Einstellung** | `crashReports` | `usageStats` |
+
+Der Betreiber wird einmal gefragt, im Dashboard und am Mainframe-Bildschirm. Ja und Nein gelten für jeden Kanal einzeln, und nach einem Nein fragt niemand mehr.
+
+- **Erst ansehen:** „Genau zeigen, was gesendet würde“ oder `/cccloud reports show` zeigt die echten Daten.
+- **Jederzeit entscheiden:** `/cccloud reports on` oder `off`, mit `crash` oder `stats` nur für eines davon, oder **Einstellungen → Absturzberichte & Statistik** im Dashboard. Ein Nein wirkt sofort.
+- **Nie gesendet:** Spielernamen, UUIDs, IP-Adressen, die Server-Adresse, Connect-Name oder -Schlüssel, Welt- oder Dateinamen, Benutzerordner, Koordinaten, Chat, Lua-Code, Items oder Inventare, Tokens, PINs. Es gibt keine Installations-ID.
+- **90 Tage aufbewahrt,** ohne IP-Adresse, in der EU.
+- `on` in die Konfigurationsdatei zu schreiben reicht nicht: Nur die Antwort zählt, ein Modpack oder eine kopierte Welt kann also nicht für dich zustimmen. `off` in der Datei wirkt immer, und Pack-Macher können beides in `defaultconfigs` auf `off` stellen.
+
+**Feedback** nimmt denselben Weg, aber nur, wenn du es sendest: **Einstellungen → Feedback senden** im Dashboard oder `/cccloud feedback <Text>`. Du siehst die genaue Nachricht und bestätigst sie. Bitte lass persönliche Daten weg. Technische Infos kommen nur dazu, wenn du das Häkchen setzt, ein Kontakt nur, wenn du einen angibst.
 
 ## Was der Server protokolliert
 

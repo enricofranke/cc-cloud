@@ -26,7 +26,8 @@ class GuiActionsTest {
         Map.entry(GuiActions.Mainframe.PIN_SET, "1234"),
         Map.entry(GuiActions.Mainframe.PIN_CLEAR, ""),
         Map.entry(GuiActions.Mainframe.SET_ROLE, "112a047d-444c-4422-b20e-4f86afe7f0cb:operator"),
-        Map.entry(GuiActions.Mainframe.LINK_ACCOUNT, "")
+        Map.entry(GuiActions.Mainframe.LINK_ACCOUNT, ""),
+        Map.entry(GuiActions.Mainframe.REPORTS, "crash:on")
     );
 
     static final java.util.Set<ai.ezfox.cccloud.access.Perm> ALL = ai.ezfox.cccloud.access.Perm.all();
@@ -69,6 +70,7 @@ class GuiActionsTest {
         @Override public @Nullable String clearPin() { return call("pin_clear"); }
         @Override public @Nullable String unlink() { return call("unlink"); }
         @Override public @Nullable String renameMainframe(String name) { return call("rename:" + name); }
+        @Override public @Nullable String reports(String answer) { return call("reports:" + answer); }
     }
 
     @Test
@@ -82,6 +84,12 @@ class GuiActionsTest {
                 // "Link this browser" is for every player (cccloud.use is checked by the op itself).
                 assertNull(GuiActions.mainframe(action.id(), arg, true, NONE, ops));
                 assertEquals(List.of("link_account"), ops.calls);
+                continue;
+            }
+            if (action == GuiActions.Mainframe.REPORTS) {
+                // The server owner's business, not the mainframe's: the op itself asks who this is.
+                assertNull(GuiActions.mainframe(action.id(), arg, true, NONE, ops));
+                assertEquals(List.of("reports:crash:on"), ops.calls);
                 continue;
             }
             assertEquals("not_owner", GuiActions.mainframe(action.id(), arg, true, NONE, ops), action + " without rights");
@@ -103,6 +111,7 @@ class GuiActionsTest {
             {"untrust", "not-a-uuid"}, {"untrust", ""},
             {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb"}, {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb:owner"},
             {"set_role", "112a047d-444c-4422-b20e-4f86afe7f0cb:god"}, {"set_role", "x:admin"}, {"link_account", "x"},
+            {"reports", ""}, {"reports", "crash"}, {"reports", "crash:maybe"}, {"reports", "feedback:on"}, {"reports", "on"}, {"reports", "show "},
         };
         for (var b : bad) {
             var ops = new Recorder();

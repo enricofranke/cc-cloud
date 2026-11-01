@@ -390,6 +390,7 @@ export async function createMockServer(opts: MockOptions = {}) {
     return d.broken ?? "ok";
   };
   /** HTTP gate: 403 no_access / not_allowed, else the mainframe, role and perms. */
+  const reports = { channels: { crash: "ask", stats: "ask" } as Record<"crash" | "stats", string>, dismissed: 0, feedback: [] as unknown[] };
   const gate = (t: Token, mfId: string, perm: string) => {
     const m = mainframes.get(mfId);
     const role = m ? roleFor(t, m) : undefined;
@@ -2684,6 +2685,69 @@ export async function createMockServer(opts: MockOptions = {}) {
       }
       return json(res, r.status, r.body);
     }
+    // ---- crash reports, usage stats and feedback (docs/PRIVACY.md): the mock only remembers what the mod would send
+    const reportsM = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/(reports|reports\/preview|feedback)$/.exec(p);
+    if (reportsM) {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const g = gate(t, reportsM[1], "view");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      // on a real server this is op level 4 or the singleplayer host
+      const decides = t.canControl && g.perms.includes("access.manage");
+      const doc = () => ({
+        version: 1,
+        canDecide: decides,
+        prompt: decides && reports.dismissed < 1 && (reports.channels.crash === "ask" || reports.channels.stats === "ask"),
+        ...(decides ? { channels: { ...reports.channels } } : {}),
+        feedback: t.canControl,
+      });
+      const env = { mod: "0.17.0", neoforge: "26.1.2.100", mc: "26.1.2", java: 25, os: "linux" };
+      if (reportsM[2] === "feedback") {
+        if (req.method !== "POST") return json(res, 405, { error: "method" });
+        if (!t.canControl) return json(res, 403, { error: "not_allowed" });
+        const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+        if (Object.keys(b).some((k) => !["category", "text", "contact", "technical", "confirm"].includes(k))) return json(res, 400, { error: "invalid" });
+        if (!["bug", "idea", "other"].includes(b.category) || typeof b.text !== "string" || !b.text.trim()) return json(res, 400, { error: "invalid" });
+        const payload = {
+          v: 1,
+          category: b.category,
+          text: b.text.replace(/\/(?:home|Users)\/\S*/g, "<path>").trim(),
+          ...(typeof b.contact === "string" && b.contact ? { contact: b.contact } : {}),
+          ...(b.technical === true ? { env } : {}),
+        };
+        if (b.confirm !== true) return json(res, 200, { payload });
+        if (reports.feedback.length >= 3) return json(res, 429, { error: "rate_limited" });
+        reports.feedback.push(payload);
+        return json(res, 200, { sent: true });
+      }
+      if (reportsM[2] === "reports/preview") {
+        if (!decides) return json(res, 403, { error: "not_owner" });
+        return json(res, 200, {
+          crash: {
+            example: true,
+            payload: {
+              v: 1,
+              fingerprint: "0123456789abcdef",
+              where: "example",
+              env,
+              causes: [{ class: "java.lang.IllegalStateException", message: "Example: a path <path> and <ip> are gone", frames: ["ai.ezfox.cccloud.compat.card.DeviceCards.build:99", "net.minecraft.server.MinecraftServer"] }],
+            },
+          },
+          stats: { payload: { v: 1, env, mainframes: "1", uplinks: "2-5", cards: "6-20", internetAccess: "off", integrations: ["ae2", "powah"] } },
+        });
+      }
+      if (req.method === "GET") return json(res, 200, doc());
+      if (req.method !== "POST") return json(res, 405, { error: "method" });
+      if (!decides) return json(res, 403, { error: "not_owner" });
+      const b = ((await body(req).catch(() => null)) ?? {}) as Record<string, any>;
+      if (b.dismiss === true) {
+        reports.dismissed = 1;
+        return json(res, 200, doc());
+      }
+      if (!["crash", "stats"].includes(b.channel) || !["on", "off"].includes(b.decision)) return json(res, 400, { error: "invalid" });
+      reports.channels[b.channel as "crash" | "stats"] = b.decision === "on" ? "active" : "declined";
+      return json(res, 200, doc());
+    }
     // ---- v0.5 D push targets (docs/SPEC.md "D. Push – web protocol")
     const pushM = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/push$/.exec(p);
     if (pushM) {
@@ -3269,6 +3333,8 @@ export async function createMockServer(opts: MockOptions = {}) {
     sampleProduction: (mf: Mainframe = base) => sampleProduction(mf),
     /** v0.10 API keys (hashes only) */
     apiKeys,
+    /** the owner's report decisions and the feedback that would have been sent (tests) */
+    reports,
     /** The fake AE2 network (undefined with ae2:false). */
     get ae2() {
       return meSim;

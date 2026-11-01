@@ -87,6 +87,8 @@ working).
 | `web.tlsCertPath`, `web.tlsKeyPath` | `""` | Optional HTTPS directly in the mod (PEM certificate chain + PKCS#8 PEM key). |
 | `connect.connectName` | `""` | The Connect name: `https://<name>.cccloud.dev`. |
 | `connect.connectRelay` | `wss://connect.cccloud.dev` | The relay the tunnel connects to (only for a self-hosted relay). |
+| `reports.crashReports`, `reports.usageStats` | `"ask"` | Reports to the developer: `ask` and `off` send nothing. A yes also needs `/cccloud reports on` or the prompt ([PRIVACY.md](PRIVACY.md)). |
+| `reports.consentVersion` | `0` | The version of the report texts the owner agreed to. Set by the mod. |
 | `network.uplinkRange` | `48` | Range of normal uplinks to the nearest node (`network.advancedUplinkRange`: 128). |
 | `uplinks.maxWidgetsPerUplink` | `32` | Widget limit per uplink (max. 32). |
 

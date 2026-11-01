@@ -217,7 +217,9 @@ export const COMMANDS = `/cccloud status
 /cccloud trust <player>
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
-/cccloud pin clear`;
+/cccloud pin clear
+/cccloud reports status|on|off|show
+/cccloud feedback <text>`;
 
 // ---- v0.10 public API (docs page "api"; the same in both languages)
 export const TOML_API = `[api]

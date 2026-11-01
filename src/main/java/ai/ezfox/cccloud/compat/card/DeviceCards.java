@@ -219,6 +219,7 @@ public final class DeviceCards {
         if (DISABLED.add(name)) {
             CloudLog.LOGGER.warn("[cccloud] The '{}' dashboard card is disabled: this version of the mod is not supported ({})", name, e.toString());
             CloudLog.LOGGER.debug("[cccloud] '{}' card failure", name, e);
+            ai.ezfox.cccloud.reports.ReportCapture.failure(ai.ezfox.cccloud.reports.ReportPayload.Where.DEVICE_CARD, e);
         }
     }
 

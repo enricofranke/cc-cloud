@@ -14,6 +14,8 @@ public class MainframeMenu extends CloudMenu {
 
     /** Client: the Upgrades tab is shown (the slots are only active there). */
     public boolean upgradesVisible;
+    /** Server: the report prompt shows the exact payloads on this screen. */
+    public boolean reportsPreview;
     private final java.util.function.Predicate<Player> canEdit;
     private final net.minecraft.world.Container upgrades;
     private final boolean client;
@@ -122,6 +124,8 @@ public class MainframeMenu extends CloudMenu {
     public void removed(Player player) {
         super.removed(player);
         if (!(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) || serverPlayer.level().getServer() == null) return;
+        // the report prompt comes once: closing the screen puts it aside, nothing is sent and nobody asks again
+        if (ai.ezfox.cccloud.reports.ReportService.screenPrompt(serverPlayer, false) != null) ai.ezfox.cccloud.reports.ReportService.dismissPrompt();
         if (!(player.level().getBlockEntity(pos()) instanceof CloudMainframeBlockEntity mainframe) || !mainframe.has(player, ai.ezfox.cccloud.access.Perm.DEVICES_MANAGE)) return;
         var auth = ai.ezfox.cccloud.web.WebAuthData.get(serverPlayer.level().getServer());
         for (var pending : auth.pendingFor(mainframe.getMainframeId())) {
