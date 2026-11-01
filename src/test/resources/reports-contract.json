@@ -1,0 +1,64 @@
+{
+  "crash": {
+    "v": 1,
+    "fingerprint": "0fd3acc38171e4ea",
+    "where": "device_card",
+    "env": {
+      "mod": "0.17.0",
+      "neoforge": "26.1.2.100",
+      "mc": "26.1.2",
+      "java": 25,
+      "os": "linux"
+    },
+    "causes": [
+      {
+        "class": "java.lang.RuntimeException",
+        "message": "wrapped",
+        "frames": []
+      },
+      {
+        "class": "java.lang.IllegalStateException",
+        "message": "Could not save <name> to <path>",
+        "frames": [
+          "ai.ezfox.cccloud.web.WebHub.tick:120",
+          "ai.ezfox.cccloud.web.WebHub$Inner.lambda$run$0:88",
+          "dan200.computercraft.shared.Foo.bar:7",
+          "net.minecraft.server.MinecraftServer",
+          "com.<player>.privatemod.Thing"
+        ]
+      }
+    ]
+  },
+  "stats": {
+    "v": 1,
+    "env": {
+      "mod": "0.17.0",
+      "neoforge": "26.1.2.100",
+      "mc": "26.1.2",
+      "java": 25,
+      "os": "linux"
+    },
+    "mainframes": "1",
+    "uplinks": "6-20",
+    "cards": "101-500",
+    "internetAccess": "connect",
+    "integrations": [
+      "ae2",
+      "powah",
+      "refinedstorage"
+    ]
+  },
+  "feedback": {
+    "v": 1,
+    "category": "bug",
+    "text": "The map of <player> flickers. Grüße!",
+    "contact": "steve#1",
+    "env": {
+      "mod": "0.17.0",
+      "neoforge": "26.1.2.100",
+      "mc": "26.1.2",
+      "java": 25,
+      "os": "linux"
+    }
+  }
+}
