@@ -1,6 +1,7 @@
 // Empty state after pairing: no uplinks linked yet (v0.3 "Web empty state").
 import { CodeBlock } from "../components/CodeBlock.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
+import { t } from "../lib/i18n.ts";
 
 const STARTER = `local cloud = peripheral.find("cloud_uplink")
 cloud.setTitle("My Base")
@@ -46,6 +47,7 @@ export function SetupGuide() {
       <p class="muted small setup-note">
         This page updates by itself – keep it open while you build. Stuck? <DocsLink to="/docs/start#linking">Step-by-step guide</DocsLink>
       </p>
+      <p class="muted small setup-note">{t("ps.setupHint")}</p>
       <details class="setup-more">
         <summary>Build your own dashboard</summary>
         <p class="muted small">

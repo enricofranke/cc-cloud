@@ -88,9 +88,10 @@ export function matchSlots(preset: Pick<Preset, "slots">, uplinks: Uplink[], pic
 const showable = (ref: PresetWidget, w: Widget) => !ref.as || VIEW_SOURCES[ref.as].includes(w.type);
 
 /**
- * The widgets a reference means on one device. Ids first, in the order they are named; `types` and `text` fill up to
- * `count`, and are also the fallback when an id is not there (optional widgets, other versions of a card). `used` keeps
- * a widget from landing twice in one card in the same shape.
+ * The widgets a reference means on one device. Ids first, in the order they are named (the same id can be a gauge on one
+ * device and a label on another, so `types` applies to them too); `types` and `text` fill up to `count`, and are also the
+ * fallback when an id is not there (optional widgets, other versions of a card). `used` keeps a widget from landing
+ * twice in one card in the same shape.
  */
 export function pickWidgets(u: Uplink, ref: PresetWidget, used: Set<string>): Widget[] {
   const count = ref.count ?? 1;
@@ -104,7 +105,7 @@ export function pickWidgets(u: Uplink, ref: PresetWidget, used: Set<string>): Wi
   const out: Widget[] = [];
   for (const id of ref.ids ?? []) {
     const w = u.widgets.find((x) => x.id === id);
-    if (w) take(w, out);
+    if (w && (!ref.types || ref.types.includes(w.type))) take(w, out);
   }
   if (out.length >= count || (ref.ids && !ref.types && !ref.text && !ref.limits)) return out;
   for (const w of u.widgets) {

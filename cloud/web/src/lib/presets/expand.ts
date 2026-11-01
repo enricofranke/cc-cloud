@@ -80,6 +80,32 @@ function buildWidget(ref: PresetWidget, u: Uplink, source: Uplink["widgets"][num
   return { key, patch, box: { id: key, x: placed ? Math.min(ref.x!, COLS - w) : 0, y: placed ? ref.y! : 0, w, h, placed } };
 }
 
+/**
+ * What a device has decides how many widgets a row gets, so a row of an automatic card can stay half empty. Rows nothing
+ * else reaches into share the free width evenly. A dial next to a stack of labels stays as it is.
+ */
+function fillRows<T extends GridItem>(boxes: T[]): T[] {
+  const rows = new Map<number, T[]>();
+  for (const b of boxes) rows.set(b.y, [...(rows.get(b.y) ?? []), b]);
+  const out = new Map(boxes.map((b) => [b.id, b]));
+  for (const [y, row] of rows) {
+    const height = Math.max(...row.map((b) => b.h));
+    const crossing = boxes.some((b) => b.y !== y && b.y < y + height && b.y + b.h > y);
+    const used = row.reduce((n, b) => n + b.w, 0);
+    if (crossing || used >= COLS) continue;
+    const share = Math.floor(COLS / row.length);
+    const widths = row.map((_, i) => share + (i < COLS % row.length ? 1 : 0));
+    // a wide widget keeps its width: this only ever makes a row fuller, never squeezes a neighbour below its size
+    if (row.some((b, i) => widths[i] < b.w)) continue;
+    let x = 0;
+    [...row].sort((a, b) => a.x - b.x).forEach((b, i) => {
+      out.set(b.id, { ...b, x, w: widths[i] });
+      x += widths[i];
+    });
+  }
+  return boxes.map((b) => out.get(b.id)!);
+}
+
 function buildCard(card: PresetCard, device: Uplink | undefined, filled: Map<string, SlotMatch>, lang: Lang, cardKey: () => string, widgetKey: () => string, budget: { widgets: number }): Draft | null {
   const key = cardKey();
   const widgets: Draft["widgets"] = [];
@@ -101,7 +127,9 @@ function buildCard(card: PresetCard, device: Uplink | undefined, filled: Map<str
   if (!widgets.length) return null;
   // the author's position counts for a reference's first widget; the rest take the first free spot, and what stayed
   // empty on this device closes up, so a label sits beside a dial instead of under a gap
-  const boxes = compact(placeAll(widgets.map((w) => w.box), COLS));
+  const auto = widgets.every((w) => !w.box.placed);
+  const packed = compact(placeAll(widgets.map((w) => w.box), COLS));
+  const boxes = auto ? fillRows(packed) : packed;
   const at = new Map(boxes.map((b) => [b.id, b]));
   for (const w of widgets) {
     const b = at.get(w.key)!;

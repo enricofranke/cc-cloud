@@ -18,6 +18,7 @@
     "models": "node dev/build-models.ts",
     "screenshots:editor": "node dev/editor-shots.ts",
     "screenshots:v10": "node dev/scenes-shots.ts",
+    "screenshots:presets": "node dev/presets-shots.ts",
     "recipes": "node dev/build-recipes.ts",
     "mods": "node dev/build-mods.ts",
     "qa": "node dev/qa.ts"

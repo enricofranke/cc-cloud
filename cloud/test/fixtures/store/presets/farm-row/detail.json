@@ -1,0 +1,173 @@
+{
+ "format": 1,
+ "id": "farm-row",
+ "version": "1.0.0",
+ "name": {
+  "en": "Farm row",
+  "de": "Farm-Reihe"
+ },
+ "description": {
+  "en": "Made for the Farm Switch script: every farm in a row with its switch, chest level and output over time.",
+  "de": "Passt zum Skript Farm-Schalter: alle Farmen nebeneinander mit Schalter, Kistenstand und Ertrag über die Zeit."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "tags": [
+  "farm",
+  "automation"
+ ],
+ "icon": "leaf",
+ "color": "green",
+ "scripts": [
+  "farm-switch"
+ ],
+ "pages": 1,
+ "cards": 1,
+ "slots": [
+  {
+   "id": "farms",
+   "label": {
+    "en": "Farm Switch scripts",
+    "de": "Skripte Farm-Schalter"
+   },
+   "source": "program",
+   "has": [
+    "power",
+    "fill"
+   ],
+   "min": 1,
+   "max": 6
+  }
+ ],
+ "sha256": "4ae316aec9ad821d0c28e2e43bcb9fc6c4ccdb22aa1b68480d4df5ed3f31ba6c",
+ "size": 1945,
+ "file": "presets/farm-row/1.0.0.json",
+ "code": "ccp1.lVLBbtswDP0VgmenWLMiB9-3yzBgWG8temBsxiYqS4Yk18sC_9lu-7FRcpLZGIa2CByA1HuPfE864cH5jiKWtwVa6hjLE7LFEj-T78C7EQus-VxvvrO0jFNqhcpLH8XZK-Mr1QwqB7FlyPT7UWLVwgwtgV_YH-GQTsQCJXVQRAsSA4SMLaBqOUQwijVAtgY3xH6I4JQLUTq-uSz0jYICfw465jnp55Gb-6olE9mXQMbMa7AFy3u2LFYFVaaTCBdcAV8kRLYhpmGDfp989NTA7197hdbC8MASb5JpqZJbNEwHXaJyxnktG89qv8BITcDyEZM_LWmIToNNAT0VOEdwPd_MbvOJcbl_QqlVLZ0GpRvas1lfxirNcIlhNs9r92nb4AZfJUTvXeMp7dRS3qB3o0IKPIgxaYVObL7_jn5guZu001PD81JRolk_irB8Edr9Nxjy9UwesbwrkEmd_nV2VsRTzS9S8YSvBTtK3fA5o5TWQkvyIPSDtWKb5EUdfCjwmP91_E5NY7mdiv9Rhz49qjNz9x7mnOJy5PZtxJqOzprjauYbqZcbu468y7zb7WtEiaylMmsJvSFlYujJPxuxjAu93VLv4_SUf38A.3d8d135e",
+ "preset": {
+  "format": 1,
+  "id": "farm-row",
+  "version": "1.0.0",
+  "name": {
+   "en": "Farm row",
+   "de": "Farm-Reihe"
+  },
+  "description": {
+   "en": "Made for the Farm Switch script: every farm in a row with its switch, chest level and output over time.",
+   "de": "Passt zum Skript Farm-Schalter: alle Farmen nebeneinander mit Schalter, Kistenstand und Ertrag über die Zeit."
+  },
+  "author": {
+   "name": "CC: Cloud team",
+   "github": "enricofranke"
+  },
+  "license": "MPL-2.0",
+  "icon": "leaf",
+  "color": "green",
+  "tags": [
+   "farm",
+   "automation"
+  ],
+  "scripts": [
+   "farm-switch"
+  ],
+  "slots": [
+   {
+    "id": "farms",
+    "label": {
+     "en": "Farm Switch scripts",
+     "de": "Skripte Farm-Schalter"
+    },
+    "source": "program",
+    "has": [
+     "power",
+     "fill"
+    ],
+    "min": 1,
+    "max": 6
+   }
+  ],
+  "pages": [
+   {
+    "title": {
+     "en": "Farms",
+     "de": "Farmen"
+    },
+    "icon": "leaf",
+    "cards": [
+     {
+      "w": 4,
+      "each": "farms",
+      "title": "{device}",
+      "icon": "leaf",
+      "color": "green",
+      "widgets": [
+       {
+        "slot": "farms",
+        "ids": [
+         "running"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "farms",
+        "ids": [
+         "uptime"
+        ],
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "farms",
+        "ids": [
+         "power"
+        ],
+        "x": 0,
+        "y": 2,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "farms",
+        "ids": [
+         "dayonly"
+        ],
+        "x": 6,
+        "y": 2,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "farms",
+        "ids": [
+         "fill"
+        ],
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 2
+       },
+       {
+        "slot": "farms",
+        "ids": [
+         "items"
+        ],
+        "display": "sparkline",
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 3
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

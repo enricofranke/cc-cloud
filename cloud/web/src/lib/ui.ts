@@ -21,6 +21,8 @@ export type Route =
 
 /** Script Store link (/store#install=<id>@<version>): opened on the next mainframe dashboard. */
 export const pendingInstall = signal<{ id: string; version?: string } | null>(null);
+/** The next layout editor opens on the toolbox's Presets tab. */
+export const wantPresets = signal(false);
 {
   const r = takeInstallLink(location);
   if (r.scrub) history.replaceState(null, "", "/#/");

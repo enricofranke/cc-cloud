@@ -2775,6 +2775,24 @@ export async function createMockServer(opts: MockOptions = {}) {
       log(`${g.role}: push ${b.op}`);
       return json(res, 200, doc());
     }
+    // dashboard presets: the mod reads the signed index and checks each preset's hash; layout.edit only
+    const presetRoute = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/presets(?:\/([a-z0-9-]{3,40}))?$/.exec(p);
+    if (presetRoute && req.method === "GET") {
+      const t = bearer(req);
+      if (!t) return json(res, 401, { error: "unauthorized" });
+      const g = gate(t, presetRoute[1], "layout.edit");
+      if ("error" in g) return json(res, 403, { error: g.error });
+      if (opts.scriptStore === false) return json(res, 503, { error: "store_disabled" });
+      if (opts.storeSignature === "bad") return json(res, 502, { error: "store_bad_signature" });
+      if (opts.storeSignature === "none") return json(res, 502, { error: "store_unreachable" });
+      const index = JSON.parse(readFileSync(join(STORE_DIST, "index.json"), "utf8")) as { presets?: { id: string; version: string; file: string; sha256: string; size: number }[] };
+      if (!presetRoute[2]) return json(res, 200, { presets: (index.presets ?? []).map(({ file: _file, sha256: _sha, size: _size, ...entry }) => entry) });
+      const entry = index.presets?.find((x) => x.id === presetRoute[2]);
+      if (!entry) return json(res, 404, { error: "unknown_preset" });
+      const body = readFileSync(join(STORE_DIST, entry.file));
+      if (createHash("sha256").update(body).digest("hex") !== entry.sha256) return json(res, 502, { error: "store_mismatch" });
+      return json(res, 200, { preset: JSON.parse(body.toString("utf8")) });
+    }
     // ---- v0.5 F long-term history (docs/SPEC.md "F. Long-term statistics – implementation notes")
     const hm = /^\/api\/mainframes\/([A-Za-z0-9-]{1,64})\/history\/(1h|24h|7d|30d)\/(json|csv)\/(w|i)\/([A-Za-z0-9-]{1,64})\/([^/]{1,96})$/.exec(p);
     if (hm && req.method === "GET") {

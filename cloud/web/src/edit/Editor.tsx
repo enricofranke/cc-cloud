@@ -38,7 +38,8 @@ import {
   type ResolvedWidget,
 } from "../lib/layout.ts";
 import { bottom } from "../lib/grid.ts";
-import { pushToast } from "../lib/ui.ts";
+import { t } from "../lib/i18n.ts";
+import { pushToast, wantPresets } from "../lib/ui.ts";
 import { Card, placeVars, type CardEdit, type Edge } from "../components/Card.tsx";
 import { Tabs } from "../components/PageTabs.tsx";
 import { ConfirmDialog, Sheet } from "../components/Overlays.tsx";
@@ -138,7 +139,12 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
   const [selCard, setSelCard] = useState<string | null>(props.focusCard ?? null);
   const [panel, setPanel] = useState<"settings" | "help" | null>(props.focusCard ? "settings" : null);
   const [sideAt, setSideAt] = useState({ x: 0, y: 0 });
-  const [tray, setTray] = useState(!props.isPhone);
+  // "More presets" on a fresh dashboard opens the editor on the toolbox's Presets tab
+  const [presetsOpen] = useState(() => wantPresets.peek());
+  useEffect(() => {
+    wantPresets.value = false;
+  }, []);
+  const [tray, setTray] = useState(!props.isPhone || presetsOpen);
   const [trayAt, setTrayAt] = useState({ x: 0, y: 0 });
   const [hideHover, setHideHover] = useState(false);
   const [picker, setPicker] = useState<{ kind: WidgetKind; pages?: ResolvedPage[]; rebind?: string } | null>(null);
@@ -789,6 +795,12 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
         const r = addPage(current(hist), "New page", "star");
         commit(r.pages);
         props.onPage(r.id);
+      }}
+      initialTab={presetsOpen ? "presets" : undefined}
+      onApplyPreset={(doc, first) => {
+        commit(resolveLayout(props.uplinks, doc, { includeHidden: true }));
+        props.onPage(first);
+        pushToast({ level: "info", title: t("ps.addedTitle"), text: t("ps.addedText"), action: { label: t("ps.undo"), run: () => setHist(undo) } });
       }}
     />
   );

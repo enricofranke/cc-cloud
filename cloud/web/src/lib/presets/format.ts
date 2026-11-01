@@ -350,6 +350,9 @@ export function parsePreset(raw: unknown): Preset {
   });
 }
 
+/** A name or description of a store index entry, by the same rules as in a preset. */
+export const parseEntryText = (v: unknown, kind: "NAME" | "DESCRIPTION") => text(v, "entry", PRESET_LIMITS[kind]);
+
 /** The slots of a store index entry: the dashboard shows the match state before it loads the whole preset. */
 export function parseSlots(raw: unknown): PresetSlot[] {
   const seen = new Set<string>();

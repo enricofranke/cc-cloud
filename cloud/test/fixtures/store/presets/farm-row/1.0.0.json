@@ -1,0 +1,124 @@
+{
+ "format": 1,
+ "id": "farm-row",
+ "version": "1.0.0",
+ "name": {
+  "en": "Farm row",
+  "de": "Farm-Reihe"
+ },
+ "description": {
+  "en": "Made for the Farm Switch script: every farm in a row with its switch, chest level and output over time.",
+  "de": "Passt zum Skript Farm-Schalter: alle Farmen nebeneinander mit Schalter, Kistenstand und Ertrag über die Zeit."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "icon": "leaf",
+ "color": "green",
+ "tags": [
+  "farm",
+  "automation"
+ ],
+ "scripts": [
+  "farm-switch"
+ ],
+ "slots": [
+  {
+   "id": "farms",
+   "label": {
+    "en": "Farm Switch scripts",
+    "de": "Skripte Farm-Schalter"
+   },
+   "source": "program",
+   "has": [
+    "power",
+    "fill"
+   ],
+   "min": 1,
+   "max": 6
+  }
+ ],
+ "pages": [
+  {
+   "title": {
+    "en": "Farms",
+    "de": "Farmen"
+   },
+   "icon": "leaf",
+   "cards": [
+    {
+     "w": 4,
+     "each": "farms",
+     "title": "{device}",
+     "icon": "leaf",
+     "color": "green",
+     "widgets": [
+      {
+       "slot": "farms",
+       "ids": [
+        "running"
+       ],
+       "x": 0,
+       "y": 0,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "farms",
+       "ids": [
+        "uptime"
+       ],
+       "x": 6,
+       "y": 0,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "farms",
+       "ids": [
+        "power"
+       ],
+       "x": 0,
+       "y": 2,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "farms",
+       "ids": [
+        "dayonly"
+       ],
+       "x": 6,
+       "y": 2,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "farms",
+       "ids": [
+        "fill"
+       ],
+       "x": 0,
+       "y": 4,
+       "w": 12,
+       "h": 2
+      },
+      {
+       "slot": "farms",
+       "ids": [
+        "items"
+       ],
+       "display": "sparkline",
+       "x": 0,
+       "y": 6,
+       "w": 12,
+       "h": 3
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

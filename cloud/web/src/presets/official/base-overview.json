@@ -72,8 +72,8 @@
   "pages": [
     {
       "title": {
-        "en": "Overview",
-        "de": "Übersicht"
+        "en": "Base overview",
+        "de": "Basis-Übersicht"
       },
       "icon": "home",
       "cards": [

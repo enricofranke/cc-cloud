@@ -1,0 +1,123 @@
+{
+ "format": 1,
+ "id": "door-panel",
+ "version": "1.0.0",
+ "name": {
+  "en": "Door panel",
+  "de": "Türpanel"
+ },
+ "description": {
+  "en": "Made for the Door Controller script: one card per door with its state, the last person through and a lockdown switch.",
+  "de": "Passt zum Skript Tür-Steuerung: eine Karte pro Tür mit Zustand, letzter Person und Lockdown-Schalter."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "icon": "lock",
+ "color": "orange",
+ "tags": [
+  "door",
+  "security"
+ ],
+ "scripts": [
+  "door-controller"
+ ],
+ "slots": [
+  {
+   "id": "doors",
+   "label": {
+    "en": "Door Controller scripts",
+    "de": "Skripte Tür-Steuerung"
+   },
+   "source": "program",
+   "has": [
+    "toggle",
+    "lockdown"
+   ],
+   "min": 1,
+   "max": 8
+  }
+ ],
+ "pages": [
+  {
+   "title": {
+    "en": "Doors",
+    "de": "Türen"
+   },
+   "icon": "lock",
+   "cards": [
+    {
+     "w": 4,
+     "each": "doors",
+     "title": "{device}",
+     "icon": "lock",
+     "color": "orange",
+     "widgets": [
+      {
+       "slot": "doors",
+       "ids": [
+        "open"
+       ],
+       "x": 0,
+       "y": 0,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "doors",
+       "ids": [
+        "locked"
+       ],
+       "x": 6,
+       "y": 0,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "doors",
+       "ids": [
+        "last"
+       ],
+       "x": 0,
+       "y": 2,
+       "w": 12,
+       "h": 2
+      },
+      {
+       "slot": "doors",
+       "ids": [
+        "toggle"
+       ],
+       "x": 0,
+       "y": 4,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "doors",
+       "ids": [
+        "lockdown"
+       ],
+       "x": 6,
+       "y": 4,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "doors",
+       "ids": [
+        "delay"
+       ],
+       "x": 0,
+       "y": 6,
+       "w": 12,
+       "h": 3
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

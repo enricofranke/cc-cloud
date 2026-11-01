@@ -1,6 +1,8 @@
 // Dashboard presets: the pure engine. Format, slot matching, expansion into a normal layout, share codes, page export,
 // and the safety rules a preset can never get around.
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import { MAX_PAGES, normalizeLayout, resolveLayout, snapshotLayout, type LayoutDoc } from "../web/src/lib/layout.ts";
 import type { Uplink, Widget } from "../web/src/lib/types.ts";
@@ -11,9 +13,10 @@ import { expandPreset, matchPreset, mergeLayout, recommend } from "../web/src/li
 import { rolesOf } from "../web/src/lib/presets/roles.ts";
 import { CodeError, MAX_CODE_LENGTH, MAX_JSON_BYTES, decodePreset, encodePreset, readInput } from "../web/src/lib/presets/code.ts";
 import { pageToPreset } from "../web/src/lib/presets/export.ts";
+import { listStorePresets } from "../web/src/lib/presets/store.ts";
 import { ACTION_TYPES } from "../web/src/lib/presets/roles.ts";
 import { officialPresets } from "../web/src/presets/official.ts";
-import { createMockServer } from "../dev/mock-server.ts";
+import { createMockServer, type MockServer } from "../dev/mock-server.ts";
 
 const widget = (id: string, type: Widget["type"], label?: string, opts?: Widget["opts"]): Widget => ({ id, type, label, value: 0, opts, online: true }) as Widget;
 const device = (uplinkId: string, title: string, template: string | undefined, widgets: Widget[], extra: Partial<Uplink> = {}): Uplink => ({ uplinkId, title, online: true, template, widgets, ...extra });
@@ -653,5 +656,123 @@ describe("a card that mixes devices", () => {
   });
   it("is offline when none is", () => {
     expect(card([{ ...battery("a"), online: false }, { ...battery("b"), online: false }]).uplink.online).toBe(false);
+  });
+});
+
+describe("store presets", () => {
+  const dir = new URL("./fixtures/store/", import.meta.url);
+  const index = JSON.parse(readFileSync(new URL("index.json", dir), "utf8")) as { presets: { id: string; version: string; file: string; sha256: string; slots: unknown }[] };
+
+  it("the store's presets pass the dashboard's own check", () => {
+    expect(index.presets.length).toBeGreaterThanOrEqual(3);
+    for (const e of index.presets) {
+      const body = readFileSync(new URL(e.file, dir));
+      expect(createHash("sha256").update(body).digest("hex")).toBe(e.sha256);
+      const p = parsePreset(JSON.parse(body.toString("utf8")));
+      expect(p.id).toBe(e.id);
+      expect(parseSlots(e.slots)).toEqual(p.slots);
+    }
+  });
+
+  it("the store's share codes are read by the dashboard, and carry no store identity", async () => {
+    for (const e of index.presets) {
+      const detail = JSON.parse(readFileSync(new URL(`presets/${e.id}/detail.json`, dir), "utf8"));
+      const decoded = await decodePreset(detail.code);
+      const { id, version, author, license, ...rest } = parsePreset(detail.preset);
+      expect(decoded).toEqual(rest);
+      expect(decoded.id).toBeUndefined();
+    }
+  });
+
+  it("no store preset relabels an action widget", () => {
+    for (const e of index.presets) {
+      const p = parsePreset(JSON.parse(readFileSync(new URL(e.file, dir), "utf8")));
+      for (const card of p.pages.flatMap((x) => x.cards))
+        for (const w of card.widgets) if (w.types?.some((t) => ACTION_TYPES.has(t))) expect(w.label).toBeUndefined();
+    }
+  });
+
+  describe("through the server", () => {
+    let mock: MockServer;
+    let main: string;
+    const token = async (role: object) => (await (await fetch(`http://127.0.0.1:${mock.port}/dev/token`, { method: "POST", body: JSON.stringify({ name: "Vitest", ...role }) })).json()).token as string;
+    const get = (path: string, t: string) => fetch(`http://127.0.0.1:${mock.port}/api/mainframes/${main}/presets${path}`, { headers: { authorization: `Bearer ${t}` } });
+    beforeAll(async () => {
+      mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, log: () => {} });
+      main = [...mock.mainframes.values()][0].id;
+    });
+    afterAll(() => mock.close());
+
+    it("lists without the server's own fields", async () => {
+      const body = await (await get("", await token({}))).json();
+      expect(body.presets.map((p: { id: string }) => p.id)).toContain("door-panel");
+      expect(body.presets[0]).not.toHaveProperty("file");
+      expect(body.presets[0]).not.toHaveProperty("sha256");
+    });
+    it("hands out one preset", async () => {
+      const body = await (await get("/door-panel", await token({}))).json();
+      expect(parsePreset(body.preset).id).toBe("door-panel");
+    });
+    it("needs layout.edit", async () => {
+      const res = await get("", await token({ role: "viewer" }));
+      expect(res.status).toBe(403);
+    });
+    it("needs a token", async () => {
+      expect((await get("", "nope")).status).toBe(401);
+      expect((await fetch(`http://127.0.0.1:${mock.port}/api/mainframes/${main}/presets`)).status).toBe(401);
+    });
+    it("names what it does not know", async () => {
+      const res = await get("/no-such-preset", await token({}));
+      expect(res.status).toBe(404);
+      expect((await res.json()).error).toBe("unknown_preset");
+    });
+  });
+});
+
+describe("store entries", () => {
+  // the list a dashboard reads from the mod's server
+  const entry = { id: "door-panel", version: "1.0.0", name: { en: "Doors", de: "Türen" }, description: { en: "x", de: "y" }, author: { name: "Team" }, tags: ["door"], pages: 1, cards: 1, slots: [{ id: "a", label: "A", roles: ["door"], min: 1, max: 1 }] };
+  const listed = async (presets: unknown[]) => {
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify({ presets }), { status: 200 })) as typeof fetch;
+    (globalThis as { location?: unknown }).location ??= { origin: "http://x" };
+    try {
+      return await listStorePresets("m");
+    } finally {
+      globalThis.fetch = real;
+    }
+  };
+  it("reads a good entry", async () => {
+    expect((await listed([entry]))[0]).toMatchObject({ id: "door-panel", author: "Team", pages: 1 });
+  });
+  it("leaves out what it cannot read, and keeps the rest", async () => {
+    expect((await listed([{ ...entry, id: "../evil" }, { ...entry, slots: [{ id: "a", label: "A", roles: ["nope"], min: 1, max: 1 }] }, { ...entry, name: 7 }, entry])).map((e) => e.id)).toEqual(["door-panel"]);
+  });
+});
+
+describe("ids and types together", () => {
+  it("an id of another type is not what the preset means", () => {
+    const u = device("a", "Net", undefined, [widget("energy", "gauge", "Energy"), widget("usage", "label", "Usage")]);
+    expect(pickWidgets(u, { slot: "s", ids: ["energy"], types: ["label"] } as never, new Set()).map((w) => w.id)).toEqual(["usage"]);
+    expect(pickWidgets(u, { slot: "s", ids: ["energy"], types: ["gauge"] } as never, new Set()).map((w) => w.id)).toEqual(["energy"]);
+  });
+});
+
+describe("automatic cards", () => {
+  it("rows that stay half empty share the width", () => {
+    const u = device("a", "Lonely", undefined, [widget("g", "gauge", "Gauge")], { mode: "lua" });
+    const p = parsePreset({ format: 1, name: "x", slots: [{ id: "s", label: "x", roles: ["any"], min: 0, max: 1 }], pages: [{ title: "A", cards: [{ w: 4, each: "s", widgets: [{ slot: "s", types: ["gauge"], w: 6, h: 6 }] }] }] });
+    expect(Object.values(matchPreset(p, [u], "en").expanded.doc.widgets)[0].w).toBe(12);
+  });
+  it("a dial next to a stack of labels stays as it is", () => {
+    const u = device("a", "Stack", undefined, [widget("g", "gauge", "Gauge"), widget("a", "label", "A"), widget("b", "label", "B")], { mode: "lua" });
+    const p = parsePreset({ format: 1, name: "x", slots: [{ id: "s", label: "x", roles: ["any"], min: 0, max: 1 }], pages: [{ title: "A", cards: [{ w: 4, each: "s", widgets: [{ slot: "s", types: ["gauge"], w: 6, h: 6 }, { slot: "s", types: ["label"], count: 2, w: 6, h: 2 }] }] }] });
+    const boxes = Object.values(matchPreset(p, [u], "en").expanded.doc.widgets).map((w) => [w.x, w.y, w.w, w.h]);
+    expect(boxes).toEqual([[0, 0, 6, 6], [6, 0, 6, 2], [6, 2, 6, 2]]);
+  });
+  it("an author's own grid is left alone", () => {
+    const u = device("a", "Grid", undefined, [widget("g", "gauge", "Gauge")], { mode: "lua" });
+    const p = parsePreset({ format: 1, name: "x", slots: [{ id: "s", label: "x", roles: ["any"], min: 0, max: 1 }], pages: [{ title: "A", cards: [{ w: 4, each: "s", widgets: [{ slot: "s", types: ["gauge"], x: 0, y: 0, w: 6, h: 6 }] }] }] });
+    expect(Object.values(matchPreset(p, [u], "en").expanded.doc.widgets)[0].w).toBe(6);
   });
 });
