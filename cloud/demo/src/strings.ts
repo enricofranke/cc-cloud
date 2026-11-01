@@ -72,7 +72,7 @@ const DE: typeof EN = {
   bar: "Live-Demo: simulierte Basis, hier läuft kein echter Server",
   barLabel: "Über diese Demo",
   download: "Download",
-  reset: "Zurücksetzen",
+  reset: "Neustart",
   resetTitle: "Neu anfangen mit frischer Basis",
   tour: "Tour",
   tourTitle: "Geführte Tour starten",

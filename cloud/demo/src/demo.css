@@ -236,6 +236,10 @@
   body:has(.tabbar) .demo-tour {
     bottom: calc(74px + env(safe-area-inset-bottom));
   }
+  /* a finished step keeps the screen free */
+  .demo-tour.is-done .demo-tour-body {
+    display: none;
+  }
   /* toasts come from the same corner */
   body:has(.demo-tour) .toasts {
     display: none;

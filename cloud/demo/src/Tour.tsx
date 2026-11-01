@@ -57,6 +57,8 @@ interface Step {
   enter?(): Promise<void> | void;
   target?(): HTMLElement | null;
   done?(): boolean;
+  /** Once, the moment done() turns true. */
+  arrive?(): Promise<void>;
   show?(live: () => boolean): Promise<void>;
 }
 
@@ -130,6 +132,17 @@ const STEPS: Step[] = [
     enter: leaveEditor,
     target: () => threeButton() ?? first(".tab-network"),
     done: () => !!first(".n3d canvas"),
+    // the 3D view opens high above the world: the first look belongs to the base
+    async arrive() {
+      const input = await until(() => first(".fly-input") as HTMLInputElement | null);
+      if (!input) return;
+      await type(input, "Mainframe", () => true);
+      await sleep(120);
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      input.blur();
+      // on a phone the device's details open as a sheet, right over what the visitor just arrived at
+      if (await until(() => first(".backdrop-sheet"), 900)) document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    },
     async show(live) {
       first(".tab-network")?.click();
       const three = await until(threeButton);
@@ -190,6 +203,7 @@ function Tour() {
     let frame = 0;
     let checked = 0;
     let target: HTMLElement | null = null;
+    let arrived = false;
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
       if (now - checked > 160) {
@@ -197,7 +211,12 @@ function Tour() {
         const next = step.target?.() ?? null;
         if (next !== target && next) reveal(next, card.current);
         target = next;
-        setDone(!!step.done?.());
+        const ok = !!step.done?.();
+        if (ok && !arrived) {
+          arrived = true;
+          void step.arrive?.();
+        }
+        setDone(ok);
       }
       const el = ring.current;
       if (!el) return;
@@ -237,7 +256,7 @@ function Tour() {
   return (
     <>
       <div class="demo-ring" ref={ring} aria-hidden="true" />
-      <section class="demo-tour" ref={card} aria-label={s.tourLabel}>
+      <section class={`demo-tour ${done && text.ok ? "is-done" : ""}`} ref={card} aria-label={s.tourLabel}>
         <div class="demo-tour-top">
           {STEPS.map((_, i) => (
             <span key={i} class={`demo-pip ${i === index ? "on" : i < index ? "done" : ""}`} aria-hidden="true" />
@@ -250,7 +269,7 @@ function Tour() {
         </div>
         <div aria-live="polite">
           <h2 class="px-title">{text.title}</h2>
-          <p>{text.body}</p>
+          <p class="demo-tour-body">{text.body}</p>
           {done && text.ok && <p class="demo-ok">{text.ok}</p>}
         </div>
         <div class="demo-tour-actions">

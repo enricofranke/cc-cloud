@@ -25,6 +25,7 @@ const core = createMockCore(
     // a pairing needs a player in the game: nothing approves one here
     approveDelayMs: -1,
     unlimited: true,
+    anyPlayer: true,
     pinLockMs: 20_000,
     // stays below the warning band: the base is calm until the visitor does something
     reactorPeak: 870,
@@ -50,7 +51,7 @@ for (const m of [...core.mainframes.values()]) if (!MAINFRAMES.some((x) => x.id 
 const uuid = PLAYERS[0].uuid;
 const now = Date.now();
 const DAY = 86_400_000;
-core.newToken(undefined, "Demo browser", true, { uuid, lastIp: "192.168.1.20" }, TOKEN);
+core.newToken(undefined, "Alex's laptop", true, { uuid, lastIp: "192.168.1.20" }, TOKEN);
 core.newToken(undefined, "Alex's phone", true, { uuid, type: "phone", lastIp: "192.168.1.31", created: now - 12 * DAY, lastSeen: now - 180_000 });
 core.newToken(undefined, "Workshop tablet", true, { uuid, type: "tablet", lastIp: "192.168.1.44", created: now - 34 * DAY, lastSeen: now - 2 * DAY });
 const stream = createShare({ mainframeId: BASE_ID, label: "Stream overlay", createdBy: PLAYER, maxViewers: 5, pages: ["power"], cards: [], hideNumbers: true, expiresIn: 604_800 });

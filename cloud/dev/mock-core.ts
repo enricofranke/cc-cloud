@@ -238,6 +238,8 @@ export interface MockOptions {
   unlimited?: boolean;
   /** Where the reactor settles while it runs (default ~1160 K: past the warning and critical bands). */
   reactorPeak?: number;
+  /** Any name counts as a player who has been on the server (default: only the simulated PLAYERS). */
+  anyPlayer?: boolean;
   pingIntervalMs?: number;
   /** Close a socket that has not answered a ping for this long (spec: 60 s). */
   idleTimeoutMs?: number;
@@ -356,6 +358,13 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       ...extra,
     });
     return token;
+  };
+  const newPlayer = (name: string) => {
+    const player = name.trim().slice(0, 16);
+    if (!opts.anyPlayer || !player) return undefined;
+    const p = { uuid: randomUUID(), player };
+    PLAYERS.push(p);
+    return p;
   };
   const accountCodes = new Map<string, { uuid: string; code: string }>(); // code -> player
   for (const p of PLAYERS.slice(0, 3)) {
@@ -3081,7 +3090,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         const mayAllow = (xs: string[] | null) => !xs || role === "owner" || xs.every((x) => g.perms.includes(x));
         if (!mayAllow(allow)) return json(res, 403, { error: "not_allowed" });
         if (b.op === "set_role" && ["viewer", "operator", "admin"].includes(b.role)) {
-          const pl = playerByName(String(b.player ?? ""));
+          const pl = playerByName(String(b.player ?? "")) ?? newPlayer(String(b.player ?? ""));
           if (!pl) return json(res, 400, { error: "unknown_player" });
           if (pl.uuid === m.access.owner) return json(res, 400, { error: "invalid" });
           if (!mayAllow(presetPerms(b.role))) return json(res, 403, { error: "not_allowed" });
