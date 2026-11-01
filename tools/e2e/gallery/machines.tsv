@@ -66,9 +66,9 @@ agritechevolved          agritechevolved:red_terracotta_planter                 
 agritechevolved          agritechevolved:white_terracotta_planter                 item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
 agritechevolved          agritechevolved:yellow_terracotta_planter                item=minecraft:wheat_seeds*4 item=minecraft:dirt*1 kind=agritechevolved_planter note=no_hopper_insert,_plant_and_soil_need_the_gui
 arsmagicalegacy          arsmagicalegacy:altar_core                               kind=arsmagica_etherium
-arsmagicalegacy          arsmagicalegacy:obelisk                                  kind=arsmagica_etherium
-arsmagicalegacy          arsmagicalegacy:celestial_prism                          kind=arsmagica_etherium
-arsmagicalegacy          arsmagicalegacy:black_aurem                              kind=arsmagica_etherium
+arsmagicalegacy          arsmagicalegacy:obelisk                                  kind=arsmagica_etherium probe
+arsmagicalegacy          arsmagicalegacy:celestial_prism                          kind=arsmagica_etherium probe
+arsmagicalegacy          arsmagicalegacy:black_aurem                              kind=arsmagica_etherium probe
 cabletiers               cabletiers:elite_interface                               fe kind=energy
 # cabletiers               cabletiers:ultra_interface                               fe kind=energy
 # cabletiers               cabletiers:mega_interface                                fe kind=energy

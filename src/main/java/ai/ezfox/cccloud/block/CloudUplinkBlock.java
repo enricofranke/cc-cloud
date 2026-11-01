@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  * A small module stuck to the face of another block. {@code facing} points from the uplink towards the block it is
  * attached to (like a CC modem). {@code mount} picks the 14x14 plate or, on side faces that cannot carry it (slab sides,
  * solar panels), the compact puck; it follows the attached block's shape (see {@link UplinkMount}).
- * New uplinks are refused on top / bottom faces that do not carry the plate (action bar hint).
+ * On top / bottom faces that do not carry the plate it is an 8x8 stud with a stem into the attached block.
  */
 public class CloudUplinkBlock extends Block implements EntityBlock {
     public static final MapCodec<CloudUplinkBlock> CODEC = RecordCodecBuilder.mapCodec(i -> i.group(
@@ -48,7 +48,7 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING = DirectionalBlock.FACING;
     public static final EnumProperty<CloudStatus> STATUS = CloudStatus.PROPERTY;
     public static final BooleanProperty DIRECT = BooleanProperty.create("direct");
-    /** Plate or compact puck, from the attached block's shape (see {@link UplinkMount}). */
+    /** Plate, compact puck or stud, from the attached block's shape (see {@link UplinkMount}). */
     public static final EnumProperty<UplinkMount> MOUNT = UplinkMount.PROPERTY;
 
     private final boolean advanced;
@@ -95,18 +95,10 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
         BlockPos pos = context.getClickedPos();
         if (!state.canSurvive(level, pos)) return null;
         BlockPos attached = pos.relative(facing);
-        if (facing.getAxis() == Direction.Axis.Y && !UplinkMount.platesFit(level.getBlockState(attached), level, attached, facing)) {
-            // Top / bottom faces only take the plate (no posts or antennas): e.g. the top of a slab or solar panel.
-            if (!level.isClientSide() && context.getPlayer() != null) {
-                context.getPlayer().sendOverlayMessage(net.minecraft.network.chat.Component.translatable("cccloud.uplink.side_only")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW));
-            }
-            return null;
-        }
         return withMount(state.setValue(DIRECT, isDirect(level.getBlockState(attached))), level, pos);
     }
 
-    /** {@code state} with the mount (plate / compact puck) that fits the face it is attached to. */
+    /** {@code state} with the mount (plate / compact puck / stud) that fits the face it is attached to. */
     public static BlockState withMount(BlockState state, BlockGetter level, BlockPos pos) {
         if (state.getBlock() instanceof CloudUplinkBlock b && b.isProbe()) return state.setValue(MOUNT, UplinkMount.FULL);
         return state.setValue(MOUNT, UplinkMount.compute(level, pos, state.getValue(FACING)));

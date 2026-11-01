@@ -15,8 +15,8 @@ import net.minecraft.world.phys.shapes.Shapes;
 
 /**
  * Compact uplinks (docs/MODELS.md "Compact uplink"): an uplink on the side of a slab-height block gets the 8x6 puck on
- * the visible part instead of the 14x14 plate, with a matching hitbox; the top of a tray-height block refuses new
- * uplinks; the mount follows the attached block and fixes itself after loading, also from unknown saved values.
+ * the visible part instead of the 14x14 plate, with a matching hitbox; the top of a tray-height block gets a stud with
+ * a long stem; the mount follows the attached block and fixes itself after loading, also from unknown saved values.
  */
 public final class UplinkMountTests {
     /** Sculk sensor: slab height (8 px) and a block entity, so an uplink may stick to its side. */
@@ -45,12 +45,12 @@ public final class UplinkMountTests {
         helper.assertTrue(box.minX == 4 / 16.0 && box.maxX == 12 / 16.0 && box.minY == 1 / 16.0 && box.maxY == 7 / 16.0
             && box.minZ == 13.75 / 16.0 && box.maxZ == 1.0, "Compact hitbox on the sensor's side: " + box);
 
-        // on top of the 6 px detector the plate would float 10 px above it: refused (side faces only)
+        // on top of the 6 px detector the plate would float 10 px above it: a stud with the long stem
         place(helper, player, DETECTOR, Direction.UP);
-        helper.assertBlockNotPresent(ModRegistry.CLOUD_UPLINK.get(), DETECTOR.above());
+        expect(helper, DETECTOR.above(), Direction.DOWN, UplinkMount.STUD_LONG);
 
         // a saved state with a mount this version does not know (the removed post mounts of a dev build) loads as the
-        // plate: uplinks that older versions let sit on such a top stay and keep the plate
+        // plate; on such a top it fits itself on its first tick like every other plate
         var tag = new net.minecraft.nbt.CompoundTag();
         tag.putString("Name", "cccloud:cloud_uplink");
         var props = new net.minecraft.nbt.CompoundTag();
@@ -80,7 +80,7 @@ public final class UplinkMountTests {
         helper.assertBlockProperty(OLD.north(), CloudUplinkBlock.MOUNT, UplinkMount.FULL);
         helper.succeedWhen(() -> {
             expect(helper, OLD.north(), Direction.SOUTH, UplinkMount.LOW);
-            expect(helper, DETECTOR.above(), Direction.DOWN, UplinkMount.FULL);
+            expect(helper, DETECTOR.above(), Direction.DOWN, UplinkMount.STUD_LONG);
         });
     }
 

@@ -170,8 +170,10 @@ async function placeCell(c, state) {
     up: [x, y + size, z, "down"], north: [x, y, z - size, "south"], south: [x, y, z + size, "north"],
     west: [x - size, y, z, "east"], east: [x + size, y, z, "west"],
   }[face];
-  const uplink = has(c, "self") ? [x, y, z] : c.uplink ?? rec.uplink ?? [ux, uy, uz, facing];
-  if (!has(c, "self")) await cmd(`setblock ${uplink[0]} ${uplink[1]} ${uplink[2]} cccloud:cloud_uplink[facing=${uplink[3]}]{${linkNbt(state.mainframe)},linked_by:"${OWNER.uuid}"}`, { allowFail: true });
+  const uplink = has(c, "self") ? [x, y, z] : c.uplink ?? rec.uplink ?? (has(c, "probe") ? [x, y, z + 1, "down"] : [ux, uy, uz, facing]);
+  // probe: models that draw beyond their block get a Cloud Probe on the floor next to them (an uplink would sit inside the model)
+  if (has(c, "probe")) await cmd(`setblock ${uplink[0]} ${uplink[1]} ${uplink[2]} cccloud:cloud_probe[facing=${uplink[3]}]{${linkNbt(state.mainframe)},linked_by:"${OWNER.uuid}",remote_target:[I;${x},${y},${z}],remote_side:"up",remote_origin:[I;${uplink.slice(0, 3).join(",")}],remote_dim:"${OW}",remote_by:"${OWNER.uuid}"}`, { allowFail: true });
+  else if (!has(c, "self")) await cmd(`setblock ${uplink[0]} ${uplink[1]} ${uplink[2]} cccloud:cloud_uplink[facing=${uplink[3]}]{${linkNbt(state.mainframe)},linked_by:"${OWNER.uuid}"}`, { allowFail: true });
   rec.uplink = uplink.slice(0, 3);
   await cmd(`setblock ${x} ${y} ${z + 2} minecraft:oak_sign[rotation=8]${signText(signLines(c.block.split(":")[1]))}`, { allowFail: true });
   if (c.label) await cmd(`setblock ${x - 3} ${y} ${z} minecraft:oak_sign[rotation=4]${signText(["", c.mod.replaceAll("_", " "), "", ""], "blue")}`, { allowFail: true });

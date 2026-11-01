@@ -17,11 +17,12 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
  * How an uplink sits on the face it is attached to (blockstate {@code mount}, docs/MODELS.md "Compact uplink"): the
- * 14x14 plate on faces that carry it, otherwise (side faces only) an 8x6 puck placed on the visible part of the face
- * (slab sides, tray-height machines such as solar panels, carpet-height blocks). Top and bottom faces only take the
- * plate; {@link CloudUplinkBlock} refuses new uplinks on top / bottom faces where it does not fit. Computed on the
- * server from the attached block's outline shape; the models come from tools/gen_models.py and use the same boxes as
- * {@link #northShape()}. Unknown saved values (the removed post mounts of a dev build) load as {@link #FULL}.
+ * 14x14 plate on faces that carry it, on smaller side faces an 8x6 puck placed on the visible part of the face (slab
+ * sides, tray-height machines such as solar panels, carpet-height blocks), on smaller top and bottom faces an 8x8 stud
+ * in the middle of the face with a stem into the attached block (pipes, small machines). Computed on the server from
+ * the attached block's outline shape; the models come from tools/gen_models.py and use the same boxes as
+ * {@link #northShape()}, except for the stem, which lies in the attached block's cell and stays out of the hitbox.
+ * Unknown saved values (the removed post mounts of a dev build) load as {@link #FULL}.
  */
 public enum UplinkMount implements StringRepresentable {
     FULL("full", 0),
@@ -29,7 +30,11 @@ public enum UplinkMount implements StringRepresentable {
     LOW("low", 1),
     CENTER("center", 5),
     HIGH("high", 9),
-    TOP("top", 10);
+    TOP("top", 10),
+    /** Top / bottom faces: 8x8 stud with a 6 px stem. */
+    STUD("stud", 4),
+    /** Top / bottom faces further than {@link #STUD_REACH_PX} away (tray-height machines): a 14 px stem. */
+    STUD_LONG("stud_long", 4);
 
     public static final EnumProperty<UplinkMount> PROPERTY = EnumProperty.create("mount", UplinkMount.class);
 
@@ -39,6 +44,8 @@ public enum UplinkMount implements StringRepresentable {
     static final double FLUSH_PX = 1;
     /** Share of the plate area (or of its 1 px outline, e.g. a hopper rim) a flush face must cover for the plate. */
     static final double FULL_COVERAGE = 0.9;
+    /** How far the short stem reaches behind the uplink's cell boundary, in pixels. */
+    static final double STUD_REACH_PX = 6;
 
     /** Blockstate rotation per facing (same as the models and {@link Shapes#rotateAll}). */
     private static final Map<Direction, OctahedralGroup> ROTATION = new EnumMap<>(Map.of(
@@ -65,9 +72,14 @@ public enum UplinkMount implements StringRepresentable {
         return this != FULL;
     }
 
+    public boolean stud() {
+        return this == STUD || this == STUD_LONG;
+    }
+
     /** Shape when attached to the block to the north (model space, +Z away from that block): the plate or the puck. */
     public VoxelShape northShape() {
-        return this == FULL ? Block.box(1, 1, 0, 15, 15, 2.25) : Block.box(4, y, 0, 12, y + 6, 2.25);
+        if (this == FULL) return Block.box(1, 1, 0, 15, 15, 2.25);
+        return Block.box(4, y, 0, 12, y + (stud() ? 8 : 6), 2.25);
     }
 
     public VoxelShape shape(Direction facing) {
@@ -85,24 +97,23 @@ public enum UplinkMount implements StringRepresentable {
     }
 
     public static UplinkMount compute(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
-        // Top and bottom faces only take the plate (new uplinks are refused where it does not fit, see platesFit).
-        if (facing.getAxis() == Direction.Axis.Y) return FULL;
-        return fit(attached, level, attachedPos, facing);
+        return fit(attached, level, attachedPos, facing, facing.getAxis() == Direction.Axis.Y);
     }
 
     /**
      * Whether the face the uplink would stick to carries the plate (sturdy, or flush and covering the plate or its
-     * rim). Top and bottom faces need this; side faces get the compact puck otherwise.
+     * rim). Cloud Probes need this on every face; uplinks get a puck or a stud otherwise.
      */
     public static boolean platesFit(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
-        return fit(attached, level, attachedPos, facing) == FULL;
+        return fit(attached, level, attachedPos, facing, false) == FULL;
     }
 
-    private static UplinkMount fit(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing) {
+    private static UplinkMount fit(BlockState attached, BlockGetter level, BlockPos attachedPos, Direction facing, boolean vertical) {
         if (attached.isAir()) return FULL;
         try {
             if (attached.isFaceSturdy(level, attachedPos, facing.getOpposite())) return FULL;
-            return choose(modelBoxes(attached.getShape(level, attachedPos), facing));
+            var boxes = modelBoxes(attached.getShape(level, attachedPos), facing);
+            return vertical ? chooseVertical(boxes) : choose(boxes);
         } catch (RuntimeException e) {
             // Another mod's shape code failed (e.g. a block entity that is not there yet): keep the plate.
             return FULL;
@@ -162,6 +173,14 @@ public enum UplinkMount implements StringRepresentable {
             }
         }
         return best;
+    }
+
+    /** Top and bottom faces: the plate if it fits, otherwise a stud whose stem reaches the nearest part of the shape. */
+    static UplinkMount chooseVertical(List<double[]> boxes) {
+        if (choose(boxes) == FULL) return FULL;
+        double gap = Double.MAX_VALUE;
+        for (var b : boxes) gap = Math.min(gap, depth(b));
+        return gap > STUD_REACH_PX ? STUD_LONG : STUD;
     }
 
     /** How far behind the uplink's cell boundary (z 0) a box ends, in pixels. */

@@ -65,6 +65,10 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/uplink_compact_ring_high` | 4 |
 | `block/uplink_compact_top` | 2 |
 | `block/uplink_compact_ring_top` | 4 |
+| `block/uplink_compact_stud` | 5 |
+| `block/uplink_compact_ring_stud` | 4 |
+| `block/uplink_compact_stud_long` | 5 |
+| `block/uplink_compact_ring_stud_long` | 4 |
 | `block/rs_plate_display` | 0 |
 | `block/cloud_switch_off` | 3 |
 | `block/cloud_switch_on` | 3 |
@@ -84,19 +88,22 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 
 The 14x14 plate only fits faces that carry it. On a slab side, a tray-height machine (Energized Power
 solar panel, 4 px), a carpet-height block or an inset face it stuck out like a floating sign, so the
-uplink blockstates have a `mount` property (`full | bottom | low | center | high | top`) that the server computes
+uplink blockstates have a `mount` property (`full | bottom | low | center | high | top | stud | stud_long`) that the server computes
 from the attached block's outline shape (`UplinkMount.compute`, on placement, when that neighbour
 changes and once after loading, so older worlds fix themselves):
 
 - `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area (or of
   its 1 px outline, e.g. a hopper rim) -> the plate.
-- `bottom|low|center|high|top` (side faces only): smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
-  x 4..12, z 0..2, bottom edge at model y bottom 0, low 1, center 5, high 9, top 10).
+- `bottom|low|center|high|top` (side faces): smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
+  x 4..12, z 0..2, bottom edge at model y bottom 0, low 1, center 5, high 9, top 10, stud 5, stud_long 5).
   The position with the largest overlap with the face wins (ties: nearest to the face's centre), so it
   sits on the visible part: solar panel / carpet side -> `bottom`, slab side -> `low`, top slab -> `high`.
-- Top and bottom faces only take the plate: placing an uplink on a top / bottom face that does not
-  qualify for `full` (top of a slab or solar panel) is refused with an action bar hint. Uplinks that
-  already sit there (older versions allowed it on block entities) stay and keep the plate.
+- `stud|stud_long` (top / bottom faces): smaller -> an 8x8 stud in the middle of the face with a 4x4 stem
+  into the attached block, so nothing floats above pipes or small machines: `stud` reaches
+  6 px, `stud_long` 14 px (nearest part of the shape further than 6 px away, e.g. a solar
+  panel). The stem lies in the attached block's cell, so it is not part of the hitbox. Plates from
+  older versions fix themselves after loading. Blocks that draw beyond their own cell (Ars Magica
+  obelisk, celestial prism) cannot be detected from their shape: use a Cloud Probe for those.
 - Unknown saved values (e.g. the removed `post*` mounts of a dev build) load as `full` (vanilla state
   codec default) and are re-computed on the first tick.
 

@@ -525,12 +525,14 @@ def uplink_direct_ring():
 # Compact uplink ("puck") for side faces that cannot carry the 14x14 plate: slab sides, tray-height
 # machines (solar panels), carpet-height blocks. Blockstate property `mount` (the Java side computes
 # it from the attached block's outline shape, see CloudUplinkBlock / UplinkMount):
-#   full                    the 14x14 plate (above); the only mount on top / bottom faces
-#   bottom|low|center|high|top   8x6 puck flush on the face, bottom edge at model y COMPACT_Y
+#   full                    the 14x14 plate (above)
+#   bottom|low|center|high|top   side faces: 8x6 puck flush on the face, bottom edge at model y COMPACT_Y
+#   stud|stud_long          top / bottom faces: 8x8 stud with a 4x4 stem of STUD_REACH px into the attached block
 # Puck: x 4..12, y v..v+6, z 0..2, LED 4x1 proud to z 2.25. The shapes in UplinkMount (Java) use
-# exactly these boxes.
-MOUNTS = ("full", "bottom", "low", "center", "high", "top")
-COMPACT_Y = {"bottom": 0, "low": 1, "center": 5, "high": 9, "top": 10}
+# exactly these boxes (without the stem, which lies in the attached block's cell).
+MOUNTS = ("full", "bottom", "low", "center", "high", "top", "stud", "stud_long")
+COMPACT_Y = {"bottom": 0, "low": 1, "center": 5, "high": 9, "top": 10, "stud": 5, "stud_long": 5}
+STUD_REACH = {"stud": 6, "stud_long": 14}
 UC = "uplink_compact"
 
 
@@ -547,16 +549,24 @@ def uplink_compact(mount):
     m.box([4, v, 0], [12, v + 6, 2], {"*": uct("body_l"), "south": Region("atlas", UC, "front"),
                                       "north": uct("body")})
     m.box([6, v + 1, 2], [10, v + 2, 2.25], st("strip4"), emit=15, skip=("north",))
+    if mount in STUD_REACH:
+        # the 8x6 front keeps its texture; 1 px bands make the stud square, the stem leaves the cell
+        m.box([4, v - 1, 0], [12, v, 2], uct("body_l"), skip=("north", "up"))
+        m.box([4, v + 6, 0], [12, v + 7, 2], uct("body_l"), skip=("north", "down"))
+        m.box([6, 6, -STUD_REACH[mount]], [10, 10, 0], uct("body"), skip=("south",))
     return m
 
 
 def uplink_compact_ring(mount):
     """Direct-mode ring around the puck: like the plate's ring, 0.5 px wide, flush, emissive."""
     v = COMPACT_Y[mount]
+    if mount in STUD_REACH:
+        v -= 1
+    h = 8 if mount in STUD_REACH else 6
     tex = f"{NS}:block/uplink"
     m = Model(parent=f"{NS}:block/uplink_display", textures={"particle": tex, "atlas": tex})
-    for (a, b) in (([3.5, v - 0.5, 0], [12.5, v, 2]), ([3.5, v + 6, 0], [12.5, v + 6.5, 2]),
-                   ([3.5, v, 0], [4, v + 6, 2]), ([12, v, 0], [12.5, v + 6, 2])):
+    for (a, b) in (([3.5, v - 0.5, 0], [12.5, v, 2]), ([3.5, v + h, 0], [12.5, v + h + 0.5, 2]),
+                   ([3.5, v, 0], [4, v + h, 2]), ([12, v, 0], [12.5, v + h, 2])):
         m.box(a, b, ut("ring"), emit=15, skip=("north",))
     return m
 
@@ -1351,7 +1361,7 @@ def validate():
 
 def validate_uplinks(data):
     """Uplink blockstates cover facing x mount x status (one body each) and facing x mount (one direct
-    ring each) with the plate's rotations; compact pucks stay in the cell, and body + ring of every
+    ring each) with the plate's rotations; compact pucks stay in the cell (stud stems reach out of it), and body + ring of every
     mount are free of coplanar overlaps."""
     problems = []
     for blk, adv in (("cloud_uplink", False), ("advanced_cloud_uplink", True)):
@@ -1390,8 +1400,9 @@ def validate_uplinks(data):
             problems.append(f"uplink_compact_{mt_}: puck must be [4,{v},0]..[12,{v + 6},2] (CloudUplinkBlock shapes)")
         for i, el in enumerate(els):
             lo, hi = el["from"], el["to"]
-            if min(lo) < 0 or max(hi[0], hi[1]) > 16 or hi[2] > 2.25:
-                problems.append(f"uplink_compact_{mt_} element {i}: outside x/y 0..16, z 0..2.25")
+            back = -STUD_REACH.get(mt_, 0)
+            if min(lo[0], lo[1]) < 0 or lo[2] < back or max(hi[0], hi[1]) > 16 or hi[2] > 2.25:
+                problems.append(f"uplink_compact_{mt_} element {i}: outside x/y 0..16, z {back}..2.25")
     for mt_, els in pairs:
         ring_els = elements(uplink_ring_model(mt_))
         problems.extend(f"uplink {mt_} body + direct ring: {msg}" for msg in coplanar_faces(els + ring_els))
@@ -1476,13 +1487,16 @@ changes and once after loading, so older worlds fix themselves):
 
 - `full`: the face is sturdy, or flush (inset <= 1 px) and covers >= 90 % of the plate area (or of
   its 1 px outline, e.g. a hopper rim) -> the plate.
-- `bottom|low|center|high|top` (side faces only): smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
+- `bottom|low|center|high|top` (side faces): smaller -> an 8x6 puck (`block/uplink_compact_<mount>`,
   x 4..12, z 0..2, bottom edge at model y {", ".join(f"{k} {v}" for k, v in COMPACT_Y.items())}).
   The position with the largest overlap with the face wins (ties: nearest to the face's centre), so it
   sits on the visible part: solar panel / carpet side -> `bottom`, slab side -> `low`, top slab -> `high`.
-- Top and bottom faces only take the plate: placing an uplink on a top / bottom face that does not
-  qualify for `full` (top of a slab or solar panel) is refused with an action bar hint. Uplinks that
-  already sit there (older versions allowed it on block entities) stay and keep the plate.
+- `stud|stud_long` (top / bottom faces): smaller -> an 8x8 stud in the middle of the face with a 4x4 stem
+  into the attached block, so nothing floats above pipes or small machines: `stud` reaches
+  {STUD_REACH["stud"]} px, `stud_long` {STUD_REACH["stud_long"]} px (nearest part of the shape further than {STUD_REACH["stud"]} px away, e.g. a solar
+  panel). The stem lies in the attached block's cell, so it is not part of the hitbox. Plates from
+  older versions fix themselves after loading. Blocks that draw beyond their own cell (Ars Magica
+  obelisk, celestial prism) cannot be detected from their shape: use a Cloud Probe for those.
 - Unknown saved values (e.g. the removed `post*` mounts of a dev build) load as `full` (vanilla state
   codec default) and are re-computed on the first tick.
 

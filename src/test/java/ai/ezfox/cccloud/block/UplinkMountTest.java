@@ -26,6 +26,10 @@ class UplinkMountTest {
         return UplinkMount.choose(UplinkMount.modelBoxes(attached, facing));
     }
 
+    private static UplinkMount vertical(VoxelShape attached, Direction facing) {
+        return UplinkMount.chooseVertical(UplinkMount.modelBoxes(attached, facing));
+    }
+
     @Test
     void fullBlocksKeepThePlate() {
         for (var d : Direction.values()) assertEquals(UplinkMount.FULL, mount(Shapes.block(), d), d.toString());
@@ -62,8 +66,18 @@ class UplinkMountTest {
     }
 
     @Test
-    void topAndBottomFacesOnlyTakeThePlate() {
-        // no posts: on top of low blocks the plate does not fit (CloudUplinkBlock refuses the placement)
+    void smallTopAndBottomFacesGetAStud() {
+        assertEquals(UplinkMount.STUD, vertical(Block.box(2, 2, 2, 14, 14, 14), Direction.DOWN), "pipe");
+        assertEquals(UplinkMount.STUD, vertical(Block.box(0, 0, 0, 16, 10, 16), Direction.DOWN), "6 px away");
+        assertEquals(UplinkMount.STUD_LONG, vertical(Block.box(0, 0, 0, 16, 4, 16), Direction.DOWN), "solar panel");
+        assertEquals(UplinkMount.STUD, vertical(Block.box(2, 2, 2, 14, 14, 14), Direction.UP), "hanging");
+        assertEquals(UplinkMount.FULL, vertical(Shapes.block(), Direction.DOWN));
+        var stud = UplinkMount.STUD.shape(Direction.DOWN).bounds();
+        assertEquals(new AABB(4 / 16.0, 0, 4 / 16.0, 12 / 16.0, 2.25 / 16, 12 / 16.0), stud);
+    }
+
+    @Test
+    void lowBlocksDoNotCarryThePlate() {
         for (var low : new VoxelShape[]{Block.box(0, 0, 0, 16, 8, 16), Block.box(0, 0, 0, 16, 4, 16), Block.box(0, 0, 0, 16, 6, 16),
             Block.box(0, 0, 0, 16, 1, 16), Block.box(1, 0, 1, 15, 14, 15)}) {
             assertNotEquals(UplinkMount.FULL, mount(low, Direction.DOWN), low.toString());
@@ -102,6 +116,7 @@ class UplinkMountTest {
             for (var e : json.getAsJsonArray("elements")) {
                 var from = e.getAsJsonObject().getAsJsonArray("from");
                 var to = e.getAsJsonObject().getAsJsonArray("to");
+                if (from.get(2).getAsDouble() < 0) continue; // a stud's stem lies in the attached block's cell
                 for (int i = 0; i < 3; i++) {
                     min[i] = Math.min(min[i], from.get(i).getAsDouble());
                     max[i] = Math.max(max[i], to.get(i).getAsDouble());

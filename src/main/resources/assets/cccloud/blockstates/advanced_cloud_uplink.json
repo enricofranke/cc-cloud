@@ -1172,6 +1172,396 @@
     },
     {
       "when": {
+        "facing": "north",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_online",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_connecting",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_offline",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting"
+      }
+    },
+    {
+      "when": {
+        "facing": "north",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline"
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "east",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "south",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "west",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "up",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud_long",
+        "status": "online"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_online",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud_long",
+        "status": "connecting"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_connecting",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "facing": "down",
+        "mount": "stud_long",
+        "status": "offline"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_advanced_compact_stud_long_offline",
+        "x": 90
+      }
+    },
+    {
+      "when": {
         "direct": "true",
         "facing": "north",
         "mount": "full"
@@ -1557,6 +1947,136 @@
       },
       "apply": {
         "model": "cccloud:block/uplink_compact_ring_top",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "north",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud"
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "east",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "south",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "west",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "up",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "down",
+        "mount": "stud"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud",
+        "x": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "north",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long"
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "east",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long",
+        "y": 90
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "south",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long",
+        "y": 180
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "west",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long",
+        "y": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "up",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long",
+        "x": 270
+      }
+    },
+    {
+      "when": {
+        "direct": "true",
+        "facing": "down",
+        "mount": "stud_long"
+      },
+      "apply": {
+        "model": "cccloud:block/uplink_compact_ring_stud_long",
         "x": 90
       }
     }
