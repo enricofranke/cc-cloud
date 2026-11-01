@@ -140,6 +140,10 @@ public final class CloudConfig {
     // CC: Cloud Connect (internetAccess = connect): the dashboard at https://<name>.cccloud.dev through an outbound tunnel
     public static final ModConfigSpec.ConfigValue<String> CONNECT_NAME;
     public static final ModConfigSpec.ConfigValue<String> CONNECT_RELAY;
+    // Crash reports and usage stats: nothing is sent before the server owner said yes (docs/PRIVACY.md)
+    public static final ModConfigSpec.ConfigValue<String> CRASH_REPORTS;
+    public static final ModConfigSpec.ConfigValue<String> USAGE_STATS;
+    public static final ModConfigSpec.IntValue CONSENT_VERSION;
 
     /** Top of the file (the comment of its first value, allowCloud): how changes take effect. */
     static final String[] HEADER = {
@@ -600,6 +604,22 @@ public final class CloudConfig {
             .translation("cccloud.configuration.connectRelay")
             .define("connectRelay", ai.ezfox.cccloud.connect.ConnectSettings.DEFAULT_RELAY,
                 o -> o instanceof String s && ai.ezfox.cccloud.connect.ConnectSettings.relayUri(s) != null);
+        b.pop();
+
+        b.push("reports");
+        CRASH_REPORTS = b.comment("Send reports of CC: Cloud's own crashes to the developer of the mod: ask = not decided, off = no, on = yes.",
+                "ask and off send nothing. Answer with /cccloud reports on or off (operators of level 4) or in the prompt in the dashboard or on the",
+                "mainframe screen. Writing on here is not enough: only that answer counts. Exactly what is sent: docs/PRIVACY.md, /cccloud reports show.")
+            .translation("cccloud.configuration.crashReports")
+            .define("crashReports", "ask", o -> ai.ezfox.cccloud.reports.ReportConsent.Setting.parse(o) != null);
+        USAGE_STATS = b.comment("Send anonymous usage stats at most once a day (versions, operating system family, rough counts, active integrations):",
+                "ask = not decided, off = no, on = yes. ask and off send nothing. Same rules as crashReports.")
+            .translation("cccloud.configuration.usageStats")
+            .define("usageStats", "ask", o -> ai.ezfox.cccloud.reports.ReportConsent.Setting.parse(o) != null);
+        CONSENT_VERSION = b.comment("The version of the report texts the owner agreed to. A later version of the mod that changes what is sent raises",
+                "its own number and asks again. Set by the mod, leave it alone.")
+            .translation("cccloud.configuration.consentVersion")
+            .defineInRange("consentVersion", 0, 0, Integer.MAX_VALUE);
         b.pop();
 
         SPEC = b.build();

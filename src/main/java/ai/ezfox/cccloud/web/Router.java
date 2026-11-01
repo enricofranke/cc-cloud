@@ -30,6 +30,7 @@ public final class Router {
     public enum Id {
         PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
         SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, ICON, RECIPES, DOWNLOAD, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
+        REPORTS_GET, REPORTS_PREVIEW, REPORTS_POST, FEEDBACK_POST,
         API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
 
         /** The v0.10 public API ({@code /api/v1/…}): only exists while {@code apiEnabled=true}. */
@@ -43,12 +44,17 @@ public final class Router {
         }
 
         /**
-         * Mainframe settings changed over HTTP (access, shares, push targets, API keys). Plain-HTTP internet access asks for
+         * Mainframe settings changed over HTTP (access, shares, push targets, API keys, reports). Plain-HTTP internet access asks for
          * the PIN unlock before these from an internet address; script writes check the PIN themselves; revoking a device
          * stays possible (it only protects).
          */
         public boolean isManagementWrite() {
-            return this == ACCESS_POST || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_POST || this == APIKEYS_POST;
+            return this == ACCESS_POST || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_POST || this == APIKEYS_POST || this == REPORTS_POST;
+        }
+
+        /** Crash reports, usage stats and feedback (docs/PRIVACY.md). */
+        public boolean isReports() {
+            return this == REPORTS_GET || this == REPORTS_PREVIEW || this == REPORTS_POST || this == FEEDBACK_POST;
         }
 
         public boolean isScript() {
@@ -63,7 +69,7 @@ public final class Router {
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
                 || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || this == HISTORY
-                || this == APIKEYS_GET || this == APIKEYS_POST || isScript() || isMap();
+                || this == APIKEYS_GET || this == APIKEYS_POST || isReports() || isScript() || isMap();
         }
     }
 
@@ -103,6 +109,14 @@ public final class Router {
             "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
         new Route(Id.PUSH_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/push"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
+        new Route(Id.REPORTS_GET, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/reports"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/reports"),
+        new Route(Id.REPORTS_PREVIEW, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/reports/preview"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/reports/preview"),
+        new Route(Id.REPORTS_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/reports"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/reports"),
+        new Route(Id.FEEDBACK_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/feedback"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/feedback"),
         new Route(Id.SCRIPT_LIST, HttpMethod.GET, Pattern.compile(COMPUTER + "/files"), Access.DEVICE, EXAMPLE_COMPUTER + "/files"),
         new Route(Id.SCRIPT_GET, HttpMethod.GET, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_PUT, HttpMethod.PUT, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),

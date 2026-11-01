@@ -20,6 +20,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
  */
 public final class Integrations {
     private static final DeferredRegister<Consumer<GameTestHelper>> TESTS = DeferredRegister.create(Registries.TEST_FUNCTION, CCCloud.MODID);
+    private static final java.util.Set<String> ACTIVE = new java.util.TreeSet<>();
 
     private Integrations() {
     }
@@ -162,11 +163,17 @@ public final class Integrations {
         TESTS.register(name, function);
     }
 
+    /** The mod ids of the integrations that came up: only ever ids from the list above, never other installed mods. */
+    public static java.util.List<String> active() {
+        return java.util.List.copyOf(ACTIVE);
+    }
+
     /** Runs a mod's setup if the mod is loaded; a broken integration is skipped with one log line. */
     private static void optional(String modId, Supplier<Runnable> setup) {
         if (!ModList.get().isLoaded(modId)) return;
         try {
             setup.get().run();
+            ACTIVE.add(modId);
             CCCloud.LOGGER.info("[cccloud] Integration for '{}' enabled", modId);
         } catch (LinkageError | RuntimeException e) {
             CCCloud.LOGGER.warn("[cccloud] Integration for '{}' disabled: this version is not supported ({})", modId, e.toString());

@@ -615,9 +615,26 @@ public final class MinecraftBridge implements GameBridge {
         for (var d : allowed) auth.touch(d.tokenHash(), ip.isEmpty() ? null : ip);
         if (route == Router.Id.HISTORY) return history(allowed.getFirst(), path);
         if (route == Router.Id.APIKEYS_GET || route == Router.Id.APIKEYS_POST) return apiKeys(allowed.getFirst(), route, path, body);
+        if (route.isReports()) return reports(allowed, route, path, body);
         var api = new AccessApi(auth, resolver(), players(), hooks());
         if (route == Router.Id.PUSH_GET || route == Router.Id.PUSH_POST) api.withPush(pushApi());
         return api.handle(route, allowed, path, body);
+    }
+
+    /**
+     * {@code /api/mainframes/<id>/reports…} and {@code /feedback}: any role on that mainframe opens the route, the owner's
+     * rights come from the server. One browser can hold devices of two players; the one that can decide answers.
+     */
+    private AccessApi.Response reports(List<AuthStore.Device> devices, Router.Id route, String path, String body) {
+        UUID mainframeId = ClientMessages.parseUuid(path.split("/")[3]);
+        if (mainframeId == null) return AccessApi.error(404, "not_found");
+        AuthStore.Device device = null;
+        for (var candidate : devices) {
+            if (access(candidate, mainframeId).role() == Role.NONE) continue;
+            if (device == null || candidate.canControl() && ai.ezfox.cccloud.reports.ReportService.owner(server, candidate.player())) device = candidate;
+        }
+        if (device == null) return AccessApi.error(403, "no_access");
+        return ai.ezfox.cccloud.reports.ReportService.api(server, route, device, body);
     }
 
     /** The current {@code [api]} config (v0.10). */

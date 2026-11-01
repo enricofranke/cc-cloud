@@ -1299,6 +1299,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         CloudLog.LOGGER.debug("[cccloud] WebSocket error from {}", ip, cause);
+        ai.ezfox.cccloud.reports.ReportCapture.web(ai.ezfox.cccloud.reports.ReportPayload.Where.WEBSOCKET, cause);
         ctx.close();
     }
 }

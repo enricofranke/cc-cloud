@@ -1,6 +1,8 @@
 package ai.ezfox.cccloud.web;
 
 import ai.ezfox.cccloud.CloudLog;
+import ai.ezfox.cccloud.reports.ReportCapture;
+import ai.ezfox.cccloud.reports.ReportPayload;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -260,7 +262,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             .whenComplete((response, err) -> ctx.executor().execute(() -> {
                 try {
                     if (err != null || response == null) {
-                        if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) CloudLog.LOGGER.warn("[cccloud] Error handling {}", route.id(), err);
+                        if (err != null && !(err instanceof java.util.concurrent.TimeoutException)) {
+                            CloudLog.LOGGER.warn("[cccloud] Error handling {}", route.id(), err);
+                            ReportCapture.web(ReportPayload.Where.WEB, err);
+                        }
                         sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
                     } else if (response.raw() != null) {
                         // v0.5 F CSV export
@@ -670,7 +675,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             case PAIR -> pair(ctx, req, ip);
             case PAIR_STATUS -> pairStatus(ctx, req, path.substring("/api/pair/".length()));
             case MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
-                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, APIKEYS_GET, APIKEYS_POST,
+                 SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, APIKEYS_GET, APIKEYS_POST, REPORTS_GET, REPORTS_PREVIEW, REPORTS_POST, FEEDBACK_POST,
                  API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS ->
                 sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found")); // only reachable through their authentication
             case API_OPENAPI -> ApiHandler.openApi(this, instance, ctx, req);
@@ -1099,6 +1104,7 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         CloudLog.LOGGER.debug("[cccloud] HTTP connection error", cause);
+        ReportCapture.web(ReportPayload.Where.WEB, cause);
         ctx.close();
     }
 

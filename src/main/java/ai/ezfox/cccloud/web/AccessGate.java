@@ -143,7 +143,7 @@ public final class AccessGate {
             case SCRIPT_RUN -> Perm.SCRIPTS_RUN;
             case SCRIPT_DELETE -> Perm.SCRIPTS_DELETE;
             case MAP_TILE, VOXELS, VOXEL_BATCH -> Perm.VIEW_POSITIONS;
-            case HISTORY -> Perm.VIEW;
+            case HISTORY, REPORTS_GET, REPORTS_PREVIEW, REPORTS_POST, FEEDBACK_POST -> Perm.VIEW;
             default -> null;
         };
     }

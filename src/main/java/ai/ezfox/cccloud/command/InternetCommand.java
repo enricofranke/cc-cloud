@@ -99,7 +99,7 @@ public final class InternetCommand {
         return list;
     }
 
-    static List<java.util.UUID> standingMainframes(MinecraftServer server) {
+    public static List<java.util.UUID> standingMainframes(MinecraftServer server) {
         var access = WebAuthData.access(server);
         var removed = ai.ezfox.cccloud.block.MainframeRetention.get(server).entries();
         var list = new ArrayList<java.util.UUID>();
