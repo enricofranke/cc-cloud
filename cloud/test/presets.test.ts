@@ -637,3 +637,21 @@ describe("official presets", () => {
     expect(fits(server, { id: "s", label: "x", roles: ["server"], min: 0, max: 1 })).toBe(true);
   });
 });
+
+describe("a card that mixes devices", () => {
+  const doc: LayoutDoc = {
+    v: 2,
+    pages: [{ id: "p", title: "x" }],
+    cards: { "c:a": { page: "p", title: "Mixed", x: 0, y: 0, w: 6, h: 6 } },
+    widgets: { "v:1": { card: "c:a", src: "a/stored", as: "gauge", x: 0, y: 0, w: 6, h: 6 }, "v:2": { card: "c:a", src: "b/stored", as: "gauge", x: 6, y: 0, w: 6, h: 6 } },
+  };
+  const card = (u: Uplink[]) => resolveLayout(u, doc)[0].cards.find((c) => c.key === "c:a")!;
+  it("stays online while one device is there, and each widget knows its own", () => {
+    const c = card([battery("a"), { ...battery("b"), online: false }]);
+    expect(c.uplink.online).toBe(true);
+    expect(c.widgets.map((w) => w.uplink.online)).toEqual([true, false]);
+  });
+  it("is offline when none is", () => {
+    expect(card([{ ...battery("a"), online: false }, { ...battery("b"), online: false }]).uplink.online).toBe(false);
+  });
+});

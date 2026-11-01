@@ -238,7 +238,8 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
     observeNear(el, () => setNear(true));
     return () => unobserve(el);
   }, [near]);
-  const online = card.custom ? card.widgets.every((w) => w.uplink.online) : card.uplink.online;
+  // a custom card can mix devices: it is offline when none of them is there; each widget locks on its own device (below)
+  const online = card.custom ? !card.widgets.length || card.widgets.some((w) => w.uplink.online) : card.uplink.online;
   // the chunk is unloaded: the mod sends the cached last snapshot
   const cached = !card.custom && card.uplink.loaded === false;
   // claim guard: the machine is in another team's claim, the card shows that instead of values
