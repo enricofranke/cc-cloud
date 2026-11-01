@@ -236,10 +236,17 @@ class ReportScrubberTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"a", "/", "/a", "a/", "1 ", "1,", "<", ":", "::", "a:", "a.", "x=1,", "C:\\", "\\\\", "%", "§", "@", "a@", "[", "{", "aB3", "0123456789abcdef", "é/", "a@a.", "a.a@", "C:\\a \\", "/é ", "a.de ", "a-", "$", "~/"})
+    @ValueSource(strings = {" ", "\t", "\n", " \n", "a", "/", "/a", "a/", "1 ", "1,", "<", ":", "::", "a:", "a.", "x=1,", "C:\\", "\\\\", "%", "§", "@", "a@", "[", "{", "aB3", "0123456789abcdef", "é/", "a@a.", "a.a@", "C:\\a \\", "/é ", "a.de ", "a-", "$", "~/"})
     void hostileInputStaysFast(String unit) {
         String input = unit.repeat(ReportScrubber.MAX_INPUT / unit.length() + 1);
         assertTimeoutPreemptively(Duration.ofSeconds(5), () -> SERVER.text(input));
+    }
+
+    @Test
+    void coordinatesGoEvenFarFromTheirLabel() {
+        String out = SERVER.text("BlockPos{" + " ".repeat(40) + "x=120, y=64, z=-300}");
+        assertFalse(out.contains("120"), out);
+        assertFalse(out.contains("-300"), out);
     }
 
     @Test

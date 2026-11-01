@@ -79,7 +79,7 @@ public final class ReportScrubber {
 
     private static final String NUM = "-?\\d{1,9}(?:\\.\\d+)?";
     private static final Pattern COORD_KEYS = Pattern.compile("(?i)(?:\\b(?:mutable)?(?:blockpos|vec3i?|vector3[a-z]*|chunkpos|sectionpos|globalpos|pos|position)\\s*)?"
-        + "[{\\[(]?\\s*(?<![\\p{L}\\p{N}_.])x\\s*[=:]\\s*" + NUM + "[,;\\s]+(?:y\\s*[=:]\\s*" + NUM + "[,;\\s]+)?z\\s*[=:]\\s*" + NUM + "\\s*[}\\])]?");
+        + "[{\\[(]?\\s{0,8}+(?<![\\p{L}\\p{N}_.])x\\s*[=:]\\s*" + NUM + "[,;\\s]+(?:y\\s*[=:]\\s*" + NUM + "[,;\\s]+)?z\\s*[=:]\\s*" + NUM + "\\s*[}\\])]?");
     private static final Pattern COORD_TRIPLE_BRACKET = Pattern.compile("[{\\[(]\\s*" + NUM + "\\s*[,;]\\s*" + NUM + "\\s*[,;]\\s*" + NUM + "\\s*[}\\])]");
     private static final Pattern COORD_TRIPLE = Pattern.compile("(?<![\\p{L}\\p{N}_.,-])" + NUM + "(?:\\s*,\\s*|[ \\t]+)" + NUM + "(?:\\s*,\\s*|[ \\t]+)" + NUM + "(?![\\p{L}\\p{N}_.,])");
     private static final Pattern COORD_CHUNK = Pattern.compile("(?i)(?:\\b(?:chunk|chunkpos|region|section)\\b\\s*[\\[(]?\\s*" + NUM + "\\s*[,\\s]\\s*" + NUM + "\\s*[\\])]?"
