@@ -440,6 +440,7 @@ export function Dashboard({ id }: { id: string }) {
               </button>
             )}
             {!conn.can("access.manage") && !conn.can("shares.create") && conn.role.value && <span class="muted small">Access and share links need the matching permissions.</span>}
+            <a href="licenses.txt" target="_blank" rel="noopener">Open-source licences</a>
           </div>
           <p class="small">
             <DocsLink to="/docs">Help &amp; docs</DocsLink> · <DocsLink to="/docs/faq">Troubleshooting</DocsLink>
