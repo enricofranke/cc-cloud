@@ -74,9 +74,18 @@ enum NetworkJadeProvider implements IServerDataProvider<BlockAccessor> {
                     ai.ezfox.cccloud.analyzer.CloudAnalyzerItem.via(hops)).withStyle(ChatFormatting.GRAY));
                 MutableComponent route = Component.empty();
                 var list = net.getListOrEmpty("route");
-                for (int i = 0; i < list.size(); i++) {
-                    if (i > 0) route.append(" → ");
-                    route.append(Component.translatable("cccloud.analyzer.kind." + list.getStringOr(i, "")));
+                var kinds = new java.util.ArrayList<String>();
+                for (int i = 0; i < list.size(); i++) kinds.add(list.getStringOr(i, ""));
+                boolean first = true;
+                for (var run : ai.ezfox.cccloud.analyzer.RouteRuns.of(kinds)) {
+                    if (!first) route.append(" → ");
+                    first = false;
+                    if (run.kind() == null) {
+                        route.append("…");
+                        continue;
+                    }
+                    if (run.count() > 1) route.append(run.count() + "× ");
+                    route.append(Component.translatable("cccloud.analyzer.kind." + run.kind()));
                 }
                 tooltip.add(Component.translatable("cccloud.analyzer.route", route).withStyle(ChatFormatting.GRAY));
             }
