@@ -230,6 +230,10 @@ interface Mainframe {
 export interface MockOptions {
   /** 0 disables the simulation tick (deterministic tests). */
   tickMs?: number;
+  /** Fixed mainframe ids (undefined = a random one). */
+  mainframeId?: (name: string) => string | undefined;
+  /** No per-device rate limits (the mod's own numbers exist to protect a server; the live demo has none). */
+  unlimited?: boolean;
   pingIntervalMs?: number;
   /** Close a socket that has not answered a ping for this long (spec: 60 s). */
   idleTimeoutMs?: number;
@@ -331,8 +335,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     }, ms);
     timers.add(t);
   };
-  const newToken = (mainframeId: string | undefined, name: string, canControl = true, extra: Partial<Token> = {}) => {
-    const token = randomBytes(32).toString("base64url");
+  const newToken = (mainframeId: string | undefined, name: string, canControl = true, extra: Partial<Token> = {}, token = randomBytes(32).toString("base64url")) => {
     const now = Date.now();
     tokens.set(sha(token), {
       mainframeId,
@@ -447,6 +450,8 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     message: "This server only allows dashboard access from the local network. An admin can set webAllowInternet=true in the cccloud server config.",
   };
   const pairFails = new Map<string, number[]>();
+  /** a device budget of n calls per window: never reached with opts.unlimited */
+  const over = (used: number, n: number) => !opts.unlimited && used >= n;
 
   // ------------------------------------------------------------ broadcasting
   const sendTo = (ws: MockSocket, msg: object) => ws.readyState === OPEN && ws.send(JSON.stringify(msg));
@@ -1133,7 +1138,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
   // -------------------------------------------------------------- simulation
   function addMainframe(name: string, enabled: boolean): Mainframe {
     const mf: Mainframe = {
-      id: randomUUID(),
+      id: opts.mainframeId?.(name) ?? randomUUID(),
       name,
       online: true,
       enabled,
@@ -1655,7 +1660,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         },
       ],
       log: [
-        { time: ago(26 * 60) + 120, scene: "c2d84e17", name: "Good morning", by: "Enrico", source: "rule", result: "ok" },
+        { time: ago(26 * 60) + 120, scene: "c2d84e17", name: "Good morning", by: enrico.player, source: "rule", result: "ok" },
         { time: ago(185) + 5200, scene: "7b3f0d51", name: "Reactor safe", by: "Tom", source: "dashboard", result: "not_allowed" },
         { time: ago(62) + 2300, scene: "4e1a9c20", name: "Night mode", by: "Lisa", source: "tablet", result: "ok" },
       ],
@@ -2041,7 +2046,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           if (!c.terms?.has(id)) return tres(msg.reqId, false, { error: "not_open" });
           const now = Date.now();
           c.termHits = [...(c.termHits ?? []).filter((h) => now - h < 1000), now];
-          if (c.termHits.length > 20) return tres(msg.reqId, false, { error: "rate_limited" });
+          if (over(c.termHits.length, 21)) return tres(msg.reqId, false, { error: "rate_limited" });
           const term = m.terms!.get(id)!;
           const ev = msg.events as Record<string, any>[];
           const valid = ev.every(
@@ -2157,7 +2162,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           const pr = m.production;
           if (!prodOn || !pr) return pres(false, { error: "disabled" });
           const hits = (pr.hits.get(c) ?? []).filter((h) => now - h < 1000);
-          if (hits.length >= 5) return pres(false, { error: "rate_limited" });
+          if (over(hits.length, 5)) return pres(false, { error: "rate_limited" });
           pr.hits.set(c, [...hits, now]);
           const p = msg as Record<string, any>;
           if (p.op === "overview") return pres(true, { data: productionOverview(m, c) });
@@ -2334,7 +2339,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           if (ld) return lres(false, ld);
           const now = Date.now();
           m.layoutSaves = m.layoutSaves.filter((t) => now - t < 10_000);
-          if (m.layoutSaves.length >= 5) return lres(false, "rate_limited");
+          if (over(m.layoutSaves.length, 5)) return lres(false, "rate_limited");
           m.layoutSaves.push(now);
           if (new TextEncoder().encode(JSON.stringify(msg.layout ?? null)).length > MAX_LAYOUT_BYTES) return lres(false, "too_large");
           const doc = layoutDoc.safeParse(msg.layout);
@@ -2350,7 +2355,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           const t = msg.t;
           const reply = (body: object) => sendTo(ws, { t: t === "storage" ? "storage_result" : "craft_plan", reqId: msg.reqId, ...body });
           c.storageHits = [...(c.storageHits ?? []).filter((h: number) => now - h < 1000), now];
-          if (c.storageHits.length > 10) return reply({ ok: false, error: "rate_limited" });
+          if (over(c.storageHits.length, 11)) return reply({ ok: false, error: "rate_limited" });
           if (!m.online) return reply({ ok: false, error: "offline" });
           const su = m.uplinks.get(msg.uplinkId);
           if (!su) return reply({ ok: false, error: "unavailable" });
@@ -2372,7 +2377,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           const qres = (rows: object[], truncated: boolean, error?: string) =>
             sendTo(ws, { t: "query_result", reqId: msg.reqId, rows, truncated, ...(error ? { error } : {}) });
           const recentQ = [...m.clients].filter((x) => x.tokenHash === c.tokenHash).flatMap((x) => x.queryHits).filter((h) => now - h < 1000);
-          if (recentQ.length >= 5) return qres([], false, "rate_limited");
+          if (over(recentQ.length, 5)) return qres([], false, "rate_limited");
           c.queryHits = [...c.queryHits.filter((h) => now - h < 1000), now];
           if (!m.online) return qres([], false, m.reason === "no_power" ? "no_power" : "offline");
           const qu = m.uplinks.get(msg.uplinkId);
@@ -2387,7 +2392,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         const now = Date.now();
         // per-token sliding window: several tabs of one device share the budget
         const recent = [...m.clients].filter((x) => x.tokenHash === c.tokenHash).flatMap((x) => x.hits).filter((h) => now - h < 1000);
-        if (recent.length >= 10) return result(msg.reqId, false, "rate_limited");
+        if (over(recent.length, 10)) return result(msg.reqId, false, "rate_limited");
         c.hits = [...c.hits.filter((h) => now - h < 1000), now];
         if (!c.canControl) return result(msg.reqId, false, "read_only");
         if (!m.online) return result(msg.reqId, false, m.reason === "no_power" ? "no_power" : "offline");
@@ -2483,6 +2488,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     const rate = opts.voxelRate ?? 256;
     const cap = rate * 8;
     const now = Date.now();
+    if (opts.unlimited) return 0;
     const b = voxelBudget.get(t) ?? [cap, now];
     b[0] = Math.min(cap, b[0] + ((now - b[1]) / 1000) * rate);
     b[1] = now;
@@ -2701,7 +2707,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       const body = req.method === "PUT" || req.method === "POST" ? await rawBody(req, MAX_FILE) : null;
       if ((req.method === "PUT" || req.method === "POST") && !body) return json(res, 413, { error: "too_large" });
       if (!fsWrites.has(t)) fsWrites.set(t, []);
-      const r = handleFs(fs, req.method ?? "GET", fm[3], url.searchParams, req.headers, body, { pin, device: t, pinLockMs, log: (x) => log(`${t.name}: ${x}`), storeCheck }, fsWrites.get(t)!);
+      const r = handleFs(fs, req.method ?? "GET", fm[3], url.searchParams, req.headers, body, { pin, device: t, pinLockMs, log: (x) => log(`${t.name}: ${x}`), storeCheck }, opts.unlimited ? [] : fsWrites.get(t)!);
       if (r.raw !== undefined) {
         res.writeHead(r.status, { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" });
         return void res.end(r.raw);
@@ -2913,7 +2919,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         });
         if (!near) return json(res, 403, { error: "out_of_range" });
         const calls = (tileCalls.get(t) ?? []).filter((x) => now - x < 60_000);
-        if (calls.length >= (opts.tileRate ?? 60)) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((60_000 - (now - calls[0])) / 1000) });
+        if (over(calls.length, opts.tileRate ?? 60)) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((60_000 - (now - calls[0])) / 1000) });
         calls.push(now);
         tileCalls.set(t, calls);
         const layer = r[1] === "surface" ? "surface" : "slice";
@@ -2969,7 +2975,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       const m = g.m;
       const now = Date.now();
       const last = terrainCalls.get(t) ?? 0;
-      if (now - last < terrainRateMs) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((terrainRateMs - (now - last)) / 1000) });
+      if (!opts.unlimited && now - last < terrainRateMs) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((terrainRateMs - (now - last)) / 1000) });
       terrainCalls.set(t, now);
       const dim = url.searchParams.get("dim") ?? "minecraft:overworld";
       const doc = m.net ? terrain(m.net.nodes, dim) : { dim, step: 2, patches: [], truncated: false };
@@ -3246,6 +3252,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     start,
     stop,
     lanBlocked,
+    newToken,
     mainframes,
     base,
     code: (mf: Mainframe = base) => fmt(currentCode(mf)),

@@ -1,0 +1,8 @@
+{
+  "extends": "../web/tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2024", "dom", "dom.iterable", "webworker.importscripts"],
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src"]
+}
