@@ -36,7 +36,7 @@ public final class ReportScrubber {
 
     private static final Pattern CONTROL = Pattern.compile("§.|[\\p{Cc}\\p{Cf}&&[^\\n\\t]]");
     private static final Pattern URL = Pattern.compile("(?<![\\p{L}\\p{N}])(?:[a-zA-Z][a-zA-Z0-9+.-]{1,20}://|www\\.|(?:file|jar|mailto):)[^\\s\"'<>)\\]}]+");
-    private static final Pattern EMAIL = Pattern.compile("[\\p{L}\\p{N}._%+-]+@[\\p{L}\\p{N}-][\\p{L}\\p{N}.-]*");
+    private static final Pattern EMAIL = Pattern.compile("(?<![\\p{L}\\p{N}._%+-])[\\p{L}\\p{N}._%+-]++@[\\p{L}\\p{N}-][\\p{L}\\p{N}.-]*");
     private static final Pattern BEARER = Pattern.compile("(?i)\\b(?:bearer|basic)\\s+[A-Za-z0-9._~+/=-]{4,}");
     private static final Pattern PREFIXED_TOKEN = Pattern.compile("\\b(?:cck|ghp|gho|ghs|ghu|github_pat|xox[abeoprs]|sk|pk|rk)[_-][A-Za-z0-9_-]{10,}");
     private static final Pattern JWT = Pattern.compile("\\beyJ[A-Za-z0-9_-]{6,}\\.[A-Za-z0-9_-]{6,}(?:\\.[A-Za-z0-9_-]+)?");
@@ -50,6 +50,8 @@ public final class ReportScrubber {
     private static final Pattern HEX_BLOB = Pattern.compile("\\b[0-9a-fA-F]{16,}\\b");
     private static final Pattern BASE64_BLOB = Pattern.compile("(?<![\\p{L}\\p{N}._/$-])[A-Za-z0-9+/_-]{24,}={0,2}");
 
+    // Long runs without a separator must stay linear: an unanchored or unbounded run would be rescanned from each of its characters.
+
     // Paths under a user's home: everything up to the end of the line goes, because the folder name may hold spaces.
     private static final Pattern WINDOWS_HOME = Pattern.compile("(?i)(?<![\\p{L}\\p{N}])[a-z]:[\\\\/]+(?:users|documents and settings)[\\\\/]+[^\\r\\n\"'<>|:*?]*");
     private static final Pattern UNIX_HOME = Pattern.compile("(?<![\\p{L}\\p{N}_.-])/(?:Users|home|root|var/home|Volumes|mnt|media|srv|run/user)(?:/[^\\r\\n\"'<>|:]*)?");
@@ -60,7 +62,7 @@ public final class ReportScrubber {
     private static final Pattern HOME_SHORTHAND = Pattern.compile(
         "(?i)(?:~[\\\\/]|\\$\\{?HOME\\}?|%(?:USERPROFILE|APPDATA|LOCALAPPDATA|HOMEPATH|TEMP|TMP)%)[^\\s\"'<>]*");
     private static final Pattern UNIX_PATH = Pattern.compile("(?<![\\p{L}\\p{N}_.:/<-])/[^\\s/\"'<>:;,|()\\[\\]{}][^\\s\"'<>:;,|()\\[\\]{}]*/[^\\s/\"'<>:;,|()\\[\\]{}]*");
-    private static final Pattern RELATIVE_PATH = Pattern.compile("(?<![\\p{L}\\p{N}_<.-])[\\p{L}\\p{N}._$~-]+[\\\\/](?:[\\p{L}\\p{N}._$~\\\\/-]*[\\p{L}\\p{N}._$~-])[\\\\/]?");
+    private static final Pattern RELATIVE_PATH = Pattern.compile("(?<![\\p{L}\\p{N}_<.-])[\\p{L}\\p{N}._$~-]{1,255}+[\\\\/](?:[\\p{L}\\p{N}._$~\\\\/-]*[\\p{L}\\p{N}._$~-])[\\\\/]?");
     private static final Set<String> PATH_ROOTS = Set.of("saves", "world", "worlds", "config", "serverconfig", "defaultconfigs", "mods", "logs", "crash-reports",
         "kubejs", "computercraft", "cccloud", "versions", "libraries", ".minecraft", "minecraft", "..", ".", "~");
 
