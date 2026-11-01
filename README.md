@@ -14,8 +14,9 @@
 
 **Your whole Minecraft base, always in your pocket.** Build a **Cloud Mainframe**, attach **Uplinks** to your
 computers and machines, open the dashboard on your phone or PC – and flip switches, watch your reactor, search your ME
-system or start a craft from anywhere in your home network. No external service, no account, no relay: the dashboard
-is served by the mod itself.
+system or start a craft from anywhere in your home network. The dashboard is served by the mod itself on your own server,
+with no account. For the road, the free and optional [CC: Cloud Connect](https://cccloud.dev/en/docs/security/#connect)
+gives it an HTTPS address without port forwarding.
 
 > [!IMPORTANT]
 > CC: Cloud is an addon: it needs **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked) 1.120.0+** installed next to

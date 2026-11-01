@@ -6,7 +6,7 @@ export const en: Record<string, string> = {
   // ---------------------------------------------------------------- start
   start: `# Getting started
 
-CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
+CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
 
 > **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
 >
@@ -140,6 +140,14 @@ If an uplink shows no card and the screen says *"This side exposes nothing"*, th
 4. In Minecraft, click **[Allow]** in the chat (or in the mainframe screen). The browser continues by itself.
 
 > **Tip:** Link your player once with \`/cccloud link\` and the browser sees every mainframe you have a role on – see [accounts and roles](/docs/accounts). Install the dashboard like an app: "Install app" in desktop Chrome/Edge, "Add to Home Screen" on tablets and phones.
+
+## Open it from anywhere {#anywhere}
+
+Out of the box the dashboard only answers on your own network. The easiest way to reach it from mobile data or a friend's place is **CC: Cloud Connect**: a free, optional relay that needs no port forwarding and no domain. Run this once in game (server owner, op level 4, or the server console):
+
+${code("", C.INTERNET_CONNECT)}
+
+Your dashboard is then at **https://mybase.cccloud.dev**. Every new browser still has to be paired and allowed in game. Limits, privacy and the other ways to open it: [Internet access](/docs/security#internet).
 
 What you see next: [the dashboard](/docs/dashboard). Want your own widgets? Start with [CC basics](/docs/cc-basics) and the [Lua reference](/docs/lua).
 `,

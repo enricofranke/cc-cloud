@@ -87,7 +87,7 @@ working).
 | `web.tlsCertPath`, `web.tlsKeyPath` | `""` | Optional HTTPS directly in the mod (PEM certificate chain + PKCS#8 PEM key). |
 | `connect.connectName` | `""` | The Connect name: `https://<name>.cccloud.dev`. |
 | `connect.connectRelay` | `wss://connect.cccloud.dev` | The relay the tunnel connects to (only for a self-hosted relay). |
-| `uplinks.uplinkRange` | `128` | Range of normal uplinks (advanced: unlimited, cross-dimension). |
+| `network.uplinkRange` | `48` | Range of normal uplinks to the nearest node (`network.advancedUplinkRange`: 128). |
 | `uplinks.maxWidgetsPerUplink` | `32` | Widget limit per uplink (max. 32). |
 
 Pairing works the same everywhere: right-click the mainframe (owner, trusted player or op) to see the URL

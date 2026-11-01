@@ -16,7 +16,7 @@ item_ids:
 
 # Erste Schritte
 
-CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
+CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Das Dashboard läuft in der Mod auf deinem eigenen Minecraft-Server, ganz ohne Konto. Standardmäßig bleibt es in deinem eigenen Netzwerk; von überall erreichst du es mit dem kostenlosen, optionalen [CC: Cloud Connect](#anywhere).
 
 > **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
 >
@@ -150,6 +150,16 @@ Zeigt ein Uplink keine Karte und sagt der Bildschirm *„Diese Seite gibt nichts
 4. Klicke in Minecraft im Chat (oder im Mainframe-Bildschirm) auf **[Allow]**. Der Browser macht automatisch weiter.
 
 > **Tipp:** Verknüpfe deinen Spieler einmal mit `/cccloud link`, dann sieht der Browser jeden Mainframe, auf dem du eine Rolle hast – siehe [Konten und Rollen](accounts.md). Als App installieren: „App installieren“ in Chrome/Edge am PC, „Zum Home-Bildschirm“ auf Tablet und Handy.
+
+## Von überall öffnen
+
+Ab Werk antwortet das Dashboard nur in deinem eigenen Netzwerk. Am einfachsten erreichst du es über mobile Daten oder bei Freunden mit **CC: Cloud Connect**: einem kostenlosen, optionalen Relay ohne Portfreigabe und ohne Domain. Führe das einmal im Spiel aus (Serverbesitzer, OP-Level 4 oder die Serverkonsole):
+
+```
+/cccloud internet connect mybase
+```
+
+Dein Dashboard liegt dann unter **https://mybase.cccloud.dev**. Jeder neue Browser muss weiterhin gekoppelt und im Spiel erlaubt werden. Limits, Datenschutz und die anderen Wege: [Zugriff aus dem Internet](security.md).
 
 Wie es weitergeht: [das Dashboard](dashboard.md). Eigene Widgets? Starte mit den [CC-Grundlagen](cc-basics.md) und der [Lua-Referenz](lua.md).
 
