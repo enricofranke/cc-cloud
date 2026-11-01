@@ -29,7 +29,7 @@ item_ids:
 
 # Upgrades, tablet and display
 
-New in v0.7: mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
+Mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
 
 ## Mainframe upgrades
 

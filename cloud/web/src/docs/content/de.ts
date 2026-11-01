@@ -42,8 +42,8 @@ Mit \`cccloud-<version>.jar\` kommen sie von selbst: Beim ersten Start, bevor FT
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
-| **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
+| **Advanced Cloud Uplink** | Genauso, aber mit 128 Blöcken Reichweite. Über Dimensionen hinweg verbinden [Ender Relays](/docs/network#ranges). |
 | **Cloud-Sonde** | Liest **eine** Maschine bis zu 8 Blöcke entfernt, als säße ein Uplink daran – für eingebaute Maschinen oder wenn jede Seite mit Rohren und Kabeln belegt ist. Teuer; zählt wie zwei Geräte. Siehe *Maschinen ohne freie Seite* weiter unten. |
 | **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
 | **Cloud-Schalter / -Taster / -Lampe / -Sensor** | Kleine [Redstone-Geräte](/docs/redstone) ohne Computer: verbinden und Lampen, Türen und Maschinen im Dashboard schalten. Geräte mit derselben Gruppe teilen sich eine Karte. |
@@ -651,7 +651,7 @@ Ein Rechtsklick auf Uplink, Bridge oder Relay zeigt, womit der Block verbunden i
 | Cloud Mainframe | 96 | 96 |
 | Cloud Relay | 96 | 48 |
 | Advanced Cloud Relay | 256 | 128 |
-| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 48 |
+| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 128 |
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
@@ -746,7 +746,7 @@ Aus Lua liefert \`cloud_mainframe.getNetwork()\` dieselben Knoten, Verbindungen 
 `,
   upgrades: `# Upgrades, Tablet und Display
 
-Neu in v0.7: Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
+Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
 
 ## Mainframe-Upgrades {#upgrades}
 
@@ -997,7 +997,7 @@ Die Bridge nutzt den Strom des Netzwerks, kein FE vom Mainframe.
 
 ## Craften im Dashboard {#crafting}
 
-Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
+Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 100000). Craften dürfen nur Geräte mit Steuerrechten.
 
 **Nicht genug Items:** Der Dialog zeigt, was fehlt (vorhanden / nötig) und, wenn der Mod es sagen kann, wie viele jetzt möglich sind – **Craft 37** macht genau diese. **Order anyway** behält die ganze Menge: Der Auftrag wartet als *Waiting for items* und startet von selbst, sobald die Items da sind. Bestellungen überleben einen Neustart, bis zu 8 pro Bridge, und lassen sich abbrechen. Ein Lua-\`craft()\` oder eine Regel wartet genauso; \`getCraftingJobs()\` zeigt die Liste \`missing\`.
 

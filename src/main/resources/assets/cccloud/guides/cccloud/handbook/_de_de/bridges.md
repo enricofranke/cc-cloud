@@ -30,7 +30,7 @@ Die Bridge nutzt den Strom des Netzwerks, kein FE vom Mainframe.
 
 ## Craften im Dashboard
 
-Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze `maxCraftAmount`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
+Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze `maxCraftAmount`, Standard 100000). Craften dürfen nur Geräte mit Steuerrechten.
 
 **Nicht genug Items:** Der Dialog zeigt, was fehlt (vorhanden / nötig) und, wenn der Mod es sagen kann, wie viele jetzt möglich sind – **Craft 37** macht genau diese. **Order anyway** behält die ganze Menge: Der Auftrag wartet als *Waiting for items* und startet von selbst, sobald die Items da sind. Bestellungen überleben einen Neustart, bis zu 8 pro Bridge, und lassen sich abbrechen. Ein Lua-`craft()` oder eine Regel wartet genauso; `getCraftingJobs()` zeigt die Liste `missing`.
 

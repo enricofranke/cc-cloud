@@ -42,8 +42,8 @@ With \`cccloud-<version>.jar\` they come by themselves: on the first start, befo
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
-| **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 48 blocks to the nearest mainframe or relay, same dimension. |
+| **Advanced Cloud Uplink** | Same, but with a range of 128 blocks. To cross dimensions, use [Ender Relays](/docs/network#ranges). |
 | **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
 | **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](/docs/redstone) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
@@ -651,7 +651,7 @@ Right-click an uplink, bridge or relay to see what it is connected to, the card 
 | Cloud Mainframe | 96 | 96 |
 | Cloud Relay | 96 | 48 |
 | Advanced Cloud Relay | 256 | 128 |
-| Ender Relay | any distance and dimension to other Ender Relays | 48 |
+| Ender Relay | any distance and dimension to other Ender Relays | 128 |
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
@@ -746,7 +746,7 @@ From Lua, \`cloud_mainframe.getNetwork()\` returns the same nodes, links and rou
 `,
   upgrades: `# Upgrades, tablet and display
 
-New in v0.7: mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
+Mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
 
 ## Mainframe upgrades {#upgrades}
 
@@ -995,7 +995,7 @@ The bridge uses the network's own power, no FE for the mainframe.
 
 ## Crafting from the dashboard {#crafting}
 
-Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit \`maxCraftAmount\`, default 4096). Only devices with control rights can craft.
+Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit \`maxCraftAmount\`, default 100000). Only devices with control rights can craft.
 
 **Not enough items:** the dialog lists what is missing with have / need and, when the mod can tell, how many are possible now – **Craft 37** makes just those. **Order anyway** keeps the whole amount: it waits as *Waiting for items* and starts by itself once the items are there. Orders survive a restart, up to 8 per bridge, and you can cancel them. A Lua \`craft()\` or a rule waits the same way; \`getCraftingJobs()\` shows the \`missing\` list.
 

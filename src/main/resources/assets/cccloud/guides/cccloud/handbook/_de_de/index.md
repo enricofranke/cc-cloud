@@ -52,8 +52,8 @@ Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB 
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
-| **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
+| **Advanced Cloud Uplink** | Genauso, aber mit 128 Blöcken Reichweite. Über Dimensionen hinweg verbinden [Ender Relays](network.md). |
 | **Cloud-Sonde** | Liest **eine** Maschine bis zu 8 Blöcke entfernt, als säße ein Uplink daran – für eingebaute Maschinen oder wenn jede Seite mit Rohren und Kabeln belegt ist. Teuer; zählt wie zwei Geräte. Siehe *Maschinen ohne freie Seite* weiter unten. |
 | **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
 | **Cloud-Schalter / -Taster / -Lampe / -Sensor** | Kleine [Redstone-Geräte](redstone.md) ohne Computer: verbinden und Lampen, Türen und Maschinen im Dashboard schalten. Geräte mit derselben Gruppe teilen sich eine Karte. |
