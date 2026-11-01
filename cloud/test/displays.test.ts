@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, REACTOR, type MockServer } from "../dev/mock-server.ts";
 import { normalizeDisplays, previewCards, previewFrame, targetOptions } from "../web/src/lib/displays.ts";
 import { resolveLayout, type LayoutDoc } from "../web/src/lib/layout.ts";
-import type { Uplink } from "../web/src/lib/types.ts";
+import type { NetNode, Uplink } from "../web/src/lib/types.ts";
 import { TestSocket } from "./helpers.ts";
 
 const uplinks: Uplink[] = [
@@ -17,6 +17,19 @@ const layout: LayoutDoc = {
   cards: { "c:wall": { title: "Wall", page: "main", x: 0, y: 0, w: 6, h: 4 } },
   widgets: { "a/t": { card: "c:wall", x: 0, y: 0, w: 6, h: 2 }, "s/tps": { card: "c:wall", x: 6, y: 0, w: 6, h: 2 } },
 };
+
+describe("targetOptions hints", () => {
+  const twins: Uplink[] = [
+    { uplinkId: "aaaa1111", title: "Cell", online: true, widgets: [] },
+    { uplinkId: "bbbb2222", title: "Cell", online: true, widgets: [] },
+    { uplinkId: "cccc3333", title: "Solo", online: true, widgets: [] },
+  ];
+  it("tells equal titles apart by place, or by id without one", () => {
+    const nodes = [{ id: "aaaa1111", uplinkId: "aaaa1111", type: "device", name: "Cell", status: "online", pos: { x: 3.5, y: -60, z: -8.5 } }] as NetNode[];
+    const hints = targetOptions(twins, null, false, nodes).filter((o) => o.kind === "section").map((o) => o.hint);
+    expect(hints).toEqual(["3 -60 -9", "#bbbb", undefined]);
+  });
+});
 
 describe("display lists", () => {
   it("sanitises rows", () => {

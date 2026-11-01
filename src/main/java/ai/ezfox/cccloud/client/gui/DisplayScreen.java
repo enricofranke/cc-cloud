@@ -75,11 +75,14 @@ public class DisplayScreen extends CloudScreen<DisplayMenu> {
             String label = str(section, "title");
             String name = label.isEmpty() ? Component.translatable("cccloud.tablet.untitled").getString()
                 : kind.isEmpty() ? label : Component.translatable("cccloud.display.kind." + kind, label).getString();
+            String hint = str(section, "hint");
+            int height = hint.isEmpty() ? ROW : ROW + 10;
             boolean selected = id.equals(current);
-            rows.add(new Row(ROW, (c, x, y, w) -> {
-                CloudGui.row(c.g(), x, y, w, ROW, false);
+            rows.add(new Row(height, (c, x, y, w) -> {
+                CloudGui.row(c.g(), x, y, w, height, false);
                 c.text(name, x + 6, y + 5,
                     selected ? CloudGui.GREEN : CloudGui.TEXT, w - 80);
+                if (!hint.isEmpty()) c.text(hint, x + 6, y + 15, CloudGui.TEXT_DIM, w - 80);
                 var show = Component.translatable(selected ? "cccloud.display.shown" : "cccloud.display.show");
                 c.button(x + w - c.buttonWidth(show) - 3, y + 2, show, CloudGui.ButtonStyle.NORMAL, !selected, () -> send("select", id));
             }));

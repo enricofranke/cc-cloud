@@ -137,6 +137,26 @@ public final class DisplayCompose {
         return new Result(section, filtered);
     }
 
+    /**
+     * Picker rows of the same kind and title get a {@code hint} so they can be told apart: {@code place} of the row's
+     * id, or the start of the id when its place may not be shown.
+     */
+    public static void markDuplicates(JsonArray rows, java.util.function.Function<String, String> place) {
+        var seen = new java.util.HashMap<String, Integer>();
+        for (var row : rows) seen.merge(duplicateKey(row.getAsJsonObject()), 1, Integer::sum);
+        for (var row : rows) {
+            var r = row.getAsJsonObject();
+            if (seen.get(duplicateKey(r)) < 2) continue;
+            String id = r.get("uplinkId").getAsString();
+            String where = place.apply(id);
+            r.addProperty("hint", where != null ? where : "#" + id.substring(0, Math.min(4, id.length())));
+        }
+    }
+
+    private static String duplicateKey(JsonObject row) {
+        return (row.has("kind") ? row.get("kind").getAsString() : "") + "\n" + (row.has("title") ? row.get("title").getAsString() : "");
+    }
+
     /** The custom cards and pages as picker rows: {@code {uplinkId, title, kind, restricted}}; {@code restricted} = shows a restricted section. */
     public static JsonArray targets(@Nullable JsonObject layout, Map<String, JsonObject> sections, java.util.Set<String> restricted) {
         var model = model(layout, sections, id -> true);

@@ -1,7 +1,7 @@
 // Cloud Displays on the dashboard (screen #/m/<id>/displays): the list row, what a display can show and the
 // preview cards. The preview uses the section data the dashboard already has; nothing is sent for it.
 import { resolveLayout, type LayoutDoc, type ResolvedCard, type ResolvedPage } from "./layout.ts";
-import type { Uplink } from "./types.ts";
+import type { NetNode, Uplink } from "./types.ts";
 
 export type DisplayStatus = "ok" | "no_section" | "no_rights" | "missing" | "too_large" | "restricted" | "offline" | "unloaded";
 const STATUSES: readonly string[] = ["ok", "no_section", "no_rights", "missing", "too_large", "restricted", "offline", "unloaded"];
@@ -54,19 +54,33 @@ export interface TargetOption {
   title: string;
   kind: "section" | "card" | "page";
   restricted: boolean;
+  /** Tells options of the same kind and title apart: where the device stands, or the start of its id. */
+  hint?: string;
+}
+
+/** Sets the hint on options that share a kind and title. {@code nodes} carry a place only with view.positions. */
+function markDuplicates(options: TargetOption[], nodes: NetNode[]): TargetOption[] {
+  const counts = new Map<string, number>();
+  const key = (o: TargetOption) => `${o.kind}\n${o.title}`;
+  for (const o of options) counts.set(key(o), (counts.get(key(o)) ?? 0) + 1);
+  return options.map((o) => {
+    if ((counts.get(key(o)) ?? 0) < 2) return o;
+    const pos = nodes.find((n) => n.uplinkId === o.value)?.pos;
+    return { ...o, hint: pos ? `${Math.floor(pos.x)} ${Math.floor(pos.y)} ${Math.floor(pos.z)}` : `#${o.value.replace(/^[cp]:/, "").slice(0, 4)}` };
+  });
 }
 
 /**
  * What a display can show: original sections, custom cards and pages. Restricted sections are offered only once the
  * display allows them; the session only knows them with view.positions anyway.
  */
-export function targetOptions(uplinks: Uplink[], layout: LayoutDoc | null, allowRestricted: boolean): TargetOption[] {
+export function targetOptions(uplinks: Uplink[], layout: LayoutDoc | null, allowRestricted: boolean, nodes: NetNode[] = []): TargetOption[] {
   const out: TargetOption[] = uplinks.filter((u) => !u.restricted || allowRestricted).map((u) => ({ value: u.uplinkId, title: u.title, kind: "section", restricted: !!u.restricted }));
   for (const p of resolveLayout(uplinks, layout, { includeHidden: true })) {
     for (const c of p.cards) if (c.custom) out.push({ value: c.key, title: c.title, kind: "card", restricted: c.widgets.some((w) => w.uplink.restricted) });
     out.push({ value: `p:${p.id}`, title: p.title, kind: "page", restricted: p.cards.some((c) => c.widgets.some((w) => w.uplink.restricted)) });
   }
-  return out;
+  return markDuplicates(out, nodes);
 }
 
 /** Without the display's permission, restricted widgets stay off a composed card (as DisplayCompose does). */

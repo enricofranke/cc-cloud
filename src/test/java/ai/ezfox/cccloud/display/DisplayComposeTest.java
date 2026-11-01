@@ -157,4 +157,14 @@ class DisplayComposeTest {
         assertEquals(4 * DisplayLayout.PX_PER_BLOCK - 2 * DisplayLayout.BORDER, heading.w());
         assertFalse(heading.clickable());
     }
+
+    @Test
+    void duplicateTitlesGetAPlaceOrTheStartOfTheId() {
+        var rows = com.google.gson.JsonParser.parseString("[{'uplinkId':'aaaa1111','title':'Cell'},{'uplinkId':'bbbb2222','title':'Cell'},"
+            .replace('\'', '"') + "{\"uplinkId\":\"cccc3333\",\"title\":\"Solo\"}]").getAsJsonArray();
+        DisplayCompose.markDuplicates(rows, id -> id.startsWith("a") ? "1 2 3" : null);
+        assertEquals("1 2 3", rows.get(0).getAsJsonObject().get("hint").getAsString());
+        assertEquals("#bbbb", rows.get(1).getAsJsonObject().get("hint").getAsString());
+        assertFalse(rows.get(2).getAsJsonObject().has("hint"));
+    }
 }

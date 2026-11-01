@@ -120,7 +120,8 @@ function DisplayItem({ d, conn, uplinks, pages, hydrator, onChanged }: { d: Disp
   const [confirm, setConfirm] = useState<"restricted" | "unlink" | null>(null);
   const layout = conn.layout.value;
   const structure = conn.structure.value;
-  const options = useMemo(() => targetOptions(conn.uplinks.peek(), layout, d.allowRestricted), [conn, structure, layout, d.allowRestricted]);
+  const nodes = conn.network.value?.nodes;
+  const options = useMemo(() => targetOptions(conn.uplinks.peek(), layout, d.allowRestricted, nodes), [conn, structure, layout, d.allowRestricted, nodes]);
   const run = async (f: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -143,7 +144,7 @@ function DisplayItem({ d, conn, uplinks, pages, hydrator, onChanged }: { d: Disp
       <optgroup label={label}>
         {list.map((o) => (
           <option key={o.value} value={o.value}>
-            {`${o.title || t("ed.untitled")}${o.restricted ? ` · ${t("dp.restrictedMark")}` : ""}`}
+            {`${o.title || t("ed.untitled")}${o.hint ? ` · ${o.hint}` : ""}${o.restricted ? ` · ${t("dp.restrictedMark")}` : ""}`}
           </option>
         ))}
       </optgroup>

@@ -105,14 +105,26 @@ public final class DisplayService {
             var sections = new com.google.gson.JsonArray();
             for (var row : InGameClients.sections(mainframe)) {
                 var r = row.getAsJsonObject();
-                if (!r.get("restricted").getAsBoolean() || seesRestricted && origin.allowRestricted()) sections.add(r);
+                if (!r.get("restricted").getAsBoolean() || seesRestricted && origin.allowRestricted()) sections.add(r.deepCopy());
             }
             var source = WebHub.INSTANCE.displaySource(mainframe);
             sections.addAll(DisplayCompose.targets(source.layout(), source.sections(), source.restricted()));
+            DisplayCompose.markDuplicates(sections, id -> seesRestricted ? place(id, origin) : null);
             json.add("sections", sections);
             json.addProperty("canUnlink", InGameAccess.has(player, mainframe, Perm.NETWORK_LINK));
         }
         return Json.GSON.toJson(json);
+    }
+
+    /** Where a section's device stands, or null when unknown or in a claim its owners do not belong to. */
+    private static @Nullable String place(String id, CloudDisplayBlockEntity origin) {
+        var uuid = ClientMessages.parseUuid(id);
+        if (uuid == null || !(ai.ezfox.cccloud.network.CloudNetwork.section(uuid) instanceof ai.ezfox.cccloud.claims.ClaimGuard.Guarded device)) return null;
+        var level = device.guardLevel();
+        var pos = device.guardPos();
+        if (level == null || pos == null || ai.ezfox.cccloud.claims.ClaimGuard.blockedAt(level, pos, device.guardOwners())) return null;
+        String at = pos.getX() + " " + pos.getY() + " " + pos.getZ();
+        return level == origin.getLevel() ? at : at + " " + level.dimension().identifier().getPath();
     }
 
     static @Nullable JsonObject parse(String json) {
