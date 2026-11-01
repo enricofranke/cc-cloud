@@ -46,6 +46,8 @@ Schau den Mainframe an und gib ein:
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
 /cccloud pin clear
+/cccloud reports status|on|off|show
+/cccloud feedback <text>
 ```
 
 ## PIN

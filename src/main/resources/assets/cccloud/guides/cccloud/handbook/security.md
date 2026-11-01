@@ -46,6 +46,8 @@ Look at the mainframe and run:
 /cccloud untrust <player>
 /cccloud pin set <4-8 digits>
 /cccloud pin clear
+/cccloud reports status|on|off|show
+/cccloud feedback <text>
 ```
 
 ## PIN
