@@ -105,7 +105,7 @@ describe("pairing", () => {
       req.end("{}");
     });
     expect(status.code).toBe(403);
-    expect(status.body).toMatch(/webAllowInternet=true/);
+    expect(status.body).toMatch(/internetAccess/);
     const lan = socket({ host: "mc.example.net" });
     await expect(lan.opened()).rejects.toThrow(/403/);
   });
