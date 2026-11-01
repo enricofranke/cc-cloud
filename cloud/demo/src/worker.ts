@@ -12,11 +12,21 @@ declare const __DEMO_STORE_KEY__: string;
 const post = (m: FromWorker, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
 const BASE = import.meta.env.BASE_URL;
-/** The store is a static folder of the demo. Its index stays here for the install check, the moment it has arrived. */
-let storeIndex: Uint8Array | undefined;
-fetch(`${BASE}store/index.json`)
-  .then((r) => r.arrayBuffer())
-  .then((b) => (storeIndex = new Uint8Array(b)))
+/** The store is a static folder of the demo. Its index stays here for the install check, its presets for the Community tab. */
+const storeFiles = new Map<string, Uint8Array>();
+const storeFile = (rel: string) =>
+  fetch(`${BASE}store/${rel}`)
+    .then((r) => r.arrayBuffer())
+    .then((b) => {
+      const bytes = new Uint8Array(b);
+      storeFiles.set(rel, bytes);
+      return bytes;
+    });
+storeFile("index.json")
+  .then((bytes) => {
+    const index = JSON.parse(new TextDecoder().decode(bytes)) as { presets?: { file: string }[] };
+    return Promise.all((index.presets ?? []).map((p) => storeFile(p.file)));
+  })
   .catch(() => {});
 
 const core = createMockCore(
@@ -29,6 +39,8 @@ const core = createMockCore(
     pinLockMs: 20_000,
     // stays below the warning band: the base is calm until the visitor does something
     reactorPeak: 870,
+    // nothing here could send a report or feedback, so the demo does not offer them
+    reports: false,
     mainframeId: (name) => MAINFRAMES.find((m) => m.name === name)?.id,
     log: () => {},
   },
@@ -36,7 +48,7 @@ const core = createMockCore(
     store: {
       key: __DEMO_STORE_KEY__,
       url: () => `${location.origin}${BASE}store/`,
-      file: (rel) => (rel === "index.json" ? storeIndex : undefined),
+      file: (rel) => storeFiles.get(rel),
       sign: () => new Uint8Array(0),
     },
     // nothing can host a shared view: the link leads back here

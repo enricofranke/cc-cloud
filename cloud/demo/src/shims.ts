@@ -61,6 +61,8 @@ export function installShims(lang: Lang) {
   // already "linked": the dashboard opens with the showcase's mainframes instead of the pairing screen
   memory.setItem("cccloud.account.v1", JSON.stringify({ token: TOKEN, player: PLAYER, deviceName: DEVICE, linkedAt: now }));
   memory.setItem("cccloud.mainframes.v1", JSON.stringify(MAINFRAMES.map((m) => ({ mainframeId: m.id, token: TOKEN, name: m.name, deviceName: DEVICE, pairedAt: now, viaAccount: true, role: "owner" }))));
+  // the showcase is already arranged: presets stay one step away in the layout editor
+  for (const m of MAINFRAMES) memory.setItem(`cccloud.presets.dismissed.${m.id}`, "1");
   replaceGlobal("localStorage", memory);
   replaceGlobal("sessionStorage", new MemoryStorage());
   // the 3D view's cache: without IndexedDB it simply asks the worker again

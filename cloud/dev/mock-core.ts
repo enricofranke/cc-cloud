@@ -284,6 +284,8 @@ export interface MockOptions {
   pushEnabled?: boolean;
   /** serve the Script Store build (STORE_DIST) at /store/ and announce it in the snapshot (default true) */
   scriptStore?: boolean;
+  /** false: this base offers neither reports nor feedback (the live demo; default true) */
+  reports?: boolean;
   /** add the underground "Deep Base" mainframe (also with extras) */
   deepBase?: boolean;
   /** map tiles per minute per device (default 60) */
@@ -2740,6 +2742,10 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       if (!t) return json(res, 401, { error: "unauthorized" });
       const g = gate(t, reportsM[1], "view");
       if ("error" in g) return json(res, 403, { error: g.error });
+      if (opts.reports === false) {
+        if (reportsM[2] !== "reports" || req.method !== "GET") return json(res, 403, { error: "not_allowed" });
+        return json(res, 200, { version: 1, canDecide: false, prompt: false, feedback: false });
+      }
       // on a real server this is op level 4 or the singleplayer host
       const decides = t.canControl && g.perms.includes("access.manage");
       const doc = () => ({

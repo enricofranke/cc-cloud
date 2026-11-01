@@ -66,6 +66,7 @@ for (const view of VIEWS) {
   check(page.url().includes("#/m/"), "opens on the base, no pairing");
   check(await page.locator(".card").count().then((n) => n >= 5), "populated dashboard");
   check(await page.locator("text=/Connecting/i").count().then((n) => n === 0), "never says Connecting");
+  check(await page.locator("text=/Help improve CC: Cloud/i").count().then((n) => n === 0), "no report prompt: nothing here could send one");
   check(await noSideScroll(page), "no horizontal scroll");
   await shot("01-open");
 
@@ -133,6 +134,23 @@ for (const view of VIEWS) {
   await page.locator(".ed-bar .pxbtn").first().click();
   await page.waitForTimeout(800);
   check((await cardCount(page)) > cards, "editor adds a card and saves it");
+
+  // ---- presets: official ones in the toolbox, community ones from the store files
+  await page.click('button[aria-label="Edit layout"]');
+  await page.waitForSelector(".ed-bar");
+  await page.waitForTimeout(400);
+  if (!(await page.locator(".nd-tab:visible").count())) await page.locator(".ed-bar button", { hasText: "Toolbox" }).click();
+  await page.waitForTimeout(300);
+  await page.locator(".nd-tab", { hasText: "Presets" }).click();
+  await page.locator('[role="radio"]:visible', { hasText: "Official" }).waitFor({ timeout: 5000 });
+  check(await page.locator("text=/Power grid/").count(), "official presets in the toolbox");
+  await page.locator('[role="radio"]:visible', { hasText: "Community" }).click();
+  await page.locator("text=/Door panel/").first().waitFor({ timeout: 5000 }).catch(() => {});
+  check(await page.locator("text=/Door panel/").count(), "community presets load");
+  await shot("05b-presets");
+  await closeSheets(page);
+  await page.locator(".ed-bar .pxbtn").first().click();
+  await page.waitForTimeout(500);
 
   // ---- reload starts over, the tour stays dismissed
   await open(page);
