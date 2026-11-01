@@ -601,7 +601,7 @@ export default function Editor(props: { conn: MainframeConn; uplinks: Uplink[]; 
       e.preventDefault();
       if (kind === "widget") commit(updateWidget(current(hist), key, { hidden: true }));
       else commit(updateCard(current(hist), key, { hidden: true }));
-      setAnnounce("Hidden. Find it again in Add.");
+      setAnnounce("Hidden. Find it again in the toolbox.");
     }
   };
   // global shortcuts
