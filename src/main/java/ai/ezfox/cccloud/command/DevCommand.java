@@ -93,6 +93,10 @@ public final class DevCommand {
             .then(Commands.literal("item").then(Commands.argument("pos", BlockPosArgument.blockPos())
                 .then(Commands.argument("id", IdentifierArgument.id())
                     .then(Commands.argument("amount", IntegerArgumentType.integer(1)).executes(DevCommand::item)))))
+            .then(Commands.literal("caps").then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(DevCommand::caps)))
+            .then(Commands.literal("drain").then(Commands.argument("pos", BlockPosArgument.blockPos())
+                .then(Commands.argument("kind", StringArgumentType.word())
+                    .then(Commands.argument("amount", IntegerArgumentType.integer(1)).executes(DevCommand::drain)))))
             .then(Commands.literal("uuid").then(Commands.argument("player", StringArgumentType.word()).executes(DevCommand::uuid)))
             .then(Commands.literal("party").then(Commands.argument("player", StringArgumentType.word())
                 .then(Commands.argument("name", StringArgumentType.word()).executes(DevCommand::party))))
@@ -423,6 +427,89 @@ public final class DevCommand {
             }
         }
         reply(c.getSource(), "inserted " + total);
+        return total;
+    }
+
+    /**
+     * What the capabilities really hold, per side: {"energy":{side:[stored,capacity]},"fluid":{side:[[id,amount,capacity]]}}.
+     * "none" is the side-less handler; a side equal to it is left out. On an uplink: its read target, seen through its face.
+     */
+    private static int caps(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var level = c.getSource().getLevel();
+        var pos = BlockPosArgument.getLoadedBlockPos(c, "pos");
+        var out = new JsonObject();
+        if (level.getBlockEntity(pos) instanceof ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity uplink) {
+            var target = uplink.readPos();
+            if (target == null || !level.isLoaded(target)) {
+                reply(c.getSource(), "failed: no target");
+                return 0;
+            }
+            out.addProperty("side", uplink.readSide().getName());
+            pos = target;
+        }
+        out.addProperty("target", pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        out.addProperty("block", BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock()).toString());
+        var energy = new JsonObject();
+        var fluid = new JsonObject();
+        for (var side : allSides()) {
+            var key = side == null ? "none" : side.getName();
+            var e = level.getCapability(Capabilities.Energy.BLOCK, pos, side);
+            if (e != null) {
+                var row = new JsonArray();
+                row.add(e.getAmountAsLong());
+                row.add(e.getCapacityAsLong());
+                if (!row.equals(energy.get("none"))) energy.add(key, row);
+            }
+            var f = level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
+            if (f != null) {
+                var tanks = new JsonArray();
+                for (int i = 0; i < f.size(); i++) {
+                    var resource = f.getResource(i);
+                    var row = new JsonArray();
+                    row.add(resource.isEmpty() ? "" : BuiltInRegistries.FLUID.getKey(resource.getFluid()).toString());
+                    row.add(f.getAmountAsLong(i));
+                    row.add(f.getCapacityAsLong(i, resource));
+                    tanks.add(row);
+                }
+                if (!tanks.equals(fluid.get("none"))) fluid.add(key, tanks);
+            }
+        }
+        out.add("energy", energy);
+        out.add("fluid", fluid);
+        reply(c.getSource(), out.toString());
+        return 1;
+    }
+
+    private static int drain(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        var level = c.getSource().getLevel();
+        var pos = BlockPosArgument.getLoadedBlockPos(c, "pos");
+        boolean fluid = "fluid".equals(StringArgumentType.getString(c, "kind"));
+        int left = IntegerArgumentType.getInteger(c, "amount");
+        int total = 0;
+        for (var side : allSides()) {
+            if (left <= 0) break;
+            try (var tx = Transaction.openRoot()) {
+                if (fluid) {
+                    var handler = level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
+                    for (int i = 0; handler != null && i < handler.size() && left > 0; i++) {
+                        var resource = handler.getResource(i);
+                        if (resource.isEmpty()) continue;
+                        int done = handler.extract(resource, left, tx);
+                        total += done;
+                        left -= done;
+                    }
+                } else {
+                    var handler = level.getCapability(Capabilities.Energy.BLOCK, pos, side);
+                    if (handler != null) {
+                        int done = handler.extract(left, tx);
+                        total += done;
+                        left -= done;
+                    }
+                }
+                tx.commit();
+            }
+        }
+        reply(c.getSource(), "drained " + total);
         return total;
     }
 

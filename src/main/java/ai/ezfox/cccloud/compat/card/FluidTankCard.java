@@ -79,6 +79,12 @@ public class FluidTankCard extends BlockCard<BlockEntity> {
             .build();
     }
 
+    /** Creative tanks report Long.MAX_VALUE per tank. */
+    private static long saturatedAdd(long a, long b) {
+        long sum = a + b;
+        return sum < 0 ? Long.MAX_VALUE : sum;
+    }
+
     @Override
     public void refresh(CardOutput out) {
         var handler = handler(level, pos, side);
@@ -88,12 +94,14 @@ public class FluidTankCard extends BlockCard<BlockEntity> {
             int n = Math.min(handler.size(), MAX_TANKS);
             for (int i = 0; i < n; i++) {
                 var resource = handler.getResource(i);
-                capacity += Math.max(0, handler.getCapacityAsLong(i, resource));
+                capacity = saturatedAdd(capacity, Math.max(0, handler.getCapacityAsLong(i, resource)));
                 if (resource.isEmpty()) continue;
                 long a = handler.getAmountAsLong(i);
                 if (a <= 0) continue;
-                if (amount == 0) fluid = Fmt.title(BuiltInRegistries.FLUID.getKey(resource.getFluid()).getPath());
-                amount += a;
+                var name = Fmt.title(BuiltInRegistries.FLUID.getKey(resource.getFluid()).getPath());
+                if (amount == 0) fluid = name;
+                else if (!fluid.contains(name)) fluid += ", " + name; // the amount below is the total of all tanks
+                amount = saturatedAdd(amount, a);
             }
         }
         out.number(FILL, Fmt.percent(amount, capacity));
