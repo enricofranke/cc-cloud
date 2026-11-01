@@ -168,6 +168,7 @@ for (const view of VIEWS) {
   for (const p of problems.slice(0, 8)) console.log(`       ${p}`);
   check(outside.length === 0, `no requests outside the site (${outside.length})`);
   for (const u of outside.slice(0, 8)) console.log(`       ${u}`);
+  check((await context.cookies()).length === 0, "no cookies");
   await context.close();
 }
 
