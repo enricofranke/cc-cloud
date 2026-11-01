@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Lua reference"
-  position: 4
+  position: 5
   icon: computercraft:computer_advanced
 ---
 

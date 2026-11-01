@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Redstone devices"
-  position: 3
+  position: 4
   icon: cccloud:cloud_lamp
 item_ids:
   - cccloud:cloud_lamp

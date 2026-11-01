@@ -44,6 +44,8 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
 - **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.
 
+**Vorlagen** in **+ Add** legt eine fertige Seite auf dein Dashboard – siehe [Dashboard-Vorlagen](presets.md).
+
 **Save** speichert das Layout auf dem Server – alle Browser sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben. Auf schmalen Bildschirmen stehen die Karten in Lesereihenfolge untereinander (auf Handys zweispaltig).
 
 ## Meldungen
