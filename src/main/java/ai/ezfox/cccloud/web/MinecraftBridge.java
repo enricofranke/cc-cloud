@@ -157,6 +157,11 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public ai.ezfox.cccloud.script.PresetStore.Result storePresets(@Nullable String id) {
+        return ai.ezfox.cccloud.script.StoreTrust.presets(id);
+    }
+
+    @Override
     public CompletableFuture<GameBridge.@Nullable RecipesJson> recipes() {
         return ai.ezfox.cccloud.recipes.RecipeCatalog.get(server)
             .<GameBridge.@Nullable RecipesJson>thenApply(snapshot -> new GameBridge.RecipesJson(snapshot.json(), snapshot.etag()))

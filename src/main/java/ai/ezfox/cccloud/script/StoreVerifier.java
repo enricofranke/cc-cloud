@@ -38,6 +38,13 @@ public final class StoreVerifier {
         }
     }
 
+    /** A signed index; {@code json} is null exactly when {@code error} is set. */
+    public record Index(@Nullable JsonObject json, @Nullable String error) {
+        static Index failed(String error) {
+            return new Index(null, error);
+        }
+    }
+
     private record Cached(JsonObject index, long at) {
     }
 
@@ -84,32 +91,35 @@ public final class StoreVerifier {
      * {@code store_unknown_script}, {@code store_mismatch}.
      */
     public Result check(String storeUrl, @Nullable String publicKeyBase64, String id, String version, String path, String sha256Hex) {
+        var index = index(storeUrl, publicKeyBase64);
+        return index.error() != null ? new Result(index.error()) : checkFile(index.json(), id, version, path, sha256Hex);
+    }
+
+    /** The signed index, or what is wrong with it: {@code store_not_configured}, {@code store_unreachable}, {@code store_bad_signature}. */
+    public Index index(String storeUrl, @Nullable String publicKeyBase64) {
         var key = publicKey(publicKeyBase64);
-        if (key == null) return new Result("store_not_configured");
-        JsonObject index;
+        if (key == null) return Index.failed("store_not_configured");
         // keyed by URL and public key: an index verified with an old key (rotated by a config reload) is never reused
         String cacheKey = storeUrl + "\n" + publicKeyBase64;
         var cached = cache.get(cacheKey);
-        if (cached != null && clock.getAsLong() - cached.at() < CACHE_MS) {
-            index = cached.index();
-        } else {
-            byte[] data, sig;
-            try {
-                data = fetcher.get(storeUrl + "index.json");
-                sig = fetcher.get(storeUrl + "index.json.sig");
-            } catch (java.io.IOException e) {
-                return new Result("store_unreachable");
-            }
-            if (data == null || sig == null || data.length > MAX_INDEX_BYTES) return new Result("store_unreachable");
-            if (!verifySignature(data, sig, key)) return new Result("store_bad_signature");
-            try {
-                index = JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
-            } catch (RuntimeException e) {
-                return new Result("store_bad_signature");
-            }
-            cache.put(cacheKey, new Cached(index, clock.getAsLong()));
+        if (cached != null && clock.getAsLong() - cached.at() < CACHE_MS) return new Index(cached.index(), null);
+        byte[] data, sig;
+        try {
+            data = fetcher.get(storeUrl + "index.json");
+            sig = fetcher.get(storeUrl + "index.json.sig");
+        } catch (java.io.IOException e) {
+            return Index.failed("store_unreachable");
         }
-        return checkFile(index, id, version, path, sha256Hex);
+        if (data == null || sig == null || data.length > MAX_INDEX_BYTES) return Index.failed("store_unreachable");
+        if (!verifySignature(data, sig, key)) return Index.failed("store_bad_signature");
+        JsonObject index;
+        try {
+            index = JsonParser.parseString(new String(data, StandardCharsets.UTF_8)).getAsJsonObject();
+        } catch (RuntimeException e) {
+            return Index.failed("store_bad_signature");
+        }
+        cache.put(cacheKey, new Cached(index, clock.getAsLong()));
+        return new Index(index, null);
     }
 
     static Result checkFile(JsonObject index, String id, String version, String path, String sha256Hex) {

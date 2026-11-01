@@ -241,6 +241,10 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
             script(ctx, req, route, ip, devices.getFirst());
             return;
         }
+        if (route.id().isPreset()) {
+            presets(ctx, req, route, devices.getFirst());
+            return;
+        }
         if (route.id() == Router.Id.MAP_TILE) {
             mapTile(ctx, req, devices.getFirst());
             return;
@@ -273,6 +277,63 @@ final class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
                     sendJson(ctx, req, HttpResponseStatus.INTERNAL_SERVER_ERROR, error("internal_error"));
                 }
             }));
+    }
+
+    // ---- dashboard presets of the store ---------------------------------------------------------------------------------
+
+    /**
+     * {@code layout.edit} is checked on the server thread like every permission; the store is then fetched on the store
+     * executor, because it blocks. The browser only ever gets what the signed index vouches for.
+     */
+    private void presets(ChannelHandlerContext ctx, FullHttpRequest req, Router.Route route, AuthStore.Device device) {
+        String[] parts = new QueryStringDecoder(req.uri()).path().split("/");
+        var mainframeId = ClientMessages.parseUuid(parts[3]);
+        String id = parts.length > 5 ? parts[5] : null;
+        if (mainframeId == null) {
+            sendJson(ctx, req, HttpResponseStatus.NOT_FOUND, error("not_found"));
+            return;
+        }
+        req.retain();
+        CompletableFuture.supplyAsync(() -> {
+                var access = instance.bridge.access(device, mainframeId);
+                return AccessGate.check(access.role(), access.perms(), AccessGate.routePerm(route.id()));
+            }, instance.bridge.serverExecutor())
+            .orTimeout(5, TimeUnit.SECONDS)
+            .whenComplete((denied, err) -> ctx.executor().execute(() -> {
+                if (err != null) {
+                    sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("unavailable"));
+                    req.release();
+                } else if (denied != null) {
+                    sendJson(ctx, req, HttpResponseStatus.FORBIDDEN, error(denied));
+                    req.release();
+                } else {
+                    fetchPresets(ctx, req, id);
+                }
+            }));
+    }
+
+    private void fetchPresets(ChannelHandlerContext ctx, FullHttpRequest req, @Nullable String id) {
+        try {
+            instance.storeExecutor.execute(() -> {
+                ai.ezfox.cccloud.script.PresetStore.Result result;
+                try {
+                    result = instance.bridge.storePresets(id);
+                } catch (RuntimeException e) {
+                    result = ai.ezfox.cccloud.script.PresetStore.Result.failed(502, "store_unreachable");
+                }
+                var answer = result;
+                ctx.executor().execute(() -> {
+                    try {
+                        sendJson(ctx, req, HttpResponseStatus.valueOf(answer.status()), answer.body());
+                    } finally {
+                        req.release();
+                    }
+                });
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            sendJson(ctx, req, HttpResponseStatus.SERVICE_UNAVAILABLE, error("busy"));
+            req.release();
+        }
     }
 
     // ---- map tiles ----------------------------------------------------------------------------------------------------

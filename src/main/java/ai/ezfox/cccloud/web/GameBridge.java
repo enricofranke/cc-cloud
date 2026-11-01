@@ -195,6 +195,11 @@ public interface GameBridge {
         return "store_not_configured";
     }
 
+    /** Presets of the signed store: the list ({@code id} null) or one, checked against the index (blocking: never on the server thread). */
+    default ai.ezfox.cccloud.script.PresetStore.Result storePresets(@Nullable String id) {
+        return ai.ezfox.cccloud.script.PresetStore.Result.failed(503, "store_not_configured");
+    }
+
     /** The live recipes of CC: Cloud items ({@code GET /api/recipes}): a serialized JSON document and its ETag. */
     record RecipesJson(byte[] json, String etag) {
     }

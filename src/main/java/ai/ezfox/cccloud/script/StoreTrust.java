@@ -17,6 +17,11 @@ public final class StoreTrust {
         return result.ok() ? result.body() : null;
     }, System::currentTimeMillis);
 
+    private static final PresetStore PRESETS = new PresetStore(VERIFIER, url -> {
+        var result = HTTP.get(url, ai.ezfox.cccloud.push.PushService.allowedHosts(), PresetStore.MAX_PRESET_BYTES + 1);
+        return result.ok() ? result.body() : null;
+    });
+
     private StoreTrust() {
     }
 
@@ -37,5 +42,13 @@ public final class StoreTrust {
         String storeFile = request.query().getOrDefault("storeFile", request.file());
         if (storeFile == null || ScriptFiles.validate(storeFile) == null) return "invalid_path";
         return VERIFIER.check(url, CloudConfig.get(CloudConfig.SCRIPT_STORE_KEY), ref[0], ref[1], storeFile, ScriptFiles.sha256(request.body())).error();
+    }
+
+    /** The presets of the signed index ({@code id} null) or one verified preset. */
+    public static PresetStore.Result presets(@Nullable String id) {
+        String url = ai.ezfox.cccloud.web.PublicConfig.storeUrl();
+        if (url == null) return PresetStore.Result.failed(503, "store_disabled");
+        String key = CloudConfig.get(CloudConfig.SCRIPT_STORE_KEY);
+        return id == null ? PRESETS.list(url, key) : PRESETS.get(url, key, id);
     }
 }

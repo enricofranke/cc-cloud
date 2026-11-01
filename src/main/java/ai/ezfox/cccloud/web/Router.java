@@ -28,7 +28,7 @@ public final class Router {
     }
 
     public enum Id {
-        PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST,
+        PAIR, PAIR_STATUS, CONFIG, VOXEL_ATLAS, MAINFRAMES, DEVICES, DEVICE_DELETE, ACCESS_GET, ACCESS_POST, SHARES_GET, SHARES_POST, SHARE_DELETE, PUSH_GET, PUSH_POST, PRESET_LIST, PRESET_GET,
         SCRIPT_LIST, SCRIPT_GET, SCRIPT_PUT, SCRIPT_DELETE, SCRIPT_RUN, SCRIPT_MOVE, HISTORY, MAP_TILE, VOXELS, VOXEL_BATCH, ICON, RECIPES, DOWNLOAD, WEBSOCKET, APIKEYS_GET, APIKEYS_POST,
         API_OPENAPI, API_PREFLIGHT, API_ME, API_SECTIONS, API_SECTION, API_WIDGET, API_ITEMS, API_PRODUCTION, API_SCENES, API_SCENE_RUN, API_EVENTS, STATIC;
 
@@ -63,7 +63,12 @@ public final class Router {
         public boolean isApi() {
             return this == MAINFRAMES || this == DEVICES || this == DEVICE_DELETE || this == ACCESS_GET || this == ACCESS_POST
                 || this == SHARES_GET || this == SHARES_POST || this == SHARE_DELETE || this == PUSH_GET || this == PUSH_POST || this == HISTORY
-                || this == APIKEYS_GET || this == APIKEYS_POST || isScript() || isMap();
+                || this == APIKEYS_GET || this == APIKEYS_POST || isScript() || isMap() || isPreset();
+        }
+
+        /** Dashboard presets of the signed store: the server fetches and checks them, never the browser. */
+        public boolean isPreset() {
+            return this == PRESET_LIST || this == PRESET_GET;
         }
     }
 
@@ -103,6 +108,10 @@ public final class Router {
             "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
         new Route(Id.PUSH_POST, HttpMethod.POST, Pattern.compile("/api/mainframes/" + UUID_RE + "/push"), Access.DEVICE,
             "/api/mainframes/00000000-0000-0000-0000-000000000000/push"),
+        new Route(Id.PRESET_LIST, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/presets"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/presets"),
+        new Route(Id.PRESET_GET, HttpMethod.GET, Pattern.compile("/api/mainframes/" + UUID_RE + "/presets/[a-z0-9-]{3,40}"), Access.DEVICE,
+            "/api/mainframes/00000000-0000-0000-0000-000000000000/presets/reactor-room"),
         new Route(Id.SCRIPT_LIST, HttpMethod.GET, Pattern.compile(COMPUTER + "/files"), Access.DEVICE, EXAMPLE_COMPUTER + "/files"),
         new Route(Id.SCRIPT_GET, HttpMethod.GET, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
         new Route(Id.SCRIPT_PUT, HttpMethod.PUT, Pattern.compile(COMPUTER + FILE), Access.DEVICE, EXAMPLE_COMPUTER + "/files/startup.lua"),
