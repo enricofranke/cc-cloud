@@ -35,7 +35,7 @@ class ReportScrubberTest {
             a("%USERPROFILE%\\Desktop\\server", "<path>", "USERPROFILE", "Desktop"),
             a("Path c%3A%5CUsers%5Canna%5Cworld was bad", "<path>", "anna"),
             // macOS paths
-            a("/Us" + "ers/steve/Library/Application Support/minecraft/saves/x/level.dat", "<path>", "enrico", "Library", "Application"),
+            a("/Us" + "ers/steve/Library/Application Support/minecraft/saves/x/level.dat", "<path>", "steve", "Library", "Application"),
             a("/Volumes/Backup Disk/server/world", "<path>", "Backup", "Disk"),
             a("/private/var/fol" + "ders/ab/cd/T/session.lock", "<path>", "folders", "session"),
             // Linux paths
