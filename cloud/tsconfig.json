@@ -12,5 +12,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["dev", "test", "vitest.config.ts"]
+  "include": ["dev", "test", "demo/*.ts", "vitest.config.ts"]
 }

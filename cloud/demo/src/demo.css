@@ -1,0 +1,267 @@
+/* The demo's additions on top of the dashboard's stylesheet. */
+:root {
+  --demo-bar: 44px;
+  --head-h: calc(57px + var(--demo-bar));
+}
+
+/* ---- the bar */
+#demo-bar {
+  position: sticky;
+  top: 0;
+  z-index: 25;
+}
+.demo-bar {
+  background: color-mix(in srgb, var(--panel-2) 96%, transparent);
+  border-bottom: 1px solid var(--line-2);
+  box-shadow: inset 0 2px 0 var(--gold);
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.demo-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: calc(6px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 5px max(12px, env(safe-area-inset-left));
+}
+.demo-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+.demo-bar-text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+}
+.demo-tool {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.demo-tool:hover {
+  background: var(--panel-3);
+}
+.demo-get {
+  border-color: var(--gold-dk);
+  background: var(--gold);
+  color: #17140a;
+}
+.demo-get:hover {
+  background: var(--gold-hi);
+}
+.demo-note {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 4px max(12px, env(safe-area-inset-right)) 6px max(12px, env(safe-area-inset-left));
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+/* ---- the dashboard below the bar */
+.topbar,
+.dash-head {
+  top: var(--demo-bar);
+  padding-top: 8px;
+}
+
+/* ---- things without a counterpart here */
+.mf-add,
+.page-head:not(.acc-head) > .btn-ghost,
+.notify-cta,
+.settings-links ~ .btn-danger,
+.dev-row.current .btn,
+.facts:has(+ .theme-row) > dt:nth-last-of-type(2),
+.facts:has(+ .theme-row) > dd:nth-last-of-type(2) {
+  display: none;
+}
+
+/* the PIN is no secret here */
+.pin-dialog::after {
+  content: var(--demo-pin);
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.demo-pair .setup-steps {
+  margin: 20px 0;
+}
+.demo-pair-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---- the tour: a card of the dashboard, not a tooltip on top of it */
+.demo-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60; /* above sheets: it follows the button inside them */
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 20%, transparent), 0 0 18px color-mix(in srgb, var(--gold) 28%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.16s;
+  animation: demo-ring 2s ease-in-out infinite;
+}
+@keyframes demo-ring {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 8%, transparent), 0 0 24px color-mix(in srgb, var(--gold) 16%, transparent);
+  }
+}
+.demo-tour {
+  position: fixed;
+  left: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 38; /* below sheets and dialogs: they keep the focus */
+  width: 368px;
+  padding: 12px 14px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-top: 2px solid var(--gold);
+  border-radius: 3px;
+  box-shadow: 0 10px 34px rgb(0 0 0 / 0.4);
+  font-size: 13.5px;
+  line-height: 1.45;
+  animation: demo-tour-in 0.18s ease-out;
+}
+@keyframes demo-tour-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.demo-tour-top {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+}
+.demo-pip {
+  width: 16px;
+  height: 7px;
+  background: var(--panel-3);
+  border: 1px solid var(--line-2);
+}
+.demo-pip.on {
+  background: var(--gold);
+  border-color: var(--gold-dk);
+}
+.demo-pip.done {
+  background: var(--green);
+  border-color: transparent;
+}
+.demo-skip {
+  margin-left: auto;
+  padding: 4px 0 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.demo-skip:hover {
+  color: var(--text);
+}
+.demo-tour h2 {
+  margin: 6px 0 4px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.demo-tour p {
+  margin: 0;
+  color: var(--muted);
+}
+.demo-tour .demo-ok {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--text);
+}
+.demo-ok::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  background: var(--green);
+}
+.demo-tour-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.demo-tour-actions .demo-back {
+  margin-right: auto;
+}
+.demo-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.demo-tour-actions .demo-tool {
+  height: 34px;
+  padding: 0 12px;
+}
+
+@media (max-width: 719px) {
+  .demo-tour {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    padding: 8px 12px 10px;
+    font-size: 13px;
+  }
+  body:has(.tabbar) .demo-tour {
+    bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+  /* a finished step keeps the screen free */
+  .demo-tour.is-done .demo-tour-body {
+    display: none;
+  }
+  /* toasts come from the same corner */
+  body:has(.demo-tour) .toasts {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-ring,
+  .demo-tour {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-bar {
+    font-size: 11.5px;
+  }
+  .demo-bar-row {
+    gap: 6px;
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+  }
+  .demo-tool {
+    padding: 0 7px;
+  }
+}
