@@ -220,6 +220,26 @@ What happens to the dashboard:
 
 A file with a syntax error is replaced by NeoForge with the defaults (it keeps a backup next to it) – the defaults are LAN only, so nothing opens up by accident.
 
+## Crash reports, usage stats and feedback
+
+CC: Cloud can send reports to its developer. **Nothing is sent unless somebody says yes.** The decision is for the operator of the server: an operator of level 4, the console, or the player hosting a singleplayer world. If you are under 16, ask a parent first. Details are in the [privacy policy](https://cccloud.dev/en/legal/privacy/).
+
+| | Crash reports | Usage stats |
+|---|---|---|
+| **What** | CC: Cloud's own failures: the error, code locations, versions | versions, operating system family, rough counts, internet mode, active integrations |
+| **How often** | at most 5 per run, 1 per bug per day | at most once a day |
+| **Setting** | `crashReports` | `usageStats` |
+
+The owner is asked once, in the dashboard and on the mainframe screen. Yes and No count for each channel on its own, and after a No nobody asks again.
+
+- **Look first:** "Show exactly what would be sent", or `/cccloud reports show`, shows the real data.
+- **Decide any time:** `/cccloud reports on` or `off`, with `crash` or `stats` for only one of them, or **Settings → Crash reports & stats** in the dashboard. A no takes effect at once.
+- **Never sent:** player names, UUIDs, IP addresses, the server address, Connect name or keys, world or file names, home folders, coordinates, chat, Lua code, items or inventories, tokens, PINs. There is no install id.
+- **Kept for 90 days,** without an IP address, in the EU.
+- Writing `on` into the config file is not enough: only the answer counts, so a modpack or a copied world cannot agree for you. `off` in the file always works, and pack makers can set both to `off` in `defaultconfigs`.
+
+**Feedback** goes the same way out, but only when you send it: **Settings → Send feedback** in the dashboard, or `/cccloud feedback <text>`. You see the exact message and confirm it. Please leave out personal data. Technical info is only added if you tick the box, and a contact only if you give one.
+
 ## What the server logs
 
 Every pairing, approval, revoke and dashboard action appears as `[cccloud] …` in the server log.

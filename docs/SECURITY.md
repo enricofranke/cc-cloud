@@ -500,6 +500,31 @@ are personal data. Rules:
 - Integrations are soft dependencies (`compileOnly`), loaded only when the mod is present. They are reached through neutral interfaces (`TeamProvider`, `TeamSource`, `StorageAdapter`, `ClaimProvider`).
 - The web bundle keeps a short, audited dependency list (`pnpm audit` in CI).
 
+## Crash reports, usage stats and feedback
+Full field list: [docs/PRIVACY.md](PRIVACY.md).
+
+- **Default off.** Without the server owner's yes the engine starts no thread, reads no file and opens no connection. The
+  GameTest `reports_no_network_without_consent` holds that with a recording transport: a failure, a due stats day, a crash
+  file and `on` written into the config send nothing. A yes needs the config and a decision in
+  `<server folder>/cccloud/reports/state.json`, outside the world, so a world download or `defaultconfigs` cannot agree for
+  an owner.
+- **Who decides:** level-4 operators, the console and the singleplayer host. The routes `GET`/`POST
+  /api/mainframes/<id>/reports` and `/reports/preview` need a role on that mainframe and then the server owner on a browser
+  that may write; `POST /reports` is a management write (PIN unlock from the internet). The rights of a mainframe give no
+  rights here. `GuiActions.Mainframe.REPORTS` asks the server, not the mainframe, too.
+- **Feedback** (`POST /api/mainframes/<id>/feedback`) needs a role and a browser that may write. It cannot be triggered by a
+  script, a rule or a share link, and each message needs a second request with `confirm`. 3 per person in 10 minutes and 10
+  per server in an hour; the service has its own limit per IP.
+- **Outbound:** only `https://reports.cccloud.dev/v1/…`, a compiled-in address, through `PushHttp`: public addresses only,
+  no DNS rebinding, TLS with host name check, no redirects, 5 second timeouts. A queue of 8 on one daemon thread; a full queue
+  drops the report. No request parameter of a player can change the target.
+- **Data:** payloads are built from an allowlist and fail closed, one scrubber cleans all free text, and a finished payload
+  must pass it unchanged. `ReportCapture` catches everything, so a report cannot make a failure worse.
+- **Crash files** are read with no symbolic links, at most 16 files of 256 KB, and only up to the end of the stack trace.
+- **Residual risk:** the scrubber recognises shapes and known names. An unusual private word in an exception message could
+  pass; messages are limited to 300 characters, and the owner can look at the last report with `/cccloud reports show`. The
+  feedback `contact` is not scrubbed because its purpose is to be read.
+
 ## Security review 2026-10-23 (main@aa4557f)
 An independent review found 1 high, 6 medium and about 18 low issues. Fixed with tests: H1 (privilege escalation through the screen and command paths), M1 (team mappings and denies), M2 (`CF-Connecting-IP` from any trusted proxy; now only with `webTrustCloudflareHeader`, otherwise the right-most untrusted `X-Forwarded-For` entry), M3 (Link Card takeover), M4 (slices/voxels as X-ray), M5 (node coordinates in the screen), M6 (packet rate limits); lows: read-only device cap, share layout filtering, shares end with their creator's `shares.create`, PIN lockout per mainframe across devices with escalating locks (5 min, doubling, up to a day), Host header allow-list against DNS rebinding (`webAllowedHosts`), body limits before aggregation (4 KB, 256 KB only for authenticated script uploads), connection limit per forwarded client IP, ntfy token dropped when the host changes, render upload quotas, per-section screen rights, mainframe position hidden without `view.positions`, bounded profile lookups, the dev `test-token` command from the server console only, team-change rank checks, and an NPE when approving an account request from the screen. GitHub Actions are pinned to commit SHAs and the Gradle wrapper is validated in CI.
 
