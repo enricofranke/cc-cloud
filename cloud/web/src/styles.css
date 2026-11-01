@@ -2771,14 +2771,13 @@ pre {
 /* ---- tabs */
 .toptabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 0 0 14px;
   padding: 4px;
-  overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--panel);
-  scrollbar-width: none;
 }
 .toptabs .tab {
   display: inline-flex;
