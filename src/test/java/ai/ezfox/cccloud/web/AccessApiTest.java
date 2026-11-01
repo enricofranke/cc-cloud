@@ -256,6 +256,47 @@ class AccessApiTest {
     }
 
     @Test
+    void shareFilterFollowsViews() {
+        var uplink = new JsonObject();
+        uplink.addProperty("uplinkId", "u1");
+        var widgets = new com.google.gson.JsonArray();
+        widgets.add(widget("a", "gauge", null));
+        widgets.add(widget("b", "gauge", null));
+        widgets.add(widget("c", "gauge", null));
+        uplink.add("widgets", widgets);
+        var secret = new JsonObject();
+        secret.addProperty("uplinkId", "u2");
+        secret.addProperty("restricted", true);
+        var secrets = new com.google.gson.JsonArray();
+        secrets.add(widget("s", "gauge", null));
+        secret.add("widgets", secrets);
+        var uplinks = List.of(uplink, secret);
+        var layout = com.google.gson.JsonParser.parseString("{\"v\":2,\"pages\":[{\"id\":\"main\",\"title\":\"M\"},{\"id\":\"tv\",\"title\":\"TV\"}],"
+            + "\"cards\":{\"u1\":{\"page\":\"main\"},\"c:wall\":{\"page\":\"tv\",\"x\":0,\"y\":0,\"w\":6,\"h\":4},\"c:mine\":{\"page\":\"main\",\"x\":0,\"y\":0,\"w\":6,\"h\":4}},"
+            + "\"widgets\":{\"v:gauge\":{\"card\":\"c:wall\",\"src\":\"u1/a\",\"as\":\"gauge\"},"
+            + "\"v:exact\":{\"card\":\"c:wall\",\"src\":\"u1/a\",\"as\":\"label\"},"
+            + "\"v:gone\":{\"card\":\"c:wall\",\"src\":\"u1/b\",\"as\":\"gauge\",\"hidden\":true},"
+            + "\"v:secret\":{\"card\":\"c:wall\",\"src\":\"u2/s\",\"as\":\"gauge\"},"
+            + "\"v:other\":{\"card\":\"c:mine\",\"src\":\"u1/c\",\"as\":\"gauge\"}}}").getAsJsonObject();
+
+        var byPage = new AccessStore.Share("0123456789abcdef", mf, "h", "x", "a", 0, 0, 1, List.of("tv"), List.of(), false);
+        var scope = ShareFilter.scope(uplinks, layout, byPage);
+        var visible = ShareFilter.uplink(uplink, scope, false);
+        assertEquals(List.of("a"), visible.getAsJsonArray("widgets").asList().stream().map(w -> w.getAsJsonObject().get("id").getAsString()).toList(),
+            "the widget behind a shared view, not what is hidden or sits on another page");
+        assertNull(ShareFilter.uplink(secret, scope, false), "a view does not open a restricted section");
+
+        var shared = ShareFilter.layout(layout, uplinks, scope);
+        assertEquals(Set.of("v:gauge", "v:exact"), shared.getAsJsonObject("widgets").keySet());
+        assertEquals(Set.of("c:wall", "u1"), shared.getAsJsonObject("cards").keySet());
+        assertEquals("{\"hidden\":true}", shared.getAsJsonObject("cards").get("u1").toString(), "the source's own card stays out of sight");
+
+        var noNumbers = new AccessStore.Share("0123456789abcdef", mf, "h", "x", "a", 0, 0, 1, List.of("tv"), List.of(), true);
+        var strict = ShareFilter.layout(layout, uplinks, ShareFilter.scope(uplinks, layout, noNumbers));
+        assertEquals(Set.of("v:gauge"), strict.getAsJsonObject("widgets").keySet(), "a view cannot turn a gauge into an exact number");
+    }
+
+    @Test
     void securityReviewEscalationsAreRefused() {
         // H1 on the web path: a viewer with a custom access.manage cannot make anyone (or themselves) more than a viewer
         store.setOverrides(mf, viewer, new ai.ezfox.cccloud.access.MainframeAccess.Overrides(Set.of(ai.ezfox.cccloud.access.Perm.ACCESS_MANAGE), Set.of()));

@@ -776,3 +776,20 @@ describe("automatic cards", () => {
     expect(Object.values(matchPreset(p, [u], "en").expanded.doc.widgets)[0].w).toBe(6);
   });
 });
+
+describe("a shared preset page", () => {
+  it("shows the views without the card of their source", () => {
+    const source = { uplinkId: "u1", title: "Reactor", online: true, widgets: [{ id: "temp", type: "gauge", label: "Temp" }] } as unknown as Uplink;
+    // what the server sends a share viewer: the shared custom card, its view, and the source's own card hidden
+    const doc = normalizeLayout({
+      v: 2,
+      pages: [{ id: "tv", title: "TV" }],
+      cards: { "c:wall": { page: "tv", x: 0, y: 0, w: 6, h: 4 }, u1: { hidden: true } },
+      widgets: { "v:temp": { card: "c:wall", src: "u1/temp", as: "gauge", x: 0, y: 0, w: 6, h: 6 } },
+    } as unknown as LayoutDoc);
+    const pages = resolveLayout([source], doc);
+    expect(pages.flatMap((p) => p.cards).map((c) => c.key)).toEqual(["c:wall"]);
+    expect(pages[0].cards[0].widgets.map((w) => w.key)).toEqual(["v:temp"]);
+    expect(pages[0].cards[0].widgets[0].uplink.uplinkId).toBe("u1");
+  });
+});
