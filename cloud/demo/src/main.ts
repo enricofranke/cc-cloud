@@ -4,12 +4,16 @@ import { installBridge } from "./bridge.ts";
 import { installShims } from "./shims.ts";
 import { lang, s } from "./strings.ts";
 
+function failed() {
+  const boot = document.getElementById("demo-boot");
+  if (!boot) return;
+  boot.classList.add("failed");
+  boot.querySelector("[data-boot-text]")!.textContent = s.failed;
+}
+
 document.documentElement.lang = lang;
 installShims(lang);
-installBridge();
+installBridge(failed);
 import("./app.tsx")
   .then((m) => m.mount())
-  .catch(() => {
-    const boot = document.getElementById("demo-boot");
-    if (boot) boot.textContent = s.failed;
-  });
+  .catch(failed);

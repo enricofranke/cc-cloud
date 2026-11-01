@@ -96,6 +96,8 @@ export interface MockPlatform {
     /** where the dashboard fetches the store from */
     url(): string;
   };
+  /** Where a new share link points (default: the mod's /s/<id>#<secret>). */
+  shareUrl?(id: string, secret: string): string;
   /** Anything no route answered (GET/HEAD only): static files. */
   fallback?(pathname: string, req: MockRequest, res: MockResponse): void | Promise<void>;
 }
@@ -234,6 +236,8 @@ export interface MockOptions {
   mainframeId?: (name: string) => string | undefined;
   /** No per-device rate limits (the mod's own numbers exist to protect a server; the live demo has none). */
   unlimited?: boolean;
+  /** Where the reactor settles while it runs (default ~1160 K: past the warning and critical bands). */
+  reactorPeak?: number;
   pingIntervalMs?: number;
   /** Close a socket that has not answered a ping for this long (spec: 60 s). */
   idleTimeoutMs?: number;
@@ -1227,8 +1231,8 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       setValue(base, REACTOR, "status", status());
     };
     base.tick = () => {
-      // heats toward ~1160 K while running, cools toward 300 K otherwise
-      sim.temp += ((sim.power ? 1160 : 300) - sim.temp) * 0.04 + (Math.random() - 0.5) * 14;
+      // heats toward ~1160 K (or opts.reactorPeak) while running, cools toward 300 K otherwise
+      sim.temp += ((sim.power ? (opts.reactorPeak ?? 1160) : 300) - sim.temp) * 0.04 + (Math.random() - 0.5) * 14;
       sim.energy += sim.power ? 12_000 : -(sim.output * 300);
       sim.items += Math.round(Math.random() * 4);
       setValue(base, REACTOR, "temp", Math.round(sim.temp));
@@ -1745,8 +1749,8 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       const id = sha(k.name).slice(0, 16);
       apiKeys.set(id, { id, mainframeId: base.id, hash: sha(`demo:${k.name}`), ...k });
     };
-    demoKey({ name: "Discord bot", player: "Enrico", scopes: ["read:sections", "run:scenes"], created: now - 9 * day, expires: now + 21 * day, lastUsed: now - 4 * 60_000, lastIp: "203.0.113.24", ips: [] });
-    demoKey({ name: "Home Assistant", player: "Enrico", scopes: ["read:sections", "read:stats", "action:widgets"], created: now - 30 * day, expires: null, lastUsed: now - 50_000, lastIp: "192.168.1.20", ips: ["192.168.1.0/24"] });
+    demoKey({ name: "Discord bot", player: PLAYERS[0].player, scopes: ["read:sections", "run:scenes"], created: now - 9 * day, expires: now + 21 * day, lastUsed: now - 4 * 60_000, lastIp: "203.0.113.24", ips: [] });
+    demoKey({ name: "Home Assistant", player: PLAYERS[0].player, scopes: ["read:sections", "read:stats", "action:widgets"], created: now - 30 * day, expires: null, lastUsed: now - 50_000, lastIp: "192.168.1.20", ips: ["192.168.1.0/24"] });
     demoKey({ name: "Stock sheet", player: "Lisa", scopes: ["read:storage"], created: now - 40 * day, expires: now - 3 * day, lastUsed: now - 5 * day, lastIp: "198.51.100.7", ips: [] });
   }
   // v0.5 D: one Discord target
@@ -3155,7 +3159,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         });
         shares.set(share.id, share);
         log(`${you.player} created share link ${share.id}`);
-        return json(res, 200, { id: share.id, secret, url: `/s/${share.id}#${secret}` });
+        return json(res, 200, { id: share.id, secret, url: platform.shareUrl?.(share.id, secret) ?? `/s/${share.id}#${secret}` });
       }
       if (req.method === "DELETE" && am[3]) {
         const sh = shares.get(am[3]);

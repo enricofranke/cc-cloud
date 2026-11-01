@@ -87,10 +87,11 @@ async function bodyBytes(init: RequestInit | undefined, input: RequestInfo | URL
   return new Uint8Array(await new Response(b).arrayBuffer());
 }
 
-export function installBridge() {
+export function installBridge(onFailure: () => void) {
   const realFetch = window.fetch.bind(window);
   worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module", name: "cc-cloud-simulated-base" });
   worker.onmessage = onMessage;
+  worker.onerror = onFailure;
 
   window.fetch = async (input, init) => {
     const raw = input instanceof Request ? input.url : String(input);

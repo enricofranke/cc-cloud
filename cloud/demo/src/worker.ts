@@ -1,28 +1,73 @@
 // The simulated base of the live demo: dev/mock-core.ts in a Web Worker. Everything the mod's web server would do runs
 // here, in the visitor's browser and in memory. No network.
 import "./node/globals.ts";
-import { PLAYERS } from "../../dev/access-sim.ts";
+import { createShare, PLAYERS } from "../../dev/access-sim.ts";
 import { createMockCore, type MockRequest, type MockResponse, type MockSocket } from "../../dev/mock-core.ts";
-import { MAINFRAMES, PLAYER, TOKEN, type FromWorker, type ToWorker } from "./session.ts";
+import { BASE_ID, MAINFRAMES, PLAYER, TOKEN, type FromWorker, type ToWorker } from "./session.ts";
 
 PLAYERS[0].player = PLAYER;
 
+declare const __DEMO_STORE_KEY__: string;
+
 const post = (m: FromWorker, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
-const core = createMockCore({
-  extras: true,
-  scriptStore: false,
-  // a pairing needs a player in the game: nothing approves one here
-  approveDelayMs: -1,
-  unlimited: true,
-  pinLockMs: 20_000,
-  mainframeId: (name) => MAINFRAMES.find((m) => m.name === name)?.id,
-  log: () => {},
-});
+const BASE = import.meta.env.BASE_URL;
+/** The store is a static folder of the demo. Its index stays here for the install check, the moment it has arrived. */
+let storeIndex: Uint8Array | undefined;
+fetch(`${BASE}store/index.json`)
+  .then((r) => r.arrayBuffer())
+  .then((b) => (storeIndex = new Uint8Array(b)))
+  .catch(() => {});
+
+const core = createMockCore(
+  {
+    extras: true,
+    // a pairing needs a player in the game: nothing approves one here
+    approveDelayMs: -1,
+    unlimited: true,
+    pinLockMs: 20_000,
+    // stays below the warning band: the base is calm until the visitor does something
+    reactorPeak: 870,
+    mainframeId: (name) => MAINFRAMES.find((m) => m.name === name)?.id,
+    log: () => {},
+  },
+  {
+    store: {
+      key: __DEMO_STORE_KEY__,
+      url: () => `${location.origin}${BASE}store/`,
+      file: (rel) => (rel === "index.json" ? storeIndex : undefined),
+      sign: () => new Uint8Array(0),
+    },
+    // nothing can host a shared view: the link leads back here
+    shareUrl: () => `${BASE}#/`,
+  },
+);
 
 // the showcase keeps the mainframes worth seeing; the others stand for an empty or switched-off base
 for (const m of [...core.mainframes.values()]) if (!MAINFRAMES.some((x) => x.id === m.id)) core.mainframes.delete(m.id);
-core.newToken(undefined, "This browser", true, { uuid: PLAYERS[0].uuid }, TOKEN);
+
+// ---- the showcase's history: a lived-in base, nothing here was done by this visitor
+const uuid = PLAYERS[0].uuid;
+const now = Date.now();
+const DAY = 86_400_000;
+core.newToken(undefined, "Demo browser", true, { uuid, lastIp: "192.168.1.20" }, TOKEN);
+core.newToken(undefined, "Alex's phone", true, { uuid, type: "phone", lastIp: "192.168.1.31", created: now - 12 * DAY, lastSeen: now - 180_000 });
+core.newToken(undefined, "Workshop tablet", true, { uuid, type: "tablet", lastIp: "192.168.1.44", created: now - 34 * DAY, lastSeen: now - 2 * DAY });
+const stream = createShare({ mainframeId: BASE_ID, label: "Stream overlay", createdBy: PLAYER, maxViewers: 5, pages: ["power"], cards: [], hideNumbers: true, expiresIn: 604_800 });
+core.shares.set(stream.share.id, stream.share);
+// items that start out low are old news, not an alert in the visitor's first second
+for (const w of core.ae2?.watch ?? []) w.below = (core.ae2?.items.get(w.name)?.count ?? 0) < w.min;
+// sample values name a player of the showcase
+const rename = (o: unknown) => {
+  if (!o || typeof o !== "object" || o instanceof Map) return;
+  const rec = o as Record<string, unknown>;
+  for (const k of Object.keys(rec)) {
+    const v = rec[k];
+    if (typeof v === "string" && v.includes("Enrico")) rec[k] = v.replaceAll("Enrico", PLAYER);
+    else rename(v);
+  }
+};
+for (const m of core.mainframes.values()) for (const u of m.uplinks.values()) rename(u);
 core.start();
 
 // ---- one simulated connection per FakeWebSocket on the page

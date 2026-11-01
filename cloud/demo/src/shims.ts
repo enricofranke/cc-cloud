@@ -4,6 +4,7 @@ import { BASE_ID, MAINFRAMES, PLAYER, TOKEN } from "./session.ts";
 import type { Lang } from "./strings.ts";
 
 const BASE = import.meta.env.BASE_URL;
+const DEVICE = "Demo browser";
 
 class MemoryStorage implements Storage {
   private map = new Map<string, string>();
@@ -58,8 +59,8 @@ export function installShims(lang: Lang) {
   if (theme) memory.setItem("cccloud.theme", theme);
   memory.setItem("cccloud.lang", lang);
   // already "linked": the dashboard opens with the showcase's mainframes instead of the pairing screen
-  memory.setItem("cccloud.account.v1", JSON.stringify({ token: TOKEN, player: PLAYER, deviceName: "This browser", linkedAt: now }));
-  memory.setItem("cccloud.mainframes.v1", JSON.stringify(MAINFRAMES.map((m) => ({ mainframeId: m.id, token: TOKEN, name: m.name, deviceName: "This browser", pairedAt: now, viaAccount: true, role: "owner" }))));
+  memory.setItem("cccloud.account.v1", JSON.stringify({ token: TOKEN, player: PLAYER, deviceName: DEVICE, linkedAt: now }));
+  memory.setItem("cccloud.mainframes.v1", JSON.stringify(MAINFRAMES.map((m) => ({ mainframeId: m.id, token: TOKEN, name: m.name, deviceName: DEVICE, pairedAt: now, viaAccount: true, role: "owner" }))));
   replaceGlobal("localStorage", memory);
   replaceGlobal("sessionStorage", new MemoryStorage());
   // the 3D view's cache: without IndexedDB it simply asks the worker again
