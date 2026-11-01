@@ -343,6 +343,7 @@ public final class GuiNetwork {
         @Override public @Nullable String setPin(String pin) { return "no_screen"; }
         @Override public @Nullable String clearPin() { return "no_screen"; }
         @Override public @Nullable String renameMainframe(String name) { return "no_screen"; }
+        @Override public @Nullable String reports(String answer) { return "no_screen"; }
     };
 
     /** GameTests: the screen operations of a player on a mainframe (the same object a screen action uses). */
@@ -523,6 +524,22 @@ public final class GuiNetwork {
         public @Nullable String renameMainframe(String name) {
             mainframe.rename(name, player.getGameProfile().name());
             notice = "renamed";
+            return null;
+        }
+
+        @Override
+        public @Nullable String reports(String answer) {
+            if (!ai.ezfox.cccloud.reports.ReportService.owner(server, player.getUUID())) return "not_owner";
+            switch (answer) {
+                case "show" -> {
+                    if (player.containerMenu instanceof MainframeMenu menu) menu.reportsPreview = !menu.reportsPreview;
+                }
+                case "later" -> ai.ezfox.cccloud.reports.ReportService.dismissPrompt();
+                default -> {
+                    var channel = ai.ezfox.cccloud.reports.ReportConsent.Channel.byId(answer.substring(0, answer.indexOf(':')));
+                    if (channel == null || !ai.ezfox.cccloud.reports.ReportService.decide(channel, answer.endsWith(":on"), who() + " (screen)")) return "failed";
+                }
+            }
             return null;
         }
 

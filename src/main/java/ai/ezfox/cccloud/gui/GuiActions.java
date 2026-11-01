@@ -19,6 +19,7 @@ public final class GuiActions {
     public static final int MAX_ARG = 64;
     public static final int MAX_MAINFRAME_NAME = 32;
     private static final Pattern PENDING_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
+    private static final Pattern REPORT_ANSWER = Pattern.compile("(?:crash|stats):(?:on|off)|later|show");
     private static final Pattern DEVICE_ID = Pattern.compile("[0-9a-f]{" + AuthStore.DEVICE_ID_LENGTH + "}");
     private static final Pattern PLAYER_NAME = Pattern.compile("[A-Za-z0-9_]{1,16}");
 
@@ -31,7 +32,9 @@ public final class GuiActions {
         REVOKE(Perm.DEVICES_MANAGE), REVOKE_ALL(Perm.DEVICES_MANAGE), TRUST(Perm.ACCESS_MANAGE), UNTRUST(Perm.ACCESS_MANAGE),
         SET_ROLE(Perm.ACCESS_MANAGE), PIN_SET(Perm.PIN_MANAGE), PIN_CLEAR(Perm.PIN_MANAGE), LINK_ACCOUNT(null),
         /** The mainframe's name, arg = the name, empty = the default; the same right as renaming a card. */
-        RENAME(Perm.LAYOUT_EDIT);
+        RENAME(Perm.LAYOUT_EDIT),
+        /** The report prompt: {@code crash:on|off}, {@code stats:on|off}, {@code later}, {@code show}. Only the server owner, checked by the ops. */
+        REPORTS(null);
 
         /** The permission on the mainframe this action needs (null: any player who may use the mod). */
         public final @Nullable Perm perm;
@@ -107,6 +110,11 @@ public final class GuiActions {
 
         /** The mainframe's name (validated plain text, empty = back to the default). */
         default @Nullable String renameMainframe(String name) {
+            return "not_supported";
+        }
+
+        /** The answer to the report prompt (validated); refuses everybody but the server owner. */
+        default @Nullable String reports(String answer) {
             return "not_supported";
         }
     }
@@ -185,6 +193,7 @@ public final class GuiActions {
                 String name = mainframeName(arg);
                 yield name == null ? "invalid_name" : ops.renameMainframe(name);
             }
+            case REPORTS -> REPORT_ANSWER.matcher(arg).matches() ? ops.reports(arg) : "invalid_argument";
         };
     }
 

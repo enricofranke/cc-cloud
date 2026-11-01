@@ -94,6 +94,9 @@ public final class GuiViews {
             if (connect.error() != null) c.addProperty("error", connect.error());
             json.add("connect", c);
         }
+        // The one-time question about crash reports and usage stats, only to the player who can answer it.
+        var reports = ai.ezfox.cccloud.reports.ReportService.screenPrompt(player, player.containerMenu instanceof MainframeMenu menu && menu.reportsPreview);
+        if (reports != null) json.add("reports", reports);
         json.addProperty("uplinks", mainframe.getLinkedUplinks().size());
         // Plain counts for the overview: devices that reach the mainframe, relays that carry the network.
         var counted = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());

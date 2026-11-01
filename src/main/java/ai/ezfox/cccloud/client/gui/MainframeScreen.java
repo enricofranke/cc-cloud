@@ -4,6 +4,7 @@ import ai.ezfox.cccloud.gui.GuiNetwork;
 import ai.ezfox.cccloud.gui.MainframeMenu;
 import java.util.List;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -428,7 +429,56 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
         }
     }
 
+    /** The one-time question about crash reports and usage stats: two channels, each with an equal Yes and No. */
+    private void reportsPrompt() {
+        if (!view.has("reports")) return;
+        var prompt = view.getAsJsonObject("reports");
+        heading("cccloud.gui.reports.title");
+        textRow(Component.translatable("cccloud.gui.reports.intro"), CloudGui.TEXT);
+        textRow(Component.translatable("cccloud.gui.reports.operator"), CloudGui.TEXT_DIM);
+        reportsChannel(prompt, "crash");
+        reportsChannel(prompt, "stats");
+        rows.add(new Row(ROW, (c, x, y, w) ->
+            c.button(x + 2, y + 2, Component.translatable("cccloud.gui.reports.show"), CloudGui.ButtonStyle.NORMAL, true, () -> send("reports", "show"))));
+        rows.add(new Row(ROW, (c, x, y, w) -> {
+            var privacy = Component.translatable("cccloud.gui.reports.privacy");
+            var later = Component.translatable("cccloud.gui.reports.later");
+            int bx = x + 2;
+            bx += c.button(bx, y + 2, privacy, CloudGui.ButtonStyle.NORMAL, true, () -> ConfirmLinkScreen.confirmLinkNow(this,
+                ai.ezfox.cccloud.reports.ReportConsent.privacyUrl(minecraft.getLanguageManager().getSelected()))) + 3;
+            c.button(bx, y + 2, later, CloudGui.ButtonStyle.NORMAL, true, () -> send("reports", "later"));
+        }));
+        for (String channel : List.of("crash", "stats")) {
+            if (!prompt.has(channel + "Payload")) continue;
+            textRow(Component.translatable("cccloud.gui.reports.payload_" + channel), CloudGui.CYAN);
+            textRow(Component.literal(str(prompt, channel + "Payload")), CloudGui.TEXT_DIM);
+        }
+    }
+
+    private void reportsChannel(com.google.gson.JsonObject prompt, String channel) {
+        String state = str(prompt, channel);
+        var title = Component.translatable("cccloud.gui.reports." + channel);
+        rows.add(new Row(ROW, (c, x, y, w) -> {
+            CloudGui.row(c.g(), x, y, w, ROW, false);
+            var yes = Component.translatable("cccloud.gui.reports.yes");
+            var no = Component.translatable("cccloud.gui.reports.no");
+            boolean open = state.equals("ask");
+            int buttons = open ? c.buttonWidth(yes) + c.buttonWidth(no) + 6 : 0;
+            c.text(title.getString(), x + 4, y + 5, CloudGui.TEXT, w - buttons - 10);
+            if (!open) {
+                var answer = Component.translatable("cccloud.reports.state." + state).getString();
+                c.text(answer, x + w - font.width(answer) - 4, y + 5, state.equals("active") ? CloudGui.GREEN : CloudGui.TEXT_DIM, w / 2);
+                return;
+            }
+            int bx = x + w - buttons;
+            bx += c.button(bx, y + 2, yes, CloudGui.ButtonStyle.NORMAL, true, () -> send("reports", channel + ":on")) + 3;
+            c.button(bx, y + 2, no, CloudGui.ButtonStyle.NORMAL, true, () -> send("reports", channel + ":off"));
+        }));
+        textRow(Component.translatable("cccloud.gui.reports." + channel + "_hint"), CloudGui.TEXT_DIM);
+    }
+
     private void overview() {
+        reportsPrompt();
         summary();
         heading("cccloud.gui.dashboard_urls");
         var urls = view.has("urls") ? view.getAsJsonArray("urls") : new com.google.gson.JsonArray();
