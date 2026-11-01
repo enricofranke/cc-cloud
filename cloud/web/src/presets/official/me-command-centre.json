@@ -1,0 +1,263 @@
+{
+  "format": 1,
+  "id": "me-command-centre",
+  "version": "1.0.0",
+  "name": {
+    "en": "ME/RS command centre",
+    "de": "ME/RS-Leitstand"
+  },
+  "description": {
+    "en": "Your storage network as a command centre: capacity, item search, watchlist and crafting jobs on two pages.",
+    "de": "Dein Speichernetz als Leitstand: Kapazität, Itemsuche, Watchlist und Crafting-Aufträge auf zwei Seiten."
+  },
+  "icon": "box",
+  "color": "cyan",
+  "tags": [
+    "storage",
+    "crafting"
+  ],
+  "slots": [
+    {
+      "id": "network",
+      "label": {
+        "en": "Storage network",
+        "de": "Speichernetz"
+      },
+      "roles": [
+        "storage"
+      ],
+      "min": 1,
+      "max": 1
+    },
+    {
+      "id": "more",
+      "label": {
+        "en": "More storage",
+        "de": "Weiteres Lager"
+      },
+      "roles": [
+        "storage",
+        "items"
+      ],
+      "min": 0,
+      "max": 3
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Network",
+        "de": "Netzwerk"
+      },
+      "icon": "box",
+      "cards": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 8,
+          "title": "{device}",
+          "icon": "box",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "network",
+              "ids": [
+                "storage"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "text": [
+                "storage",
+                "capacity",
+                "lager"
+              ],
+              "x": 0,
+              "y": 0,
+              "w": 3,
+              "h": 6
+            },
+            {
+              "slot": "network",
+              "ids": [
+                "energy"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "text": [
+                "energy",
+                "energie"
+              ],
+              "x": 3,
+              "y": 0,
+              "w": 3,
+              "h": 6
+            },
+            {
+              "slot": "network",
+              "ids": [
+                "items"
+              ],
+              "types": [
+                "label"
+              ],
+              "x": 6,
+              "y": 0,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "network",
+              "ids": [
+                "types"
+              ],
+              "x": 6,
+              "y": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "network",
+              "ids": [
+                "usage",
+                "slots"
+              ],
+              "x": 6,
+              "y": 4,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "x": 8,
+          "y": 0,
+          "w": 4,
+          "h": 8,
+          "title": {
+            "en": "Find items",
+            "de": "Items suchen"
+          },
+          "icon": "eye",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "network",
+              "ids": [
+                "search"
+              ],
+              "types": [
+                "item_search"
+              ],
+              "w": 12,
+              "h": 6
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "more",
+          "title": "{device}",
+          "icon": "box",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "more",
+              "ids": [
+                "stored",
+                "fill",
+                "storage"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "more",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "more",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Crafting",
+        "de": "Crafting"
+      },
+      "icon": "gear",
+      "cards": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 6,
+          "title": {
+            "en": "Crafting jobs",
+            "de": "Crafting-Aufträge"
+          },
+          "icon": "gear",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "network",
+              "ids": [
+                "jobs"
+              ],
+              "types": [
+                "jobs"
+              ],
+              "w": 12,
+              "h": 10
+            }
+          ]
+        },
+        {
+          "x": 6,
+          "y": 0,
+          "w": 6,
+          "title": {
+            "en": "Watchlist",
+            "de": "Watchlist"
+          },
+          "icon": "star",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "network",
+              "ids": [
+                "watch"
+              ],
+              "types": [
+                "watchlist"
+              ],
+              "w": 12,
+              "h": 10
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

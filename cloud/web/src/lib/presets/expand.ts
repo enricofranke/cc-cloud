@@ -8,12 +8,12 @@
 //  - A widget is only shown as a type its source can really be shown as (VIEW_SOURCES). A view of a restricted section
 //    only exists when this session sees that section, and it is still a view: the server sends viewers nothing for it.
 import { CARD_CHROME_H, COLS, CUSTOM_PREFIX, DISPLAYS_FOR, MAX_CARD_H, MAX_LAYOUT_BYTES, MAX_PAGES, MAX_WIDGET_H, VIEW_PREFIX, defaultWidgetH, defaultWidgetW, layoutSize, minWidgetH, minWidgetW, type CardPatch, type Display, type LayoutDoc, type LayoutPage, type WidgetPatch } from "../layout.ts";
-import { bottom, compact, flowPack, placeAll, type GridItem } from "../grid.ts";
+import { bottom, compact, placeAll, type GridItem } from "../grid.ts";
 import type { Lang } from "../lang.ts";
 import type { Uplink } from "../types.ts";
 import { PRESET_LIMITS, textOf, type Preset, type PresetCard, type PresetPage, type PresetWidget } from "./format.ts";
 import { matchSlots, pickWidgets, type MatchState, type PresetMatch, type SlotMatch, type SlotPicks } from "./match.ts";
-import { ACTION_TYPES } from "./roles.ts";
+import { ACTION_TYPES, rolesOf } from "./roles.ts";
 
 export interface Expanded {
   /** only what is new: the preset's pages, cards and views */
@@ -56,7 +56,7 @@ interface Draft {
   widgets: { key: string; patch: WidgetPatch; box: GridItem & { placed: boolean } }[];
 }
 
-function buildWidget(ref: PresetWidget, u: Uplink, source: Uplink["widgets"][number], card: string, lang: Lang, nextKey: () => string, explicit: boolean) {
+function buildWidget(ref: PresetWidget, u: Uplink, source: Uplink["widgets"][number], card: string, lang: Lang, nextKey: () => string, first: boolean) {
   const as = ref.as ?? source.type;
   const src = `${u.uplinkId}/${source.id}`;
   if (src.length > MAX_SRC) return null;
@@ -66,7 +66,7 @@ function buildWidget(ref: PresetWidget, u: Uplink, source: Uplink["widgets"][num
   const label = action ? "" : ref.labelFrom === "device" ? u.title : textOf(ref.label, lang);
   const w = clamp(ref.w ?? defaultWidgetW(as), minWidgetW(as), COLS);
   const h = clamp(ref.h ?? defaultWidgetH(as, display), minWidgetH(as, display), MAX_WIDGET_H);
-  const placed = explicit && ref.x !== undefined && ref.y !== undefined;
+  const placed = first && ref.x !== undefined && ref.y !== undefined;
   const key = nextKey();
   const patch: WidgetPatch = {
     card,
@@ -85,25 +85,23 @@ function buildCard(card: PresetCard, device: Uplink | undefined, filled: Map<str
   const widgets: Draft["widgets"] = [];
   const used = new Set<string>();
   let first: Uplink | undefined;
-  let single = true;
   for (const ref of card.widgets) {
     const pool = ref.slot === card.each && device ? [device] : filled.get(ref.slot)?.chosen ?? [];
     const before = widgets.length;
     for (const u of pool)
       for (const source of pickWidgets(u, ref, used)) {
         if (budget.widgets >= PRESET_LIMITS.EXPANDED_WIDGETS) break;
-        const w = buildWidget(ref, u, source, key, lang, widgetKey, true);
+        const w = buildWidget(ref, u, source, key, lang, widgetKey, widgets.length === before);
         if (!w) continue;
         budget.widgets++;
         widgets.push(w);
         first ??= u;
       }
-    if (widgets.length - before !== 1) single = false;
   }
   if (!widgets.length) return null;
-  // an author's grid only fits when every reference became exactly one widget; otherwise the widgets flow
-  const exact = single && widgets.every((w) => w.box.placed);
-  const boxes = exact ? placeAll(widgets.map((w) => w.box), COLS) : flowPack(widgets.map((w) => ({ ...w.box, placed: false })), COLS);
+  // the author's position counts for a reference's first widget; the rest take the first free spot, and what stayed
+  // empty on this device closes up, so a label sits beside a dial instead of under a gap
+  const boxes = compact(placeAll(widgets.map((w) => w.box), COLS));
   const at = new Map(boxes.map((b) => [b.id, b]));
   for (const w of widgets) {
     const b = at.get(w.key)!;
@@ -132,8 +130,7 @@ function buildPage(page: PresetPage, filled: Map<string, SlotMatch>, lang: Lang,
     }
   }
   // cards fall out on a small base and grow on a big one: the grid closes the gaps and pushes overlaps apart
-  const anyPlaced = cards.some((c) => c.box.placed);
-  const boxes = compact(anyPlaced ? placeAll(cards.map((c) => c.box), COLS) : flowPack(cards.map((c) => c.box), COLS));
+  const boxes = compact(placeAll(cards.map((c) => c.box), COLS));
   const at = new Map(boxes.map((b) => [b.id, b]));
   for (const c of cards) {
     const b = at.get(c.key)!;
@@ -194,11 +191,12 @@ export function mergeLayout(base: LayoutDoc, add: Expanded, front = false): { do
 }
 
 /**
- * The preset that suits this base best. How much of the base it puts to use counts most; a preset with required slots
- * gets a bonus for being made for what is there, so a single reactor gets Reactor control and a mixed base the overview.
+ * The preset that suits this base best. How much of the base it puts to use counts most, so a mixed base gets the
+ * overview; a preset made for one thing (it has required slots) wins when that thing is all there is.
  */
 export function recommend<T extends { state: MatchState; devices: number; preset: Preset }>(matches: T[], uplinks: Uplink[]): T | undefined {
-  const total = Math.max(1, uplinks.filter((u) => !u.blocked).length);
-  const score = (m: T) => (m.devices / total) * 0.7 + (m.preset.slots.some((s) => s.min > 0) ? 0.3 : 0) + (m.state === "ready" ? 0.05 : 0);
-  return matches.filter((m) => m.state !== "missing").reduce<T | undefined>((best, m) => (!best || score(m) > score(best) ? m : best), undefined);
+  const total = Math.max(1, uplinks.filter((u) => !u.blocked && !u.restricted && rolesOf(u).has("any")).length);
+  const score = (m: T) => (Math.min(m.devices, total) / total) * 0.8 + (m.preset.slots.some((s) => s.min > 0) ? 0.15 : 0);
+  // a panel for one screen is a choice, not a start; a tie goes to the first in the list
+  return matches.filter((m) => m.state !== "missing" && !m.preset.tags.includes("phone")).reduce<T | undefined>((best, m) => (!best || score(m) > score(best) ? m : best), undefined);
 }

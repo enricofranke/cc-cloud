@@ -1,6 +1,6 @@
 // Dashboard presets: the pure engine. Format, slot matching, expansion into a normal layout, share codes, page export,
 // and the safety rules a preset can never get around.
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { deflateRawSync } from "node:zlib";
 import { MAX_PAGES, normalizeLayout, resolveLayout, snapshotLayout, type LayoutDoc } from "../web/src/lib/layout.ts";
 import type { Uplink, Widget } from "../web/src/lib/types.ts";
@@ -11,6 +11,9 @@ import { expandPreset, matchPreset, mergeLayout, recommend } from "../web/src/li
 import { rolesOf } from "../web/src/lib/presets/roles.ts";
 import { CodeError, MAX_CODE_LENGTH, MAX_JSON_BYTES, decodePreset, encodePreset, readInput } from "../web/src/lib/presets/code.ts";
 import { pageToPreset } from "../web/src/lib/presets/export.ts";
+import { ACTION_TYPES } from "../web/src/lib/presets/roles.ts";
+import { officialPresets } from "../web/src/presets/official.ts";
+import { createMockServer } from "../dev/mock-server.ts";
 
 const widget = (id: string, type: Widget["type"], label?: string, opts?: Widget["opts"]): Widget => ({ id, type, label, value: 0, opts, online: true }) as Widget;
 const device = (uplinkId: string, title: string, template: string | undefined, widgets: Widget[], extra: Partial<Uplink> = {}): Uplink => ({ uplinkId, title, online: true, template, widgets, ...extra });
@@ -25,6 +28,17 @@ const reactorProgram = (id = "r1") =>
     widget("temp", "gauge", "Temperature", { unit: "K", warn: 70 }),
     widget("status", "label", "Status"),
   ], { mode: "lua" });
+
+/** The mock's bases: a base of programs with hardly any device card, and one with every card of the mod. */
+let mockBases: Record<"main" | "showcase", Uplink[]>;
+const bases = () => mockBases;
+beforeAll(async () => {
+  const mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, extras: true, log: () => {} });
+  const of = (name: string) => [...[...mock.mainframes.values()].find((m) => m.name.startsWith(name))!.uplinks.values()].map((u) => structuredClone(u) as Uplink);
+  const first = [...mock.mainframes.values()][0].name;
+  mockBases = { main: of(first), showcase: of("Mod Showcase") };
+  await mock.close();
+});
 
 const preset = (over: Partial<Preset> = {}): Preset =>
   parsePreset({
@@ -551,5 +565,75 @@ describe("sharing a page", () => {
     const m = matchPreset(p, u, "en");
     expect(m.state).toBe("ready");
     expect(m.widgets).toBe(u.flatMap((x) => x.widgets).length);
+  });
+});
+
+describe("official presets", () => {
+  const texts = (v: unknown, path: string, out: [string, unknown][] = []) => {
+    if (Array.isArray(v)) v.forEach((x, i) => texts(x, `${path}[${i}]`, out));
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) (["name", "description", "label", "title"].includes(k) ? out.push([`${path}.${k}`, x]) : texts(x, `${path}.${k}`, out));
+    return out;
+  };
+
+  it("are eight and valid", () => {
+    expect(officialPresets().map((p) => p.id)).toEqual(["base-overview", "power-grid", "me-command-centre", "reactor-control", "farm-production", "doors-redstone", "alerts-status", "phone-quick-panel"]);
+  });
+
+  it("speak English and German", () => {
+    for (const p of officialPresets())
+      for (const [path, t] of texts(p, p.id!)) {
+        if (t === "{device}") continue;
+        expect(typeof t === "object" && (t as { de?: string }).de, path).toBeTruthy();
+      }
+  });
+
+  it("never name an action widget", () => {
+    for (const p of officialPresets())
+      for (const page of p.pages)
+        for (const card of page.cards)
+          for (const w of card.widgets) {
+            if (w.as && ACTION_TYPES.has(w.as)) expect(w.label).toBeUndefined();
+            if (w.types?.every((t) => ACTION_TYPES.has(t))) expect(w.label).toBeUndefined();
+          }
+  });
+
+  it("work on the mock's bases, in both languages, inside the layout limits", () => {
+    const report: Record<string, string> = {};
+    for (const lang of ["en", "de"] as const)
+      for (const [name, uplinks] of Object.entries(bases()))
+        for (const p of officialPresets()) {
+          const m = matchPreset(p, uplinks, lang);
+          report[`${name}/${p.id}`] = `${m.state} ${m.widgets}`;
+          for (const c of Object.values(m.expanded.doc.cards)) expect(c.h!, `${p.id} card height`).toBeLessThanOrEqual(60);
+          const expected = normalizeLayout(m.expanded.doc);
+          expect(expected.widgets).toEqual(m.expanded.doc.widgets);
+          expect(expected.cards).toEqual(m.expanded.doc.cards);
+        }
+    for (const p of officialPresets()) expect(report[`main/${p.id}`], p.id).not.toMatch(/^missing/);
+    expect(Object.entries(report).filter(([, r]) => r.startsWith("missing")).map(([k]) => k)).toEqual(["showcase/doors-redstone"]);
+  });
+
+  it("the overview fits every base that has a device", () => {
+    const overview = officialPresets()[0];
+    for (const uplinks of Object.values(bases())) expect(matchPreset(overview, uplinks, "en").state).not.toBe("missing");
+    expect(matchPreset(overview, [device("x", "Odd", undefined, [widget("a", "label", "Hello")], { mode: "lua" })], "en").widgets).toBe(1);
+  });
+
+  it("recommends something sensible", () => {
+    const pick = (uplinks: Uplink[]) => recommend(officialPresets().map((p) => matchPreset(p, uplinks, "en")), uplinks)?.preset.id;
+    expect(pick(bases().main)).toBe("base-overview");
+    expect(pick([reactorProgram()])).toBe("reactor-control");
+    expect(pick([chest("c")])).toBe("me-command-centre");
+    expect(pick([])).toBeUndefined();
+  });
+
+  it("keep restricted sections out unless a slot asks for them by name", () => {
+    const server = device("srv", "Server", "server", [widget("tps", "gauge", "TPS", { warn: 15 })], { restricted: true });
+    const m = matchPreset(officialPresets()[0], [server, battery("a")], "en");
+    expect(JSON.stringify(m.expanded.doc)).not.toContain("srv/");
+    expect(fits(server, { id: "s", label: "x", roles: ["any"], min: 0, max: 1 })).toBe(false);
+    expect(fits(server, { id: "s", label: "x", roles: ["alarm"], min: 0, max: 1 })).toBe(false);
+    expect(fits(server, { id: "s", label: "x", kinds: ["server"], min: 0, max: 1 })).toBe(true);
+    expect(fits(server, { id: "s", label: "x", roles: ["server"], min: 0, max: 1 })).toBe(true);
   });
 });

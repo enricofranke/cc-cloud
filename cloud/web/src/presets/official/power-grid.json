@@ -1,0 +1,260 @@
+{
+  "format": 1,
+  "id": "power-grid",
+  "version": "1.0.0",
+  "name": {
+    "en": "Power grid",
+    "de": "Stromnetz"
+  },
+  "description": {
+    "en": "Everything that stores, makes and measures power: fill levels, flow and history at a glance.",
+    "de": "Alles, was Strom speichert, erzeugt und misst: Füllstände, Fluss und Verlauf auf einen Blick."
+  },
+  "icon": "bolt",
+  "color": "yellow",
+  "tags": [
+    "energy"
+  ],
+  "slots": [
+    {
+      "id": "generators",
+      "label": {
+        "en": "Generators",
+        "de": "Generatoren"
+      },
+      "roles": [
+        "generator",
+        "reactor"
+      ],
+      "min": 0,
+      "max": 6
+    },
+    {
+      "id": "meters",
+      "label": {
+        "en": "Energy meters",
+        "de": "Energiezähler"
+      },
+      "kinds": [
+        "energymeter"
+      ],
+      "min": 0,
+      "max": 4
+    },
+    {
+      "id": "cells",
+      "label": {
+        "en": "Batteries",
+        "de": "Batterien"
+      },
+      "roles": [
+        "energy"
+      ],
+      "min": 0,
+      "max": 8
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Power",
+        "de": "Strom"
+      },
+      "icon": "bolt",
+      "cards": [
+        {
+          "w": 4,
+          "each": "cells",
+          "title": "{device}",
+          "icon": "bolt",
+          "color": "yellow",
+          "widgets": [
+            {
+              "slot": "cells",
+              "ids": [
+                "stored",
+                "fill",
+                "reserve"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "cells",
+              "ids": [
+                "energy"
+              ],
+              "types": [
+                "label"
+              ],
+              "text": [
+                "energy",
+                "energie",
+                "stored"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "cells",
+              "ids": [
+                "flow",
+                "input"
+              ],
+              "types": [
+                "label"
+              ],
+              "text": [
+                "flow",
+                "input",
+                "fluss"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "cells",
+              "ids": [
+                "output",
+                "generation"
+              ],
+              "types": [
+                "label"
+              ],
+              "text": [
+                "output",
+                "generation"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "cells",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "line",
+              "w": 12,
+              "h": 5
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "generators",
+          "title": "{device}",
+          "icon": "flame",
+          "color": "orange",
+          "widgets": [
+            {
+              "slot": "generators",
+              "ids": [
+                "running",
+                "active"
+              ],
+              "types": [
+                "indicator"
+              ],
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "generators",
+              "ids": [
+                "stored"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "generators",
+              "ids": [
+                "generation",
+                "output"
+              ],
+              "types": [
+                "label"
+              ],
+              "text": [
+                "generation",
+                "output"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "generators",
+              "ids": [
+                "energy",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "generators",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "sparkline",
+              "w": 12,
+              "h": 3
+            }
+          ]
+        },
+        {
+          "w": 6,
+          "each": "meters",
+          "title": "{device}",
+          "icon": "chart",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "meters",
+              "ids": [
+                "flow"
+              ],
+              "display": "big",
+              "w": 6,
+              "h": 3
+            },
+            {
+              "slot": "meters",
+              "ids": [
+                "total"
+              ],
+              "w": 6,
+              "h": 3,
+              "display": "big"
+            },
+            {
+              "slot": "meters",
+              "ids": [
+                "history"
+              ],
+              "display": "line",
+              "w": 12,
+              "h": 5
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

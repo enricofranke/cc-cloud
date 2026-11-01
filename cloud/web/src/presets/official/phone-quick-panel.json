@@ -1,0 +1,149 @@
+{
+  "format": 1,
+  "id": "phone-quick-panel",
+  "version": "1.0.0",
+  "name": {
+    "en": "Phone quick panel",
+    "de": "Handy-Schnellzugriff"
+  },
+  "description": {
+    "en": "One narrow column for the phone: scenes, the main battery and the switches you need on the go.",
+    "de": "Eine schmale Spalte fürs Handy: Szenen, die Hauptbatterie und die Schalter, die du unterwegs brauchst."
+  },
+  "icon": "star",
+  "color": "purple",
+  "tags": [
+    "phone"
+  ],
+  "slots": [
+    {
+      "id": "scenes",
+      "label": {
+        "en": "Scenes",
+        "de": "Szenen"
+      },
+      "kinds": [
+        "scenes"
+      ],
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "battery",
+      "label": {
+        "en": "Main battery",
+        "de": "Hauptbatterie"
+      },
+      "roles": [
+        "energy"
+      ],
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "switches",
+      "label": {
+        "en": "Devices with switches",
+        "de": "Geräte mit Schaltern"
+      },
+      "roles": [
+        "control"
+      ],
+      "min": 0,
+      "max": 4
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Quick panel",
+        "de": "Schnellzugriff"
+      },
+      "icon": "star",
+      "cards": [
+        {
+          "w": 12,
+          "title": {
+            "en": "Scenes",
+            "de": "Szenen"
+          },
+          "icon": "star",
+          "color": "purple",
+          "widgets": [
+            {
+              "slot": "scenes",
+              "types": [
+                "button"
+              ],
+              "count": 6,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 12,
+          "title": "{device}",
+          "icon": "bolt",
+          "color": "yellow",
+          "widgets": [
+            {
+              "slot": "battery",
+              "ids": [
+                "stored",
+                "fill",
+                "charge"
+              ],
+              "types": [
+                "gauge",
+                "progress"
+              ],
+              "display": "bar",
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "battery",
+              "ids": [
+                "energy",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 12,
+          "each": "switches",
+          "title": "{device}",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "switches",
+              "types": [
+                "toggle"
+              ],
+              "count": 4,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "switches",
+              "types": [
+                "button"
+              ],
+              "count": 4,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

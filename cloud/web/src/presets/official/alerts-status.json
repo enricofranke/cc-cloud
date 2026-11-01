@@ -1,0 +1,155 @@
+{
+  "format": 1,
+  "id": "alerts-status",
+  "version": "1.0.0",
+  "name": {
+    "en": "Alerts and status",
+    "de": "Alarme und Status"
+  },
+  "description": {
+    "en": "Every warning light and every value with a limit in one place, so you see what needs attention first.",
+    "de": "Jede Warnleuchte und jeder Wert mit Grenze an einem Ort, damit du zuerst siehst, was Aufmerksamkeit braucht."
+  },
+  "icon": "warning",
+  "color": "red",
+  "tags": [
+    "alerts",
+    "status"
+  ],
+  "slots": [
+    {
+      "id": "watched",
+      "label": {
+        "en": "Devices with warnings",
+        "de": "Geräte mit Warnungen"
+      },
+      "roles": [
+        "alarm"
+      ],
+      "min": 0,
+      "max": 12
+    },
+    {
+      "id": "server",
+      "label": {
+        "en": "Server status",
+        "de": "Serverstatus"
+      },
+      "kinds": [
+        "server"
+      ],
+      "min": 0,
+      "max": 1
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Status",
+        "de": "Status"
+      },
+      "icon": "warning",
+      "cards": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "title": {
+            "en": "Server",
+            "de": "Server"
+          },
+          "icon": "cpu",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "server",
+              "ids": [
+                "tps"
+              ],
+              "x": 0,
+              "y": 0,
+              "w": 3,
+              "h": 6
+            },
+            {
+              "slot": "server",
+              "ids": [
+                "mspt"
+              ],
+              "x": 3,
+              "y": 0,
+              "w": 3,
+              "h": 6
+            },
+            {
+              "slot": "server",
+              "ids": [
+                "memory"
+              ],
+              "x": 6,
+              "y": 0,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "server",
+              "ids": [
+                "players"
+              ],
+              "x": 6,
+              "y": 2,
+              "w": 3,
+              "h": 2
+            },
+            {
+              "slot": "server",
+              "ids": [
+                "uptime"
+              ],
+              "x": 9,
+              "y": 2,
+              "w": 3,
+              "h": 2
+            },
+            {
+              "slot": "server",
+              "ids": [
+                "mspt_history"
+              ],
+              "x": 6,
+              "y": 4,
+              "w": 6,
+              "h": 3,
+              "display": "sparkline"
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "watched",
+          "title": "{device}",
+          "icon": "warning",
+          "widgets": [
+            {
+              "slot": "watched",
+              "types": [
+                "indicator"
+              ],
+              "count": 6,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "watched",
+              "limits": true,
+              "count": 4,
+              "display": "bar",
+              "w": 12,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

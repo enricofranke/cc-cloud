@@ -43,6 +43,8 @@ const haystack = (u: Uplink) => `${u.title ?? ""} ${u.widgets.map((w) => w.label
 /** Does the device fit the slot? A blocked device (claim guard) publishes nothing, so it never does. */
 export function fits(u: Uplink, slot: PresetSlot): boolean {
   if (u.blocked) return false;
+  // a restricted section (claims, waystones, the server's numbers) is only used by a slot that asks for it by name
+  if (u.restricted && !slot.kinds?.includes(u.template ?? "") && !slot.roles?.includes("server")) return false;
   const roles = rolesOf(u);
   if (slot.kinds || slot.roles) {
     const byKind = !!u.template && !!slot.kinds?.includes(u.template);

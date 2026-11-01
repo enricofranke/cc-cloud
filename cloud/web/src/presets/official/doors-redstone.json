@@ -1,0 +1,214 @@
+{
+  "format": 1,
+  "id": "doors-redstone",
+  "version": "1.0.0",
+  "name": {
+    "en": "Doors and redstone",
+    "de": "Türen und Redstone"
+  },
+  "description": {
+    "en": "Doors, gates and redstone outputs together, with your scenes one click away.",
+    "de": "Türen, Tore und Redstone-Ausgänge an einem Ort, deine Szenen nur einen Klick entfernt."
+  },
+  "icon": "lock",
+  "color": "orange",
+  "tags": [
+    "redstone",
+    "doors"
+  ],
+  "slots": [
+    {
+      "id": "groups",
+      "label": {
+        "en": "Cloud Redstone",
+        "de": "Cloud Redstone"
+      },
+      "kinds": [
+        "redstone"
+      ],
+      "min": 0,
+      "max": 4
+    },
+    {
+      "id": "doors",
+      "label": {
+        "en": "Door programs",
+        "de": "Tür-Programme"
+      },
+      "roles": [
+        "door"
+      ],
+      "min": 0,
+      "max": 6
+    },
+    {
+      "id": "sides",
+      "label": {
+        "en": "Computers with redstone",
+        "de": "Computer mit Redstone"
+      },
+      "roles": [
+        "redstone"
+      ],
+      "min": 0,
+      "max": 4
+    },
+    {
+      "id": "scenes",
+      "label": {
+        "en": "Scenes",
+        "de": "Szenen"
+      },
+      "kinds": [
+        "scenes"
+      ],
+      "min": 0,
+      "max": 1
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Doors",
+        "de": "Türen"
+      },
+      "icon": "lock",
+      "cards": [
+        {
+          "w": 6,
+          "each": "groups",
+          "title": "{device}",
+          "icon": "bolt",
+          "color": "orange",
+          "widgets": [
+            {
+              "slot": "groups",
+              "types": [
+                "toggle"
+              ],
+              "count": 16,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "groups",
+              "types": [
+                "button"
+              ],
+              "count": 8,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "groups",
+              "types": [
+                "indicator"
+              ],
+              "count": 8,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "doors",
+          "title": "{device}",
+          "icon": "lock",
+          "color": "orange",
+          "widgets": [
+            {
+              "slot": "doors",
+              "types": [
+                "button",
+                "toggle"
+              ],
+              "text": [
+                "door",
+                "gate",
+                "hatch",
+                "airlock",
+                "tür",
+                "tuer",
+                "schleuse",
+                "open",
+                "close",
+                "öffnen",
+                "oeffnen",
+                "schließen",
+                "schliessen"
+              ],
+              "count": 6,
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "doors",
+              "types": [
+                "indicator"
+              ],
+              "text": [
+                "door",
+                "gate",
+                "hatch",
+                "airlock",
+                "tür",
+                "tuer",
+                "schleuse",
+                "open",
+                "close",
+                "öffnen",
+                "oeffnen",
+                "schließen",
+                "schliessen"
+              ],
+              "count": 4,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "sides",
+          "title": "{device}",
+          "icon": "cpu",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "sides",
+              "ids": [
+                "redstone"
+              ],
+              "types": [
+                "redstone_sides"
+              ],
+              "w": 12,
+              "h": 7
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "title": {
+            "en": "Scenes",
+            "de": "Szenen"
+          },
+          "icon": "star",
+          "color": "purple",
+          "widgets": [
+            {
+              "slot": "scenes",
+              "types": [
+                "button"
+              ],
+              "count": 8,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

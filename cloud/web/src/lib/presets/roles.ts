@@ -68,7 +68,7 @@ const WORDS: [Role, string[]][] = [
   ["reactor", ["reactor", "reaktor", "fission", "fusion"]],
   ["generator", ["generator", "turbine", "turbin", "solar", "dynamo"]],
   ["farm", ["farm", "greenhouse", "gewächshaus", "tree", "crop", "harvest", "garden", "garten", "beehive", "apiary"]],
-  ["door", ["door", "gate", "hatch", "airlock", "tür", "tuer", "tor ", "schleuse", "luke"]],
+  ["door", ["door", " gate", "hatch", "airlock", "tür", "tuer", " tor ", "schleuse", " luke"]],
   ["items", ["storage", "chest", "barrel", "lager", "kiste"]],
   ["fluid", ["tank", "fluid", "coolant", "kühlmittel", "wasser", "water"]],
   ["machine", ["machine", "maschine", "furnace", "ofen", "crusher", "smelter", "assembler", "factory", "fabrik", "quarry"]],
@@ -94,11 +94,13 @@ export function rolesOf(u: Uplink): ReadonlySet<Role> {
     for (const r of listed ?? []) roles.add(r);
     if (kind && !listed) for (const [re, role] of SUFFIXES) if (re.test(kind)) roles.add(role);
     const program = !kind || kind === "script";
-    const haystack = `${u.title ?? ""} ${program ? u.widgets.map((w) => w.label ?? "").join(" ") : ""} `.toLowerCase();
+    const haystack = ` ${u.title ?? ""} ${program ? u.widgets.map((w) => w.label ?? "").join(" ") : ""} `.toLowerCase();
     if (program || !listed) for (const [role, words] of WORDS) if (words.some((word) => haystack.includes(word))) roles.add(role);
     const values = u.widgets.filter(isValue);
     if (values.some((w) => ENERGY_UNIT.test(String(w.opts?.unit ?? ""))) || (program && values.some((w) => ENERGY_WORDS.test(w.label ?? "")))) roles.add("energy");
     if (u.widgets.some((w) => w.id === "stored") && u.widgets.some((w) => w.id === "energy")) roles.add("energy");
+    // a network or bridge: searching, watching and crafting is what storage cards have and nothing else does
+    if (u.widgets.some((w) => w.type === "item_search" || w.type === "jobs" || w.type === "watchlist")) roles.add("storage");
     if (u.widgets.some((w) => w.type === "indicator" || warns(w))) roles.add("alarm");
     if (u.widgets.some((w) => ACTION_TYPES.has(w.type) && w.type !== "item_search" && w.type !== "watchlist" && w.type !== "jobs")) roles.add("control");
     if (u.mode === "auto") {
