@@ -14,6 +14,7 @@
     "demo": "vite --config demo/vite.config.ts",
     "build:demo": "vite build --config demo/vite.config.ts",
     "preview:demo": "vite preview --config demo/vite.config.ts --port 4174",
+    "test:demo": "node demo/e2e.ts",
     "mock": "node dev/run.ts",
     "test": "vitest run --maxWorkers=3",
     "typecheck": "tsc -p tsconfig.json && tsc -p web/tsconfig.json && tsc -p demo/tsconfig.json",

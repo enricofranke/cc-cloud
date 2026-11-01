@@ -1,4 +1,4 @@
-// Static files of the demo, written to demo/public (gitignored) before Vite runs:
+// Static files of the demo, written to demo/public (gitignored) or DEMO_PUBLIC before Vite runs:
 //   api/icon/<ns>/<path>.png   the icons of every item the simulation mentions: the exported ones when
 //                              ./gradlew exportIcons has run (Mojang/mod art, never committed), else the mock's samples
 //   store/                     a small Script Store, signed with a throwaway key made for this build
@@ -17,7 +17,7 @@ const ITEM_ID = /"([a-z0-9_.-]+:[a-z0-9_./-]+)"/g;
 function icons(out: string) {
   const ids = new Set<string>();
   for (const f of SOURCES) for (const m of readFileSync(f, "utf8").matchAll(ITEM_ID)) ids.add(m[1]);
-  let n = 0;
+  const written: string[] = [];
   for (const id of ids) {
     const png = mockIcon(id);
     if (!png) continue;
@@ -25,9 +25,9 @@ function icons(out: string) {
     const file = join(out, ns, `${path.join(":")}.png`);
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, png);
-    n++;
+    written.push(id);
   }
-  return n;
+  return written;
 }
 
 function store(out: string) {
@@ -42,9 +42,11 @@ function store(out: string) {
 
 export function prepareAssets(publicDir: string) {
   for (const dir of ["api", "store"]) rmSync(join(publicDir, dir), { recursive: true, force: true });
+  mkdirSync(publicDir, { recursive: true });
   cpSync(resolve(here, "../web/public/icon.svg"), join(publicDir, "icon.svg"));
-  const iconCount = icons(join(publicDir, "api", "icon"));
+  if (resolve(publicDir) !== resolve(here, "public")) cpSync(resolve(here, "public/boot.js"), join(publicDir, "boot.js"));
+  const iconIds = icons(join(publicDir, "api", "icon"));
   const storeKey = store(join(publicDir, "store"));
-  console.log(`[demo] ${iconCount} item icons, Script Store signed`);
-  return { storeKey };
+  console.log(`[demo] ${iconIds.length} item icons, Script Store signed`);
+  return { storeKey, iconIds };
 }

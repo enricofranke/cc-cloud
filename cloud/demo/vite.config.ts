@@ -2,7 +2,8 @@
 // Web Worker in the visitor's browser. There is no backend. Nothing here ends up in the mod jar: the production build
 // (../vite.config.ts) has its own root and never sees this folder.
 //   pnpm demo           dev server on :5174/demo/
-//   pnpm build:demo     writes demo/dist (DEMO_OUT=<dir> to change, DEMO_BASE=/some/path/ for another base)
+//   pnpm build:demo     writes demo/dist (DEMO_OUT=<dir> to change, DEMO_BASE=/some/path/ for another base,
+//                       DEMO_PUBLIC=<dir> for the generated static files, so a build can leave this checkout untouched)
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
@@ -42,15 +43,22 @@ function swapModules(): Plugin {
   };
 }
 
+const publicDir = resolve(process.env.DEMO_PUBLIC ?? resolve(here, "public"));
 const nodeShims = Object.fromEntries(["crypto", "zlib"].map((m) => [`node:${m}`, demo(`node/${m}.ts`)]));
+
+/** `vite preview` only serves the last build, so this runs for the dev server and builds. */
+function defines() {
+  const { storeKey, iconIds } = prepareAssets(publicDir);
+  return { __DEMO_STORE_KEY__: JSON.stringify(storeKey), __DEMO_ICONS__: JSON.stringify(iconIds) };
+}
 
 export default defineConfig(({ isPreview }) => ({
   root: here,
   base: process.env.DEMO_BASE ?? "/demo/",
+  publicDir,
   plugins: [preact(), swapModules()],
   resolve: { alias: nodeShims },
-  // `vite preview` only serves the last build
-  define: isPreview ? {} : { __DEMO_STORE_KEY__: JSON.stringify(prepareAssets(resolve(here, "public")).storeKey) },
+  define: isPreview ? {} : defines(),
   worker: { format: "es", plugins: () => [swapModules()] },
   build: {
     outDir: process.env.DEMO_OUT ?? resolve(here, "dist"),

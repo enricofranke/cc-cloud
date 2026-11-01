@@ -35,7 +35,7 @@ export function deflateSync(data: Uint8Array) {
   return out;
 }
 
-/** Never reached: the demo's requests do not accept gzip. */
-export function gzipSync(data: Uint8Array) {
-  return data;
+/** Only for requests that accept gzip, and the demo's never do (a real fetch would be the one to unpack it). */
+export function gzipSync(_data: Uint8Array): Uint8Array {
+  throw new Error("the demo does not gzip");
 }
