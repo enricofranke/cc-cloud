@@ -14,6 +14,23 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   each one. Technical info stays out unless you tick the box.
 - **No personal data.** No names, UUIDs, addresses, worlds, files, coordinates, chat, Lua code, items or tokens, and no
   install id. Every field is listed in `docs/PRIVACY.md`. Reports are deleted after 90 days.
+### Dashboard presets
+- **A dashboard never starts empty:** a mainframe nobody has arranged offers the official preset that fits its devices
+  best, one click away. Dismissing it is remembered per mainframe in that browser.
+- **Eight official presets** in the mod, in English and German: base overview, power grid, ME/RS command centre, reactor
+  control, farm and production, doors and redstone, alerts and status, and a phone quick panel.
+- **Presets tab in the layout editor:** shows how each preset suits this base, with a live preview. It only asks which
+  device goes where when several fit. A preset always lands on a new page, never over yours, and Undo takes it back.
+- **Share codes:** turn a page into a `ccp1.` code and paste it into any dashboard, offline. The code holds layout only,
+  has a checksum, and pasted codes are marked as unsigned community content.
+- **Community presets:** the signed store now lists presets too. The server loads and verifies them, the dashboard needs
+  the right to edit the layout. A store preset's short code is its id, and the website has a gallery with copyable codes.
+- **Safe by design:** no Lua and nothing that runs. Controls keep their action, name, confirmation and PIN, restricted
+  sections stay restricted, and a preset never installs a script.
+
+### Share links
+- **Views travel with their card.** A shared page now shows widgets built in the editor and by presets, instead of an
+  empty card. Restricted sections stay out, and "hide exact numbers" also holds for a view.
 
 ### Lua: more than drag and drop
 - **Canvas widget:** a program draws its own card with lines, shapes, text, gradients, icons, item icons and bitmaps.

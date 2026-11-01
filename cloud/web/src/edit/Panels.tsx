@@ -35,8 +35,11 @@ import { WidgetView, placeVars } from "../components/Card.tsx";
 import { IconPicker } from "../components/PageTabs.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { CopyButton } from "../components/CodeBlock.tsx";
+import { t } from "../lib/i18n.ts";
+import { PresetsTab } from "./Presets.tsx";
 import { Sheet } from "../components/Overlays.tsx";
 import type { CardTemplate } from "./templates.ts";
+import type { LayoutDoc } from "../lib/layout.ts";
 
 type Found = { page: ResolvedPage; card: ResolvedCard; widget: ResolvedWidget };
 
@@ -541,7 +544,7 @@ function Row({ icon, title, hint, onDown, onClick }: { icon: IconName; title: st
   );
 }
 
-type TrayTab = "cards" | "widgets" | "hidden";
+type TrayTab = "cards" | "widgets" | "hidden" | "presets";
 
 export function Toolbox(props: {
   pages: ResolvedPage[];
@@ -557,12 +560,14 @@ export function Toolbox(props: {
   onKindDown: (e: PointerEvent, kind: WidgetKind, el: HTMLElement) => void;
   onKind: (kind: WidgetKind) => void;
   onNewPage: () => void;
+  initialTab?: TrayTab;
+  onApplyPreset: (doc: LayoutDoc, firstPage: string) => void;
 }) {
   const { pages } = props;
   const hiddenCards = pages.flatMap((p) => p.cards.filter((c) => c.hidden).map((c) => ({ c, p })));
   const hiddenWidgets = pages.flatMap((p) => p.cards.flatMap((c) => c.widgets.filter((w) => w.hidden).map((w) => ({ w, c }))));
   const others = pages.filter((p) => p.id !== props.page).flatMap((p) => p.cards.filter((c) => !c.hidden).map((c) => ({ c, p })));
-  const [tab, setTab] = useState<TrayTab>("cards");
+  const [tab, setTab] = useState<TrayTab>(props.initialTab ?? "cards");
   const hiddenCount = hiddenCards.length + hiddenWidgets.length;
   const drag = (make: () => { pages: ResolvedPage[]; key: string }) => (e: PointerEvent) => {
     const r = make();
@@ -571,6 +576,7 @@ export function Toolbox(props: {
   const tabs: [TrayTab, string][] = [
     ["cards", "Cards"],
     ["widgets", "Widgets"],
+    ["presets", t("ps.tab")],
     ["hidden", `Hidden${hiddenCount ? ` (${hiddenCount})` : ""}`],
   ];
   return (
@@ -611,6 +617,7 @@ export function Toolbox(props: {
           </ul>
         </>
       )}
+      {tab === "presets" && <PresetsTab conn={props.conn} uplinks={props.uplinks} pages={pages} page={props.page} onApply={props.onApplyPreset} />}
       {tab === "hidden" && (
         <>
           {!hiddenCount && <p class="muted small">Nothing is hidden. Drag a card or widget here to hide it.</p>}

@@ -1,0 +1,109 @@
+{
+ "format": 1,
+ "id": "night-watch",
+ "version": "1.0.0",
+ "name": {
+  "en": "Night watch",
+  "de": "Nachtwache"
+ },
+ "description": {
+  "en": "For the wall screen or the phone at night: one calm row per device that can warn you, and your scenes at hand. Works without any script.",
+  "de": "Für den Wandbildschirm oder das Handy nachts: eine ruhige Zeile pro Gerät, das warnen kann, und deine Szenen griffbereit. Funktioniert ohne Skript."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "icon": "eye",
+ "color": "purple",
+ "tags": [
+  "monitoring",
+  "status"
+ ],
+ "slots": [
+  {
+   "id": "watched",
+   "label": {
+    "en": "Devices with warnings",
+    "de": "Geräte mit Warnungen"
+   },
+   "roles": [
+    "alarm"
+   ],
+   "min": 0,
+   "max": 12
+  },
+  {
+   "id": "scenes",
+   "label": {
+    "en": "Scenes",
+    "de": "Szenen"
+   },
+   "kinds": [
+    "scenes"
+   ],
+   "min": 0,
+   "max": 1
+  }
+ ],
+ "pages": [
+  {
+   "title": {
+    "en": "Night watch",
+    "de": "Nachtwache"
+   },
+   "icon": "eye",
+   "cards": [
+    {
+     "w": 12,
+     "title": {
+      "en": "Scenes",
+      "de": "Szenen"
+     },
+     "icon": "star",
+     "color": "purple",
+     "style": "compact",
+     "widgets": [
+      {
+       "slot": "scenes",
+       "types": [
+        "button"
+       ],
+       "count": 6,
+       "w": 4,
+       "h": 2
+      }
+     ]
+    },
+    {
+     "w": 6,
+     "each": "watched",
+     "title": "{device}",
+     "icon": "eye",
+     "color": "gray",
+     "style": "compact",
+     "widgets": [
+      {
+       "slot": "watched",
+       "types": [
+        "indicator"
+       ],
+       "count": 4,
+       "w": 6,
+       "h": 2
+      },
+      {
+       "slot": "watched",
+       "limits": true,
+       "count": 2,
+       "display": "bar",
+       "w": 12,
+       "h": 2
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

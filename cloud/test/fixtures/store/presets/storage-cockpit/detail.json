@@ -1,0 +1,223 @@
+{
+ "format": 1,
+ "id": "storage-cockpit",
+ "version": "1.0.0",
+ "name": {
+  "en": "Storage cockpit",
+  "de": "Lager-Cockpit"
+ },
+ "description": {
+  "en": "Made for the Storage Overview script: fill level, trend and search up front, crafting jobs on their own page.",
+  "de": "Passt zum Skript Lagerübersicht: Füllstand, Trend und Suche vorne, Crafting-Aufträge auf einer eigenen Seite."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "tags": [
+  "storage",
+  "ae2"
+ ],
+ "icon": "box",
+ "color": "cyan",
+ "scripts": [
+  "storage-overview"
+ ],
+ "pages": 2,
+ "cards": 3,
+ "slots": [
+  {
+   "id": "storage",
+   "label": {
+    "en": "Storage Overview script",
+    "de": "Skript Lagerübersicht"
+   },
+   "source": "program",
+   "has": [
+    "used",
+    "search"
+   ],
+   "min": 1,
+   "max": 1
+  }
+ ],
+ "sha256": "f3ec61cf0b9ac80f92fc1f82b8305b178321c8a0859c1fb0050a7c8ee3e21968",
+ "size": 2708,
+ "file": "presets/storage-cockpit/1.0.0.json",
+ "code": "ccp1.nVTLbtswEPyVBc9yURtOWuhWBOgpQQu4t8IHmlrJbChSICk_auhv-hm5-ce6pCTLst0g6UESuOTMzg53dWC5sSX3LJ0mTPMSWXpgqFnKFt5YXiAII54r6VnCMtpkjxSzk4cu2ISoE1ZWXhp9wj7xDIGIwa8ReqJvG7QbiVtoz6eQS6VA4QZVAt6izoDT45BbsYa6gtwa7RMQlude6gJ-mZUDowOptGC2Giri_dAr-86d8_C7LmHxHBJAlHp8WaF1Uqwp4dfji1LOU5YEfsSENT2LWpDKjbEaE3jokk2-1Lm3xz-km9c5oNRo6V2gRg0LlJ7yUvFShKrZyuxIhTDKWFqJPde09LxwLP3JXFs_RTjO2DJhbf3nexPTeRO3lYmbByYzYhvgiq9QXd3Pha29G7c9CJqdqa0IRyprCstLQqx5VFM7zGjV3kCQUkodG6PkO_o2FAmOt-K89OqqW0Zdcm0Qt1kLJrqPCdvH95aln5Kejh0y3EiBDXvd3K3MCuxsCoaNjJLZUA5pvkg2p3pZet8k_0bSLdti32Hn78MarahZOuznK-zsNazfV-TuOXT2Vqgy2xFw_uacYRACNJOuUpygLBZw5tt95JrOItldswx0u3hrp-LuksuGaMc4THQc4FNfhmnTcfBinA4PbYJ7_L-rHlp2EDqlhm21jpX1I94rOq0HHQXRjfq1Y71NFH9Ml2zDD-QG7_sLjCnG5c1iecvmLw.b69c2d73",
+ "preset": {
+  "format": 1,
+  "id": "storage-cockpit",
+  "version": "1.0.0",
+  "name": {
+   "en": "Storage cockpit",
+   "de": "Lager-Cockpit"
+  },
+  "description": {
+   "en": "Made for the Storage Overview script: fill level, trend and search up front, crafting jobs on their own page.",
+   "de": "Passt zum Skript Lagerübersicht: Füllstand, Trend und Suche vorne, Crafting-Aufträge auf einer eigenen Seite."
+  },
+  "author": {
+   "name": "CC: Cloud team",
+   "github": "enricofranke"
+  },
+  "license": "MPL-2.0",
+  "icon": "box",
+  "color": "cyan",
+  "tags": [
+   "storage",
+   "ae2"
+  ],
+  "scripts": [
+   "storage-overview"
+  ],
+  "slots": [
+   {
+    "id": "storage",
+    "label": {
+     "en": "Storage Overview script",
+     "de": "Skript Lagerübersicht"
+    },
+    "source": "program",
+    "has": [
+     "used",
+     "search"
+    ],
+    "min": 1,
+    "max": 1
+   }
+  ],
+  "pages": [
+   {
+    "title": {
+     "en": "Storage",
+     "de": "Lager"
+    },
+    "icon": "box",
+    "cards": [
+     {
+      "x": 0,
+      "y": 0,
+      "w": 7,
+      "title": "{device}",
+      "icon": "box",
+      "color": "cyan",
+      "widgets": [
+       {
+        "slot": "storage",
+        "ids": [
+         "used"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 6
+       },
+       {
+        "slot": "storage",
+        "ids": [
+         "energy"
+        ],
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 6
+       },
+       {
+        "slot": "storage",
+        "ids": [
+         "online"
+        ],
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 2
+       },
+       {
+        "slot": "storage",
+        "ids": [
+         "types"
+        ],
+        "x": 8,
+        "y": 2,
+        "w": 4,
+        "h": 2
+       },
+       {
+        "slot": "storage",
+        "ids": [
+         "low"
+        ],
+        "x": 8,
+        "y": 4,
+        "w": 4,
+        "h": 2
+       },
+       {
+        "slot": "storage",
+        "ids": [
+         "trend"
+        ],
+        "display": "line",
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 5
+       }
+      ]
+     },
+     {
+      "x": 7,
+      "y": 0,
+      "w": 5,
+      "title": {
+       "en": "Search and craft",
+       "de": "Suchen und craften"
+      },
+      "icon": "eye",
+      "color": "cyan",
+      "widgets": [
+       {
+        "slot": "storage",
+        "ids": [
+         "search"
+        ],
+        "w": 12,
+        "h": 11
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": {
+     "en": "Crafting",
+     "de": "Crafting"
+    },
+    "icon": "gear",
+    "cards": [
+     {
+      "w": 12,
+      "title": {
+       "en": "Crafting jobs",
+       "de": "Crafting-Aufträge"
+      },
+      "icon": "gear",
+      "color": "cyan",
+      "widgets": [
+       {
+        "slot": "storage",
+        "ids": [
+         "jobs"
+        ],
+        "w": 12,
+        "h": 12
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

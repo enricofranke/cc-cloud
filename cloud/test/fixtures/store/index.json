@@ -1,7 +1,7 @@
 {
  "format": 1,
  "name": "CC: Cloud Script Store",
- "generatedAt": "2026-10-30T19:37:13.020Z",
+ "generatedAt": "2026-11-01T22:38:52.644Z",
  "count": 6,
  "tags": [
   "ae2",
@@ -298,6 +298,251 @@
    "lines": 111,
    "reviewed": true,
    "detail": "scripts/storage-overview/1.0.0.json"
+  }
+ ],
+ "presets": [
+  {
+   "id": "door-panel",
+   "version": "1.0.0",
+   "name": {
+    "en": "Door panel",
+    "de": "Türpanel"
+   },
+   "description": {
+    "en": "Made for the Door Controller script: one card per door with its state, the last person through and a lockdown switch.",
+    "de": "Passt zum Skript Tür-Steuerung: eine Karte pro Tür mit Zustand, letzter Person und Lockdown-Schalter."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "door",
+    "security"
+   ],
+   "icon": "lock",
+   "color": "orange",
+   "scripts": [
+    "door-controller"
+   ],
+   "pages": 1,
+   "cards": 1,
+   "slots": [
+    {
+     "id": "doors",
+     "label": {
+      "en": "Door Controller scripts",
+      "de": "Skripte Tür-Steuerung"
+     },
+     "source": "program",
+     "has": [
+      "toggle",
+      "lockdown"
+     ],
+     "min": 1,
+     "max": 8
+    }
+   ],
+   "sha256": "2702801b5f01fe74db7503800b35961853991e199b641d23efecd67c598a3ddf",
+   "size": 1937,
+   "file": "presets/door-panel/1.0.0.json"
+  },
+  {
+   "id": "farm-row",
+   "version": "1.0.0",
+   "name": {
+    "en": "Farm row",
+    "de": "Farm-Reihe"
+   },
+   "description": {
+    "en": "Made for the Farm Switch script: every farm in a row with its switch, chest level and output over time.",
+    "de": "Passt zum Skript Farm-Schalter: alle Farmen nebeneinander mit Schalter, Kistenstand und Ertrag über die Zeit."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "farm",
+    "automation"
+   ],
+   "icon": "leaf",
+   "color": "green",
+   "scripts": [
+    "farm-switch"
+   ],
+   "pages": 1,
+   "cards": 1,
+   "slots": [
+    {
+     "id": "farms",
+     "label": {
+      "en": "Farm Switch scripts",
+      "de": "Skripte Farm-Schalter"
+     },
+     "source": "program",
+     "has": [
+      "power",
+      "fill"
+     ],
+     "min": 1,
+     "max": 6
+    }
+   ],
+   "sha256": "4ae316aec9ad821d0c28e2e43bcb9fc6c4ccdb22aa1b68480d4df5ed3f31ba6c",
+   "size": 1945,
+   "file": "presets/farm-row/1.0.0.json"
+  },
+  {
+   "id": "fission-control-room",
+   "version": "1.0.0",
+   "name": {
+    "en": "Fission control room",
+    "de": "Spaltreaktor-Leitstand"
+   },
+   "description": {
+    "en": "Made for the Reactor Monitor script: core values and history on one page, tanks on the next. Start and SCRAM keep their PIN.",
+    "de": "Passt zum Skript Reaktor-Monitor: Kernwerte und Verlauf auf einer Seite, die Tanks auf der nächsten. Start und SCRAM behalten ihre PIN."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "reactor",
+    "mekanism"
+   ],
+   "icon": "flame",
+   "color": "red",
+   "scripts": [
+    "reactor-monitor"
+   ],
+   "pages": 2,
+   "cards": 3,
+   "slots": [
+    {
+     "id": "reactor",
+     "label": {
+      "en": "Reactor Monitor script",
+      "de": "Skript Reaktor-Monitor"
+     },
+     "source": "program",
+     "has": [
+      "scram",
+      "temp",
+      "burn"
+     ],
+     "min": 1,
+     "max": 1
+    }
+   ],
+   "sha256": "25dac376c1a2d5202794f6a28f477272292fd6b7487b38356797704a5f14f01d",
+   "size": 3523,
+   "file": "presets/fission-control-room/1.0.0.json"
+  },
+  {
+   "id": "night-watch",
+   "version": "1.0.0",
+   "name": {
+    "en": "Night watch",
+    "de": "Nachtwache"
+   },
+   "description": {
+    "en": "For the wall screen or the phone at night: one calm row per device that can warn you, and your scenes at hand. Works without any script.",
+    "de": "Für den Wandbildschirm oder das Handy nachts: eine ruhige Zeile pro Gerät, das warnen kann, und deine Szenen griffbereit. Funktioniert ohne Skript."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "monitoring",
+    "status"
+   ],
+   "icon": "eye",
+   "color": "purple",
+   "pages": 1,
+   "cards": 2,
+   "slots": [
+    {
+     "id": "watched",
+     "label": {
+      "en": "Devices with warnings",
+      "de": "Geräte mit Warnungen"
+     },
+     "roles": [
+      "alarm"
+     ],
+     "min": 0,
+     "max": 12
+    },
+    {
+     "id": "scenes",
+     "label": {
+      "en": "Scenes",
+      "de": "Szenen"
+     },
+     "kinds": [
+      "scenes"
+     ],
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "sha256": "ad2388e1c7a64b748f7d70d0bdfb713025cea7abeceda1962f19fed912ba7e50",
+   "size": 1854,
+   "file": "presets/night-watch/1.0.0.json"
+  },
+  {
+   "id": "storage-cockpit",
+   "version": "1.0.0",
+   "name": {
+    "en": "Storage cockpit",
+    "de": "Lager-Cockpit"
+   },
+   "description": {
+    "en": "Made for the Storage Overview script: fill level, trend and search up front, crafting jobs on their own page.",
+    "de": "Passt zum Skript Lagerübersicht: Füllstand, Trend und Suche vorne, Crafting-Aufträge auf einer eigenen Seite."
+   },
+   "author": {
+    "name": "CC: Cloud team",
+    "github": "enricofranke"
+   },
+   "license": "MPL-2.0",
+   "tags": [
+    "storage",
+    "ae2"
+   ],
+   "icon": "box",
+   "color": "cyan",
+   "scripts": [
+    "storage-overview"
+   ],
+   "pages": 2,
+   "cards": 3,
+   "slots": [
+    {
+     "id": "storage",
+     "label": {
+      "en": "Storage Overview script",
+      "de": "Skript Lagerübersicht"
+     },
+     "source": "program",
+     "has": [
+      "used",
+      "search"
+     ],
+     "min": 1,
+     "max": 1
+    }
+   ],
+   "sha256": "f3ec61cf0b9ac80f92fc1f82b8305b178321c8a0859c1fb0050a7c8ee3e21968",
+   "size": 2708,
+   "file": "presets/storage-cockpit/1.0.0.json"
   }
  ]
 }

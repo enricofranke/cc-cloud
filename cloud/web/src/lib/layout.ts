@@ -501,7 +501,7 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
   for (const c of cards.values()) {
     if (c.custom) {
       const first = c.widgets[0]?.uplink;
-      c.uplink = first ? { ...STUB, uplinkId: first.uplinkId, title: c.title, online: c.widgets.every((w) => w.uplink.online) } : { ...STUB, title: c.title };
+      c.uplink = first ? { ...STUB, uplinkId: first.uplinkId, title: c.title, online: c.widgets.some((w) => w.uplink.online) } : { ...STUB, title: c.title };
     }
     // widget grid inside the card: saved boxes first, then the rest in their natural order
     const visible = c.widgets.filter((w) => !w.hidden).sort((a, b) => (a as WDraft).order - (b as WDraft).order) as WDraft[];

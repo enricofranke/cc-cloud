@@ -72,6 +72,8 @@ class PermissionWalkTest {
         expected.put(Router.Id.REPORTS_PREVIEW, Perm.VIEW);
         expected.put(Router.Id.REPORTS_POST, Perm.VIEW);
         expected.put(Router.Id.FEEDBACK_POST, Perm.VIEW);
+        expected.put(Router.Id.PRESET_LIST, Perm.LAYOUT_EDIT);
+        expected.put(Router.Id.PRESET_GET, Perm.LAYOUT_EDIT);
         // Account-level routes (no mainframe permission): the player's own data or public.
         var accountLevel = Set.of(Router.Id.PAIR, Router.Id.PAIR_STATUS, Router.Id.MAINFRAMES, Router.Id.DEVICES, Router.Id.DEVICE_DELETE,
             Router.Id.ICON, Router.Id.RECIPES, Router.Id.DOWNLOAD, Router.Id.WEBSOCKET, Router.Id.STATIC, Router.Id.CONFIG, Router.Id.VOXEL_ATLAS);

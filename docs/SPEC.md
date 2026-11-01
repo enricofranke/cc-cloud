@@ -2414,3 +2414,39 @@ Scripting has to do more than drag and drop: a program can draw its own card, pl
 
 ### Tests
 `CanvasFrameTest`, `CardReaderTest`, `CardReadingTest`, `WidgetFactoryV2Test`, `canvas.test.ts`, GameTest `canvas_real_computer` (a real CC computer draws, gets a click, has a hostile frame refused and reads its card).
+
+## Dashboard presets (requested 2026-11-01)
+
+A preset is a versioned JSON document that describes dashboard pages in terms of device slots. It never holds device ids. `cloud/web/src/lib/presets/` is the pure engine; `docs` page `presets` is the player's view.
+
+### Format
+`format.ts` (`parsePreset`, `PRESET_FORMAT` 1) checks every field and refuses unknown keys, so the format is an allow-list. Top level: `format`, `id`, `name`, `description` (each `{en, de}` or a string), `icon`, `color`, `tags`, optional `scripts`, `slots`, `pages`. Store presets add `version`, `author`, `license`. Limits: `PRESET_LIMITS` (16 slots, 12 pages, 64 cards, 256 widget references, 512 expanded widgets, text lengths).
+
+- **Slot:** `id`, `label`, `min`, `max`, and what fits: `kinds` (card templates), `roles` (`roles.ts`), `source` (`card` or `program`), `has` (widget ids), `types`, `text`.
+- **Page:** `title`, `icon`, `cards`. **Card:** `x`, `y`, `w`, `h`, `title` (`{device}` is the device's name), `color`, `icon`, `style`, `each` (one card per device of a slot), `widgets`.
+- **Widget reference:** `slot`, then `ids`, `types`, `text`, `limits`, `count` to find widgets, `as` and `display` for the shape, `x`, `y`, `w`, `h` for the place, and `label` only for read-only widgets.
+
+`match.ts` fills slots: a device fills one slot, slots with a minimum first, best candidates by kind order and whether they work. `expand.ts` turns the match into a normal layout document of custom cards (`c:`) and views (`v:`), so a preset needs nothing new on the server: it passes `LayoutValidator` like any editor layout. Action widgets go through `ACTION_TYPES`: a preset cannot relabel them.
+
+### First run
+`Pages.tsx` shows `PresetStart` for `layout.edit` when the layout is pristine, there are devices and the offer was not dismissed (`presets.dismissed.<mainframe>`, browser preference). `recommend` scores coverage (0.8) and filled required slots (0.15) and skips presets tagged `phone`. Applying snapshots the automatic layout and puts the preset's pages in front; Undo saves an empty layout.
+
+### Share codes
+`ccp1.<base64url of deflate-raw JSON>.<first 8 hex of the payload's SHA-256>`, built in the browser with no server involved (`code.ts`). Decoding checks the prefix, the size of the code (48 KiB) and of the unpacked JSON (128 KiB), the checksum and then `parsePreset`. `id`, `version`, `author` and `license` are removed from a code: only the store speaks for those. `export.ts` builds a code from a page and leaves out what cannot be described without device ids. A code is always shown as unsigned.
+
+### Store
+`index.json` keeps `format` 1 and `scripts`, and gains `presets`: `id`, `version`, `name`, `description`, `author`, `license`, `tags`, `icon`, `color`, `scripts`, `pages`, `cards`, `slots`, `sha256`, `size`, `file` (`presets/<id>/<version>.json`). Older mods ignore the field. `presets/<id>/detail.json` adds the code for the website. `tools/validate.mjs` checks `schema/preset.schema.json` and the same rules as `parsePreset`.
+
+Routes, both behind `layout.edit` (`AccessGate.LAYOUT_EDIT`) and `Router.isPreset`:
+- `GET /api/mainframes/<id>/presets` → the `presets` list of the verified index.
+- `GET /api/mainframes/<id>/presets/<presetId>` → the preset file, at most 64 KiB, checked against `sha256`, `id` and `version` of the index.
+
+`PresetStore` uses `StoreVerifier` (Ed25519 over the index) and the same SSRF-safe client as scripts; the browser never talks to the store. Errors: `store_disabled`, `store_not_configured`, `store_unreachable`, `store_bad_signature`, `store_mismatch`, `unknown_preset`. The browser parses what it gets with `parsePreset` again.
+
+A short code is a store id (`door-panel`, `store:door-panel@1.0.0`) and goes through these routes, so it is signed; a long code is not. A preset's `scripts` only offers a link into the script install flow.
+
+### Share links
+`ShareFilter` shares a view when its card is shared. The widget behind it (`viewed`) becomes visible to the viewer, its own card is sent as `{hidden: true}`. Views are left out when they are hidden, come from a restricted section, or show an exact number under "hide exact numbers". The in-game tablet lists uplinks and ignores custom cards, so a preset does not change it. Cloud Displays compose views through `DisplayCompose`.
+
+### Tests
+`presets.test.ts`, `PresetStoreTest`, `PresetRouteTest`, `PermissionWalkTest`, `AccessApiTest.shareFilterFollowsViews`, `npm run screenshots:presets` (browser behaviour and screenshots against the mock server).

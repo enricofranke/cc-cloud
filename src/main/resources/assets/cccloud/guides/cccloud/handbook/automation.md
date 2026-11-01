@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Rules, scenes & notifications"
-  position: 8
+  position: 9
 ---
 
 # Rules, scenes, notifications and history

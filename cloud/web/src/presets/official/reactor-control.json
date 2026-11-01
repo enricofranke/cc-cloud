@@ -1,0 +1,299 @@
+{
+  "format": 1,
+  "id": "reactor-control",
+  "version": "1.0.0",
+  "name": {
+    "en": "Reactor control",
+    "de": "Reaktorsteuerung"
+  },
+  "description": {
+    "en": "A control room for your reactor: core values and limits beside the controls, with tanks and turbines on the same page. Buttons keep their own labels, confirmations and PIN.",
+    "de": "Ein Leitstand für deinen Reaktor: Kernwerte und Grenzen neben den Bedienelementen, Tanks und Turbinen auf derselben Seite. Tasten behalten ihre eigenen Namen, Rückfragen und die PIN."
+  },
+  "icon": "flame",
+  "color": "red",
+  "tags": [
+    "energy",
+    "reactor"
+  ],
+  "slots": [
+    {
+      "id": "reactor",
+      "label": {
+        "en": "Reactor",
+        "de": "Reaktor"
+      },
+      "roles": [
+        "reactor"
+      ],
+      "min": 1,
+      "max": 2
+    },
+    {
+      "id": "turbine",
+      "label": {
+        "en": "Turbines and generators",
+        "de": "Turbinen und Generatoren"
+      },
+      "roles": [
+        "generator"
+      ],
+      "min": 0,
+      "max": 4
+    },
+    {
+      "id": "coolant",
+      "label": {
+        "en": "Coolant tanks",
+        "de": "Kühlmitteltanks"
+      },
+      "roles": [
+        "fluid"
+      ],
+      "min": 0,
+      "max": 2
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Reactor",
+        "de": "Reaktor"
+      },
+      "icon": "flame",
+      "cards": [
+        {
+          "w": 8,
+          "each": "reactor",
+          "title": "{device}",
+          "icon": "flame",
+          "color": "red",
+          "widgets": [
+            {
+              "slot": "reactor",
+              "ids": [
+                "temperature",
+                "temp"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "text": [
+                "temp",
+                "heat",
+                "hitze"
+              ],
+              "w": 4,
+              "h": 6
+            },
+            {
+              "slot": "reactor",
+              "types": [
+                "gauge"
+              ],
+              "count": 2,
+              "w": 4,
+              "h": 6
+            },
+            {
+              "slot": "reactor",
+              "ids": [
+                "fuel",
+                "carbon"
+              ],
+              "types": [
+                "progress"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "types": [
+                "indicator"
+              ],
+              "count": 4,
+              "w": 3,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "ids": [
+                "status",
+                "consumption"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "line",
+              "w": 12,
+              "h": 5
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "reactor",
+          "title": {
+            "en": "Controls",
+            "de": "Steuerung"
+          },
+          "icon": "shield",
+          "color": "red",
+          "widgets": [
+            {
+              "slot": "reactor",
+              "types": [
+                "button"
+              ],
+              "count": 4,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "types": [
+                "toggle"
+              ],
+              "count": 3,
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "types": [
+                "select"
+              ],
+              "count": 2,
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "reactor",
+              "types": [
+                "slider"
+              ],
+              "count": 2,
+              "w": 12,
+              "h": 3
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "turbine",
+          "title": "{device}",
+          "icon": "fan",
+          "color": "orange",
+          "widgets": [
+            {
+              "slot": "turbine",
+              "ids": [
+                "stored",
+                "fill",
+                "storage"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "turbine",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "turbine",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "turbine",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "sparkline",
+              "w": 12,
+              "h": 3
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "coolant",
+          "title": "{device}",
+          "icon": "drop",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "coolant",
+              "ids": [
+                "fill",
+                "water"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "coolant",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "coolant",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

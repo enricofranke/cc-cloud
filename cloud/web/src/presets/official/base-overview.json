@@ -1,0 +1,282 @@
+{
+  "format": 1,
+  "id": "base-overview",
+  "version": "1.0.0",
+  "name": {
+    "en": "Base overview",
+    "de": "Basis-Übersicht"
+  },
+  "description": {
+    "en": "The most important values of every device on one page. Works with any base and is the best place to start.",
+    "de": "Die wichtigsten Werte aller Geräte auf einer Seite. Passt zu jeder Basis und ist der beste Einstieg."
+  },
+  "icon": "home",
+  "color": "gold",
+  "tags": [
+    "overview",
+    "starter"
+  ],
+  "slots": [
+    {
+      "id": "storage",
+      "label": {
+        "en": "Storage",
+        "de": "Lager"
+      },
+      "roles": [
+        "storage",
+        "items"
+      ],
+      "min": 0,
+      "max": 2
+    },
+    {
+      "id": "power",
+      "label": {
+        "en": "Power",
+        "de": "Strom"
+      },
+      "roles": [
+        "reactor",
+        "generator",
+        "energy"
+      ],
+      "min": 0,
+      "max": 4
+    },
+    {
+      "id": "tanks",
+      "label": {
+        "en": "Tanks",
+        "de": "Tanks"
+      },
+      "roles": [
+        "fluid"
+      ],
+      "min": 0,
+      "max": 2
+    },
+    {
+      "id": "rest",
+      "label": {
+        "en": "Other devices",
+        "de": "Weitere Geräte"
+      },
+      "roles": [
+        "any"
+      ],
+      "min": 0,
+      "max": 6
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Base overview",
+        "de": "Basis-Übersicht"
+      },
+      "icon": "home",
+      "cards": [
+        {
+          "w": 6,
+          "each": "storage",
+          "title": "{device}",
+          "icon": "box",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "storage",
+              "ids": [
+                "stored",
+                "fill",
+                "storage"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "storage",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "storage",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "storage",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "sparkline",
+              "w": 12,
+              "h": 3
+            }
+          ]
+        },
+        {
+          "w": 6,
+          "each": "power",
+          "title": "{device}",
+          "icon": "bolt",
+          "widgets": [
+            {
+              "slot": "power",
+              "ids": [
+                "stored",
+                "fill",
+                "storage"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "power",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "power",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "power",
+              "ids": [
+                "history"
+              ],
+              "types": [
+                "chart"
+              ],
+              "display": "sparkline",
+              "w": 12,
+              "h": 3
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "tanks",
+          "title": "{device}",
+          "icon": "drop",
+          "color": "cyan",
+          "widgets": [
+            {
+              "slot": "tanks",
+              "ids": [
+                "fill"
+              ],
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "tanks",
+              "types": [
+                "indicator"
+              ],
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "tanks",
+              "ids": [
+                "energy",
+                "items",
+                "amount",
+                "flow"
+              ],
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "rest",
+          "title": "{device}",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "rest",
+              "types": [
+                "gauge"
+              ],
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "rest",
+              "types": [
+                "indicator"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "rest",
+              "types": [
+                "progress"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "rest",
+              "types": [
+                "label"
+              ],
+              "count": 3,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

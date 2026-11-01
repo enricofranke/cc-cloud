@@ -1,0 +1,279 @@
+{
+ "format": 1,
+ "id": "fission-control-room",
+ "version": "1.0.0",
+ "name": {
+  "en": "Fission control room",
+  "de": "Spaltreaktor-Leitstand"
+ },
+ "description": {
+  "en": "Made for the Reactor Monitor script: core values and history on one page, tanks on the next. Start and SCRAM keep their PIN.",
+  "de": "Passt zum Skript Reaktor-Monitor: Kernwerte und Verlauf auf einer Seite, die Tanks auf der nächsten. Start und SCRAM behalten ihre PIN."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "tags": [
+  "reactor",
+  "mekanism"
+ ],
+ "icon": "flame",
+ "color": "red",
+ "scripts": [
+  "reactor-monitor"
+ ],
+ "pages": 2,
+ "cards": 3,
+ "slots": [
+  {
+   "id": "reactor",
+   "label": {
+    "en": "Reactor Monitor script",
+    "de": "Skript Reaktor-Monitor"
+   },
+   "source": "program",
+   "has": [
+    "scram",
+    "temp",
+    "burn"
+   ],
+   "min": 1,
+   "max": 1
+  }
+ ],
+ "sha256": "25dac376c1a2d5202794f6a28f477272292fd6b7487b38356797704a5f14f01d",
+ "size": 3523,
+ "file": "presets/fission-control-room/1.0.0.json",
+ "code": "ccp1.nVTLbtswEPwVYs9K0LipW-gWBChQtCmCuOil8GEtri3CFCmQVJzU8N_0T_pjXVKSYyVq4gSGLPAxs7MzpLawtK7CAPlZBgYrgnwLZCCHz8p7ZY0orAnOauGsrSADyTtgVqMOjnAdrDv5Rir4gEbCLi77wqk6MHLPdIWSBJcRoSRxQ1gwSlxZo-K73Z5zGUfiFnVDXjCXKJXn5XvBCqwhUeOKMsFV1j5ORSZDd-FUzAK6kBCzy5uLK7EmquOycuL6y_fTXvE1eh_E76YSs3UsGHUk9Z2OXHwlZzbkAomGyX6S09gsRXxIGXJixm2yBKlI_Egy4pLkBfP3T1H6QKYX0-zFLKhko8gIVXJ3SQ97pIpoDix1tDuDwmrreOxI8ijgykP-i0fJJ56paI1G-QrmGbRuHW44qdoG0qq2aW0LSibCnkLjgvQ-j_EI9tmO-hN1e9u4Im6pnV05jKehxKSFGdIwUFXza9E4E_VUyqRzVeEdv3c8E2NsFQYV9MNhu-T0ewExiDGb0MkWymTvMrhP_xvIP2U9GWwl3aqCdvCCyRslV9RZFU0bmKVSmbYXlvyo2jk3Dfl0l_0fKbHiNjvs-euwvXV3qa_XILsLE8FS-Vojg0Hz0YWDHqaJ7WyS6D7s5pHwaanH2aQPgN8fkEANucasDkLypSIt3-QzMxnFZE-t7mROnuuaJ7w1A_DkeDAGGkDPD6Hvn4P6eNMH2I8JO325antZWuh0BDpvYxmGkD45fQLt4MF96Ww9uCFdE2-g6OIr7tEcmV9hrUYTRvI7wouSOAI5MONo7LLhb9rT4I9AbtDvg5-OQOfp9w8.beac4ee3",
+ "preset": {
+  "format": 1,
+  "id": "fission-control-room",
+  "version": "1.0.0",
+  "name": {
+   "en": "Fission control room",
+   "de": "Spaltreaktor-Leitstand"
+  },
+  "description": {
+   "en": "Made for the Reactor Monitor script: core values and history on one page, tanks on the next. Start and SCRAM keep their PIN.",
+   "de": "Passt zum Skript Reaktor-Monitor: Kernwerte und Verlauf auf einer Seite, die Tanks auf der nächsten. Start und SCRAM behalten ihre PIN."
+  },
+  "author": {
+   "name": "CC: Cloud team",
+   "github": "enricofranke"
+  },
+  "license": "MPL-2.0",
+  "icon": "flame",
+  "color": "red",
+  "tags": [
+   "reactor",
+   "mekanism"
+  ],
+  "scripts": [
+   "reactor-monitor"
+  ],
+  "slots": [
+   {
+    "id": "reactor",
+    "label": {
+     "en": "Reactor Monitor script",
+     "de": "Skript Reaktor-Monitor"
+    },
+    "source": "program",
+    "has": [
+     "scram",
+     "temp",
+     "burn"
+    ],
+    "min": 1,
+    "max": 1
+   }
+  ],
+  "pages": [
+   {
+    "title": {
+     "en": "Core",
+     "de": "Kern"
+    },
+    "icon": "flame",
+    "cards": [
+     {
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "title": "{device}",
+      "icon": "flame",
+      "color": "red",
+      "widgets": [
+       {
+        "slot": "reactor",
+        "ids": [
+         "temp"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 6
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "damage"
+        ],
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 6
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "burn"
+        ],
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 6
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "history"
+        ],
+        "display": "line",
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 5
+       }
+      ]
+     },
+     {
+      "x": 8,
+      "y": 0,
+      "w": 4,
+      "title": {
+       "en": "Controls",
+       "de": "Steuerung"
+      },
+      "icon": "shield",
+      "color": "red",
+      "widgets": [
+       {
+        "slot": "reactor",
+        "ids": [
+         "running"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "reason"
+        ],
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "rate"
+        ],
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 3
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "start"
+        ],
+        "x": 0,
+        "y": 7,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "scram"
+        ],
+        "x": 6,
+        "y": 7,
+        "w": 6,
+        "h": 2
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": {
+     "en": "Tanks",
+     "de": "Tanks"
+    },
+    "icon": "drop",
+    "cards": [
+     {
+      "w": 12,
+      "title": {
+       "en": "Tanks",
+       "de": "Tanks"
+      },
+      "icon": "drop",
+      "color": "cyan",
+      "widgets": [
+       {
+        "slot": "reactor",
+        "ids": [
+         "coolant"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "heated"
+        ],
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "fuel"
+        ],
+        "x": 0,
+        "y": 2,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "reactor",
+        "ids": [
+         "waste"
+        ],
+        "x": 6,
+        "y": 2,
+        "w": 6,
+        "h": 2
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

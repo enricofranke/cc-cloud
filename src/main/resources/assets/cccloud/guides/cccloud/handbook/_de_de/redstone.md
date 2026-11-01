@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Redstone-Geräte"
-  position: 3
+  position: 4
   icon: cccloud:cloud_lamp
 item_ids:
   - cccloud:cloud_lamp

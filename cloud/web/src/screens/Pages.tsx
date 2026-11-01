@@ -11,7 +11,8 @@ import { Hydrator } from "../lib/hydrate.ts";
 import { NETWORK_PAGE, PRODUCTION_PAGE, Tabs } from "../components/PageTabs.tsx";
 import { feature } from "../lib/config.ts";
 import { t } from "../lib/i18n.ts";
-import { route } from "../lib/ui.ts";
+import { route, wantPresets } from "../lib/ui.ts";
+import { getPref } from "../lib/store.ts";
 
 export { NETWORK_PAGE, PRODUCTION_PAGE };
 
@@ -122,11 +123,20 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
     route.value = { name: "mainframe", id: r.name === "mainframe" ? r.id : mfId };
   }, [wantCard, cardThere]);
 
+  const canEdit = conn.can("layout.edit") && !conn.isShare;
+  const [dismissed, setDismissed] = useState(() => getPref(`presets.dismissed.${mfId}`, "") === "1");
+  const pristine = !layoutDoc || (!layoutDoc.pages.length && !Object.keys(layoutDoc.cards).length && !Object.keys(layoutDoc.widgets).length);
+  const openPresets = () => {
+    wantPresets.value = true;
+    props.onEdit("");
+  };
+
   if (props.editing)
     return <EditorLoader conn={conn} uplinks={raw.map((u) => hydrator.adapted(u))} page={current && current !== NETWORK_PAGE && current !== PRODUCTION_PAGE ? current : page.id} onPage={select} isPhone={isPhone} narrow={narrow} network={showNetwork} onExit={props.onExitEdit} focusCard={props.focusCard} />;
 
   return (
     <>
+      {canEdit && pristine && !dismissed && conn.status.value === "open" && !onNetwork && !onProduction && <PresetStartLoader conn={conn} uplinks={raw.map((u) => hydrator.adapted(u))} onPage={select} onMore={openPresets} onDismiss={() => setDismissed(true)} />}
       {showTabs && (
         <Tabs
           pages={pages}
@@ -148,6 +158,11 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
         <div class="empty">
           <h2 class="px-title">Nothing on this page</h2>
           <p>Open the layout editor (pencil) to move cards here, or put widgets on it from Lua with opts.page.</p>
+          {canEdit && (
+            <button type="button" class="btn btn-small" onClick={openPresets}>
+              {t("ps.emptyPage")}
+            </button>
+          )}
         </div>
       ) : (
         <div class={`pgrid ${narrow ? "narrow" : ""} ${props.dim ? "grid-dim" : ""}`}>
@@ -159,6 +174,16 @@ export function Pages(props: { conn: MainframeConn; locked: boolean; dim: boolea
       {showTabs && isPhone && <div class="tabbar-spacer" />}
     </>
   );
+}
+
+type StartProps = { conn: MainframeConn; uplinks: Uplink[]; onPage: (id: string) => void; onMore: () => void; onDismiss: () => void };
+/** The offer of a preset on a dashboard nobody has arranged yet (screens/PresetStart.tsx). */
+function PresetStartLoader(props: StartProps) {
+  const [C, setC] = useState<ComponentType<StartProps> | null>(null);
+  useEffect(() => {
+    import("./PresetStart.tsx").then((m) => setC(() => m.default));
+  }, []);
+  return C ? <C {...props} /> : null;
 }
 
 type EditorProps = { conn: MainframeConn; uplinks: Uplink[]; page: string; onPage: (id: string) => void; isPhone: boolean; narrow: boolean; network: boolean; onExit: () => void; focusCard?: string };

@@ -1,0 +1,172 @@
+{
+ "format": 1,
+ "id": "door-panel",
+ "version": "1.0.0",
+ "name": {
+  "en": "Door panel",
+  "de": "Türpanel"
+ },
+ "description": {
+  "en": "Made for the Door Controller script: one card per door with its state, the last person through and a lockdown switch.",
+  "de": "Passt zum Skript Tür-Steuerung: eine Karte pro Tür mit Zustand, letzter Person und Lockdown-Schalter."
+ },
+ "author": {
+  "name": "CC: Cloud team",
+  "github": "enricofranke"
+ },
+ "license": "MPL-2.0",
+ "tags": [
+  "door",
+  "security"
+ ],
+ "icon": "lock",
+ "color": "orange",
+ "scripts": [
+  "door-controller"
+ ],
+ "pages": 1,
+ "cards": 1,
+ "slots": [
+  {
+   "id": "doors",
+   "label": {
+    "en": "Door Controller scripts",
+    "de": "Skripte Tür-Steuerung"
+   },
+   "source": "program",
+   "has": [
+    "toggle",
+    "lockdown"
+   ],
+   "min": 1,
+   "max": 8
+  }
+ ],
+ "sha256": "2702801b5f01fe74db7503800b35961853991e199b641d23efecd67c598a3ddf",
+ "size": 1937,
+ "file": "presets/door-panel/1.0.0.json",
+ "code": "ccp1.lVLNbtswDH4VgmenWNMiGHzdbt2AAulpRQ-cxNlCZcmQ5KVp4DfbbS82SnYCZ0XRFgGMiOTH70c64C8fOkpYX1boqGOsD8gOa_zqfYCeHFusUEsd7_7-CVNhzJWogumT8e4E-U6aQfZBahkK_ot3KXhrOcA0XoN3DIqChl6KOg_tTGrBpAgxUeKqoC3FlCeid3IOfmhaIKeBwHr1qP3OQRScai-O6m4pCuR56GD7mJkgy11tEw8cBtfUwEaYbygkhj740obOJPgxCK_TFVhOz0lE3U60g9B9m8lWW9WSleZF9m5UNo1ZibArb32Qow_kGpZCoiZifY_ZnBwjqyGYtMcH-V9COHVX6pRP6Vpfegc0WhbmiSgLLP2UzM_u5UWu8RjDZJ7_c59VRz8ElUfEfROoE0RLRUryTWOz8mO2WUxnXHkUHT1h_XmUSk8NT_KSSfb8pcTlI5Hqy5TkyifwDuvrCplUu_A4b8SD5t9G8YhvprwzuuE5rhzcYpkpTOh7Lk5E_6cK9-Ur5BvxjfV6rF7DZUbWM3LzIaS82jPGdcFdrt8CzjewhF6_X-zxyk5y34nVbGl_RrpZ6r0aH8rvHw.b7da11c7",
+ "preset": {
+  "format": 1,
+  "id": "door-panel",
+  "version": "1.0.0",
+  "name": {
+   "en": "Door panel",
+   "de": "Türpanel"
+  },
+  "description": {
+   "en": "Made for the Door Controller script: one card per door with its state, the last person through and a lockdown switch.",
+   "de": "Passt zum Skript Tür-Steuerung: eine Karte pro Tür mit Zustand, letzter Person und Lockdown-Schalter."
+  },
+  "author": {
+   "name": "CC: Cloud team",
+   "github": "enricofranke"
+  },
+  "license": "MPL-2.0",
+  "icon": "lock",
+  "color": "orange",
+  "tags": [
+   "door",
+   "security"
+  ],
+  "scripts": [
+   "door-controller"
+  ],
+  "slots": [
+   {
+    "id": "doors",
+    "label": {
+     "en": "Door Controller scripts",
+     "de": "Skripte Tür-Steuerung"
+    },
+    "source": "program",
+    "has": [
+     "toggle",
+     "lockdown"
+    ],
+    "min": 1,
+    "max": 8
+   }
+  ],
+  "pages": [
+   {
+    "title": {
+     "en": "Doors",
+     "de": "Türen"
+    },
+    "icon": "lock",
+    "cards": [
+     {
+      "w": 4,
+      "each": "doors",
+      "title": "{device}",
+      "icon": "lock",
+      "color": "orange",
+      "widgets": [
+       {
+        "slot": "doors",
+        "ids": [
+         "open"
+        ],
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "doors",
+        "ids": [
+         "locked"
+        ],
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "doors",
+        "ids": [
+         "last"
+        ],
+        "x": 0,
+        "y": 2,
+        "w": 12,
+        "h": 2
+       },
+       {
+        "slot": "doors",
+        "ids": [
+         "toggle"
+        ],
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "doors",
+        "ids": [
+         "lockdown"
+        ],
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 2
+       },
+       {
+        "slot": "doors",
+        "ids": [
+         "delay"
+        ],
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 3
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

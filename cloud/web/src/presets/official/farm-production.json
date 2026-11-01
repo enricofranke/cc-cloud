@@ -1,0 +1,212 @@
+{
+  "format": 1,
+  "id": "farm-production",
+  "version": "1.0.0",
+  "name": {
+    "en": "Farm and production",
+    "de": "Farmen und Produktion"
+  },
+  "description": {
+    "en": "Farms and machines with their progress and full outputs, and a second page for your production numbers.",
+    "de": "Farmen und Maschinen mit Fortschritt und vollen Ausgaben, dazu eine zweite Seite für deine Produktionszahlen."
+  },
+  "icon": "leaf",
+  "color": "green",
+  "tags": [
+    "farm",
+    "machines"
+  ],
+  "slots": [
+    {
+      "id": "farms",
+      "label": {
+        "en": "Farms",
+        "de": "Farmen"
+      },
+      "roles": [
+        "farm"
+      ],
+      "min": 0,
+      "max": 8
+    },
+    {
+      "id": "machines",
+      "label": {
+        "en": "Machines",
+        "de": "Maschinen"
+      },
+      "roles": [
+        "machine"
+      ],
+      "min": 0,
+      "max": 8
+    },
+    {
+      "id": "production",
+      "label": {
+        "en": "Production statistics",
+        "de": "Produktionsstatistik"
+      },
+      "kinds": [
+        "production"
+      ],
+      "min": 0,
+      "max": 1
+    }
+  ],
+  "pages": [
+    {
+      "title": {
+        "en": "Farms",
+        "de": "Farmen"
+      },
+      "icon": "leaf",
+      "cards": [
+        {
+          "w": 4,
+          "each": "farms",
+          "title": "{device}",
+          "icon": "leaf",
+          "color": "green",
+          "widgets": [
+            {
+              "slot": "farms",
+              "ids": [
+                "status",
+                "state"
+              ],
+              "types": [
+                "label"
+              ],
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "farms",
+              "types": [
+                "progress"
+              ],
+              "count": 2,
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "farms",
+              "types": [
+                "gauge"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "farms",
+              "types": [
+                "indicator"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "farms",
+              "types": [
+                "label"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        },
+        {
+          "w": 4,
+          "each": "machines",
+          "title": "{device}",
+          "icon": "gear",
+          "color": "gray",
+          "widgets": [
+            {
+              "slot": "machines",
+              "ids": [
+                "status",
+                "state"
+              ],
+              "types": [
+                "label"
+              ],
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "machines",
+              "types": [
+                "progress"
+              ],
+              "count": 2,
+              "w": 12,
+              "h": 2
+            },
+            {
+              "slot": "machines",
+              "types": [
+                "gauge"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 6
+            },
+            {
+              "slot": "machines",
+              "types": [
+                "indicator"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            },
+            {
+              "slot": "machines",
+              "types": [
+                "label"
+              ],
+              "count": 2,
+              "w": 6,
+              "h": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": {
+        "en": "Production",
+        "de": "Produktion"
+      },
+      "icon": "chart",
+      "cards": [
+        {
+          "w": 12,
+          "title": {
+            "en": "Production",
+            "de": "Produktion"
+          },
+          "icon": "chart",
+          "color": "green",
+          "widgets": [
+            {
+              "slot": "production",
+              "types": [
+                "chart"
+              ],
+              "count": 12,
+              "display": "line",
+              "w": 6,
+              "h": 6
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

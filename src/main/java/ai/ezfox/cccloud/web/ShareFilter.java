@@ -1,6 +1,7 @@
 package ai.ezfox.cccloud.web;
 
 import ai.ezfox.cccloud.access.AccessStore;
+import ai.ezfox.cccloud.layout.LayoutValidator;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -44,11 +45,13 @@ public final class ShareFilter {
     /**
      * What a share shows: the shared card keys and the widgets that were moved into another (existing) card.
      *
-     * @param moved widget key ({@code <uplinkId>/<widgetId>}) → the card it sits in now
+     * @param moved  widget key ({@code <uplinkId>/<widgetId>}) → the card it sits in now
+     * @param views  the views ({@code v:<id>}) a viewer gets: they sit in a shared card
+     * @param viewed the widgets behind those views, visible even though their own card is not shared
      */
-    public record Scope(Set<String> cards, Map<String, String> moved, Set<String> pages) {
+    public record Scope(Set<String> cards, Map<String, String> moved, Set<String> pages, Set<String> views, Set<String> viewed) {
         public Scope(Set<String> cards, Map<String, String> moved) {
-            this(cards, moved, Set.of());
+            this(cards, moved, Set.of(), Set.of(), Set.of());
         }
 
         public static Scope of(Set<String> cards) {
@@ -64,12 +67,14 @@ public final class ShareFilter {
 
     public static Scope scope(Collection<JsonObject> uplinks, @Nullable JsonObject layout, AccessStore.Share share) {
         var cards = cardKeys(uplinks, layout, share);
-        if (layout == null || !(layout.get("widgets") instanceof JsonObject widgetPatches)) return new Scope(cards, Map.of(), Set.copyOf(share.pages()));
+        if (layout == null || !(layout.get("widgets") instanceof JsonObject widgetPatches)) return new Scope(cards, Map.of(), Set.copyOf(share.pages()), Set.of(), Set.of());
         var existing = new HashSet<String>();
+        var restricted = new HashSet<String>();
         for (var uplink : uplinks) {
             String uplinkId = str(uplink.get("uplinkId"));
             if (uplinkId == null) continue;
             existing.add(uplinkId);
+            if (isRestricted(uplink)) restricted.add(uplinkId);
             if (uplink.get("widgets") instanceof JsonArray widgets) {
                 for (var e : widgets) if (e instanceof JsonObject w) existing.add(cardKeyOf(uplinkId, w));
             }
@@ -78,11 +83,34 @@ public final class ShareFilter {
             for (var key : cardPatches.keySet()) if (key.startsWith(CUSTOM_PREFIX)) existing.add(key);
         }
         var moved = new HashMap<String, String>();
+        var views = new HashSet<String>();
+        var viewed = new HashSet<String>();
         for (var entry : widgetPatches.entrySet()) {
-            String card = entry.getValue() instanceof JsonObject patch ? str(patch.get("card")) : null;
+            if (!(entry.getValue() instanceof JsonObject patch)) continue;
+            String card = str(patch.get("card"));
             if (card != null && existing.contains(card)) moved.put(entry.getKey(), card);
+            if (viewShared(entry.getKey(), patch, cards, restricted, share.hideNumbers())) {
+                views.add(entry.getKey());
+                viewed.add(str(patch.get("src")));
+            }
         }
-        return new Scope(cards, moved, Set.copyOf(share.pages()));
+        return new Scope(cards, moved, Set.copyOf(share.pages()), views, viewed);
+    }
+
+    /**
+     * A view shows a widget in a card of its own choice, so sharing that card shares the view. Restricted sections stay
+     * out, and so does what the share hides: a view must not turn a gauge into an exact number.
+     */
+    private static boolean viewShared(String key, JsonObject patch, Set<String> cards, Set<String> restricted, boolean hideNumbers) {
+        if (!key.startsWith(LayoutValidator.VIEW_PREFIX)) return false;
+        String card = str(patch.get("card"));
+        String src = str(patch.get("src"));
+        String as = str(patch.get("as"));
+        if (card == null || src == null || as == null || !cards.contains(card)) return false;
+        if (patch.get("hidden") != null && patch.get("hidden").isJsonPrimitive() && patch.get("hidden").getAsBoolean()) return false;
+        if (ALWAYS_HIDDEN.contains(as) || (hideNumbers && NUMBERS.contains(as))) return false;
+        int slash = src.indexOf('/');
+        return slash > 0 && !restricted.contains(src.substring(0, slash));
     }
 
     /** Every card key the share includes: its explicit cards plus all cards placed on its pages (custom cards too). */
@@ -170,13 +198,24 @@ public final class ShareFilter {
         for (var uplink : uplinks) {
             String uplinkId = str(uplink.get("uplinkId"));
             if (uplinkId == null || !(uplink.get("widgets") instanceof JsonArray widgets)) continue;
-            for (var w : widgets) if (w instanceof JsonObject wo && str(wo.get("id")) != null) homes.put(uplinkId + "/" + str(wo.get("id")), scope.cardOf(uplinkId, wo));
+            for (var w : widgets) {
+                if (!(w instanceof JsonObject wo) || str(wo.get("id")) == null) continue;
+                String key = uplinkId + "/" + str(wo.get("id"));
+                String home = scope.cardOf(uplinkId, wo);
+                homes.put(key, home);
+                // only here for a view: without this its own card would turn up on the viewer's first page
+                if (scope.viewed().contains(key) && !scope.cards().contains(home) && !cards.has(home)) {
+                    var hidden = new JsonObject();
+                    hidden.addProperty("hidden", true);
+                    cards.add(home, hidden);
+                }
+            }
         }
         var widgets = new JsonObject();
         if (layout.get("widgets") instanceof JsonObject w) {
             for (var e : w.entrySet()) {
                 String card = homes.get(e.getKey());
-                if (card != null && scope.cards().contains(card)) widgets.add(e.getKey(), e.getValue().deepCopy());
+                if (scope.views().contains(e.getKey()) || (card != null && scope.cards().contains(card))) widgets.add(e.getKey(), e.getValue().deepCopy());
             }
         }
         var pages = new JsonArray();
@@ -192,10 +231,14 @@ public final class ShareFilter {
         return out;
     }
 
+    private static boolean isRestricted(JsonObject uplink) {
+        return uplink.get("restricted") != null && uplink.get("restricted").isJsonPrimitive() && uplink.get("restricted").getAsBoolean();
+    }
+
     public static boolean widgetVisible(String uplinkId, JsonObject widget, Scope scope, boolean hideNumbers) {
         String type = str(widget.get("type"));
         if (type == null || ALWAYS_HIDDEN.contains(type) || (hideNumbers && NUMBERS.contains(type))) return false;
-        return scope.cards().contains(scope.cardOf(uplinkId, widget));
+        return scope.cards().contains(scope.cardOf(uplinkId, widget)) || scope.viewed().contains(uplinkId + "/" + str(widget.get("id")));
     }
 
     /** A copy of the uplink with only the visible widgets, or null if none is visible. */
@@ -203,7 +246,7 @@ public final class ShareFilter {
         String uplinkId = str(uplink.get("uplinkId"));
         if (uplinkId == null || !(uplink.get("widgets") instanceof JsonArray widgets)) return null;
         // v0.5 restricted sections (server, claims, backups) are never shared.
-        if (uplink.get("restricted") != null && uplink.get("restricted").isJsonPrimitive() && uplink.get("restricted").getAsBoolean()) return null;
+        if (isRestricted(uplink)) return null;
         var visible = new JsonArray();
         for (var e : widgets) {
             if (e instanceof JsonObject w && widgetVisible(uplinkId, w, keys, hideNumbers)) visible.add(w.deepCopy());

@@ -106,6 +106,8 @@ It is reviewed before every release.
   - no restricted (server/claims/backups) sections;
   - with `hideNumbers`, no label, text or number widgets.
 
+**Views in a share (2026-11-01).** A view in a shared card is shared with the widget behind it, because the owner chose that card. Hidden views, views of restricted sections and views that would show an exact number under "hide exact numbers" stay out. Only the viewed widget reaches the viewer, not its neighbours.
+
 ### Web hardening
 - The server is LAN-only by default (`webAllowInternet=false`); changing it applies live (see "Config reload without a restart"). IP bans are honoured. `X-Forwarded-For` and `CF-Connecting-IP` are only trusted from configured proxies.
 - Deny by default:
@@ -345,6 +347,9 @@ the Public Suffix List; cookies are dropped instead.
   - file paths are canonicalised inside the computer root;
   - `..`, absolute paths, symlinks, `rom/` and disk mounts are rejected;
   - size and quota limits apply.
+
+### Dashboard presets (2026-11-01)
+A preset is data for the layout editor and can reach nothing the editor could not. `parsePreset` is an allow-list with fixed limits, so a code from a stranger cannot carry Lua, HTML or other keys, and it is rendered as text. Applying goes through `layout.edit` and `LayoutValidator` like any save. A preset cannot set a label, confirmation or PIN on an action widget, and only a slot that names a restricted section can use one, for people who see that section anyway. Long codes are unsigned and shown as such. Store presets are loaded by the server (`GET /api/mainframes/<id>/presets`, `layout.edit`) through `StoreVerifier` and the SSRF-safe client, checked against the signed index by SHA-256, and capped at 64 KiB. A preset never installs a script.
 
 ### Scenes, schedules and production statistics (v0.10)
 - **No escalation through scenes.** A scene press needs `act.buttons`; every step is checked again **when it runs**, with the live rights of the player behind the pressing device (read-only devices capped as always): widget steps need the widget's own action permission, redstone `act.redstone`, crafting `storage.craft`, the dashboard switch `power.toggle`. A refused step fails with `not_allowed` and the others still run. Saving a scene needs `rules.edit` and every permission its steps need, so nobody can store a scene that does more than they could do by hand.
