@@ -419,7 +419,7 @@ export async function createMockServer(opts: MockOptions = {}) {
   };
   const LAN_ONLY = {
     error: "internet_access_disabled",
-    message: "This server only allows dashboard access from the local network. An admin can set webAllowInternet=true in the cccloud server config.",
+    message: "This CC: Cloud dashboard only accepts connections from the local network. Server admins can allow internet access in game with /cccloud internet, or with internetAccess in serverconfig/cccloud-server.toml (docs: Security & hosting).",
   };
   const connsByIp = new Map<string, number>();
   let connCount = 0;

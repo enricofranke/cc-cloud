@@ -6,7 +6,7 @@ export const en: Record<string, string> = {
   // ---------------------------------------------------------------- start
   start: `# Getting started
 
-CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
+CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
 
 > **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
 >
@@ -42,8 +42,8 @@ With \`cccloud-<version>.jar\` they come by themselves: on the first start, befo
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
-| **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 48 blocks to the nearest mainframe or relay, same dimension. |
+| **Advanced Cloud Uplink** | Same, but with a range of 128 blocks. To cross dimensions, use [Ender Relays](/docs/network#ranges). |
 | **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
 | **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](/docs/redstone) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
@@ -141,6 +141,14 @@ If an uplink shows no card and the screen says *"This side exposes nothing"*, th
 
 > **Tip:** Link your player once with \`/cccloud link\` and the browser sees every mainframe you have a role on – see [accounts and roles](/docs/accounts). Install the dashboard like an app: "Install app" in desktop Chrome/Edge, "Add to Home Screen" on tablets and phones.
 
+## Open it from anywhere {#anywhere}
+
+Out of the box the dashboard only answers on your own network. The easiest way to reach it from mobile data or a friend's place is **CC: Cloud Connect**: a free, optional relay that needs no port forwarding and no domain. Run this once in game (server owner, op level 4, or the server console):
+
+${code("", C.INTERNET_CONNECT)}
+
+Your dashboard is then at **https://mybase.cccloud.dev**. Every new browser still has to be paired and allowed in game. Limits, privacy and the other ways to open it: [Internet access](/docs/security#internet).
+
 What you see next: [the dashboard](/docs/dashboard). Want your own widgets? Start with [CC basics](/docs/cc-basics) and the [Lua reference](/docs/lua).
 `,
 
@@ -227,13 +235,14 @@ Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one ca
 
 ## Pages and the layout editor {#edit-mode}
 
-Programs can put widgets on **pages** (tabs: on top in wide windows, at the bottom on narrow screens) and in **groups**. Admins see a **pencil**: it turns the dashboard itself into the editor – you arrange the real, live cards.
+Programs can put widgets on **pages** (tabs: on top in wide windows, at the bottom on narrow screens) and in **groups**. Everyone with the **Edit the layout** permission sees a **pencil**: it turns the dashboard itself into the editor – you arrange the real, live cards.
 
 - **Move:** drag a card by its header, or a widget anywhere. The others make room and glide aside; a dashed outline shows where it lands. Drop a widget on another card, on empty space (it gets its **own new card**) or on a page tab (hover a moment to open that page).
 - **Resize:** drag the right edge, the bottom edge or the corner – the badge shows the size (cards use 12 columns of the page, widgets 12 columns of their card).
 - **Select several widgets** with Shift-click and drag one of them to move them together.
-- **Settings** (⚙ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style; a [Peripheral card](#widgets) also its values and switch.
-- **Hide** with ×. **+ Add** lists everything hidden (drag it back or press Show) and shows every widget type live with the Lua line that creates it.
+- **Settings** (✎ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style; a [Peripheral card](#widgets) also its values and switch.
+- **Toolbox:** opens on the side (a sheet on phones; press **A**). **Cards** has an empty card and ready-made templates, **Widgets** has every widget type: drag one onto a card or free space, then pick its data. **Hidden** lists what you hid.
+- **Hide** with ×, or drag it onto the toolbox. To bring it back, click it under **Hidden** or drag it out.
 - **Touch:** press and hold to pick up (a short vibration), then drag – a normal swipe still scrolls. **Keyboard:** Tab to a card or widget, Space picks it up, arrow keys move, Shift + arrow keys resize, Page Up/Down move a widget to the previous/next card, Space drops, Esc cancels. Press **?** for all shortcuts.
 - **Undo/redo** (Ctrl/⌘ + Z, Ctrl/⌘ + Shift + Z), **Reset** to the scripts' default, and **Save** (Ctrl/⌘ + S). Leaving with unsaved changes asks first.
 
@@ -643,7 +652,7 @@ Right-click an uplink, bridge or relay to see what it is connected to, the card 
 | Cloud Mainframe | 96 | 96 |
 | Cloud Relay | 96 | 48 |
 | Advanced Cloud Relay | 256 | 128 |
-| Ender Relay | any distance and dimension to other Ender Relays | 48 |
+| Ender Relay | any distance and dimension to other Ender Relays | 128 |
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
@@ -738,7 +747,7 @@ From Lua, \`cloud_mainframe.getNetwork()\` returns the same nodes, links and rou
 `,
   upgrades: `# Upgrades, tablet and display
 
-New in v0.7: mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
+Mainframe upgrades for big bases, the **Cloud Tablet** for the dashboard in-game, and the **Cloud Display** for cards on a wall.
 
 ## Mainframe upgrades {#upgrades}
 
@@ -987,7 +996,7 @@ The bridge uses the network's own power, no FE for the mainframe.
 
 ## Crafting from the dashboard {#crafting}
 
-Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit \`maxCraftAmount\`, default 4096). Only devices with control rights can craft.
+Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit \`maxCraftAmount\`, default 100000). Only devices with control rights can craft.
 
 **Not enough items:** the dialog lists what is missing with have / need and, when the mod can tell, how many are possible now – **Craft 37** makes just those. **Order anyway** keeps the whole amount: it waits as *Waiting for items* and starts by itself once the items are there. Orders survive a restart, up to 8 per bridge, and you can cancel them. A Lua \`craft()\` or a rule waits the same way; \`getCraftingJobs()\` shows the \`missing\` list.
 

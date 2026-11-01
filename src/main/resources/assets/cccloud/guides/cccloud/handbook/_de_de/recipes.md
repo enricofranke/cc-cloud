@@ -7,7 +7,7 @@ navigation:
 
 # Alle Rezepte
 
-Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie).
+Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien des Mods selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie).
 
 Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und das Handbuch im Spiel zeigen immer die Rezepte der Welt, in der du spielst; die Doku im Dashboard deines Servers auch – sie markiert, was der Server geändert (**Von diesem Server/Modpack geändert**) oder entfernt hat (**Auf diesem Server nicht herstellbar**).
 

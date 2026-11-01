@@ -7,7 +7,7 @@ navigation:
 
 # Unterstützte Mods
 
-CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn die Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
+CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn der Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
 
 Daneben funktionieren allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, die **Tank**-Karte für einfache Flüssigkeitstanks und die **Peripherie-Karte** für jeden anderen Block, mit dem CC: Tweaked sprechen kann – du wählst bis zu 6 seiner Werte und einen optionalen Ein/Aus-Schalter in den Karteneinstellungen ([so geht's](dashboard.md)). Was CC: Tweaked als Peripheriegerät sieht, erscheint also auch. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag `#cccloud:no_generic_card` ausschließen. AE2 und Refined Storage haben eigene [Bridges](bridges.md).
 

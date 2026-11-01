@@ -30,7 +30,7 @@ The bridge uses the network's own power, no FE for the mainframe.
 
 ## Crafting from the dashboard
 
-Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit `maxCraftAmount`, default 4096). Only devices with control rights can craft.
+Tap a craftable item → pick **1 / 16 / 64 / custom** → **Craft**. The job appears under crafting jobs with a progress bar. Errors are explained: no pattern, all CPUs busy, amount too large (limit `maxCraftAmount`, default 100000). Only devices with control rights can craft.
 
 **Not enough items:** the dialog lists what is missing with have / need and, when the mod can tell, how many are possible now – **Craft 37** makes just those. **Order anyway** keeps the whole amount: it waits as *Waiting for items* and starts by itself once the items are there. Orders survive a restart, up to 8 per bridge, and you can cancel them. A Lua `craft()` or a rule waits the same way; `getCraftingJobs()` shows the `missing` list.
 

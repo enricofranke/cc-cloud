@@ -29,7 +29,7 @@ item_ids:
 
 # Upgrades, Tablet und Display
 
-Neu in v0.7: Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
+Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
 
 ## Mainframe-Upgrades
 

@@ -26,7 +26,7 @@ Ein Rechtsklick auf Uplink, Bridge oder Relay zeigt, womit der Block verbunden i
 | Cloud Mainframe | 96 | 96 |
 | Cloud Relay | 96 | 48 |
 | Advanced Cloud Relay | 256 | 128 |
-| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 48 |
+| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 128 |
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |

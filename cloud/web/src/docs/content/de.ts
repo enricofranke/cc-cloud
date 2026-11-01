@@ -6,7 +6,7 @@ export const de: Record<string, string> = {
   // ---------------------------------------------------------------- start
   start: `# Erste Schritte
 
-CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
+CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Das Dashboard läuft im Mod auf deinem eigenen Minecraft-Server, ganz ohne Konto. Standardmäßig bleibt es in deinem eigenen Netzwerk; von überall erreichst du es mit dem kostenlosen, optionalen [CC: Cloud Connect](#anywhere).
 
 > **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
 >
@@ -42,8 +42,8 @@ Mit \`cccloud-<version>.jar\` kommen sie von selbst: Beim ersten Start, bevor FT
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
-| **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
+| **Advanced Cloud Uplink** | Genauso, aber mit 128 Blöcken Reichweite. Über Dimensionen hinweg verbinden [Ender Relays](/docs/network#ranges). |
 | **Cloud-Sonde** | Liest **eine** Maschine bis zu 8 Blöcke entfernt, als säße ein Uplink daran – für eingebaute Maschinen oder wenn jede Seite mit Rohren und Kabeln belegt ist. Teuer; zählt wie zwei Geräte. Siehe *Maschinen ohne freie Seite* weiter unten. |
 | **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
 | **Cloud-Schalter / -Taster / -Lampe / -Sensor** | Kleine [Redstone-Geräte](/docs/redstone) ohne Computer: verbinden und Lampen, Türen und Maschinen im Dashboard schalten. Geräte mit derselben Gruppe teilen sich eine Karte. |
@@ -141,6 +141,14 @@ Zeigt ein Uplink keine Karte und sagt der Bildschirm *„Diese Seite gibt nichts
 
 > **Tipp:** Verknüpfe deinen Spieler einmal mit \`/cccloud link\`, dann sieht der Browser jeden Mainframe, auf dem du eine Rolle hast – siehe [Konten und Rollen](/docs/accounts). Als App installieren: „App installieren“ in Chrome/Edge am PC, „Zum Home-Bildschirm“ auf Tablet und Handy.
 
+## Von überall öffnen {#anywhere}
+
+Ab Werk antwortet das Dashboard nur in deinem eigenen Netzwerk. Am einfachsten erreichst du es über mobile Daten oder bei Freunden mit **CC: Cloud Connect**: einem kostenlosen, optionalen Relay ohne Portfreigabe und ohne Domain. Führe das einmal im Spiel aus (Serverbesitzer, OP-Level 4 oder die Serverkonsole):
+
+${code("", C.INTERNET_CONNECT)}
+
+Dein Dashboard liegt dann unter **https://mybase.cccloud.dev**. Jeder neue Browser muss weiterhin gekoppelt und im Spiel erlaubt werden. Limits, Datenschutz und die anderen Wege: [Zugriff aus dem Internet](/docs/security#internet).
+
 Wie es weitergeht: [das Dashboard](/docs/dashboard). Eigene Widgets? Starte mit den [CC-Grundlagen](/docs/cc-basics) und der [Lua-Referenz](/docs/lua).
 `,
 
@@ -227,13 +235,14 @@ Jeder Uplink wird zu einer **Karte**; [Redstone-Geräte](/docs/redstone) teilen 
 
 ## Seiten und Layout-Editor {#edit-mode}
 
-Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Admins sehen einen **Stift**: Damit wird das Dashboard selbst zum Editor – du ordnest die echten, laufenden Karten an.
+Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten auf schmalen Bildschirmen) und in **Gruppen** legen. Wer das Recht **Edit the layout** hat, sieht einen **Stift**: Damit wird das Dashboard selbst zum Editor – du ordnest die echten, laufenden Karten an.
 
 - **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
 - **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
 - **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
-- **Einstellungen** (⚙ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel; eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
-- **Ausblenden** mit ×. **+ Add** listet alles Ausgeblendete (zurückziehen oder Show drücken) und zeigt jeden Widget-Typ live mit der Lua-Zeile, die ihn erzeugt.
+- **Einstellungen** (✎ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel; eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
+- **Toolbox:** öffnet sich an der Seite (auf Handys als Sheet; Taste **A**). **Cards** enthält eine leere Karte und fertige Vorlagen, **Widgets** jeden Widget-Typ: eines auf eine Karte oder freie Fläche ziehen und dann seine Daten wählen. **Hidden** listet alles Ausgeblendete.
+- **Ausblenden** mit × oder per Ziehen auf die Toolbox. Zurück holst du es mit einem Klick unter **Hidden** oder per Herausziehen.
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
 - **Rückgängig/Wiederholen** (Strg/⌘ + Z, Strg/⌘ + Shift + Z), **Reset** auf die Vorgabe der Skripte und **Save** (Strg/⌘ + S). Wer mit ungespeicherten Änderungen geht, wird vorher gefragt.
 
@@ -643,7 +652,7 @@ Ein Rechtsklick auf Uplink, Bridge oder Relay zeigt, womit der Block verbunden i
 | Cloud Mainframe | 96 | 96 |
 | Cloud Relay | 96 | 48 |
 | Advanced Cloud Relay | 256 | 128 |
-| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 48 |
+| Ender Relay | beliebig weit und dimensionsübergreifend zu anderen Ender Relays | 128 |
 | Cloud Uplink | – | 48 |
 | Advanced Cloud Uplink | – | 128 |
 | ME / RS Cloud Bridge | – | 48 |
@@ -738,7 +747,7 @@ Aus Lua liefert \`cloud_mainframe.getNetwork()\` dieselben Knoten, Verbindungen 
 `,
   upgrades: `# Upgrades, Tablet und Display
 
-Neu in v0.7: Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
+Mainframe-Upgrades für große Basen, das **Cloud Tablet** fürs Dashboard im Spiel und das **Cloud Display** für Karten an der Wand.
 
 ## Mainframe-Upgrades {#upgrades}
 
@@ -897,7 +906,7 @@ Wurde die Datei seit dem Öffnen auf dem Computer geändert, fragt das Speichern
 `,
   mods: `# Unterstützte Mods
 
-CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn die Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
+CC: Cloud zeigt Maschinen vieler Mods als fertige Karten – ganz ohne Lua. Setz einen **Cloud Uplink** auf die Maschine (oder daneben), verbinde ihn mit der Link Card, und ihre Karte erscheint im Dashboard. Alles ist optional: Eine Karte gibt es nur, wenn der Mod installiert ist. Geprüft wurde alles mit **All the Mods 11** (MC 26.1.2).
 
 Daneben funktionieren allgemeine Karten mit fast jeder Mod: die **Energy**-Karte für jeden Block, der FE speichert, die **Tank**-Karte für einfache Flüssigkeitstanks und die **Peripherie-Karte** für jeden anderen Block, mit dem CC: Tweaked sprechen kann – du wählst bis zu 6 seiner Werte und einen optionalen Ein/Aus-Schalter in den Karteneinstellungen ([so geht's](/docs/dashboard#widgets)). Was CC: Tweaked als Peripheriegerät sieht, erscheint also auch. Pack-Ersteller können einzelne Blöcke mit dem Block-Tag \`#cccloud:no_generic_card\` ausschließen. AE2 und Refined Storage haben eigene [Bridges](/docs/bridges).
 
@@ -913,7 +922,7 @@ Diese Seite wird aus dem Kompatibilitäts-Verzeichnis (docs/COMPAT.md im Quellco
 `,
   recipes: `# Alle Rezepte
 
-Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien der Mod selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie).
+Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien des Mods selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie).
 
 Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und das Handbuch im Spiel zeigen immer die Rezepte der Welt, in der du spielst; die Doku im Dashboard deines Servers auch – sie markiert, was der Server geändert (**Von diesem Server/Modpack geändert**) oder entfernt hat (**Auf diesem Server nicht herstellbar**).
 
@@ -989,7 +998,7 @@ Die Bridge nutzt den Strom des Netzwerks, kein FE vom Mainframe.
 
 ## Craften im Dashboard {#crafting}
 
-Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 4096). Craften dürfen nur Geräte mit Steuerrechten.
+Ein craftbares Item antippen → **1 / 16 / 64 / eigene Menge** wählen → **Craft**. Der Auftrag erscheint unter den Crafting-Aufträgen mit Fortschrittsbalken. Fehler werden erklärt: kein Muster, alle CPUs belegt, Menge zu groß (Grenze \`maxCraftAmount\`, Standard 100000). Craften dürfen nur Geräte mit Steuerrechten.
 
 **Nicht genug Items:** Der Dialog zeigt, was fehlt (vorhanden / nötig) und, wenn der Mod es sagen kann, wie viele jetzt möglich sind – **Craft 37** macht genau diese. **Order anyway** behält die ganze Menge: Der Auftrag wartet als *Waiting for items* und startet von selbst, sobald die Items da sind. Bestellungen überleben einen Neustart, bis zu 8 pro Bridge, und lassen sich abbrechen. Ein Lua-\`craft()\` oder eine Regel wartet genauso; \`getCraftingJobs()\` zeigt die Liste \`missing\`.
 
@@ -1242,7 +1251,7 @@ Dein Dashboard ist dann unter **https://mybase.cccloud.dev** erreichbar – HTTP
 - **Es funktioniert einfach:** Jeder neue Browser braucht weiter **[Erlauben]** im Spiel, danach verhalten sich die Steuerelemente wie im LAN; PIN-geschützte fragen weiter nach ihrer PIN. Browser über Connect zählen als Internet-Adressen: Falsche Kopplungscodes und Anmeldungen sperren eine Adresse eine Weile.
 - **Strenger, wenn du willst:** \`internetRequirePin = true\` in der Server-Config lässt jede Steuer-Aktion aus dem Internet nach der Mainframe-PIN fragen (einmal, dann 10 Minuten pro Browser); Mainframes ohne PIN sind von außen dann nur ansehbar (\`/cccloud pin set <Ziffern>\`).
 - **Wo du es siehst:** Der Mainframe-Bildschirm zeigt die Adresse zuerst und ob Connect online ist; Kopplungslinks im Chat nutzen sie, damit sie auch auf dem Handy mit mobilen Daten funktionieren.
-- **Der Name gehört dir:** Die Mod erzeugt einen Schlüssel in \`<Serverordner>/cccloud/connect/\` und weist ihn beim Relay nach; niemand sonst kann den Namen übernehmen. Server umziehen? Kopiere den Ordner mit. Ein Name, der 90 Tage nicht benutzt wird, wird frei; \`/cccloud internet connect release\` gibt ihn sofort frei und schaltet Connect aus.
+- **Der Name gehört dir:** Der Mod erzeugt einen Schlüssel in \`<Serverordner>/cccloud/connect/\` und weist ihn beim Relay nach; niemand sonst kann den Namen übernehmen. Server umziehen? Kopiere den Ordner mit. Ein Name, der 90 Tage nicht benutzt wird, wird frei; \`/cccloud internet connect release\` gibt ihn sofort frei und schaltet Connect aus.
 - **Grenzen:** 20 gleichzeitig offene Dashboard-Tabs und 2 GB Datenverkehr pro Tag und Server. Die öffentliche API funktioniert über Connect (nicht mit \`internetRequirePin\`: ein Schlüssel kann keine PIN mitschicken); Live-Event-Streams (\`/events\`) laufen nicht darüber.
 - **Wer was sehen kann:** HTTPS endet bei Cloudflare, wo der Relay läuft. Der Relay reicht deinen Dashboard-Verkehr weiter und könnte ihn technisch mitlesen; er wird vom Autor von CC: Cloud betrieben, speichert nichts und führt keine Anfrage-Logs. Die Dashboard-Seiten kommen immer vom Relay (die offiziellen Dateien deiner Mod-Version), nie von einem Minecraft-Server – so kann niemand eine gefälschte Anmeldeseite unter einer cccloud.dev-Adresse ablegen. Missbrauch meldest du über den CC: Cloud-Discord oder GitHub; Namen, die für Phishing genutzt werden, werden abgeschaltet. Wenn du dem Relay nicht vertrauen willst, nutze \`/cccloud internet off\` und einen der [erweiterten](#advanced) Wege.
 
@@ -1297,7 +1306,7 @@ Das Dashboard zeigt echte Item-Icons. Die besten kommen aus dem Spiel selbst: Je
 Damit ein frischer Server schon Icons hat, bevor jemand beitritt, zeichnet er die einfachen direkt nach dem Start selbst, auf einem einzigen Hintergrund-Thread mit niedriger Priorität:
 
 - **Zeichnet der Server:** flache Items (Barren, Werkzeuge, die meisten Mod-Items) und einfache Blöcke (Stein, Erze, Stämme, Speicherblöcke, Maschinen mit Würfelmodell).
-- **Bleibt für die Spieler:** Truhen, Schilde, Köpfe und andere Spezialmodelle, Stufen, Treppen, Zäune und andere Formen, 3D-Maschinenmodelle. Sie zeigen eine Buchstaben-Kachel, bis ein Spieler mit der Mod beitritt.
+- **Bleibt für die Spieler:** Truhen, Schilde, Köpfe und andere Spezialmodelle, Stufen, Treppen, Zäune und andere Formen, 3D-Maschinenmodelle. Sie zeigen eine Buchstaben-Kachel, bis ein Spieler mit dem Mod beitritt.
 
 Die Renderings der Spieler ersetzen die des Servers später; sie sehen genau wie im Inventar aus. In All the Mods 11 zeichnet der Server etwa 27.000 von 38.500 Items selbst (29.000 mit Vanilla-Texturen), mit etwa 10 Sekunden CPU-Zeit auf einem Kern, nie auf dem Haupt-Thread des Servers; die Ticks merken davon nichts.
 
@@ -1308,7 +1317,7 @@ ${code("toml", C.TOML_ICONS)}
 - \`downloadVanillaAssets = true\` lädt einmal das offizielle Minecraft-Client-Jar genau deiner Serverversion von Mojangs Servern (etwa 40 MB, gegen Mojangs SHA-1 geprüft, abgelegt in \`<server>/cccloud/cache\`). Es wird nur lokal für Texturen gelesen; nichts davon wird weitergegeben – Browser bekommen nur die 32×32-Icons. Mit dem Einschalten stimmst du Mojangs Bedingungen zu (der [Minecraft-EULA](https://www.minecraft.net/eula)).
 - \`vanillaAssetsJar\` zeigt auf ein Client-Jar, das du schon hast, z. B. \`.minecraft/versions/26.1.2/26.1.2.jar\`.
 
-Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit der Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt \`[icons]\` von \`<world>/serverconfig/cccloud-server.toml\` und gelten im laufenden Betrieb: Nach einer Änderung sucht der Server erneut nach fehlenden Icons (Vanilla-Items werden also gleich gezeichnet, nachdem du den Download erlaubt hast). Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
+Ohne beides bekommen Vanilla-Items ihre Icons, sobald der erste Spieler mit dem Mod beitritt; das Server-Log sagt das einmal beim Start. Die Einstellungen stehen im Abschnitt \`[icons]\` von \`<world>/serverconfig/cccloud-server.toml\` und gelten im laufenden Betrieb: Nach einer Änderung sucht der Server erneut nach fehlenden Icons (Vanilla-Items werden also gleich gezeichnet, nachdem du den Download erlaubt hast). Im Einzelspieler und im LAN rendert das Spiel des Hosts alle Icons, dort bleibt der Server-Renderer aus.
 
 \`/cccloud icons status\` zeigt, wie viele Icons von Spielern kommen, wie viele vom Server und wie viele fehlen, und wie weit der Server-Renderer ist. \`/cccloud icons rebuild\` zeichnet alles neu, \`/cccloud icons clear\` löscht alle Icons.
 

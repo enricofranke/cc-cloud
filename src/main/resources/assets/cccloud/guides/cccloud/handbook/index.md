@@ -16,7 +16,7 @@ item_ids:
 
 # Getting started
 
-CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The Minecraft server hosts the dashboard itself – no external service, no sign-up.
+CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
 
 > **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
 >
@@ -52,8 +52,8 @@ With `cccloud-<version>.jar` they come by themselves: on the first start, before
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 128 blocks, same dimension. |
-| **Advanced Cloud Uplink** | Same, but unlimited range and works across dimensions. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 48 blocks to the nearest mainframe or relay, same dimension. |
+| **Advanced Cloud Uplink** | Same, but with a range of 128 blocks. To cross dimensions, use [Ender Relays](network.md). |
 | **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
 | **Cloud Switch / Button / Lamp / Sensor** | Small [redstone devices](redstone.md) without a computer: link them and switch lamps, doors and machines from the dashboard. Devices with the same group share one card. |
@@ -150,6 +150,16 @@ If an uplink shows no card and the screen says *"This side exposes nothing"*, th
 4. In Minecraft, click **[Allow]** in the chat (or in the mainframe screen). The browser continues by itself.
 
 > **Tip:** Link your player once with `/cccloud link` and the browser sees every mainframe you have a role on – see [accounts and roles](accounts.md). Install the dashboard like an app: "Install app" in desktop Chrome/Edge, "Add to Home Screen" on tablets and phones.
+
+## Open it from anywhere
+
+Out of the box the dashboard only answers on your own network. The easiest way to reach it from mobile data or a friend's place is **CC: Cloud Connect**: a free, optional relay that needs no port forwarding and no domain. Run this once in game (server owner, op level 4, or the server console):
+
+```
+/cccloud internet connect mybase
+```
+
+Your dashboard is then at **https://mybase.cccloud.dev**. Every new browser still has to be paired and allowed in game. Limits, privacy and the other ways to open it: [Internet access](security.md).
 
 What you see next: [the dashboard](dashboard.md). Want your own widgets? Start with [CC basics](cc-basics.md) and the [Lua reference](lua.md).
 

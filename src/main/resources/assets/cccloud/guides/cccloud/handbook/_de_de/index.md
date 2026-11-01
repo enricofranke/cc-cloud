@@ -16,7 +16,7 @@ item_ids:
 
 # Erste Schritte
 
-CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Der Minecraft-Server stellt das Dashboard selbst bereit – kein externer Dienst, keine Registrierung.
+CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Das Dashboard läuft im Mod auf deinem eigenen Minecraft-Server, ganz ohne Konto. Standardmäßig bleibt es in deinem eigenen Netzwerk; von überall erreichst du es mit dem kostenlosen, optionalen [CC: Cloud Connect](#anywhere).
 
 > **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
 >
@@ -52,8 +52,8 @@ Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB 
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 128 Blöcke, gleiche Dimension. |
-| **Advanced Cloud Uplink** | Genauso, aber mit unbegrenzter Reichweite und dimensionsübergreifend. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
+| **Advanced Cloud Uplink** | Genauso, aber mit 128 Blöcken Reichweite. Über Dimensionen hinweg verbinden [Ender Relays](network.md). |
 | **Cloud-Sonde** | Liest **eine** Maschine bis zu 8 Blöcke entfernt, als säße ein Uplink daran – für eingebaute Maschinen oder wenn jede Seite mit Rohren und Kabeln belegt ist. Teuer; zählt wie zwei Geräte. Siehe *Maschinen ohne freie Seite* weiter unten. |
 | **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
 | **Cloud-Schalter / -Taster / -Lampe / -Sensor** | Kleine [Redstone-Geräte](redstone.md) ohne Computer: verbinden und Lampen, Türen und Maschinen im Dashboard schalten. Geräte mit derselben Gruppe teilen sich eine Karte. |
@@ -150,6 +150,16 @@ Zeigt ein Uplink keine Karte und sagt der Bildschirm *„Diese Seite gibt nichts
 4. Klicke in Minecraft im Chat (oder im Mainframe-Bildschirm) auf **[Allow]**. Der Browser macht automatisch weiter.
 
 > **Tipp:** Verknüpfe deinen Spieler einmal mit `/cccloud link`, dann sieht der Browser jeden Mainframe, auf dem du eine Rolle hast – siehe [Konten und Rollen](accounts.md). Als App installieren: „App installieren“ in Chrome/Edge am PC, „Zum Home-Bildschirm“ auf Tablet und Handy.
+
+## Von überall öffnen
+
+Ab Werk antwortet das Dashboard nur in deinem eigenen Netzwerk. Am einfachsten erreichst du es über mobile Daten oder bei Freunden mit **CC: Cloud Connect**: einem kostenlosen, optionalen Relay ohne Portfreigabe und ohne Domain. Führe das einmal im Spiel aus (Serverbesitzer, OP-Level 4 oder die Serverkonsole):
+
+```
+/cccloud internet connect mybase
+```
+
+Dein Dashboard liegt dann unter **https://mybase.cccloud.dev**. Jeder neue Browser muss weiterhin gekoppelt und im Spiel erlaubt werden. Limits, Datenschutz und die anderen Wege: [Zugriff aus dem Internet](security.md).
 
 Wie es weitergeht: [das Dashboard](dashboard.md). Eigene Widgets? Starte mit den [CC-Grundlagen](cc-basics.md) und der [Lua-Referenz](lua.md).
 
