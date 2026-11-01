@@ -202,6 +202,8 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
 
     @Override
     protected void buildRows() {
+        // Upgrades shows the inventory instead of a list; every other tab starts with the one-time report question
+        if (tab != (manage() ? 5 : 2)) reportsPrompt();
         if (!manage()) {
             if (tab > 2) tab = 0;
             if (tab == 1) network();
@@ -478,7 +480,6 @@ public class MainframeScreen extends CloudScreen<MainframeMenu> {
     }
 
     private void overview() {
-        reportsPrompt();
         summary();
         heading("cccloud.gui.dashboard_urls");
         var urls = view.has("urls") ? view.getAsJsonArray("urls") : new com.google.gson.JsonArray();
