@@ -77,7 +77,7 @@ public final class ReportService {
 
     private static void start(MinecraftServer srv) {
         server = srv;
-        store = new ReportStore(srv.getServerDirectory().resolve("cccloud").resolve("reports").resolve("state.json"));
+        store = new ReportStore(testTransport != null ? null : srv.getServerDirectory().resolve("cccloud").resolve("reports").resolve("state.json"));
         var newEngine = newEngine();
         engine = newEngine;
         ReportCapture.engine(newEngine);
@@ -352,9 +352,18 @@ public final class ReportService {
 
     // ---- tests --------------------------------------------------------------------------------------------------------
 
-    /** GameTests: every send goes here instead of the network. Null restores the real client. */
-    public static void transportForTest(ReportEngine.@Nullable Transport transport) {
+    /** GameTests: a fresh state in memory, and every send goes here instead of the network. */
+    public static void startForTest(MinecraftServer srv, ReportEngine.Transport transport) {
+        stop();
         testTransport = transport;
+        start(srv);
+    }
+
+    /** GameTests: back to the real state and the real client. */
+    public static void endForTest(MinecraftServer srv) {
+        stop();
+        testTransport = null;
+        start(srv);
     }
 
     /** GameTests: looks for crash files now, as a start does. */
@@ -367,13 +376,5 @@ public final class ReportService {
     public static void statsForTest() {
         ticks = STATS_TICKS - 1;
         tick();
-    }
-
-    /** GameTests: forgets the decisions of a running server. */
-    public static void resetForTest() {
-        var srv = server;
-        if (srv == null) return;
-        stop();
-        start(srv);
     }
 }

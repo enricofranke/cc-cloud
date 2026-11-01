@@ -211,6 +211,13 @@ public final class ReportCommand {
         return queued ? 1 : 0;
     }
 
+    /** GameTests: the id of the newest waiting message. */
+    public static @org.jspecify.annotations.Nullable String newestForTest() {
+        synchronized (PENDING) {
+            return PENDING.keySet().stream().reduce((a, b) -> b).orElse(null);
+        }
+    }
+
     private static int feedbackDiscard(CommandContext<CommandSourceStack> c) {
         var src = c.getSource();
         boolean found = take(src, StringArgumentType.getString(c, "id")) != null;
