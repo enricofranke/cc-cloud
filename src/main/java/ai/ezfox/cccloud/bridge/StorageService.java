@@ -123,7 +123,11 @@ public final class StorageService {
         int offset = num(args, "offset", 0), limit = Math.max(1, Math.min(StorageQueries.MAX_LIMIT, num(args, "limit", 100)));
         var all = core.listFluids(10_000);
         var rows = new JsonArray();
-        for (int i = Math.min(offset, all.size()); i < Math.min(all.size(), offset + limit); i++) rows.add(Json.fromLua(all.get(i)));
+        for (int i = Math.min(offset, all.size()); i < Math.min(all.size(), offset + limit); i++) {
+            var row = new JsonObject();
+            all.get(i).forEach((key, value) -> row.add(key, Json.fromLua(value)));
+            rows.add(row);
+        }
         var data = new JsonObject();
         data.add("rows", rows);
         data.addProperty("total", all.size());
