@@ -43,7 +43,8 @@
   --on-color: #0d1014;
 }
 
-:root[data-theme="light"] :is(.screen, .net-canvas, .search-bar, .wcell.t-gauge > .wcontent, .wcell.d-num, .hist-chart, .term-screen, .code, .codeblock, .src-code, .ex-code) {
+:root[data-theme="light"]
+  :is(.screen, .net-canvas, .search-bar, .wcell.t-gauge > .wcontent, .wcell.d-number > .wcontent, .wcell.d-big > .wcontent, .wcell.d-lamp > .wcontent, .hist-chart, .term-screen, .code, .codeblock, .src-code, .ex-code) {
   /* dark "screen" tiles keep the bright state colours (the light theme darkens them for text on light panels) */
   --cyan: #1f97ba;
   --green: #2f9e3a;
