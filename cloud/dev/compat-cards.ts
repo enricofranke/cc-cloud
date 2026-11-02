@@ -175,11 +175,12 @@ const CLAIM_CHUNKS: { dim: string; x: number; z: number; forced?: boolean }[] = 
   return cells.map(([x, z, forced]) => (forced ? { dim: "minecraft:overworld", x, z, forced: true } : { dim: "minecraft:overworld", x, z }));
 })();
 
-const WAYSTONES: { name: string; dim: string; x: number; y: number; z: number; kind: string; global?: boolean }[] = [
-  { name: "Base", dim: "minecraft:overworld", x: 64, y: 71, z: -8, kind: "waystone", global: true },
-  { name: "Desert Temple", dim: "minecraft:overworld", x: -284, y: 68, z: 212, kind: "sandy_waystone" },
-  { name: "Farm District", dim: "minecraft:overworld", x: 151, y: 66, z: 87, kind: "mossy_waystone" },
-  { name: "Spawn", dim: "minecraft:overworld", x: -12, y: 70, z: 4, kind: "sharestone", global: true },
+/** Next to the example base's blocks (dev/network-sim.ts), so the 3D view shows them on loaded ground. */
+export const WAYSTONES: { name: string; dim: string; x: number; y: number; z: number; kind: string; global?: boolean }[] = [
+  { name: "Base", dim: "minecraft:overworld", x: 22, y: 64, z: -24, kind: "waystone", global: true },
+  { name: "Desert Temple", dim: "minecraft:overworld", x: -212, y: 66, z: -186, kind: "sandy_waystone" },
+  { name: "Farm District", dim: "minecraft:overworld", x: 132, y: 68, z: -118, kind: "mossy_waystone" },
+  { name: "Spawn", dim: "minecraft:overworld", x: -12, y: 83, z: 4, kind: "sharestone", global: true },
   { name: "Nether Hub", dim: "minecraft:the_nether", x: 18, y: 72, z: -12, kind: "waystone", global: true },
   { name: "Quartz Mines", dim: "minecraft:the_nether", x: -37, y: 41, z: 26, kind: "waystone" },
 ];

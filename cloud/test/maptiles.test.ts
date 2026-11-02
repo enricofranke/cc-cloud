@@ -1,7 +1,9 @@
 // Map tiles (surface/slice) in the mock, the client's tile selection and label placement.
 import { afterEach, describe, expect, it } from "vitest";
 import { createMockServer, type MockServer } from "../dev/mock-server.ts";
-import { DEEP_BASE, blockAt, mapTile, voxelSection } from "../dev/world-sim.ts";
+import { DEEP_BASE, YARD, blockAt, ground, mapTile, surfaceY, voxelSection } from "../dev/world-sim.ts";
+import { exampleNodes } from "../dev/network-sim.ts";
+import { WAYSTONES } from "../dev/compat-cards.ts";
 import { medianY, tileKey, tilePath, tilesFor } from "../web/src/lib/maptiles.ts";
 import { placeLabels } from "../web/src/lib/network.ts";
 
@@ -50,6 +52,42 @@ describe("world simulation", () => {
     expect(room.exposed).toBeGreaterThan(50);
     expect(sec.exposed).toBeLessThan(4096);
     expect(room.palette.some((p) => p.id === "cccloud:cloud_mainframe")).toBe(true);
+  });
+
+  it("is built around the example base: every block and waystone stands on the ground, relays on hills", () => {
+    const ids = { reactor: "reactor", me: "me", storage: "storage", turbine: "turbine", control: "control", computer: "computer" };
+    const solid = (b: string) => !["air", "water", "lava", "leaves"].includes(b);
+    for (const n of [...exampleNodes(ids), ...WAYSTONES.map((w) => ({ name: w.name, dim: w.dim, pos: w, type: "waystone" }))]) {
+      const { x, y, z } = n.pos;
+      expect(solid(blockAt(n.dim, x, y - 1, z)), `${n.name} stands on something`).toBe(true);
+      for (let up = 0; up < 3; up++) expect(blockAt(n.dim, x, y + up, z), `${n.name} has room above`).toBe("air");
+      // the coarse terrain (Blocks off) shows the same ground
+      expect(ground(n.dim, x, z).y, n.name).toBe(y - 1);
+      if (n.type.endsWith("relay") && n.dim === "minecraft:overworld" && n.type !== "ender_relay")
+        for (let a = 0; a < 16; a++) {
+          const [dx, dz] = [Math.cos((a / 16) * Math.PI * 2) * 20, Math.sin((a / 16) * Math.PI * 2) * 20];
+          expect(surfaceY(Math.round(x + dx), Math.round(z + dz)), `${n.name} looks down on its land`).toBeLessThan(y);
+        }
+    }
+    // the mainframe's yard: levelled grass at y 63 with stone-brick foundations under the machines
+    for (const [x, z] of [
+      [YARD.x, YARD.z],
+      [YARD.x - 20, YARD.z + 8],
+      [YARD.x + 18, YARD.z - 12],
+    ])
+      expect(surfaceY(x, z)).toBe(63);
+    expect(blockAt("minecraft:overworld", YARD.x - 20, 63, YARD.z + 8)).toBe("grass");
+    expect(blockAt("minecraft:overworld", 12, 63, -30)).toBe("foundation");
+  });
+
+  it("keeps caves away from the blocks around a node on the surface", () => {
+    // a node at y 63 gets sections down to y 16: nothing under the ground is open there, so no rock floats in the view
+    for (let x = -60; x < 60; x += 3)
+      for (let z = -80; z < 40; z += 3)
+        for (let y = 16; y < Math.min(48, surfaceY(x, z) - 4); y += 2) {
+          const roomDeep = Math.abs(x) <= 9 && Math.abs(z) <= 7;
+          if (!roomDeep && !(x === 7 && (z === 5 || z === 6))) expect(blockAt("minecraft:overworld", x, y, z), `${x} ${y} ${z}`).not.toBe("air");
+        }
   });
 });
 

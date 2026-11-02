@@ -145,31 +145,35 @@ export function computeNetwork(nodes: SimNode[]) {
   return { links, routes, status };
 }
 
-/** The example base of the dev mock: 4 radio relays, an ender relay pair to the Nether, 11 devices (2 cabled). */
+/**
+ * The example base of the dev mock: 4 radio relays, an ender relay pair to the Nether, 11 devices (2 cabled). The
+ * mainframe and the machines next to it stand in a yard at y 64, the radio relays on hills; dev/world-sim.ts builds
+ * the land around these positions, so a block moved here moves its ground along.
+ */
 export function exampleNodes(ids: { reactor: string; me: string; storage: string; turbine: string; control: string; computer: string }): SimNode[] {
   const O = "minecraft:overworld";
   const N = "minecraft:the_nether";
   return [
     { id: "mf", type: "mainframe", name: "Mainframe", pos: { x: 12, y: 64, z: -30 }, dim: O },
     // a weak link: far out at the edge of the advanced relay's range
-    { id: "relay-north", type: "advanced_relay", name: "North Relay", pos: { x: 30, y: 70, z: -250 }, dim: O, powered: true },
+    { id: "relay-north", type: "advanced_relay", name: "North Relay", pos: { x: 30, y: 82, z: -250 }, dim: O, powered: true },
     { id: "relay-hill", type: "advanced_relay", name: "Hill Relay", pos: { x: -150, y: 80, z: 40 }, dim: O, powered: true },
     // out of FE: the tree farm re-routes over the west relay, the quarry loses its route
-    { id: "relay-east", type: "advanced_relay", name: "East Relay", pos: { x: 100, y: 64, z: -30 }, dim: O, powered: false },
-    { id: "relay-west", type: "relay", name: "West Relay", pos: { x: 50, y: 64, z: -100 }, dim: O, powered: true },
+    { id: "relay-east", type: "advanced_relay", name: "East Relay", pos: { x: 100, y: 74, z: -30 }, dim: O, powered: false },
+    { id: "relay-west", type: "relay", name: "West Relay", pos: { x: 50, y: 70, z: -100 }, dim: O, powered: true },
     { id: "ender-home", type: "ender_relay", name: "Ender Relay", pos: { x: 5, y: 64, z: -40 }, dim: O, powered: true },
     { id: "ender-nether", type: "ender_relay", name: "Nether Ender Relay", pos: { x: 2, y: 70, z: -5 }, dim: N, powered: true },
     // devices (device ids = uplink ids, like the mod)
-    { id: ids.reactor, type: "uplink", name: "Fission Reactor", pos: { x: 20, y: 62, z: -10 }, dim: O, uplinkId: ids.reactor },
+    { id: ids.reactor, type: "uplink", name: "Fission Reactor", pos: { x: 20, y: 64, z: -10 }, dim: O, uplinkId: ids.reactor },
     // v0.7: cabled to the mainframe over a CC wired network
-    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 60, z: -50 }, dim: O, uplinkId: ids.me, wired: "mf", fiber: true },
+    { id: ids.me, type: "bridge", name: "ME Network", pos: { x: 0, y: 64, z: -50 }, dim: O, uplinkId: ids.me, wired: "mf", fiber: true },
     { id: ids.computer, type: "uplink", name: "Computer #7", pos: { x: 30, y: 64, z: -40 }, dim: O, uplinkId: ids.computer, wired: "mf" },
-    { id: ids.storage, type: "uplink", name: "Storage", pos: { x: 40, y: 64, z: -270 }, dim: O, uplinkId: ids.storage },
-    { id: ids.control, type: "advanced_uplink", name: "Control Room", pos: { x: -160, y: 82, z: 120 }, dim: O, uplinkId: ids.control },
-    { id: ids.turbine, type: "uplink", name: "Turbine Hall", pos: { x: -180, y: 85, z: 60 }, dim: O, uplinkId: ids.turbine, loaded: false },
+    { id: ids.storage, type: "uplink", name: "Storage", pos: { x: 40, y: 79, z: -270 }, dim: O, uplinkId: ids.storage },
+    { id: ids.control, type: "advanced_uplink", name: "Control Room", pos: { x: -160, y: 66, z: 120 }, dim: O, uplinkId: ids.control },
+    { id: ids.turbine, type: "uplink", name: "Turbine Hall", pos: { x: -180, y: 64, z: 60 }, dim: O, uplinkId: ids.turbine, loaded: false },
     // a Cloud Probe on the farm's wall reads the harvester behind it
-    { id: "dev-farm", type: "probe", name: "Tree Farm", pos: { x: 120, y: 64, z: -110 }, dim: O, target: { x: 124, y: 63, z: -106 } },
-    { id: "dev-quarry", type: "advanced_uplink", name: "Quarry", pos: { x: 200, y: 62, z: -20 }, dim: O },
+    { id: "dev-farm", type: "probe", name: "Tree Farm", pos: { x: 120, y: 68, z: -110 }, dim: O, target: { x: 124, y: 68, z: -106 } },
+    { id: "dev-quarry", type: "advanced_uplink", name: "Quarry", pos: { x: 200, y: 78, z: -20 }, dim: O },
     { id: "dev-old", type: "uplink", name: "Old Sensor", pos: { x: -200, y: 64, z: -200 }, dim: O, legacy: true },
     { id: "dev-nether", type: "uplink", name: "Nether Farm", pos: { x: 10, y: 70, z: 10 }, dim: N },
   ];

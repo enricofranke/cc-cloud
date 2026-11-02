@@ -1,9 +1,15 @@
-// DEV-ONLY fake block world for the mock: map tiles (surface + slice) and the
-// voxel endpoint read from the same deterministic world, so 2D map, 3D terrain
-// and voxels agree. Around (0, 0): a grassy hill with a lake, caves, and the
-// "Deep Base" – an underground room at y −60 with a mainframe, a computer, an
-// RS bridge and a lit cave next to it, connected to the surface by a shaft.
-// Elsewhere: the rolling hills of terrain-sim (heights only, no caves).
+// DEV-ONLY fake block world for the mock: map tiles (surface + slice), the
+// coarse 3D terrain and the voxel endpoint read from the same deterministic
+// world, so 2D map, 3D terrain and voxels agree. Around (0, 0): a grassy hill
+// with a lake, caves, and the "Deep Base" – an underground room at y −60 with a
+// mainframe, a computer, an RS bridge and a lit cave next to it, connected to
+// the surface by a shaft. South of the hill the example base of the mock
+// (dev/network-sim.ts) in its cleared yard. The land is built around every block
+// of the example networks and every sample waystone: each stands on the ground,
+// relays on hills, machines on stone-brick foundations. Elsewhere: the rolling
+// hills of terrain-sim with trees.
+import { WAYSTONES } from "./compat-cards.ts";
+import { exampleNodes } from "./network-sim.ts";
 import { sample as surfaceSample } from "./terrain-sim.ts";
 
 export interface BlockInfo {
@@ -38,6 +44,9 @@ export const BLOCKS: Record<string, BlockInfo> = {
   glow: { id: "minecraft:glow_lichen", color: rgb(120, 200, 170), flags: 5 },
   amethyst: { id: "minecraft:amethyst_block", color: rgb(127, 63, 178), flags: 0 },
   bedrock: { id: "minecraft:bedrock", color: rgb(50, 50, 50), flags: 0 },
+  foundation: { id: "minecraft:stone_bricks", color: rgb(132, 132, 136), flags: 0 },
+  netherrack: { id: "minecraft:netherrack", color: rgb(112, 2, 0), flags: 0 },
+  machine: { id: "minecraft:barrel", color: rgb(143, 119, 72), flags: 0 },
 };
 type B = keyof typeof BLOCKS;
 
@@ -65,18 +74,120 @@ function noise3(x: number, y: number, z: number, s: number, seed: number) {
   return out;
 }
 
+const O = "minecraft:overworld";
+const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
+/** the water surface of the Overworld's seas and lakes */
+export const SEA = 62;
+
+const LAKE = { x: 64, z: 6, r: 11 };
+
+/** The land before anyone built on it: the rolling hills of terrain-sim, and around (10, 10) the hill above the Deep Base. */
+export function wildY(x: number, z: number): number {
+  const far = surfaceSample(O, x, z).y;
+  const r = Math.hypot(x - 10, z - 10);
+  if (r >= 140) return far;
+  const hill = 64 + 22 * Math.exp(-((r / 46) ** 2)) + (noise3(x, 0, z, 12, 4) - 0.5) * 4;
+  const t = smooth((r - 90) / 50);
+  let y = hill * (1 - t) + far * t;
+  // the lake east of the hill: a bowl that holds water, with a flat sandy shore around it
+  const d = Math.hypot(x - LAKE.x, z - LAKE.z);
+  if (d < LAKE.r) y = SEA - 5 + 5 * (d / LAKE.r) ** 2;
+  else if (d < LAKE.r + 9) y = SEA + 0.4 + (y - SEA - 0.4) * smooth((d - LAKE.r) / 9);
+  return y;
+}
+
+/**
+ * A spot where a block of the example networks or a waystone stands. The ground there is one below the block: flat
+ * for `flat` blocks around it, then blending into the land over `edge` more. A wide edge makes a relay's hill, a narrow
+ * one a machine's levelled patch. `pad` blocks around it (a square) are a stone-brick foundation.
+ */
+interface Site {
+  dim: string;
+  x: number;
+  y: number;
+  z: number;
+  flat: number;
+  edge: number;
+  pad: number;
+}
+
+/** The main base (dev/network-sim.ts): a cleared yard at y 63 for the mainframe and the machines next to it. */
+export const YARD: Site = { dim: O, x: 14, y: 64, z: -30, flat: 26, edge: 14, pad: -1 };
+
+/** The machines the example Cloud Probes read: a block each, on the probe's patch. */
+const MACHINES: { dim: string; x: number; y: number; z: number }[] = [];
+
+const SITES: Site[] = (() => {
+  const ids = { reactor: "reactor", me: "me", storage: "storage", turbine: "turbine", control: "control", computer: "computer" };
+  const out: Site[] = [YARD];
+  for (const n of exampleNodes(ids)) {
+    const relay = n.type === "relay" || n.type === "advanced_relay" || n.type === "ender_relay";
+    // a Cloud Probe's patch takes in the machine it reads
+    out.push({ dim: n.dim, ...n.pos, flat: n.target ? 7 : 3, edge: relay ? 26 : 10, pad: n.type === "mainframe" ? 2 : 1 });
+    if (n.target) MACHINES.push({ dim: n.dim, ...n.target });
+  }
+  for (const w of WAYSTONES) out.push({ dim: w.dim, x: w.x, y: w.y, z: w.z, flat: 2, edge: 8, pad: -1 });
+  // the widest first: a machine's patch sits on a relay's hill, not the other way round
+  return out.sort((a, b) => b.flat + b.edge - (a.flat + a.edge));
+})();
+
+/** Ground height with every site levelled in. */
+function built(dim: string, x: number, z: number, wild: number): number {
+  let y = wild;
+  for (const s of SITES) {
+    if (s.dim !== dim) continue;
+    const reach = s.flat + s.edge;
+    if (Math.abs(x - s.x) > reach || Math.abs(z - s.z) > reach) continue;
+    const d = Math.hypot(x - s.x, z - s.z);
+    if (d < reach) y += (s.y - 1 - y) * (1 - smooth((d - s.flat) / s.edge));
+  }
+  return Math.round(y);
+}
+
+/** A foundation block under a site's block: stone bricks in a square around it. */
+function padAt(dim: string, x: number, z: number): boolean {
+  for (const s of SITES) if (s.dim === dim && s.pad >= 0 && Math.abs(x - s.x) <= s.pad && Math.abs(z - s.z) <= s.pad) return true;
+  return false;
+}
+/** Keeps trees off the yard and the patches the machines stand on. */
+function builtUp(x: number, z: number): boolean {
+  for (const s of SITES) if (s.dim === O && Math.hypot(x - s.x, z - s.z) < s.flat + 4) return true;
+  return false;
+}
+
+// every block of a column asks for the surface: one answer per column (bounded, the demo runs for hours)
+const columns = new Map<number, number>();
+const column = (dim: string, x: number, z: number, get: () => number) => {
+  const key = ((dim === O ? 0 : 1) * 70_000 + x + 35_000) * 70_000 + z + 35_000;
+  let y = columns.get(key);
+  if (y === undefined) {
+    if (columns.size > 400_000) columns.clear();
+    columns.set(key, (y = get()));
+  }
+  return y;
+};
+
 /** Surface height at (x, z) in the Overworld (top solid block). */
 export function surfaceY(x: number, z: number): number {
-  const r = Math.hypot(x - 10, z - 10);
-  if (r < 140) {
-    // the hill above the Deep Base, a lake to the east
-    const hill = 64 + 22 * Math.exp(-((r / 46) ** 2)) + (noise3(x, 0, z, 12, 4) - 0.5) * 4;
-    const lake = Math.hypot(x - 60, z - 5) < 22 ? 6 : 0;
-    const base = surfaceSample("minecraft:overworld", x, z).y;
-    const t = Math.min(1, Math.max(0, (r - 90) / 50));
-    return Math.round((hill - lake) * (1 - t) + base * t);
-  }
-  return surfaceSample("minecraft:overworld", x, z).y;
+  return column(O, x, z, () => built(O, x, z, wildY(x, z)));
+}
+
+/** Floor height of the Nether at (x, z): netherrack hills, levelled where blocks stand. */
+export function netherY(x: number, z: number): number {
+  return column("minecraft:the_nether", x, z, () => built("minecraft:the_nether", x, z, 40 + noise3(x, 0, z, 30, 7) * 30));
+}
+
+/** The ground under a tree at a grid point (every 9 blocks, about one in seven has one), or null. */
+function treeAt(tx: number, tz: number): number | null {
+  if (hash3(tx, 0, tz, 13) <= 0.86 || builtUp(tx, tz)) return null;
+  const base = surfaceY(tx, tz);
+  return base > SEA + 1 && base <= 84 ? base : null;
+}
+
+/** The top block of an Overworld column: the foundation under a block, snow up high, sand where the land meets the
+ * water by nature, grass where it was levelled. */
+function topOf(x: number, z: number, sy: number): B {
+  return padAt(O, x, z) ? "foundation" : sy > 84 ? "snow" : sy <= SEA + 1 && wildY(x, z) < SEA + 1.5 ? "sand" : "grass";
 }
 
 const ROOM = { x0: -9, x1: 9, z0: -7, z1: 7, y0: -62, y1: -55 };
@@ -93,13 +204,14 @@ export const DEEP_BASE = {
 };
 
 export function blockAt(dim: string, x: number, y: number, z: number): B {
-  if (dim !== "minecraft:overworld") {
-    // a simple Nether: netherrack floor with lava lakes
-    const h = Math.round(40 + noise3(x, 0, z, 30, 7) * 30);
+  if (dim !== O) {
+    // a simple Nether: netherrack hills, a lava sea below them
+    const h = netherY(x, z);
     if (y > h) return y <= 31 ? "lava" : "air";
-    return "stone";
+    return y === h && padAt(dim, x, z) ? "foundation" : "netherrack";
   }
   if (y <= -64) return "bedrock";
+  for (const m of MACHINES) if (m.x === x && m.y === y && m.z === z && m.dim === dim) return "machine";
   // Deep Base devices
   for (const [k, p] of Object.entries(DEEP_BASE)) {
     if (k === "relay" || k === "uplink") continue;
@@ -143,26 +255,40 @@ export function blockAt(dim: string, x: number, y: number, z: number): B {
     // grotto walls: amethyst and glow lichen
     return noise3(x, y, z, 3, 9) > 0.62 ? "amethyst" : noise3(x, y, z, 2, 11) > 0.7 ? "glow" : y < 0 ? "deepslate" : "stone";
   }
-  // generic caves (anywhere, between y -50 and 40)
-  if (y > -50 && y < 40 && noise3(x, y, z, 14, 5) > 0.74) return y < -40 && noise3(x, y, z, 8, 6) > 0.8 ? "lava" : "air";
+  // generic caves (anywhere, between y -50 and 12: deep enough that the blocks around a node on the surface never
+  // show one as a chunk of rock floating under the ground)
+  if (y > -50 && y < 12 && noise3(x, y, z, 14, 5) > 0.74) return y < -40 && noise3(x, y, z, 8, 6) > 0.8 ? "lava" : "air";
   if (y > sy) {
-    if (y <= 62 && sy < 62) return "water";
-    // a few trees on the hill
+    if (y <= SEA && sy < SEA) return "water";
+    // trees on the grass, not on the yard or where a block stands
     const tx = Math.round(x / 9) * 9;
     const tz = Math.round(z / 9) * 9;
-    if (hash3(tx, 0, tz, 13) > 0.86 && Math.hypot(tx - 10, tz - 10) < 70 && surfaceY(tx, tz) > 63) {
-      const base = surfaceY(tx, tz);
+    const base = treeAt(tx, tz);
+    if (base !== null) {
       if (x === tx && z === tz && y <= base + 4) return "log";
       if (Math.hypot(x - tx, z - tz, (y - base - 5) * 1.2) < 3) return "leaves";
     }
     return "air";
   }
-  if (y === sy) return sy > 84 ? "snow" : sy <= 63 ? "sand" : "grass";
+  if (y === sy) return topOf(x, z, sy);
   if (y > sy - 4) return "dirt";
   return y < 0 ? "deepslate" : "stone";
 }
 
 const isTransparent = (b: B) => (BLOCKS[b].flags & 1) !== 0;
+const rgbOf = (c: number): [number, number, number] => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+
+/** The top of a column for the coarse 3D terrain (terrain-sim): its height and map colour, tree tops in leaf green. */
+export function ground(dim: string, x: number, z: number): { y: number; rgb: [number, number, number] } {
+  if (dim === "minecraft:the_nether") return { y: netherY(x, z), rgb: rgbOf(BLOCKS.netherrack.color) };
+  if (dim !== O) return surfaceSample(dim, x, z);
+  const y = surfaceY(x, z);
+  if (y < SEA) return { y: SEA, rgb: rgbOf(BLOCKS.water.color) };
+  const tx = Math.round(x / 9) * 9;
+  const tz = Math.round(z / 9) * 9;
+  if (Math.hypot(x - tx, z - tz) < 3 && treeAt(tx, tz) !== null) return { y, rgb: rgbOf(BLOCKS.leaves.color) };
+  return { y, rgb: rgbOf(BLOCKS[topOf(x, z, y)].color) };
+}
 
 /** One 16³ section in the voxel API format; null when nothing is exposed. */
 export function voxelSection(dim: string, cx: number, cy: number, cz: number) {

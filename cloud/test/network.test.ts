@@ -71,7 +71,7 @@ describe("network protocol", () => {
     const { snap } = await client();
     const n = snap.network.nodes.find((x: any) => x.id === STORAGE);
     // the mod's format: parent/hops on the node, device routes are the nodes before the device
-    expect(n).toMatchObject({ type: "uplink", name: "Storage", dim: "minecraft:overworld", status: "online", range: 48, parent: "relay-north", hops: 2, pos: { x: 40, y: 64, z: -270 } });
+    expect(n).toMatchObject({ type: "uplink", name: "Storage", dim: "minecraft:overworld", status: "online", range: 48, parent: "relay-north", hops: 2, pos: { x: 40, y: 79, z: -270 } });
     expect(snap.network.routes[STORAGE]).toEqual(["mf", "relay-north"]);
     expect(snap.network.routes["relay-north"]).toEqual(["mf", "relay-north"]);
     expect(snap.network.links.find((l: any) => l.a === "mf" && l.b === "relay-north")).toMatchObject({ weak: true, kind: "radio" });
@@ -87,7 +87,7 @@ describe("network protocol", () => {
   it("sends Cloud Probes as their own type, with the machine they read only with positions", async () => {
     await start();
     const { snap } = await client();
-    expect(snap.network.nodes.find((x: any) => x.id === "dev-farm")).toMatchObject({ type: "probe", name: "Tree Farm", target: { x: 124, y: 63, z: -106 } });
+    expect(snap.network.nodes.find((x: any) => x.id === "dev-farm")).toMatchObject({ type: "probe", name: "Tree Farm", target: { x: 124, y: 68, z: -106 } });
     const ro = await client({ canControl: false });
     const farm = ro.snap.network.nodes.find((x: any) => x.id === "dev-farm");
     expect(farm.type).toBe("probe");

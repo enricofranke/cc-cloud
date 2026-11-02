@@ -16,7 +16,7 @@ import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, preset
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
-import { DEEP_BASE, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
+import { DEEP_BASE, ground, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
 import { encodeBatch, sectionHash, type OutSection } from "./voxel-batch.ts";
 import { gzipSync } from "node:zlib";
 import { encodePng } from "./png.ts";
@@ -1841,7 +1841,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         { id: DEEP_RS, type: "bridge", name: "RS Network", pos: { ...DEEP_BASE.rs }, dim: O, uplinkId: DEEP_RS, wired: "deep-mf" },
         { id: "deep-relay", type: "advanced_relay", name: "Shaft Relay", pos: { x: 8, y: sy(8, 7), z: 7 }, dim: O, powered: true },
         { id: "deep-farm", type: "advanced_uplink", name: "Hill Farm", pos: { x: 34, y: sy(34, 28), z: 28 }, dim: O },
-        { id: "deep-lake", type: "uplink", name: "Lake Pump", pos: { x: 52, y: 63, z: 4 }, dim: O },
+        { id: "deep-lake", type: "uplink", name: "Lake Pump", pos: { x: 52, y: sy(52, 4), z: 4 }, dim: O },
       ],
       lastSeen: {},
     };
@@ -3078,9 +3078,10 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       const now = Date.now();
       const last = terrainCalls.get(t) ?? 0;
       if (!opts.unlimited && now - last < terrainRateMs) return json(res, 429, { error: "rate_limited", retryAfter: Math.ceil((terrainRateMs - (now - last)) / 1000) });
-      terrainCalls.set(t, now);
       const dim = url.searchParams.get("dim") ?? "minecraft:overworld";
-      const doc = m.net ? terrain(m.net.nodes, dim) : { dim, step: 2, patches: [], truncated: false };
+      const doc = m.net ? terrain(m.net.nodes, dim, 2, ground) : { dim, step: 2, patches: [], truncated: false };
+      // the wait counts from the answer: a slow first build of the ground must not use up the caller's window
+      terrainCalls.set(t, Date.now());
       res.writeHead(200, { ...SECURITY_HEADERS, "content-type": "application/json", "cache-control": "private, max-age=60" });
       return void res.end(JSON.stringify(doc));
     }

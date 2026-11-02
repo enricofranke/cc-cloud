@@ -75,7 +75,14 @@ export function clusters(nodes: SimNode[], root?: SimNode): Box[] {
   return boxes;
 }
 
-export function terrain(nodes: SimNode[], dim: string, step = 2) {
+/** The top of a column: height and map colour. */
+export type Ground = (dim: string, x: number, z: number) => { y: number; rgb: [number, number, number] };
+
+/**
+ * The coarse terrain around the nodes of one dimension. With `ground` (the mock's block world, dev/world-sim.ts) the
+ * land is read as it is, like the mod reads its heightmaps; without it, these noise hills are levelled under each node.
+ */
+export function terrain(nodes: SimNode[], dim: string, step = 2, ground?: Ground) {
   const inDim = nodes.filter((n) => n.dim === dim);
   const root = inDim.find((n) => n.type === "mainframe") ?? inDim[0];
   const unloaded = inDim.filter((n) => n.loaded === false).map((n) => ({ cx: n.pos.x >> 4, cz: n.pos.z >> 4 }));
@@ -107,13 +114,14 @@ export function terrain(nodes: SimNode[], dim: string, step = 2) {
             heights.writeInt16LE(UNKNOWN, k * 2);
             continue;
           }
-          const s = sample(dim, x, z);
+          const s = (ground ?? sample)(dim, x, z);
           // levelled ground around the blocks, so nodes stand on the terrain
           let y = s.y;
-          for (const n of inDim) {
-            const d = Math.hypot(n.pos.x - x, n.pos.z - z);
-            if (d < 14) y = Math.round(y + (n.pos.y - 1 - y) * Math.min(1, (14 - d) / 8));
-          }
+          if (!ground)
+            for (const n of inDim) {
+              const d = Math.hypot(n.pos.x - x, n.pos.z - z);
+              if (d < 14) y = Math.round(y + (n.pos.y - 1 - y) * Math.min(1, (14 - d) / 8));
+            }
           // levelled ground is dry land
           const rgb = y > 62 && s.rgb[2] === 255 && s.rgb[0] === 64 ? ([127, 178, 56] as [number, number, number]) : s.rgb;
           heights.writeInt16LE(y, k * 2);
