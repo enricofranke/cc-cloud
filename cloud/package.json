@@ -33,9 +33,11 @@
     ]
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "6.19.1",
     "@codemirror/commands": "6.9.0",
     "@codemirror/language": "6.11.3",
     "@codemirror/legacy-modes": "6.5.2",
+    "@codemirror/lint": "6.9.1",
     "@codemirror/search": "6.5.11",
     "@codemirror/state": "6.5.2",
     "@codemirror/view": "6.38.6",
@@ -46,6 +48,7 @@
     "@types/three": "0.186.0",
     "@types/ws": "^8.18.2",
     "axe-core": "4.10.3",
+    "fengari": "0.1.5",
     "playwright": "^1.64.1",
     "preact": "^10.29.8",
     "three": "0.186.1",

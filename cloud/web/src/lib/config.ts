@@ -15,6 +15,8 @@ export interface Features {
   scenes: boolean;
   production: boolean;
   api: boolean;
+  /** Cloud Scripts: missing means on, because servers without them never grant code.edit */
+  scripts: boolean;
 }
 export interface PublicConfig {
   version: string | null;
@@ -25,7 +27,7 @@ export interface PublicConfig {
   /** CC: Tweaked on the server; older servers do not say and always have it */
   cct: { present: boolean; version: string | null };
 }
-const ALL_ON: Features = { terminal: true, voxels: true, push: true, rules: true, map: true, scenes: false, production: false, api: false };
+const ALL_ON: Features = { terminal: true, voxels: true, push: true, rules: true, map: true, scenes: false, production: false, api: false, scripts: true };
 export const publicConfig = signal<PublicConfig>({ version: null, internet: { mode: "off", remote: false }, store: { enabled: true, url: null }, features: ALL_ON, cct: { present: true, version: null } });
 
 export function parseConfig(raw: any): PublicConfig {
@@ -40,7 +42,7 @@ export function parseConfig(raw: any): PublicConfig {
     version: typeof raw?.version === "string" ? raw.version.slice(0, 32) : null,
     internet: { mode: typeof net.mode === "string" ? net.mode.slice(0, 16) : "off", remote: net.remote === true },
     store: { enabled: st.enabled !== false && !!parsed, url: parsed?.url ?? null, ...(parsed?.key ? { key: parsed.key } : {}) },
-    features: { terminal: flag("terminal"), voxels: flag("voxels"), push: flag("push"), rules: flag("rules"), map: flag("map"), scenes: newer("scenes"), production: newer("production"), api: newer("api") },
+    features: { terminal: flag("terminal"), voxels: flag("voxels"), push: flag("push"), rules: flag("rules"), map: flag("map"), scenes: newer("scenes"), production: newer("production"), api: newer("api"), scripts: flag("scripts") },
     cct: { present: cct.present !== false, version: typeof cct.version === "string" ? cct.version.slice(0, 32) : null },
   };
 }

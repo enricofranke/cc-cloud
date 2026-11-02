@@ -40,6 +40,7 @@ const ICONS: Record<string, string> = {
   "ui-library": "cccloud:cloud_uplink",
   network: "cccloud:cloud_relay",
   upgrades: "cccloud:cloud_tablet",
+  scripts: "cccloud:cloud_mainframe",
   bridges: "cccloud:cloud_core",
   accounts: "cccloud:cloud_link_card",
   security: "cccloud:quantum_core",

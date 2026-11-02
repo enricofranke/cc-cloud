@@ -8,6 +8,7 @@ import { parseMissing, type JobStatus, type MissingItem } from "./jobs.ts";
 import { presetHas } from "./permissions.ts";
 import { normalizeRules, type Rule, type RulesDoc } from "./rules.ts";
 import { normalizeScenes, type Scene, type ScenesDoc } from "./scenes.ts";
+import { appendLog, parseLimits, parseLogLines, parseSummaries, type CodeLimits, type LogLine, type ScriptSummary } from "./code.ts";
 import { applyTermFrame, type TermEvent, type TermState } from "./terminal.ts";
 import { signal, batch, computed } from "@preact/signals";
 import { isCanvasValue } from "./canvas.ts";
@@ -266,6 +267,11 @@ export class MainframeConn {
   /** v0.10 scenes document (null = none / older mod / share session) */
   readonly scenes = signal<ScenesDoc | null>(null);
   private sceneReqs = new Map<string, { resolve: (r: { id?: string }) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  /** Cloud Scripts: the list after a `code` list request, kept fresh by code_status (null = not asked yet) */
+  readonly code = signal<{ scripts: ScriptSummary[]; limits: CodeLimits; enabled: boolean } | null>(null);
+  /** Cloud Scripts: log lines of the scripts this session watches (op logs, then code_log pushes) */
+  readonly codeLogs = signal<Record<string, LogLine[]>>({});
+  private codeReqs = new Map<string, { op: string; id?: string; resolve: (d: Record<string, any>) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   /** v0.10 production statistics: production_result */
   private prodReqs = new Map<string, { resolve: (d: any) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
@@ -636,6 +642,39 @@ export class MainframeConn {
           if (typeof msg.detail === "string") e.detail = msg.detail.slice(0, 200);
           r.reject(e);
         }
+        break;
+      }
+      case "code_result": {
+        const r = this.codeReqs.get(String(msg.reqId ?? ""));
+        if (!r) return;
+        this.codeReqs.delete(String(msg.reqId));
+        clearTimeout(r.timer);
+        if (msg.ok !== true) {
+          const e = new Error(typeof msg.error === "string" ? msg.error.slice(0, 32) : "rejected") as Error & { detail?: string };
+          if (typeof msg.detail === "string") e.detail = msg.detail.slice(0, 300);
+          r.reject(e);
+          break;
+        }
+        if (r.op === "list") this.code.value = { scripts: parseSummaries(msg.scripts), limits: parseLimits(msg.limits), enabled: msg.enabled !== false };
+        // the log answer replaces what was there: pushes that raced it are part of the last 200 lines
+        if (r.op === "logs" && r.id) this.codeLogs.value = { ...this.codeLogs.value, [r.id]: parseLogLines(msg.lines) };
+        if (r.op === "unwatch" && r.id) {
+          const { [r.id]: _gone, ...rest } = this.codeLogs.value;
+          this.codeLogs.value = rest;
+        }
+        r.resolve(msg);
+        break;
+      }
+      case "code_status": {
+        const prev = this.code.value;
+        this.code.value = { scripts: parseSummaries(msg.scripts), limits: msg.limits ? parseLimits(msg.limits) : (prev?.limits ?? parseLimits(null)), enabled: prev?.enabled ?? true };
+        break;
+      }
+      case "code_log": {
+        const id = typeof msg.id === "string" ? msg.id : "";
+        // only scripts this session watches (an unwatch may still be on its way)
+        if (!id || !(id in this.codeLogs.value)) return;
+        this.codeLogs.value = { ...this.codeLogs.value, [id]: appendLog(this.codeLogs.value[id], parseLogLines(msg.lines)) };
         break;
       }
       case "production_result": {
@@ -1067,6 +1106,25 @@ export class MainframeConn {
     });
   }
 
+  /**
+   * Cloud Scripts: {"t":"code","op",…} → code_result (rejects with the error code, `detail` attached). Everything
+   * needs code.edit, also reading. `list` subscribes this session to code_status, `logs` to code_log for that id.
+   */
+  codeOp<T extends Record<string, any> = Record<string, any>>(op: string, fields: Record<string, unknown> = {}, timeoutMs = 10_000): Promise<T> {
+    const reqId = newReqId();
+    return new Promise((resolve, reject) => {
+      const no = this.isShare ? "forbidden" : this.deniedCode("code.edit");
+      if (no) return reject(new Error(no));
+      if (this.status.value !== "open" || !this.send({ t: "code", reqId, op, ...fields })) return reject(new Error("disconnected"));
+      const timer = setTimeout(() => {
+        this.codeReqs.delete(reqId);
+        reject(new Error("timeout"));
+      }, timeoutMs);
+      const id = typeof fields.id === "string" ? fields.id : undefined;
+      this.codeReqs.set(reqId, { op, id, resolve: resolve as (d: Record<string, any>) => void, reject, timer });
+    });
+  }
+
   /** v0.10 production statistics: {"t":"production","op",…} → production_result.data (rejects with the error code). */
   production<T = any>(op: "overview" | "item" | "pin" | "unpin", params: Record<string, unknown> = {}, timeoutMs = 8000): Promise<T> {
     const reqId = newReqId();
@@ -1197,7 +1255,7 @@ export class MainframeConn {
       r.reject(new Error("disconnected"));
       this.ruleReqs.delete(id);
     }
-    for (const reqs of [this.sceneReqs, this.prodReqs] as Map<string, { reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>[])
+    for (const reqs of [this.sceneReqs, this.prodReqs, this.codeReqs] as Map<string, { reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>[])
       for (const [id, r] of reqs) {
         clearTimeout(r.timer);
         r.reject(new Error("disconnected"));

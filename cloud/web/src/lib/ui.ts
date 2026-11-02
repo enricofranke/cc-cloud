@@ -17,7 +17,9 @@ export type Route =
   | { name: "push"; id: string }
   | { name: "scenes"; id: string }
   | { name: "displays"; id: string }
-  | { name: "apikeys"; id: string };
+  | { name: "apikeys"; id: string }
+  /** Cloud Scripts: the list, or one script open in the editor */
+  | { name: "code"; id: string; script?: string };
 
 /** Script Store link (/store#install=<id>@<version>): opened on the next mainframe dashboard. */
 export const pendingInstall = signal<{ id: string; version?: string } | null>(null);
@@ -55,6 +57,10 @@ function parseRoute(): Route {
   if (parts[0] === "m" && parts[1] && parts[2] === "scenes") return { name: "scenes", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "displays") return { name: "displays", id: decodeURIComponent(parts[1]) };
   if (parts[0] === "m" && parts[1] && parts[2] === "apikeys") return { name: "apikeys", id: decodeURIComponent(parts[1]) };
+  if (parts[0] === "m" && parts[1] && parts[2] === "scripts") {
+    const script = parts[3] ? decodeURIComponent(parts[3]) : "";
+    return { name: "code", id: decodeURIComponent(parts[1]), ...(script && script.length <= 64 ? { script } : {}) };
+  }
   if (parts[0] === "m" && parts[1] && parts[2] === "production") return { name: "mainframe", id: decodeURIComponent(parts[1]), tab: "production" };
   if (parts[0] === "m" && parts[1]) {
     // ?card=<uplinkId>: the in-game "Show in dashboard" link scrolls to that card

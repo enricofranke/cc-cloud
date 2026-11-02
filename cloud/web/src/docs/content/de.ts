@@ -1,4 +1,5 @@
 import * as C from "./code.ts";
+import { FIRST_SCRIPT, apiReference, sandboxLists } from "./cloudapi.ts";
 
 const { code, recipe, RECIPES: R } = C;
 
@@ -1032,6 +1033,73 @@ Braucht das Recht „Terminal“ (Admins) und die Mainframe-PIN, falls eine gese
 Braucht CC: Tweaked. Im **</>**-Fenster eines Computers zeigt **Open the editor** alle Dateien und Ordner (bis 8 Ebenen) neben einem Code-Editor mit Lua-Hervorhebung, Zeilennummern, Suche (Strg/⌘ + F) und Rückgängig. **Save** (Strg/⌘ + S) speichert; **Save & run** startet die Datei zusätzlich in einem neuen Tab auf dem Computer. **+ File**, **+ Folder**, Umbenennen/Verschieben (✎) und Löschen (×) arbeiten im Dateibaum.
 
 Wurde die Datei seit dem Öffnen auf dem Computer geändert, fragt das Speichern vor dem Überschreiben. Dateien sind auf 256 KB begrenzt, \`rom\` und Disketten werden nie angefasst, und der Editor braucht dieselben Rechte wie das Hochladen von Skripten (plus die PIN, falls gesetzt).
+`,
+  // ---------------------------------------------------------------- Cloud Scripts
+  scripts: `# Cloud Scripts
+
+Cloud Scripts sind Lua-Skripte, die **im Mainframe** laufen – ohne Computer, ohne Diskette, ohne eigenen Chunk. Sie lesen die Karten des Dashboards, reagieren, wenn sich ein Wert ändert, laufen nach Timern und handeln mit **deinen** Rechten: Knöpfe drücken, Schieberegler und Schalter stellen, Szenen starten, craften, Meldungen schicken. Sie laufen weiter, auch wenn niemand das Dashboard offen hat.
+
+Nimm sie für Logik, die für eine [Regel](/docs/automation#rules) zu viel ist – Zustand, Schleifen, mehrere Karten auf einmal – und die nicht davon abhängen soll, dass ein Computer geladen bleibt.
+
+## Erste Schritte {#start}
+
+1. Öffne **⚙ → Cloud Scripts** im Dashboard. Dafür brauchst du das Recht **Cloud Scripts** (\`code.edit\`): Admins und der Besitzer haben es, andere bekommen es unter [Zugriff & Rollen](/docs/accounts).
+2. **Neues Skript** → wähle eine Vorlage – *Reaktorwächter*, *Warnung bei wenig Strom* oder *Nachtmodus* – oder ein leeres Skript, gib ihm einen Namen und **Anlegen**.
+3. Ändere oben die Karten- und Widget-Namen auf deine (Titel oder ID einer Karte und die ID, die das Programm des Computers dem Widget gibt; \`cloud.getCard\` listet sie). Der Editor ergänzt beim Tippen \`cloud.\` und die Lua-Bibliotheken, zeigt die Doku und die Argumente, wenn du auf eine Funktion zeigst, und unterstreicht Fehler.
+4. **Speichern** (Strg/⌘ + S). Jedes Speichern ist eine neue Version; der Server behält die letzten 20.
+5. **Starten**. Das **Log** neben dem Editor (am Handy: der Tab **Log**) zeigt live, was \`print\`, \`cloud.log\` und \`cloud.warn\` schreiben; Fehler erscheinen dort mit ihrer Zeile, und der Editor markiert diese Zeile.
+6. Setz den Haken bei **Autostart**, damit es wieder startet, wenn der Mainframe zurück ist, und nach einem Server-Neustart.
+7. Stoppen kannst du es mit **Stoppen**, dem **Redstone-Notschalter** des Mainframes oder im Spiel mit \`/cccloud scripts stop [all|<name>]\`.
+
+${code("lua", FIRST_SCRIPT)}
+
+> **Tipp:** \`cloud.on\` und die Timer halten ein Skript nach seiner letzten Zeile am Leben. Ein Skript, das nur einmal durchläuft, ist **fertig** – es steht dann mit diesem Grund als gestoppt da.
+
+## Der Editor {#editor}
+
+- **Vervollständigung** für \`cloud.\`, \`cloud.store.\`, \`cloud.script.\`, die Lua-Bibliotheken (\`string.\`, \`table.\`, \`math.\` …), die Ereignisnamen in \`cloud.on("…")\` und die Lua-Schlüsselwörter. Strg + Leertaste öffnet sie überall.
+- **Zeig** auf eine Funktion, um ihre Signatur zu sehen, was sie tut, ihre Parameter, das Recht, das sie braucht, ob sie wartet oder pausiert, und ein Beispiel. In einem Aufruf ist der Parameter hervorgehoben, den du gerade tippst.
+- **Probleme:** Der Server kompiliert deinen Text kurz nachdem du aufhörst zu tippen und markiert Syntaxfehler; Namen, die die Sandbox entfernt (\`io\`, \`require\` …), bekommen eine Warnung. Auch der letzte **Laufzeitfehler** der gespeicherten Version ist an seiner Zeile markiert.
+- **Versionen:** Wähle eine, um zu sehen, was sich gegenüber der aktuellen oder der vorigen geändert hat. **Auf v… zurück** speichert ihren Code als neue Version, es geht also nichts verloren.
+- **Gleichzeitig gespeichert:** Hat jemand eine neuere Version gespeichert, während du bearbeitet hast, zeigt der Editor den Unterschied, und du behältst deine oder übernimmst ihre.
+- Starte ein laufendes Skript nach dem Speichern neu, damit es den neuen Code ausführt.
+
+## So laufen Skripte {#running}
+
+- **Rechte:** Ein Skript handelt mit den aktuellen Rechten seines **Autors** – wer es zuletzt gespeichert hat –, aber nie mit mehr als die Person, die es gestartet hat. Verliert der Autor den Zugriff auf den Mainframe, stoppt das Skript. Widgets und Szenen mit PIN-Schutz werden abgelehnt; Widgets und Szenen, die nach Bestätigung fragen, brauchen \`{confirm=true}\`.
+- **Audit-Log:** Jede Aktion landet im Audit-Log des Mainframes als „script *Name* (by *Spieler*) …“. Ab 6 protokollierten Aktionen pro Minute und Skript fasst ein Eintrag pro Minute sie zusammen, damit das Log lesbar bleibt.
+- **Lesen** kommt aus einem Abbild, das der Mainframe fünfmal pro Sekunde macht; **Aktionen** gehen in die Warteschlange des Server-Threads (höchstens 20 pro Sekunde und Skript), und Funktionen, die auf den Server warten, wie \`cloud.press\`, pausieren das Skript für einen Tick.
+- **Wann sie stoppen:** nur, wenn der Mainframe entladen wird, keinen Strom mehr hat oder sein Redstone-Notschalter an ist – das Dashboard auszuschalten stoppt sie **nicht**. Autostart-Skripte starten wieder, wenn der Mainframe zurück ist, und nach einem Server-Neustart.
+- **Fehler:** Ein Fehler, der nicht abgefangen wird, stoppt das Skript; die Liste zeigt die Meldung und ihre Zeile, das Log behält sie.
+
+## Grenzen {#limits}
+
+Skripte laufen auf **Worker-Threads, nie auf dem Server-Thread**, damit ein beschäftigtes Skript den Server nicht ruckeln lässt. Diese Grenzen sorgen dafür (Server-Admins können sie in der Konfiguration ändern, \`cloudScripts.*\`):
+
+| Grenze | Standard |
+|---|---|
+| CPU-Zeit | 50 ms pro Sekunde und Skript; ein Skript, das sie verbraucht hat, wird pausiert und macht in der nächsten Sekunde weiter |
+| Ein Lauf zwischen zwei Pausen | höchstens 200 ms, sonst stoppt das Skript mit „ran too long without pausing“ – eine Endlosschleife lässt sich nicht mit \`pcall\` abfangen |
+| Skripte | 16 pro Mainframe, davon 8 laufend |
+| Quelltext | 32 KB pro Skript |
+| Texte | 1 MB aus \`string.rep\`, \`string.format\`, \`table.concat\` und \`gsub\` |
+| Speicher | 16 MB je Skript: die Größe dessen, was es behält, neu gemessen, sobald es ein Viertel davon oder das Doppelte seiner letzten Größe neu angelegt hat (und alle 10 s) – eine Schätzung, keine harte Grenze: zwischen zwei Messungen kann es kurz etwa das Dreifache halten, und ein mit \`..\` gebauter Text bekommt alle Bytes auf einmal, wenn er zum ersten Mal als Ganzes gebraucht wird |
+| Timer | mindestens 0,25 s Abstand (\`cloud.sleep\` mindestens einen Tick), 32 Timer und 64 Handler pro Skript |
+| Speicher für Werte | 16 KB pro Skript (\`cloud.store\`) |
+| Log | 20 Zeilen pro Sekunde (mehr werden gezählt und verworfen), die letzten 200 Zeilen bleiben |
+| Lesen | aus einem Abbild, 5-mal pro Sekunde |
+| Aktionen | über den Server-Thread, höchstens 20 pro Sekunde und Skript |
+| Versionen | die letzten 20 pro Skript |
+
+## Sandbox {#sandbox}
+
+Cloud Scripts sind Lua mit den üblichen Bibliotheken – aber ohne alles, was nach draußen reicht: kein \`io\`, kein \`os.execute\`, kein \`debug\`, kein \`package\`/\`require\`, kein Laden von Dateien, kein Bytecode (\`load\` nimmt nur Text), kein \`string.dump\` und kein Zugriff auf Java.
+
+${sandboxLists("de")}
+
+## API-Referenz {#api}
+
+${apiReference("de")}
 `,
   mods: `# Unterstützte Mods
 

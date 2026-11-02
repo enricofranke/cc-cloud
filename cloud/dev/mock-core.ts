@@ -25,6 +25,7 @@ import { MAX_LAYOUT_BYTES, layoutDoc, opValue, ICONS, type OpValue } from "./pro
 import { EnergyTracker, StorageTracker, dayHistory, rng } from "./production-sim.ts";
 import { nextScheduleRun, validAt, validDays, type Day } from "../web/src/lib/schedules.ts";
 import { SCOPES as API_SCOPES, validIp } from "../web/src/lib/apikeys.ts";
+import { createCodeSim, type CodeSession, type CodeSim, type SeedScript } from "./code-sim.ts";
 
 type Level = "info" | "warn" | "crit";
 type Row = Record<string, string | number | boolean | null>;
@@ -123,6 +124,8 @@ interface Client {
   /** v0.5 E open terminals (uplink ids) */
   terms?: Set<string>;
   termHits?: number[];
+  /** Cloud Scripts: this session as the simulation sees it (watchers are kept by identity) */
+  codeSession?: CodeSession;
 }
 interface Token {
   /** device tokens: their one mainframe; account tokens: undefined */
@@ -227,6 +230,8 @@ interface Mainframe {
   tick?: () => void;
   /** script import: one file system per uplink that sits on a computer */
   computers?: Map<string, ComputerFs>;
+  /** Cloud Scripts (dev/code-sim.ts), made on first use */
+  cloudScripts?: CodeSim;
 }
 
 export interface MockOptions {
@@ -269,11 +274,13 @@ export interface MockOptions {
   /** false: the server runs without CC: Tweaked (public config cct.present = false; default true) */
   cct?: boolean;
   /** override the public config's feature switches */
-  features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map" | "scenes" | "production" | "api", boolean>>;
+  features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map" | "scenes" | "production" | "api" | "scripts", boolean>>;
   /** v0.10 [scenes] scenesEnabled (default true) */
   scenes?: boolean;
   /** v0.10 [production] productionEnabled (default true) */
   production?: boolean;
+  /** Cloud Scripts: cloudScripts.enabled (default true); false also takes code.edit away like the mod */
+  scripts?: boolean;
   /** v0.10 seconds per production sample (default 20; one sample every that many sim ticks) */
   productionInterval?: number;
   /** v0.10 [api] apiEnabled – the mock defaults to true so the keys page can be tried (the mod: false) */
@@ -321,6 +328,88 @@ export const DEEP_COMPUTER = "0d0c0e00-deep-computer";
 export const DEEP_RS = "0d0c0e01-deep-rs";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
 export const CANVAS = "2e6b1f90-canvas";
+
+/** The base mainframe's Cloud Scripts: one guarding the reactor (autostart), a stopped one and one that failed. */
+function seedScripts(): SeedScript[] {
+  const me = PLAYERS[0].player;
+  const day = 86_400_000;
+  const guard = (hot: number, every: boolean) => `-- Reactor guard: power off above ${hot} K, back on once it cooled down below 700 K.
+local CARD = "Fission Reactor"
+local HOT, COOL = ${hot}, 700
+
+cloud.on("above", {card = CARD, widget = "temp", value = HOT}, function(e)
+  local ok, err = cloud.set(CARD, "power", false)
+  if ok then
+    cloud.notify(("Reactor off: core at %d K"):format(e.value), "crit")
+  else
+    cloud.warn("could not switch the reactor off: " .. tostring(err))
+  end
+end)
+
+cloud.on("below", {card = CARD, widget = "temp", value = COOL}, function(e)
+  if cloud.getValue(CARD, "power") == false then
+    cloud.set(CARD, "power", true)
+    cloud.log("cooled down to", e.value, "K - reactor on again")
+  end
+end)
+${
+  every
+    ? `
+cloud.every(10, function()
+  print(("core %d K, coolant %d %%"):format(cloud.getValue(CARD, "temp"), cloud.getValue(CARD, "coolant")))
+end)
+`
+    : ""
+}
+cloud.log("guarding", CARD, "- off above", HOT, "K, on below", COOL, "K")
+`;
+  return [
+    {
+      name: "Reactor guard",
+      author: me,
+      autostart: true,
+      source: guard(1000, true),
+      updatedAgoMs: 3 * 3_600_000,
+      history: [
+        { source: guard(1100, false), author: "Lisa", agoMs: 2 * day },
+        { source: guard(1050, false), author: me, agoMs: day, note: "lower threshold" },
+      ],
+    },
+    {
+      name: "Storage report",
+      author: "Lisa",
+      updatedAgoMs: 5 * day,
+      source: `-- Storage report: logs how full the storage is and warns above 90 %.
+local last
+cloud.every(60, function()
+  local fill = cloud.getValue("Storage", "fill")
+  if fill ~= last then
+    print("storage at", fill, "%")
+    last = fill
+  end
+  if fill and fill > 90 then
+    cloud.toast("Storage is almost full", "warn")
+  end
+end)
+`,
+    },
+    {
+      name: "Door timer",
+      author: me,
+      updatedAgoMs: 26 * 3_600_000,
+      source: `-- Door timer: opens the gate in the morning.
+local GATE = "Gate"
+
+cloud.at("07:00", function()
+  local card = cloud.getCard(GATE)
+  cloud.log("opening", card.title)
+  cloud.press(GATE, "open")
+end)
+`,
+      lastError: { message: "Door timer:6: attempt to index a nil value (local 'card')", line: 6, agoMs: 20 * 3_600_000 },
+    },
+  ];
+}
 
 export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = {}) {
   const log = opts.log ?? ((m: string) => console.log(`[mock] ${m}`));
@@ -411,7 +500,9 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
   function permsFor(t: Token, mf: Mainframe): string[] {
     const role = roleFor(t, mf);
     if (!role) return [];
-    const all = t.uuid && !t.fixedRole ? resolvePerms(mf.access, t.uuid) : presetPerms(role);
+    const granted = t.uuid && !t.fixedRole ? resolvePerms(mf.access, t.uuid) : presetPerms(role);
+    // cloudScripts.enabled = false removes the permission (the mod does the same)
+    const all = codeOn ? granted : granted.filter((x) => x !== "code.edit");
     return t.canControl ? all : all.filter((x) => presetPerms("viewer").includes(x));
   }
   /** WebSocket: null when allowed; else not_allowed, or read_only for sessions without act.buttons. */
@@ -944,6 +1035,187 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     return null;
   }
 
+  // ---- Cloud Scripts: the protocol and the scripts live in dev/code-sim.ts; this is the world they see and act on
+  const codeOn = opts.scripts !== false;
+  /** a card by id, by "mainframe" or by title (case-insensitive, the first match) */
+  const cardOf = (mf: Mainframe, ref: unknown) => {
+    if (typeof ref !== "string") return undefined;
+    return mf.uplinks.get(ref) ?? [...mf.uplinks.values()].find((u) => u.title.toLowerCase() === ref.toLowerCase());
+  };
+  const widgetInfo = (w: Widget) => {
+    const o = (w.opts ?? {}) as Record<string, unknown>;
+    return {
+      id: w.id,
+      type: w.type,
+      label: w.label ?? null,
+      value: w.value ?? (typeof o.value !== "object" ? o.value : null) ?? null,
+      unit: o.unit ?? null,
+      min: o.min ?? null,
+      max: o.max ?? null,
+      pin: o.pin === true,
+      confirm: o.confirm === true,
+    };
+  };
+  const mainframeInfo = (mf: Mainframe) => {
+    const p = mf.power;
+    return {
+      id: mf.id,
+      name: mf.name,
+      online: mf.online,
+      enabled: mf.enabled,
+      energy: Math.round(p?.stored ?? 0),
+      capacity: p?.capacity ?? 0,
+      percent: p?.capacity ? Math.round((p.stored / p.capacity) * 1000) / 10 : 0,
+      usage: p?.usage ?? 0,
+    };
+  };
+  const cardInfo = (u: Uplink, withWidgets: boolean) => ({
+    id: u.uplinkId,
+    title: u.title,
+    online: u.online,
+    kind: u.template ?? (u.mode === "auto" ? "computer" : u.mode === "lua" ? "lua" : "uplink"),
+    widgets: withWidgets ? u.widgets.map(widgetInfo) : u.widgets.length,
+  });
+  const MAINFRAME_WIDGETS = ["energy", "capacity", "percent", "usage", "enabled"] as const;
+  /** cloud.* on the mock's cards; actions go through runStep with the script's rights, like a person's would */
+  function scriptCall(mf: Mainframe, name: string, a: unknown[], who: { script: string; player: string; perms: string[] }): unknown[] {
+    const by = `script ${who.script} (by ${who.player})`;
+    const step = (st: Record<string, unknown>) => {
+      const err = runStep(mf, st, { by, perms: who.perms, pinVerified: false });
+      if (!err) log(`[cccloud] ${by} ${st.type} ${String(st.uplinkId ?? "")}${st.widgetId ? `/${String(st.widgetId)}` : ""} (audit)`);
+      return err ? [false, err] : [true, null];
+    };
+    const widgetStep = (value: unknown, options: unknown) => {
+      const u = cardOf(mf, a[0]);
+      const w = u?.widgets.find((x) => x.id === a[1]);
+      if (!u || !w) return [false, u ? "unknown_widget" : "unknown_card"];
+      const o = (w.opts ?? {}) as { pin?: boolean; confirm?: boolean };
+      if (o.pin) return [false, "pin_required"];
+      if (o.confirm && (options as { confirm?: unknown } | null)?.confirm !== true) return [false, "confirm_required"];
+      return step({ type: "widget", uplinkId: u.uplinkId, widgetId: w.id, value });
+    };
+    switch (name) {
+      case "getCards":
+        return [[...mf.uplinks.values()].slice(0, 256).map((u) => cardInfo(u, false))];
+      case "getCard": {
+        const u = cardOf(mf, a[0]);
+        return [u ? cardInfo(u, true) : null];
+      }
+      case "getValue":
+      case "getWidget": {
+        if (a[0] === "mainframe") {
+          const m = mainframeInfo(mf) as Record<string, unknown>;
+          const key = String(a[1]);
+          if (!(MAINFRAME_WIDGETS as readonly string[]).includes(key)) return [null];
+          return name === "getValue" ? [m[key]] : [{ id: key, type: "label", label: key, value: m[key], unit: null, min: null, max: null, pin: false, confirm: false }];
+        }
+        const w = cardOf(mf, a[0])?.widgets.find((x) => x.id === a[1]);
+        return [w ? (name === "getValue" ? widgetInfo(w).value : widgetInfo(w)) : null];
+      }
+      case "isOnline":
+        return [a[0] === undefined || a[0] === null || a[0] === "mainframe" ? mf.online : cardOf(mf, a[0])?.online === true];
+      case "getDevices":
+        return [[...mf.uplinks.values()].filter((u) => u.source !== "mainframe").map((u) => ({ id: u.uplinkId, type: u.template ? "bridge" : "uplink", name: u.title, status: u.online ? "online" : u.loaded === false ? "unloaded" : "offline", online: u.online }))];
+      case "getMainframe":
+        return [mainframeInfo(mf)];
+      case "isEnabled":
+        return [mf.enabled];
+      case "getEnergy":
+        return [mainframeInfo(mf).energy];
+      case "getEnergyCapacity":
+        return [mainframeInfo(mf).capacity];
+      case "getEnergyUsage":
+        return [mainframeInfo(mf).usage];
+      case "getItemCount": {
+        if (!who.perms.includes("storage.search")) return [null];
+        const u = cardOf(mf, a[0]);
+        const w = u?.widgets.find((x) => x.type === "item_search");
+        const rows = u && w ? (mf.onQuery?.(u.uplinkId, w.id, String(a[1] ?? ""))?.rows ?? []) : [];
+        const hit = (rows as { name?: string; count?: number }[]).find((r) => r.name === a[1]);
+        return [u && w ? (hit?.count ?? 0) : null];
+      }
+      case "getRedstone":
+        return [mf.redstone?.get(String(a[0]))?.signal ?? null];
+      case "getRules":
+        return [(mf.rules?.list ?? []).map((r) => ({ id: r.id, name: r.name, enabled: r.enabled !== false, trigger: r.when?.type ?? "", runs: r.runs ?? 0, lastResult: r.lastResult ?? null }))];
+      case "getScenes":
+        return [(mf.scenes?.list ?? []).map((sc) => ({ id: sc.id, name: sc.name, needsPin: sceneNeedsPin(mf, sc), confirm: sc.confirm === true, running: mf.scenes!.running.has(sc.id) }))];
+      case "press":
+        return widgetStep(true, a[2]);
+      case "set":
+        return widgetStep(a[2], a[3]);
+      case "setRedstone": {
+        const u = cardOf(mf, a[0]);
+        return u ? step({ type: "redstone", uplinkId: u.uplinkId, side: a[1], value: a[2] }) : [false, "unknown_card"];
+      }
+      case "craft": {
+        const u = cardOf(mf, a[0]);
+        return u ? step({ type: "craft", uplinkId: u.uplinkId, item: a[1], amount: a[2] }) : [false, "unknown_card"];
+      }
+      case "setEnabled":
+        return step({ type: "dashboard", enabled: a[0] === true });
+      case "runScene": {
+        const sc = mf.scenes?.list.find((x) => x.id === a[0] || String(x.name).toLowerCase() === String(a[0]).toLowerCase());
+        if (!sc) return [false, "unknown_scene"];
+        if (sceneNeedsPin(mf, sc)) return [false, "pin_required"];
+        if (sc.confirm && (a[1] as { confirm?: unknown } | null)?.confirm !== true) return [false, "confirm_required"];
+        const err = startScene(mf, sc, { by, device: "Cloud Script", source: "script", perms: who.perms, pinVerified: false });
+        return err ? [false, err] : [true, null];
+      }
+      case "setRuleEnabled":
+      case "runRule": {
+        if (!who.perms.includes("rules.toggle")) return [false, "not_allowed"];
+        const r = mf.rules?.list.find((x) => x.id === a[0] || String(x.name).toLowerCase() === String(a[0]).toLowerCase());
+        if (!r) return [false, "unknown_rule"];
+        if (name === "setRuleEnabled") r.enabled = a[1] === true;
+        else {
+          const res = runRule(mf, r, true);
+          if (res !== "ok") return [false, res];
+        }
+        broadcastRules(mf);
+        return [true, null];
+      }
+      case "notify":
+      case "toast":
+      case "push": {
+        const text = String(a[0] ?? "").slice(0, 256);
+        const level = a[1] === "crit" || a[1] === "error" ? "crit" : a[1] === "warn" ? "warn" : "info";
+        // the mock has no push delivery: push only lands in the log
+        if (name === "push") log(`push from ${by}: ${text}`);
+        else alert(mf, undefined, text, level);
+        return [true];
+      }
+      case "gameTime":
+        return [gameTime()];
+    }
+    throw new Error(`cloud.${name} is not simulated`);
+  }
+  /** 20 game ticks a second, one in-game day every 20 minutes */
+  const gameTime = () => Math.floor(Date.now() / 50) % 24000;
+  function scriptsOf(mf: Mainframe): CodeSim {
+    if (mf.cloudScripts) return mf.cloudScripts;
+    const sim = createCodeSim({
+      online: () => mf.online,
+      perms: (player) => {
+        const p = playerByName(player);
+        return p ? resolvePerms(mf.access, p.uuid) : presetPerms("admin");
+      },
+      call: (name, args, who) => scriptCall(mf, name, args, who),
+      gameTime,
+      log,
+    });
+    if (mf === base) sim.seed(seedScripts());
+    mf.cloudScripts = sim;
+    return sim;
+  }
+  /** One simulation-facing session per dashboard connection. */
+  const codeSession = (c: Client): CodeSession =>
+    (c.codeSession ??= {
+      player: (c.uuid && playerByUuid(c.uuid)?.player) || c.user,
+      canEdit: () => codeOn && !c.share && c.perms.includes("code.edit"),
+      send: (msg) => sendTo(c.ws, msg),
+    });
+
   // ---- v0.10 production statistics (docs/SPEC.md "Production statistics (mod side)")
   const prodOn = opts.production !== false;
   const prodInterval = opts.productionInterval ?? 20;
@@ -1133,8 +1405,10 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       return;
     }
     if (!w || w.value === value || (Array.isArray(value) && JSON.stringify(w.value) === JSON.stringify(value))) return;
+    const old = w.value;
     w.value = value;
     broadcast(mf, { t: "value", uplinkId, id, value });
+    if (typeof value !== "object" || value === null) mf.cloudScripts?.emit({ type: "change", card: uplinkId, title: mf.uplinks.get(uplinkId)?.title, widget: id, value, old: typeof old === "object" ? null : old, time: Date.now() });
   }
   function alert(mf: Mainframe, uplinkId: string | undefined, text: string, level: Level) {
     const a = { uplinkId, text, level, ts: Date.now() };
@@ -1143,12 +1417,17 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     broadcast(mf, { t: "alert", ...a });
   }
   function setState(mf: Mainframe, patch: { online?: boolean; enabled?: boolean; reason?: string }) {
+    const wasOnline = mf.online;
     Object.assign(mf, patch);
+    // scripts stop when the mainframe goes offline, not when the dashboard is switched off
+    if (patch.online !== undefined && patch.online !== wasOnline) mf.cloudScripts?.setOnline(patch.online);
     if (patch.online === true) mf.reason = undefined;
     broadcast(mf, { t: "state", online: mf.online, enabled: mf.enabled, ...(mf.reason ? { reason: mf.reason } : {}), ...(mf.power ? { power: powerOf(mf) } : {}) });
     if (patch.online !== undefined && mf.scenes) broadcastScenes(mf);
   }
   function putUplink(mf: Mainframe, u: Uplink) {
+    const before = mf.uplinks.get(u.uplinkId);
+    if (before && before.online !== u.online) mf.cloudScripts?.emit({ type: u.online ? "online" : "offline", card: u.uplinkId, title: u.title, time: Date.now() });
     mf.uplinks.set(u.uplinkId, u);
     broadcast(mf, { t: "uplink", ...u });
   }
@@ -1954,7 +2233,9 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       const size = typeof raw === "string" ? raw.length : Buffer.isBuffer(raw) ? raw.length : Array.isArray(raw) ? raw.reduce((n, b) => n + b.length, 0) : (raw as ArrayBuffer).byteLength;
       if (size > 8192) {
         const head = typeof raw === "string" ? raw.slice(0, 64) : (Buffer.isBuffer(raw) ? raw : Buffer.from(raw as ArrayBuffer)).subarray(0, 64).toString("utf8");
-        if (!client || !/"t"\s*:\s*"layout_set"/.test(head)) return void ws.close(1009, "message too big");
+        // layout documents, and Cloud Scripts sources up to 40 KB per frame
+        const code = /"t"\s*:\s*"code"/.test(head);
+        if (!client || (!/"t"\s*:\s*"layout_set"/.test(head) && !code) || (code && size > 40 * 1024)) return void ws.close(1009, "message too big");
       }
       try {
         const json = parseJson(raw) as { reqId?: unknown } | undefined;
@@ -2008,7 +2289,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           if (t === "pong") return;
           const reqId = typeof (json as any)?.reqId === "string" ? (json as any).reqId.slice(0, 64) : undefined;
           const type =
-            t === "action" ? "action_result" : t === "display" ? "display_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "card_settings" ? "card_settings_result" : t === "card_detail" ? "card_detail_result" : t === "card_write" ? "card_write_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
+            t === "action" ? "action_result" : t === "display" ? "display_result" : t === "query" ? "query_result" : t === "layout_set" ? "layout_result" : t === "net_unlink" ? "net_result" : t === "rs_device" || t === "rs_override" ? "rs_result" : t === "card_settings" ? "card_settings_result" : t === "card_detail" ? "card_detail_result" : t === "card_write" ? "card_write_result" : t === "storage" ? "storage_result" : t === "craft_preview" ? "craft_plan" : t === "scene_set" || t === "scene_delete" ? "scene_result" : t === "production" ? "production_result" : t === "code" ? "code_result" : t === "rule_set" || t === "rule_delete" || t === "rule_enable" || t === "rule_run" ? "rule_result" : null;
           if (type && reqId) return sendTo(ws, { t: type, reqId, ok: false, error: "forbidden", ...(type === "query_result" ? { rows: [], truncated: false } : {}) });
           return sendTo(ws, { t: "error", error: "forbidden" });
         }
@@ -2172,6 +2453,11 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           sr(true, { id });
           publishScenes(m);
           broadcastScenes(m);
+          return;
+        }
+        if (msg.t === "code") {
+          if (!codeOn) return sendTo(ws, { t: "code_result", reqId: msg.reqId, ok: false, error: "disabled" });
+          scriptsOf(m).handle(codeSession(c), msg as Record<string, any>);
           return;
         }
         if (msg.t === "production") {
@@ -2479,6 +2765,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       clearTimeout(authTimer);
       clearInterval(idleTimer);
       if (client) mf?.clients.delete(client);
+      if (client?.codeSession) mf?.cloudScripts?.drop(client.codeSession);
     });
     ws.on("error", () => {});
   }
@@ -2571,7 +2858,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       return json(res, 200, {
         version: "0.9.0-dev",
         store: { enabled: !!store, url: store ? store.url() : null, ...(store ? { key: store.key } : {}) },
-        features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, scenes: scenesOn, production: prodOn, api: true, ...(opts.features ?? {}) },
+        features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, scenes: scenesOn, production: prodOn, api: true, scripts: codeOn, ...(opts.features ?? {}) },
         cct: { present: opts.cct !== false, version: opts.cct === false ? null : "1.120.0" },
       });
     }
@@ -3384,7 +3671,10 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
     close() {
       stop();
       timers.forEach(clearTimeout);
+      for (const m of mainframes.values()) m.cloudScripts?.close();
     },
+    /** Cloud Scripts of a mainframe (made on first use, the base gets its examples) */
+    scripts: (mf: Mainframe = base) => scriptsOf(mf),
   };
 }
 

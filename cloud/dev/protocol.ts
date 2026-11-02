@@ -134,6 +134,20 @@ export const clientMessage = z.discriminatedUnion("t", [
   z.object({ t: z.literal("scene_delete"), reqId: z.string().min(1).max(64), id: z.string().max(16) }),
   // v0.10 production statistics (op parameters are checked by the handler)
   z.object({ t: z.literal("production"), reqId: z.string().min(1).max(64), op: z.enum(["overview", "item", "pin", "unpin"]) }).passthrough(),
+  // Cloud Scripts (fields are checked by dev/code-sim.ts; sources up to 32 KB, frames up to 40 KB)
+  z
+    .object({
+      t: z.literal("code"),
+      reqId: z.string().min(1).max(64),
+      op: z.enum(["list", "get", "check", "save", "delete", "start", "stop", "restart", "autostart", "rename", "versions", "version", "revert", "logs", "unwatch"]),
+      id: z.string().max(64).optional(),
+      name: z.string().max(64).optional(),
+      source: z.string().max(40 * 1024).optional(),
+      baseVersion: z.number().int().optional(),
+      version: z.number().int().optional(),
+      enabled: z.boolean().optional(),
+    })
+    .passthrough(),
   // v0.7 wireless redstone override (semantic checks give invalid_channel / invalid_argument)
   z.object({ t: z.literal("rs_override"), reqId: z.string().min(1).max(64), channel: z.string().max(64), level: z.number().nullable(), seconds: z.number().nullable().optional() }),
   // wave 4: a device card's settings (the Peripheral card's values; layout.edit), the card checks the names

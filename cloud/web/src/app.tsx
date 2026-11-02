@@ -149,14 +149,14 @@ export function App() {
       {effective.name === "devices" && <DevicesScreen />}
       {effective.name === "access" && <AccessScreen id={effective.id} />}
       {effective.name === "shares" && <SharesScreen id={effective.id} />}
-      {(effective.name === "rules" || effective.name === "push" || effective.name === "scenes" || effective.name === "displays" || effective.name === "apikeys") && <LazyScreen which={effective.name} id={effective.id} />}
+      {(effective.name === "rules" || effective.name === "push" || effective.name === "scenes" || effective.name === "displays" || effective.name === "apikeys" || effective.name === "code") && <LazyScreen which={effective.name} id={effective.id} />}
       <Toasts />
     </div>
   );
 }
 
-/** Rules, push, scenes, displays and API key screens are separate chunks (most users never open them). */
-type Lazy = "rules" | "push" | "scenes" | "displays" | "apikeys";
+/** Rules, push, scenes, displays, API key and Cloud Scripts screens are separate chunks (most users never open them). */
+type Lazy = "rules" | "push" | "scenes" | "displays" | "apikeys" | "code";
 const lazyScreens: Partial<Record<Lazy, ComponentType<{ id: string }>>> = {};
 const loaders: Record<Lazy, () => Promise<{ default: ComponentType<{ id: string }> }>> = {
   rules: () => import("./screens/Rules.tsx"),
@@ -164,6 +164,7 @@ const loaders: Record<Lazy, () => Promise<{ default: ComponentType<{ id: string 
   scenes: () => import("./screens/Scenes.tsx"),
   displays: () => import("./screens/Displays.tsx"),
   apikeys: () => import("./screens/ApiKeys.tsx"),
+  code: () => import("./screens/CloudScripts.tsx"),
 };
 function LazyScreen({ which, id }: { which: Lazy; id: string }) {
   const [C, setC] = useState<ComponentType<{ id: string }> | null>(() => lazyScreens[which] ?? null);

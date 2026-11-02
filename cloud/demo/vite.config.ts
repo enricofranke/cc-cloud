@@ -44,7 +44,11 @@ function swapModules(): Plugin {
 }
 
 const publicDir = resolve(process.env.DEMO_PUBLIC ?? resolve(here, "public"));
-const nodeShims = Object.fromEntries(["crypto", "zlib"].map((m) => [`node:${m}`, demo(`node/${m}.ts`)]));
+const nodeShims = [
+  ...["crypto", "zlib"].map((m) => ({ find: `node:${m}`, replacement: demo(`node/${m}.ts`) })),
+  // fengari's Node-only requires (see node/empty.ts)
+  { find: /^(fs|os|path|child_process|tmp|readline-sync)$/, replacement: demo("node/empty.ts") },
+];
 
 /** `vite preview` only serves the last build, so this runs for the dev server and builds. */
 function defines() {

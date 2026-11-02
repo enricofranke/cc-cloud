@@ -425,6 +425,7 @@ export function Dashboard({ id }: { id: string }) {
             {conn.can("shares.create") && <a href={`#/m/${encodeURIComponent(id)}/shares`}>Share links</a>}
             {conn.rules.value && feature("rules") && <a href={`#/m/${encodeURIComponent(id)}/rules`}>Rules</a>}
             {conn.scenes.value && feature("scenes") && <a href={`#/m/${encodeURIComponent(id)}/scenes`}>{t("sc.title")}</a>}
+            {conn.can("code.edit") && feature("scripts") && <a href={`#/m/${encodeURIComponent(id)}/scripts`}>Cloud Scripts</a>}
             {conn.can("layout.edit") && <a href={`#/m/${encodeURIComponent(id)}/displays`}>{t("dp.title")}</a>}
             {feature("production") && (
               <a

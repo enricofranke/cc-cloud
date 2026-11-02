@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "All recipes"
-  position: 10
+  position: 11
 ---
 
 # All recipes

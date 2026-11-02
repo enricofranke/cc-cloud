@@ -24,6 +24,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },
   { id: "upgrades", icon: "star", title: { en: "Upgrades, tablet & display", de: "Upgrades, Tablet & Display" } },
   { id: "automation", icon: "bolt", title: { en: "Rules, scenes & notifications", de: "Regeln, Szenen & Benachrichtigungen" } },
+  { id: "scripts", icon: "cpu", title: { en: "Cloud Scripts", de: "Cloud Scripts" } },
   { id: "recipes", icon: "pick", title: { en: "All recipes", de: "Alle Rezepte" } },
   { id: "mods", icon: "box", title: { en: "Supported mods", de: "Unterstützte Mods" } },
   { id: "bridges", icon: "box", title: { en: "Bridges (AE2 / RS)", de: "Bridges (AE2 / RS)" } },
