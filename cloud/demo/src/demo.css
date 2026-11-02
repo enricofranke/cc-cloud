@@ -56,10 +56,12 @@
 .demo-tool:hover {
   background: var(--panel-3);
 }
-.demo-get {
+/* dark text on gold in both themes; :visited too, or the dashboard's link colour turns a visited Download pale */
+.demo-get,
+.demo-get:visited {
   border-color: var(--gold-dk);
   background: var(--gold);
-  color: #17140a;
+  color: var(--on-color);
 }
 .demo-get:hover {
   background: var(--gold-hi);
