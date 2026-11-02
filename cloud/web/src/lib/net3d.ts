@@ -208,6 +208,51 @@ export function terrainMesh(p: TerrainPatch, step: number) {
   return { pos, col, idx };
 }
 
+export interface ScreenLabel {
+  id: string;
+  /** the anchor on screen (px from the canvas' top left) */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** higher goes first and wins a spot */
+  priority: number;
+}
+
+/**
+ * Places the 3D view's labels on screen: above their anchor if there is room, else below, right or left of it; always
+ * inside the canvas and never on top of another label. Labels whose anchor is off the canvas, or that find no free
+ * spot, are null (hidden until the camera moves). Returns the top left corner of each label.
+ */
+export function placeScreenLabels(items: ScreenLabel[], width: number, height: number, gap = 10, pad = 4): Map<string, { x: number; y: number } | null> {
+  const out = new Map<string, { x: number; y: number } | null>();
+  const taken: { x0: number; y0: number; x1: number; y1: number }[] = [];
+  for (const it of [...items].sort((a, b) => b.priority - a.priority)) {
+    if (it.x < 0 || it.x > width || it.y < 0 || it.y > height || it.w + 2 * pad > width || it.h + 2 * pad > height) {
+      out.set(it.id, null);
+      continue;
+    }
+    const spots: [number, number][] = [
+      [it.x - it.w / 2, it.y - gap - it.h],
+      [it.x - it.w / 2, it.y + gap],
+      [it.x + gap, it.y - it.h / 2],
+      [it.x - gap - it.w, it.y - it.h / 2],
+    ];
+    let placed: { x: number; y: number } | null = null;
+    for (const [sx, sy] of spots) {
+      const x = Math.min(Math.max(sx, pad), width - pad - it.w);
+      const y = Math.min(Math.max(sy, pad), height - pad - it.h);
+      const box = { x0: x - 1, y0: y - 1, x1: x + it.w + 1, y1: y + it.h + 1 };
+      if (taken.some((t) => box.x0 < t.x1 && t.x0 < box.x1 && box.y0 < t.y1 && t.y0 < box.y1)) continue;
+      taken.push(box);
+      placed = { x, y };
+      break;
+    }
+    out.set(it.id, placed);
+  }
+  return out;
+}
+
 /** Search for "fly to": name, type or id; nodes first, best match first. */
 export function searchNodes(net: NetworkInfo, q: string, limit = 8): NetNode[] {
   const s = q.trim().toLowerCase();

@@ -9,7 +9,7 @@ import { KINDS, decodePng, generate } from "../dev/build-models.ts";
 import { normalizeNetwork } from "../web/src/lib/conn.ts";
 import { TYPE_LABEL, signalClass } from "../web/src/lib/network.ts";
 import { decodeTerrain, fetchTerrain } from "../web/src/lib/api.ts";
-import { LINK_RGB, MODEL_OF, frameNodes, instanceGroups, linkSegments, pickNearest, probeLines, routedThrough, searchNodes, terrainMesh, textureStatus } from "../web/src/lib/net3d.ts";
+import { LINK_RGB, MODEL_OF, frameNodes, instanceGroups, linkSegments, pickNearest, placeScreenLabels, probeLines, routedThrough, searchNodes, terrainMesh, textureStatus } from "../web/src/lib/net3d.ts";
 import type { NetworkInfo } from "../web/src/lib/types.ts";
 
 const ids = { reactor: "reactor", me: "me", storage: "storage", turbine: "turbine", control: "control", computer: "computer" };
@@ -178,6 +178,39 @@ describe("3D scene helpers", () => {
     expect(searchNodes(net, "rel").map((n) => n.name)).toContain("North Relay");
     expect(searchNodes(net, "nether")[0].name).toBe("Nether Ender Relay");
     expect(searchNodes(net, "  ")).toEqual([]);
+  });
+});
+
+describe("3D labels on screen", () => {
+  const box = (p: { x: number; y: number }, it: { w: number; h: number }) => ({ x0: p.x, y0: p.y, x1: p.x + it.w, y1: p.y + it.h });
+  it("never overlap each other and stay inside the canvas", () => {
+    // the mainframe and the ender relay next to it from far away, a waystone at the right edge
+    const items = [
+      { id: "ender", x: 300, y: 200, w: 76, h: 19, priority: 2 },
+      { id: "mf", x: 306, y: 204, w: 70, h: 19, priority: 3 },
+      { id: "farm", x: 795, y: 300, w: 90, h: 19, priority: 1 },
+      { id: "top", x: 40, y: 3, w: 60, h: 19, priority: 2 },
+    ];
+    const at = placeScreenLabels(items, 800, 500);
+    expect(at.get("mf")).toEqual({ x: 271, y: 175 }); // the most important keeps the spot above its anchor
+    const shown = items.filter((it) => at.get(it.id));
+    expect(shown.length).toBe(4);
+    for (const [i, a] of shown.entries()) {
+      const r = box(at.get(a.id)!, a);
+      expect(r.x0 >= 0 && r.y0 >= 0 && r.x1 <= 800 && r.y1 <= 500, a.id).toBe(true);
+      for (const b of shown.slice(i + 1)) {
+        const q = box(at.get(b.id)!, b);
+        expect(r.x0 < q.x1 && q.x0 < r.x1 && r.y0 < q.y1 && q.y0 < r.y1, `${a.id} / ${b.id}`).toBe(false);
+      }
+    }
+  });
+
+  it("hides labels of anchors off the canvas and the least important when crowded", () => {
+    const crowd = Array.from({ length: 12 }, (_, i) => ({ id: `n${i}`, x: 100 + (i % 2), y: 100, w: 80, h: 19, priority: i }));
+    const at = placeScreenLabels([...crowd, { id: "off", x: -20, y: 50, w: 40, h: 19, priority: 99 }], 400, 300);
+    expect(at.get("off")).toBeNull();
+    expect(at.get("n11")).not.toBeNull();
+    expect([...at.values()].filter(Boolean).length).toBeLessThan(12);
   });
 });
 

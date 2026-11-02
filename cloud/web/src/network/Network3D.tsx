@@ -47,7 +47,7 @@ import type { NetNode, NetworkInfo, Waystone } from "../lib/types.ts";
 import type { Terrain } from "../lib/api.ts";
 import { isNodeType } from "../lib/network.ts";
 import { VoxelLayer, type VoxelSource } from "./voxelLayer.ts";
-import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, probeLines, routedThrough, terrainMesh, type ModelDef, type VoxelStatus } from "../lib/net3d.ts";
+import { LINK_RGB, MODEL_OF, STATUS_RGB, frameNodes, instanceGroups, linkSegments, pickNearest, placeScreenLabels, probeLines, routedThrough, terrainMesh, type ModelDef, type ScreenLabel, type VoxelStatus } from "../lib/net3d.ts";
 
 interface Part {
   tex: string;
@@ -184,6 +184,7 @@ class View3D {
   selBox: LineSegments;
   labels: HTMLDivElement;
   labelEls = new Map<string, HTMLDivElement>();
+  labelSizes = new WeakMap<HTMLDivElement, { text: string; w: number; h: number }>();
   dashed: LineDashedMaterial[] = [];
   scale = 1;
   pending = 0;
@@ -654,10 +655,22 @@ class View3D {
         this.labelEls.delete(id);
       }
   }
+  /** a label's size: measured once per text (reading it every frame would force a layout) */
+  labelSize(el: HTMLDivElement) {
+    let s = this.labelSizes.get(el);
+    if (!s || s.text !== el.textContent) {
+      el.hidden = false;
+      s = { text: el.textContent ?? "", w: el.offsetWidth, h: el.offsetHeight };
+      this.labelSizes.set(el, s);
+    }
+    return s;
+  }
   updateLabels() {
     const w = this.host.clientWidth;
     const h = this.host.clientHeight;
     const v = new Vector3();
+    // the selection first, then the mainframe, relays and waystones; the nearer one wins among equals
+    const items: ScreenLabel[] = [];
     for (const [id, el] of this.labelEls) {
       const ws = id.startsWith("ws:") ? this.stones[Number(id.slice(3))] : undefined;
       const n = ws ? undefined : this.nodes.find((x) => x.id === id);
@@ -666,9 +679,20 @@ class View3D {
         const tall = MODELS.models[MODEL_OF[n.type]]?.tall ?? 1;
         v.set(n.pos!.x + 0.5, n.pos!.y + (tall + 0.7) * this.scale, n.pos!.z + 0.5).project(this.camera);
       } else continue;
-      const vis = v.z > -1 && v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
-      el.hidden = !vis;
-      if (vis) el.style.transform = `translate(${Math.round(((v.x + 1) / 2) * w)}px, ${Math.round(((1 - v.y) / 2) * h) - 10}px) translate(-50%, -100%)`;
+      if (!(v.z > -1 && v.z < 1)) {
+        el.hidden = true;
+        continue;
+      }
+      const rank = n?.id === this.props.selected ? 4 : n?.type === "mainframe" ? 3 : n ? 2 : 1;
+      const size = this.labelSize(el);
+      items.push({ id, x: ((v.x + 1) / 2) * w, y: ((1 - v.y) / 2) * h, w: size.w, h: size.h, priority: rank - (v.z + 1) / 4 });
+    }
+    const spots = placeScreenLabels(items, w, h);
+    for (const it of items) {
+      const el = this.labelEls.get(it.id)!;
+      const at = spots.get(it.id);
+      el.hidden = !at;
+      if (at) el.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
     }
   }
 
