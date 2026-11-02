@@ -89,6 +89,12 @@ public final class RecipeCatalogTests {
         helper.assertTrue(strings(catalog, "inactive").contains(off), off + " is inactive here: " + catalog.get("inactive"));
         helper.assertTrue(!strings(catalog, "removed").contains(off), off + " is not removed");
         helper.assertTrue(entry(helper, catalog, on).get("status").getAsString().equals("default"), on + " is live");
+        // CC: Tweaked is optional: the recipes with CC items with it, their "_no_cct" twins without it.
+        boolean cc = ModList.get().isLoaded("computercraft");
+        String ccOff = cc ? "cccloud:cloud_mainframe_no_cct" : "cccloud:cloud_mainframe";
+        String ccOn = cc ? "cccloud:cloud_mainframe" : "cccloud:cloud_mainframe_no_cct";
+        helper.assertTrue(strings(catalog, "inactive").contains(ccOff), ccOff + " is inactive here: " + catalog.get("inactive"));
+        helper.assertTrue(entry(helper, catalog, ccOn).get("status").getAsString().equals("default"), ccOn + " is live");
 
         // Tags get a representative item of the server's tag; English names for other mods' items.
         helper.assertTrue("minecraft:gold_nugget".equals(catalog.getAsJsonObject("icons").get("#c:nuggets/gold").getAsString()), "icon for #c:nuggets/gold");

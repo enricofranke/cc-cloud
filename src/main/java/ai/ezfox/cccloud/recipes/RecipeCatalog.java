@@ -52,7 +52,8 @@ import org.jspecify.annotations.Nullable;
  * Status of each recipe: {@code default} (as shipped), {@code changed} (same id, other content), {@code added} (a
  * recipe of the pack for one of our items), plus the ids of default recipes the server {@code removed} and of
  * conditional ones that are {@code inactive} here by design (the AllTheModium variant without AllTheModium, the
- * {@code *_fallback} variant with it, the bridges without AE2 / Refined Storage).
+ * {@code *_fallback} variant with it, the bridges without AE2 / Refined Storage, the recipes with CC: Tweaked items
+ * without CC: Tweaked and their {@code *_no_cct} variants with it).
  * <p>
  * Built off the server thread on the first request and cached until the recipe manager changes ({@code /reload}, a
  * KubeJS reload, another world); bounded to {@link #MAX_RECIPES} recipes.

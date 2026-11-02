@@ -1,0 +1,27 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:mod_loaded",
+        "modid": "computercraft"
+      }
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "#c:ingots/gold",
+    "K": "cccloud:cloud_core",
+    "A": "minecraft:crafter",
+    "D": "minecraft:chiseled_bookshelf"
+  },
+  "pattern": [
+    "GKG",
+    "GAG",
+    "GDG"
+  ],
+  "result": {
+    "id": "cccloud:cloud_mainframe"
+  }
+}
