@@ -97,10 +97,12 @@ final class LuaSandbox {
         LuaString s = args.arg(1).checkLuaString();
         long n = args.arg(2).checkLong();
         LuaString sep = args.arg(3).optLuaString(Constants.EMPTYSTRING);
-        if (n <= 0) return Constants.EMPTYSTRING;
+        if (n <= 0 || s.length() == 0 && sep.length() == 0) return Constants.EMPTYSTRING;
+        if (n == 1) return s;
+        // n > MAX_STRING with a non-empty part is over the limit anyway; checking first keeps the product from overflowing
+        if (n > MAX_STRING) throw new LuaError("bad argument #2 to 'rep' (result would be over 1 MB)");
         long size = s.length() * n + sep.length() * (n - 1);
         if (size > MAX_STRING) throw new LuaError("bad argument #2 to 'rep' (result would be over 1 MB)");
-        if (n == 1) return s;
         byte[] out = new byte[(int) size];
         int pos = 0;
         for (long i = 0; i < n; i++) {
@@ -144,7 +146,8 @@ final class LuaSandbox {
         long i = args.arg(2).optLong(1);
         long j = args.arg(3).isNil() ? t.length() : args.arg(3).checkLong();
         if (i > j) return Constants.NONE;
-        if (j - i >= MAX_UNPACK) throw new LuaError("too many results to unpack (at most " + MAX_UNPACK + ")");
+        long span = j - i; // negative when it overflows (i near the smallest, j near the largest integer)
+        if (span < 0 || span >= MAX_UNPACK) throw new LuaError("too many results to unpack (at most " + MAX_UNPACK + ")");
         var values = new LuaValue[(int) (j - i + 1)];
         for (int k = 0; k < values.length; k++) {
             long index = i + k;
@@ -159,7 +162,8 @@ final class LuaSandbox {
         long f = args.arg(2).checkLong(), e = args.arg(3).checkLong(), t = args.arg(4).checkLong();
         LuaTable a2 = args.arg(5).isNil() ? a1 : args.arg(5).checkTable();
         if (e >= f) {
-            if (e - f >= MAX_MOVE) throw new LuaError("bad argument #3 to 'move' (too many elements to move)");
+            long span = e - f; // negative when it overflows
+            if (span < 0 || span >= MAX_MOVE) throw new LuaError("bad argument #3 to 'move' (too many elements to move)");
             if (Math.max(Math.abs(f), Math.abs(e)) > Integer.MAX_VALUE || Math.abs(t) + (e - f) > Integer.MAX_VALUE) {
                 throw new LuaError("bad argument #4 to 'move' (destination wrap around)");
             }

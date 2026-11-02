@@ -82,6 +82,12 @@ class LuaSandboxTest {
         assertTrue(fails("unpack({}, 1, 1e7)").contains("too many results"));
         assertTrue(fails("table.unpack({}, 1, 2^31 - 2)").contains("too many results"));
         assertTrue(fails("table.move({}, 1, 2^30, 2)").contains("too many elements"));
+        // huge counts: no endless Java loop (that blocked a worker thread for good) and no overflowing size checks
+        assertEquals("0 0", eval("print(#string.rep('', 2^62), #string.rep('', 1e12, ''))"));
+        assertTrue(fails("string.rep('abc', 6148914691236517206)").contains("over 1 MB"), "length * n overflows");
+        assertTrue(fails("string.rep('', 2^40, 'x')").contains("over 1 MB"), "only separators");
+        assertTrue(fails("table.unpack({}, -2^63, 2^63 - 2048)").contains("too many results"), "j - i overflows");
+        assertTrue(fails("table.move({1}, -2^63, 0, 1)").contains("too many elements"), "e - f overflows");
         assertEquals("1,2,3", eval("print(table.concat({1, 2, 3}, ','))"));
         assertEquals("3", eval("print(select('#', table.unpack({1, 2, 3})))"));
         assertEquals("1 1 2 3", eval("local t = table.move({1, 2, 3}, 1, 3, 2) print(t[1], t[2], t[3], t[4])"));
