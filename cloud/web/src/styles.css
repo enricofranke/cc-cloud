@@ -2797,6 +2797,17 @@ pre {
   display: block;
   flex: none;
 }
+/* a widget's icon (layout editor): the card header's pixel icon, in front of the caption, in the widget's accent */
+.px-icon.w-icon {
+  display: inline-block;
+  vertical-align: -0.15em;
+  margin-inline-end: 0.45em;
+  color: var(--wa, var(--accent, var(--gold)));
+}
+:root[data-theme="light"] :is(.wcell.t-gauge, .wcell.d-number, .wcell.d-big, .wcell.d-lamp) > .wcontent .w-icon {
+  /* the light theme's darker accents on a dark screen tile */
+  color: color-mix(in srgb, var(--wa, var(--accent, var(--gold))) 55%, #e7ecf1);
+}
 .icon-btn.on {
   color: var(--gold-text);
   background: color-mix(in srgb, var(--gold) 14%, transparent);

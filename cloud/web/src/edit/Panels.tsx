@@ -164,10 +164,12 @@ export function WidgetSettings({ found, pages, conn, onChange, onRebind, onRemov
         <span class="field-label">Accent</span>
         <Swatches value={rw.color} allowNone onChange={(c) => onChange(updateWidget(pages, k, { color: c }))} />
       </div>
-      <div class="field">
-        <span class="field-label">Icon</span>
-        <IconPicker value={rw.icon} onChange={(i) => onChange(updateWidget(pages, k, { icon: i }))} />
-      </div>
+      {!NO_ICON.has(rw.w.type) && (
+        <div class="field">
+          <span class="field-label">Icon</span>
+          <IconPicker value={rw.icon} onChange={(i) => onChange(updateWidget(pages, k, { icon: i }))} />
+        </div>
+      )}
       <label class="field">
         <span class="field-label">Card</span>
         <select
@@ -200,6 +202,9 @@ export function WidgetSettings({ found, pages, conn, onChange, onRebind, onRemov
     </div>
   );
 }
+
+/** Widgets without a caption to put an icon in front of (the item search is a search bar). */
+const NO_ICON = new Set<string>(["item_search"]);
 
 const SETTINGS_ERRORS: Record<string, string> = {
   unknown_method: "This block does not offer one of the picked methods any more.",

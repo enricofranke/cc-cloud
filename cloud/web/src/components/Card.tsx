@@ -6,7 +6,7 @@ import type { MainframeConn } from "../lib/conn.ts";
 import type { Box, ResolvedCard, ResolvedWidget } from "../lib/layout.ts";
 import { DISPLAYS_FOR, captionOf, withLayoutColor } from "../lib/layout.ts";
 import { CanvasWidget } from "./Canvas.tsx";
-import { ActionButton, Gauge, LabelRow, Slider, Toggle } from "./Widgets.tsx";
+import { ActionButton, Gauge, LabelRow, Slider, Toggle, WIcon } from "./Widgets.tsx";
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
@@ -31,17 +31,23 @@ function StaticValue({ w }: { w: ResolvedWidget["w"] }) {
     typeof v === "boolean" ? (v ? "ON" : "OFF") : typeof v === "number" ? `${Number.isInteger(v) ? v : v.toFixed(1)}${w.opts?.unit ? ` ${w.opts.unit}` : ""}` : typeof v === "string" && v ? v : "—";
   return (
     <div class="kv static-value">
-      <span class="kv-key">{w.label ?? w.id}</span>
+      <span class="kv-key">
+        <WIcon w={w} />
+        {w.label ?? w.id}
+      </span>
       <span class={`kv-val ${typeof v === "boolean" ? (v ? "on" : "off") : ""}`}>{text}</span>
     </div>
   );
 }
 
 /** A Cloud Redstone device in another team's claim: its name and the claim instead of its control and value. */
-function BlockedWidget({ label, blocked }: { label: string; blocked: Blocked }) {
+function BlockedWidget({ label, icon, blocked }: { label: string; icon?: string; blocked: Blocked }) {
   return (
     <div class="kv w-blocked" title={t("claim.hint")}>
-      <span class="kv-key">{label}</span>
+      <span class="kv-key">
+        <PixelIcon name={icon} size={14} class="w-icon" />
+        {label}
+      </span>
       <span class="kv-val">{blockedText(blocked, true)}</span>
     </div>
   );
@@ -51,7 +57,7 @@ export function WidgetView({ rw, conn, locked, viewOnly }: { rw: ResolvedWidget;
   // a label set in the editor wins; without any caption (resolver fell back to the id) keep none
   const caption = captionOf(rw);
   const blocked = rw.uplink.blockedWidgets?.[rw.w.id];
-  if (blocked) return <BlockedWidget label={caption ?? rw.w.label ?? rw.w.id} blocked={blocked} />;
+  if (blocked) return <BlockedWidget label={caption ?? rw.w.label ?? rw.w.id} icon={rw.icon} blocked={blocked} />;
   const display = rw.display !== "auto" && rw.display !== (DISPLAYS_FOR[rw.w.type]?.[0] ?? "auto") ? rw.display : undefined;
   const w = withLayoutColor(
     caption !== rw.w.label || display || rw.icon

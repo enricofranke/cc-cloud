@@ -9,6 +9,7 @@ import { fmtCount } from "../lib/format.ts";
 import { pushToast } from "../lib/ui.ts";
 import { ItemIcon } from "./ItemIcon.tsx";
 import { IconClose, IconPlus } from "./Icons.tsx";
+import { WIcon } from "./Widgets.tsx";
 import { AutoStockSheet, ItemDetailSheet, JobNote, RetryButton, STATE_TEXT, StorageBrowser, type Tab } from "./StorageV2.tsx";
 
 // ------------------------------------------------------------------ helpers
@@ -374,6 +375,7 @@ export function Watchlist({ w, uplink, conn, locked, viewOnly }: { w: Widget; up
     <section class="store-sec store-half" aria-label={w.label ?? "Watchlist"}>
       <header class="sec-head">
         <h4 class="sec-title">
+          <WIcon w={w} />
           {w.label ?? "Watchlist"}
           {below > 0 && <span class="mini-badge low">{below} low</span>}
         </h4>
@@ -615,6 +617,7 @@ export function Jobs({ w, uplink, conn }: { w: Widget; uplink?: Uplink; conn?: M
     <section class="store-sec store-half" aria-label={w.label ?? "Crafting jobs"}>
       <header class="sec-head">
         <h4 class="sec-title">
+          <WIcon w={w} />
           {w.label ?? "Crafting jobs"}
           {active > 0 && <span class="mini-badge run">{active} active</span>}
           {stuck > 0 && <span class="mini-badge stuck">{stuck} stuck</span>}

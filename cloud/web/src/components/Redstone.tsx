@@ -5,6 +5,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import { SIDES, type RedstoneRow, type Side, type Uplink, type Widget } from "../lib/types.ts";
 import { legacyTarget, redstoneRows } from "../lib/redstone.ts";
+import { WIcon } from "./Widgets.tsx";
 
 /** Grid order that reads like the block: top / front / left · right / back / bottom. */
 const GRID: Side[] = ["top", "front", "left", "right", "back", "bottom"];
@@ -53,7 +54,10 @@ export function RedstoneSides({ w, uplink, conn, locked }: { w: Widget; uplink: 
   return (
     <section class="rs" aria-label={w.label ?? "Redstone"}>
       <div class="rs-head">
-        <span class="w2-label">{w.label ?? "Redstone"}</span>
+        <span class="w2-label">
+          <WIcon w={w} />
+          {w.label ?? "Redstone"}
+        </span>
         <span class="rs-legend" aria-hidden="true">
           <span class="rs-led on" /> in <span class="rs-out-key" /> out
         </span>

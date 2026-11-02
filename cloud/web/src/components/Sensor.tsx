@@ -4,6 +4,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { Widget } from "../lib/types.ts";
 import { PROBLEM_TEXT, eventAge, eventText, parseActivity, rowText } from "../lib/sensor.ts";
+import { WIcon } from "./Widgets.tsx";
 
 export function SensorLog({ w }: { w: Widget }) {
   const a = parseActivity(w.value);
@@ -17,7 +18,10 @@ export function SensorLog({ w }: { w: Widget }) {
   return (
     <section class="sensor" aria-label={w.label ?? "Activity"}>
       <div class="sensor-head">
-        <span class="w2-label">{w.label ?? "Activity"}</span>
+        <span class="w2-label">
+          <WIcon w={w} />
+          {w.label ?? "Activity"}
+        </span>
         <span class={`tag ${a.armed ? "tag-red" : "tag-gray"}`}>{a.armed ? "Armed" : "Disarmed"}</span>
         <span class="sensor-today" title="Entries since midnight (server time)">
           <b>{a.today}</b> today

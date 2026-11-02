@@ -5,7 +5,7 @@ import { backingScale, canvasPoint, canvasSize, parseFrame, renderFrame, themePa
 import { iconUrl } from "../lib/icons.ts";
 import { ConfirmDialog } from "./Overlays.tsx";
 import { pixelIconMask } from "./PixelIcon.tsx";
-import { usePinGate, type WidgetProps } from "./Widgets.tsx";
+import { WIcon, usePinGate, type WidgetProps } from "./Widgets.tsx";
 
 /** Item images, shared by all canvases. Bounded: a script naming endless items only gets plain tiles. */
 const MAX_IMAGES = 256;
@@ -158,7 +158,14 @@ export function CanvasWidget({ w, uplink, conn, locked }: WidgetProps) {
 
   return (
     <div class="canvas-widget">
-      {w.label && <div class="w2-head"><span class="w2-label">{w.label}</span></div>}
+      {(w.label || w.opts?.wicon) && (
+        <div class="w2-head">
+          <span class="w2-label">
+            <WIcon w={w} />
+            {w.label}
+          </span>
+        </div>
+      )}
       <div class="canvas-host" ref={host}>
         <canvas
           ref={surface}

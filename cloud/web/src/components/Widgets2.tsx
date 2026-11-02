@@ -3,7 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import { keyOf } from "../lib/conn.ts";
 import type { Scalar, Uplink, Widget } from "../lib/types.ts";
-import { BigNumber } from "./Widgets.tsx";
+import { BigNumber, WIcon } from "./Widgets.tsx";
 
 export interface W2Props {
   w: Widget;
@@ -52,7 +52,10 @@ export function Chart({ w }: W2Props) {
   return (
     <div class={`w2 chart ${spark ? "is-spark" : ""} zone-${zone}`}>
       <div class="w2-head">
-        <span class="w2-label">{w.label ?? w.id}</span>
+        <span class="w2-label">
+          <WIcon w={w} />
+          {w.label ?? w.id}
+        </span>
         <span class="chart-now">
           {last === undefined ? "—" : fmt(last)}
           {/* a label that already says the unit ("Iron Ingot /min") does not repeat it */}
@@ -88,11 +91,14 @@ export function Progress({ w, uplink, conn }: W2Props) {
   const { value } = current(conn, uplink.uplinkId, w);
   const v = num(value, min);
   const pct = Math.min(100, Math.max(0, ((v - min) / (max - min)) * 100));
-  if (o.display === "number") return <BigNumber label={w.label ?? w.id} value={fmt(v)} unit={o.unit} sub={`of ${fmt(max)} · ${Math.round(pct)} %`} />;
+  if (o.display === "number") return <BigNumber label={w.label ?? w.id} icon={o.wicon} value={fmt(v)} unit={o.unit} sub={`of ${fmt(max)} · ${Math.round(pct)} %`} />;
   return (
     <div class="w2 progress">
       <div class="w2-head">
-        <span class="w2-label">{w.label ?? w.id}</span>
+        <span class="w2-label">
+          <WIcon w={w} />
+          {w.label ?? w.id}
+        </span>
         <span class="w2-value">
           {fmt(v)}
           {o.unit ? ` ${o.unit}` : ""} <span class="muted">/ {fmt(max)}</span>
@@ -115,14 +121,20 @@ export function Indicator({ w, uplink, conn }: W2Props) {
     return (
       <div class={`w2 lamp ${on ? "on" : "off"}`}>
         <span class="lamp-bulb" style={{ "--led": color }} aria-hidden="true" />
-        <span class="w2-label">{w.label ?? w.id}</span>
+        <span class="w2-label">
+          <WIcon w={w} />
+          {w.label ?? w.id}
+        </span>
         <span class="ind-state">{on ? "ON" : "OFF"}</span>
       </div>
     );
   return (
     <div class={`w2 indicator ${on ? "on" : "off"}`}>
       <span class="led-big" style={{ "--led": color }} aria-hidden="true" />
-      <span class="w2-label">{w.label ?? w.id}</span>
+      <span class="w2-label">
+        <WIcon w={w} />
+        {w.label ?? w.id}
+      </span>
       <span class="ind-state">{on ? "ON" : "OFF"}</span>
     </div>
   );
@@ -136,6 +148,7 @@ export function Select({ w, uplink, conn, locked }: W2Props) {
   return (
     <div class={`w2 row-like ${locked ? "is-locked" : ""}`}>
       <label class="w2-label" for={id}>
+        <WIcon w={w} />
         {w.label ?? w.id}
         {pending && <span class="row-hint">sending…</span>}
       </label>
@@ -189,6 +202,7 @@ export function NumberInput({ w, uplink, conn, locked }: W2Props) {
       }}
     >
       <label class="w2-label">
+        <WIcon w={w} />
         {w.label ?? w.id}
         {o.unit && <span class="muted"> ({o.unit})</span>}
         {pending && <span class="row-hint">sending…</span>}
@@ -238,6 +252,7 @@ export function TextInput({ w, uplink, conn, locked }: W2Props) {
       }}
     >
       <label class="w2-label">
+        <WIcon w={w} />
         {w.label ?? w.id}
         {pending && <span class="row-hint">sending…</span>}
       </label>
@@ -268,6 +283,7 @@ export function ButtonGroup({ w, uplink, conn, locked }: W2Props) {
     <div class={`w2 ${locked ? "is-locked" : ""}`}>
       <div class="w2-head">
         <span class="w2-label">
+          <WIcon w={w} />
           {w.label ?? w.id}
           {pending && <span class="row-hint">sending…</span>}
         </span>
