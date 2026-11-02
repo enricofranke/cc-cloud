@@ -16,15 +16,15 @@ item_ids:
 
 # Getting started
 
-CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
+CC: Cloud puts your machines, storage and redstone – and with CC: Tweaked your computers – on a dashboard in any browser: PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
 
-> **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
+> **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a machine (or, with CC: Tweaked, a computer), link the two with a Cloud Link Card and pair your browser. It appears on the dashboard automatically – no code needed.
 >
 > Only want to switch a lamp? Place a **Cloud Lamp** (or a Cloud Switch next to your redstone lamps) and link it – it shows up as a switch on the dashboard. See [Redstone devices](redstone.md).
 
 ## Install
 
-Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the `mods` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need. Every release has three downloads:
+Put **CC: Cloud** into the `mods` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need. **CC: Tweaked** (1.120.0 or newer) is optional: it adds programmable computers ([what changes](#cc-tweaked)). Every release has three downloads:
 
 | File | Take it when |
 |---|---|
@@ -34,6 +34,22 @@ Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the `mods` folder 
 
 Client and server need the **same CC: Cloud build**. If yours differs, you are still let in, and the chat tells you when you join – with a link to the server's jar. See [your version is not the server's](faq.md).
 
+### With or without CC: Tweaked
+
+CC: Cloud runs on its own. **CC: Tweaked** adds programmable computers – install it on the client and the server (1.120.0 or newer) when you want them. Everything else works the same either way:
+
+| | Without CC: Tweaked | With CC: Tweaked |
+|---|---|---|
+| Mainframe, uplinks, probes, relays, Fiber Cable, upgrades | ✓ | ✓ |
+| Machine, energy, tank and storage cards, AE2 / RS bridges, redstone devices, sensors | ✓ | ✓ |
+| Dashboard, rules, scenes, schedules, presets, push, history, reports, API, tablet, display | ✓ | ✓ |
+| Computer card, Lua programs and their widgets (the `cloud_uplink` peripheral) | – | ✓ |
+| Browser terminal, Lua editor, script upload, installing from the Script Store | – | ✓ |
+| Peripheral card, cards for machines on a computer's cable network | – | ✓ |
+| CC networking cable and wired modems as links | – | ✓ |
+
+Without CC: Tweaked, the recipes that use CC parts take vanilla items instead (marked **Only without CC: Tweaked**, see [the recipes](#recipes)), the quest book gets only the CC: Cloud chapter, and the Script Store can be browsed but not installed from. Add CC: Tweaked later and the rest turns on – mainframes, links and dashboards stay as they are.
+
 ### Quests (FTB Quests)
 
 With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German.
@@ -41,7 +57,7 @@ With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: comp
 With `cccloud-<version>.jar` they come by themselves: on the first start, before FTB Quests reads its quests, CC: Cloud adds them to the quest book (`config/ftbquests/quests`) – in ATM11's **Tech** group after Ender IO and XyCraft, otherwise in a new **CC: Cloud** group. Players get them from the server; in singleplayer the same happens in your game folder.
 
 - A backup comes first (`config/ftbquests/quests.backup-<time>`). Other chapters and texts are never replaced.
-- If the quest book already has a CC: Tweaked chapter, only the CC: Cloud chapter is added.
+- If the quest book already has a CC: Tweaked chapter, only the CC: Cloud chapter is added. Without CC: Tweaked installed, its chapter waits and comes on the first start with it.
 - Only once: a chapter you delete is not added again. Newer versions update a chapter only if nobody changed it; your edits stay.
 - The server log has one line about it (`FTB Quests: …`). Turn it off with `installQuests = false` in `config/cccloud-server.toml` on the server (in singleplayer: in your game folder).
 
@@ -52,7 +68,7 @@ With `cccloud-<version>.jar` they come by themselves: on the first start, before
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 48 blocks to the nearest mainframe or relay, same dimension. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer (CC: Tweaked) it becomes that computer's card on the dashboard; on a machine, the machine's card. Range 48 blocks to the nearest mainframe or relay, same dimension. |
 | **Advanced Cloud Uplink** | Same, but with a range of 128 blocks. To cross dimensions, use [Ender Relays](network.md). |
 | **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
@@ -63,6 +79,8 @@ With `cccloud-<version>.jar` they come by themselves: on the first start, before
 ## Crafting recipes
 
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
+
+Without CC: Tweaked, the recipes with CC parts take vanilla items in the same place: a **Crafter** for the Advanced Computer, a **Chiseled Bookshelf** for the Disk Drive, an **Observer** for the Wired Modem, **Tinted Glass** for the Advanced Monitor, a **Compass** / **Clock** for the (Advanced) Pocket Computer and an **End Crystal** for the Ender Modem. Each recipe says when it applies (**Needs CC: Tweaked** / **Only without CC: Tweaked**).
 
 ### Cloud Core
 <RecipesFor id="cccloud:cloud_core" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
@@ -161,5 +179,5 @@ Out of the box the dashboard only answers on your own network. The easiest way t
 
 Your dashboard is then at **https://mybase.cccloud.dev**. Every new browser still has to be paired and allowed in game. Limits, privacy and the other ways to open it: [Internet access](security.md).
 
-What you see next: [the dashboard](dashboard.md). Want your own widgets? Start with [CC basics](cc-basics.md) and the [Lua reference](lua.md).
+What you see next: [the dashboard](dashboard.md). Want your own widgets? With CC: Tweaked, start with [CC basics](cc-basics.md) and the [Lua reference](lua.md).
 

@@ -1,14 +1,14 @@
 package ai.ezfox.cccloud.uplink;
 
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.cable.WiredReach;
+import ai.ezfox.cccloud.cable.CcReach;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.compat.IntegrationConfig;
 import ai.ezfox.cccloud.compat.Integrations;
 import ai.ezfox.cccloud.compat.card.DeviceCards;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.network.SectionCache;
 import ai.ezfox.cccloud.web.WebHub;
-import dan200.computercraft.api.peripheral.IPeripheral;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Machines an uplink's computer reaches over CC wired networks get their ready-made cards (docs/SPEC.md "CC wired
- * networks"). The computer's wired modems are followed with a {@link WiredReach}; every peripheral on those networks
+ * networks"). The computer's wired modems are followed with a {@link CcReach}; every peripheral on those networks
  * whose target is a block entity (CC's generic inventory / tank / energy peripherals and most mod peripherals) is
  * looked up with {@link DeviceCards#detect} like a block an uplink sticks to, and gets a {@link WiredMachineSection}.
  * <p>
@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
  * order), never for a block that another uplink or probe of the same mainframe already reads or that another uplink's
  * computer already shows, never for CC: Cloud or CC: Tweaked blocks. Cards of an unloaded uplink stay on the dashboard
  * greyed out like the uplink's own card; a machine that is gone when the uplink loads again is removed. Server thread.
+ * Without CC: Tweaked there are no computers and the reach is {@link CcReach#NONE}: no cards.
  */
 public final class WiredMachines {
     /** Blocks without a card are looked at again after this many refreshes (seconds). */
@@ -45,7 +46,7 @@ public final class WiredMachines {
     private static final Map<String, UUID> HOSTS = new ConcurrentHashMap<>();
 
     private final CloudUplinkBlockEntity uplink;
-    private final WiredReach reach;
+    private final CcReach reach;
     /** pos → card, in the order of the peripheral names. */
     private final LinkedHashMap<BlockPos, WiredMachineSection> sections = new LinkedHashMap<>();
     private final Map<BlockPos, Integer> noCard = new HashMap<>();
@@ -58,22 +59,7 @@ public final class WiredMachines {
 
     public WiredMachines(CloudUplinkBlockEntity uplink) {
         this.uplink = uplink;
-        this.reach = new WiredReach(new WiredReach.Supplier() {
-            @Override
-            public net.minecraft.world.level.@Nullable Level level() {
-                return uplink.getLevel();
-            }
-
-            @Override
-            public BlockPos pos() {
-                return uplink.getBlockPos();
-            }
-
-            @Override
-            public String id() {
-                return uplink.getUplinkId().toString();
-            }
-        });
+        this.reach = Cct.hooks().reach(uplink);
     }
 
     /** How many cards an uplink may show for wired machines (config {@code wiredMachineCards}, 0 = none). */
@@ -96,8 +82,8 @@ public final class WiredMachines {
         return ids;
     }
 
-    /** A peripheral the uplink's computer reaches over its wired networks (Lua bridge widgets), or null. */
-    public @Nullable IPeripheral peripheral(String name) {
+    /** A peripheral the uplink's computer reaches over its wired networks (Lua bridge widgets; a CC peripheral), or null. */
+    public @Nullable Object peripheral(String name) {
         return reach.peripheral(name);
     }
 
@@ -107,7 +93,7 @@ public final class WiredMachines {
     }
 
     /** The networks the computer is on (tests). */
-    public WiredReach reach() {
+    public CcReach reach() {
         return reach;
     }
 
@@ -130,7 +116,7 @@ public final class WiredMachines {
         // computer is only the hub: each machine card has its own claim check (an uplink blocked by the claim guard
         // still finds its computer here).
         var readPos = uplink.isProbe() ? null : uplink.attachedPos();
-        boolean computer = readPos != null && ai.ezfox.cccloud.compat.cc.CcComputers.find(level, readPos) != null;
+        boolean computer = readPos != null && Cct.computer(level, readPos) != null;
         reach.update(level, limit > 0 && computer ? readPos : null, uplink.getBlockPos());
         if (mainframe == null || limit <= 0 || !computer) {
             if (!sections.isEmpty()) removeAll(true);
@@ -141,7 +127,7 @@ public final class WiredMachines {
         publishedTo = mainframe;
         String dim = level.dimension().identifier().toString();
         var all = new ArrayList<WiredCards.Candidate>();
-        for (var e : reach.peripherals().entrySet()) {
+        for (var e : reach.targets().entrySet()) {
             var pos = machine(level, e.getValue());
             if (pos != null) all.add(new WiredCards.Candidate(e.getKey(), pos));
         }
@@ -246,17 +232,11 @@ public final class WiredMachines {
 
     // ---- helpers -----------------------------------------------------------------------------------------------------
 
-    /** The block behind a peripheral, if it may get a card: a loaded block entity in this level, not ours or CC's. */
-    static @Nullable BlockPos machine(ServerLevel level, IPeripheral peripheral) {
-        Object target;
-        try {
-            target = peripheral.getTarget();
-        } catch (RuntimeException e) {
-            return null;
-        }
+    /** The block behind a peripheral's target, if it may get a card: a loaded block entity in this level, not ours or CC's. */
+    static @Nullable BlockPos machine(ServerLevel level, @Nullable Object target) {
         if (!(target instanceof BlockEntity be) || be.isRemoved() || be.getLevel() != level || !level.isLoaded(be.getBlockPos())) return null;
         String ns = BuiltInRegistries.BLOCK.getKey(be.getBlockState().getBlock()).getNamespace();
-        if (ai.ezfox.cccloud.CCCloud.MODID.equals(ns) || "computercraft".equals(ns)) return null;
+        if (ai.ezfox.cccloud.CCCloud.MODID.equals(ns) || Cct.MODID.equals(ns)) return null;
         return be.getBlockPos().immutable();
     }
 
@@ -264,7 +244,7 @@ public final class WiredMachines {
     static Direction side(ServerLevel level, BlockPos pos) {
         for (var d : Direction.values()) {
             var at = pos.relative(d);
-            if (level.isLoaded(at) && "computercraft".equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(at).getBlock()).getNamespace())) return d;
+            if (level.isLoaded(at) && Cct.MODID.equals(BuiltInRegistries.BLOCK.getKey(level.getBlockState(at).getBlock()).getNamespace())) return d;
         }
         return Direction.UP;
     }

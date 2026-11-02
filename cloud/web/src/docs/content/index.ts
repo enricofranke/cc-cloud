@@ -147,6 +147,13 @@ export const ITEMS: Record<string, Record<Lang, string>> = {
   "minecraft:comparator": { en: "Redstone Comparator", de: "Redstone-Komparator" },
   "minecraft:redstone_lamp": { en: "Redstone Lamp", de: "Redstone-Lampe" },
   "minecraft:observer": { en: "Observer", de: "Beobachter" },
+  // stand-ins for the CC: Tweaked items in the recipes without CC: Tweaked (*_no_cct)
+  "minecraft:crafter": { en: "Crafter", de: "Werker" },
+  "minecraft:chiseled_bookshelf": { en: "Chiseled Bookshelf", de: "Gearbeitetes Bücherregal" },
+  "minecraft:tinted_glass": { en: "Tinted Glass", de: "Getöntes Glas" },
+  "minecraft:compass": { en: "Compass", de: "Kompass" },
+  "minecraft:clock": { en: "Clock", de: "Uhr" },
+  "minecraft:end_crystal": { en: "End Crystal", de: "Enderkristall" },
   "guideme:guide": { en: "CC: Cloud Handbook", de: "CC: Cloud-Handbuch" },
   // every CC: Cloud item, from the mod's lang files (build step dev/build-recipes.ts)
   ...GEN.names,

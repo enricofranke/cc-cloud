@@ -336,7 +336,7 @@ public final class GuiViews {
             json.add("attached", attached);
             return;
         }
-        var computer = ai.ezfox.cccloud.compat.cc.CcComputers.find(level, at);
+        var computer = ai.ezfox.cccloud.compat.Cct.computer(level, at);
         if (computer != null) {
             attached.addProperty("computer", computer.id());
             String label = computer.label();

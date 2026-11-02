@@ -107,6 +107,34 @@ class RecipeCatalogTest {
         assertFalse(RecipeCatalog.conditionsHold(fallback, ICondition.IContext.EMPTY, withAtm));
         assertTrue(RecipeCatalog.conditionsHold(fallback, ICondition.IContext.EMPTY, without));
         assertTrue(RecipeCatalog.conditionsHold(files.get(Identifier.parse("cccloud:cloud_core")), ICondition.IContext.EMPTY, without), "no conditions");
+        // CC: Tweaked is optional: every recipe with a computercraft item loads only with CC, and its "_no_cct" twin (same
+        // result, no CC item) only without it, with the twin's other conditions (AllTheModium, AE2, RS) the same.
+        int ccRecipes = 0;
+        for (var e : files.entrySet()) {
+            String id = e.getKey().getPath();
+            boolean usesCc = e.getValue().toString().contains("\"computercraft:");
+            if (id.endsWith("_no_cct")) {
+                assertFalse(usesCc, id + " uses no CC item");
+                continue;
+            }
+            if (!usesCc) continue;
+            ccRecipes++;
+            var twin = files.get(Identifier.fromNamespaceAndPath("cccloud", id + "_no_cct"));
+            assertNotNull(twin, id + " has a recipe without CC: Tweaked");
+            assertEquals(e.getValue().getAsJsonObject("result"), twin.getAsJsonObject("result"), id + ": same result without CC");
+            java.util.function.Predicate<String> all = mod -> true;
+            java.util.function.Predicate<String> allButCc = mod -> !mod.equals("computercraft");
+            java.util.function.Predicate<String> onlyCc = "computercraft"::equals;
+            assertFalse(RecipeCatalog.conditionsHold(e.getValue(), ICondition.IContext.EMPTY, allButCc), id + " is off without CC");
+            assertFalse(RecipeCatalog.conditionsHold(twin, ICondition.IContext.EMPTY, onlyCc), id + "_no_cct is off with CC");
+            for (java.util.function.Predicate<String> mods : List.<java.util.function.Predicate<String>>of(all, onlyCc,
+                mod -> mod.equals("computercraft") || mod.equals("allthemodium"), mod -> mod.equals("computercraft") || mod.equals("ae2"))) {
+                java.util.function.Predicate<String> noCc = mod -> !mod.equals("computercraft") && mods.test(mod);
+                assertEquals(RecipeCatalog.conditionsHold(e.getValue(), ICondition.IContext.EMPTY, mods),
+                    RecipeCatalog.conditionsHold(twin, ICondition.IContext.EMPTY, noCc), id + ": the twin has the same other conditions");
+            }
+        }
+        assertTrue(ccRecipes >= 13, "recipes with CC items: " + ccRecipes);
         assertFalse(RecipeCatalog.conditionsHold(json("{\"neoforge:conditions\":[{\"type\":\"neoforge:never\"}]}"), ICondition.IContext.EMPTY, without));
         assertTrue(RecipeCatalog.conditionsHold(json("{\"neoforge:conditions\":[{\"type\":\"neoforge:or\",\"values\":[{\"type\":\"neoforge:never\"},"
             + "{\"type\":\"neoforge:not\",\"value\":{\"type\":\"neoforge:never\"}}]}]}"), ICondition.IContext.EMPTY, without));

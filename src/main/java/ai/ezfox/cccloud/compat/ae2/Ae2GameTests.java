@@ -51,7 +51,7 @@ public final class Ae2GameTests {
                 helper.assertTrue(inserted == BridgeTestSupport.AMOUNT, "inserted " + inserted + " into the ME network");
                 filled[0] = true;
             }
-            BridgeTestSupport.assertBridge(helper, bridge, be, be.peripheral(), once);
+            BridgeTestSupport.assertBridge(helper, bridge, be, once);
             var storage = be.bridgeCore().storage();
             helper.assertTrue(storage.has("itemsTotal") && storage.get("itemsTotal").getAsLong() > 0, "AE2 itemsTotal from the 1k cell: " + storage);
             helper.assertTrue(be.bridgeCore().adapter().energy() > 0, "creative cell energy");

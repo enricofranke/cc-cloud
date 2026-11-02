@@ -4,7 +4,6 @@ import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.bridge.BridgeRegistry;
 import ai.ezfox.cccloud.bridge.CloudBridgeBlock;
 import appeng.api.AECapabilities;
-import dan200.computercraft.api.peripheral.PeripheralCapability;
 import java.util.function.Consumer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -58,8 +57,6 @@ public final class Ae2Compat {
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(PeripheralCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.peripheral());
-        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.cloudWired());
         event.registerBlockEntity(AECapabilities.IN_WORLD_GRID_NODE_HOST, BLOCK_ENTITY.get(), (be, ctx) -> be);
     }
 }

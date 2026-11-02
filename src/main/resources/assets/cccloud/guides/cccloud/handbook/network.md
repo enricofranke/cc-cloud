@@ -70,13 +70,13 @@ A relay belongs to the player who placed it. It carries the networks of its owne
 
 ## Cables (wired links)
 
-Devices can also join **by cable**, like AE2 cables: connect the uplink or bridge to the mainframe or a relay with CC: Tweaked **networking cable** and **wired modems** (right-click the modems so they turn on). Everything on the same CC wired network is a wired member.
+Devices can also join **by cable**, like AE2 cables: with CC: Tweaked, connect the uplink or bridge to the mainframe or a relay with its **networking cable** and **wired modems** (right-click the modems so they turn on). Everything on the same CC wired network is a wired member.
 
 - Cables have **no range limit**, always **100 %** signal and cost **no extra FE per hop**.
 - A device can have both cable and radio; the cable is preferred, radio is the backup.
 - In the dashboard cables are **solid lines** (grey = CC cable, glowing cyan = fiber), radio links **dashed** (coloured by signal), ender links **dotted**.
 
-**Fiber Cable** (ships with CC: Cloud) works the same, but only connects our devices – a clean network of its own. Devices on fiber count **half** towards the mainframe's device capacity and pay **half** their FE. Use the **Fiber Junction** for splits and walls, and an **Ender Fiber Link** pair to join two fiber networks across any distance or dimension.
+**Fiber Cable** (ships with CC: Cloud, needs no CC: Tweaked) works the same, but only connects our devices – a clean network of its own. Devices on fiber count **half** towards the mainframe's device capacity and pay **half** their FE. Use the **Fiber Junction** for splits and walls, and an **Ender Fiber Link** pair to join two fiber networks across any distance or dimension.
 
 ## When a relay fails
 

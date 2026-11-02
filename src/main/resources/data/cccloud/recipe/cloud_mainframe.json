@@ -1,4 +1,10 @@
 {
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "computercraft"
+    }
+  ],
   "type": "minecraft:crafting_shaped",
   "category": "redstone",
   "key": {"G": "#c:ingots/gold", "K": "cccloud:cloud_core", "A": "computercraft:computer_advanced", "D": "computercraft:disk_drive"},

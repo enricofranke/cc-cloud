@@ -2,7 +2,6 @@ package ai.ezfox.cccloud.compat.ae2;
 
 import ai.ezfox.cccloud.bridge.BridgeCore;
 import ai.ezfox.cccloud.bridge.BridgeHost;
-import ai.ezfox.cccloud.bridge.BridgePeripheral;
 import ai.ezfox.cccloud.bridge.CloudBridgeBlock;
 import appeng.api.networking.GridFlags;
 import appeng.api.networking.GridHelper;
@@ -32,7 +31,6 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
     private final IManagedGridNode node;
     private final Ae2Adapter adapter;
     private final BridgeCore core;
-    private final BridgePeripheral peripheral;
     private final ai.ezfox.cccloud.bridge.BridgeSection section;
     private int ticks;
 
@@ -47,25 +45,20 @@ public class MeBridgeBlockEntity extends BlockEntity implements BridgeHost, IInW
         adapter = new Ae2Adapter(this);
         core = new BridgeCore(adapter, "me", this::setChanged);
         section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
-        peripheral = new BridgePeripheral("me_cloud_bridge", this);
         var bridgeSection = section;
-        var bridgePeripheral = peripheral;
-        wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> bridgeSection.sectionId().toString(), false, () -> bridgePeripheral);
+        wired = ai.ezfox.cccloud.compat.Cct.hooks().bridge(this, this, "me_cloud_bridge", () -> bridgeSection.sectionId().toString());
     }
 
     IManagedGridNode managedNode() {
         return node;
     }
 
-    private final ai.ezfox.cccloud.cable.CloudWired wired;
+    /** CC: Tweaked's view of the bridge: its peripheral and CC cables ({@code CcWired.NONE} without CC: Tweaked). */
+    private final ai.ezfox.cccloud.cable.CcWired wired;
 
     @Override
-    public ai.ezfox.cccloud.cable.CloudWired cloudWired() {
+    public ai.ezfox.cccloud.cable.CcWired cloudWired() {
         return wired;
-    }
-
-    public BridgePeripheral peripheral() {
-        return peripheral;
     }
 
     @Override

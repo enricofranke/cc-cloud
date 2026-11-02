@@ -66,7 +66,28 @@
     "E": "#c:ender_pearls",
     "P": "computercraft:pocket_computer_advanced",
     "K": "cccloud:cloud_core"
-   }
+   },
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "advanced_cloud_tablet_no_cct",
+   "result": "cccloud:advanced_cloud_tablet",
+   "grid": [
+    "GEG",
+    "GPG",
+    "GKG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "E": "#c:ender_pearls",
+    "P": "minecraft:clock",
+    "K": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:computercraft"
+   ]
   },
   {
    "file": "advanced_cloud_tablet_upgrade",
@@ -105,6 +126,23 @@
     "cccloud:cloud_core",
     "#c:dusts/redstone",
     "#c:glass_panes"
+   ],
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_analyzer_no_cct",
+   "result": "cccloud:cloud_analyzer",
+   "shapeless": true,
+   "items": [
+    "minecraft:compass",
+    "cccloud:cloud_core",
+    "#c:dusts/redstone",
+    "#c:glass_panes"
+   ],
+   "requires": [
+    "!mod:computercraft"
    ]
   },
   {
@@ -148,7 +186,28 @@
     "G": "#c:ingots/gold",
     "M": "computercraft:monitor_advanced",
     "K": "cccloud:cloud_core"
-   }
+   },
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_display_no_cct",
+   "result": "cccloud:cloud_display",
+   "count": 4,
+   "grid": [
+    "GGG",
+    "GMG",
+    "GKG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "M": "minecraft:tinted_glass",
+    "K": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:computercraft"
+   ]
   },
   {
    "file": "cloud_lamp",
@@ -187,7 +246,28 @@
     "K": "cccloud:cloud_core",
     "A": "computercraft:computer_advanced",
     "D": "computercraft:disk_drive"
-   }
+   },
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_mainframe_no_cct",
+   "result": "cccloud:cloud_mainframe",
+   "grid": [
+    "GKG",
+    "GAG",
+    "GDG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "K": "cccloud:cloud_core",
+    "A": "minecraft:crafter",
+    "D": "minecraft:chiseled_bookshelf"
+   },
+   "requires": [
+    "!mod:computercraft"
+   ]
   },
   {
    "file": "cloud_probe",
@@ -239,7 +319,28 @@
     "M": "computercraft:wired_modem",
     "K": "cccloud:cloud_core",
     "R": "#c:dusts/redstone"
-   }
+   },
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_relay_no_cct",
+   "result": "cccloud:cloud_relay",
+   "grid": [
+    "SMS",
+    "RKR",
+    "SSS"
+   ],
+   "key": {
+    "S": "minecraft:stone",
+    "M": "minecraft:observer",
+    "K": "cccloud:cloud_core",
+    "R": "#c:dusts/redstone"
+   },
+   "requires": [
+    "!mod:computercraft"
+   ]
   },
   {
    "file": "cloud_sensor",
@@ -274,6 +375,21 @@
    "items": [
     "computercraft:pocket_computer_normal",
     "cccloud:cloud_core"
+   ],
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_tablet_no_cct",
+   "result": "cccloud:cloud_tablet",
+   "shapeless": true,
+   "items": [
+    "minecraft:compass",
+    "cccloud:cloud_core"
+   ],
+   "requires": [
+    "!mod:computercraft"
    ]
   },
   {
@@ -288,7 +404,27 @@
     "S": "minecraft:stone",
     "K": "cccloud:cloud_core",
     "M": "computercraft:wired_modem"
-   }
+   },
+   "requires": [
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "cloud_uplink_no_cct",
+   "result": "cccloud:cloud_uplink",
+   "count": 2,
+   "grid": [
+    "SKS",
+    "SMS"
+   ],
+   "key": {
+    "S": "minecraft:stone",
+    "K": "cccloud:cloud_core",
+    "M": "minecraft:observer"
+   },
+   "requires": [
+    "!mod:computercraft"
+   ]
   },
   {
    "file": "ender_fiber_link",
@@ -398,7 +534,27 @@
     "I": "ae2:interface"
    },
    "requires": [
-    "mod:ae2"
+    "mod:ae2",
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "me_cloud_bridge_no_cct",
+   "result": "cccloud:me_cloud_bridge",
+   "grid": [
+    "GKG",
+    "MIM",
+    "GGG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "K": "cccloud:cloud_core",
+    "M": "minecraft:observer",
+    "I": "ae2:interface"
+   },
+   "requires": [
+    "mod:ae2",
+    "!mod:computercraft"
    ]
   },
   {
@@ -450,7 +606,27 @@
     "I": "refinedstorage:interface"
    },
    "requires": [
-    "mod:refinedstorage"
+    "mod:refinedstorage",
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "rs_cloud_bridge_no_cct",
+   "result": "cccloud:rs_cloud_bridge",
+   "grid": [
+    "GKG",
+    "MIM",
+    "GGG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "K": "cccloud:cloud_core",
+    "M": "minecraft:observer",
+    "I": "refinedstorage:interface"
+   },
+   "requires": [
+    "mod:refinedstorage",
+    "!mod:computercraft"
    ]
   },
   {
@@ -467,7 +643,8 @@
     "C": "cccloud:cloud_core"
    },
    "requires": [
-    "mod:allthemodium"
+    "mod:allthemodium",
+    "mod:computercraft"
    ]
   },
   {
@@ -484,7 +661,44 @@
     "C": "cccloud:cloud_core"
    },
    "requires": [
-    "!mod:allthemodium"
+    "!mod:allthemodium",
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "upgrade_bandwidth_allthemodium_fallback_no_cct",
+   "result": "cccloud:upgrade_bandwidth_allthemodium",
+   "grid": [
+    " M ",
+    "MTM",
+    " C "
+   ],
+   "key": {
+    "M": "minecraft:diamond",
+    "T": "minecraft:end_crystal",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:allthemodium",
+    "!mod:computercraft"
+   ]
+  },
+  {
+   "file": "upgrade_bandwidth_allthemodium_no_cct",
+   "result": "cccloud:upgrade_bandwidth_allthemodium",
+   "grid": [
+    " M ",
+    "MTM",
+    " C "
+   ],
+   "key": {
+    "M": "#c:ingots/allthemodium",
+    "T": "minecraft:end_crystal",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "mod:allthemodium",
+    "!mod:computercraft"
    ]
   },
   {
@@ -776,7 +990,8 @@
     "C": "cccloud:cloud_core"
    },
    "requires": [
-    "mod:allthemodium"
+    "mod:allthemodium",
+    "mod:computercraft"
    ]
   },
   {
@@ -793,7 +1008,44 @@
     "C": "cccloud:cloud_core"
    },
    "requires": [
-    "!mod:allthemodium"
+    "!mod:allthemodium",
+    "mod:computercraft"
+   ]
+  },
+  {
+   "file": "upgrade_memory_allthemodium_fallback_no_cct",
+   "result": "cccloud:upgrade_memory_allthemodium",
+   "grid": [
+    " M ",
+    "MTM",
+    " C "
+   ],
+   "key": {
+    "M": "minecraft:diamond",
+    "T": "minecraft:chiseled_bookshelf",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "!mod:allthemodium",
+    "!mod:computercraft"
+   ]
+  },
+  {
+   "file": "upgrade_memory_allthemodium_no_cct",
+   "result": "cccloud:upgrade_memory_allthemodium",
+   "grid": [
+    " M ",
+    "MTM",
+    " C "
+   ],
+   "key": {
+    "M": "#c:ingots/allthemodium",
+    "T": "minecraft:chiseled_bookshelf",
+    "C": "cccloud:cloud_core"
+   },
+   "requires": [
+    "mod:allthemodium",
+    "!mod:computercraft"
    ]
   },
   {

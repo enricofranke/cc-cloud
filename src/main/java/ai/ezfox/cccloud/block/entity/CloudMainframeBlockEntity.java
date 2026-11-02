@@ -6,7 +6,6 @@ import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudMainframeBlock;
 import ai.ezfox.cccloud.block.CloudStatus;
 import ai.ezfox.cccloud.network.CloudNetwork;
-import ai.ezfox.cccloud.peripheral.MainframePeripheral;
 import ai.ezfox.cccloud.upgrade.MainframeUpgrades;
 import ai.ezfox.cccloud.upgrade.UpgradeItem;
 import ai.ezfox.cccloud.web.AuthStore;
@@ -73,10 +72,11 @@ public class CloudMainframeBlockEntity extends BlockEntity {
     private boolean powered;
     private volatile CloudStatus status = CloudStatus.OFFLINE;
     private volatile boolean online;
-    private final MainframePeripheral peripheral = new MainframePeripheral(this);
-    /** CC wired network membership on both halves (cables, docs/SPEC.md "Cables"). */
-    private final ai.ezfox.cccloud.cable.CloudWired wired = new ai.ezfox.cccloud.cable.CloudWired(this, () -> mainframeId.toString(), true,
-        () -> peripheral, () -> java.util.List.of(getBlockPos(), getBlockPos().above()));
+    /**
+     * CC: Tweaked's view of the mainframe (docs/SPEC.md "Cables"): the {@code cloud_mainframe} peripheral and CC wired
+     * network membership on both halves; {@code CcWired.NONE} without CC: Tweaked.
+     */
+    private final ai.ezfox.cccloud.cable.CcWired wired = ai.ezfox.cccloud.compat.Cct.hooks().mainframe(this);
 
     /** FE buffer (Capabilities.Energy.BLOCK on both halves) and the power logic. */
     private final ai.ezfox.cccloud.power.MainframeEnergy energy = new ai.ezfox.cccloud.power.MainframeEnergy(
@@ -168,12 +168,8 @@ public class CloudMainframeBlockEntity extends BlockEntity {
         ai.ezfox.cccloud.network.NetworkService.markDirty();
     }
 
-    public ai.ezfox.cccloud.cable.CloudWired wired() {
+    public ai.ezfox.cccloud.cable.CcWired wired() {
         return wired;
-    }
-
-    public MainframePeripheral peripheral() {
-        return peripheral;
     }
 
     @Override

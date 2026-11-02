@@ -194,6 +194,32 @@ class QuestInstallerTest {
     }
 
     @Test
+    void withoutCcTweakedItsChapterWaitsUntilItIsInstalled() throws IOException {
+        var noCc = new QuestInstaller.Settings(true, Edition.STANDARD, "1.0.0-test", false);
+        var r = installer().run(noCc, QuestInstallerTest::pack);
+        assertTrue(r.changed(), r.message());
+        assertTrue(r.message().contains("'CC: Tweaked' not added: CC: Tweaked is not installed"), r.message());
+        assertFalse(Files.exists(quests().resolve("chapters/cc_tweaked.json5")));
+        assertFalse(read("chapters/cc_cloud.json5").contains(ADVANCED_COMPUTER), "no links into the missing chapter");
+        var marker = QuestMarker.read(installer().markerFile());
+        assertNull(marker.chapter("cc_tweaked"), "not a decision: nothing recorded");
+        assertEquals(Status.INSTALLED, marker.chapter("cc_cloud").status);
+
+        // Still without CC: Tweaked: nothing to do.
+        var again = installer().run(noCc, QuestInstallerTest::pack);
+        assertFalse(again.changed(), again.message());
+
+        // CC: Tweaked installed later (same CC: Cloud version): the chapter comes, and CC: Cloud's links into it too.
+        r = installer().run(ON, QuestInstallerTest::pack);
+        assertTrue(r.changed(), r.message());
+        assertTrue(Files.exists(quests().resolve("chapters/cc_tweaked.json5")), r.message());
+        assertTrue(read("chapters/cc_cloud.json5").contains(ADVANCED_COMPUTER), "cross-chapter dependency added: " + r.message());
+        marker = QuestMarker.read(installer().markerFile());
+        assertEquals(Status.INSTALLED, marker.chapter("cc_tweaked").status);
+        assertTrue(installer().run(ON, QuestInstallerTest::pack).message().startsWith("quest chapters up to date"));
+    }
+
+    @Test
     void oneComputerInAnotherChapterIsNotACcTweakedChapter() throws IOException {
         atmBook();
         write("chapters/misc.json5", "{\n  id: \"0123456789ABCDE4\",\n  quests: [\n    {\n      id: \"0123456789ABCDE5\",\n"

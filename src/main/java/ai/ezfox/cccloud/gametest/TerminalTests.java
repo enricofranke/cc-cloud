@@ -3,7 +3,7 @@ package ai.ezfox.cccloud.gametest;
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.terminal.TerminalInput;
 import ai.ezfox.cccloud.terminal.TerminalService;
@@ -77,7 +77,7 @@ public final class TerminalTests {
                 uplinkId[0] = uplink.getUplinkId();
                 helper.assertTrue("unknown_computer".equals(TerminalService.open(mainframe.getMainframeId(), UUID.randomUUID(), viewer)), "unknown uplink");
                 helper.assertTrue(TerminalService.open(mainframe.getMainframeId(), uplinkId[0], viewer) == null, "opened");
-                CcComputers.find(helper.getLevel(), computerPos).turnOn();
+                Cct.computer(helper.getLevel(), computerPos).turnOn();
             })
             .thenWaitUntil(() -> helper.assertTrue(viewer.screen().contains("CraftOS"), "the shell banner arrives: " + viewer.screen()))
             .thenWaitUntil(() -> helper.assertTrue(viewer.screen().contains("> "), "prompt: " + viewer.screen()))

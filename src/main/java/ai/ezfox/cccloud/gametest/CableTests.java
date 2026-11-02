@@ -6,6 +6,7 @@ import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity;
 import ai.ezfox.cccloud.cable.FiberCableBlock;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.network.NetworkService;
 import ai.ezfox.cccloud.network.graph.NetworkGraph;
@@ -28,8 +29,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
 /**
- * Cables (docs/SPEC.md "Cables"): CC Networking Cable + Wired Modems (part A) and our Fiber Cable / Ender Fiber Link
- * (part B). Long cable runs go straight up above the test (own chunk column, like {@link NetworkTests}).
+ * Cables (docs/SPEC.md "Cables"): CC Networking Cable + Wired Modems (part A, CC: Tweaked only: their test instances
+ * load only with it) and our Fiber Cable / Ender Fiber Link (part B). Long cable runs go straight up above the test (own chunk column, like {@link NetworkTests}).
  */
 public final class CableTests {
     /** Beyond every radio range around the mainframe (mainframe 96, uplink 48). */
@@ -187,9 +188,10 @@ public final class CableTests {
     /**
      * Fiber connects to cloud blocks and fiber only: not to stone and not to a CC cable (and the CC cable does not
      * connect to it). A relay 110 blocks up joins the mainframe over fiber; an uplink that only touches a CC cable next
-     * to the fiber sees no cloud node.
+     * to the fiber sees no cloud node. Without CC: Tweaked only the fiber part runs.
      */
     public static void fiberConnections(GameTestHelper helper) {
+        boolean cc = Cct.present();
         var level = helper.getLevel();
         var s = mainframe(helper);
         var placed = new ArrayList<BlockPos>();
@@ -210,9 +212,12 @@ public final class CableTests {
         var ccPos = probe.north();
         var ccUplink = ccPos.north();
         place(level, stone, Blocks.STONE.defaultBlockState());
-        place(level, ccPos, ccCable());
-        uplink(level, ccUplink, Direction.UP);
-        placed.addAll(List.of(stone, ccPos, ccUplink, ccUplink.above()));
+        placed.add(stone);
+        if (cc) {
+            place(level, ccPos, ccCable());
+            uplink(level, ccUplink, Direction.UP);
+            placed.addAll(List.of(ccPos, ccUplink, ccUplink.above()));
+        }
 
         helper.startSequence()
             .thenWaitUntil(() -> {
@@ -221,9 +226,11 @@ public final class CableTests {
                     "fiber connects to fiber");
                 helper.assertTrue(!state.getValue(FiberCableBlock.SIDES.get(Direction.EAST)), "fiber does not connect to stone");
                 helper.assertTrue(!state.getValue(FiberCableBlock.SIDES.get(Direction.NORTH)), "fiber does not connect to a CC cable");
-                var ccState = level.getBlockState(ccPos);
-                var south = ccState.getBlock().getStateDefinition().getProperty("south");
-                helper.assertTrue(south instanceof BooleanProperty p && !ccState.getValue(p), "the CC cable does not connect to fiber");
+                if (cc) {
+                    var ccState = level.getBlockState(ccPos);
+                    var south = ccState.getBlock().getStateDefinition().getProperty("south");
+                    helper.assertTrue(south instanceof BooleanProperty p && !ccState.getValue(p), "the CC cable does not connect to fiber");
+                }
                 var bottom = level.getBlockState(s.base().above(2));
                 helper.assertTrue(bottom.getValue(FiberCableBlock.SIDES.get(Direction.DOWN)), "fiber connects to the mainframe");
                 var top = level.getBlockState(s.base().above(FAR));
@@ -235,9 +242,11 @@ public final class CableTests {
                 helper.assertTrue(result != null && result.reachable(relayId), "relay reachable over fiber");
                 helper.assertTrue(result.links().stream().anyMatch(l -> l.kind() == NetworkGraph.LinkKind.FIBER
                     && (l.a().equals(relayId) || l.b().equals(relayId))), "fiber link mainframe ↔ relay");
-                helper.assertTrue(uplinkAt(helper, level, ccUplink).wired().visibleNodes().isEmpty(), "CC cable next to fiber sees no cloud node");
-                helper.assertTrue(NetworkService.fibers(uplinkAt(helper, level, ccUplink).getUplinkId().toString()).isEmpty(),
-                    "the uplink on the CC cable is not on the fiber network");
+                if (cc) {
+                    helper.assertTrue(uplinkAt(helper, level, ccUplink).wired().visibleNodes().isEmpty(), "CC cable next to fiber sees no cloud node");
+                    helper.assertTrue(NetworkService.fibers(uplinkAt(helper, level, ccUplink).getUplinkId().toString()).isEmpty(),
+                        "the uplink on the CC cable is not on the fiber network");
+                }
             })
             .thenExecute(() -> clear(level, placed))
             .thenSucceed();

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import { ScriptError, scriptApi, scriptErrorText, type StoreRecord } from "../lib/scripts.ts";
 import { fetchIndex, fetchVerified, readInstalled, recordInstall, compareVersions, updatesFor, type SignatureState, type StoreIndex, type StoreScript } from "../lib/scriptstore.ts";
-import { publicConfig } from "../lib/config.ts";
+import { ccTweaked, publicConfig } from "../lib/config.ts";
 import { pushToast } from "../lib/ui.ts";
 import { ConfirmDialog, PinDialog, Sheet, type PinState } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
@@ -81,6 +81,14 @@ export default function StoreSheet({ conn, want, onClose }: { conn: MainframeCon
           Community programs for your computers, reviewed before they are listed. They run on a CC computer and can control what that computer controls – never the Minecraft server itself.{" "}
           <DocsLink to="/docs/lua#store">More</DocsLink>
         </p>
+        {!ccTweaked() && (
+          <div class="banner banner-readonly" role="status">
+            <div class="banner-text">
+              Store scripts run on CC: Tweaked computers, and this server runs CC: Cloud without CC: Tweaked. You can browse and read them, but not install them here.{" "}
+              <DocsLink to="/docs/start#cc-tweaked">Why?</DocsLink>
+            </div>
+          </div>
+        )}
         {index && (
           <p class="small store-sig">
             Index: <SignatureBadge s={signature} />
@@ -317,6 +325,10 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
           ))}
         {done ? (
           <p class="form-ok">✓ {done}</p>
+        ) : !ccTweaked() ? (
+          <p class="muted small store-no-cct">
+            Needs CC: Tweaked: store scripts run on computers, and this server has none. <DocsLink to="/docs/start#cc-tweaked">More</DocsLink>
+          </p>
         ) : (
           <div class="store-install">
             <label class="field">

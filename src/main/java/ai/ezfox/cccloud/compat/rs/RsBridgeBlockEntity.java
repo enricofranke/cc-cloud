@@ -2,7 +2,6 @@ package ai.ezfox.cccloud.compat.rs;
 
 import ai.ezfox.cccloud.bridge.BridgeCore;
 import ai.ezfox.cccloud.bridge.BridgeHost;
-import ai.ezfox.cccloud.bridge.BridgePeripheral;
 import ai.ezfox.cccloud.bridge.CloudBridgeBlock;
 import com.refinedmods.refinedstorage.api.network.energy.EnergyNetworkComponent;
 import com.refinedmods.refinedstorage.api.network.impl.node.SimpleNetworkNode;
@@ -19,7 +18,6 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
 
     private final RsAdapter adapter;
     private final BridgeCore core;
-    private final BridgePeripheral peripheral;
     private final ai.ezfox.cccloud.bridge.BridgeSection section;
     private int ticks;
 
@@ -28,25 +26,20 @@ public class RsBridgeBlockEntity extends AbstractNetworkNodeContainerBlockEntity
         adapter = new RsAdapter(this);
         core = new BridgeCore(adapter, "rs", this::setChanged);
         section = new ai.ezfox.cccloud.bridge.BridgeSection(this);
-        peripheral = new BridgePeripheral("rs_cloud_bridge", this);
         var bridgeSection = section;
-        var bridgePeripheral = peripheral;
-        wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> bridgeSection.sectionId().toString(), false, () -> bridgePeripheral);
+        wired = ai.ezfox.cccloud.compat.Cct.hooks().bridge(this, this, "rs_cloud_bridge", () -> bridgeSection.sectionId().toString());
     }
 
     SimpleNetworkNode node() {
         return mainNetworkNode;
     }
 
-    private final ai.ezfox.cccloud.cable.CloudWired wired;
+    /** CC: Tweaked's view of the bridge: its peripheral and CC cables ({@code CcWired.NONE} without CC: Tweaked). */
+    private final ai.ezfox.cccloud.cable.CcWired wired;
 
     @Override
-    public ai.ezfox.cccloud.cable.CloudWired cloudWired() {
+    public ai.ezfox.cccloud.cable.CcWired cloudWired() {
         return wired;
-    }
-
-    public BridgePeripheral peripheral() {
-        return peripheral;
     }
 
     @Override

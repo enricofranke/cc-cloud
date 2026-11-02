@@ -31,11 +31,12 @@ const GENERATED: Record<Lang, string> = {
 /** Icon item per docs page (shown in the guide's navigation). */
 const ICONS: Record<string, string> = {
   start: "cccloud:cloud_mainframe",
-  "cc-basics": "computercraft:computer_advanced",
+  // own items only: the handbook loads without CC: Tweaked too
+  "cc-basics": "cccloud:advanced_cloud_tablet",
   dashboard: "cccloud:cloud_uplink",
   presets: "cccloud:cloud_display",
   redstone: "cccloud:cloud_lamp",
-  lua: "computercraft:computer_advanced",
+  lua: "cccloud:advanced_cloud_uplink",
   "ui-library": "cccloud:cloud_uplink",
   network: "cccloud:cloud_relay",
   upgrades: "cccloud:cloud_tablet",

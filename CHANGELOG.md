@@ -4,6 +4,20 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### CC: Tweaked is optional
+- **CC: Cloud runs on its own.** Mainframes, uplinks on machines, probes, relays, Fiber Cable, upgrades, every machine,
+  storage and redstone card, the bridges, sensors, tablet, display, rules, scenes, presets, reports and the API work
+  without CC: Tweaked.
+- **CC: Tweaked adds programmable computers:** the Computer card, Lua programs and their widgets, the browser terminal and
+  editor, script uploads and Script Store installs, the Peripheral card and CC cables. Install it any time; nothing else
+  changes.
+- **Recipes without CC: Tweaked** use vanilla items in place of the CC parts (Crafter, Chiseled Bookshelf, Observer,
+  Tinted Glass, Compass, Clock, End Crystal). With CC: Tweaked the recipes stay as they were. The docs show both, each
+  marked; the handbook and JEI show the one the server loaded.
+- **Quests:** without CC: Tweaked the quest book gets only the CC: Cloud chapter; the CC: Tweaked chapter follows on the
+  first start with CC: Tweaked.
+- The dashboard knows whether the server has CC: Tweaked and explains what needs it (Script Store, setup guide).
+
 ### Crash reports, usage stats and feedback
 - **Help improve CC: Cloud, if you want to.** A server owner can agree to send crash reports of the mod and anonymous usage
   stats, each on its own. Off by default: without a yes nothing is sent, nothing is read and no connection is opened. The

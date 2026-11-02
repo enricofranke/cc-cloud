@@ -16,15 +16,15 @@ item_ids:
 
 # Erste Schritte
 
-CC: Cloud bringt deine ComputerCraft-Computer und dein Lager auf ein Dashboard in jedem Browser – PC, Tablet oder Handy. Das Dashboard läuft im Mod auf deinem eigenen Minecraft-Server, ganz ohne Konto. Standardmäßig bleibt es in deinem eigenen Netzwerk; von überall erreichst du es mit dem kostenlosen, optionalen [CC: Cloud Connect](#anywhere).
+CC: Cloud bringt deine Maschinen, dein Lager und deinen Redstone – und mit CC: Tweaked deine Computer – auf ein Dashboard in jedem Browser: PC, Tablet oder Handy. Das Dashboard läuft im Mod auf deinem eigenen Minecraft-Server, ganz ohne Konto. Standardmäßig bleibt es in deinem eigenen Netzwerk; von überall erreichst du es mit dem kostenlosen, optionalen [CC: Cloud Connect](#anywhere).
 
-> **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an einen Computer setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Der Computer erscheint automatisch auf dem Dashboard – ganz ohne Code.
+> **Tipp:** Der schnellste Weg: Cloud Mainframe craften, mit Strom versorgen, einen Cloud Uplink an eine Maschine (oder mit CC: Tweaked an einen Computer) setzen, beide mit einer Cloud Link Card verbinden und den Browser koppeln. Das Gerät erscheint automatisch auf dem Dashboard – ganz ohne Code.
 >
 > Du willst nur eine Lampe schalten? Eine **Cloud-Lampe** setzen (oder einen Cloud-Schalter neben deine Redstone-Lampen) und verbinden – sie erscheint als Schalter im Dashboard. Siehe [Redstone-Geräte](redstone.md).
 
 ## Installation
 
-Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den `mods`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client. Jedes Release hat drei Downloads:
+Lege **CC: Cloud** in den `mods`-Ordner von Client **und** Server (Minecraft 26.1.2, NeoForge). Im Einzelspieler reicht der Client. **CC: Tweaked** (1.120.0 oder neuer) ist optional: Es bringt programmierbare Computer dazu ([was sich ändert](#cc-tweaked)). Jedes Release hat drei Downloads:
 
 | Datei | Nimm sie, wenn |
 |---|---|
@@ -34,6 +34,22 @@ Lege **CC: Tweaked** (1.120.0 oder neuer) und **CC: Cloud** in den `mods`-Ordner
 
 Client und Server brauchen **denselben CC: Cloud-Build**. Weicht deiner ab, kommst du trotzdem rein, und der Chat sagt es dir beim Beitreten – mit einem Link zur Jar des Servers. Siehe [Deine Version ist nicht die des Servers](faq.md).
 
+### Mit oder ohne CC: Tweaked
+
+CC: Cloud läuft auch allein. **CC: Tweaked** bringt programmierbare Computer dazu – installier es auf Client und Server (1.120.0 oder neuer), wenn du sie willst. Alles andere funktioniert so oder so gleich:
+
+| | Ohne CC: Tweaked | Mit CC: Tweaked |
+|---|---|---|
+| Mainframe, Uplinks, Sonden, Relays, Fiber Cable, Upgrades | ✓ | ✓ |
+| Maschinen-, Energie-, Tank- und Lager-Karten, AE2-/RS-Bridges, Redstone-Geräte, Sensoren | ✓ | ✓ |
+| Dashboard, Regeln, Szenen, Zeitpläne, Vorlagen, Push, Verlauf, Berichte, API, Tablet, Display | ✓ | ✓ |
+| Computer-Karte, Lua-Programme und ihre Widgets (das Peripheral `cloud_uplink`) | – | ✓ |
+| Terminal im Browser, Lua-Editor, Skripte hochladen, Installieren aus dem Script Store | – | ✓ |
+| Peripherie-Karte, Karten für Maschinen im Kabelnetz eines Computers | – | ✓ |
+| CC-Netzwerkkabel und Wired Modems als Verbindung | – | ✓ |
+
+Ohne CC: Tweaked nehmen die Rezepte mit CC-Teilen stattdessen Vanilla-Items (markiert mit **Nur ohne CC: Tweaked**, siehe [die Rezepte](#recipes)), das Questbuch bekommt nur das CC: Cloud-Kapitel, und im Script Store kannst du stöbern, aber nichts installieren. Installierst du CC: Tweaked später, kommt der Rest dazu – Mainframes, Verknüpfungen und Dashboards bleiben, wie sie sind.
+
 ### Quests (FTB Quests)
 
 Mit **FTB Quests** bekommst du zwei Quest-Kapitel: **CC: Tweaked** (24 Quests: Computer, Turtles, Monitore, Modems, erste Programme) und **CC: Cloud** (39 Quests: Mainframe, Uplinks, Koppeln, Bridges, Relays, Upgrades, Tablet, Display), auf Englisch und Deutsch.
@@ -41,7 +57,7 @@ Mit **FTB Quests** bekommst du zwei Quest-Kapitel: **CC: Tweaked** (24 Quests: C
 Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB Quests seine Quests liest, trägt CC: Cloud sie ins Questbuch ein (`config/ftbquests/quests`) – in die Gruppe **Tech** von ATM11 nach Ender IO und XyCraft, sonst in eine neue Gruppe **CC: Cloud**. Die Spieler bekommen sie vom Server; im Einzelspieler passiert dasselbe in deinem Spielordner.
 
 - Zuerst kommt ein Backup (`config/ftbquests/quests.backup-<Zeit>`). Andere Kapitel und Texte werden nie ersetzt.
-- Hat das Questbuch schon ein CC: Tweaked-Kapitel, kommt nur das CC: Cloud-Kapitel dazu.
+- Hat das Questbuch schon ein CC: Tweaked-Kapitel, kommt nur das CC: Cloud-Kapitel dazu. Ist CC: Tweaked nicht installiert, wartet sein Kapitel und kommt beim ersten Start mit CC: Tweaked.
 - Nur einmal: Ein gelöschtes Kapitel kommt nicht wieder. Neue Versionen aktualisieren ein Kapitel nur, wenn es niemand geändert hat; deine Änderungen bleiben.
 - Im Server-Log steht eine Zeile dazu (`FTB Quests: …`). Abschalten mit `installQuests = false` in `config/cccloud-server.toml` auf dem Server (im Einzelspieler: in deinem Spielordner).
 
@@ -52,7 +68,7 @@ Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB 
 | Block / Item | Funktion |
 |---|---|
 | **Cloud Mainframe** | Das Herz einer Basis. Zwei Blöcke hoch. Stellt die Verbindung zum Dashboard her, zeigt den Kopplungscode und verwaltet Geräte. Einer pro Basis oder Team. Braucht FE-Strom. |
-| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer wird er zur Karte dieses Computers im Dashboard. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
+| **Cloud Uplink** | Haftet wie ein Modem an einer Blockseite; an niedrigen oder kleinen Seiten (Stufen, Solarpanels) wird er zum kompakten Modul; oben oder unten braucht er eine volle Fläche. An einem Computer (CC: Tweaked) wird er zur Karte dieses Computers im Dashboard, an einer Maschine zur Karte der Maschine. Reichweite 48 Blöcke bis zum nächsten Mainframe oder Relay, gleiche Dimension. |
 | **Advanced Cloud Uplink** | Genauso, aber mit 128 Blöcken Reichweite. Über Dimensionen hinweg verbinden [Ender Relays](network.md). |
 | **Cloud-Sonde** | Liest **eine** Maschine bis zu 8 Blöcke entfernt, als säße ein Uplink daran – für eingebaute Maschinen oder wenn jede Seite mit Rohren und Kabeln belegt ist. Teuer; zählt wie zwei Geräte. Siehe *Maschinen ohne freie Seite* weiter unten. |
 | **Cloud Link Card** | Verbindet Uplinks, Bridges und Redstone-Geräte mit einem Mainframe. |
@@ -63,6 +79,8 @@ Mit `cccloud-<version>.jar` kommen sie von selbst: Beim ersten Start, bevor FTB 
 ## Crafting-Rezepte
 
 Zutaten mit „(beliebig)“ akzeptieren jede Variante aus dem Tag (z. B. jeden Goldbarren). JEI/EMI zeigen im Spiel dieselben Rezepte.
+
+Ohne CC: Tweaked nehmen die Rezepte mit CC-Teilen an derselben Stelle Vanilla-Items: einen **Werker** statt des Advanced Computers, ein **Gearbeitetes Bücherregal** statt des Disk Drives, einen **Beobachter** statt des Wired Modems, **Getöntes Glas** statt des Advanced Monitors, einen **Kompass** / eine **Uhr** statt des (Advanced) Pocket Computers und einen **Enderkristall** statt des Ender Modems. Bei jedem Rezept steht, wann es gilt (**Braucht CC: Tweaked** / **Nur ohne CC: Tweaked**).
 
 ### Cloud Core
 <RecipesFor id="cccloud:cloud_core" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
@@ -161,5 +179,5 @@ Ab Werk antwortet das Dashboard nur in deinem eigenen Netzwerk. Am einfachsten e
 
 Dein Dashboard liegt dann unter **https://mybase.cccloud.dev**. Jeder neue Browser muss weiterhin gekoppelt und im Spiel erlaubt werden. Limits, Datenschutz und die anderen Wege: [Zugriff aus dem Internet](security.md).
 
-Wie es weitergeht: [das Dashboard](dashboard.md). Eigene Widgets? Starte mit den [CC-Grundlagen](cc-basics.md) und der [Lua-Referenz](lua.md).
+Wie es weitergeht: [das Dashboard](dashboard.md). Eigene Widgets? Mit CC: Tweaked startest du mit den [CC-Grundlagen](cc-basics.md) und der [Lua-Referenz](lua.md).
 

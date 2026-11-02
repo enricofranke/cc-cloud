@@ -7,9 +7,9 @@ import ai.ezfox.cccloud.block.CloudStatus;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.network.CloudNetwork;
-import ai.ezfox.cccloud.peripheral.UplinkPeripheral;
 import ai.ezfox.cccloud.bridge.BridgeCore;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
+import ai.ezfox.cccloud.compat.ComputerHandle;
 import ai.ezfox.cccloud.uplink.ComputerCard;
 import ai.ezfox.cccloud.bridge.BridgeHost;
 import ai.ezfox.cccloud.bridge.StorageTemplate;
@@ -28,7 +28,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dan200.computercraft.api.peripheral.IComputerAccess;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -155,10 +154,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     private final List<String[]> pendingAlerts = new ArrayList<>();
     private long lastAlertNanos;
 
-    private final Map<IComputerAccess, TokenBucket> computers = new ConcurrentHashMap<>();
-    private final UplinkPeripheral peripheral = new UplinkPeripheral(this);
-    /** CC wired network membership (a member: it puts no peripheral on the cable). */
-    private final ai.ezfox.cccloud.cable.CloudWired wired = ai.ezfox.cccloud.cable.CloudWired.single(this, () -> uplinkId.toString(), false, () -> null);
+    private final Map<ai.ezfox.cccloud.uplink.AttachedComputer, TokenBucket> computers = new ConcurrentHashMap<>();
+    /**
+     * CC: Tweaked's view of the uplink: the {@code cloud_uplink} peripheral and CC wired network membership (a member:
+     * it puts no peripheral on the cable); {@code CcWired.NONE} without CC: Tweaked.
+     */
+    private final ai.ezfox.cccloud.cable.CcWired wired = Cct.hooks().uplink(this);
     /** Cards of the machines the attached computer reaches over CC wired networks (docs/SPEC.md "CC wired networks"). */
     private final ai.ezfox.cccloud.uplink.WiredMachines wiredMachines = new ai.ezfox.cccloud.uplink.WiredMachines(this);
     private volatile CloudStatus status = CloudStatus.OFFLINE;
@@ -197,12 +198,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         return wiredMachines;
     }
 
-    public ai.ezfox.cccloud.cable.CloudWired wired() {
+    public ai.ezfox.cccloud.cable.CcWired wired() {
         return wired;
-    }
-
-    public UplinkPeripheral peripheral() {
-        return peripheral;
     }
 
     public boolean isAdvanced() {
@@ -768,7 +765,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (state.isAir() || ai.ezfox.cccloud.CCCloud.MODID.equals(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getNamespace())) {
             return null;
         }
-        if (CcComputers.find(level, pos) != null || exposes(level, pos, side)) return null;
+        if (Cct.computer(level, pos) != null || exposes(level, pos, side)) return null;
         for (var d : Direction.values()) if (d != side && exposes(level, pos, d)) return d;
         return null;
     }
@@ -990,10 +987,10 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     // ---- auto mode (Computer card) -------------------------------------------------------------------------------
 
-    private CcComputers.@Nullable Handle attachedComputer(ServerLevel level) {
+    private @Nullable ComputerHandle attachedComputer(ServerLevel level) {
         if (!CloudConfig.get(CloudConfig.AUTO_COMPUTER_CARD)) return null;
         var pos = readPos();
-        return pos == null ? null : CcComputers.find(level, pos);
+        return pos == null ? null : Cct.computer(level, pos);
     }
 
     /** Enters/leaves auto mode and refreshes the card (every 10 ticks). */
@@ -1039,7 +1036,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         setChanged();
     }
 
-    private void refreshAuto(CcComputers.Handle computer) {
+    private void refreshAuto(ComputerHandle computer) {
         String newTitle = computer.title();
         boolean on = computer.isOn();
         int[] out = new int[ComputerCard.SIDES.length];
@@ -1566,11 +1563,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
 
     // ---- computers & actions -----------------------------------------------------------------------------------------
 
-    public void attach(IComputerAccess computer) {
+    /** A computer attached the {@code cloud_uplink} peripheral (CC: Tweaked, any thread). */
+    public void attach(ai.ezfox.cccloud.uplink.AttachedComputer computer) {
         computers.put(computer, new TokenBucket(MAX_PENDING_EVENTS, 16));
     }
 
-    public void detach(IComputerAccess computer) {
+    public void detach(ai.ezfox.cccloud.uplink.AttachedComputer computer) {
         computers.remove(computer);
         if (computers.isEmpty()) computerDetached = true;
     }
@@ -1696,12 +1694,12 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             if (!entry.getValue().tryAcquire()) {
                 if (droppedEvents++ % 100 == 0) {
                     CCCloud.LOGGER.warn("[cccloud] Dropping cloud_action for computer #{} on uplink {}: more than {} pending events",
-                        computer.getID(), uplinkId, MAX_PENDING_EVENTS);
+                        computer.id(), uplinkId, MAX_PENDING_EVENTS);
                 }
                 continue;
             }
             try {
-                computer.queueEvent("cloud_action", widgetId, luaValue, user, computer.getAttachmentName());
+                computer.queueEvent("cloud_action", widgetId, luaValue, user, computer.attachmentName());
             } catch (RuntimeException e) {
                 // The computer was detached in the meantime.
                 computers.remove(computer);

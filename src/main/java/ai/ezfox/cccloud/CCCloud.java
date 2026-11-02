@@ -3,7 +3,6 @@ package ai.ezfox.cccloud;
 import ai.ezfox.cccloud.block.CloudMainframeBlock;
 import ai.ezfox.cccloud.command.CloudCommand;
 import ai.ezfox.cccloud.network.CloudNetwork;
-import dan200.computercraft.api.peripheral.PeripheralCapability;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
@@ -24,8 +23,6 @@ public class CCCloud {
         // GameTest runs only: test machines for the Cloud Probe / side tests and a claim stand-in (ProbeTests).
         if (Boolean.getBoolean("cccloud.gametest")) {
             modEventBus.addListener(ai.ezfox.cccloud.gametest.ProbeTests::registerTestCapabilities);
-            // Wave 4: a test peripheral on lecterns for the Peripheral card (PeripheralGameTests).
-            modEventBus.addListener(ai.ezfox.cccloud.compat.cc.PeripheralGameTests::registerTestCapabilities);
             // A datapack that overrides, removes and adds recipes like a modpack does (RecipeCatalogTests).
             modEventBus.addListener(ai.ezfox.cccloud.gametest.RecipeCatalogTests::addTestPack);
             ai.ezfox.cccloud.gametest.ProbeTests.init();
@@ -69,6 +66,8 @@ public class CCCloud {
         // Soft dependencies: the compat classes (and with them every AE2/RS class) are only loaded if the mod is there.
         if (ModList.get().isLoaded("ae2")) ai.ezfox.cccloud.compat.ae2.Ae2Compat.init(modEventBus);
         if (ModList.get().isLoaded("refinedstorage")) ai.ezfox.cccloud.compat.rs.RsCompat.init(modEventBus);
+        // CC: Tweaked is optional too: peripherals, CC cables, computers and the Peripheral card only with it (compat/cct).
+        ai.ezfox.cccloud.compat.Cct.init(modEventBus);
         // v0.5 integrations (device cards, server card, FTB Teams/Chunks, Simple Backups): compat/<modid> packages.
         ai.ezfox.cccloud.compat.Integrations.init(modEventBus, modContainer);
         // v0.7 in-game clients: Cloud Tablet and Cloud Display (ingame/, tablet/, display/).
@@ -76,20 +75,7 @@ public class CCCloud {
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(PeripheralCapability.get(), ModRegistry.UPLINK_BE.get(), (uplink, side) -> uplink.peripheral());
-        // The mainframe is a peripheral on both halves; the block entity lives in the lower half.
-        event.registerBlock(PeripheralCapability.get(), (level, pos, state, be, side) -> {
-            var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
-            return mainframe == null ? null : mainframe.peripheral();
-        }, ModRegistry.CLOUD_MAINFRAME.get());
-        // Cables: mainframe (both halves), relays and uplinks are CC wired elements; relays are peripherals too.
-        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.UPLINK_BE.get(), (uplink, side) -> uplink.wired());
-        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.wired());
-        event.registerBlockEntity(PeripheralCapability.get(), ModRegistry.RELAY_BE.get(), (relay, side) -> relay.peripheral());
-        event.registerBlock(dan200.computercraft.api.network.wired.WiredElementCapability.get(), (level, pos, state, be, side) -> {
-            var mainframe = CloudMainframeBlock.getBlockEntity(level, pos, state);
-            return mainframe == null ? null : mainframe.wired();
-        }, ModRegistry.CLOUD_MAINFRAME.get());
+        // CC: Tweaked's peripheral and wired element capabilities: compat/cct (CctCompat), only with CC: Tweaked.
         // Relays: FE input from every side.
         event.registerBlockEntity(net.neoforged.neoforge.capabilities.Capabilities.Energy.BLOCK, ModRegistry.RELAY_BE.get(), (relay, side) -> relay.energy());
         // FE input on both halves, all sides (receive-only).

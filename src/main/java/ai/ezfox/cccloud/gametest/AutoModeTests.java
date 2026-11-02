@@ -3,7 +3,7 @@ package ai.ezfox.cccloud.gametest;
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.uplink.ComputerCard;
 import ai.ezfox.cccloud.uplink.WidgetFactory;
 import ai.ezfox.cccloud.uplink.WidgetType;
@@ -55,18 +55,18 @@ public final class AutoModeTests {
             .thenExecute(() -> uplink(helper).clearWidgets())
             .thenWaitUntil(() -> helper.assertTrue(uplink(helper).isAuto(), "card is back after clear()"))
             .thenExecute(() -> {
-                var handle = CcComputers.find(level, computerPos);
+                var handle = Cct.computer(level, computerPos);
                 helper.assertTrue(handle != null, "computer handle");
                 handle.turnOn();
             })
             .thenWaitUntil(() -> helper.assertTrue(uplink(helper).computerCount() > 0, "the running computer attaches the uplink peripheral"))
             .thenExecute(() -> {
-                var handle = CcComputers.find(level, computerPos);
+                var handle = Cct.computer(level, computerPos);
                 helper.assertTrue(handle.canSetOutputs(), "redstone outputs must be settable (CC internals reachable)");
                 helper.assertTrue(handle.setOutput("top", 15), "set output");
             })
             .thenWaitUntil(() -> {
-                var handle = CcComputers.find(level, computerPos);
+                var handle = Cct.computer(level, computerPos);
                 helper.assertTrue(handle.output("top") == 15, "output stored");
                 int signal = level.getBestNeighborSignal(computerPos.above());
                 helper.assertTrue(signal == 15, "the world sees the output above the computer, got " + signal);
@@ -83,7 +83,7 @@ public final class AutoModeTests {
                 } catch (WidgetFactory.WidgetException e) {
                     throw helper.assertionException(e.getMessage());
                 }
-                CcComputers.find(level, computerPos).shutdown();
+                Cct.computer(level, computerPos).shutdown();
             })
             .thenWaitUntil(() -> helper.assertTrue(uplink(helper).isAuto() && uplink(helper).getWidget("hello") == null,
                 "after the computer shut down the Lua widgets are dropped and the card is back"))

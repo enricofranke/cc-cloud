@@ -5,7 +5,7 @@ import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.bridge.BridgeSection;
-import ai.ezfox.cccloud.cable.CloudWired;
+import ai.ezfox.cccloud.cable.CcWired;
 import ai.ezfox.cccloud.cable.EnderFiberLinkBlockEntity;
 import ai.ezfox.cccloud.cable.FiberNetworks;
 import ai.ezfox.cccloud.network.graph.NetworkGraph;
@@ -95,7 +95,7 @@ public final class NetworkService {
         LAST_TYPE.clear();
         OVER_CAPACITY.clear();
         fibers = Map.of();
-        CloudWired.clear();
+        ai.ezfox.cccloud.compat.Cct.hooks().clear();
         ai.ezfox.cccloud.uplink.WiredMachines.clear();
         EnderFiberLinkBlockEntity.clearLoaded();
         dirty = true;
@@ -108,7 +108,7 @@ public final class NetworkService {
      * recomputes everything only when the fiber networks changed.
      */
     public static void tick(MinecraftServer server) {
-        CloudWired.tick();
+        ai.ezfox.cccloud.compat.Cct.hooks().tick();
         int t = server.getTickCount();
         try {
             if (fiberDirty || t % SAFETY_INTERVAL == 0) {
@@ -209,7 +209,7 @@ public final class NetworkService {
         return list;
     }
 
-    private static Set<String> cables(@Nullable CloudWired wired) {
+    private static Set<String> cables(@Nullable CcWired wired) {
         return wired == null ? Set.of() : wired.cableBuses();
     }
 
@@ -388,7 +388,7 @@ public final class NetworkService {
      * @param deviceId the device's network id (for its fiber networks), {@code wired} its CC wired element
      */
     public static @Nullable Component checkLink(CloudMainframeBlockEntity mainframe, Level level, BlockPos pos, NetworkGraph.DeviceType type,
-                                                @Nullable String deviceId, @Nullable CloudWired wired) {
+                                                @Nullable String deviceId, @Nullable CcWired wired) {
         if (fiberDirty) {
             fiberDirty = false;
             fibers = FiberNetworks.compute(fiberElements(), EnderFiberLinkBlockEntity.loaded());

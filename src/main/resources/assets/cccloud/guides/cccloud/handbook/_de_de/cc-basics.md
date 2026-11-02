@@ -3,12 +3,12 @@
 navigation:
   title: "CC-Grundlagen"
   position: 1
-  icon: computercraft:computer_advanced
+  icon: cccloud:advanced_cloud_tablet
 ---
 
 # CC-Grundlagen für Einsteiger
 
-Neu bei ComputerCraft? Hier steht das Wenige, das du für ein Dashboard-Programm brauchst.
+Neu bei ComputerCraft? Hier steht das Wenige, das du für ein Dashboard-Programm brauchst. Die Computer kommen von **CC: Tweaked** – ohne es auf dem Server gibt es keine, und diese Seite gilt nicht ([was ohne funktioniert](index.md)).
 
 ## Shell oder Lua?
 

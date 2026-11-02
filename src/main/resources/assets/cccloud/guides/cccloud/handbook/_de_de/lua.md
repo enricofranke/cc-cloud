@@ -3,12 +3,14 @@
 navigation:
   title: "Lua-Referenz"
   position: 5
-  icon: computercraft:computer_advanced
+  icon: cccloud:advanced_cloud_uplink
 ---
 
 # Lua-Referenz
 
 Alles, was ein Programm mit CC: Cloud tun kann. Im Spiel zeigt `help cloud` eine Kurzfassung.
+
+> Programme laufen auf Computern von **CC: Tweaked**: Alles auf dieser Seite braucht CC: Tweaked auf dem Server. Ohne es arbeitet CC: Cloud nur mit Maschinen, Lager und Redstone-Geräten ([was sich ändert](index.md)).
 
 ## Das Peripheral holen
 
@@ -283,5 +285,5 @@ Das sehen nur Admins des Mainframes, und Änderungen brauchen die Mainframe-PIN,
 
 Fertige Programme aus der Community: **Script Store** im Menü des Mainframes (Admins). Jedes Skript zeigt, was es tut, was es **nutzt** (Redstone, Peripherie, Internet …) und den vollständigen Quelltext – vor der Anzeige gegen den SHA-256 im Index des Stores geprüft. Der Index ist vom Store signiert: Dein Browser prüft die Signatur, wo er kann (**signed ✓**), und der Minecraft-Server prüft sie noch einmal, bevor er eine Datei schreibt. Das beweist, dass die Dateien aus dem Store stammen – nicht, dass der Code sicher ist, also **lies den Code, bevor du installierst**. Computer wählen und installieren; sofort starten oder automatisch beim Start. Installierte Store-Skripte zeigen **Update available**, wenn es eine neuere Version gibt, und du wirst gewarnt, bevor eine auf dem Computer geänderte Datei überschrieben wird.
 
-Auf der Projekt-Website öffnet **Install** dein Dashboard unter `/store#install=<skript>` – dieselbe Ansicht, ohne deinen Klick wird nichts installiert. Server-Admins können den Store abschalten (`scriptStore=false`). Community-Skripte laufen auf deinem CC-Computer und können steuern, was er steuert – den Minecraft-Server selbst können sie nicht anfassen.
+Auf der Projekt-Website öffnet **Install** dein Dashboard unter `/store#install=<skript>` – dieselbe Ansicht, ohne deinen Klick wird nichts installiert. Server-Admins können den Store abschalten (`scriptStore=false`). Community-Skripte laufen auf deinem CC-Computer und können steuern, was er steuert – den Minecraft-Server selbst können sie nicht anfassen. Ohne CC: Tweaked auf dem Server kannst du im Store stöbern, aber es gibt nichts, worauf du installieren könntest.
 

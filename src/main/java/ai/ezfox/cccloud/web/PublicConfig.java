@@ -7,7 +7,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * What the dashboard may know before login ({@code GET /api/config}, docs/SPEC.md "Script Store – server side"): the
- * mod version, the Script Store URL and public signing key when the store is enabled, and feature switches. No secrets. Pure Java, unit tested.
+ * mod version, the Script Store URL and public signing key when the store is enabled, feature switches and whether CC:
+ * Tweaked is installed. No secrets. Pure Java, unit tested.
  */
 public final class PublicConfig {
     /** The current settings (replaced by the game with the live config; tests set their own). */
@@ -27,11 +28,24 @@ public final class PublicConfig {
 
     static volatile Supplier<Settings> source = () -> new Settings("dev", false, "", false, false, false, false, false);
 
+    /**
+     * CC: Tweaked on this server ({@code compat.Cct}): without it the dashboard leaves out or explains what needs
+     * computers (store scripts, terminal, Lua). Older servers send nothing, which the dashboard reads as present.
+     */
+    public record CcTweaked(boolean present, @Nullable String version) {
+    }
+
+    static volatile Supplier<CcTweaked> ccTweaked = () -> new CcTweaked(true, null);
+
     private PublicConfig() {
     }
 
     public static void setSource(Supplier<Settings> settings) {
         source = settings;
+    }
+
+    public static void setCcTweaked(Supplier<CcTweaked> cct) {
+        ccTweaked = cct;
     }
 
     /** {@code https://host[:port]/path/} – null if the URL is not a valid store URL. */
@@ -95,6 +109,12 @@ public final class PublicConfig {
         features.addProperty("production", s.production());
         features.addProperty("api", s.api());
         json.add("features", features);
+        var cc = ccTweaked.get();
+        var cct = new JsonObject();
+        cct.addProperty("present", cc.present());
+        if (cc.version() != null) cct.addProperty("version", cc.version());
+        else cct.add("version", com.google.gson.JsonNull.INSTANCE);
+        json.add("cct", cct);
         return json;
     }
 }

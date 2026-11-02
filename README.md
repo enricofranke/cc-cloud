@@ -1,27 +1,30 @@
 <div align="center">
 
-<a href="https://cccloud.dev"><img src="docs/readme/hero.png" width="100%" alt="CC: Cloud – your base, in any browser. A CC: Tweaked addon: build a Cloud Mainframe, stick uplinks on your computers and machines, and your Minecraft server serves a live dashboard to your phone or PC."></a>
+<a href="https://cccloud.dev"><img src="docs/readme/hero.png" width="100%" alt="CC: Cloud – your base, in any browser. Build a Cloud Mainframe, stick uplinks on your machines and (with CC: Tweaked) computers, and your Minecraft server serves a live dashboard to your phone or PC."></a>
 
 **[Website](https://cccloud.dev)** &nbsp;·&nbsp; **[Docs](https://cccloud.dev/en/docs/)** &nbsp;·&nbsp; **[Download](https://cccloud.dev/en/download/)** &nbsp;·&nbsp; **[Script Store](https://cccloud.dev/en/store/)** &nbsp;·&nbsp; **[Discord](https://discord.gg/4fnQcvbzg6)**
 
 [![Minecraft 26.1.2](https://img.shields.io/badge/Minecraft-26.1.2-5fd35f?style=for-the-badge&labelColor=161b21)](https://cccloud.dev/en/download/)
 [![NeoForge](https://img.shields.io/badge/NeoForge-26.1.2.109%2B-ddd771?style=for-the-badge&labelColor=161b21)](https://neoforged.net)
-[![CC: Tweaked](https://img.shields.io/badge/needs-CC%3A%20Tweaked%201.120%2B-5ec8e5?style=for-the-badge&labelColor=161b21)](https://modrinth.com/mod/cc-tweaked)
+[![CC: Tweaked](https://img.shields.io/badge/optional-CC%3A%20Tweaked%201.120%2B-5ec8e5?style=for-the-badge&labelColor=161b21)](https://modrinth.com/mod/cc-tweaked)
 [![License MPL-2.0](https://img.shields.io/badge/license-MPL--2.0-8d99a6?style=for-the-badge&labelColor=161b21)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-join-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=161b21)](https://discord.gg/4fnQcvbzg6)
 
 </div>
 
 **Your whole Minecraft base, always in your pocket.** Build a **Cloud Mainframe**, attach **Uplinks** to your
-computers and machines, open the dashboard on your phone or PC – and flip switches, watch your reactor, search your ME
+machines (and computers), open the dashboard on your phone or PC – and flip switches, watch your reactor, search your ME
 system or start a craft from anywhere in your home network. The dashboard is served by the mod itself on your own server,
 with no account. For the road, the free and optional [CC: Cloud Connect](https://cccloud.dev/en/docs/security/#connect)
 gives it an HTTPS address without port forwarding.
 
-> [!IMPORTANT]
-> CC: Cloud is an addon: it needs **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked) 1.120.0+** installed next to
-> it, on the client and the server. For Minecraft 26.1.2 CC: Tweaked is published on Modrinth only – download it there
-> and put both jars into your `mods/` folder (also when you use the CurseForge app).
+> [!NOTE]
+> CC: Cloud runs on its own. **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked) 1.120.0+** next to it (client and
+> server) adds programmable computers: the Computer card, Lua programs and their widgets, the browser terminal and
+> editor, Script Store installs, the Peripheral card and CC cables. Machines, storage, redstone devices, rules and the
+> rest of the dashboard work without it ([what changes](https://cccloud.dev/en/docs/#cc-tweaked)). For Minecraft 26.1.2
+> CC: Tweaked is published on Modrinth only – download it there and put the jar into your `mods/` folder (also when you
+> use the CurseForge app).
 
 <p align="center"><img src="docs/readme/how.png" width="100%" alt="How it works: 1. Place a Cloud Mainframe – it hosts your dashboard and shows its address and a pairing code. 2. Stick on an Uplink and link it with the Link Card – it shows up as a card. 3. Pair your browser: open the address, type the code, click Allow in game."></p>
 
@@ -87,15 +90,15 @@ gives it an HTTPS address without port forwarding.
 | `cccloud-<version>-modpack.jar` | you **make a modpack**: the same mod (same id and version), but it never touches the quest book. |
 | `cccloud-quests-atm11-<version>.zip` | you make a modpack (or install the quests by hand): the quest chapters for your quest book. |
 
-1. Install **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked)** and **CC: Cloud** (client and server) – from
-   [the download page](https://cccloud.dev/en/download/) or the [releases](https://github.com/enricofranke/cc-cloud/releases).
+1. Install **CC: Cloud** (client and server) – from [the download page](https://cccloud.dev/en/download/) or the
+   [releases](https://github.com/enricofranke/cc-cloud/releases) – and, for computers, **[CC: Tweaked](https://modrinth.com/mod/cc-tweaked)**.
 2. Place a **Cloud Mainframe** and give it power (any FE source).
-3. Place a computer, stick a **Cloud Uplink** on it, and link it with the **Link Card** (right-click the mainframe, then the uplink).
+3. Stick a **Cloud Uplink** on a machine or a computer, and link it with the **Link Card** (right-click the mainframe, then the uplink).
 4. Right-click the mainframe: it shows the dashboard address (e.g. `http://192.168.1.20:8787`) and a pairing code.
 5. Open the address in your browser, enter the code and click **Allow** in the in-game chat or screen. Done – your
-   computer shows up as a card.
+   machine or computer shows up as a card.
 
-Want your own dashboard? Run `cloud-demo` on the computer, or start from this:
+Want your own dashboard? With CC: Tweaked, run `cloud-demo` on the computer, or start from this:
 
 ```lua
 local ui = require("cloud.ui")
@@ -121,7 +124,7 @@ in English and German.
 - **Own server or singleplayer (`cccloud-<version>.jar`):** nothing to do. On the first start with FTB Quests, before
   FTB Quests reads its quests, the mod adds both chapters to the quest book (`config/ftbquests/quests`; ATM11's Tech
   group, otherwise a new "CC: Cloud" group), and players receive them from the server. It makes a backup first, never
-  replaces other quests or texts, leaves out its CC: Tweaked chapter when the pack has one, and acts only once: a
+  replaces other quests or texts, leaves out its CC: Tweaked chapter when the pack has one (and until CC: Tweaked is installed), and acts only once: a
   chapter you delete stays deleted, and newer versions only update chapters nobody changed. The server log says what it
   did; `installQuests = false` in `cccloud-server.toml` turns it off.
 - **Modpacks:** use `cccloud-<version>-modpack.jar` and ship the chapters from `cccloud-quests-atm11-<version>.zip` in
@@ -153,7 +156,7 @@ How it is measured, the remaining limits and the server settings for big bases: 
 
 ## Compatibility
 
-- Minecraft **26.1.2**, NeoForge **26.1.2.109+**, CC: Tweaked **1.120.0+**, Java **25**
+- Minecraft **26.1.2**, NeoForge **26.1.2.109+**, Java **25**; optional: CC: Tweaked **1.120.0+**
 - Built and tested against **All the Mods 11** (0.12.0-beta) with ~290 mods, and with 500 devices on one mainframe.
 - Optional integrations activate automatically when the mod is present; nothing breaks without them.
 
@@ -204,5 +207,5 @@ cd cloud && npx pnpm@10 install && npx pnpm@10 dev   # dashboard with a mock ser
 
 CC: Cloud is made by **[Enrico Franke](https://enricofranke.com)** ([GitHub](https://github.com/enricofranke)) and
 licensed under the [Mozilla Public License 2.0](LICENSE). All textures and models are original work.
-Built on [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) by SquidDev and contributors – not affiliated with or
+Works with [CC: Tweaked](https://github.com/cc-tweaked/CC-Tweaked) by SquidDev and contributors – not affiliated with or
 endorsed by the CC: Tweaked team, Mojang or Microsoft.

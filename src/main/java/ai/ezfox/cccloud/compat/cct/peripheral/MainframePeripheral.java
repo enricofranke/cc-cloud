@@ -1,0 +1,169 @@
+package ai.ezfox.cccloud.compat.cct.peripheral;
+
+import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
+import ai.ezfox.cccloud.network.CloudNetwork;
+import ai.ezfox.cccloud.web.AuthStore;
+import ai.ezfox.cccloud.web.WebAuthData;
+import dan200.computercraft.api.lua.LuaFunction;
+import dan200.computercraft.api.peripheral.IPeripheral;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import net.minecraft.server.level.ServerLevel;
+import org.jspecify.annotations.Nullable;
+
+/** The {@code cloud_mainframe} peripheral. */
+public final class MainframePeripheral implements IPeripheral {
+    private final CloudMainframeBlockEntity mainframe;
+
+    public MainframePeripheral(CloudMainframeBlockEntity mainframe) {
+        this.mainframe = mainframe;
+    }
+
+    @Override
+    public String getType() {
+        return "cloud_mainframe";
+    }
+
+    @Override
+    public Object getTarget() {
+        return mainframe;
+    }
+
+    @Override
+    public boolean equals(@Nullable IPeripheral other) {
+        return other instanceof MainframePeripheral o && o.mainframe == mainframe;
+    }
+
+    @LuaFunction
+    public final boolean isEnabled() {
+        return mainframe.isEnabled();
+    }
+
+    /** True if the mainframe is loaded, not redstone-killed and the dashboard is enabled. */
+    @LuaFunction
+    public final boolean isOnline() {
+        return mainframe.isOnline() && mainframe.isEnabled();
+    }
+
+    /** Stored FE in the mainframe's buffer. */
+    @LuaFunction
+    public final long getEnergy() {
+        return mainframe.energy().energy();
+    }
+
+    /** Buffer size in FE. */
+    @LuaFunction
+    public final long getEnergyCapacity() {
+        return mainframe.energy().capacity();
+    }
+
+    /** Current consumption in FE per tick (base + linked uplinks/bridges + connected dashboards). */
+    @LuaFunction
+    public final long getEnergyUsage() {
+        return mainframe.energyUsage();
+    }
+
+    /**
+     * The network: {nodes={{id,type,name,pos={x,y,z},dim,status,power,range,deviceRange,parent,hops},...},
+     * links={{a,b,signal,dist,kind},...}, routes={[deviceId]={nodeIds...}}}. Positions included (in-world access).
+     */
+    @LuaFunction(mainThread = true)
+    public final Object getNetwork() {
+        var result = ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId());
+        if (result == null) return java.util.Map.of();
+        return ai.ezfox.cccloud.uplink.Json.toLua(ai.ezfox.cccloud.network.NetworkService.toJson(mainframe, result, true));
+    }
+
+    /** What the network costs in FE/t: {base, uplinks, advanced_uplinks, bridges, clients, hops, total}. */
+    @LuaFunction(mainThread = true)
+    public final java.util.Map<String, Long> getPowerBreakdown() {
+        return mainframe.powerBreakdown();
+    }
+
+    @LuaFunction(mainThread = true)
+    public final void setEnabled(boolean enabled) {
+        mainframe.setEnabled(enabled);
+    }
+
+    /** List of linked uplinks: {id, title, online, x, y, z, dimension}. */
+    @LuaFunction(mainThread = true)
+    public final List<Map<String, Object>> getUplinks() {
+        var result = new ArrayList<Map<String, Object>>();
+        for (var entry : mainframe.getLinkedUplinks().entrySet()) {
+            var info = new HashMap<String, Object>();
+            info.put("id", entry.getKey().toString());
+            var pos = entry.getValue();
+            info.put("x", pos.pos().getX());
+            info.put("y", pos.pos().getY());
+            info.put("z", pos.pos().getZ());
+            info.put("dimension", pos.dimension().identifier().toString());
+            var uplink = CloudNetwork.uplink(entry.getKey());
+            info.put("loaded", uplink != null);
+            info.put("online", uplink != null && uplink.isOnline());
+            if (uplink != null) info.put("title", uplink.getTitle());
+            result.add(info);
+        }
+        return result;
+    }
+
+    /** Reads per second of {@link #getCards} and {@link #getCard} per peripheral; a whole base can be a lot of JSON. */
+    private final ai.ezfox.cccloud.web.TokenBucket reads = new ai.ezfox.cccloud.web.TokenBucket(20, 10);
+
+    /**
+     * The dashboard's cards this program may read: {id, title, online, kind, widgets}, at most 256. A computer has no
+     * owner to ask, so a program sees what a plain viewer sees (docs/SPEC.md "Reading cards from Lua"): never restricted
+     * cards, player names in their public form. Returns nil and "rate_limited" above 10 reads per second.
+     */
+    @LuaFunction
+    public final Object[] getCards() {
+        if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
+        return new Object[]{CardReader.list(ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId()))};
+    }
+
+    /** One card with its widgets: {id, title, online, widgets={{id, type, label, value, unit, min, max},...}}, or nil. Limits like {@link #getCards}. */
+    @LuaFunction
+    public final Object[] getCard(String id) {
+        if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
+        for (var section : ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId())) {
+            if (id.equals(CardReader.id(section))) return new Object[]{CardReader.card(section)};
+        }
+        return new Object[]{null};
+    }
+
+    /**
+     * The mainframe's rules (v0.5): {id, name, enabled, trigger, actions, lastRun, lastResult, runs}. Editing happens in
+     * the dashboard (admin); Lua can only list them and switch them on/off.
+     */
+    @LuaFunction(mainThread = true)
+    public final List<Map<String, Object>> getRules() {
+        var server = mainframe.getLevel() == null ? null : mainframe.getLevel().getServer();
+        var result = new ArrayList<Map<String, Object>>();
+        if (server == null) return result;
+        var doc = ai.ezfox.cccloud.rules.RuleService.document(server, mainframe.getMainframeId());
+        for (var e : doc.getAsJsonArray("rules")) {
+            var rule = e.getAsJsonObject();
+            var info = new HashMap<String, Object>();
+            info.put("id", rule.get("id").getAsString());
+            info.put("name", rule.get("name").getAsString());
+            info.put("enabled", rule.get("enabled").getAsBoolean());
+            info.put("trigger", rule.getAsJsonObject("when").get("type").getAsString());
+            info.put("actions", rule.getAsJsonArray("then").size());
+            if (!rule.get("lastRun").isJsonNull()) info.put("lastRun", rule.get("lastRun").getAsLong());
+            if (!rule.get("lastResult").isJsonNull()) info.put("lastResult", rule.get("lastResult").getAsString());
+            info.put("runs", rule.get("runs").getAsLong());
+            result.add(info);
+        }
+        return result;
+    }
+
+    /** Enables or disables a rule. Returns true, or false and an error ("unknown_rule"). */
+    @LuaFunction(mainThread = true)
+    public final Object[] setRuleEnabled(String id, boolean enabled) {
+        var server = mainframe.getLevel() == null ? null : mainframe.getLevel().getServer();
+        if (server == null) return new Object[]{false, "offline"};
+        String error = ai.ezfox.cccloud.rules.RuleService.setEnabled(server, mainframe.getMainframeId(), id, enabled);
+        return error == null ? new Object[]{true} : new Object[]{false, error};
+    }
+}

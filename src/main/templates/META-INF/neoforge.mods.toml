@@ -33,16 +33,16 @@ displayURL="https://github.com/enricofranke/cc-cloud" #optional
 logoFile="cccloud_logo.png" #optional
 
 # A text field displayed in the mod UI
-credits="Built on CC: Tweaked by SquidDev and contributors." #optional
+credits="Works with CC: Tweaked by SquidDev and contributors." #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
 authors="Enrico Franke"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-${mod_edition_description}Connect CC: Tweaked computers and your base's machines to a dashboard in the browser – phone, tablet or desktop.
-Build cards from Lua or let ready-made cards appear for computers, storage networks (AE2, Refined Storage) and many
-ATM11 machines. Rules, push notifications, a browser terminal and editor, a 2D/3D map of your network, roles and
+${mod_edition_description}Connect your base's machines to a dashboard in the browser – phone, tablet or desktop.
+Ready-made cards appear for storage networks (AE2, Refined Storage) and many ATM11 machines; with CC: Tweaked
+installed, computers get cards too and Lua programs can build their own. Rules, push notifications, a browser terminal and editor, a 2D/3D map of your network, roles and
 share links for your team, all self-hosted by the Minecraft server.
 '''
 
@@ -89,9 +89,11 @@ share links for your team, all self-hosted by the Minecraft server.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"
 
+# Optional since the mod runs alone: CC: Tweaked adds programmable computers (Lua peripherals, computer cards, the
+# browser terminal, store scripts and CC wired cables). Everything CC-specific lives in compat/cct.
 [[dependencies.${mod_id}]]
     modId="computercraft"
-    type="required"
+    type="optional"
     versionRange="[${cct_version},)"
     ordering="AFTER"
     side="BOTH"

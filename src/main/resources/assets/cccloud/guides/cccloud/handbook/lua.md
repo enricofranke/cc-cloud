@@ -3,12 +3,14 @@
 navigation:
   title: "Lua reference"
   position: 5
-  icon: computercraft:computer_advanced
+  icon: cccloud:advanced_cloud_uplink
 ---
 
 # Lua reference
 
 Everything a program can do with CC: Cloud. In-game, `help cloud` prints a short version.
+
+> Programs run on **CC: Tweaked** computers: everything on this page needs CC: Tweaked on the server. Without it, CC: Cloud works with machines, storage and redstone devices only ([what changes](index.md)).
 
 ## Getting the peripheral
 
@@ -283,5 +285,5 @@ Only admins of the mainframe see this, and changes need the mainframe PIN if one
 
 Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the SHA-256 in the store's index before you see it. The index is signed by the store: your browser checks the signature where it can (**signed ✓**), and the Minecraft server checks it again before it writes any file. That proves the files come from the store – not that the code is safe, so **read the code before you install it**. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
 
-On the project website, **Install** opens your dashboard at `/store#install=<script>` – the same view, nothing is installed without your click. Server admins can switch the store off (`scriptStore=false`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server.
+On the project website, **Install** opens your dashboard at `/store#install=<script>` – the same view, nothing is installed without your click. Server admins can switch the store off (`scriptStore=false`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server. Without CC: Tweaked on the server, the store can be browsed but there is nothing to install on.
 

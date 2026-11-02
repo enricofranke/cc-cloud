@@ -87,6 +87,10 @@ Für Server-Besitzer: `/cccloud version` zeigt den Build des Servers, das Server
 - Im Server-Log steht, was passiert ist: Suche nach `FTB Quests:` (zum Beispiel `installQuests = false`, eine ID, die im Questbuch schon vergeben ist, oder ein Kapitel, das früher gelöscht wurde).
 - Die Quests kommen nur einmal; ein gelöschtes Kapitel kommt nicht wieder. Für einen Neuanfang `config/cccloud/quests-installed.json` löschen und neu starten. Siehe [Quests](index.md).
 
+## Keine Computer-Karte, kein Terminal, keine Skripte
+
+Der Server läuft mit CC: Cloud ohne **CC: Tweaked**. Computer, Lua-Programme, das Terminal, der Lua-Editor, Skript-Uploads und Installationen aus dem Script Store, die Peripherie-Karte und CC-Kabel kommen von CC: Tweaked; alles andere funktioniert ohne. Installier CC: Tweaked (1.120.0 oder neuer) auf Server und Clients und starte neu. Siehe [Mit oder ohne CC: Tweaked](index.md).
+
 ## Eine Karte zeigt „Gesperrt – diese Maschine liegt im Claim von …“
 
 Maschinen im Claim eines anderen Teams funktionieren auf dem Dashboard nicht mehr. Claimt ein Team den Chunk einer Maschine, die ein Uplink, eine Sonde, eine Bridge, ein Redstone-Gerät oder eine Karte über ein CC-Kabel liest, und ist weder der Spieler, der es verbunden hat, noch der Besitzer des Mainframes in diesem Team oder mit ihm verbündet, zeigt die Karte den Claim statt der Werte, und jedes Bedienelement wird abgelehnt – auch aus Regeln, Szenen und der API. Den Namen des Teams sehen nur Spieler, die Positionen sehen dürfen.
