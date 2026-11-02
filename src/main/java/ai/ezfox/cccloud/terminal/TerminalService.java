@@ -3,7 +3,8 @@ package ai.ezfox.cccloud.terminal;
 import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
+import ai.ezfox.cccloud.compat.ComputerHandle;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonObject;
@@ -66,13 +67,13 @@ public final class TerminalService {
         return CloudConfig.get(CloudConfig.TERMINAL_ENABLED);
     }
 
-    /** The computer behind an uplink of this mainframe, or null. */
-    static CcComputers.@Nullable Handle computer(UUID mainframeId, UUID uplinkId) {
+    /** The computer behind an uplink of this mainframe, or null (always without CC: Tweaked). */
+    static @Nullable ComputerHandle computer(UUID mainframeId, UUID uplinkId) {
         var section = CloudNetwork.section(uplinkId);
         if (!(section instanceof CloudUplinkBlockEntity uplink) || section.getLink() == null || !section.getLink().id().equals(mainframeId)) return null;
         if (!(uplink.getLevel() instanceof ServerLevel level)) return null;
         if (claimBlocked(uplink)) return null;
-        return CcComputers.find(level, uplink.getBlockPos().relative(uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING)));
+        return Cct.computer(level, uplink.getBlockPos().relative(uplink.getBlockState().getValue(ai.ezfox.cccloud.block.CloudUplinkBlock.FACING)));
     }
 
     /** Claim guard: the uplink is blocked, or its computer is in a chunk another team claimed for its owners. */

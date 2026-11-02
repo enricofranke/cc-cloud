@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.compat.cc;
+package ai.ezfox.cccloud.compat.cct;
 
 import static ai.ezfox.cccloud.compat.card.CardTestSupport.*;
 

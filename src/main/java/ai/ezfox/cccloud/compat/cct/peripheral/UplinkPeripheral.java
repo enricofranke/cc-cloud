@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.peripheral;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.uplink.Limits;
@@ -12,7 +12,6 @@ import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IComputerAccess;
 import dan200.computercraft.api.peripheral.IPeripheral;
 import ai.ezfox.cccloud.bridge.BridgeCore;
-import ai.ezfox.cccloud.bridge.BridgePeripheral;
 import ai.ezfox.cccloud.uplink.BridgeRef;
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonElement;
@@ -40,12 +39,30 @@ public final class UplinkPeripheral implements IPeripheral {
 
     @Override
     public void attach(IComputerAccess computer) {
-        uplink.attach(computer);
+        uplink.attach(new Attached(computer));
     }
 
     @Override
     public void detach(IComputerAccess computer) {
-        uplink.detach(computer);
+        uplink.detach(new Attached(computer));
+    }
+
+    /** The computer as the uplink sees it (no CC types outside compat/cct); equal for the same attachment. */
+    private record Attached(IComputerAccess access) implements ai.ezfox.cccloud.uplink.AttachedComputer {
+        @Override
+        public int id() {
+            return access.getID();
+        }
+
+        @Override
+        public String attachmentName() {
+            return access.getAttachmentName();
+        }
+
+        @Override
+        public void queueEvent(String event, @Nullable Object... args) {
+            access.queueEvent(event, args);
+        }
     }
 
     @Override

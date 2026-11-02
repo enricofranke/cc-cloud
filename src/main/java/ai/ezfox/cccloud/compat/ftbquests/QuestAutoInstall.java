@@ -3,6 +3,7 @@ package ai.ezfox.cccloud.compat.ftbquests;
 import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.CloudConfig;
 import ai.ezfox.cccloud.Edition;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.compat.ftbquests.install.QuestInstaller;
 import ai.ezfox.cccloud.compat.ftbquests.install.QuestPack;
 import java.time.Clock;
@@ -34,7 +35,7 @@ public final class QuestAutoInstall {
 
     static void run() {
         String version = ModList.get().getModContainerById(CCCloud.MODID).map(c -> c.getModInfo().getVersion().toString()).orElse("?");
-        var settings = new QuestInstaller.Settings(CloudConfig.get(CloudConfig.INSTALL_QUESTS), Edition.current(), version);
+        var settings = new QuestInstaller.Settings(CloudConfig.get(CloudConfig.INSTALL_QUESTS), Edition.current(), version, Cct.present());
         var installer = new QuestInstaller(FMLPaths.CONFIGDIR.get(), Clock.systemDefaultZone());
         try {
             log(installer.run(settings, QuestPack::fromClasspath), settings);

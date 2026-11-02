@@ -1,6 +1,7 @@
-package ai.ezfox.cccloud.compat.cc;
+package ai.ezfox.cccloud.compat.cct;
 
 import ai.ezfox.cccloud.CCCloud;
+import ai.ezfox.cccloud.compat.ComputerHandle;
 import dan200.computercraft.core.computer.Computer;
 import dan200.computercraft.core.computer.ComputerSide;
 import dan200.computercraft.shared.computer.blocks.ComputerBlockEntity;
@@ -9,6 +10,7 @@ import dan200.computercraft.shared.util.DirectionUtil;
 import java.lang.reflect.Field;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
@@ -71,22 +73,25 @@ public final class CcComputers {
         };
     }
 
-    public static final class Handle {
+    public static final class Handle implements ComputerHandle {
         private final ComputerBlockEntity be;
 
         Handle(ComputerBlockEntity be) {
             this.be = be;
         }
 
+        @Override
         public int id() {
             return be.getComputerID();
         }
 
+        @Override
         public String title() {
             String label = be.getLabel();
             return label == null || label.isBlank() ? "Computer #" + be.getComputerID() : label;
         }
 
+        @Override
         public boolean isOn() {
             var computer = be.getServerComputer();
             return computer != null && computer.isOn();
@@ -97,21 +102,25 @@ public final class CcComputers {
             return computer != null ? computer : be.createServerComputer();
         }
 
+        @Override
         public void turnOn() {
             computer().turnOn();
         }
 
+        @Override
         public void shutdown() {
             var computer = be.getServerComputer();
             if (computer != null) computer.shutdown();
         }
 
+        @Override
         public void reboot() {
             computer().reboot();
         }
 
         /** Queues an event on the computer (it must be on). */
-        public void queueEvent(String name, Object... args) {
+        @Override
+        public void queueEvent(String name, @Nullable Object... args) {
             var computer = be.getServerComputer();
             if (computer != null) computer.queueEvent(name, args);
         }
@@ -120,6 +129,7 @@ public final class CcComputers {
          * A copy of the computer's terminal (v0.5 E browser terminal) through CC's public {@code TerminalState}, or null
          * while the computer is off.
          */
+        @Override
         public ai.ezfox.cccloud.terminal.@Nullable TerminalFrame frame() {
             var computer = be.getServerComputer();
             if (computer == null || !computer.isOn()) return null;
@@ -144,21 +154,36 @@ public final class CcComputers {
         }
 
         /** Advanced and command computers have colour and multishell. */
+        @Override
         public boolean advanced() {
             return be.getFamily() != dan200.computercraft.shared.computer.core.ComputerFamily.NORMAL;
         }
 
         /** The computer's folder in the world save ({@code computer/<id>}), or null before it got an id. */
+        @Override
         public @Nullable String saveDir() {
             int id = be.getComputerID();
             return id < 0 ? null : be.getFamily().getSaveFolder() + "/" + id;
         }
 
+        @Override
         public @Nullable String label() {
             return be.getLabel();
         }
 
+        @Override
+        public void setLabel(@Nullable String label) {
+            be.setLabel(label);
+        }
+
+        @Override
+        public ai.ezfox.cccloud.script.ScriptFiles.@Nullable Store drive(MinecraftServer server) {
+            String dir = saveDir();
+            return dir == null ? null : ComputerDrive.of(server, dir);
+        }
+
         /** Redstone input on a computer-local side (works while the computer is off). */
+        @Override
         public int input(String side) {
             var computer = be.getServerComputer();
             var core = computer == null ? null : core(computer);
@@ -170,6 +195,7 @@ public final class CcComputers {
         }
 
         /** The output the computer currently emits on a side (0 while it is off). */
+        @Override
         public int output(String side) {
             var computer = be.getServerComputer();
             if (computer == null) return 0;
@@ -178,6 +204,7 @@ public final class CcComputers {
         }
 
         /** Sets an output like {@code redstone.setAnalogOutput}. Returns false if not possible. */
+        @Override
         public boolean setOutput(String side, int level) {
             var core = core(computer());
             if (core == null) return false;
@@ -185,6 +212,7 @@ public final class CcComputers {
             return true;
         }
 
+        @Override
         public boolean canSetOutputs() {
             return core(computer()) != null;
         }

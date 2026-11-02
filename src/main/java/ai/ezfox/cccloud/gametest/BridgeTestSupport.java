@@ -5,7 +5,6 @@ import ai.ezfox.cccloud.block.CloudStatus;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.bridge.BridgeHost;
-import ai.ezfox.cccloud.bridge.BridgePeripheral;
 import ai.ezfox.cccloud.bridge.CloudBridgeBlock;
 import ai.ezfox.cccloud.bridge.StorageTemplate;
 import ai.ezfox.cccloud.uplink.Op;
@@ -115,16 +114,21 @@ public final class BridgeTestSupport {
      * Asserts everything the dashboard and Lua see once {@link #AMOUNT} iron ingots are in the network. Runs inside
      * {@code succeedWhen}, i.e. repeatedly until it passes; {@code once} guards the one-time watchlist edit.
      */
-    public static void assertBridge(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, BridgePeripheral peripheral, boolean[] once) {
+    public static void assertBridge(GameTestHelper helper, BlockPos bridgePos, BridgeHost host, boolean[] once) {
         var core = host.bridgeCore();
         helper.assertTrue(core.isConnected(), "bridge must be connected to a powered network");
         helper.assertBlockProperty(bridgePos, CloudBridgeBlock.STATUS, CloudStatus.ONLINE);
 
         var row = core.getItem(ITEM);
         helper.assertTrue(row != null && row.count() == AMOUNT, "getItem: expected " + AMOUNT + " iron ingots, got " + row);
-        var lua = peripheral.getItem(ITEM);
-        helper.assertTrue(lua != null && ((Number) lua.get("count")).longValue() == AMOUNT, "peripheral getItem: " + lua);
-        helper.assertTrue(lua != null && "Iron Ingot".equals(lua.get("displayName")), "display name: " + lua);
+        // what Lua sees (the bridge peripheral needs CC: Tweaked; without it the bridge has none)
+        if (ai.ezfox.cccloud.compat.Cct.present()) {
+            var lua = ai.ezfox.cccloud.compat.cct.CctGameTests.bridgeItem(host, ITEM);
+            helper.assertTrue(lua != null && ((Number) lua.get("count")).longValue() == AMOUNT, "peripheral getItem: " + lua);
+            helper.assertTrue(lua != null && "Iron Ingot".equals(lua.get("displayName")), "display name: " + lua);
+        } else {
+            helper.assertTrue(host.cloudWired() == null || host.cloudWired() == ai.ezfox.cccloud.cable.CcWired.NONE, "no CC side without CC: Tweaked");
+        }
 
         var page = core.index().search("iron ingot", 50);
         helper.assertTrue(page.rows().stream().anyMatch(r -> r.name().equals(ITEM) && r.count() == AMOUNT), "findItems('iron ingot'): " + page.rows());

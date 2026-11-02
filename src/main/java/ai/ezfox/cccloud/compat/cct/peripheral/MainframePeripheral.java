@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.peripheral;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
 import ai.ezfox.cccloud.block.entity.CloudMainframeBlockEntity;
 import ai.ezfox.cccloud.network.CloudNetwork;
@@ -119,7 +119,7 @@ public final class MainframePeripheral implements IPeripheral {
     @LuaFunction
     public final Object[] getCards() {
         if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
-        return new Object[]{ai.ezfox.cccloud.peripheral.CardReader.list(ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId()))};
+        return new Object[]{CardReader.list(ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId()))};
     }
 
     /** One card with its widgets: {id, title, online, widgets={{id, type, label, value, unit, min, max},...}}, or nil. Limits like {@link #getCards}. */
@@ -127,7 +127,7 @@ public final class MainframePeripheral implements IPeripheral {
     public final Object[] getCard(String id) {
         if (!reads.tryAcquire()) return new Object[]{null, "rate_limited"};
         for (var section : ai.ezfox.cccloud.web.WebHub.INSTANCE.viewerSections(mainframe.getMainframeId())) {
-            if (id.equals(ai.ezfox.cccloud.peripheral.CardReader.id(section))) return new Object[]{ai.ezfox.cccloud.peripheral.CardReader.card(section)};
+            if (id.equals(CardReader.id(section))) return new Object[]{CardReader.card(section)};
         }
         return new Object[]{null};
     }

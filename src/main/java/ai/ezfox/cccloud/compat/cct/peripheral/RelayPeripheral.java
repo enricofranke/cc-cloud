@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.peripheral;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
 import ai.ezfox.cccloud.network.NetworkService;
 import ai.ezfox.cccloud.relay.CloudRelayBlockEntity;

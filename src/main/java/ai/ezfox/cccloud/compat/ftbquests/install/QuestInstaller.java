@@ -40,7 +40,8 @@ import java.util.stream.Stream;
  *   <li>ATM11's Tech group when it exists, otherwise a "CC: Cloud" group;</li>
  *   <li>if any of our ids is already used in the book, nothing is installed (retried on the next start);</li>
  *   <li>the CC: Tweaked chapter only when the book has no CC: Tweaked chapter of its own (CC: Cloud's links to it are
- *   then left out).</li>
+ *   then left out), and only while CC: Tweaked is installed (without it the chapter waits: nothing is recorded, so
+ *   it is added on the first start with CC: Tweaked).</li>
  * </ul>
  * Once only: the marker ({@link QuestMarker}) remembers every decision. A chapter an admin deleted is never added
  * again; a changed chapter is never updated.
@@ -91,8 +92,15 @@ public final class QuestInstaller {
         }
         """;
 
-    public record Settings(boolean installQuests, Edition edition, String modVersion) {
+    /** {@code ccTweaked}: whether CC: Tweaked is installed; without it the CC: Tweaked chapter waits until it is. */
+    public record Settings(boolean installQuests, Edition edition, String modVersion, boolean ccTweaked) {
+        public Settings(boolean installQuests, Edition edition, String modVersion) {
+            this(installQuests, edition, modVersion, true);
+        }
     }
+
+    /** The chapter about CC: Tweaked itself: only added while CC: Tweaked is installed. */
+    static final String CC_TWEAKED_CHAPTER = "cc_tweaked";
 
     /** What happened: one line for the log ({@code warning} = WARN level), whether files changed, the backup. */
     public record Result(boolean warning, boolean changed, String message, Path backup) {
@@ -173,10 +181,16 @@ public final class QuestInstaller {
             return new Result(true, false, display(markerFile) + " cannot be read (" + e.getMessage() + "); nothing changed. Delete it "
                 + "to let CC: Cloud check the quest book again.", null);
         }
-        if (marker != null && pack.version.equals(marker.questVersion)) {
+        if (marker != null && pack.version.equals(marker.questVersion) && !ccTweakedChapterWaiting(marker, pack, settings)) {
             return new Result(false, false, "quest chapters up to date (" + states(marker, pack) + ").", null);
         }
         return new Run(pack, marker, settings).execute();
+    }
+
+    /** CC: Tweaked is installed now, but the CC: Tweaked chapter was left out (never decided) while it was missing. */
+    private static boolean ccTweakedChapterWaiting(QuestMarker m, QuestPack pack, Settings settings) {
+        return settings.ccTweaked() && m.chapter(CC_TWEAKED_CHAPTER) == null
+            && pack.chapters.stream().anyMatch(c -> c.name().equals(CC_TWEAKED_CHAPTER));
     }
 
     private static String states(QuestMarker m, QuestPack pack) {
@@ -246,7 +260,11 @@ public final class QuestInstaller {
                     plans.put(c.name(), Plan.NONE);
                 } else if (sameFile != null) {
                     plans.put(c.name(), Plan.ADOPT);
-                } else if (c.name().equals("cc_tweaked") && book.otherCcTweakedChapter(packIds) != null) {
+                } else if (c.name().equals(CC_TWEAKED_CHAPTER) && !settings.ccTweaked()) {
+                    // Not a decision: nothing goes into the marker, so the chapter comes once CC: Tweaked is installed.
+                    notes.add("'" + c.title() + "' not added: CC: Tweaked is not installed (it is added once CC: Tweaked is).");
+                    plans.put(c.name(), Plan.NONE);
+                } else if (c.name().equals(CC_TWEAKED_CHAPTER) && book.otherCcTweakedChapter(packIds) != null) {
                     decide(c, Status.SKIPPED, "the quest book already has a CC: Tweaked chapter (chapters/"
                         + book.otherCcTweakedChapter(packIds).name() + ".json5)");
                     plans.put(c.name(), Plan.NONE);

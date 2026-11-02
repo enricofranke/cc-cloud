@@ -230,18 +230,18 @@ public final class ScreenShots {
         var computerBlock = block("computercraft:computer_advanced");
         if (computerBlock != null) {
             var u = uplinkOn(level, base.offset(8, 0, 0), computerBlock.defaultBlockState(), false);
-            if (level.getBlockEntity(base.offset(8, 0, 0)) instanceof dan200.computercraft.shared.computer.blocks.AbstractComputerBlockEntity c) {
-                c.createServerComputer().turnOn();
-            }
+            var computer = ai.ezfox.cccloud.compat.Cct.computer(level, base.offset(8, 0, 0));
+            if (computer != null) computer.turnOn();
             if (u != null) {
                 links.add(() -> u.bind(link, player));
                 shots.add(new Shot("uplink-computer", u.getBlockPos(), p -> ai.ezfox.cccloud.gui.GuiNetwork.openUplink(p, u)));
             }
             // A labelled computer whose program published a "Reactor" card (like the showcase world).
             var lua = uplinkOn(level, base.offset(12, 0, 0), computerBlock.defaultBlockState(), true);
-            if (level.getBlockEntity(base.offset(12, 0, 0)) instanceof dan200.computercraft.shared.computer.blocks.AbstractComputerBlockEntity c) {
-                c.setLabel("reactor");
-                c.createServerComputer().turnOn();
+            var reactor = ai.ezfox.cccloud.compat.Cct.computer(level, base.offset(12, 0, 0));
+            if (reactor != null) {
+                reactor.setLabel("reactor");
+                reactor.turnOn();
             }
             if (lua != null) {
                 links.add(() -> lua.bind(link, player));

@@ -4,7 +4,6 @@ import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.bridge.BridgeRegistry;
 import ai.ezfox.cccloud.bridge.CloudBridgeBlock;
 import com.refinedmods.refinedstorage.neoforge.api.RefinedStorageNeoForgeApi;
-import dan200.computercraft.api.peripheral.PeripheralCapability;
 import java.util.function.Consumer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -57,8 +56,6 @@ public final class RsCompat {
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(PeripheralCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.peripheral());
-        event.registerBlockEntity(dan200.computercraft.api.network.wired.WiredElementCapability.get(), BLOCK_ENTITY.get(), (be, side) -> be.cloudWired());
         event.registerBlockEntity(RefinedStorageNeoForgeApi.INSTANCE.getNetworkNodeContainerProviderCapability(), BLOCK_ENTITY.get(),
             (be, side) -> be.getContainerProvider());
     }

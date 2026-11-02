@@ -25,4 +25,9 @@ public final class BridgeRegistry {
         BLOCK_ENTITIES.put(kind, type);
         ITEMS.add(item);
     }
+
+    /** The registered bridges' block entity types (capabilities of optional integrations such as CC: Tweaked's). */
+    public static List<Supplier<? extends BlockEntityType<?>>> blockEntityTypes() {
+        return List.copyOf(BLOCK_ENTITIES.values());
+    }
 }

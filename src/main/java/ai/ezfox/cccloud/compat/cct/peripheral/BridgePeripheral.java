@@ -1,5 +1,7 @@
-package ai.ezfox.cccloud.bridge;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
+import ai.ezfox.cccloud.bridge.BridgeCore;
+import ai.ezfox.cccloud.bridge.BridgeHost;
 import ai.ezfox.cccloud.uplink.Json;
 import ai.ezfox.cccloud.uplink.Limits;
 import dan200.computercraft.api.lua.IArguments;

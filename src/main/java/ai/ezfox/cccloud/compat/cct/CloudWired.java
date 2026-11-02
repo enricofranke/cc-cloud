@@ -1,5 +1,6 @@
-package ai.ezfox.cccloud.cable;
+package ai.ezfox.cccloud.compat.cct;
 
+import ai.ezfox.cccloud.cable.CcWired;
 import ai.ezfox.cccloud.network.NetworkService;
 import dan200.computercraft.api.ComputerCraftAPI;
 import dan200.computercraft.api.network.wired.WiredElement;
@@ -31,8 +32,11 @@ import org.jspecify.annotations.Nullable;
  * network under a unique name; every element learns from {@link #networkChanged} which cloud node peripherals share its
  * network and marks the {@link NetworkService} dirty. The graph is then recomputed on CC network changes only.
  * Side effect (intended, documented): CC computers on the same cable see these peripherals too.
+ * <p>
+ * It also holds the block's peripheral for CC's peripheral capability ({@link CctCompat}), so the block entity itself
+ * has no CC types (it only knows the {@link CcWired} side).
  */
-public final class CloudWired implements WiredElement {
+public final class CloudWired implements WiredElement, CcWired {
     /** Peripherals of cloud nodes on wired networks → the node id. Identity, because peripherals override equals. */
     private static final Map<IPeripheral, String> NODES = Collections.synchronizedMap(new IdentityHashMap<>());
     /** Elements that (re)connect to their neighbours on the next server tick. */
@@ -41,7 +45,10 @@ public final class CloudWired implements WiredElement {
     private final BlockEntity owner;
     private final Supplier<String> id;
     private final boolean node;
-    private final Supplier<@Nullable IPeripheral> peripheral;
+    /** The block's peripheral (capability), null for none. */
+    private final @Nullable IPeripheral peripheral;
+    /** Whether the peripheral is put on the wired network (not for uplinks: no remote control over cables). */
+    private final boolean onNetwork;
     private final Supplier<List<BlockPos>> positions;
     private final WiredNode wiredNode;
     /** Peripheral name on the wired network → cloud node id (a node can be visible under two names, e.g. via a modem). */
@@ -52,21 +59,28 @@ public final class CloudWired implements WiredElement {
     /**
      * @param id         the element's network id (mainframe id, relay id, uplink id, bridge section id)
      * @param node       mainframe or relay: its peripheral identifies it to the other members
-     * @param peripheral put on the wired network (null = nothing, e.g. uplinks)
+     * @param peripheral the block's peripheral (null = none)
+     * @param onNetwork  put the peripheral on the wired network (false for uplinks)
      * @param positions  the blocks of the element (the mainframe has two)
      */
-    public CloudWired(BlockEntity owner, Supplier<String> id, boolean node, Supplier<@Nullable IPeripheral> peripheral,
+    public CloudWired(BlockEntity owner, Supplier<String> id, boolean node, @Nullable IPeripheral peripheral, boolean onNetwork,
                       Supplier<List<BlockPos>> positions) {
         this.owner = owner;
         this.id = id;
         this.node = node;
         this.peripheral = peripheral;
+        this.onNetwork = onNetwork;
         this.positions = positions;
         this.wiredNode = ComputerCraftAPI.createWiredNodeForElement(this);
     }
 
-    public static CloudWired single(BlockEntity owner, Supplier<String> id, boolean node, Supplier<@Nullable IPeripheral> peripheral) {
-        return new CloudWired(owner, id, node, peripheral, () -> List.of(owner.getBlockPos()));
+    public static CloudWired single(BlockEntity owner, Supplier<String> id, boolean node, @Nullable IPeripheral peripheral, boolean onNetwork) {
+        return new CloudWired(owner, id, node, peripheral, onNetwork, () -> List.of(owner.getBlockPos()));
+    }
+
+    /** The block's peripheral for CC's peripheral capability, or null. */
+    public @Nullable IPeripheral peripheral() {
+        return peripheral;
     }
 
     // ---- WiredElement ------------------------------------------------------------------------------------------------
@@ -107,6 +121,7 @@ public final class CloudWired implements WiredElement {
     // ---- lifecycle (server side) -------------------------------------------------------------------------------------
 
     /** From the block entity's {@code onLoad}: connect to neighbouring wired elements on the next tick. */
+    @Override
     public void onLoad() {
         if (owner.getLevel() == null || owner.getLevel().isClientSide()) return;
         attached = true;
@@ -115,6 +130,7 @@ public final class CloudWired implements WiredElement {
     }
 
     /** From the block entity's {@code setRemoved}: leave the wired network (CC splits it and notifies the others). */
+    @Override
     public void onRemoved() {
         if (!attached) return;
         attached = false;
@@ -128,6 +144,7 @@ public final class CloudWired implements WiredElement {
     }
 
     /** Re-checks the neighbours and the exposed peripheral (e.g. after the element's id changed). */
+    @Override
     public void refresh() {
         if (attached) PENDING.add(this);
     }
@@ -164,7 +181,7 @@ public final class CloudWired implements WiredElement {
                 wiredNode.connectTo(element.getNode());
             }
         }
-        var p = peripheral.get();
+        var p = onNetwork ? peripheral : null;
         if (p != exposed) {
             if (exposed != null) NODES.remove(exposed);
             exposed = p;
@@ -186,6 +203,7 @@ public final class CloudWired implements WiredElement {
     // ---- membership --------------------------------------------------------------------------------------------------
 
     /** Ids of the cloud nodes (mainframe, relays) on the same CC wired network, without this element. */
+    @Override
     public Set<String> visibleNodes() {
         return Set.copyOf(visible.values());
     }
@@ -194,6 +212,7 @@ public final class CloudWired implements WiredElement {
      * The id of this element's CC wired network as seen by the graph ({@code cc:<smallest node id>}); every member of
      * one CC network computes the same id. Empty for a device when no cloud node shares its network.
      */
+    @Override
     public Set<String> cableBuses() {
         if (!attached) return Set.of();
         var ids = new TreeSet<>(visible.values());
@@ -203,6 +222,7 @@ public final class CloudWired implements WiredElement {
         return Set.of("cc:" + ids.first());
     }
 
+    @Override
     public boolean attached() {
         return attached;
     }

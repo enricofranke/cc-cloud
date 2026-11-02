@@ -17,8 +17,8 @@ public interface BridgeHost {
     default void onPlacedBy(Player player) {
     }
 
-    /** CC wired network membership (cables); null if the bridge cannot join cables. */
-    default ai.ezfox.cccloud.cable.@org.jspecify.annotations.Nullable CloudWired cloudWired() {
+    /** CC: Tweaked's view of the bridge (peripheral, CC cables); null if the bridge has none. */
+    default ai.ezfox.cccloud.cable.@org.jspecify.annotations.Nullable CcWired cloudWired() {
         return null;
     }
 

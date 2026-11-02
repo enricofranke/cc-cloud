@@ -418,8 +418,11 @@ dependencies {
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cct_version}"
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-common-api:${cct_version}"
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cct_version}"
-    runtimeOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
-    // CC internals for the automatic Computer card (power, label, redstone). Only used in compat/cc, which degrades
+    // -PnoCct runs the game (client, server, GameTests) without CC: Tweaked, to check that the mod runs alone.
+    if (!project.hasProperty('noCct')) {
+        runtimeOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
+    }
+    // CC internals for the automatic Computer card (power, label, redstone). Only used in compat/cct, which degrades
     // gracefully if CC changes them.
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
 
@@ -724,6 +727,8 @@ tasks.named('test', Test).configure {
     systemProperty 'cccloud.recipeDir', file('src/main/resources/data/cccloud/recipe').absolutePath
     // QuestPackTest checks that the shipped quest file list matches integration/ftbquests/quests.
     systemProperty 'cccloud.questsDir', file('integration/ftbquests/quests').absolutePath
+    // CctIsolationTest checks that only compat/cct uses CC: Tweaked types.
+    systemProperty 'cccloud.mainSrc', file('src/main/java').absolutePath
     // ServerIconRendererTest writes renders that do not match their golden image here (for review).
     systemProperty 'cccloud.goldenOut', layout.buildDirectory.dir('test-goldens').get().asFile.absolutePath
     testLogging {

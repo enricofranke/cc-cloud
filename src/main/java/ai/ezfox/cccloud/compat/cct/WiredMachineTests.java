@@ -1,9 +1,10 @@
-package ai.ezfox.cccloud.gametest;
+package ai.ezfox.cccloud.compat.cct;
 
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
 import ai.ezfox.cccloud.compat.card.EnergyCard;
+import ai.ezfox.cccloud.gametest.CloudGameTests;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.uplink.WiredMachineSection;
 import ai.ezfox.cccloud.web.AccessGate;
@@ -24,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  * computer reaches through its wired modem, published like a device card (same permissions), and the computer's name
  * for a peripheral resolves for Lua bridge widgets. A chest (no card) gets none; a machine with an uplink of its own
  * keeps that one; switching the modem's peripheral sharing off removes the card. The machine is a GameTest-only
- * enchanting table with energy on its top face ({@link ProbeTests#registerTestCapabilities}), read by CC through the
+ * enchanting table with energy on its top face ({@link ai.ezfox.cccloud.gametest.ProbeTests#registerTestCapabilities}), read by CC through the
  * modem on top of it.
  */
 public final class WiredMachineTests {
@@ -88,7 +89,7 @@ public final class WiredMachineTests {
                 }
                 helper.assertTrue(uplink.wiredMachines().peripheral(card.peripheral()) != null, "the computer's name resolves (Lua bridge widgets)");
                 helper.assertTrue(uplink.wiredMachines().sections().size() == 1, "nothing for the chest (no card)");
-                helper.assertTrue(uplink.wiredMachines().reach().peripherals().keySet().stream().anyMatch(n -> n.startsWith("minecraft:chest")),
+                helper.assertTrue(uplink.wiredMachines().reach().targets().keySet().stream().anyMatch(n -> n.startsWith("minecraft:chest")),
                     "the chest is on the network, just without a card");
             })
             .thenExecute(() -> {

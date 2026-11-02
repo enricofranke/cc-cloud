@@ -15,7 +15,6 @@ import ai.ezfox.cccloud.uplink.WiredMachineSection;
 import ai.ezfox.cccloud.web.WebHub;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import dan200.computercraft.shared.peripheral.modem.wired.WiredModemFullBlockEntity;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +42,7 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * {@link #core} runs it with {@link TestClaims} (no claim mod needed; the test team only distrusts this test's
  * player); {@code compat/ftbchunks/FtbGameTests#claimGuard} runs it with real FTB Chunks claims and FTB Teams allies.
+ * Without CC: Tweaked there is no computer, so the wired machine card part is left out.
  */
 public final class ClaimGuardTests {
     private ClaimGuardTests() {
@@ -97,7 +97,8 @@ public final class ClaimGuardTests {
         });
     }
 
-    private record Devices(CloudUplinkBlockEntity uplink, CloudUplinkBlockEntity computerUplink, RsDeviceBlockEntity device) {
+    /** {@code computerUplink} is null without CC: Tweaked (no computer, no wired machine card). */
+    private record Devices(CloudUplinkBlockEntity uplink, @Nullable CloudUplinkBlockEntity computerUplink, RsDeviceBlockEntity device) {
     }
 
     /** The scenario, for any claim mod. {@code owner} places the mainframe and links every device. */
@@ -114,15 +115,18 @@ public final class ClaimGuardTests {
         var beacon = new BlockPos(2, 1, 1);
         helper.setBlock(beacon, Blocks.BEACON);
         helper.setBlock(beacon.north(), ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.SOUTH));
-        // 2. a machine behind a computer's wired modem (an enchanting table with energy on top)
+        // 2. a machine behind a computer's wired modem (an enchanting table with energy on top; CC: Tweaked only)
+        boolean cc = ai.ezfox.cccloud.compat.Cct.present();
         var table = new BlockPos(4, 1, 4);
         var modem = table.above();
         var computer = modem.north();
         var computerUplink = computer.east();
-        helper.setBlock(table, Blocks.ENCHANTING_TABLE);
-        helper.setBlock(computer, BuiltInRegistries.BLOCK.getValue(Identifier.parse("computercraft:computer_normal")));
-        helper.setBlock(modem, BuiltInRegistries.BLOCK.getValue(Identifier.parse("computercraft:wired_modem_full")));
-        helper.setBlock(computerUplink, ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.WEST));
+        if (cc) {
+            helper.setBlock(table, Blocks.ENCHANTING_TABLE);
+            helper.setBlock(computer, BuiltInRegistries.BLOCK.getValue(Identifier.parse("computercraft:computer_normal")));
+            helper.setBlock(modem, BuiltInRegistries.BLOCK.getValue(Identifier.parse("computercraft:wired_modem_full")));
+            helper.setBlock(computerUplink, ModRegistry.CLOUD_UPLINK.get().defaultBlockState().setValue(CloudUplinkBlock.FACING, Direction.WEST));
+        }
         // 3. a Cloud Switch on a stone block
         var support = new BlockPos(1, 1, 3);
         var switchPos = support.south();
@@ -130,7 +134,7 @@ public final class ClaimGuardTests {
         helper.setBlock(switchPos, ModRegistry.CLOUD_SWITCH.get().defaultBlockState().setValue(RsPlateBlock.FACING, Direction.NORTH));
 
         var d = new Devices((CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(beacon.north())),
-            (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(computerUplink)),
+            cc ? (CloudUplinkBlockEntity) level.getBlockEntity(helper.absolutePos(computerUplink)) : null,
             (RsDeviceBlockEntity) level.getBlockEntity(helper.absolutePos(switchPos)));
         // the chunks of everything the devices read: the machine, the computer, the table and the switch
         var chunks = new LinkedHashSet<ChunkPos>();
@@ -141,14 +145,16 @@ public final class ClaimGuardTests {
             .thenWaitUntil(() -> helper.assertTrue(ai.ezfox.cccloud.network.CloudNetwork.mainframe(id) == mainframe && mainframe.isOnline(), "mainframe online"))
             .thenExecute(() -> {
                 d.uplink().bind(link, owner);
-                d.computerUplink().bind(link, owner);
+                if (d.computerUplink() != null) d.computerUplink().bind(link, owner);
                 d.device().bind(link, owner);
-                helper.assertTrue(d.uplink().getLink() != null && d.computerUplink().getLink() != null && d.device().getLink() != null, "all linked");
-                if (!(level.getBlockEntity(helper.absolutePos(modem)) instanceof WiredModemFullBlockEntity full)) throw helper.assertionException("no wired modem");
-                full.use(owner); // share the table with the computer's network
+                helper.assertTrue(d.uplink().getLink() != null && (d.computerUplink() == null || d.computerUplink().getLink() != null)
+                    && d.device().getLink() != null, "all linked");
+                // share the table with the computer's network
+                if (cc) ai.ezfox.cccloud.compat.cct.CctGameTests.toggleModem(helper, modem, owner);
             })
             .thenWaitUntil(() -> {
                 assertWorking(helper, d, id);
+                if (d.computerUplink() == null) return;
                 var wired = wired(d.computerUplink());
                 helper.assertTrue(wired != null, "a card for the table behind the modem");
                 wiredId[0] = wired.sectionId().toString();
@@ -198,10 +204,12 @@ public final class ClaimGuardTests {
         helper.assertTrue(EnergyCard.KIND.equals(d.uplink().deviceKind()), "the machine's card: " + d.uplink().deviceKind());
         var snapshot = WebHub.INSTANCE.sectionSnapshot(id, d.uplink().getUplinkId().toString(), true);
         helper.assertTrue(snapshot != null && !snapshot.has("blocked") && !snapshot.getAsJsonArray("widgets").isEmpty(), "published with values: " + snapshot);
-        var wired = wired(d.computerUplink());
-        helper.assertTrue(wired != null && wired.claimBlock() == null, "wired card not blocked");
-        var wiredSnapshot = WebHub.INSTANCE.sectionSnapshot(id, wired.sectionId().toString(), true);
-        helper.assertTrue(wiredSnapshot != null && !wiredSnapshot.has("blocked") && !wiredSnapshot.getAsJsonArray("widgets").isEmpty(), "wired card has values");
+        if (d.computerUplink() != null) {
+            var wired = wired(d.computerUplink());
+            helper.assertTrue(wired != null && wired.claimBlock() == null, "wired card not blocked");
+            var wiredSnapshot = WebHub.INSTANCE.sectionSnapshot(id, wired.sectionId().toString(), true);
+            helper.assertTrue(wiredSnapshot != null && !wiredSnapshot.has("blocked") && !wiredSnapshot.getAsJsonArray("widgets").isEmpty(), "wired card has values");
+        }
         helper.assertTrue(d.device().claimBlock() == null && d.device().status() == CloudStatus.ONLINE, "switch online and not blocked");
         var card = RsDevices.sectionOfDevice(id, d.device().deviceId());
         helper.assertTrue(card != null && card.isOnline(), "the switch's card");
@@ -218,13 +226,15 @@ public final class ClaimGuardTests {
         helper.assertTrue(ClaimGuard.ERROR.equals(error(uplink.handleAction("energy", new JsonPrimitive(1), null, "test", false).getNow(null))),
             "uplink action refused");
         // the computer's uplink (the computer is in the claim too) and the wired machine card of the table
-        helper.assertTrue(d.computerUplink().claimBlock() != null, "the computer's uplink is blocked");
-        var wired = wired(d.computerUplink());
-        helper.assertTrue(wired != null && wired.claimBlock() != null, "the wired card stays, blocked");
-        helper.assertTrue(wired.sectionId().toString().equals(wiredId), "same card");
-        assertBlockedSection(helper, id, wiredId, team);
-        helper.assertTrue(ClaimGuard.ERROR.equals(error(wired.handleAction("energy", new JsonPrimitive(1), null, "test", false).getNow(null))),
-            "wired card action refused");
+        if (d.computerUplink() != null) {
+            helper.assertTrue(d.computerUplink().claimBlock() != null, "the computer's uplink is blocked");
+            var wired = wired(d.computerUplink());
+            helper.assertTrue(wired != null && wired.claimBlock() != null, "the wired card stays, blocked");
+            helper.assertTrue(wired.sectionId().toString().equals(wiredId), "same card");
+            assertBlockedSection(helper, id, wiredId, team);
+            helper.assertTrue(ClaimGuard.ERROR.equals(error(wired.handleAction("energy", new JsonPrimitive(1), null, "test", false).getNow(null))),
+                "wired card action refused");
+        }
         // the switch: its widget on the card shows the claim, switching is refused
         var device = d.device();
         helper.assertTrue(device.claimBlock() != null && team.equals(device.claimBlock().team()), "switch blocked");

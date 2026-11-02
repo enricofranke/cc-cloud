@@ -3,7 +3,7 @@ package ai.ezfox.cccloud.gametest;
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.script.ComputerTarget;
 import ai.ezfox.cccloud.uplink.Op;
@@ -72,7 +72,7 @@ public final class CanvasTests {
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline(), "mainframe online"))
             .thenExecute(() -> {
                 uplink(helper).forceLinkForTest(new MainframeLink(GlobalPos.of(helper.getLevel().dimension(), mainframe.getBlockPos()), mainframe.getMainframeId()));
-                CcComputers.find(helper.getLevel(), computerPos).turnOn();
+                Cct.computer(helper.getLevel(), computerPos).turnOn();
             })
             .thenWaitUntil(() -> helper.assertTrue(uplink(helper).computerCount() > 0, "computer attached"))
             // The shell's prompt: this boot is past its startup files, so it cannot start the program the reboot would then kill.
@@ -110,7 +110,7 @@ public final class CanvasTests {
             })
             // The peripheral reads this uplink's card, without the frame.
             .thenWaitUntil(() -> helper.assertTrue((uplink(helper).getUplinkId() + ":no-frame").equals(text(helper, "cards")), "cards: " + text(helper, "cards")))
-            .thenExecute(() -> CcComputers.find(helper.getLevel(), computerPos).shutdown())
+            .thenExecute(() -> Cct.computer(helper.getLevel(), computerPos).shutdown())
             .thenSucceed();
     }
 
@@ -122,7 +122,7 @@ public final class CanvasTests {
 
     /** What the computer shows, so a failing test names the Lua error. */
     private static String terminal(GameTestHelper helper) {
-        var handle = CcComputers.find(helper.getLevel(), helper.absolutePos(COMPUTER));
+        var handle = Cct.computer(helper.getLevel(), helper.absolutePos(COMPUTER));
         var frame = handle == null ? null : handle.frame();
         return frame == null ? "off" : String.join(" | ", frame.text()).replaceAll(" {2,}", " ");
     }

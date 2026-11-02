@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.peripheral;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
 import ai.ezfox.cccloud.uplink.Json;
 import com.google.gson.JsonArray;

@@ -14,6 +14,19 @@ class PublicConfigTest {
     @AfterEach
     void reset() {
         PublicConfig.setSource(() -> new PublicConfig.Settings("dev", false, "", false, false, false, false, false));
+        PublicConfig.setCcTweaked(() -> new PublicConfig.CcTweaked(true, null));
+    }
+
+    @Test
+    void ccTweakedPresence() {
+        PublicConfig.setCcTweaked(() -> new PublicConfig.CcTweaked(true, "1.120.0"));
+        var cct = PublicConfig.json().getAsJsonObject("cct");
+        assertTrue(cct.get("present").getAsBoolean());
+        assertEquals("1.120.0", cct.get("version").getAsString());
+        PublicConfig.setCcTweaked(() -> new PublicConfig.CcTweaked(false, null));
+        cct = PublicConfig.json().getAsJsonObject("cct");
+        assertFalse(cct.get("present").getAsBoolean());
+        assertTrue(cct.get("version").isJsonNull());
     }
 
     static String csp() {

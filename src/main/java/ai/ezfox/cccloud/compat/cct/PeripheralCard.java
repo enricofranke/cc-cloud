@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.compat.cc;
+package ai.ezfox.cccloud.compat.cct;
 
 import ai.ezfox.cccloud.CCCloud;
 import ai.ezfox.cccloud.compat.IntegrationConfig;

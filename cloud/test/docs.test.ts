@@ -120,7 +120,7 @@ describe("content", () => {
   });
 
   it("documents every cloud_uplink method the mod exposes", () => {
-    const java = readFileSync(fileURLToPath(new URL("../../src/main/java/ai/ezfox/cccloud/peripheral/UplinkPeripheral.java", import.meta.url)), "utf8");
+    const java = readFileSync(fileURLToPath(new URL("../../src/main/java/ai/ezfox/cccloud/compat/cct/peripheral/UplinkPeripheral.java", import.meta.url)), "utf8");
     const methods = [...java.matchAll(/@LuaFunction[^\n]*\n\s*public[^(]*\s(\w+)\(/g)].map((m) => m[1]);
     expect(methods.length).toBeGreaterThan(20);
     for (const l of LANGS) for (const m of methods) expect(CONTENT[l].lua, `${l}: ${m}`).toContain(`${m}(`);

@@ -1,5 +1,6 @@
-package ai.ezfox.cccloud.cable;
+package ai.ezfox.cccloud.compat.cct;
 
+import ai.ezfox.cccloud.cable.CcReach;
 import dan200.computercraft.api.ComputerCraftAPI;
 import dan200.computercraft.api.network.wired.WiredElement;
 import dan200.computercraft.api.network.wired.WiredElementCapability;
@@ -30,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  * for the modems themselves. The listener puts no peripheral on the network, so computers on it see nothing new. Server
  * thread only.
  */
-public final class WiredReach {
+public final class WiredReach implements CcReach {
     private final Supplier owner;
     /** One listener per modem position the computer uses. */
     private final Map<BlockPos, Listener> listeners = new ConcurrentHashMap<>();
@@ -54,6 +55,7 @@ public final class WiredReach {
      * @param computer the computer block, or null when the uplink is not on a computer (everything is released)
      * @param skip     the uplink itself (it is next to the computer, but not the computer's modem)
      */
+    @Override
     public void update(ServerLevel level, @Nullable BlockPos computer, BlockPos skip) {
         var modems = new HashSet<BlockPos>();
         var nodes = new java.util.HashMap<BlockPos, WiredNode>();
@@ -86,6 +88,7 @@ public final class WiredReach {
     }
 
     /** A peripheral the computer reaches over its wired networks, by its network name; null if there is none. */
+    @Override
     public @Nullable IPeripheral peripheral(String name) {
         for (var listener : listeners.values()) {
             var p = listener.peripherals.get(name);
@@ -102,12 +105,32 @@ public final class WiredReach {
         return all;
     }
 
+    /** Every peripheral's target ({@link IPeripheral#getTarget}), by network name; peripherals without one are left out. */
+    @Override
+    public Map<String, Object> targets() {
+        var all = peripherals();
+        if (all.isEmpty()) return Map.of();
+        var targets = new java.util.LinkedHashMap<String, Object>();
+        for (var e : all.entrySet()) {
+            Object target;
+            try {
+                target = e.getValue().getTarget();
+            } catch (RuntimeException ex) {
+                continue;
+            }
+            if (target != null) targets.put(e.getKey(), target);
+        }
+        return targets;
+    }
+
     /** Positions of the computer's wired modems that are followed (tests, screen). */
+    @Override
     public Set<BlockPos> modems() {
         return Set.copyOf(listeners.keySet());
     }
 
     /** Leaves every network (the uplink unloads or is removed). */
+    @Override
     public void close() {
         var all = new ArrayList<>(listeners.values());
         listeners.clear();

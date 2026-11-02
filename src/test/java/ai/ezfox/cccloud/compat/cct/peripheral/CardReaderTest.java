@@ -1,4 +1,4 @@
-package ai.ezfox.cccloud.peripheral;
+package ai.ezfox.cccloud.compat.cct.peripheral;
 
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -3,7 +3,7 @@ package ai.ezfox.cccloud.gametest;
 import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.rules.RuleService;
 import ai.ezfox.cccloud.uplink.ComputerCard;
@@ -80,9 +80,9 @@ public final class RuleTests {
                 helper.assertTrue(RuleService.rules(mf).size() == 1, "one rule left");
             })
             .thenIdle(20) // the rule records "computer off" first (edge trigger)
-            .thenExecute(() -> CcComputers.find(helper.getLevel(), computerPos).turnOn())
+            .thenExecute(() -> Cct.computer(helper.getLevel(), computerPos).turnOn())
             .thenWaitUntil(() -> {
-                var handle = CcComputers.find(helper.getLevel(), computerPos);
+                var handle = Cct.computer(helper.getLevel(), computerPos);
                 helper.assertTrue(handle.output("top") == 15, "the rule set the top output when the computer came on");
                 helper.assertTrue(helper.getLevel().getBestNeighborSignal(computerPos.above()) == 15, "the world sees it");
             })
@@ -94,10 +94,10 @@ public final class RuleTests {
                 helper.assertTrue("ok".equals(entry.get("result").getAsString()) && !entry.get("manual").getAsBoolean(), "automatic run ok: " + entry);
                 var rule = doc.getAsJsonArray("rules").get(0).getAsJsonObject();
                 helper.assertTrue(rule.get("runs").getAsInt() == 1 && "ok".equals(rule.get("lastResult").getAsString()), "rule state: " + rule);
-                CcComputers.find(helper.getLevel(), computerPos).setOutput("top", 0);
+                Cct.computer(helper.getLevel(), computerPos).setOutput("top", 0);
                 helper.assertTrue(RuleService.runNow(server, mainframe.getMainframeId(), ruleId[0]) == null, "run now");
             })
-            .thenWaitUntil(() -> helper.assertTrue(CcComputers.find(helper.getLevel(), computerPos).output("top") == 15, "run now set the output again"))
+            .thenWaitUntil(() -> helper.assertTrue(Cct.computer(helper.getLevel(), computerPos).output("top") == 15, "run now set the output again"))
             .thenExecute(() -> {
                 var log = RuleService.document(server, mainframe.getMainframeId()).getAsJsonArray("log");
                 helper.assertTrue(log.size() == 2 && log.get(1).getAsJsonObject().get("manual").getAsBoolean(), "manual run logged: " + log);

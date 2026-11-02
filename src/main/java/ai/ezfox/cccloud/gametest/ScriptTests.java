@@ -4,7 +4,7 @@ import ai.ezfox.cccloud.ModRegistry;
 import ai.ezfox.cccloud.access.Role;
 import ai.ezfox.cccloud.block.CloudUplinkBlock;
 import ai.ezfox.cccloud.block.entity.CloudUplinkBlockEntity;
-import ai.ezfox.cccloud.compat.cc.CcComputers;
+import ai.ezfox.cccloud.compat.Cct;
 import ai.ezfox.cccloud.item.MainframeLink;
 import ai.ezfox.cccloud.web.AccessApi;
 import ai.ezfox.cccloud.web.AuthStore;
@@ -57,7 +57,7 @@ public final class ScriptTests {
                 devices[0] = device(auth, mainframe.getMainframeId(), owner.getUUID(), "Owner");
                 mainframe.setRole(new NameAndId(viewer, "viewer"), Role.VIEWER);
                 devices[1] = device(auth, mainframe.getMainframeId(), viewer, "Viewer");
-                CcComputers.find(helper.getLevel(), computerPos).turnOn();
+                Cct.computer(helper.getLevel(), computerPos).turnOn();
             })
             // Booted with the uplink attached (the ROM autorun helper starts its "cloud" tab).
             .thenWaitUntil(() -> {
@@ -90,7 +90,7 @@ public final class ScriptTests {
                 helper.assertTrue(run.status() == 200 && "reboot".equals(run.body().get("started").getAsString()), "first run: " + run.body());
             })
             .thenWaitUntil(() -> {
-                var handle = CcComputers.find(helper.getLevel(), computerPos);
+                var handle = Cct.computer(helper.getLevel(), computerPos);
                 helper.assertTrue(handle.output("top") == 15, "the uploaded script ran after the restart and set the top output");
             })
             .thenIdle(20)
@@ -103,7 +103,7 @@ public final class ScriptTests {
                     "{\"path\":\"off.lua\",\"mode\":\"auto\"}".getBytes(StandardCharsets.UTF_8));
                 helper.assertTrue(run.status() == 200 && "event".equals(run.body().get("started").getAsString()), "second run: " + run.body());
             })
-            .thenWaitUntil(() -> helper.assertTrue(CcComputers.find(helper.getLevel(), computerPos).output("top") == 0, "the runner tab ran the second script"))
+            .thenWaitUntil(() -> helper.assertTrue(Cct.computer(helper.getLevel(), computerPos).output("top") == 0, "the runner tab ran the second script"))
             .thenSucceed();
     }
 
