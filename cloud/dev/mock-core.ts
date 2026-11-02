@@ -266,6 +266,8 @@ export interface MockOptions {
   approveDelayMs?: number;
   /** dev store signature: valid (default), bad (tampered) or none (no index.json.sig) */
   storeSignature?: "valid" | "bad" | "none";
+  /** false: the server runs without CC: Tweaked (public config cct.present = false; default true) */
+  cct?: boolean;
   /** override the public config's feature switches */
   features?: Partial<Record<"terminal" | "voxels" | "push" | "rules" | "map" | "scenes" | "production" | "api", boolean>>;
   /** v0.10 [scenes] scenesEnabled (default true) */
@@ -2570,6 +2572,7 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         version: "0.9.0-dev",
         store: { enabled: !!store, url: store ? store.url() : null, ...(store ? { key: store.key } : {}) },
         features: { terminal: true, voxels: true, push: opts.pushEnabled !== false, rules: true, map: true, scenes: scenesOn, production: prodOn, api: true, ...(opts.features ?? {}) },
+        cct: { present: opts.cct !== false, version: opts.cct === false ? null : "1.120.0" },
       });
     }
     // dev: the Script Store's static build (STORE_DIST) on the same origin, signed with a dev key

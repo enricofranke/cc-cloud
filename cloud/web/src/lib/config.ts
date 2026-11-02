@@ -22,9 +22,11 @@ export interface PublicConfig {
   internet: { mode: string; remote: boolean };
   store: { enabled: boolean; url: string | null; key?: string };
   features: Features;
+  /** CC: Tweaked on the server; older servers do not say and always have it */
+  cct: { present: boolean; version: string | null };
 }
 const ALL_ON: Features = { terminal: true, voxels: true, push: true, rules: true, map: true, scenes: false, production: false, api: false };
-export const publicConfig = signal<PublicConfig>({ version: null, internet: { mode: "off", remote: false }, store: { enabled: true, url: null }, features: ALL_ON });
+export const publicConfig = signal<PublicConfig>({ version: null, internet: { mode: "off", remote: false }, store: { enabled: true, url: null }, features: ALL_ON, cct: { present: true, version: null } });
 
 export function parseConfig(raw: any): PublicConfig {
   const f = raw?.features && typeof raw.features === "object" ? raw.features : {};
@@ -33,11 +35,13 @@ export function parseConfig(raw: any): PublicConfig {
   const st = raw?.store && typeof raw.store === "object" ? raw.store : {};
   const parsed = parseStore(st);
   const net = raw?.internet && typeof raw.internet === "object" ? raw.internet : {};
+  const cct = raw?.cct && typeof raw.cct === "object" ? raw.cct : {};
   return {
     version: typeof raw?.version === "string" ? raw.version.slice(0, 32) : null,
     internet: { mode: typeof net.mode === "string" ? net.mode.slice(0, 16) : "off", remote: net.remote === true },
     store: { enabled: st.enabled !== false && !!parsed, url: parsed?.url ?? null, ...(parsed?.key ? { key: parsed.key } : {}) },
     features: { terminal: flag("terminal"), voxels: flag("voxels"), push: flag("push"), rules: flag("rules"), map: flag("map"), scenes: newer("scenes"), production: newer("production"), api: newer("api") },
+    cct: { present: cct.present !== false, version: typeof cct.version === "string" ? cct.version.slice(0, 32) : null },
   };
 }
 
@@ -49,3 +53,5 @@ export async function loadPublicConfig(base = "") {
   } catch {}
 }
 export const feature = (k: keyof Features) => publicConfig.value.features[k];
+/** Whether the server has CC: Tweaked (computers, Lua, store scripts, terminal); true for older servers. */
+export const ccTweaked = () => publicConfig.value.cct.present;

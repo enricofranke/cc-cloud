@@ -9,7 +9,7 @@ navigation:
 
 CC: Cloud shows machines from many mods as ready-made cards – no Lua needed. Put a **Cloud Uplink** on the machine (or next to it), link it with the Link Card, and its card appears on the dashboard. Everything is optional: a card only exists when that mod is installed. All of this was checked against **All the Mods 11** (MC 26.1.2).
 
-Besides these, generic cards work with almost any mod: the **Energy** card for every block that stores FE, the **Tank** card for plain fluid tanks, and the **Peripheral card** for every other block CC: Tweaked can talk to – you pick up to 6 of its values and an optional on/off switch in the card's settings ([how](dashboard.md)). So if CC: Tweaked sees it as a peripheral, it shows up. Pack makers can turn single blocks off with the block tag `#cccloud:no_generic_card`. AE2 and Refined Storage have their own [bridges](bridges.md).
+Besides these, generic cards work with almost any mod: the **Energy** card for every block that stores FE, the **Tank** card for plain fluid tanks, and, with CC: Tweaked, the **Peripheral card** for every other block CC: Tweaked can talk to – you pick up to 6 of its values and an optional on/off switch in the card's settings ([how](dashboard.md)). So if CC: Tweaked sees it as a peripheral, it shows up. Pack makers can turn single blocks off with the block tag `#cccloud:no_generic_card`. AE2 and Refined Storage have their own [bridges](bridges.md).
 
 Controls follow the [permissions](accounts.md): buttons and switches need “Use controls”, a machine's redstone mode needs “Switch redstone”, and cards with coordinates (waystones, gates, quests) need “See coordinates”.
 

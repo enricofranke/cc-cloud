@@ -10,6 +10,13 @@ import { compareVersions, parseIndex, readInstalled, recordInstall, sha256Hex, s
 const indexFile = fileURLToPath(new URL("./fixtures/store/index.json", import.meta.url));
 
 describe("script store", () => {
+  it("reads CC: Tweaked presence from the public config (older servers: present)", async () => {
+    const { parseConfig } = await import("../web/src/lib/config.ts");
+    expect(parseConfig({}).cct).toEqual({ present: true, version: null });
+    expect(parseConfig({ cct: { present: true, version: "1.120.0" } }).cct).toEqual({ present: true, version: "1.120.0" });
+    expect(parseConfig({ cct: { present: false, version: null } }).cct.present).toBe(false);
+  });
+
   it("parses the real store index and drops malformed scripts", () => {
     const idx = parseIndex(JSON.parse(readFileSync(indexFile, "utf8")));
     expect(idx.scripts.length).toBeGreaterThan(3);
@@ -116,6 +123,7 @@ describe("signed store (v0.9)", () => {
         const base = `http://127.0.0.1:${mock.port}`;
         const cfg = parseConfig(await (await fetch(`${base}/api/config`)).json());
         expect(cfg.features.terminal).toBe(true);
+        expect(cfg.cct.present).toBe(true);
         const url = `${base}/store/`;
         const idx = await fetchIndex(url, cfg.store.key);
         expect(idx.signature).toBe(want);

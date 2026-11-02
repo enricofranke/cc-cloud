@@ -95,13 +95,13 @@ Die Seite **Produktion** (ein Tab neben Network, oder ⚙ → Produktion) zeigt,
 
 ## Terminal
 
-Der Button **>_** auf der Karte eines Computers öffnet sein **Terminal** im Browser: der Bildschirm live (Farben bei Advanced-Computern) und deine Tastatur, als stündest du davor. Auf den Bildschirm klicken und tippen; **Terminate** ist Strg+T, **Reboot**, **Shut down** und **Turn on** steuern den Computer. Einfügen schickt die erste Zeile der Zwischenablage. Auf dem Handy ins Feld unter dem Bildschirm tippen und **Enter** drücken.
+Braucht CC: Tweaked. Der Button **>_** auf der Karte eines Computers öffnet sein **Terminal** im Browser: der Bildschirm live (Farben bei Advanced-Computern) und deine Tastatur, als stündest du davor. Auf den Bildschirm klicken und tippen; **Terminate** ist Strg+T, **Reboot**, **Shut down** und **Turn on** steuern den Computer. Einfügen schickt die erste Zeile der Zwischenablage. Auf dem Handy ins Feld unter dem Bildschirm tippen und **Enter** drücken.
 
 Braucht das Recht „Terminal“ (Admins) und die Mainframe-PIN, falls eine gesetzt ist; das Öffnen wird protokolliert. Der Server-Admin kann es abschalten (`terminalEnabled`) oder Skripte und Terminal für einen Spieler verbieten (`cccloud.feature.scripts`).
 
 ## Lua-Editor
 
-Im **\</>**-Fenster eines Computers zeigt **Open the editor** alle Dateien und Ordner (bis 8 Ebenen) neben einem Code-Editor mit Lua-Hervorhebung, Zeilennummern, Suche (Strg/⌘ + F) und Rückgängig. **Save** (Strg/⌘ + S) speichert; **Save & run** startet die Datei zusätzlich in einem neuen Tab auf dem Computer. **+ File**, **+ Folder**, Umbenennen/Verschieben (✎) und Löschen (×) arbeiten im Dateibaum.
+Braucht CC: Tweaked. Im **\</>**-Fenster eines Computers zeigt **Open the editor** alle Dateien und Ordner (bis 8 Ebenen) neben einem Code-Editor mit Lua-Hervorhebung, Zeilennummern, Suche (Strg/⌘ + F) und Rückgängig. **Save** (Strg/⌘ + S) speichert; **Save & run** startet die Datei zusätzlich in einem neuen Tab auf dem Computer. **+ File**, **+ Folder**, Umbenennen/Verschieben (✎) und Löschen (×) arbeiten im Dateibaum.
 
 Wurde die Datei seit dem Öffnen auf dem Computer geändert, fragt das Speichern vor dem Überschreiben. Dateien sind auf 256 KB begrenzt, `rom` und Disketten werden nie angefasst, und der Editor braucht dieselben Rechte wie das Hochladen von Skripten (plus die PIN, falls gesetzt).
 

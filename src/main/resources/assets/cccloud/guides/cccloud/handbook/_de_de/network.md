@@ -70,13 +70,13 @@ Ein Relay gehört dem Spieler, der es aufgestellt hat. Es trägt die Netzwerke s
 
 ## Kabel (kabelgebundene Verbindungen)
 
-Geräte können sich auch **per Kabel** verbinden, wie bei AE2: Uplink oder Bridge mit CC: Tweakeds **Networking Cable** und **Wired Modems** an den Mainframe oder ein Relay anschließen (Modems per Rechtsklick einschalten). Alles im selben CC-Kabelnetz ist verkabeltes Mitglied.
+Geräte können sich auch **per Kabel** verbinden, wie bei AE2: Mit CC: Tweaked schließt du Uplink oder Bridge mit seinem **Networking Cable** und **Wired Modems** an den Mainframe oder ein Relay anschließen (Modems per Rechtsklick einschalten). Alles im selben CC-Kabelnetz ist verkabeltes Mitglied.
 
 - Kabel haben **keine Reichweitengrenze**, immer **100 %** Signal und kosten **kein zusätzliches FE pro Sprung**.
 - Ein Gerät kann Kabel und Funk gleichzeitig haben; das Kabel wird bevorzugt, Funk ist die Reserve.
 - Im Dashboard sind Kabel **durchgezogene Linien** (grau = CC-Kabel, leuchtend cyan = Glasfaser), Funkverbindungen **gestrichelt** (nach Signal gefärbt), Ender-Verbindungen **gepunktet**.
 
-**Fiber Cable** (Glasfaser, Teil von CC: Cloud) funktioniert genauso, verbindet aber nur unsere Geräte – ein sauberes eigenes Netz. Geräte an Glasfaser zählen nur **halb** für die Gerätekapazität des Mainframes und zahlen **halbes** FE. Mit der **Fiber Junction** verzweigst du und gehst durch Wände, ein **Ender Fiber Link**-Paar verbindet zwei Glasfasernetze über jede Entfernung und Dimension.
+**Fiber Cable** (Glasfaser, Teil von CC: Cloud, braucht kein CC: Tweaked) funktioniert genauso, verbindet aber nur unsere Geräte – ein sauberes eigenes Netz. Geräte an Glasfaser zählen nur **halb** für die Gerätekapazität des Mainframes und zahlen **halbes** FE. Mit der **Fiber Junction** verzweigst du und gehst durch Wände, ein **Ender Fiber Link**-Paar verbindet zwei Glasfasernetze über jede Entfernung und Dimension.
 
 ## Wenn ein Relay ausfällt
 

@@ -6,6 +6,8 @@ Requirements: JDK 25 (Gradle's toolchain resolver downloads it if missing). Keep
 ./gradlew build --max-workers=3              # compile, unit tests, both jars, quest zip (see "Downloads" below)
 ./gradlew runGameTestServer --max-workers=3  # GameTests without AE2/RS (bridge tests are skipped by their conditions)
 ./gradlew runGameTestServer -PstorageMods --max-workers=3   # GameTests with AE2 + Refined Storage
+./gradlew runGameTestServer -PnoCct --max-workers=3         # GameTests without CC: Tweaked (CC-only tests skipped by their conditions)
+./gradlew runServer -PnoCct -PdevWebPort=18797 --max-workers=3   # dev server without CC: Tweaked
 ./gradlew runServer -PstorageMods --max-workers=3           # dev server with both mods
 ./gradlew runClient -PstorageMods --max-workers=3
 ./gradlew runClient -PstorageMods -PiconBenchmark=/tmp/icons --max-workers=3   # renders every item icon once (needs a world in run/saves/cccloud-bench), logs time/size, quits
@@ -47,6 +49,9 @@ The bridges compile against the versions in All the Mods 11. No local jars are n
 Refined Storage 2 only publishes to GitHub Packages (needs a token), so the Modrinth maven is used. Modrinth addresses files by version id because the Fabric and NeoForge builds share the version number `3.2.1`; `P12kjgPK` is `refinedstorage-neoforge-3.2.1.jar` (SHA-1 `1bd09d5e51f82418d8602dec1e8fc6883beb852d`, identical to the ATM11 jar). Versions live in `gradle.properties` (`ae2_version`, `guideme_version`, `rs_modrinth_version`).
 
 Without `-PstorageMods` the dev runs contain neither mod; that is the soft-dependency check (the server must start and all non-bridge GameTests must pass).
+
+## Optional CC: Tweaked
+CC: Tweaked is compile-only for the API and internals (`compat/cct` only, checked by `CctIsolationTest`) and on the dev runtime by default. `-PnoCct` drops it from the runtime classpath (client, server, GameTests): the server must start without errors from `cccloud`, and every GameTest must pass. CC-only GameTests have `neoforge:conditions` `mod_loaded computercraft` in their test instance, so they are not loaded without it (docs/SPEC.md "CC: Tweaked is optional").
 
 ## Optional integration mods (v0.5 cards, server & team)
 The integrations in `compat/<modid>` compile against the exact jars of All the Mods 11 0.12.0-beta. Everything comes from public Maven repositories (no `libs/` folder); the SHA-1 of every artifact was checked against the ATM11 jar. Versions live in `gradle.properties`.
@@ -153,7 +158,7 @@ CurseForge files of the ATM11 26.1.2 instance (`minecraftinstance.json`) via cur
 | `ftbranks` | FTB Ranks 26.1.2.4 | FTB Library | `compat/ftbranks` (`FTBRanksAPI`) |
 | `sophisticatedbackpacks` | Sophisticated Backpacks 3.26.11 | Sophisticated Core | `compat/storage` (`StorageControllers`) |
 
-The Peripheral card needs no extra mod: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer`.
+The Peripheral card needs no extra mod besides CC: Tweaked: `peripheral_card_generic` (a chest) and `peripheral_card_own_methods` (a test peripheral that GameTest runs register on lecterns, `-Dcccloud.gametest`) run in every `runGameTestServer` without `-PnoCct`.
 
 ```sh
 ./gradlew runGameTestServer -PintegrationMods -PdevWebPort=18797 --max-workers=3          # all integration mods

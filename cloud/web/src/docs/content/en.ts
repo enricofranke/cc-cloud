@@ -6,15 +6,15 @@ export const en: Record<string, string> = {
   // ---------------------------------------------------------------- start
   start: `# Getting started
 
-CC: Cloud puts your ComputerCraft computers and storage on a dashboard in any browser – PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
+CC: Cloud puts your machines, storage and redstone – and with CC: Tweaked your computers – on a dashboard in any browser: PC, tablet or phone. The dashboard runs inside the mod on your own Minecraft server, with no account. By default it stays on your own network; to reach it from anywhere, turn on the free, optional [CC: Cloud Connect](#anywhere).
 
-> **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a computer, link the two with a Cloud Link Card and pair your browser. The computer appears on the dashboard automatically – no code needed.
+> **Tip:** The quickest path: craft a Cloud Mainframe, power it, put a Cloud Uplink on a machine (or, with CC: Tweaked, a computer), link the two with a Cloud Link Card and pair your browser. It appears on the dashboard automatically – no code needed.
 >
 > Only want to switch a lamp? Place a **Cloud Lamp** (or a Cloud Switch next to your redstone lamps) and link it – it shows up as a switch on the dashboard. See [Redstone devices](/docs/redstone).
 
 ## Install {#install}
 
-Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the \`mods\` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need. Every release has three downloads:
+Put **CC: Cloud** into the \`mods\` folder of the client **and** the server (Minecraft 26.1.2, NeoForge). In singleplayer the client is all you need. **CC: Tweaked** (1.120.0 or newer) is optional: it adds programmable computers ([what changes](#cc-tweaked)). Every release has three downloads:
 
 | File | Take it when |
 |---|---|
@@ -24,6 +24,22 @@ Put **CC: Tweaked** (1.120.0 or newer) and **CC: Cloud** into the \`mods\` folde
 
 Client and server need the **same CC: Cloud build**. If yours differs, you are still let in, and the chat tells you when you join – with a link to the server's jar. See [your version is not the server's](/docs/faq#version-mismatch).
 
+### With or without CC: Tweaked {#cc-tweaked}
+
+CC: Cloud runs on its own. **CC: Tweaked** adds programmable computers – install it on the client and the server (1.120.0 or newer) when you want them. Everything else works the same either way:
+
+| | Without CC: Tweaked | With CC: Tweaked |
+|---|---|---|
+| Mainframe, uplinks, probes, relays, Fiber Cable, upgrades | ✓ | ✓ |
+| Machine, energy, tank and storage cards, AE2 / RS bridges, redstone devices, sensors | ✓ | ✓ |
+| Dashboard, rules, scenes, schedules, presets, push, history, reports, API, tablet, display | ✓ | ✓ |
+| Computer card, Lua programs and their widgets (the \`cloud_uplink\` peripheral) | – | ✓ |
+| Browser terminal, Lua editor, script upload, installing from the Script Store | – | ✓ |
+| Peripheral card, cards for machines on a computer's cable network | – | ✓ |
+| CC networking cable and wired modems as links | – | ✓ |
+
+Without CC: Tweaked, the recipes that use CC parts take vanilla items instead (marked **Only without CC: Tweaked**, see [the recipes](#recipes)), the quest book gets only the CC: Cloud chapter, and the Script Store can be browsed but not installed from. Add CC: Tweaked later and the rest turns on – mainframes, links and dashboards stay as they are.
+
 ### Quests (FTB Quests) {#quests}
 
 With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: computers, turtles, monitors, modems, first programs) and **CC: Cloud** (39 quests: mainframe, uplinks, pairing, bridges, relays, upgrades, tablet, display), in English and German.
@@ -31,7 +47,7 @@ With **FTB Quests** you get two quest chapters: **CC: Tweaked** (24 quests: comp
 With \`cccloud-<version>.jar\` they come by themselves: on the first start, before FTB Quests reads its quests, CC: Cloud adds them to the quest book (\`config/ftbquests/quests\`) – in ATM11's **Tech** group after Ender IO and XyCraft, otherwise in a new **CC: Cloud** group. Players get them from the server; in singleplayer the same happens in your game folder.
 
 - A backup comes first (\`config/ftbquests/quests.backup-<time>\`). Other chapters and texts are never replaced.
-- If the quest book already has a CC: Tweaked chapter, only the CC: Cloud chapter is added.
+- If the quest book already has a CC: Tweaked chapter, only the CC: Cloud chapter is added. Without CC: Tweaked installed, its chapter waits and comes on the first start with it.
 - Only once: a chapter you delete is not added again. Newer versions update a chapter only if nobody changed it; your edits stay.
 - The server log has one line about it (\`FTB Quests: …\`). Turn it off with \`installQuests = false\` in \`config/cccloud-server.toml\` on the server (in singleplayer: in your game folder).
 
@@ -42,7 +58,7 @@ With \`cccloud-<version>.jar\` they come by themselves: on the first start, befo
 | Block / item | What it does |
 |---|---|
 | **Cloud Mainframe** | The heart of a base. Two blocks tall. Hosts the connection to the dashboard, shows the pairing code and manages devices. One per base or team. Needs FE power. |
-| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer it becomes that computer's card on the dashboard. Range 48 blocks to the nearest mainframe or relay, same dimension. |
+| **Cloud Uplink** | Sticks to a block face like a modem; on low or small faces (slab sides, solar panels) it becomes a compact module; on top or bottom it needs a full face. On a computer (CC: Tweaked) it becomes that computer's card on the dashboard; on a machine, the machine's card. Range 48 blocks to the nearest mainframe or relay, same dimension. |
 | **Advanced Cloud Uplink** | Same, but with a range of 128 blocks. To cross dimensions, use [Ender Relays](/docs/network#ranges). |
 | **Cloud Probe** | Reads **one** machine up to 8 blocks away as if an uplink were attached to it – for machines built into walls or with every face taken by pipes and cables. Expensive; counts as two devices. See *Machines without a free face* below. |
 | **Cloud Link Card** | Links uplinks, bridges and redstone devices to a mainframe. |
@@ -54,14 +70,18 @@ With \`cccloud-<version>.jar\` they come by themselves: on the first start, befo
 
 Ingredients shown as "(any)" accept every variant from the tag (e.g. any gold ingot). JEI/EMI show the same recipes in-game.
 
+Without CC: Tweaked, the recipes with CC parts take vanilla items in the same place: a **Crafter** for the Advanced Computer, a **Chiseled Bookshelf** for the Disk Drive, an **Observer** for the Wired Modem, **Tinted Glass** for the Advanced Monitor, a **Compass** / **Clock** for the (Advanced) Pocket Computer and an **End Crystal** for the Ender Modem. Each recipe says when it applies (**Needs CC: Tweaked** / **Only without CC: Tweaked**).
+
 ### Cloud Core
 ${recipe(R.core)}
 
 ### Cloud Mainframe
 ${recipe(R.mainframe)}
+${recipe(R.mainframeNoCct)}
 
 ### Cloud Uplink
 ${recipe(R.uplink)}
+${recipe(R.uplinkNoCct)}
 
 ### Advanced Cloud Uplink
 ${recipe(R.advancedUplink)}
@@ -75,7 +95,9 @@ ${recipe(R.linkCard)}
 
 ### ME and RS Cloud Bridge
 ${recipe(R.meBridge)}
+${recipe(R.meBridgeNoCct)}
 ${recipe(R.rsBridge)}
+${recipe(R.rsBridgeNoCct)}
 
 ## Place the mainframe {#mainframe}
 
@@ -149,13 +171,13 @@ ${code("", C.INTERNET_CONNECT)}
 
 Your dashboard is then at **https://mybase.cccloud.dev**. Every new browser still has to be paired and allowed in game. Limits, privacy and the other ways to open it: [Internet access](/docs/security#internet).
 
-What you see next: [the dashboard](/docs/dashboard). Want your own widgets? Start with [CC basics](/docs/cc-basics) and the [Lua reference](/docs/lua).
+What you see next: [the dashboard](/docs/dashboard). Want your own widgets? With CC: Tweaked, start with [CC basics](/docs/cc-basics) and the [Lua reference](/docs/lua).
 `,
 
   // ------------------------------------------------------------ cc basics
   "cc-basics": `# CC basics for beginners
 
-New to ComputerCraft? This page explains the few things you need to run a dashboard program.
+New to ComputerCraft? This page explains the few things you need to run a dashboard program. Computers come from **CC: Tweaked** – without it on the server there are none, and this page does not apply ([what works without it](/docs/start#cc-tweaked)).
 
 ## Shell vs. Lua {#shell-vs-lua}
 
@@ -213,11 +235,11 @@ Open the URL shown by the mainframe. One browser can hold several mainframes; ta
 
 ## Cards and widgets {#widgets}
 
-Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one card per group. A computer without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
+Every uplink becomes a **card**; [redstone devices](/docs/redstone) share one card per group. A computer (CC: Tweaked) without its own program shows the automatic **Computer card**: power, Turn on / Reboot / Shut down and its six redstone sides (tap a side to switch its output, the LED shows the input; analog levels under "Advanced").
 
-**Machines on the computer's cable network.** If the computer has a wired modem with CC networking cable to other machines (their modems switched on), the uplink on the computer also shows a card for each of those machines – the same card an uplink sitting on the machine would show (energy, tanks, storage controllers, mod machines), with the same controls and permissions. Up to 8 per uplink (server setting \`wiredMachineCards\`); a machine with its own uplink or probe keeps that one, and machines with the same name are told apart by the computer's name for them ("Energy Cell (energy_cell_2)"). Plain chests have no card.
+**Machines on the computer's cable network** (CC: Tweaked). If the computer has a wired modem with CC networking cable to other machines (their modems switched on), the uplink on the computer also shows a card for each of those machines – the same card an uplink sitting on the machine would show (energy, tanks, storage controllers, mod machines), with the same controls and permissions. Up to 8 per uplink (server setting \`wiredMachineCards\`); a machine with its own uplink or probe keeps that one, and machines with the same name are told apart by the computer's name for them ("Energy Cell (energy_cell_2)"). Plain chests have no card.
 
-**Peripheral card – for everything else.** An uplink or probe on a block that has no card of its own, but that CC: Tweaked offers as a peripheral (the methods a computer could call on it, including CC's energy, item and fluid methods), shows the **Peripheral card**: the block's name and its peripheral types. Pick what it shows in the [layout editor](#edit-mode): click the card, then under **Values** tick up to 6 methods that take no arguments (\`get…\`, \`is…\`, \`list…\`, and \`size\`, \`list\`, \`tanks\` of storage blocks), up to 2 numbers also as a chart, and **Save values**. A yes/no method becomes a lamp, everything else a short text. If the block has a \`set…(true/false)\` method, you can make it the card's **Switch** (operators switch it, with a confirm step and – unless you turn it off – the PIN). Only the methods you picked are ever called, every few seconds and less often if they are slow; methods that need arguments, and those of peripherals that do not say which arguments they take, are not offered – a Lua program can still use them. Choosing values needs the right to edit the layout. A peripheral on a computer's cable network gets no Peripheral card (only machines with a real card do).
+**Peripheral card – for everything else** (CC: Tweaked). An uplink or probe on a block that has no card of its own, but that CC: Tweaked offers as a peripheral (the methods a computer could call on it, including CC's energy, item and fluid methods), shows the **Peripheral card**: the block's name and its peripheral types. Pick what it shows in the [layout editor](#edit-mode): click the card, then under **Values** tick up to 6 methods that take no arguments (\`get…\`, \`is…\`, \`list…\`, and \`size\`, \`list\`, \`tanks\` of storage blocks), up to 2 numbers also as a chart, and **Save values**. A yes/no method becomes a lamp, everything else a short text. If the block has a \`set…(true/false)\` method, you can make it the card's **Switch** (operators switch it, with a confirm step and – unless you turn it off – the PIN). Only the methods you picked are ever called, every few seconds and less often if they are slow; methods that need arguments, and those of peripherals that do not say which arguments they take, are not offered – a Lua program can still use them. Choosing values needs the right to edit the layout. A peripheral on a computer's cable network gets no Peripheral card (only machines with a real card do).
 
 | Widget | Shows / does |
 |---|---|
@@ -462,6 +484,8 @@ Player names are personal data on a shared server, so:
 
 Everything a program can do with CC: Cloud. In-game, \`help cloud\` prints a short version.
 
+> Programs run on **CC: Tweaked** computers: everything on this page needs CC: Tweaked on the server. Without it, CC: Cloud works with machines, storage and redstone devices only ([what changes](/docs/start#cc-tweaked)).
+
 ## Getting the peripheral {#peripheral}
 
 ${code("lua", 'local cloud = peripheral.find("cloud_uplink")')}
@@ -654,7 +678,7 @@ Only admins of the mainframe see this, and changes need the mainframe PIN if one
 
 Ready-made programs from the community: **Script Store** in the mainframe's menu (admins). Each script shows what it does, what it **uses** (redstone, peripherals, internet …) and its full source – checked against the SHA-256 in the store's index before you see it. The index is signed by the store: your browser checks the signature where it can (**signed ✓**), and the Minecraft server checks it again before it writes any file. That proves the files come from the store – not that the code is safe, so **read the code before you install it**. Pick a computer and install; run it now or start it automatically. Installed store scripts show **Update available** when there is a newer version, and you are warned before overwriting a file you changed on the computer.
 
-On the project website, **Install** opens your dashboard at \`/store#install=<script>\` – the same view, nothing is installed without your click. Server admins can switch the store off (\`scriptStore=false\`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server.
+On the project website, **Install** opens your dashboard at \`/store#install=<script>\` – the same view, nothing is installed without your click. Server admins can switch the store off (\`scriptStore=false\`). Community scripts run on your CC computer and can control what it controls – they cannot touch the Minecraft server. Without CC: Tweaked on the server, the store can be browsed but there is nothing to install on.
 `,
 
   // ---------------------------------------------------------- ui library
@@ -765,13 +789,13 @@ ${recipe(R.enderRelay)}
 
 ## Cables (wired links) {#cables}
 
-Devices can also join **by cable**, like AE2 cables: connect the uplink or bridge to the mainframe or a relay with CC: Tweaked **networking cable** and **wired modems** (right-click the modems so they turn on). Everything on the same CC wired network is a wired member.
+Devices can also join **by cable**, like AE2 cables: with CC: Tweaked, connect the uplink or bridge to the mainframe or a relay with its **networking cable** and **wired modems** (right-click the modems so they turn on). Everything on the same CC wired network is a wired member.
 
 - Cables have **no range limit**, always **100 %** signal and cost **no extra FE per hop**.
 - A device can have both cable and radio; the cable is preferred, radio is the backup.
 - In the dashboard cables are **solid lines** (grey = CC cable, glowing cyan = fiber), radio links **dashed** (coloured by signal), ender links **dotted**.
 
-**Fiber Cable** (ships with CC: Cloud) works the same, but only connects our devices – a clean network of its own. Devices on fiber count **half** towards the mainframe's device capacity and pay **half** their FE. Use the **Fiber Junction** for splits and walls, and an **Ender Fiber Link** pair to join two fiber networks across any distance or dimension.
+**Fiber Cable** (ships with CC: Cloud, needs no CC: Tweaked) works the same, but only connects our devices – a clean network of its own. Devices on fiber count **half** towards the mainframe's device capacity and pay **half** their FE. Use the **Fiber Junction** for splits and walls, and an **Ender Fiber Link** pair to join two fiber networks across any distance or dimension.
 
 ## When a relay fails {#reroute}
 
@@ -963,13 +987,13 @@ The **Production** page (a tab next to Network, or ⚙ → Production) shows wha
 
 ## Terminal {#terminal}
 
-The **>_** button on a computer's card opens its **terminal** in the browser: the live screen (colours on advanced computers) and your keyboard, like standing in front of it. Click the screen and type; **Terminate** is Ctrl+T, and **Reboot**, **Shut down** and **Turn on** control the computer. Paste sends the first line of the clipboard. On phones, type into the field below the screen and press **Enter**.
+Needs CC: Tweaked. The **>_** button on a computer's card opens its **terminal** in the browser: the live screen (colours on advanced computers) and your keyboard, like standing in front of it. Click the screen and type; **Terminate** is Ctrl+T, and **Reboot**, **Shut down** and **Turn on** control the computer. Paste sends the first line of the clipboard. On phones, type into the field below the screen and press **Enter**.
 
 It needs the “Terminal” permission (admins) and the mainframe PIN if one is set; opening a terminal is logged. The server admin can switch it off (\`terminalEnabled\`) or forbid scripts and the terminal for a player (\`cccloud.feature.scripts\`).
 
 ## Lua editor {#editor}
 
-In a computer's **</>** sheet, **Open the editor** shows all its files and folders (up to 8 levels) next to a code editor with Lua highlighting, line numbers, search (Ctrl/⌘ + F) and undo. **Save** (Ctrl/⌘ + S) writes the file; **Save & run** also starts it in a new tab on the computer. **+ File**, **+ Folder**, rename/move (✎) and delete (×) work on the tree.
+Needs CC: Tweaked. In a computer's **</>** sheet, **Open the editor** shows all its files and folders (up to 8 levels) next to a code editor with Lua highlighting, line numbers, search (Ctrl/⌘ + F) and undo. **Save** (Ctrl/⌘ + S) writes the file; **Save & run** also starts it in a new tab on the computer. **+ File**, **+ Folder**, rename/move (✎) and delete (×) work on the tree.
 
 If the file was changed on the computer since you opened it, saving asks before it overwrites. Files are limited to 256 KB, \`rom\` and disk drives are never touched, and the editor needs the same permissions as uploading scripts (plus the PIN if one is set).
 `,
@@ -977,7 +1001,7 @@ If the file was changed on the computer since you opened it, saving asks before 
 
 CC: Cloud shows machines from many mods as ready-made cards – no Lua needed. Put a **Cloud Uplink** on the machine (or next to it), link it with the Link Card, and its card appears on the dashboard. Everything is optional: a card only exists when that mod is installed. All of this was checked against **All the Mods 11** (MC 26.1.2).
 
-Besides these, generic cards work with almost any mod: the **Energy** card for every block that stores FE, the **Tank** card for plain fluid tanks, and the **Peripheral card** for every other block CC: Tweaked can talk to – you pick up to 6 of its values and an optional on/off switch in the card's settings ([how](/docs/dashboard#widgets)). So if CC: Tweaked sees it as a peripheral, it shows up. Pack makers can turn single blocks off with the block tag \`#cccloud:no_generic_card\`. AE2 and Refined Storage have their own [bridges](/docs/bridges).
+Besides these, generic cards work with almost any mod: the **Energy** card for every block that stores FE, the **Tank** card for plain fluid tanks, and, with CC: Tweaked, the **Peripheral card** for every other block CC: Tweaked can talk to – you pick up to 6 of its values and an optional on/off switch in the card's settings ([how](/docs/dashboard#widgets)). So if CC: Tweaked sees it as a peripheral, it shows up. Pack makers can turn single blocks off with the block tag \`#cccloud:no_generic_card\`. AE2 and Refined Storage have their own [bridges](/docs/bridges).
 
 Controls follow the [permissions](/docs/accounts#roles): buttons and switches need “Use controls”, a machine's redstone mode needs “Switch redstone”, and cards with coordinates (waystones, gates, quests) need “See coordinates”.
 
@@ -989,7 +1013,7 @@ This page is generated from the compatibility manifest (docs/COMPAT.md in the so
 `,
   recipes: `# All recipes
 
-Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it).
+Every crafting recipe of CC: Cloud, generated from the mod's own recipe files – so this list is always complete. Some recipes depend on other mods: a note says **Needs …** (only with that mod) or **Only without …** (the fallback recipe for packs without it). Every recipe with a CC: Tweaked part has a twin for servers without CC: Tweaked (\`*_no_cct\`).
 
 Modpacks can change recipes (datapacks, KubeJS, CraftTweaker). JEI/EMI and the in-game handbook always show the recipes of the world you play in; so do the docs in your server's dashboard, which mark what the server changed (**Changed by this server/modpack**) or removed (**Not craftable on this server**).
 
@@ -1028,6 +1052,7 @@ The recipes are made to be changed by modpacks:
 - **Stable recipe ids.** Every recipe is \`cccloud:<name>\` ([list below](/docs/recipes#recipe-ids)) and keeps its id across versions. Override one with a datapack file \`data/cccloud/recipe/<name>.json\`, remove it with a file that only holds a \`neoforge:never\` condition (below), or use KubeJS / CraftTweaker.
 - **Tags instead of items.** Ingredients use the common \`c:\` tags (\`#c:ingots/gold\`, \`#c:nuggets/gold\`, \`#c:ender_pearls\`, \`#c:dusts/redstone\`, \`#c:glass_panes\`, \`#c:gems/diamond\`, \`#c:storage_blocks/gold\`, \`#c:ingots/vibranium\` …), so unification mods such as AlmostUnified swap the material without touching these recipes.
 - **Conditional AllTheModium recipes.** The mainframe upgrades, the Cloud Probe and the Advanced Cloud Sensor use AllTheModium metals when AllTheModium is installed (\`neoforge:mod_loaded\`); without it their \`*_fallback\` variant (gold, diamond, netherite, nether star) loads instead (\`neoforge:not\`). Likewise the Ender Fiber Link (\`ender_fiber_link_unobtainium\` with AllTheModium, \`ender_fiber_link\` without) and the Quantum Core (the ATM Star of All The Tweaks, \`quantum_core_fallback\` without it). When you change one of them, change both ids – the table below says which one loads when.
+- **Optional CC: Tweaked.** Every recipe with a CC: Tweaked item loads only with CC: Tweaked (\`neoforge:mod_loaded computercraft\`); its \`<name>_no_cct\` twin with vanilla items in the same slots loads only without it. Change both if you change one.
 - **FTB Quests:** the CC: Cloud chapters use item tasks (have or craft the item), never recipe ids – they keep working whatever you change. For a modpack, use the modpack jar and ship them in your quest book ([Quests](/docs/start#quests)).
 - **What players see:** JEI/EMI, the in-game handbook and the server's dashboard show the live recipes; the dashboard marks changed, added and removed ones. The website shows the defaults.
 
@@ -1528,6 +1553,10 @@ For server owners: \`/cccloud version\` shows the server's build, the server log
 - The server needs **FTB Quests** and the standard jar \`cccloud-<version>.jar\` – the modpack edition never adds quests.
 - The server log says what happened: look for \`FTB Quests:\` (for example \`installQuests = false\`, an id that is already used in the quest book, or a chapter that was deleted earlier).
 - The quests are added once; a deleted chapter does not come back. To start over, delete \`config/cccloud/quests-installed.json\` and restart. See [Quests](/docs/start#quests).
+
+## No Computer card, terminal or scripts {#no-cc-tweaked}
+
+The server runs CC: Cloud without **CC: Tweaked**. Computers, Lua programs, the terminal, the Lua editor, script uploads and Script Store installs, the Peripheral card and CC cables come from CC: Tweaked; everything else works without it. Install CC: Tweaked (1.120.0 or newer) on the server and the clients and restart. See [With or without CC: Tweaked](/docs/start#cc-tweaked).
 
 ## A card says "Blocked – this machine is in …'s claim" {#claims}
 

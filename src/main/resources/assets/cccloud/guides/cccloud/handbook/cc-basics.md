@@ -3,12 +3,12 @@
 navigation:
   title: "CC basics"
   position: 1
-  icon: computercraft:computer_advanced
+  icon: cccloud:advanced_cloud_tablet
 ---
 
 # CC basics for beginners
 
-New to ComputerCraft? This page explains the few things you need to run a dashboard program.
+New to ComputerCraft? This page explains the few things you need to run a dashboard program. Computers come from **CC: Tweaked** – without it on the server there are none, and this page does not apply ([what works without it](index.md)).
 
 ## Shell vs. Lua
 

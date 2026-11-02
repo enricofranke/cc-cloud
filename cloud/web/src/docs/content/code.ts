@@ -308,6 +308,7 @@ export const MOD_NAMES: Record<string, string> = {
   allthetweaks: "All The Tweaks",
   ae2: "Applied Energistics 2",
   refinedstorage: "Refined Storage",
+  computercraft: "CC: Tweaked",
 };
 
 /** Every crafting recipe of the mod, generated from its recipe JSONs (dev/build-recipes.ts). */
@@ -321,15 +322,20 @@ const byFile = (f: string) => {
 export const RECIPES = {
   core: byFile("cloud_core"),
   mainframe: byFile("cloud_mainframe"),
+  mainframeNoCct: byFile("cloud_mainframe_no_cct"),
   uplink: byFile("cloud_uplink"),
+  uplinkNoCct: byFile("cloud_uplink_no_cct"),
   advancedUplink: byFile("advanced_cloud_uplink"),
   probe: byFile("cloud_probe"),
   linkCard: byFile("cloud_link_card"),
   meBridge: byFile("me_cloud_bridge"),
+  meBridgeNoCct: byFile("me_cloud_bridge_no_cct"),
   relay: byFile("cloud_relay"),
+  relayNoCct: byFile("cloud_relay_no_cct"),
   advancedRelay: byFile("advanced_cloud_relay"),
   enderRelay: byFile("ender_relay"),
   rsBridge: byFile("rs_cloud_bridge"),
+  rsBridgeNoCct: byFile("rs_cloud_bridge_no_cct"),
   cloudSwitch: byFile("cloud_switch"),
   cloudButton: byFile("cloud_button"),
   cloudLamp: byFile("cloud_lamp"),

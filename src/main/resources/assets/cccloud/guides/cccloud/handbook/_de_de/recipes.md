@@ -7,7 +7,7 @@ navigation:
 
 # Alle Rezepte
 
-Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien des Mods selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie).
+Alle Crafting-Rezepte von CC: Cloud, erzeugt aus den Rezeptdateien des Mods selbst – die Liste ist also immer vollständig. Manche Rezepte hängen von anderen Mods ab: Ein Hinweis sagt **Braucht …** (nur mit dieser Mod) oder **Nur ohne …** (das Ersatzrezept für Packs ohne sie). Jedes Rezept mit einem Teil von CC: Tweaked hat einen Zwilling für Server ohne CC: Tweaked (`*_no_cct`).
 
 Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und das Handbuch im Spiel zeigen immer die Rezepte der Welt, in der du spielst; die Doku im Dashboard deines Servers auch – sie markiert, was der Server geändert (**Von diesem Server/Modpack geändert**) oder entfernt hat (**Auf diesem Server nicht herstellbar**).
 
@@ -155,6 +155,7 @@ Die Rezepte sind darauf ausgelegt, von Modpacks geändert zu werden:
 - **Feste Rezept-IDs.** Jedes Rezept heißt `cccloud:<name>` ([Liste unten](recipes.md)) und behält seine ID über Versionen hinweg. Überschreiben mit einer Datapack-Datei `data/cccloud/recipe/<name>.json`, entfernen mit einer Datei, die nur eine `neoforge:never`-Bedingung enthält (unten), oder per KubeJS / CraftTweaker.
 - **Tags statt Items.** Die Zutaten sind die üblichen `c:`-Tags (`#c:ingots/gold`, `#c:nuggets/gold`, `#c:ender_pearls`, `#c:dusts/redstone`, `#c:glass_panes`, `#c:gems/diamond`, `#c:storage_blocks/gold`, `#c:ingots/vibranium` …), daher tauschen Vereinheitlichungs-Mods wie AlmostUnified das Material, ohne diese Rezepte anzufassen.
 - **AllTheModium-Rezepte mit Bedingung.** Die Mainframe-Upgrades, die Cloud Probe und der Erweiterte Cloud-Sensor nutzen AllTheModium-Metalle, wenn AllTheModium installiert ist (`neoforge:mod_loaded`); ohne lädt stattdessen die `*_fallback`-Variante (Gold, Diamant, Netherit, Netherstern, `neoforge:not`). Genauso der Ender Fiber Link (`ender_fiber_link_unobtainium` mit AllTheModium, `ender_fiber_link` ohne) und der Quantum Core (ATM-Stern aus All The Tweaks, ohne: `quantum_core_fallback`). Wer eines davon ändert, ändert beide IDs – die Tabelle unten sagt, welches wann lädt.
+- **CC: Tweaked optional.** Jedes Rezept mit einem Item von CC: Tweaked lädt nur mit CC: Tweaked (`neoforge:mod_loaded computercraft`); sein Zwilling `<name>_no_cct` mit Vanilla-Items an denselben Stellen lädt nur ohne. Änderst du eines, ändere beide.
 - **FTB Quests:** Die CC: Cloud-Kapitel nutzen Item-Aufgaben (Item haben oder craften), nie Rezept-IDs – sie funktionieren also weiter, egal was du änderst. Für ein Modpack nimm die Modpack-Jar und liefere sie in deinem Questbuch mit ([Quests](index.md)).
 - **Was Spieler sehen:** JEI/EMI, das Handbuch im Spiel und das Dashboard des Servers zeigen die aktuellen Rezepte; das Dashboard markiert geänderte, hinzugefügte und entfernte. Die Website zeigt die Standard-Rezepte.
 
@@ -192,35 +193,46 @@ ServerEvents.recipes(event => {
 | `cccloud:advanced_cloud_relay` | Erweitertes Cloud-Relais | immer |
 | `cccloud:advanced_cloud_sensor` | Erweiterter Cloud-Sensor | mit AllTheModium |
 | `cccloud:advanced_cloud_sensor_fallback` | Erweiterter Cloud-Sensor | ohne AllTheModium |
-| `cccloud:advanced_cloud_tablet` | Erweitertes Cloud-Tablet | immer |
+| `cccloud:advanced_cloud_tablet` | Erweitertes Cloud-Tablet | mit CC: Tweaked |
+| `cccloud:advanced_cloud_tablet_no_cct` | Erweitertes Cloud-Tablet | ohne CC: Tweaked |
 | `cccloud:advanced_cloud_tablet_upgrade` | Erweitertes Cloud-Tablet | immer |
 | `cccloud:advanced_cloud_uplink` | Erweiterter Cloud-Uplink | immer |
-| `cccloud:cloud_analyzer` | Cloud-Analysator | immer |
+| `cccloud:cloud_analyzer` | Cloud-Analysator | mit CC: Tweaked |
+| `cccloud:cloud_analyzer_no_cct` | Cloud-Analysator | ohne CC: Tweaked |
 | `cccloud:cloud_button` | Cloud-Taster | immer |
 | `cccloud:cloud_core` | Cloud-Kern ×2 | immer |
-| `cccloud:cloud_display` | Cloud-Display ×4 | immer |
+| `cccloud:cloud_display` | Cloud-Display ×4 | mit CC: Tweaked |
+| `cccloud:cloud_display_no_cct` | Cloud-Display ×4 | ohne CC: Tweaked |
 | `cccloud:cloud_lamp` | Cloud-Lampe | immer |
 | `cccloud:cloud_link_card` | Cloud-Verbindungskarte | immer |
-| `cccloud:cloud_mainframe` | Cloud-Mainframe | immer |
+| `cccloud:cloud_mainframe` | Cloud-Mainframe | mit CC: Tweaked |
+| `cccloud:cloud_mainframe_no_cct` | Cloud-Mainframe | ohne CC: Tweaked |
 | `cccloud:cloud_probe` | Cloud-Sonde | mit AllTheModium |
 | `cccloud:cloud_probe_fallback` | Cloud-Sonde | ohne AllTheModium |
-| `cccloud:cloud_relay` | Cloud-Relais | immer |
+| `cccloud:cloud_relay` | Cloud-Relais | mit CC: Tweaked |
+| `cccloud:cloud_relay_no_cct` | Cloud-Relais | ohne CC: Tweaked |
 | `cccloud:cloud_sensor` | Cloud-Sensor | immer |
 | `cccloud:cloud_switch` | Cloud-Schalter | immer |
-| `cccloud:cloud_tablet` | Cloud-Tablet | immer |
-| `cccloud:cloud_uplink` | Cloud-Uplink ×2 | immer |
+| `cccloud:cloud_tablet` | Cloud-Tablet | mit CC: Tweaked |
+| `cccloud:cloud_tablet_no_cct` | Cloud-Tablet | ohne CC: Tweaked |
+| `cccloud:cloud_uplink` | Cloud-Uplink ×2 | mit CC: Tweaked |
+| `cccloud:cloud_uplink_no_cct` | Cloud-Uplink ×2 | ohne CC: Tweaked |
 | `cccloud:ender_fiber_link` | Ender-Glasfaserbrücke | ohne AllTheModium |
 | `cccloud:ender_fiber_link_unobtainium` | Ender-Glasfaserbrücke | mit AllTheModium |
 | `cccloud:ender_relay` | Ender-Relais | immer |
 | `cccloud:fiber_cable` | Glasfaserkabel ×8 | immer |
 | `cccloud:fiber_junction` | Glasfaser-Verteiler ×4 | immer |
 | `cccloud:handbook` | CC: Cloud-Handbuch | mit GuideME |
-| `cccloud:me_cloud_bridge` | ME-Cloud-Bridge | mit Applied Energistics 2 |
+| `cccloud:me_cloud_bridge` | ME-Cloud-Bridge | mit Applied Energistics 2, mit CC: Tweaked |
+| `cccloud:me_cloud_bridge_no_cct` | ME-Cloud-Bridge | mit Applied Energistics 2, ohne CC: Tweaked |
 | `cccloud:quantum_core` | Quantenkern | mit All The Tweaks |
 | `cccloud:quantum_core_fallback` | Quantenkern | ohne All The Tweaks |
-| `cccloud:rs_cloud_bridge` | RS-Cloud-Bridge | mit Refined Storage |
-| `cccloud:upgrade_bandwidth_allthemodium` | Bandbreite-Upgrade (Allthemodium) | mit AllTheModium |
-| `cccloud:upgrade_bandwidth_allthemodium_fallback` | Bandbreite-Upgrade (Allthemodium) | ohne AllTheModium |
+| `cccloud:rs_cloud_bridge` | RS-Cloud-Bridge | mit Refined Storage, mit CC: Tweaked |
+| `cccloud:rs_cloud_bridge_no_cct` | RS-Cloud-Bridge | mit Refined Storage, ohne CC: Tweaked |
+| `cccloud:upgrade_bandwidth_allthemodium` | Bandbreite-Upgrade (Allthemodium) | mit AllTheModium, mit CC: Tweaked |
+| `cccloud:upgrade_bandwidth_allthemodium_fallback` | Bandbreite-Upgrade (Allthemodium) | ohne AllTheModium, mit CC: Tweaked |
+| `cccloud:upgrade_bandwidth_allthemodium_fallback_no_cct` | Bandbreite-Upgrade (Allthemodium) | ohne AllTheModium, ohne CC: Tweaked |
+| `cccloud:upgrade_bandwidth_allthemodium_no_cct` | Bandbreite-Upgrade (Allthemodium) | mit AllTheModium, ohne CC: Tweaked |
 | `cccloud:upgrade_bandwidth_unobtainium` | Bandbreite-Upgrade (Unobtainium) | mit AllTheModium |
 | `cccloud:upgrade_bandwidth_unobtainium_fallback` | Bandbreite-Upgrade (Unobtainium) | ohne AllTheModium |
 | `cccloud:upgrade_bandwidth_vibranium` | Bandbreite-Upgrade (Vibranium) | mit AllTheModium |
@@ -238,8 +250,10 @@ ServerEvents.recipes(event => {
 | `cccloud:upgrade_efficiency_unobtainium_fallback` | Effizienz-Upgrade (Unobtainium) | ohne AllTheModium |
 | `cccloud:upgrade_efficiency_vibranium` | Effizienz-Upgrade (Vibranium) | mit AllTheModium |
 | `cccloud:upgrade_efficiency_vibranium_fallback` | Effizienz-Upgrade (Vibranium) | ohne AllTheModium |
-| `cccloud:upgrade_memory_allthemodium` | Speicher-Upgrade (Allthemodium) | mit AllTheModium |
-| `cccloud:upgrade_memory_allthemodium_fallback` | Speicher-Upgrade (Allthemodium) | ohne AllTheModium |
+| `cccloud:upgrade_memory_allthemodium` | Speicher-Upgrade (Allthemodium) | mit AllTheModium, mit CC: Tweaked |
+| `cccloud:upgrade_memory_allthemodium_fallback` | Speicher-Upgrade (Allthemodium) | ohne AllTheModium, mit CC: Tweaked |
+| `cccloud:upgrade_memory_allthemodium_fallback_no_cct` | Speicher-Upgrade (Allthemodium) | ohne AllTheModium, ohne CC: Tweaked |
+| `cccloud:upgrade_memory_allthemodium_no_cct` | Speicher-Upgrade (Allthemodium) | mit AllTheModium, ohne CC: Tweaked |
 | `cccloud:upgrade_memory_unobtainium` | Speicher-Upgrade (Unobtainium) | mit AllTheModium |
 | `cccloud:upgrade_memory_unobtainium_fallback` | Speicher-Upgrade (Unobtainium) | ohne AllTheModium |
 | `cccloud:upgrade_memory_vibranium` | Speicher-Upgrade (Vibranium) | mit AllTheModium |
