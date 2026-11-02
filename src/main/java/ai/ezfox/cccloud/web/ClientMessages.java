@@ -23,7 +23,7 @@ public final class ClientMessages {
     private static final Pattern NODE_ID = Pattern.compile("[A-Za-z0-9_-]{1,64}");
 
     public sealed interface Message permits Auth, AuthShare, Action, Query, LayoutSet, NetUnlink, RuleCommand, SceneCommand, Production, RedstoneOverride, Storage,
-        CraftPreview, Terminal, RedstoneDevice, DisplayCommand, MainframeRename, CardSettings, CardDetail, CardWrite, Unlock, Pong, Invalid {
+        CraftPreview, Terminal, RedstoneDevice, DisplayCommand, MainframeRename, CardSettings, CardDetail, CardWrite, CodeCommand, Unlock, Pong, Invalid {
     }
 
     /**
@@ -62,6 +62,31 @@ public final class ClientMessages {
     public static final int MAX_PROGRAM = 32 * 1024;
     /** Longest {@code card_write} message (a program with most characters escaped is refused as too large). */
     static final int MAX_CARD_WRITE_FRAME = 64 * 1024;
+
+    /**
+     * Cloud Scripts ({@code code.edit}): {@code {"t":"code","reqId","op",…}} → {@code code_result}. Fields by op: {@code id}
+     * (every op on one script), {@code name} + {@code source} ({@code save}; {@code id} absent = a new script,
+     * {@code baseVersion} = the version the editor started from), {@code source} ({@code check}), {@code name}
+     * ({@code rename}), {@code enabled} ({@code autostart}), {@code version} ({@code version}, {@code revert}). Names and
+     * sizes are checked by {@link ai.ezfox.cccloud.code.store.ScriptBook}. A malformed request keeps its {@code reqId} and
+     * carries {@code error} ({@code invalid}, {@code unknown_script}, {@code too_large}), answered after the rights check.
+     */
+    public record CodeCommand(String reqId, String op, @Nullable String id, @Nullable String name, @Nullable String source, @Nullable Integer baseVersion,
+                              @Nullable Integer version, @Nullable Boolean enabled, @Nullable String error) implements Message {
+        /** Ops that only read (everything else changes a script or its run). */
+        public static final java.util.Set<String> READ_OPS = java.util.Set.of("list", "get", "check", "versions", "version", "logs", "unwatch");
+
+        public boolean writes() {
+            return error == null && !READ_OPS.contains(op);
+        }
+    }
+
+    /** Cloud Scripts ops. */
+    public static final java.util.Set<String> CODE_OPS = java.util.Set.of("list", "get", "check", "save", "delete", "start", "stop", "restart", "autostart",
+        "rename", "versions", "version", "revert", "logs", "unwatch");
+    /** Longest {@code code} message: a source of up to 32 KB plus its escaping. */
+    static final int MAX_CODE_FRAME = 64 * 1024;
+    private static final Pattern SCRIPT_ID = Pattern.compile("[a-f0-9]{8}");
 
     /** Card settings are small: at most this many characters of JSON. */
     static final int MAX_CARD_SETTINGS = 2048;
@@ -229,6 +254,7 @@ public final class ClientMessages {
             case CardSettings c -> true;
             case CardDetail c -> false;
             case CardWrite c -> !c.op().equals("check");
+            case CodeCommand c -> c.writes();
             case Production p -> p.op().equals("pin") || p.op().equals("unpin");
             case Storage s -> STORAGE_WRITE_OPS.contains(s.op());
             case Terminal t -> !t.op().equals("term_close");
@@ -268,7 +294,10 @@ public final class ClientMessages {
         if (obj == null) return new Invalid(text.length() > MAX_FRAME ? "too_large" : "invalid_message", null);
         String t = string(obj, "t");
         if (t == null) return new Invalid("invalid_message", null);
-        if (text.length() > MAX_FRAME && !"layout_set".equals(t) && !("card_write".equals(t) && text.length() <= MAX_CARD_WRITE_FRAME)) return new Invalid("too_large", null);
+        if (text.length() > MAX_FRAME && !"layout_set".equals(t) && !("card_write".equals(t) && text.length() <= MAX_CARD_WRITE_FRAME)
+            && !("code".equals(t) && text.length() <= MAX_CODE_FRAME)) {
+            return new Invalid("too_large", null);
+        }
         return switch (t) {
             case "auth" -> {
                 String token = string(obj, "token");
@@ -346,6 +375,7 @@ public final class ClientMessages {
                 yield uplinkId == null ? new Invalid("invalid_message", reqId) : new CardDetail(reqId, uplinkId);
             }
             case "card_write" -> parseCardWrite(obj);
+            case "code" -> parseCode(obj);
             case "layout_set" -> parseLayoutSet(obj);
             case "unlock" -> {
                 String reqId = string(obj, "reqId");
@@ -380,6 +410,47 @@ public final class ClientMessages {
 
     private static @Nullable Boolean flag(JsonObject obj, String key) {
         return obj.get(key) instanceof com.google.gson.JsonPrimitive p && p.isBoolean() ? p.getAsBoolean() : null;
+    }
+
+    private static Message parseCode(JsonObject obj) {
+        String reqId = string(obj, "reqId");
+        if (reqId == null || !REQ_ID.matcher(reqId).matches()) return new Invalid("invalid_message", null);
+        String op = string(obj, "op");
+        String id = string(obj, "id");
+        String name = string(obj, "name");
+        String source = string(obj, "source");
+        Integer baseVersion = smallInt(obj, "baseVersion");
+        Integer version = smallInt(obj, "version");
+        Boolean enabled = flag(obj, "enabled");
+        String error = null;
+        if (op == null || !CODE_OPS.contains(op)) {
+            op = "invalid";
+            error = "invalid";
+        } else if (!java.util.Set.of("t", "reqId", "op", "id", "name", "source", "baseVersion", "version", "enabled").containsAll(obj.keySet())
+            // a field that is there must have its type
+            || (obj.has("id") && id == null) || (obj.has("name") && name == null) || (obj.has("source") && source == null)
+            || (obj.has("enabled") && enabled == null) || (obj.has("version") && version == null)
+            || (obj.has("baseVersion") && !obj.get("baseVersion").isJsonNull() && baseVersion == null)
+            || (name != null && name.length() > 64)) {
+            error = "invalid";
+        } else if (id != null && !SCRIPT_ID.matcher(id).matches()) {
+            error = "unknown_script";
+        } else if (source != null && source.length() > MAX_PROGRAM) {
+            error = "too_large";
+        } else if (!java.util.Set.of("list", "check", "save").contains(op) && id == null) {
+            error = "invalid";
+        } else {
+            boolean ok = switch (op) {
+                case "check" -> source != null;
+                case "save" -> name != null && source != null;
+                case "rename" -> name != null;
+                case "autostart" -> enabled != null;
+                case "version", "revert" -> version != null && version > 0;
+                default -> true;
+            };
+            if (!ok) error = "invalid";
+        }
+        return new CodeCommand(reqId, op, id, name, source, baseVersion, version, enabled, error);
     }
 
     private static Message parseCardWrite(JsonObject obj) {

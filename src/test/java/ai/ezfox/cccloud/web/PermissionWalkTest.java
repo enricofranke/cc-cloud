@@ -209,6 +209,11 @@ class PermissionWalkTest {
         cases.put("{\"t\":\"card_write\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"op\":\"save\",\"text\":\"x\",\"force\":false}", Perm.DEVICE_PROGRAM);
         cases.put("{\"t\":\"term_open\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\"}", Perm.TERMINAL);
         cases.put("{\"t\":\"term_input\",\"reqId\":\"r\",\"uplinkId\":\"" + auto + "\",\"events\":[{\"type\":\"char\",\"c\":\"a\"}]}", Perm.TERMINAL);
+        for (var op : new String[]{"list", "logs", "start", "stop"}) {
+            String id = op.equals("list") ? "" : ",\"id\":\"0a1b2c3d\"";
+            cases.put("{\"t\":\"code\",\"reqId\":\"r\",\"op\":\"" + op + "\"" + id + "}", Perm.CODE_EDIT);
+        }
+        cases.put("{\"t\":\"code\",\"reqId\":\"r\",\"op\":\"save\",\"name\":\"Night\",\"source\":\"print(1)\"}", Perm.CODE_EDIT);
         cases.put("{\"t\":\"craft_preview\",\"reqId\":\"r\",\"uplinkId\":\"" + lua + "\",\"name\":\"minecraft:stick\",\"count\":4}", Perm.STORAGE_CRAFT);
         // Message types that need no mainframe permission beyond the login itself. Unlock (plain-HTTP internet access) only
         // checks the PIN: every write it unlocks still needs its own permission.

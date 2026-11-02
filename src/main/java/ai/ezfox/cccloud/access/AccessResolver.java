@@ -126,8 +126,8 @@ public final class AccessResolver {
     }
 
     /**
-     * Server-level feature switches (PermissionAPI) remove permissions: {@code cccloud.feature.scripts} the script and
-     * terminal permissions, {@code cccloud.api.keys} (v0.10) {@code api.keys}.
+     * Server-level feature switches (PermissionAPI) remove permissions: {@code cccloud.feature.scripts} the script,
+     * terminal and Cloud Scripts permissions, {@code cccloud.api.keys} (v0.10) {@code api.keys}.
      */
     private Resolution withFeatures(UUID player, Resolution r) {
         boolean scripts = permissions.has(player, ServerPermissions.Node.FEATURE_SCRIPTS);
@@ -135,7 +135,7 @@ public final class AccessResolver {
         if (scripts && api) return r;
         var perms = EnumSet.noneOf(Perm.class);
         perms.addAll(r.perms());
-        if (!scripts) perms.removeAll(EnumSet.of(Perm.SCRIPTS_UPLOAD, Perm.SCRIPTS_RUN, Perm.SCRIPTS_DELETE, Perm.TERMINAL, Perm.DEVICE_PROGRAM));
+        if (!scripts) perms.removeAll(EnumSet.of(Perm.SCRIPTS_UPLOAD, Perm.SCRIPTS_RUN, Perm.SCRIPTS_DELETE, Perm.TERMINAL, Perm.DEVICE_PROGRAM, Perm.CODE_EDIT));
         if (!api) perms.remove(Perm.API_KEYS);
         return new Resolution(r.role(), r.source(), r.teamRank(), perms);
     }

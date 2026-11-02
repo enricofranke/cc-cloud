@@ -88,6 +88,7 @@ public final class CloudWebServer {
             CloudConfig.get(CloudConfig.RULES_ENABLED), true, CloudConfig.get(CloudConfig.SCENES_ENABLED), CloudConfig.get(CloudConfig.PRODUCTION_ENABLED),
             CloudConfig.get(CloudConfig.API_ENABLED)));
         PublicConfig.setCcTweaked(() -> new PublicConfig.CcTweaked(ai.ezfox.cccloud.compat.Cct.present(), ai.ezfox.cccloud.compat.Cct.version()));
+        PublicConfig.setScripts(ai.ezfox.cccloud.code.game.CodeService::enabled);
         var settings = WebSettings.fromConfig();
         if (!settings.enabled()) {
             CloudLog.LOGGER.info("[cccloud] Dashboard web server disabled in config (webEnabled=false)");

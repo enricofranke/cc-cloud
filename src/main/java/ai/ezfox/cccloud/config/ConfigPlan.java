@@ -34,7 +34,8 @@ public enum ConfigPlan {
 
     /** Keys the dashboard shows as features ({@code GET /api/config}). */
     static final Set<String> FEATURE_KEYS = Set.of("terminal.terminalEnabled", "map.voxelView", "push.pushEnabled", "rules.rulesEnabled",
-        "scenes.scenesEnabled", "production.productionEnabled", "api.apiEnabled", "store.scriptStore", "store.scriptStoreUrl", "store.scriptStoreKey");
+        "scenes.scenesEnabled", "production.productionEnabled", "api.apiEnabled", "store.scriptStore", "store.scriptStoreUrl", "store.scriptStoreKey",
+        "cloudScripts.cloudScriptsEnabled");
 
     public static EnumSet<ConfigPlan> of(Collection<String> changedKeys) {
         var plan = EnumSet.noneOf(ConfigPlan.class);

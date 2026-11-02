@@ -47,7 +47,9 @@ public final class AccessGate {
         /** Writing a machine's program; needs {@link #CARD_DETAIL} as well. */
         CARD_WRITE(Perm.DEVICE_PROGRAM),
         /** The mainframe's name (like a card's title). */
-        MAINFRAME_RENAME(Perm.LAYOUT_EDIT);
+        MAINFRAME_RENAME(Perm.LAYOUT_EDIT),
+        /** Cloud Scripts: everything, including the list and the logs. */
+        CODE(Perm.CODE_EDIT);
 
         public final Perm perm;
 
@@ -185,6 +187,7 @@ public final class AccessGate {
             case "production" -> "production_result";
             case "storage" -> "storage_result";
             case "craft_preview" -> "craft_plan";
+            case "code" -> "code_result";
             case "term_open", "term_input" -> "term_result";
             case "unlock" -> "unlock_result";
             default -> null;

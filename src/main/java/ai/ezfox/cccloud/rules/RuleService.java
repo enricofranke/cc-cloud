@@ -117,8 +117,8 @@ public final class RuleService {
         else TEST_DAY_TIMES.put(mainframeId, dayTime);
     }
 
-    /** In-game time of day (0–23999) from the overworld clock (or a test's own). */
-    static long dayTime(MinecraftServer server, UUID mainframeId) {
+    /** In-game time of day (0–23999) from the overworld clock (or a test's own); also Cloud Scripts' {@code cloud.gameTime}. */
+    public static long dayTime(MinecraftServer server, UUID mainframeId) {
         var test = TEST_DAY_TIMES.get(mainframeId);
         if (test != null) return Math.floorMod(test.getAsLong(), 24000L);
         return Math.floorMod(server.overworld().getOverworldClockTime(), 24000L);
@@ -410,6 +410,34 @@ public final class RuleService {
         var section = CloudNetwork.section(uuid);
         if (section == null || section.getLink() == null || !section.getLink().id().equals(mainframeId)) return null;
         return section;
+    }
+
+    /**
+     * Cloud Scripts ({@code cloud.count}): how many of an item the storage behind a card holds; null when the card has no
+     * connected storage. Server thread.
+     */
+    public static @Nullable Long itemCount(UUID mainframeId, String uplinkId, String item) {
+        var core = storage(mainframeId, uplinkId);
+        if (core == null || !core.isConnected()) return null;
+        var row = core.getItem(item);
+        return row == null ? 0L : row.count();
+    }
+
+    /** A rule as Cloud Scripts read it ({@code cloud.getRules}): {@code trigger} is the type of its {@code when}. */
+    public record ScriptView(String id, String name, boolean enabled, String trigger, long runs, @Nullable String lastResult) {
+    }
+
+    /** The rules of a mainframe for Cloud Scripts (runs and last result since the server started). Server thread. */
+    public static List<ScriptView> scriptView(UUID mainframeId) {
+        var engine = ENGINES.get(mainframeId);
+        var list = new ArrayList<ScriptView>();
+        for (var rule : rules(mainframeId)) {
+            var when = RuleCodec.toJson(rule).get("when");
+            String trigger = when instanceof JsonObject w && w.get("type") instanceof com.google.gson.JsonPrimitive t ? t.getAsString() : "";
+            var state = engine == null ? null : engine.state(rule.id());
+            list.add(new ScriptView(rule.id(), rule.name(), rule.enabled(), trigger, state == null ? 0 : state.runs(), state == null ? null : state.lastResult()));
+        }
+        return list;
     }
 
     private static @Nullable BridgeCore storage(UUID mainframeId, String uplinkId) {

@@ -48,6 +48,13 @@ public final class PublicConfig {
         ccTweaked = cct;
     }
 
+    /** Cloud Scripts switched on ({@code cloudScriptsEnabled} and a working Lua VM); the dashboard reads a missing value as on. */
+    static volatile java.util.function.BooleanSupplier scripts = () -> true;
+
+    public static void setScripts(java.util.function.BooleanSupplier on) {
+        scripts = on;
+    }
+
     /** {@code https://host[:port]/path/} – null if the URL is not a valid store URL. */
     public static @Nullable String validStoreUrl(@Nullable String url) {
         if (url == null || url.length() > 256 || !url.endsWith("/")) return null;
@@ -108,6 +115,7 @@ public final class PublicConfig {
         features.addProperty("scenes", s.scenes());
         features.addProperty("production", s.production());
         features.addProperty("api", s.api());
+        features.addProperty("scripts", scripts.getAsBoolean());
         json.add("features", features);
         var cc = ccTweaked.get();
         var cct = new JsonObject();

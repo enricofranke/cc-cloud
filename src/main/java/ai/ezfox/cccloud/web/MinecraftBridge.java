@@ -401,6 +401,17 @@ public final class MinecraftBridge implements GameBridge {
     }
 
     @Override
+    public java.util.concurrent.CompletableFuture<GameBridge.CodeReply> code(AuthStore.Device device, UUID mainframeId, ClientMessages.CodeCommand command,
+                                                                          ai.ezfox.cccloud.code.web.CodeViewer viewer) {
+        return ai.ezfox.cccloud.code.game.CodeProtocol.handle(server, device, mainframeId, command, viewer);
+    }
+
+    @Override
+    public void codeClose(UUID mainframeId, ai.ezfox.cccloud.code.web.CodeViewer viewer) {
+        ai.ezfox.cccloud.code.game.CodeService.close(mainframeId, viewer);
+    }
+
+    @Override
     public GameBridge.RuleResult sceneCommand(AuthStore.Device device, UUID mainframeId, ClientMessages.SceneCommand command) {
         var access = access(device, mainframeId);
         String error = AccessGate.check(access.role(), access.perms(), AccessGate.Kind.SCENE_EDIT.perm);

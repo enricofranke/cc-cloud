@@ -703,6 +703,24 @@ public final class WebHub {
         return new DisplaySource(layout, sections, restricted);
     }
 
+    /**
+     * Cloud Scripts: every published section (shared objects: never change them) in the form for {@code names} (see
+     * {@link #seesNames}), and which are restricted. Any thread.
+     */
+    public DisplaySource scriptSource(UUID mainframeId, boolean names) {
+        var view = views.get(mainframeId);
+        if (view == null) return new DisplaySource(null, Map.of(), Set.of());
+        Map<String, Section> refs;
+        Set<String> restricted;
+        synchronized (view) {
+            refs = new LinkedHashMap<>(view.uplinks);
+            restricted = Set.copyOf(view.restricted);
+        }
+        var sections = new LinkedHashMap<String, JsonObject>();
+        for (var e : refs.entrySet()) sections.put(e.getKey(), e.getValue().json(names));
+        return new DisplaySource(null, sections, restricted);
+    }
+
     /** v0.5 F: the current value of a widget that asked for long-term statistics ({@code opts.history}). */
     public record HistorySample(UUID mainframeId, String uplinkId, String widgetId, String range, double value) {
     }
@@ -968,8 +986,17 @@ public final class WebHub {
      * are set up by admins). {@code publicText} null = not private.
      */
     public void publishAlert(UUID mainframeId, @Nullable String uplinkId, String text, String level, @Nullable String publicText) {
+        alert(mainframeId, uplinkId, text, level, publicText, true);
+    }
+
+    /** Cloud Scripts ({@code cloud.toast}): an alert on the open dashboards only, no push notification. */
+    public void publishToast(UUID mainframeId, String text, String level) {
+        alert(mainframeId, null, text, level, null, false);
+    }
+
+    private void alert(UUID mainframeId, @Nullable String uplinkId, String text, String level, @Nullable String publicText, boolean push) {
         ai.ezfox.cccloud.api.CloudEvents.alert(new ai.ezfox.cccloud.api.CloudEvents.Alert(mainframeId, uplinkId, text, level));
-        var listener = onAlert;
+        var listener = push ? onAlert : null;
         if (listener != null) {
             String source = null;
             var v = views.get(mainframeId);
@@ -1424,6 +1451,19 @@ public final class WebHub {
         if (!view.sessions.isEmpty()) return 0L;
         long last = view.lastClientSeen;
         return last == 0 ? null : (System.currentTimeMillis() - last) / 1000;
+    }
+
+    /** True if the widget exists and asks before an action (opts.confirm = true). */
+    public boolean widgetConfirms(UUID mainframeId, String uplinkId, String widgetId) {
+        var view = views.get(mainframeId);
+        if (view == null) return false;
+        synchronized (view) {
+            var section = view.uplinks.get(uplinkId);
+            var widget = section == null ? null : section.widget(widgetId);
+            if (widget == null || !(widget.base.get("opts") instanceof JsonObject opts)) return false;
+            var confirm = opts.get("confirm");
+            return confirm != null && confirm.isJsonPrimitive() && confirm.getAsJsonPrimitive().isBoolean() && confirm.getAsBoolean();
+        }
     }
 
     /** True if the widget exists and requires a PIN (opts.pin = true). */

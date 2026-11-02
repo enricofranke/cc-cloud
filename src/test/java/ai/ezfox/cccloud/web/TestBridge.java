@@ -141,6 +141,13 @@ class TestBridge implements GameBridge {
     }
 
     @Override
+    public CompletableFuture<GameBridge.CodeReply> code(AuthStore.Device device, UUID mainframeId, ClientMessages.CodeCommand command,
+                                                       ai.ezfox.cccloud.code.web.CodeViewer viewer) {
+        dispatched.add("code:" + command.op());
+        return CompletableFuture.completedFuture(GameBridge.CodeReply.ok(new JsonObject()));
+    }
+
+    @Override
     public GameBridge.StorageResult production(AuthStore.Device device, UUID mainframeId, ClientMessages.Production request) {
         dispatched.add("production:" + request.op());
         return new GameBridge.StorageResult(null, new com.google.gson.JsonObject());

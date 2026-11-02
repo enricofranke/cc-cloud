@@ -63,6 +63,21 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                 && AccessGate.check(role, perms, AccessGate.Kind.TERMINAL) == null;
         }
     };
+    /** Cloud Scripts reads (list, logs, versions, compile checks): 10 per second; changes share the action limit. */
+    private final TokenBucket codeReadLimit = new TokenBucket(10, 10);
+    /** This session as a receiver of Cloud Scripts pushes (code_status, code_log). */
+    private final ai.ezfox.cccloud.code.web.CodeViewer codeViewer = new ai.ezfox.cccloud.code.web.CodeViewer() {
+        @Override
+        public void send(List<String> messages) {
+            WebSocketSession.this.send(messages);
+        }
+
+        @Override
+        public boolean allowed() {
+            var d = device;
+            return !closed && share == null && d != null && instance.auth.isValid(d.tokenHash()) && AccessGate.check(role, perms, AccessGate.Kind.CODE) == null;
+        }
+    };
     private @Nullable Channel channel;
     private volatile State state = State.NEW;
     private volatile AuthStore.@Nullable Device device;
@@ -192,6 +207,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             case ClientMessages.CardSettings settings -> cardSettings(current, settings);
             case ClientMessages.CardDetail detail -> cardDetail(current, detail);
             case ClientMessages.CardWrite write -> cardWrite(current, write);
+            case ClientMessages.CodeCommand command -> code(current, command);
             case ClientMessages.RuleCommand command -> rule(current, command);
             case ClientMessages.SceneCommand command -> scene(current, command);
             case ClientMessages.Production request -> production(current, request);
@@ -642,6 +658,51 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
         } catch (RejectedExecutionException e) {
             sendRuleResult("scene_result", command.reqId(), new GameBridge.RuleResult("offline", null, null));
         }
+    }
+
+    /** Cloud Scripts ({@code code.edit}): every op answered with code_result. */
+    private void code(AuthStore.Device current, ClientMessages.CodeCommand command) {
+        String denied = AccessGate.check(role, perms, AccessGate.Kind.CODE);
+        if (denied != null) {
+            sendCode(command.reqId(), GameBridge.CodeReply.fail(denied));
+            return;
+        }
+        if (command.error() != null) {
+            sendCode(command.reqId(), GameBridge.CodeReply.fail(command.error()));
+            return;
+        }
+        if (!(command.writes() ? actionLimit : codeReadLimit).tryAcquire()) {
+            sendCode(command.reqId(), GameBridge.CodeReply.fail("rate_limited"));
+            return;
+        }
+        try {
+            instance.bridge.serverExecutor().execute(() -> {
+                java.util.concurrent.CompletableFuture<GameBridge.CodeReply> reply;
+                try {
+                    reply = instance.bridge.code(current, mainframeId, command, codeViewer);
+                } catch (RuntimeException e) {
+                    CloudLog.LOGGER.error("[cccloud] Error while handling a Cloud Scripts request from {}", ip, e);
+                    reply = java.util.concurrent.CompletableFuture.completedFuture(GameBridge.CodeReply.fail("internal_error"));
+                }
+                reply.whenComplete((r, failure) -> {
+                    if (failure != null) CloudLog.LOGGER.error("[cccloud] Error while handling a Cloud Scripts request from {}", ip, failure);
+                    sendCode(command.reqId(), failure != null || r == null ? GameBridge.CodeReply.fail("internal_error") : r);
+                });
+            });
+        } catch (RejectedExecutionException e) {
+            sendCode(command.reqId(), GameBridge.CodeReply.fail("offline"));
+        }
+    }
+
+    private void sendCode(String reqId, GameBridge.CodeReply reply) {
+        var json = new JsonObject();
+        json.addProperty("t", "code_result");
+        json.addProperty("reqId", reqId);
+        json.addProperty("ok", reply.error() == null);
+        if (reply.error() != null) json.addProperty("error", reply.error());
+        if (reply.detail() != null) json.addProperty("detail", reply.detail());
+        if (reply.data() != null) for (var e : reply.data().entrySet()) if (!json.has(e.getKey())) json.add(e.getKey(), e.getValue());
+        send(List.of(Json.GSON.toJson(json)));
     }
 
     /** Production statistics requests: 5 per second per socket. */
@@ -1279,7 +1340,10 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
             WebHub.INSTANCE.removeSession(this);
             try {
                 UUID mf = mainframeId;
-                instance.bridge.serverExecutor().execute(() -> instance.bridge.terminalClose(mf, null, terminalViewer));
+                instance.bridge.serverExecutor().execute(() -> {
+                    instance.bridge.terminalClose(mf, null, terminalViewer);
+                    instance.bridge.codeClose(mf, codeViewer);
+                });
             } catch (RejectedExecutionException ignored) {
                 // server stopping
             }

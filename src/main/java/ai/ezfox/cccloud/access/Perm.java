@@ -24,6 +24,8 @@ public enum Perm {
     TERMINAL("terminal", "scripts"),
     /** Write the program of a machine from the dashboard (Super Factory Manager disks); also needs {@code view.positions}. */
     DEVICE_PROGRAM("device.program", "scripts"),
+    /** Cloud Scripts: write, run and stop Lua scripts that run inside the mainframe with the author's rights (admin and owner presets). */
+    CODE_EDIT("code.edit", "scripts"),
     LAYOUT_EDIT("layout.edit", "manage"),
     RULES_EDIT("rules.edit", "rules"),
     RULES_TOGGLE("rules.toggle", "rules"),

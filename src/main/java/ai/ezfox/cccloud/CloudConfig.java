@@ -115,6 +115,17 @@ public final class CloudConfig {
     public static final ModConfigSpec.ConfigValue<String> TIMEZONE;
     public static final ModConfigSpec.BooleanValue SCENES_ENABLED;
     public static final ModConfigSpec.IntValue MAX_SCENES;
+    public static final ModConfigSpec.BooleanValue CLOUD_SCRIPTS_ENABLED;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPTS_PER_MAINFRAME;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPTS_RUNNING;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_CPU_MS;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_CPU_MS_PER_RESUME;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_VERSIONS;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_TIMERS;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_HANDLERS;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_STORAGE;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_LOG_LINES;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_THREADS;
     public static final ModConfigSpec.BooleanValue PRODUCTION_ENABLED;
     public static final ModConfigSpec.IntValue PRODUCTION_SAMPLE_SECONDS;
     public static final ModConfigSpec.IntValue PRODUCTION_WINDOW;
@@ -447,6 +458,45 @@ public final class CloudConfig {
         MAX_SCENES = b.comment("Scenes per mainframe.")
             .translation("cccloud.configuration.maxScenesPerMainframe")
             .defineInRange("maxScenesPerMainframe", 32, 1, 64);
+        b.pop();
+
+        b.push("cloudScripts");
+        CLOUD_SCRIPTS_ENABLED = b.comment("Cloud Scripts: Lua scripts written in the dashboard that run inside the mainframe (no computer needed), with the",
+                "rights of their author. Players need the 'code.edit' permission (admins and owners by default). Off: running scripts stop.")
+            .translation("cccloud.configuration.cloudScriptsEnabled")
+            .define("cloudScriptsEnabled", true);
+        CLOUD_SCRIPTS_PER_MAINFRAME = b.comment("Cloud Scripts saved per mainframe.")
+            .translation("cccloud.configuration.maxCloudScriptsPerMainframe")
+            .defineInRange("maxCloudScriptsPerMainframe", 16, 1, 64);
+        CLOUD_SCRIPTS_RUNNING = b.comment("Cloud Scripts running at the same time per mainframe.")
+            .translation("cccloud.configuration.maxRunningCloudScripts")
+            .defineInRange("maxRunningCloudScripts", 8, 1, 64);
+        CLOUD_SCRIPT_CPU_MS = b.comment("CPU time one script may use per second (ms); then it pauses until the next second. Applies to scripts started",
+                "from now on.")
+            .translation("cccloud.configuration.cloudScriptCpuMsPerSecond")
+            .defineInRange("cloudScriptCpuMsPerSecond", 50, 1, 500);
+        CLOUD_SCRIPT_CPU_MS_PER_RESUME = b.comment("CPU time a script may run without waiting for anything (ms) before it is stopped with an error",
+                "(an endless loop). Applies to scripts started from now on.")
+            .translation("cccloud.configuration.cloudScriptCpuMsPerResume")
+            .defineInRange("cloudScriptCpuMsPerResume", 200, 10, 5000);
+        CLOUD_SCRIPT_VERSIONS = b.comment("Saved versions kept per script (also at most 256 KB of history per script).")
+            .translation("cccloud.configuration.cloudScriptVersionsKept")
+            .defineInRange("cloudScriptVersionsKept", 20, 1, 100);
+        CLOUD_SCRIPT_TIMERS = b.comment("Timers (cloud.every/after/at) one running script may have at once.")
+            .translation("cccloud.configuration.cloudScriptMaxTimers")
+            .defineInRange("cloudScriptMaxTimers", 32, 1, 256);
+        CLOUD_SCRIPT_HANDLERS = b.comment("Event handlers (cloud.on) one running script may have at once.")
+            .translation("cccloud.configuration.cloudScriptMaxHandlers")
+            .defineInRange("cloudScriptMaxHandlers", 64, 1, 256);
+        CLOUD_SCRIPT_STORAGE = b.comment("Bytes of cloud.store data per script (saved with the world).")
+            .translation("cccloud.configuration.cloudScriptStorageBytes")
+            .defineInRange("cloudScriptStorageBytes", 16384, 0, 262144);
+        CLOUD_SCRIPT_LOG_LINES = b.comment("Log lines per second one script may write; more are dropped and counted.")
+            .translation("cccloud.configuration.cloudScriptLogLinesPerSecond")
+            .defineInRange("cloudScriptLogLinesPerSecond", 20, 1, 200);
+        CLOUD_SCRIPT_THREADS = b.restart().comment("Worker threads that run all Cloud Scripts of the server (each script gets its share in slices).")
+            .translation("cccloud.configuration.cloudScriptThreads")
+            .defineInRange("cloudScriptThreads", 2, 1, 8);
         b.pop();
 
         b.push("production");

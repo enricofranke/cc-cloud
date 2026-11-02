@@ -102,6 +102,35 @@ public interface GameBridge {
         return new RuleResult("disabled", null, null);
     }
 
+    /** Cloud Scripts: {@code code_result} without its envelope: {@code data} on success, else {@code error} (+ {@code detail}). */
+    record CodeReply(@Nullable String error, @Nullable String detail, @Nullable JsonObject data) {
+        public static CodeReply fail(String error) {
+            return new CodeReply(error, null, null);
+        }
+
+        public static CodeReply fail(String error, @Nullable String detail) {
+            return new CodeReply(error, detail, null);
+        }
+
+        public static CodeReply ok(JsonObject data) {
+            return new CodeReply(null, null, data);
+        }
+    }
+
+    /**
+     * Cloud Scripts: one {@code {"t":"code"}} request ({@code code.edit}, re-checked live here). {@code viewer} gets the
+     * {@code code_status}/{@code code_log} pushes the request subscribes to. Server thread; may complete later (compiling
+     * runs on a script worker).
+     */
+    default CompletableFuture<CodeReply> code(AuthStore.Device device, UUID mainframeId, ClientMessages.CodeCommand command,
+                                              ai.ezfox.cccloud.code.web.CodeViewer viewer) {
+        return CompletableFuture.completedFuture(CodeReply.fail("disabled"));
+    }
+
+    /** Cloud Scripts: the session closed, no more pushes to {@code viewer}. Server thread. */
+    default void codeClose(UUID mainframeId, ai.ezfox.cccloud.code.web.CodeViewer viewer) {
+    }
+
     /** v0.10 public API: one request of an authenticated API key (server thread; the owner's live rights are checked here). */
     default AccessApi.Response apiV1(ai.ezfox.cccloud.publicapi.ApiKeys.Key key, Router.Id route, String path, java.util.Map<String, String> query, String body,
                                      String ip) {

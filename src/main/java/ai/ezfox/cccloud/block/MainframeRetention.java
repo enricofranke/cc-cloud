@@ -169,6 +169,7 @@ public final class MainframeRetention extends SavedData {
         WebAuthData.access(server).forget(mainframeId);
         ai.ezfox.cccloud.rules.RuleService.forget(server, mainframeId);
         ai.ezfox.cccloud.scene.SceneService.forget(server, mainframeId);
+        ai.ezfox.cccloud.code.game.CodeService.forget(server, mainframeId);
         ai.ezfox.cccloud.production.ProductionService.forget(server, mainframeId);
         ai.ezfox.cccloud.publicapi.ApiKeyData.get(server).keys().forgetMainframe(mainframeId);
         ai.ezfox.cccloud.push.PushService.forget(server, mainframeId);
@@ -180,7 +181,7 @@ public final class MainframeRetention extends SavedData {
         ai.ezfox.cccloud.layout.LayoutData.get(server).remove(mainframeId);
         var data = get(server);
         if (data.entries.remove(mainframeId) != null) data.setDirty();
-        CCCloud.LOGGER.info("[cccloud] Deleted the data of removed mainframe {}: pairing code, PIN, {} device(s), roles, layout, rules and scenes",
+        CCCloud.LOGGER.info("[cccloud] Deleted the data of removed mainframe {}: pairing code, PIN, {} device(s), roles, layout, rules, scenes and Cloud Scripts",
             mainframeId, devices);
     }
 }
