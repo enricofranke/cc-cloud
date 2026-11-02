@@ -1,0 +1,32 @@
+[
+  {
+    "id": "reactor_guard",
+    "file": "reactor_guard.lua",
+    "name": "Reactor guard",
+    "title": { "en": "Reactor guard", "de": "Reaktorwächter" },
+    "doc": {
+      "en": "Switches a reactor off when its heat crosses a threshold and back on once it cooled down.",
+      "de": "Schaltet einen Reaktor ab, wenn seine Hitze eine Schwelle überschreitet, und wieder an, wenn er abgekühlt ist."
+    }
+  },
+  {
+    "id": "low_power_alert",
+    "file": "low_power_alert.lua",
+    "name": "Low power alert",
+    "title": { "en": "Low power alert", "de": "Warnung bei wenig Strom" },
+    "doc": {
+      "en": "A push notification when the mainframe's energy buffer runs low, and a toast when it is back.",
+      "de": "Eine Push-Benachrichtigung, wenn der Energiepuffer des Mainframes knapp wird, und ein Toast, wenn er wieder voll ist."
+    }
+  },
+  {
+    "id": "night_mode",
+    "file": "night_mode.lua",
+    "name": "Night mode",
+    "title": { "en": "Night mode", "de": "Nachtmodus" },
+    "doc": {
+      "en": "Lights on at dusk and off in the morning (in-game time), with the farm paused at night.",
+      "de": "Licht an bei Abenddämmerung und morgens aus (Spielzeit), nachts pausiert die Farm."
+    }
+  }
+]

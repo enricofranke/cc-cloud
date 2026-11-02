@@ -1,0 +1,440 @@
+{
+  "name": "cloud",
+  "version": 1,
+  "doc": {
+    "en": "The Cloud Scripts API. Every script gets one global table, `cloud`. Reads come from a snapshot the mainframe takes five times a second; actions run on the server with the rights of the script's author (never more) and land in the audit log.",
+    "de": "Die API der Cloud Scripts. Jedes Skript bekommt eine globale Tabelle, `cloud`. Lesen kommt aus einem Abbild, das der Mainframe fünfmal pro Sekunde macht; Aktionen laufen auf dem Server mit den Rechten des Skript-Autors (nie mehr) und landen im Audit-Log."
+  },
+  "groups": [
+    { "id": "read", "title": { "en": "Cards, values and devices", "de": "Karten, Werte und Geräte" } },
+    { "id": "act", "title": { "en": "Actions", "de": "Aktionen" } },
+    { "id": "events", "title": { "en": "Events", "de": "Ereignisse" } },
+    { "id": "timers", "title": { "en": "Timers", "de": "Timer" } },
+    { "id": "notify", "title": { "en": "Notifications", "de": "Benachrichtigungen" } },
+    { "id": "store", "title": { "en": "Storage", "de": "Speicher" } },
+    { "id": "log", "title": { "en": "Log and info", "de": "Log und Infos" } }
+  ],
+  "types": {
+    "CardRef": {
+      "kind": "alias",
+      "of": "string",
+      "doc": {
+        "en": "A card: its id, its title (case-insensitive, the first match) or \"mainframe\" for the mainframe itself (widgets energy, capacity, percent, usage, enabled).",
+        "de": "Eine Karte: ihre ID, ihr Titel (Groß-/Kleinschreibung egal, der erste Treffer) oder \"mainframe\" für den Mainframe selbst (Widgets energy, capacity, percent, usage, enabled)."
+      }
+    },
+    "Card": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Card id", "de": "Karten-ID" } },
+        { "name": "title", "type": "string", "doc": { "en": "Title on the dashboard", "de": "Titel auf dem Dashboard" } },
+        { "name": "online", "type": "boolean", "doc": { "en": "The device is online", "de": "Das Gerät ist online" } },
+        { "name": "kind", "type": "string", "doc": { "en": "\"lua\" for program cards, else the template (storage, redstone, …)", "de": "\"lua\" für Programmkarten, sonst die Vorlage (storage, redstone, …)" } },
+        { "name": "widgets", "type": "Widget[]", "doc": { "en": "getCard: the widgets; getCards: how many", "de": "getCard: die Widgets; getCards: wie viele" } }
+      ]
+    },
+    "Widget": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Widget id", "de": "Widget-ID" } },
+        { "name": "type", "type": "string", "doc": { "en": "button, toggle, slider, gauge, label, …", "de": "button, toggle, slider, gauge, label, …" } },
+        { "name": "label", "type": "string?", "doc": { "en": "Label", "de": "Beschriftung" } },
+        { "name": "value", "type": "any", "doc": { "en": "Current value", "de": "Aktueller Wert" } },
+        { "name": "unit", "type": "string?", "doc": { "en": "Unit", "de": "Einheit" } },
+        { "name": "min", "type": "number?", "doc": { "en": "Minimum", "de": "Minimum" } },
+        { "name": "max", "type": "number?", "doc": { "en": "Maximum", "de": "Maximum" } },
+        { "name": "pin", "type": "boolean?", "doc": { "en": "Needs the PIN: scripts cannot use it", "de": "Braucht die PIN: Skripte können es nicht bedienen" } },
+        { "name": "confirm", "type": "boolean?", "doc": { "en": "Asks for confirmation: pass {confirm=true}", "de": "Fragt nach Bestätigung: {confirm=true} mitgeben" } }
+      ]
+    },
+    "Device": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Device id (the card id for uplinks and bridges)", "de": "Geräte-ID (bei Uplinks und Bridges die Karten-ID)" } },
+        { "name": "type", "type": "string", "doc": { "en": "uplink, bridge, relay, switch, lamp, …", "de": "uplink, bridge, relay, switch, lamp, …" } },
+        { "name": "name", "type": "string", "doc": { "en": "Name", "de": "Name" } },
+        { "name": "status", "type": "string", "doc": { "en": "online, offline, no_power, out_of_range, …", "de": "online, offline, no_power, out_of_range, …" } },
+        { "name": "online", "type": "boolean", "doc": { "en": "status == \"online\"", "de": "status == \"online\"" } }
+      ]
+    },
+    "Mainframe": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Mainframe id", "de": "Mainframe-ID" } },
+        { "name": "name", "type": "string", "doc": { "en": "Name", "de": "Name" } },
+        { "name": "online", "type": "boolean", "doc": { "en": "Loaded, powered, not switched off by redstone", "de": "Geladen, mit Strom, nicht per Redstone abgeschaltet" } },
+        { "name": "enabled", "type": "boolean", "doc": { "en": "The dashboard switch", "de": "Der Dashboard-Schalter" } },
+        { "name": "energy", "type": "integer", "doc": { "en": "Stored FE", "de": "Gespeicherte FE" } },
+        { "name": "capacity", "type": "integer", "doc": { "en": "Buffer size in FE", "de": "Puffergröße in FE" } },
+        { "name": "percent", "type": "number", "doc": { "en": "energy / capacity × 100", "de": "energy / capacity × 100" } },
+        { "name": "usage", "type": "integer", "doc": { "en": "FE per tick", "de": "FE pro Tick" } }
+      ]
+    },
+    "Rule": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Rule id", "de": "Regel-ID" } },
+        { "name": "name", "type": "string", "doc": { "en": "Name", "de": "Name" } },
+        { "name": "enabled", "type": "boolean", "doc": { "en": "Switched on", "de": "Eingeschaltet" } },
+        { "name": "trigger", "type": "string", "doc": { "en": "Trigger type", "de": "Auslöser" } },
+        { "name": "runs", "type": "integer", "doc": { "en": "Runs since the server started", "de": "Läufe seit dem Serverstart" } },
+        { "name": "lastResult", "type": "string?", "doc": { "en": "ok or an error", "de": "ok oder ein Fehler" } }
+      ]
+    },
+    "Scene": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Scene id", "de": "Szenen-ID" } },
+        { "name": "name", "type": "string", "doc": { "en": "Name", "de": "Name" } },
+        { "name": "needsPin", "type": "boolean", "doc": { "en": "Needs the PIN: scripts cannot run it", "de": "Braucht die PIN: Skripte können sie nicht starten" } },
+        { "name": "confirm", "type": "boolean", "doc": { "en": "Asks for confirmation: pass {confirm=true}", "de": "Fragt nach Bestätigung: {confirm=true} mitgeben" } },
+        { "name": "running", "type": "boolean", "doc": { "en": "Running right now", "de": "Läuft gerade" } }
+      ]
+    },
+    "Event": {
+      "kind": "table",
+      "fields": [
+        { "name": "type", "type": "string", "doc": { "en": "change, above, below, online, offline or redstone", "de": "change, above, below, online, offline oder redstone" } },
+        { "name": "card", "type": "string?", "doc": { "en": "Card id", "de": "Karten-ID" } },
+        { "name": "title", "type": "string?", "doc": { "en": "Card title", "de": "Kartentitel" } },
+        { "name": "widget", "type": "string?", "doc": { "en": "Widget id", "de": "Widget-ID" } },
+        { "name": "value", "type": "any", "doc": { "en": "New value (redstone: the level)", "de": "Neuer Wert (redstone: der Pegel)" } },
+        { "name": "old", "type": "any", "doc": { "en": "Value before", "de": "Wert davor" } },
+        { "name": "channel", "type": "string?", "doc": { "en": "Wireless redstone channel", "de": "Funk-Redstone-Kanal" } },
+        { "name": "time", "type": "integer", "doc": { "en": "When it happened (ms since 1970)", "de": "Wann es passiert ist (ms seit 1970)" } }
+      ]
+    },
+    "ScriptInfo": {
+      "kind": "table",
+      "fields": [
+        { "name": "id", "type": "string", "doc": { "en": "Script id", "de": "Skript-ID" } },
+        { "name": "name", "type": "string", "doc": { "en": "Script name", "de": "Skriptname" } },
+        { "name": "author", "type": "string", "doc": { "en": "Who saved it last; the script acts with their rights", "de": "Wer es zuletzt gespeichert hat; das Skript handelt mit dessen Rechten" } },
+        { "name": "version", "type": "integer", "doc": { "en": "Saved version", "de": "Gespeicherte Version" } },
+        { "name": "language", "type": "string", "doc": { "en": "\"lua\"", "de": "\"lua\"" } }
+      ]
+    }
+  },
+  "functions": [
+    {
+      "name": "getCards", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "Card[]", "doc": { "en": "Every card the author may see (widgets = how many)", "de": "Jede Karte, die der Autor sehen darf (widgets = Anzahl)" } }],
+      "doc": { "en": "Lists the dashboard's cards, at most 256.", "de": "Listet die Karten des Dashboards, höchstens 256." },
+      "example": "for _, card in ipairs(cloud.getCards()) do\n  print(card.title, card.online)\nend"
+    },
+    {
+      "name": "getCard", "group": "read", "kind": "sync",
+      "params": [{ "name": "card", "type": "CardRef" }],
+      "returns": [{ "type": "Card?", "doc": { "en": "The card with its widgets, or nil", "de": "Die Karte mit ihren Widgets, oder nil" } }],
+      "doc": { "en": "One card with all its widgets and values.", "de": "Eine Karte mit all ihren Widgets und Werten." },
+      "example": "local reactor = cloud.getCard(\"Reactor\")\nif reactor then print(#reactor.widgets) end"
+    },
+    {
+      "name": "getValue", "group": "read", "kind": "sync",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "widget", "type": "string" }],
+      "returns": [{ "type": "any", "doc": { "en": "The widget's value, or nil if unknown", "de": "Der Wert des Widgets, oder nil, wenn unbekannt" } }],
+      "doc": { "en": "Reads one widget's current value.", "de": "Liest den aktuellen Wert eines Widgets." },
+      "example": "local heat = cloud.getValue(\"Reactor\", \"heat\")"
+    },
+    {
+      "name": "getWidget", "group": "read", "kind": "sync",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "widget", "type": "string" }],
+      "returns": [{ "type": "Widget?", "doc": { "en": "The widget, or nil", "de": "Das Widget, oder nil" } }],
+      "doc": { "en": "One widget with its type, label, value and limits.", "de": "Ein Widget mit Typ, Beschriftung, Wert und Grenzen." }
+    },
+    {
+      "name": "isOnline", "group": "read", "kind": "sync",
+      "params": [{ "name": "card", "type": "CardRef", "optional": true }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Without an argument: the mainframe is online. With a card: that device is online.", "de": "Ohne Argument: der Mainframe ist online. Mit einer Karte: dieses Gerät ist online." }
+    },
+    {
+      "name": "getDevices", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "Device[]" }],
+      "doc": { "en": "The devices linked to the mainframe (uplinks, bridges, relays, redstone devices).", "de": "Die mit dem Mainframe verbundenen Geräte (Uplinks, Bridges, Relays, Redstone-Geräte)." }
+    },
+    {
+      "name": "getMainframe", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "Mainframe" }],
+      "doc": { "en": "The mainframe: name, online, dashboard switch and power.", "de": "Der Mainframe: Name, online, Dashboard-Schalter und Strom." }
+    },
+    {
+      "name": "isEnabled", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "The dashboard switch (as on the cloud_mainframe peripheral).", "de": "Der Dashboard-Schalter (wie beim Peripheral cloud_mainframe)." }
+    },
+    {
+      "name": "getEnergy", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "integer" }],
+      "doc": { "en": "Stored FE in the mainframe's buffer.", "de": "Gespeicherte FE im Puffer des Mainframes." }
+    },
+    {
+      "name": "getEnergyCapacity", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "integer" }],
+      "doc": { "en": "Buffer size in FE.", "de": "Puffergröße in FE." }
+    },
+    {
+      "name": "getEnergyUsage", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "integer" }],
+      "doc": { "en": "Consumption in FE per tick.", "de": "Verbrauch in FE pro Tick." }
+    },
+    {
+      "name": "getItemCount", "group": "read", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "item", "type": "string" }],
+      "returns": [{ "type": "integer?", "doc": { "en": "How many are stored, or nil if the storage is not reachable", "de": "Wie viele gelagert sind, oder nil, wenn der Speicher nicht erreichbar ist" } }],
+      "doc": { "en": "Counts an item in the storage behind a storage card (AE2, Refined Storage). Waits for the server (one tick).", "de": "Zählt ein Item im Speicher hinter einer Speicherkarte (AE2, Refined Storage). Wartet auf den Server (einen Tick)." },
+      "perm": "storage.search",
+      "example": "local iron = cloud.getItemCount(\"ME Storage\", \"minecraft:iron_ingot\")"
+    },
+    {
+      "name": "getRedstone", "group": "read", "kind": "sync",
+      "params": [{ "name": "channel", "type": "string" }],
+      "returns": [{ "type": "integer?", "doc": { "en": "Level 0–15, or nil for an unknown channel", "de": "Pegel 0–15, oder nil für einen unbekannten Kanal" } }],
+      "doc": { "en": "The level of a wireless redstone channel of the network.", "de": "Der Pegel eines Funk-Redstone-Kanals des Netzwerks." }
+    },
+    {
+      "name": "getRules", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "Rule[]" }],
+      "doc": { "en": "The mainframe's rules.", "de": "Die Regeln des Mainframes." }
+    },
+    {
+      "name": "getScenes", "group": "read", "kind": "sync", "params": [],
+      "returns": [{ "type": "Scene[]" }],
+      "doc": { "en": "The mainframe's scenes.", "de": "Die Szenen des Mainframes." }
+    },
+    {
+      "name": "press", "group": "act", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "widget", "type": "string" }, { "name": "options", "type": "table", "optional": true, "doc": { "en": "{confirm=true} for widgets that ask for confirmation", "de": "{confirm=true} für Widgets, die nach Bestätigung fragen" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?", "doc": { "en": "The error, e.g. not_allowed, pin_required, confirm_required, offline", "de": "Der Fehler, z. B. not_allowed, pin_required, confirm_required, offline" } }],
+      "doc": { "en": "Presses a button, like a click on the dashboard.", "de": "Drückt einen Knopf, wie ein Klick auf dem Dashboard." },
+      "perm": "act.buttons",
+      "example": "local ok, err = cloud.press(\"Doors\", \"open\")\nif not ok then cloud.warn(\"could not open: \" .. err) end"
+    },
+    {
+      "name": "set", "group": "act", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "widget", "type": "string" }, { "name": "value", "type": "any", "doc": { "en": "boolean, number or string, as the widget takes it", "de": "boolean, Zahl oder Text, wie das Widget es nimmt" } }, { "name": "options", "type": "table", "optional": true, "doc": { "en": "{confirm=true} for widgets that ask for confirmation", "de": "{confirm=true} für Widgets, die nach Bestätigung fragen" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Sets a toggle, slider, select, number or text widget. Same checks as a person on the dashboard; PIN widgets are refused.", "de": "Stellt einen Schalter, Regler, eine Auswahl, Zahl oder einen Text. Dieselben Prüfungen wie für eine Person am Dashboard; PIN-Widgets werden abgelehnt." },
+      "perm": "act.buttons",
+      "example": "cloud.set(\"Base lights\", \"power\", false)"
+    },
+    {
+      "name": "setRedstone", "group": "act", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "side", "type": "string", "doc": { "en": "top, bottom, left, right, front or back", "de": "top, bottom, left, right, front oder back" } }, { "name": "level", "type": "integer", "doc": { "en": "0–15", "de": "0–15" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Sets a redstone output of a computer card (automatic mode).", "de": "Setzt einen Redstone-Ausgang einer Computer-Karte (automatischer Modus)." },
+      "perm": "act.redstone"
+    },
+    {
+      "name": "craft", "group": "act", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "item", "type": "string" }, { "name": "amount", "type": "integer" }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Requests a craft on a storage card, bounded by the server's craft limit.", "de": "Gibt einen Crafting-Auftrag an eine Speicherkarte, begrenzt durch das Crafting-Limit des Servers." },
+      "perm": "storage.craft"
+    },
+    {
+      "name": "setEnabled", "group": "act", "kind": "await",
+      "params": [{ "name": "enabled", "type": "boolean" }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Switches the dashboard on or off (as on the cloud_mainframe peripheral). Scripts keep running.", "de": "Schaltet das Dashboard ein oder aus (wie beim Peripheral cloud_mainframe). Skripte laufen weiter." },
+      "perm": "power.toggle"
+    },
+    {
+      "name": "runScene", "group": "act", "kind": "await",
+      "params": [{ "name": "scene", "type": "string", "doc": { "en": "Scene id or name", "de": "Szenen-ID oder Name" } }, { "name": "options", "type": "table", "optional": true, "doc": { "en": "{confirm=true} for scenes that ask for confirmation", "de": "{confirm=true} für Szenen, die nach Bestätigung fragen" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Starts a scene. Every step is checked with the script's rights; scenes that need the PIN are refused.", "de": "Startet eine Szene. Jeder Schritt wird mit den Rechten des Skripts geprüft; Szenen mit PIN werden abgelehnt." },
+      "perm": "act.buttons"
+    },
+    {
+      "name": "setRuleEnabled", "group": "act", "kind": "await",
+      "params": [{ "name": "rule", "type": "string", "doc": { "en": "Rule id or name", "de": "Regel-ID oder Name" } }, { "name": "enabled", "type": "boolean" }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Switches a rule on or off (as on the cloud_mainframe peripheral).", "de": "Schaltet eine Regel ein oder aus (wie beim Peripheral cloud_mainframe)." },
+      "perm": "rules.toggle"
+    },
+    {
+      "name": "runRule", "group": "act", "kind": "await",
+      "params": [{ "name": "rule", "type": "string", "doc": { "en": "Rule id or name", "de": "Regel-ID oder Name" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Runs a rule's actions now, like \"Run now\" on the dashboard.", "de": "Führt die Aktionen einer Regel jetzt aus, wie „Jetzt ausführen“ auf dem Dashboard." },
+      "perm": "rules.toggle"
+    },
+    {
+      "name": "on", "group": "events", "kind": "sync",
+      "params": [{ "name": "event", "type": "string", "doc": { "en": "change, above, below, online, offline or redstone", "de": "change, above, below, online, offline oder redstone" } }, { "name": "filter", "type": "table", "optional": true, "doc": { "en": "{card=, widget=} (above/below also value=), {channel=} for redstone", "de": "{card=, widget=} (above/below auch value=), {channel=} für redstone" } }, { "name": "handler", "type": "function", "doc": { "en": "Called with the Event", "de": "Wird mit dem Event aufgerufen" } }],
+      "returns": [{ "type": "integer", "doc": { "en": "Handler id for cloud.off", "de": "Handler-ID für cloud.off" } }],
+      "doc": { "en": "Calls the handler whenever the event happens. above/below fire once when the value crosses the threshold.", "de": "Ruft den Handler bei jedem Ereignis auf. above/below lösen einmal aus, wenn der Wert die Schwelle überschreitet." },
+      "example": "cloud.on(\"above\", {card=\"Reactor\", widget=\"heat\", value=80}, function(e)\n  cloud.set(\"Reactor\", \"active\", false)\nend)"
+    },
+    {
+      "name": "wait", "group": "events", "kind": "yield",
+      "params": [{ "name": "event", "type": "string" }, { "name": "filter", "type": "table", "optional": true }, { "name": "timeout", "type": "number", "optional": true, "doc": { "en": "Seconds; nil waits forever", "de": "Sekunden; nil wartet ewig" } }],
+      "returns": [{ "type": "Event?", "doc": { "en": "The event, or nil after the timeout", "de": "Das Event, oder nil nach dem Timeout" } }],
+      "doc": { "en": "Pauses until the event happens (like os.pullEvent, with a filter).", "de": "Pausiert, bis das Ereignis passiert (wie os.pullEvent, mit Filter)." },
+      "example": "local e = cloud.wait(\"online\", {card=\"Reactor\"}, 60)"
+    },
+    {
+      "name": "off", "group": "events", "kind": "sync",
+      "params": [{ "name": "id", "type": "integer" }],
+      "returns": [{ "type": "boolean", "doc": { "en": "true if it existed", "de": "true, wenn es ihn gab" } }],
+      "doc": { "en": "Removes an event handler or cancels a timer.", "de": "Entfernt einen Event-Handler oder bricht einen Timer ab." }
+    },
+    {
+      "name": "cancel", "group": "timers", "kind": "sync", "aliasOf": "off",
+      "params": [{ "name": "id", "type": "integer" }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Cancels a timer (the same as cloud.off).", "de": "Bricht einen Timer ab (dasselbe wie cloud.off)." }
+    },
+    {
+      "name": "sleep", "group": "timers", "kind": "yield",
+      "params": [{ "name": "seconds", "type": "number" }],
+      "returns": [],
+      "doc": { "en": "Pauses this script (or this handler) without using CPU. At least one tick (0.05 s).", "de": "Pausiert dieses Skript (oder diesen Handler), ohne CPU zu verbrauchen. Mindestens einen Tick (0,05 s)." },
+      "example": "cloud.sleep(5)"
+    },
+    {
+      "name": "every", "group": "timers", "kind": "sync",
+      "params": [{ "name": "seconds", "type": "number", "doc": { "en": "At least 0.25", "de": "Mindestens 0,25" } }, { "name": "handler", "type": "function" }],
+      "returns": [{ "type": "integer", "doc": { "en": "Timer id", "de": "Timer-ID" } }],
+      "doc": { "en": "Calls the handler again and again. A run that is still busy is not started twice.", "de": "Ruft den Handler immer wieder auf. Ein Lauf, der noch beschäftigt ist, wird nicht doppelt gestartet." },
+      "example": "cloud.every(10, function()\n  print(cloud.getEnergy())\nend)"
+    },
+    {
+      "name": "after", "group": "timers", "kind": "sync",
+      "params": [{ "name": "seconds", "type": "number" }, { "name": "handler", "type": "function" }],
+      "returns": [{ "type": "integer" }],
+      "doc": { "en": "Calls the handler once after the delay.", "de": "Ruft den Handler einmal nach der Wartezeit auf." }
+    },
+    {
+      "name": "at", "group": "timers", "kind": "sync",
+      "params": [{ "name": "time", "type": "any", "doc": { "en": "\"HH:MM\" (every day, server time zone), {time=\"HH:MM\", days={\"mon\",\"fri\"}} or {gameTime=13000}", "de": "\"HH:MM\" (jeden Tag, Zeitzone des Servers), {time=\"HH:MM\", days={\"mon\",\"fri\"}} oder {gameTime=13000}" } }, { "name": "handler", "type": "function" }],
+      "returns": [{ "type": "integer" }],
+      "doc": { "en": "Calls the handler at a time of day: real time, or in-game time (0 = 6:00, 13000 = dusk).", "de": "Ruft den Handler zu einer Uhrzeit auf: echte Zeit oder Spielzeit (0 = 6:00, 13000 = Abenddämmerung)." },
+      "example": "cloud.at({gameTime=13000}, function()\n  cloud.set(\"Lights\", \"power\", true)\nend)"
+    },
+    {
+      "name": "notify", "group": "notify", "kind": "sync",
+      "params": [{ "name": "text", "type": "string" }, { "name": "level", "type": "string", "optional": true, "doc": { "en": "info (default), warn or crit", "de": "info (Standard), warn oder crit" } }],
+      "returns": [{ "type": "boolean", "doc": { "en": "false if it was dropped by the rate limit", "de": "false, wenn die Ratenbegrenzung es verworfen hat" } }],
+      "doc": { "en": "A toast on every dashboard and a push notification (as on the cloud_uplink peripheral).", "de": "Ein Toast auf jedem Dashboard und eine Push-Benachrichtigung (wie beim Peripheral cloud_uplink)." }
+    },
+    {
+      "name": "alert", "group": "notify", "kind": "sync", "aliasOf": "notify",
+      "params": [{ "name": "text", "type": "string" }, { "name": "level", "type": "string", "optional": true }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "The same as cloud.notify.", "de": "Dasselbe wie cloud.notify." }
+    },
+    {
+      "name": "toast", "group": "notify", "kind": "sync",
+      "params": [{ "name": "text", "type": "string" }, { "name": "level", "type": "string", "optional": true }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Only a toast on the open dashboards, no push.", "de": "Nur ein Toast auf den offenen Dashboards, kein Push." }
+    },
+    {
+      "name": "push", "group": "notify", "kind": "sync",
+      "params": [{ "name": "text", "type": "string" }, { "name": "level", "type": "string", "optional": true }, { "name": "title", "type": "string", "optional": true, "doc": { "en": "Default: the script's name", "de": "Standard: der Name des Skripts" } }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Only a push notification to the mainframe's push targets.", "de": "Nur eine Push-Benachrichtigung an die Push-Ziele des Mainframes." }
+    },
+    {
+      "name": "store.get", "group": "store", "kind": "sync",
+      "params": [{ "name": "key", "type": "string" }],
+      "returns": [{ "type": "any" }],
+      "doc": { "en": "Reads a stored value (it survives restarts and new versions).", "de": "Liest einen gespeicherten Wert (er übersteht Neustarts und neue Versionen)." },
+      "example": "local runs = (cloud.store.get(\"runs\") or 0) + 1\ncloud.store.set(\"runs\", runs)"
+    },
+    {
+      "name": "store.set", "group": "store", "kind": "sync",
+      "params": [{ "name": "key", "type": "string" }, { "name": "value", "type": "any", "doc": { "en": "nil, boolean, number, string or a table of those", "de": "nil, boolean, Zahl, Text oder eine Tabelle davon" } }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Stores a value for this script (nil deletes it). Small: see the limits.", "de": "Speichert einen Wert für dieses Skript (nil löscht ihn). Klein: siehe die Grenzen." }
+    },
+    {
+      "name": "store.delete", "group": "store", "kind": "sync",
+      "params": [{ "name": "key", "type": "string" }],
+      "returns": [{ "type": "boolean" }],
+      "doc": { "en": "Deletes a stored value.", "de": "Löscht einen gespeicherten Wert." }
+    },
+    {
+      "name": "store.keys", "group": "store", "kind": "sync", "params": [],
+      "returns": [{ "type": "string[]" }],
+      "doc": { "en": "Every stored key.", "de": "Alle gespeicherten Schlüssel." }
+    },
+    {
+      "name": "log", "group": "log", "kind": "sync",
+      "params": [{ "name": "...", "type": "any", "variadic": true }],
+      "returns": [],
+      "doc": { "en": "Writes a line to the script's log (print does the same).", "de": "Schreibt eine Zeile ins Log des Skripts (print macht dasselbe)." }
+    },
+    {
+      "name": "warn", "group": "log", "kind": "sync",
+      "params": [{ "name": "...", "type": "any", "variadic": true }],
+      "returns": [],
+      "doc": { "en": "Writes a warning to the script's log.", "de": "Schreibt eine Warnung ins Log des Skripts." }
+    },
+    {
+      "name": "time", "group": "log", "kind": "sync", "params": [],
+      "returns": [{ "type": "integer", "doc": { "en": "Milliseconds since 1970", "de": "Millisekunden seit 1970" } }],
+      "doc": { "en": "The real time.", "de": "Die echte Uhrzeit." }
+    },
+    {
+      "name": "clock", "group": "log", "kind": "sync", "params": [],
+      "returns": [{ "type": "number", "doc": { "en": "Seconds since the script started", "de": "Sekunden seit dem Start des Skripts" } }],
+      "doc": { "en": "Seconds since the script started.", "de": "Sekunden seit dem Start des Skripts." }
+    },
+    {
+      "name": "gameTime", "group": "log", "kind": "sync", "params": [],
+      "returns": [{ "type": "integer", "doc": { "en": "0–23999 (0 = 6:00, 6000 = noon, 13000 = dusk)", "de": "0–23999 (0 = 6:00, 6000 = Mittag, 13000 = Abenddämmerung)" } }],
+      "doc": { "en": "The in-game time of day.", "de": "Die Uhrzeit im Spiel." }
+    }
+  ],
+  "fields": [
+    { "name": "script", "type": "ScriptInfo", "group": "log", "doc": { "en": "This script: id, name, author, version.", "de": "Dieses Skript: ID, Name, Autor, Version." } }
+  ],
+  "events": [
+    {
+      "name": "change",
+      "filter": ["card", "widget"],
+      "doc": { "en": "A widget's value changed. Without a filter: every widget of every card.", "de": "Der Wert eines Widgets hat sich geändert. Ohne Filter: jedes Widget jeder Karte." }
+    },
+    {
+      "name": "above",
+      "filter": ["card", "widget", "value"],
+      "doc": { "en": "A number rose above value (once per crossing; booleans count as 0/1).", "de": "Eine Zahl ist über value gestiegen (einmal je Überschreitung; booleans zählen als 0/1)." }
+    },
+    {
+      "name": "below",
+      "filter": ["card", "widget", "value"],
+      "doc": { "en": "A number fell below value (once per crossing).", "de": "Eine Zahl ist unter value gefallen (einmal je Unterschreitung)." }
+    },
+    {
+      "name": "online",
+      "filter": ["card"],
+      "doc": { "en": "A device came online.", "de": "Ein Gerät ist online gekommen." }
+    },
+    {
+      "name": "offline",
+      "filter": ["card"],
+      "doc": { "en": "A device went offline.", "de": "Ein Gerät ist offline gegangen." }
+    },
+    {
+      "name": "redstone",
+      "filter": ["channel"],
+      "doc": { "en": "A wireless redstone channel changed its level.", "de": "Ein Funk-Redstone-Kanal hat seinen Pegel geändert." }
+    }
+  ],
+  "lua": {
+    "globals": ["_G", "_VERSION", "assert", "error", "getmetatable", "ipairs", "load", "next", "pairs", "pcall", "print", "rawequal", "rawget", "rawlen", "rawset", "select", "setmetatable", "tonumber", "tostring", "type", "unpack", "xpcall"],
+    "libraries": {
+      "string": ["byte", "char", "find", "format", "gmatch", "gsub", "len", "lower", "match", "rep", "reverse", "sub", "upper"],
+      "table": ["concat", "insert", "pack", "remove", "sort", "unpack", "move"],
+      "math": ["abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "deg", "exp", "floor", "fmod", "frexp", "huge", "ldexp", "log", "log10", "max", "min", "modf", "pi", "pow", "rad", "random", "randomseed", "sin", "sinh", "sqrt", "tan", "tanh"],
+      "utf8": ["char", "charpattern", "codepoint", "codes", "len", "offset"],
+      "coroutine": ["create", "isyieldable", "resume", "running", "status", "wrap", "yield"],
+      "bit32": ["arshift", "band", "bnot", "bor", "btest", "bxor", "extract", "lrotate", "lshift", "replace", "rrotate", "rshift"],
+      "os": ["clock", "date", "difftime", "time"]
+    },
+    "removed": ["io", "debug", "package", "require", "dofile", "loadfile", "loadstring", "setfenv", "getfenv", "collectgarbage", "string.dump", "string.pack", "string.packsize", "string.unpack", "table.create", "os.execute", "os.exit", "os.getenv", "os.remove", "os.rename", "os.tmpname"]
+  }
+}

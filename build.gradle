@@ -426,6 +426,18 @@ dependencies {
     // gracefully if CC changes them.
     compileOnly "cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cct_version}"
 
+    // Cloud Scripts (ai.ezfox.cccloud.code) run Lua on Cobalt, CC: Tweaked's VM. Shipped as a jar-in-jar under the same
+    // coordinates and the same open range CC: Tweaked uses for its own copy (a plain version gives range [0.9.9,) and
+    // artifactVersion 0.9.9, exactly CC's metadata), so with both mods installed NeoForge's jar-in-jar selection loads
+    // exactly one Cobalt (docs/BUILD.md "Cobalt"). The code checks the loaded Cobalt at start and switches Cloud Scripts
+    // off if it is not compatible. Dev runs mirror that: with CC: Tweaked its jar-in-jar copy is the only one; with
+    // -PnoCct (our own jar-in-jar does not apply to the dev mod) it goes on the runtime classpath. Unit tests: below.
+    compileOnly "cc.tweaked:cobalt:${cobalt_version}"
+    if (project.hasProperty('noCct')) {
+        localRuntime "cc.tweaked:cobalt:${cobalt_version}"
+    }
+    jarJar("cc.tweaked:cobalt:${cobalt_version}")
+
     // Soft dependencies for the Cloud Bridges (compat/ae2, compat/rs). Compile-only: the mod runs without them.
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}:api"
     compileOnly "maven.modrinth:refined-storage:${rs_modrinth_version}"
@@ -474,7 +486,7 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter"
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     // CC's Lua VM, to run the ROM programs (cloud.ui, cloud-demo, cloud-storage) in unit tests.
-    testImplementation "cc.tweaked:cobalt:0.9.9"
+    testImplementation "cc.tweaked:cobalt:${cobalt_version}"
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
