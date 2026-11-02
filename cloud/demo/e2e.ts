@@ -37,6 +37,39 @@ const closeSheets = async (page: Page) => {
     await page.waitForTimeout(200);
   }
 };
+/** The tour card leaves free what the step highlights (the ring around it) and the 3D view's legend. */
+const tourClear = (page: Page) =>
+  page.evaluate(() => {
+    const r = (el: Element | null) => el?.getBoundingClientRect();
+    const hit = (a?: DOMRect, b?: DOMRect) => !!a?.width && !!b?.width && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const card = r(document.querySelector(".demo-tour"));
+    const ring = document.querySelector<HTMLElement>(".demo-ring");
+    const lit = ring?.style.opacity === "1" ? r(ring) : undefined;
+    return !hit(card, lit) && !hit(card, r(document.querySelector(".net-legend")));
+  });
+/** Every step of the tour with "Show me": the card stays clear of the highlight before and after. */
+async function walkTour(page: Page, shot: (step: string) => Promise<unknown>) {
+  await page.waitForSelector(".demo-tour");
+  const steps = 5;
+  for (let i = 0; i < steps; i++) {
+    const title = await page.locator(".demo-tour h2").textContent();
+    await page.waitForFunction(() => document.querySelector<HTMLElement>(".demo-ring")?.style.opacity === "1", null, { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(800); // the page may still scroll the target into place
+    check(await tourClear(page), `tour card clear of the highlight: ${title}`);
+    await shot(`02-tour-${i + 1}`);
+    await page.locator(".demo-tour .demo-tool", { hasText: "Show me" }).click();
+    await page.waitForSelector(".demo-ok", { timeout: 15_000 }).catch(() => {});
+    check(await page.locator(".demo-ok").count(), `tour: ${title}`);
+    await page.waitForTimeout(i === 1 ? 2500 : 1200); // the craft step ends on the job list
+    check(await tourClear(page), "  and once done");
+    await shot(`02-tour-${i + 1}-done`);
+    check(await noSideScroll(page), "  no horizontal scroll");
+    await closeSheets(page);
+    await page.locator(".demo-tour .demo-get, .demo-tour .demo-tool", { hasText: "Next" }).last().click();
+  }
+  await page.waitForTimeout(400);
+  check(await tourClear(page), "tour card clear of the 3D legend at the end");
+}
 const cardCount = (page: Page) => page.locator(".card:visible").count();
 const reactor = (page: Page) => page.locator(".card", { hasText: "Fission Reactor" }).first();
 const statusOf = (page: Page) => reactor(page).locator("text=/^(Running|Shut down|Overheating|CRITICAL)$/").first().textContent();
@@ -71,21 +104,7 @@ for (const view of VIEWS) {
   await shot("01-open");
 
   // ---- tour
-  await page.waitForSelector(".demo-tour");
-  const steps = 5;
-  for (let i = 0; i < steps; i++) {
-    const title = await page.locator(".demo-tour h2").textContent();
-    await page.waitForFunction(() => document.querySelector<HTMLElement>(".demo-ring")?.style.opacity === "1", null, { timeout: 5000 }).catch(() => {});
-    await shot(`02-tour-${i + 1}`);
-    await page.locator(".demo-tour .demo-tool", { hasText: "Show me" }).click();
-    await page.waitForSelector(".demo-ok", { timeout: 15_000 }).catch(() => {});
-    check(await page.locator(".demo-ok").count(), `tour: ${title}`);
-    await page.waitForTimeout(i === 1 ? 2500 : 1200); // the craft step ends on the job list
-    await shot(`02-tour-${i + 1}-done`);
-    check(await noSideScroll(page), "  no horizontal scroll");
-    await closeSheets(page);
-    await page.locator(".demo-tour .demo-get, .demo-tour .demo-tool", { hasText: "Next" }).last().click();
-  }
+  await walkTour(page, shot);
   await shot("02-tour-end");
   check(await page.locator('.demo-tour a[href="/en/download/"]').count(), "tour ends at the download");
   await page.locator(".demo-tour .demo-tool", { hasText: "Keep exploring" }).click();
@@ -187,6 +206,20 @@ for (const view of VIEWS) {
   check(outside.length === 0, `no requests outside the site (${outside.length})`);
   for (const u of outside.slice(0, 8)) console.log(`       ${u}`);
   check((await context.cookies()).length === 0, "no cookies");
+  await context.close();
+}
+
+// ---- the tour on a short laptop window (a 13" MacBook's Chrome) and a tablet: the card finds room there too
+for (const view of [
+  { name: "laptop", viewport: { width: 1000, height: 530 } },
+  { name: "tablet", viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 },
+]) {
+  console.log(view.name);
+  const { name, ...options } = view;
+  const context = await browser.newContext({ ...options, locale: "en-US" });
+  const page = await context.newPage();
+  await open(page);
+  await walkTour(page, (step) => page.screenshot({ path: join(SHOTS, `${name}-${step}.png`) }));
   await context.close();
 }
 

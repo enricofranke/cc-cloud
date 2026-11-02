@@ -130,12 +130,13 @@
     box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 8%, transparent), 0 0 24px color-mix(in srgb, var(--gold) 16%, transparent);
   }
 }
+/* the script places it next to what it highlights (place.ts); this corner is only its first frame */
 .demo-tour {
   position: fixed;
   left: 16px;
   bottom: calc(16px + env(safe-area-inset-bottom));
   z-index: 38; /* below sheets and dialogs: they keep the focus */
-  width: 368px;
+  width: min(368px, calc(100% - 32px)); /* fixed: % of the viewport without its scrollbar */
   padding: 12px 14px 12px;
   background: var(--panel);
   border: 1px solid var(--line-2);
@@ -230,8 +231,7 @@
 @media (max-width: 719px) {
   .demo-tour {
     left: 8px;
-    right: 8px;
-    width: auto;
+    width: calc(100% - 16px);
     padding: 8px 12px 10px;
     font-size: 13px;
   }

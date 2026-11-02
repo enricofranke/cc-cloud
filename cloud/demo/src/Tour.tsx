@@ -4,6 +4,7 @@ import { effect, signal } from "@preact/signals";
 import { render } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { navigate, toasts } from "../../web/src/lib/ui.ts";
+import { placeCard, type Rect, type Side } from "./place.ts";
 import { BASE_ID } from "./session.ts";
 import { visitorStorage } from "./shims.ts";
 import { lang, s } from "./strings.ts";
@@ -56,6 +57,12 @@ async function overview() {
 interface Step {
   enter?(): Promise<void> | void;
   target?(): HTMLElement | null;
+  /** more of the screen the step needs: the card keeps clear of it too */
+  avoid?: string;
+  /** the sides of the target to try for the card, best first */
+  sides?: Side[];
+  /** pixels below the target the step needs to show as well */
+  room?: number;
   done?(): boolean;
   /** Once, the moment done() turns true. */
   arrive?(): Promise<void>;
@@ -67,11 +74,16 @@ const cpusButton = () => first(".store-quick .btn", hasText(/^CPUs$/));
 const craftableRow = (name = /./) => first(".item-row", (el) => !!el.querySelector(".craft-badge") && name.test(el.textContent ?? ""));
 const scramButton = () => first(".pxbtn-red", hasText(/scram/i));
 const threeButton = () => first(".seg-ctl button", hasText(/^3D$/));
+/** what the 3D view needs to stay readable: its legend, the zoom buttons and the details of the picked block */
+const MAP_PARTS = ".net-legend, .pz-controls, .net-panel";
 
 const STEPS: Step[] = [
   {
     enter: overview,
     target: () => first(".search-bar"),
+    // the results show up below the search field: room for two rows
+    sides: ["above", "right", "left"],
+    room: 130,
     done: () => !!first(".item-row"),
     async show(live) {
       const input = first(".search-input") as HTMLInputElement | null;
@@ -81,6 +93,9 @@ const STEPS: Step[] = [
   {
     enter: overview,
     target: () => craftButton() ?? (crafted ? (cpusButton() ?? first(".search-clear")) : (craftableRow() ?? first(".search-bar"))),
+    // the visitor searches first, then picks a row
+    avoid: ".search-bar",
+    sides: ["right", "left", "below", "above"],
     done: () => crafted,
     async show(live) {
       const input = first(".search-input") as HTMLInputElement | null;
@@ -123,6 +138,9 @@ const STEPS: Step[] = [
   {
     enter: overview,
     target: () => first('button[aria-label="Edit layout"]') ?? first('button[aria-label="Leave layout editor"]'),
+    // the editor's bar and its floating toolbox are what the visitor works with next
+    avoid: ".ed-bar, .ed-side",
+    sides: ["below", "left"],
     done: () => !!first('button[aria-label="Leave layout editor"]'),
     async show() {
       first('button[aria-label="Edit layout"]')?.click();
@@ -131,6 +149,8 @@ const STEPS: Step[] = [
   {
     enter: leaveEditor,
     target: () => threeButton() ?? first(".tab-network"),
+    avoid: MAP_PARTS,
+    sides: ["below", "right", "above", "left"],
     done: () => !!first(".n3d canvas"),
     // the 3D view opens high above the world: the first look belongs to the base
     async arrive() {
@@ -150,7 +170,8 @@ const STEPS: Step[] = [
       if (live()) three?.click();
     },
   },
-  {},
+  // the end: the 3D view is still open behind it
+  { avoid: MAP_PARTS },
 ];
 
 export function openTour() {
@@ -176,15 +197,20 @@ export function greetOnce() {
   if (current.value === null) openTour();
 }
 
-/** Brings a target between the header and the card, without moving a page that already shows it. */
-function reveal(el: HTMLElement, card: HTMLElement | null) {
-  if (el.closest(".backdrop")) return;
-  const top = (document.querySelector(".dash-head, .topbar")?.getBoundingClientRect().bottom ?? 0) + 8;
-  const bottom = (card?.getBoundingClientRect().top ?? innerHeight) - 8;
-  const r = el.getBoundingClientRect();
-  if (r.top >= top && r.bottom <= bottom) return;
-  window.scrollBy({ top: r.top + r.height / 2 - (top + bottom) / 2, behavior: calm() ? "auto" : "smooth" });
+const box = (r: DOMRect): Rect => ({ x: r.left, y: r.top, w: r.width, h: r.height });
+
+/** The part of the screen the card may use: below the sticky header, above a phone's tab bar, inside the margins. */
+function freeArea(): Rect {
+  const width = document.documentElement.clientWidth;
+  const margin = width < 720 ? 8 : 16;
+  const top = Math.max(document.getElementById("demo-bar")?.getBoundingClientRect().bottom ?? 0, document.querySelector(".dash-head, .topbar")?.getBoundingClientRect().bottom ?? 0) + 8;
+  const tabbar = first(".tabbar");
+  const bottom = tabbar ? tabbar.getBoundingClientRect().top - 4 : innerHeight - margin;
+  return { x: margin, y: top, w: width - 2 * margin, h: Math.max(0, bottom - top) };
 }
+
+/** Targets in a sheet, a sticky header or the tab bar do not move when the page scrolls. */
+const scrolls = (el: HTMLElement) => !el.closest(".backdrop, .dash-head, .topbar, .tabbar, #demo-bar, .ed-bar, .ed-side") && document.documentElement.scrollHeight > innerHeight;
 
 function Tour() {
   const index = current.value;
@@ -204,13 +230,25 @@ function Tour() {
     let checked = 0;
     let target: HTMLElement | null = null;
     let arrived = false;
+    // where the card goes: its side sticks while it works. The page only scrolls for a new target or a card that
+    // changed its size (or when nothing else keeps the target free), and never right after the visitor scrolled.
+    let side: Side | undefined;
+    let planned: { el: HTMLElement | null; h: number; at: number } = { el: null, h: 0, at: 0 };
+    let hold = 0;
+    let touched = 0;
+    const touch = () => (touched = performance.now());
+    const INPUT = ["wheel", "touchmove", "keydown"] as const;
+    for (const ev of INPUT) window.addEventListener(ev, touch, { passive: true });
+    const put = (c: HTMLElement, x: number, y: number) => {
+      c.style.left = `${Math.round(x)}px`;
+      c.style.top = `${Math.round(y)}px`;
+      c.style.right = c.style.bottom = "auto";
+    };
     const loop = (now: number) => {
       frame = requestAnimationFrame(loop);
       if (now - checked > 160) {
         checked = now;
-        const next = step.target?.() ?? null;
-        if (next !== target && next) reveal(next, card.current);
-        target = next;
+        target = step.target?.() ?? null;
         const ok = !!step.done?.();
         if (ok && !arrived) {
           arrived = true;
@@ -218,21 +256,42 @@ function Tour() {
         }
         setDone(ok);
       }
-      const el = ring.current;
-      if (!el) return;
       const layer = document.querySelector(".backdrop");
       const r = target?.isConnected && (!layer || layer.contains(target)) ? target.getBoundingClientRect() : null;
-      if (!r?.width) {
-        el.style.opacity = "0";
-        return;
+      const lit = !!r?.width;
+      const el = ring.current;
+      if (el && !lit) el.style.opacity = "0";
+      else if (el && r) {
+        el.style.opacity = "1";
+        el.style.width = `${r.width + 8}px`;
+        el.style.height = `${r.height + 8}px`;
+        el.style.transform = `translate(${r.left - 4}px, ${r.top - 4}px)`;
       }
-      el.style.opacity = "1";
-      el.style.width = `${r.width + 8}px`;
-      el.style.height = `${r.height + 8}px`;
-      el.style.transform = `translate(${r.left - 4}px, ${r.top - 4}px)`;
+      const c = card.current;
+      // a target behind a sheet or still loading: the card stays where it is; while the page scrolls for it, too
+      if (!c || (step.target && !lit) || now < hold) return;
+      const avoid = step.avoid ? [...document.querySelectorAll<HTMLElement>(step.avoid)].filter(shown).map((e) => box(e.getBoundingClientRect())) : [];
+      const input = { card: { w: c.offsetWidth, h: c.offsetHeight }, view: freeArea(), target: r && lit ? box(r) : null, avoid, sides: step.sides, room: step.room, last: side };
+      let p = placeCard(input);
+      const fresh = planned.el !== target || Math.abs(planned.h - input.card.h) > 8;
+      if (target && lit && (fresh || (!p.clear && now - planned.at > 1000)) && now - touched > 1200 && scrolls(target)) {
+        planned = { el: target, h: input.card.h, at: now };
+        const q = placeCard({ ...input, scrollable: true });
+        if (q.scroll) {
+          window.scrollBy({ top: q.scroll, behavior: calm() ? "auto" : "smooth" });
+          // where the card ends up once the target arrives
+          p = q;
+          hold = now + (calm() ? 0 : 650);
+        }
+      }
+      side = p.side;
+      put(c, p.x, p.y);
     };
     frame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      for (const ev of INPUT) window.removeEventListener(ev, touch);
+    };
   }, [index]);
 
   useEffect(() => {
