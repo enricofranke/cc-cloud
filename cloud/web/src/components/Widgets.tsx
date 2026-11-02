@@ -10,6 +10,15 @@ import { ICON_NAMES, type IconName } from "../lib/layout.ts";
 
 const isIcon = (v: unknown): v is IconName => (ICON_NAMES as readonly unknown[]).includes(v);
 
+/**
+ * The icon picked for a widget in the layout editor (opts.wicon): the pixel icon of the card headers, in the widget's
+ * accent (or the card's), in front of the widget's caption.
+ */
+export function WIcon({ w, size = 14 }: { w: Widget; size?: number }) {
+  const name = w.opts?.wicon;
+  return isIcon(name) ? <PixelIcon name={name} size={size} class="w-icon" /> : null;
+}
+
 export interface WidgetProps {
   w: Widget;
   uplink: Uplink;
@@ -131,7 +140,10 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
     return (
       <div class={`gauge-bar zone-${zone}`} role="meter" aria-label={w.label ?? w.id} aria-valuemin={min} aria-valuemax={max} aria-valuenow={known ? v : undefined}>
         <div class="w2-head">
-          <span class="w2-label">{w.label ?? w.id}</span>
+          <span class="w2-label">
+            <WIcon w={w} />
+            {w.label ?? w.id}
+          </span>
           <span class="w2-value">
             {known ? fmtNumber(v) : "—"}
             {o.unit ? ` ${o.unit}` : ""}
@@ -143,7 +155,7 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
         </div>
       </div>
     );
-  if (o.display === "number") return <BigNumber label={w.label ?? w.id} value={known ? fmtNumber(v) : "—"} unit={o.unit} zone={zone} sub={`${fmtNumber(min)} – ${fmtNumber(max)}`} />;
+  if (o.display === "number") return <BigNumber label={w.label ?? w.id} icon={o.wicon} value={known ? fmtNumber(v) : "—"} unit={o.unit} zone={zone} sub={`${fmtNumber(min)} – ${fmtNumber(max)}`} />;
 
   const segs = [];
   for (let i = 0; i < SEGMENTS; i++) {
@@ -173,7 +185,10 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
         <span class="gauge-value">{known ? fmtNumber(v) : "—"}</span>
         {o.unit && <span class="gauge-unit">{o.unit}</span>}
       </div>
-      <div class="gauge-label">{w.label ?? w.id}</div>
+      <div class="gauge-label">
+        <WIcon w={w} />
+        {w.label ?? w.id}
+      </div>
       <div class="gauge-range">
         <span>{fmtNumber(min)}</span>
         {zone !== "ok" && <span class={`gauge-flag flag-${zone}`}>{zone === "crit" ? "CRIT" : "WARN"}</span>}
@@ -185,10 +200,15 @@ export function Gauge({ w, uplink, conn }: WidgetProps) {
 
 // ------------------------------------------------------------------- label
 /** A big number tile (display styles "number" / "big"). */
-export function BigNumber({ label, value, unit, zone = "ok", sub }: { label?: string; value: string; unit?: string; zone?: string; sub?: string }) {
+export function BigNumber({ label, icon, value, unit, zone = "ok", sub }: { label?: string; icon?: string; value: string; unit?: string; zone?: string; sub?: string }) {
   return (
     <div class={`bignum zone-${zone}`}>
-      {label && <span class="bignum-label">{label}</span>}
+      {(label || isIcon(icon)) && (
+        <span class="bignum-label">
+          {isIcon(icon) && <PixelIcon name={icon} size={14} class="w-icon" />}
+          {label}
+        </span>
+      )}
       <span class="bignum-value">
         {value}
         {unit && <span class="bignum-unit">{unit}</span>}
@@ -201,13 +221,16 @@ export function BigNumber({ label, value, unit, zone = "ok", sub }: { label?: st
 export function LabelRow({ w, uplink, conn }: WidgetProps) {
   const { value } = useValue(conn, uplink.uplinkId, w);
   const text = value == null || value === "" ? undefined : typeof value === "number" ? fmtNumber(value) : String(value);
-  if (w.opts?.display === "big") return <BigNumber label={w.label} value={text ?? "—"} />;
+  if (w.opts?.display === "big") return <BigNumber label={w.label} icon={w.opts.wicon} value={text ?? "—"} />;
   const entries = text ? splitEntries(text) : [];
   // long or multi-entry values (e.g. tick time per dimension): caption above, then a compact list
   if (w.label && text !== undefined && (entries.length > 1 || text.length > 32))
     return (
       <div class="kv kv-stack">
-        <span class="kv-key">{w.label}</span>
+        <span class="kv-key">
+          <WIcon w={w} />
+          {w.label}
+        </span>
         {entries.length > 1 ? (
           <ul class="kv-list">
             {entries.map((e, i) => (
@@ -228,11 +251,19 @@ export function LabelRow({ w, uplink, conn }: WidgetProps) {
   if (w.label && text !== undefined)
     return (
       <div class="kv">
-        <span class="kv-key">{w.label}</span>
+        <span class="kv-key">
+          <WIcon w={w} />
+          {w.label}
+        </span>
         <span class="kv-val">{text}</span>
       </div>
     );
-  return <div class="kv-text">{text ?? w.label ?? ""}</div>;
+  return (
+    <div class="kv-text">
+      <WIcon w={w} />
+      {text ?? w.label ?? ""}
+    </div>
+  );
 }
 
 // ------------------------------------------------------------------ toggle
@@ -246,6 +277,7 @@ export function Toggle({ w, uplink, conn, locked }: WidgetProps) {
   return (
     <div class={`row ${locked ? "is-locked" : ""}`}>
       <label class="row-label" for={id}>
+        <WIcon w={w} />
         {w.label ?? w.id}
         {gate.needsPin && <IconLock size={12} class="pin-mark" />}
         {pending && <span class="row-hint">sending…</span>}
@@ -301,6 +333,7 @@ export function Slider({ w, uplink, conn, locked }: WidgetProps) {
     <div class={`row row-slider ${locked ? "is-locked" : ""}`}>
       <div class="row-head">
         <span class="row-label">
+          <WIcon w={w} />
           {w.label ?? w.id}
           {gate.needsPin && <IconLock size={12} class="pin-mark" />}
           {pending && <span class="row-hint">sending…</span>}
@@ -343,6 +376,8 @@ export function ActionButton({ w, uplink, conn, locked }: WidgetProps) {
   };
   const gate = usePinGate(conn, uplink, w, false, flashNow);
   const fire = () => gate.send(true);
+  // the icon picked in the layout editor wins over the one the script or device sent, like the colour
+  const icon = isIcon(w.opts?.wicon) ? w.opts.wicon : isIcon(w.opts?.icon) ? w.opts.icon : undefined;
   return (
     <>
       <button
@@ -352,7 +387,7 @@ export function ActionButton({ w, uplink, conn, locked }: WidgetProps) {
         onClick={() => (w.opts?.confirm && !gate.needsPin ? setConfirming(true) : fire())}
       >
         {(locked || gate.needsPin) && <IconLock size={14} />}
-        {!locked && !gate.needsPin && isIcon(w.opts?.icon) && <PixelIcon name={w.opts.icon} size={12} class="btn-icon" />}
+        {!locked && !gate.needsPin && icon && <PixelIcon name={icon} size={12} class="btn-icon" />}
         <span>{w.label ?? w.id}</span>
       </button>
       {confirming && (

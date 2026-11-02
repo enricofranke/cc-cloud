@@ -10,6 +10,7 @@
 import { canvasSize } from "./canvas.ts";
 import { WIDGET_TYPES, type Uplink, type Widget, type WidgetType } from "./types.ts";
 import { bottom, clampItem, compact, flowPack, freeSpot, insertItem, moveItem, placeAll, resizeItem, type GridItem } from "./grid.ts";
+import { cleanCardCss, isCardBackground, isHexColor, type CardBackground } from "./cardstyle.ts";
 
 export const LAYOUT_VERSION = 2;
 export const MAX_LAYOUT_BYTES = 256 * 1024;
@@ -64,6 +65,10 @@ export interface CardPatch extends Partial<Box> {
   color?: Accent;
   icon?: IconName;
   style?: CardStyle;
+  /** card design (lib/cardstyle.ts): a background option, its colour for `custom`, and sanitised custom CSS */
+  bg?: CardBackground;
+  bgColor?: string;
+  css?: string;
   /** v1 only (migrated on read) */
   order?: number;
   span?: number;
@@ -132,6 +137,10 @@ export interface ResolvedCard {
   color: Accent;
   icon?: IconName;
   style: CardStyle;
+  /** card design (lib/cardstyle.ts) */
+  bg?: CardBackground;
+  bgColor?: string;
+  css?: string;
   widgets: ResolvedWidget[];
 }
 export interface ResolvedPage extends LayoutPage {
@@ -232,6 +241,11 @@ export function normalizeLayout(raw: unknown): LayoutDoc {
       if (isAccent(c.color)) patch.color = c.color;
       if (isIcon(c.icon)) patch.icon = c.icon;
       if (c.style === "compact") patch.style = "compact";
+      if (isCardBackground(c.bg)) patch.bg = c.bg;
+      if (patch.bg === "custom" && isHexColor(c.bgColor)) patch.bgColor = c.bgColor.toLowerCase();
+      // custom CSS is untrusted: only sanitised declarations stay (Card.tsx checks them again when it renders)
+      const css = cleanCardCss(c.css);
+      if (css) patch.css = css;
       if (int(c.order, 0, 10_000) !== undefined) patch.order = int(c.order, 0, 10_000);
       if (int(c.span, 1, 4) !== undefined) patch.span = int(c.span, 1, 4);
       out.cards[k] = patch;
@@ -406,6 +420,9 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       color: patch.color ?? (isAccent(o.color) && o.color !== "gray" ? (o.color as Accent) : "gold"),
       icon: patch.icon ?? (isIcon(o.icon) ? (o.icon as IconName) : undefined),
       style: patch.style ?? "comfortable",
+      ...(patch.bg ? { bg: patch.bg } : {}),
+      ...(patch.bg === "custom" && patch.bgColor ? { bgColor: patch.bgColor } : {}),
+      ...(patch.css ? { css: patch.css } : {}),
       order: patch.order ?? 1000 + natural++,
       widgets: [],
     };
@@ -603,6 +620,9 @@ function fullSnapshot(pages: ResolvedPage[]): LayoutDoc {
         ...(c.color !== "gold" ? { color: c.color } : {}),
         ...(c.icon ? { icon: c.icon } : {}),
         ...(c.style !== "comfortable" ? { style: c.style } : {}),
+        ...(c.bg ? { bg: c.bg } : {}),
+        ...(c.bg === "custom" && c.bgColor ? { bgColor: c.bgColor } : {}),
+        ...(c.css ? { css: c.css } : {}),
       };
       for (const w of c.widgets) {
         doc.widgets[w.key] = {
@@ -716,7 +736,7 @@ export function resizeCard(pages: ResolvedPage[], cardKey: string, w: number, h:
   return next;
 }
 
-export function updateCard(pages: ResolvedPage[], cardKey: string, patch: Partial<Pick<ResolvedCard, "title" | "hidden" | "color" | "icon" | "style">>): ResolvedPage[] {
+export function updateCard(pages: ResolvedPage[], cardKey: string, patch: Partial<Pick<ResolvedCard, "title" | "hidden" | "color" | "icon" | "style" | "bg" | "bgColor" | "css">>): ResolvedPage[] {
   const next = clone(pages);
   const f = findCard(next, cardKey);
   if (!f) return pages;

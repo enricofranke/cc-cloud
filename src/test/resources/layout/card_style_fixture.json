@@ -1,0 +1,284 @@
+{
+  "comment": "Card design rules shared by cloud/web/src/lib/cardstyle.ts (serverCssProblem) and CardStyle.java (cssProblem). Both test suites check every entry: accept must pass, reject must fail with that reason.",
+  "backgrounds": [
+    "tint-gold",
+    "tint-cyan",
+    "tint-green",
+    "tint-yellow",
+    "tint-red",
+    "tint-purple",
+    "tint-orange",
+    "tint-gray",
+    "grad-accent",
+    "grad-aurora",
+    "grad-ember",
+    "grad-lagoon",
+    "pat-grid",
+    "pat-stripes",
+    "pat-dots",
+    "pat-circuit",
+    "custom"
+  ],
+  "properties": [
+    "background",
+    "background-color",
+    "background-image",
+    "background-size",
+    "background-position",
+    "background-repeat",
+    "background-blend-mode",
+    "border",
+    "border-top",
+    "border-right",
+    "border-bottom",
+    "border-left",
+    "border-width",
+    "border-color",
+    "border-style",
+    "box-shadow",
+    "opacity",
+    "filter",
+    "border-radius",
+    "color",
+    "font-family",
+    "font-weight",
+    "font-style",
+    "letter-spacing",
+    "text-transform",
+    "text-shadow"
+  ],
+  "functions": [
+    "rgb",
+    "rgba",
+    "hsl",
+    "hsla",
+    "hwb",
+    "lab",
+    "lch",
+    "oklab",
+    "oklch",
+    "color",
+    "color-mix",
+    "linear-gradient",
+    "radial-gradient",
+    "conic-gradient",
+    "repeating-linear-gradient",
+    "repeating-radial-gradient",
+    "repeating-conic-gradient",
+    "var",
+    "blur",
+    "brightness",
+    "contrast",
+    "grayscale",
+    "hue-rotate",
+    "saturate",
+    "sepia",
+    "opacity"
+  ],
+  "tokens": [
+    "--accent",
+    "--bg",
+    "--panel",
+    "--panel-2",
+    "--panel-3",
+    "--screen",
+    "--line",
+    "--line-2",
+    "--text",
+    "--muted",
+    "--faint",
+    "--gold",
+    "--gold-hi",
+    "--gold-dk",
+    "--gold-text",
+    "--cyan",
+    "--cyan-hi",
+    "--cyan-dk",
+    "--green",
+    "--yellow",
+    "--red",
+    "--red-text",
+    "--link",
+    "--gray",
+    "--purple",
+    "--orange",
+    "--on-color"
+  ],
+  "maxCss": 2048,
+  "accept": [
+    "",
+    "background: linear-gradient(135deg, #1e3a5f, #0b1a2a);",
+    "background-color: var(--panel-2);\ncolor: var(--text);",
+    "BORDER: 2px solid var(--accent);",
+    "box-shadow: inset 0 0 12px rgb(0 0 0 / 40%);",
+    "border-radius: 12px; letter-spacing: 0.05em; text-transform: uppercase;",
+    "filter: saturate(1.4) hue-rotate(20deg);",
+    "font-family: monospace; font-weight: 700; font-style: italic",
+    "background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--accent) 20%, transparent) 0 6px, transparent 6px 12px);",
+    "opacity: 0.9;;;",
+    "text-shadow: 0 1px 0 #000;",
+    "background-image: conic-gradient(from 90deg, oklch(0.6 0.1 200), hsl(200 50% 40%));"
+  ],
+  "reject": [
+    {
+      "css": "background: u\\72 l(https://x.test/a.png);",
+      "reason": "escape"
+    },
+    {
+      "css": "background: \\75 rl(https://x.test/a.png);",
+      "reason": "escape"
+    },
+    {
+      "css": "color: red /* hi */;",
+      "reason": "comment"
+    },
+    {
+      "css": "color: red; } body { display: none",
+      "reason": "block"
+    },
+    {
+      "css": "@import 'x.css';",
+      "reason": "block"
+    },
+    {
+      "css": "color: red !important;",
+      "reason": "important"
+    },
+    {
+      "css": "background: url(https://x.test/a.png);",
+      "reason": "network"
+    },
+    {
+      "css": "background: URL (https://x.test/a.png);",
+      "reason": "network"
+    },
+    {
+      "css": "background-image: image-set(a 1x);",
+      "reason": "network"
+    },
+    {
+      "css": "background-image: image(red);",
+      "reason": "network"
+    },
+    {
+      "css": "background-image: src(a);",
+      "reason": "network"
+    },
+    {
+      "css": "background: element(#login);",
+      "reason": "network"
+    },
+    {
+      "css": "background: cross-fade(red, blue);",
+      "reason": "network"
+    },
+    {
+      "css": "background: paint(worklet);",
+      "reason": "network"
+    },
+    {
+      "css": "background: var(--panel, url(https://x.test/a.png));",
+      "reason": "network"
+    },
+    {
+      "css": "color: attr(title);",
+      "reason": "script"
+    },
+    {
+      "css": "width: expression(alert(1));",
+      "reason": "script"
+    },
+    {
+      "css": "-moz-binding: none;",
+      "reason": "script"
+    },
+    {
+      "css": "behavior: none;",
+      "reason": "script"
+    },
+    {
+      "css": "background: javascript:alert(1);",
+      "reason": "script"
+    },
+    {
+      "css": "color: red;\u200b",
+      "reason": "chars"
+    },
+    {
+      "css": "color: \uff52\uff45\uff44;",
+      "reason": "chars"
+    },
+    {
+      "css": "font-family: \"Comic Sans\";",
+      "reason": "chars"
+    },
+    {
+      "css": "color: red</style><script>",
+      "reason": "chars"
+    },
+    {
+      "css": "color: calc(1px + 2px);",
+      "reason": "function"
+    },
+    {
+      "css": "color: env(safe-area-inset-top);",
+      "reason": "function"
+    },
+    {
+      "css": "background: var(--evil);",
+      "reason": "token"
+    },
+    {
+      "css": "--accent: red;",
+      "reason": "property"
+    },
+    {
+      "css": "--evil: red;",
+      "reason": "token"
+    },
+    {
+      "css": "position: fixed;",
+      "reason": "property"
+    },
+    {
+      "css": "z-index: 9999;",
+      "reason": "property"
+    },
+    {
+      "css": "transform: scale(10);",
+      "reason": "function"
+    },
+    {
+      "css": "margin: -100px;",
+      "reason": "property"
+    },
+    {
+      "css": "inset: 0;",
+      "reason": "property"
+    },
+    {
+      "css": "pointer-events: none;",
+      "reason": "property"
+    },
+    {
+      "css": "cursor: pointer;",
+      "reason": "property"
+    },
+    {
+      "css": "content: none;",
+      "reason": "property"
+    },
+    {
+      "css": "color: red background: blue;",
+      "reason": "property"
+    },
+    {
+      "css": "color red;",
+      "reason": "property"
+    },
+    {
+      "css": "color:;",
+      "reason": "property"
+    }
+  ]
+}

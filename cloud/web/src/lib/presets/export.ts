@@ -5,6 +5,7 @@
 // role and the widget ids this page uses (programs from the store keep their ids between worlds). Cloud Redstone widget
 // ids (`d_<device id>`) belong to one world: those are asked for by type, in their order on the card.
 import type { ResolvedCard, ResolvedPage, ResolvedWidget } from "../layout.ts";
+import { cleanCardCss } from "../cardstyle.ts";
 import type { Uplink, Widget } from "../types.ts";
 import { PRESET_FORMAT, PRESET_LIMITS, cleanText, parsePreset, type Preset, type PresetCard, type PresetSlot, type PresetWidget, type Role } from "./format.ts";
 import { ACTION_TYPES, rolesOf } from "./roles.ts";
@@ -76,6 +77,7 @@ function cardOf(card: ResolvedCard, refs: PresetWidget[], devices: Uplink[]): Pr
   // a card that carries a device's name gets the name of the device that fills it
   const named = devices.some((u) => u.title === card.title);
   const title = named ? "" : cleanText(card.title).slice(0, PRESET_LIMITS.TITLE);
+  const css = cleanCardCss(card.css);
   return {
     x: card.box.x,
     y: card.box.y,
@@ -85,6 +87,9 @@ function cardOf(card: ResolvedCard, refs: PresetWidget[], devices: Uplink[]): Pr
     ...(card.color !== "gold" ? { color: card.color } : {}),
     ...(card.icon ? { icon: card.icon } : {}),
     ...(card.style === "compact" ? { style: "compact" as const } : {}),
+    ...(card.bg ? { bg: card.bg } : {}),
+    ...(card.bg === "custom" && card.bgColor ? { bgColor: card.bgColor } : {}),
+    ...(css ? { css } : {}),
     widgets: refs,
   };
 }

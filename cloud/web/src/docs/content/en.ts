@@ -240,7 +240,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 - **Move:** drag a card by its header, or a widget anywhere. The others make room and glide aside; a dashed outline shows where it lands. Drop a widget on another card, on empty space (it gets its **own new card**) or on a page tab (hover a moment to open that page).
 - **Resize:** drag the right edge, the bottom edge or the corner – the badge shows the size (cards use 12 columns of the page, widgets 12 columns of their card).
 - **Select several widgets** with Shift-click and drag one of them to move them together.
-- **Settings** (✎ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent and a compact or comfortable style; a [Peripheral card](#widgets) also its values and switch.
+- **Settings** (✎ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent, a compact or comfortable style and a [design](#card-design) (background, custom CSS); a [Peripheral card](#widgets) also its values and switch.
 - **Toolbox:** opens on the side (a sheet on phones; press **A**). **Cards** has an empty card and ready-made templates, **Widgets** has every widget type: drag one onto a card or free space, then pick its data. **Hidden** lists what you hid.
 - **Hide** with ×, or drag it onto the toolbox. To bring it back, click it under **Hidden** or drag it out.
 - **Touch:** press and hold to pick up (a short vibration), then drag – a normal swipe still scrolls. **Keyboard:** Tab to a card or widget, Space picks it up, arrow keys move, Shift + arrow keys resize, Page Up/Down move a widget to the previous/next card, Space drops, Esc cancels. Press **?** for all shortcuts.
@@ -249,6 +249,42 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 **Presets** in **+ Add** puts a ready-made page on your dashboard – see [Dashboard presets](/docs/presets).
 
 **Save** stores the layout on the server – all browsers see it. A script restart keeps the layout because widget ids stay the same. On narrow screens the cards stack in reading order (two columns on phones).
+
+## Card design {#card-design}
+
+In a card's settings you choose a **background** and, if you like, a few lines of **custom CSS**. Both are saved with the layout, travel with share codes and presets, and work in the light and the dark theme.
+
+- **Background:** Default, a **tint** of one of the eight accent colours, four **gradients** (Accent, Aurora, Ember, Lagoon), four **patterns** (Grid, Stripes, Dots, Circuit) or **Custom** with a colour of your own. Tints, gradients and patterns follow the theme and the card's accent. A custom colour chooses light or dark text by itself and lays a faint veil over the colour where that is needed to keep text readable.
+- **Icons:** a widget's icon (in its settings) shows in front of its label – on rows, big numbers, gauges, charts, switches, sliders and inputs – just like a card's icon in the header. Widgets without a label, such as item search, have no icon setting.
+
+### Custom CSS {#card-css}
+
+**Custom CSS** (collapsed at first) takes declarations, one per line, \`property: value;\`:
+
+\`\`\`css
+background: linear-gradient(135deg, #1e3a5f, var(--panel));
+border: 2px solid var(--accent);
+border-radius: 12px;
+letter-spacing: 0.04em;
+\`\`\`
+
+Only declarations – no selectors, no \`{ }\` blocks, no \`@\` rules. Below the field the editor lists every declaration it dropped and why. What you can use:
+
+| What | Properties |
+|---|---|
+| Background | background, background-color, -image, -size, -position, -repeat, -blend-mode |
+| Frame | border (also -top, -right, -bottom, -left, -width up to 8 px, -color, -style), border-radius up to 32 px, box-shadow (inset only) |
+| Surface | opacity, filter (blur, brightness, contrast, grayscale, hue-rotate, saturate, sepia; gentle values) |
+| Text | color, font-family (silkscreen, monospace, sans-serif, serif, system-ui), font-weight, font-style, letter-spacing, text-transform, a small text-shadow |
+
+Values can be colours (\`#hex\`, \`rgb()\`, \`hsl()\`, \`oklch()\`, \`color-mix()\` …), gradients and the dashboard's theme tokens with \`var()\`, e.g. \`var(--accent)\`, \`var(--panel)\`, \`var(--text)\`, \`var(--muted)\`, \`var(--line)\`, so the card follows the theme. Units: px, em, rem, %, deg.
+
+**Why so strict?** A layout can come from anyone with edit rights, from a share code or from the store. The dashboard treats every line as untrusted and checks it again each time it draws a card:
+
+- **Nothing loads or runs:** no \`url()\`, \`image-set()\`, \`attr()\`, \`expression\` or \`javascript:\`, no comments, backslash escapes, quotes or \`!important\`, plain ASCII only. A card can't fetch anything or learn who is looking at it.
+- **Nothing leaves the card:** no \`position\`, \`top\`/\`left\`/\`inset\`, \`z-index\`, \`transform\`, \`margin\`, \`width\`/\`height\`, \`content\`, \`pointer-events\`, \`cursor\` or outer shadows, and numbers have limits. The background is painted on its own layer, clipped to the card and never in the way of a click, so a card can't cover other cards, the PIN prompt or the login.
+- **Text stays readable:** a text colour too close to the background is dropped (and listed).
+- The server checks the same rules before it stores a layout.
 
 ## Alerts {#alerts}
 

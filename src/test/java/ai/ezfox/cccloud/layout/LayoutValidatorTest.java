@@ -148,6 +148,76 @@ class LayoutValidatorTest {
         assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{},\"widgets\":{\"a/b\":{\"card\":\"c:x\"}}}").ok());
     }
 
+    private static String v2Card(String patch) {
+        return "{\"v\":2,\"pages\":[],\"cards\":{\"" + UPLINK + "\":" + patch + "},\"widgets\":{}}";
+    }
+
+    @Test
+    void keepsTheCardDesign() {
+        String css = "background: linear-gradient(135deg, #1e3a5f, var(--panel));\\nborder-radius: 12px;\\nletter-spacing: 0.05em;";
+        var result = validate(v2Card("{\"x\":0,\"w\":4,\"bg\":\"custom\",\"bgColor\":\"#1E3A5F\",\"css\":\"" + css + "\"}"));
+        assertTrue(result.ok(), String.valueOf(result.detail()));
+        var card = result.layout().getAsJsonObject("cards").getAsJsonObject(UPLINK);
+        assertEquals("custom", card.get("bg").getAsString(), "kept, not stripped");
+        assertEquals("#1E3A5F", card.get("bgColor").getAsString());
+        assertEquals(css.replace("\\n", "\n"), card.get("css").getAsString());
+        for (String bg : CardStyle.BACKGROUNDS) assertTrue(validate(v2Card("{\"bg\":\"" + bg + "\"}")).ok(), bg);
+        assertTrue(validate(v2Card("{\"bgColor\":\"#000000\"}")).ok(), "a colour without the custom option is harmless");
+        assertTrue(validate(v2Card("{\"css\":\"\"}")).ok());
+        // widget icons are part of v2 too
+        assertTrue(validate("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{\"" + UPLINK + "/status\":{\"icon\":\"flame\"}}}").ok());
+    }
+
+    @Test
+    void refusesABadCardDesign() {
+        String[] bad = {
+            "{\"bg\":\"neon\"}",
+            "{\"bg\":\"\"}",
+            "{\"bg\":\"TINT-GOLD\"}",
+            "{\"bg\":1}",
+            "{\"bg\":[\"custom\"]}",
+            "{\"bgColor\":\"red\"}",
+            "{\"bgColor\":\"#fff\"}",
+            "{\"bgColor\":\"#1e3a5f; color: red\"}",
+            "{\"bgColor\":\"url(x)\"}",
+            "{\"bgColor\":123456}",
+            "{\"css\":42}",
+            "{\"css\":{\"color\":\"red\"}}",
+            "{\"css\":[\"color: red\"]}",
+            "{\"css\":null}",
+            "{\"css\":\"background: url(https://x.test/a.png)\"}",
+            "{\"css\":\"background: \\\\75 rl(https://x.test/a.png)\"}",
+            "{\"css\":\"color: red; } body { display: none\"}",
+            "{\"css\":\"@import x\"}",
+            "{\"css\":\"color: red !important\"}",
+            "{\"css\":\"color: red /* x */\"}",
+            "{\"css\":\"position: fixed; inset: 0\"}",
+            "{\"css\":\"background: var(--x, url(x))\"}",
+            "{\"css\":\"background: var(--evil)\"}",
+            "{\"css\":\"color: \\u0072\\u0065\\u0064\\u200b\"}",
+            "{\"css\":\"" + "color: red;".repeat(200) + "\"}",
+            "{\"styles\":\"color: red\"}",
+        };
+        for (var patch : bad) {
+            var result = validate(v2Card(patch));
+            assertEquals("invalid_layout", result.error(), patch);
+        }
+        assertEquals("cards[" + UPLINK + "].css", validate(v2Card("{\"css\":\"color: expression(x)\"}")).detail());
+        assertEquals("cards[" + UPLINK + "].bg", validate(v2Card("{\"bg\":\"neon\"}")).detail());
+        // v1 documents and widgets have no design
+        assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{\"a\":{\"bg\":\"tint-red\"}},\"widgets\":{}}").ok());
+        assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{\"a\":{\"css\":\"color: red\"}},\"widgets\":{}}").ok());
+        assertFalse(validate("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{\"a/b\":{\"css\":\"color: red\"}}}").ok());
+        assertFalse(validate("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{\"a/b\":{\"bg\":\"tint-red\"}}}").ok());
+    }
+
+    @Test
+    void aDesignedV2LayoutIsNotMigrated() {
+        var layout = JsonParser.parseString(v2Card("{\"bg\":\"pat-grid\",\"css\":\"color: var(--text)\"}")).getAsJsonObject();
+        assertTrue(LayoutValidator.validate(layout).ok());
+        assertNull(LayoutData.migrate(layout, java.util.List.of(new com.google.gson.JsonObject())), "already v2");
+    }
+
     @Test
     void widgetMinimumsByType() {
         var layout = JsonParser.parseString("{\"v\":2,\"pages\":[],\"cards\":{},\"widgets\":{\"u/chart\":{\"w\":3},\"u/g\":{\"w\":2},"
