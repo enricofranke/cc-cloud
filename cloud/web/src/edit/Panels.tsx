@@ -1,7 +1,7 @@
 // Floating panels of the layout editor: widget/card settings with live preview,
 // the toolbox (ready-made cards, every widget type, hidden items), the picker
 // for a new widget's data source and the shortcut help.
-import { useMemo, useState } from "preact/hooks";
+import { useEffect, useMemo, useState } from "preact/hooks";
 import type { MainframeConn } from "../lib/conn.ts";
 import type { Uplink, Widget, WidgetType } from "../lib/types.ts";
 import {
@@ -35,6 +35,9 @@ import { WidgetView, placeVars } from "../components/Card.tsx";
 import { IconPicker } from "../components/PageTabs.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { CopyButton } from "../components/CodeBlock.tsx";
+import { DocsLink } from "../components/DocsLink.tsx";
+import { cardStyleNotes, sanitizedCss } from "../components/CardSkin.tsx";
+import { CARD_BACKGROUNDS, MAX_CARD_CSS, REASON_TEXT, browserCssEnv, isHexColor, sanitizeCardCss, serializeCss, type CardBackground, type DroppedDecl } from "../lib/cardstyle.ts";
 import { t } from "../lib/i18n.ts";
 import { PresetsTab } from "./Presets.tsx";
 import { Sheet } from "../components/Overlays.tsx";
@@ -205,6 +208,155 @@ export function WidgetSettings({ found, pages, conn, onChange, onRebind, onRemov
 
 /** Widgets without a caption to put an icon in front of (the item search is a search bar). */
 const NO_ICON = new Set<string>(["item_search"]);
+
+const BG_NAMES: Record<CardBackground, string> = {
+  "tint-gold": "Gold tint",
+  "tint-cyan": "Cyan tint",
+  "tint-green": "Green tint",
+  "tint-yellow": "Yellow tint",
+  "tint-red": "Red tint",
+  "tint-purple": "Purple tint",
+  "tint-orange": "Orange tint",
+  "tint-gray": "Grey tint",
+  "grad-accent": "Accent glow",
+  "grad-aurora": "Aurora",
+  "grad-ember": "Ember",
+  "grad-lagoon": "Lagoon",
+  "pat-grid": "Grid",
+  "pat-stripes": "Stripes",
+  "pat-dots": "Dots",
+  "pat-circuit": "Circuit",
+  custom: "Your colour",
+};
+const BG_ROWS: CardBackground[][] = [CARD_BACKGROUNDS.filter((b) => b.startsWith("tint-")), CARD_BACKGROUNDS.filter((b) => b.startsWith("grad-") || b.startsWith("pat-"))];
+const DEFAULT_CUSTOM = "#2f4f6f";
+
+/** The card's background: default, a tint, a gradient, a pattern or a colour of your own (lib/cardstyle.ts). */
+function BackgroundPicker({ card, onChange }: { card: ResolvedCard; onChange: (patch: { bg?: CardBackground; bgColor?: string }, key?: string) => void }) {
+  const [hex, setHex] = useState(card.bgColor ?? DEFAULT_CUSTOM);
+  // undo/redo and the colour input change the colour from outside the hex field
+  useEffect(() => {
+    if (card.bgColor && card.bgColor !== hex) setHex(card.bgColor);
+  }, [card.bgColor]);
+  const tile = (b: CardBackground | undefined) => {
+    const on = card.bg === b;
+    const name = b ? BG_NAMES[b] : "Default";
+    return (
+      <button
+        key={b ?? "none"}
+        type="button"
+        role="radio"
+        aria-checked={on}
+        aria-label={name}
+        title={name}
+        class={`bg-swatch ${b ? `bg-${b}` : "bg-none"} ${on ? "on" : ""} ${b === "custom" && on && isHexColor(card.bgColor) ? "has-color" : ""}`}
+        style={b === "custom" && on && isHexColor(card.bgColor) ? { "--skin-c": card.bgColor } : undefined}
+        onClick={() => onChange(b === "custom" ? { bg: b, bgColor: card.bgColor ?? hex } : { bg: b, bgColor: undefined })}
+      />
+    );
+  };
+  return (
+    <div class="field">
+      <span class="field-label">Background</span>
+      <div class={`bg-picker accent-${card.color}`} role="radiogroup" aria-label="Card background">
+        <div class="bg-row">
+          {tile(undefined)}
+          {tile("custom")}
+          {card.bg === "custom" && (
+            <span class="bg-own">
+              <input
+                type="color"
+                class="bg-color"
+                aria-label="Background colour"
+                value={card.bgColor ?? hex}
+                onInput={(e) => {
+                  const v = (e.target as HTMLInputElement).value.toLowerCase();
+                  setHex(v);
+                  if (isHexColor(v)) onChange({ bg: "custom", bgColor: v }, `bg:${card.key}`);
+                }}
+              />
+              <input
+                class="input mono bg-hex"
+                value={hex}
+                maxLength={7}
+                spellcheck={false}
+                aria-label="Background colour as hex"
+                aria-invalid={!isHexColor(hex)}
+                onInput={(e) => {
+                  const v = (e.target as HTMLInputElement).value.trim().toLowerCase();
+                  setHex(v);
+                  if (isHexColor(v)) onChange({ bg: "custom", bgColor: v }, `bg:${card.key}`);
+                }}
+              />
+            </span>
+          )}
+        </div>
+        {BG_ROWS.map((row, i) => (
+          <div key={i} class="bg-row">
+            {row.map((b) => tile(b))}
+          </div>
+        ))}
+      </div>
+      <span class="field-hint">{card.bg === "custom" ? "Text turns light or dark to stay readable on your colour." : "Every option works in the light and the dark theme. Patterns and the glow take the accent colour."}</span>
+    </div>
+  );
+}
+
+const reasonText = (d: DroppedDecl) => `${REASON_TEXT[d.reason]}${d.detail && d.reason !== "unsupported" ? ` (${d.detail})` : ""}`;
+
+/**
+ * Custom CSS of a card, folded away by default: declarations only, checked as you type with the same sanitiser the card
+ * uses when it renders (lib/cardstyle.ts). Only what survives is saved; what was dropped is listed with the reason.
+ */
+function CustomCss({ card, onChange }: { card: ResolvedCard; onChange: (css: string | undefined) => void }) {
+  const [text, setText] = useState(card.css ?? "");
+  const checked = useMemo(() => sanitizeCardCss(text, browserCssEnv()), [text]);
+  // undo/redo and reset change the CSS from outside: show what the card has then
+  useEffect(() => {
+    if ((serializeCss(checked.decls) || undefined) !== card.css) setText(card.css ?? "");
+  }, [card.css]);
+  const kept = sanitizedCss(card.css).decls.length;
+  const dropped = [...checked.dropped, ...(cardStyleNotes.value[card.key] ?? [])];
+  return (
+    <details class="ed-css">
+      <summary>
+        Custom CSS{kept > 0 && <span class="ed-css-count">{kept} applied</span>}
+      </summary>
+      <div class="ed-css-body">
+        <textarea
+          class="input mono ed-css-input"
+          rows={6}
+          maxLength={MAX_CARD_CSS}
+          spellcheck={false}
+          autocomplete="off"
+          autocapitalize="off"
+          aria-label="Custom CSS of this card"
+          aria-describedby={`css-hint-${card.key}`}
+          placeholder={"border-radius: 14px;\nbackground: linear-gradient(160deg, var(--panel-3), var(--panel));\nfont-family: silkscreen;"}
+          value={text}
+          onInput={(e) => {
+            const v = (e.target as HTMLTextAreaElement).value;
+            setText(v);
+            onChange(serializeCss(sanitizeCardCss(v, browserCssEnv()).decls) || undefined);
+          }}
+        />
+        <span class="field-hint" id={`css-hint-${card.key}`}>
+          Declarations only (<code>property: value;</code>) for this card's background, border, corners, shadow and text. {text.length}/{MAX_CARD_CSS} ·{" "}
+          <DocsLink to="/docs/dashboard#card-css">What is allowed</DocsLink>
+        </span>
+        {dropped.length > 0 && (
+          <ul class="ed-css-dropped" aria-live="polite">
+            {dropped.map((d, i) => (
+              <li key={i}>
+                <code>{d.text}</code> <span>{reasonText(d)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+}
 
 const SETTINGS_ERRORS: Record<string, string> = {
   unknown_method: "This block does not offer one of the picked methods any more.",
@@ -424,6 +576,8 @@ export function CardSettings({
         <span class="field-label">Icon</span>
         <IconPicker value={card.icon} onChange={(i) => onChange(updateCard(pages, k, { icon: i }))} />
       </div>
+      <BackgroundPicker card={card} onChange={(patch, key) => onChange(updateCard(pages, k, patch), key)} />
+      <CustomCss card={card} onChange={(css) => onChange(updateCard(pages, k, { css }), `css:${k}`)} />
       <label class="field">
         <span class="field-label">Page</span>
         <select

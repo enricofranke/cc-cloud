@@ -7,7 +7,11 @@
 }
 
 :root,
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+/* a card with its own background colour takes the text of the theme that suits it (CardSkin.tsx), and a dialog opened
+   inside it keeps the page's theme */
+.card[data-tone="dark"],
+:root:not([data-theme="light"]) .card[data-tone="light"] .backdrop {
   color-scheme: dark;
   --bg: #0d1014;
   --dot: rgba(255, 255, 255, 0.035);
@@ -43,7 +47,8 @@
   --on-color: #0d1014;
 }
 
-:root[data-theme="light"]
+/* also in a card with light text tokens of its own (card design), whatever the page's theme */
+:is(:root[data-theme="light"], .card[data-tone="light"])
   :is(.screen, .net-canvas, .search-bar, .wcell.t-gauge > .wcontent, .wcell.d-number > .wcontent, .wcell.d-big > .wcontent, .wcell.d-lamp > .wcontent, .hist-chart, .term-screen, .code, .codeblock, .src-code, .ex-code) {
   /* dark "screen" tiles keep the bright state colours (the light theme darkens them for text on light panels) */
   --cyan: #1f97ba;
@@ -53,7 +58,9 @@
   --orange: #c56f17;
   --faint: #7f8a96;
 }
-:root[data-theme="light"] {
+:root[data-theme="light"],
+.card[data-tone="light"],
+:root[data-theme="light"] .card[data-tone="dark"] .backdrop {
   color-scheme: light;
   --bg: #eceff3;
   --dot: rgba(20, 30, 40, 0.06);
@@ -723,6 +730,133 @@ pre {
 /* big pages: a card far off screen keeps its grid box and renders its widgets when it comes near (Card.tsx) */
 .card-lazy {
   min-height: 48px;
+}
+
+/* ---- card design (CardSkin.tsx, lib/cardstyle.ts)
+   A designed card paints on a skin behind its content. The clip box sits on the card's border edge and clips everything
+   the skin paints (shadows, filters, huge backgrounds), so a style can never cover another card or the dashboard's own
+   UI, and it never takes the pointer. The content stays above it: positioned, but without a stacking context, so the
+   dialogs a widget opens still cover the whole page. */
+.card.has-skin {
+  background: transparent;
+  border-color: transparent;
+}
+.card-skin-clip {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  overflow: hidden;
+  overflow: clip;
+  contain: paint;
+  pointer-events: none;
+}
+.card-skin {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--line);
+  border-radius: inherit;
+  background: var(--panel);
+  pointer-events: none;
+}
+/* the veil that keeps text readable on a colour of your own */
+.card-skin::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--skin-scrim, transparent);
+}
+/* the accent edge moves into the clip box, so it follows rounded corners */
+.card.has-skin::before {
+  display: none;
+}
+.card-skin-clip::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent, var(--gold)) 0 40%, transparent);
+  opacity: 0.85;
+}
+.card-offline > .card-skin-clip::after {
+  background: var(--red);
+  opacity: 0.6;
+}
+.card.has-skin > :is(.card-head, .card-body, .card-empty, .card-cached-note, .card-blocked) {
+  position: relative;
+}
+.card.has-skin > .card-head {
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+}
+.card.has-skin .wcell.t-label.d-row > .wcontent,
+.card.has-skin .wcell.t-label.d-auto > .wcontent {
+  background: color-mix(in srgb, var(--panel-2) 70%, transparent);
+}
+.card[data-tone] {
+  color: var(--text);
+}
+/* the card's own CSS styles its text, not the status tags or a dialog a widget opens inside the card */
+.card .tag {
+  letter-spacing: normal;
+}
+.card .backdrop {
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}
+/* background options: theme tokens only, so each one works in the light and the dark theme */
+:is(.card-skin, .bg-swatch).bg-tint-gold { background: color-mix(in srgb, var(--gold) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-cyan { background: color-mix(in srgb, var(--cyan) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-green { background: color-mix(in srgb, var(--green) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-yellow { background: color-mix(in srgb, var(--yellow) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-red { background: color-mix(in srgb, var(--red) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-purple { background: color-mix(in srgb, var(--purple) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-orange { background: color-mix(in srgb, var(--orange) 14%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-tint-gray { background: color-mix(in srgb, var(--gray) 16%, var(--panel)); }
+:is(.card-skin, .bg-swatch).bg-grad-accent {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent, var(--gold)) 24%, var(--panel)) 0%, var(--panel) 70%);
+}
+:is(.card-skin, .bg-swatch).bg-grad-aurora {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--cyan) 20%, var(--panel)), color-mix(in srgb, var(--purple) 22%, var(--panel)));
+}
+:is(.card-skin, .bg-swatch).bg-grad-ember {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 22%, var(--panel)), color-mix(in srgb, var(--red) 16%, var(--panel)));
+}
+:is(.card-skin, .bg-swatch).bg-grad-lagoon {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--green) 18%, var(--panel)), color-mix(in srgb, var(--cyan) 22%, var(--panel)));
+}
+:is(.card-skin, .bg-swatch).bg-pat-grid {
+  --pat: color-mix(in srgb, var(--accent, var(--gold)) 16%, transparent);
+  background:
+    linear-gradient(var(--pat) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, var(--pat) 1px, transparent 1px) 0 0 / 16px 16px,
+    var(--panel);
+}
+:is(.card-skin, .bg-swatch).bg-pat-stripes {
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent, var(--gold)) 11%, transparent) 0 6px, transparent 6px 14px), var(--panel);
+}
+:is(.card-skin, .bg-swatch).bg-pat-dots {
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent, var(--gold)) 32%, transparent) 1.3px, transparent 1.8px) 0 0 / 14px 14px, var(--panel);
+}
+/* traces that turn a corner, with a pad and a via at their ends */
+:is(.card-skin, .bg-swatch).bg-pat-circuit {
+  --pat: color-mix(in srgb, var(--accent, var(--gold)) 18%, transparent);
+  --pad: color-mix(in srgb, var(--accent, var(--gold)) 28%, transparent);
+  background:
+    radial-gradient(circle at 12px 23.25px, var(--pad) 0 2.6px, transparent 3.1px) 0 24px / 48px 48px,
+    radial-gradient(circle at 23.25px 24px, transparent 0 2px, var(--pad) 2px 3.3px, transparent 3.8px) 24px 0 / 48px 48px,
+    conic-gradient(from 90deg at 12px 46.5px, var(--pat) 0 90deg, transparent 0) 0 0 / 48px 48px,
+    conic-gradient(from 90deg at 46.5px 24px, var(--pat) 0 90deg, transparent 0) 0 0 / 48px 48px,
+    var(--panel);
+}
+:is(.card-skin, .bg-swatch).bg-custom {
+  background: var(--skin-c, var(--panel));
 }
 .led {
   width: 8px;
@@ -2804,7 +2938,7 @@ pre {
   margin-inline-end: 0.45em;
   color: var(--wa, var(--accent, var(--gold)));
 }
-:root[data-theme="light"] :is(.wcell.t-gauge, .wcell.d-number, .wcell.d-big, .wcell.d-lamp) > .wcontent .w-icon {
+:is(:root[data-theme="light"], .card[data-tone="light"]) :is(.wcell.t-gauge, .wcell.d-number, .wcell.d-big, .wcell.d-lamp) > .wcontent .w-icon {
   /* the light theme's darker accents on a dark screen tile */
   color: color-mix(in srgb, var(--wa, var(--accent, var(--gold))) 55%, #e7ecf1);
 }
@@ -6617,6 +6751,148 @@ fieldset.field {
 }
 .swatch.sw-none {
   background: repeating-linear-gradient(135deg, var(--panel-3) 0 6px, var(--panel) 6px 12px);
+}
+/* card background picker (Panels.tsx) */
+.bg-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bg-row {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+.bg-swatch {
+  aspect-ratio: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+}
+.bg-swatch.bg-none {
+  background: linear-gradient(135deg, transparent 0 calc(50% - 1px), var(--line-2) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)), var(--panel);
+}
+.bg-swatch.bg-custom:not(.has-color) {
+  background: conic-gradient(var(--red), var(--yellow), var(--green), var(--cyan), var(--purple), var(--red));
+}
+/* the swatches show the patterns at half size and a little stronger, so a whole motif fits */
+.bg-swatch:is(.bg-pat-grid, .bg-pat-dots, .bg-pat-circuit) {
+  --pat: color-mix(in srgb, var(--accent, var(--gold)) 42%, transparent);
+  --pad: color-mix(in srgb, var(--accent, var(--gold)) 60%, transparent);
+}
+.bg-swatch.bg-pat-grid {
+  background-size: 8px 8px, 8px 8px;
+}
+.bg-swatch.bg-pat-dots {
+  background: radial-gradient(circle, var(--pad) 1.1px, transparent 1.5px) 0 0 / 8px 8px, var(--panel);
+}
+.bg-swatch.bg-pat-circuit {
+  background:
+    radial-gradient(circle at 6px 11.6px, var(--pad) 0 1.6px, transparent 2px) 0 12px / 24px 24px,
+    radial-gradient(circle at 11.6px 12px, transparent 0 1.1px, var(--pad) 1.1px 2px, transparent 2.4px) 12px 0 / 24px 24px,
+    conic-gradient(from 90deg at 6px 23px, var(--pat) 0 90deg, transparent 0) 0 0 / 24px 24px,
+    conic-gradient(from 90deg at 23px 12px, var(--pat) 0 90deg, transparent 0) 0 0 / 24px 24px,
+    var(--panel);
+}
+.bg-swatch.on {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.bg-own {
+  grid-column: 3 / -1;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+.bg-color {
+  flex: none;
+  width: 40px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  background: var(--panel);
+}
+.input.bg-hex {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  font-size: 14px;
+}
+/* custom CSS of a card: folded away, monospace, with what was dropped and why */
+.ed-css {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+}
+.ed-css summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  cursor: pointer;
+  list-style: none;
+  font-family: "Silkscreen", monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ed-css summary::-webkit-details-marker {
+  display: none;
+}
+.ed-css summary::before {
+  content: "▸";
+  color: var(--cyan);
+}
+.ed-css[open] summary::before {
+  content: "▾";
+}
+.ed-css-count {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cyan) 16%, transparent);
+  color: var(--text);
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ed-css-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+.input.ed-css-input {
+  min-height: 120px;
+  padding: 8px 10px;
+  font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  resize: vertical;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+}
+.ed-css-dropped {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  border-left: 2px solid var(--yellow);
+  border-radius: 0 4px 4px 0;
+  background: color-mix(in srgb, var(--yellow) 8%, var(--panel));
+  font-size: 12px;
+  color: var(--muted);
+}
+.ed-css-dropped code {
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
 /* grid guides while editing */
 .pgrid.editing:not(.narrow) {

@@ -10,6 +10,7 @@ import { ActionButton, Gauge, LabelRow, Slider, Toggle, WIcon } from "./Widgets.
 import { ItemSearch, Jobs, Watchlist } from "./Storage.tsx";
 import { ButtonGroup, Chart, Indicator, NumberInput, Progress, Select, TextInput } from "./Widgets2.tsx";
 import { PixelIcon } from "./PixelIcon.tsx";
+import { useCardSkin } from "./CardSkin.tsx";
 import { RedstoneSides } from "./Redstone.tsx";
 import { SensorLog } from "./Sensor.tsx";
 import { powerButtonState } from "../lib/redstone.ts";
@@ -255,10 +256,11 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
   const [term, setTerm] = useState(false);
   const [program, setProgram] = useState(false);
   const shown = card.widgets.filter((w) => !w.hidden);
+  const skin = useCardSkin(card, ref);
   return (
     <article
       ref={ref}
-      class={`card accent-${card.color} style-${card.style} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.focused ? "is-focus" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
+      class={`card accent-${card.color} style-${card.style} ${skin.on ? "has-skin" : ""} ${cached ? "card-cached" : online ? "" : "card-offline"} ${edit ? "card-editing" : ""} ${edit?.cardSelected ? "is-selected" : ""} ${edit?.focused ? "is-focus" : ""} ${edit?.dragging.has(card.key) ? "is-dragging" : ""}`}
       aria-label={card.title}
       data-card={card.key}
       style={placeVars(card.box)}
@@ -266,6 +268,11 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
       onKeyDown={edit ? (e) => e.target === e.currentTarget && edit.onKeyDown(e, "card", card.key) : undefined}
       onClick={edit ? (e) => e.target === e.currentTarget && edit.onCardClick(card) : undefined}
     >
+      {skin.on && (
+        <div class="card-skin-clip" aria-hidden="true">
+          <div ref={skin.ref} class={`card-skin ${card.bg ? `bg-${card.bg}` : ""}`} />
+        </div>
+      )}
       <header class="card-head" onPointerDown={edit ? (e) => edit.onCardPointerDown(e, card) : undefined}>
         {edit && (
           <span class="grip" aria-hidden="true">

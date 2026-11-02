@@ -2,6 +2,7 @@
 // mock server to validate what the dashboard sends. The real server is the
 // Java mod; this file documents the expected shapes for it too.
 import { z } from "zod";
+import { CARD_BACKGROUNDS, MAX_CARD_CSS, serverCssProblem } from "../web/src/lib/cardstyle.ts";
 
 const widgetId = z.string().regex(/^[a-z0-9_]{1,32}$/);
 const entityId = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
@@ -83,6 +84,10 @@ const layoutV2 = z.strictObject({
         color: z.enum(ACCENTS).optional(),
         icon: z.enum(ICONS).optional(),
         style: z.enum(["comfortable", "compact"]).optional(),
+        // card design (web/src/lib/cardstyle.ts), checked like LayoutValidator.java does
+        bg: z.enum(CARD_BACKGROUNDS).optional(),
+        bgColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+        css: z.string().max(MAX_CARD_CSS).refine((css) => serverCssProblem(css) === null, "card css refused").optional(),
       })
       .refine((c) => c.x === undefined || c.w === undefined || c.x + c.w <= 12, "card wider than the grid"),
   ).refine((c) => Object.keys(c).length <= MAX_LAYOUT_CARDS, "too many cards"),

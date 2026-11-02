@@ -39,7 +39,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 - **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
 - **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
 - **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
-- **Einstellungen** (✎ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent und den Stil kompakt oder komfortabel; eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
+- **Einstellungen** (✎ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent, den Stil kompakt oder komfortabel und ein [Design](#card-design) (Hintergrund, eigenes CSS); eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
 - **Toolbox:** öffnet sich an der Seite (auf Handys als Sheet; Taste **A**). **Cards** enthält eine leere Karte und fertige Vorlagen, **Widgets** jeden Widget-Typ: eines auf eine Karte oder freie Fläche ziehen und dann seine Daten wählen. **Hidden** listet alles Ausgeblendete.
 - **Ausblenden** mit × oder per Ziehen auf die Toolbox. Zurück holst du es mit einem Klick unter **Hidden** oder per Herausziehen.
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
@@ -48,6 +48,42 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 **Vorlagen** in **+ Add** legt eine fertige Seite auf dein Dashboard – siehe [Dashboard-Vorlagen](presets.md).
 
 **Save** speichert das Layout auf dem Server – alle Browser sehen es. Startet ein Skript neu, bleibt das Layout erhalten, weil die Widget-IDs gleich bleiben. Auf schmalen Bildschirmen stehen die Karten in Lesereihenfolge untereinander (auf Handys zweispaltig).
+
+## Kartendesign
+
+In den Einstellungen einer Karte wählst du einen **Hintergrund** und, wenn du magst, ein paar Zeilen **eigenes CSS**. Beides wird mit dem Layout gespeichert, reist in Teilen-Codes und Vorlagen mit und funktioniert im hellen und im dunklen Theme.
+
+- **Hintergrund:** Standard, eine **Tönung** in einer der acht Akzentfarben, vier **Verläufe** (Accent, Aurora, Ember, Lagoon), vier **Muster** (Grid, Stripes, Dots, Circuit) oder **Custom** mit deiner eigenen Farbe. Tönungen, Verläufe und Muster folgen dem Theme und dem Akzent der Karte. Bei einer eigenen Farbe wählt die Karte selbst helle oder dunkle Schrift und legt, wo nötig, einen leichten Schleier über die Farbe, damit die Schrift lesbar bleibt.
+- **Icons:** das Icon eines Widgets (in seinen Einstellungen) steht vor seiner Beschriftung – bei Zeilen, großen Zahlen, Gauges, Charts, Schaltern, Slidern und Eingabefeldern –, genau wie das Icon einer Karte in der Kopfzeile. Widgets ohne Beschriftung, etwa die Artikelsuche, haben keine Icon-Einstellung.
+
+### Eigenes CSS
+
+**Custom CSS** (zuerst eingeklappt) nimmt Deklarationen, eine pro Zeile, `eigenschaft: wert;`:
+
+```css
+background: linear-gradient(135deg, #1e3a5f, var(--panel));
+border: 2px solid var(--accent);
+border-radius: 12px;
+letter-spacing: 0.04em;
+```
+
+Nur Deklarationen – keine Selektoren, keine `{ }`-Blöcke, keine `@`-Regeln. Unter dem Feld listet der Editor jede verworfene Deklaration mit Grund. Das kannst du nutzen:
+
+| Was | Eigenschaften |
+|---|---|
+| Hintergrund | background, background-color, -image, -size, -position, -repeat, -blend-mode |
+| Rahmen | border (auch -top, -right, -bottom, -left, -width bis 8 px, -color, -style), border-radius bis 32 px, box-shadow (nur inset) |
+| Fläche | opacity, filter (blur, brightness, contrast, grayscale, hue-rotate, saturate, sepia; sanfte Werte) |
+| Schrift | color, font-family (silkscreen, monospace, sans-serif, serif, system-ui), font-weight, font-style, letter-spacing, text-transform, ein kleiner text-shadow |
+
+Werte dürfen Farben sein (`#hex`, `rgb()`, `hsl()`, `oklch()`, `color-mix()` …), Verläufe und die Theme-Tokens des Dashboards mit `var()`, z. B. `var(--accent)`, `var(--panel)`, `var(--text)`, `var(--muted)`, `var(--line)` – so folgt die Karte dem Theme. Einheiten: px, em, rem, %, deg.
+
+**Warum so streng?** Ein Layout kann von jedem mit Bearbeitungsrecht stammen, aus einem Teilen-Code oder aus dem Store. Das Dashboard behandelt jede Zeile als nicht vertrauenswürdig und prüft sie bei jedem Zeichnen der Karte neu:
+
+- **Nichts lädt oder läuft:** kein `url()`, `image-set()`, `attr()`, `expression` oder `javascript:`, keine Kommentare, Backslash-Escapes, Anführungszeichen oder `!important`, nur einfaches ASCII. Eine Karte kann nichts nachladen und nicht erfahren, wer sie ansieht.
+- **Nichts verlässt die Karte:** kein `position`, `top`/`left`/`inset`, `z-index`, `transform`, `margin`, `width`/`height`, `content`, `pointer-events`, `cursor` und keine äußeren Schatten, und Zahlen haben Grenzen. Der Hintergrund liegt auf einer eigenen Ebene, auf die Karte zugeschnitten und nie einem Klick im Weg – eine Karte kann also keine anderen Karten, die PIN-Abfrage oder den Login verdecken.
+- **Schrift bleibt lesbar:** eine Schriftfarbe zu nah am Hintergrund wird verworfen (und angezeigt).
+- Der Server prüft dieselben Regeln, bevor er ein Layout speichert.
 
 ## Meldungen
 

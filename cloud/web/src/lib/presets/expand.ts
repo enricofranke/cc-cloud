@@ -141,7 +141,15 @@ function buildCard(card: PresetCard, device: Uplink | undefined, filled: Map<str
   const placed = !device && card.x !== undefined && card.y !== undefined;
   return {
     key,
-    patch: { title: cap(title, PRESET_LIMITS.TITLE), ...(card.color && card.color !== "gold" ? { color: card.color } : {}), ...(card.icon ? { icon: card.icon } : {}), ...(card.style === "compact" ? { style: "compact" } : {}) },
+    patch: {
+      title: cap(title, PRESET_LIMITS.TITLE),
+      ...(card.color && card.color !== "gold" ? { color: card.color } : {}),
+      ...(card.icon ? { icon: card.icon } : {}),
+      ...(card.style === "compact" ? { style: "compact" } : {}),
+      ...(card.bg ? { bg: card.bg } : {}),
+      ...(card.bg === "custom" && card.bgColor ? { bgColor: card.bgColor } : {}),
+      ...(card.css ? { css: card.css } : {}),
+    },
     box: { id: key, x: placed ? card.x! : 0, y: placed ? card.y! : 0, w: card.w, h, placed },
     widgets,
   };

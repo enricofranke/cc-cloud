@@ -6,6 +6,7 @@
 // types reject the whole document, like LayoutValidator.java) and builds a new object from the keys it knows.
 import { ACCENTS, CARD_STYLES, COLS, DISPLAYS, ICON_NAMES, MAX_CARD_H, MAX_PAGES, MAX_WIDGET_H, MIN_CARD_W, type Accent, type CardStyle, type Display, type IconName } from "../layout.ts";
 import { WIDGET_TYPES, type WidgetType } from "../types.ts";
+import { CARD_BACKGROUNDS, HEX_COLOR, MAX_CARD_CSS, cleanCardCss, type CardBackground } from "../cardstyle.ts";
 import type { Lang } from "../lang.ts";
 
 /** The version of this format. A newer one is refused with a clear message instead of being half understood. */
@@ -93,6 +94,10 @@ export interface PresetCard {
   color?: Accent;
   icon?: IconName;
   style?: CardStyle;
+  /** card design (lib/cardstyle.ts): a background option, its colour for `custom`, sanitised custom CSS */
+  bg?: CardBackground;
+  bgColor?: string;
+  css?: string;
   /** one copy of this card per device of that slot */
   each?: string;
   widgets: PresetWidget[];
@@ -274,7 +279,7 @@ function parseWidget(raw: unknown, path: string, slots: Set<string>): PresetWidg
 
 function parseCard(raw: unknown, path: string, slots: Set<string>, budget: { widgets: number }): PresetCard {
   const o = object(raw, path);
-  only(o, path, ["x", "y", "w", "h", "title", "color", "icon", "style", "each", "widgets"]);
+  only(o, path, ["x", "y", "w", "h", "title", "color", "icon", "style", "bg", "bgColor", "css", "each", "widgets"]);
   const x = int(o, "x", path, 0, COLS - 1);
   const w = int(o, "w", path, MIN_CARD_W, COLS);
   if (w === undefined) fail(`${path}.w`);
@@ -283,6 +288,9 @@ function parseCard(raw: unknown, path: string, slots: Set<string>, budget: { wid
   const list = array(o.widgets, `${path}.widgets`, PRESET_LIMITS.WIDGETS);
   budget.widgets += list.length;
   if (budget.widgets > PRESET_LIMITS.WIDGETS) fail(`${path}.widgets`);
+  const bg = enumOf(o, "bg", path, CARD_BACKGROUNDS);
+  if (o.bgColor !== undefined && (typeof o.bgColor !== "string" || !HEX_COLOR.test(o.bgColor))) fail(`${path}.bgColor`);
+  if (o.css !== undefined && (typeof o.css !== "string" || o.css.length > MAX_CARD_CSS)) fail(`${path}.css`);
   return clean<PresetCard>({
     x,
     y: int(o, "y", path, 0, 999),
@@ -292,6 +300,10 @@ function parseCard(raw: unknown, path: string, slots: Set<string>, budget: { wid
     color: enumOf(o, "color", path, ACCENTS),
     icon: enumOf(o, "icon", path, ICON_NAMES),
     style: enumOf(o, "style", path, CARD_STYLES),
+    bg,
+    bgColor: bg === "custom" ? (o.bgColor as string | undefined)?.toLowerCase() : undefined,
+    // untrusted (a share code, a store preset): only sanitised declarations stay, and the card checks them again
+    css: cleanCardCss(o.css),
     each: o.each as string | undefined,
     widgets: list.map((w2, i) => parseWidget(w2, `${path}.widgets[${i}]`, slots)),
   });
