@@ -51,6 +51,9 @@ public final class LayoutValidator {
     private static final Pattern PAGE_ID = Pattern.compile("[A-Za-z0-9_-]{1,32}");
     private static final Pattern CUSTOM_CARD = Pattern.compile("c:[A-Za-z0-9_-]{1,24}");
     private static final Pattern VIEW = Pattern.compile("v:[A-Za-z0-9_-]{1,24}");
+    /** v2 card keys; {@code bg}, {@code bgColor} and {@code css} are the card's design ({@link CardStyle}). */
+    private static final Set<String> CARD_KEYS_V2 = Set.of("page", "x", "y", "w", "h", "title", "hidden", "color", "icon", "style",
+        "bg", "bgColor", "css");
 
     /** @param error {@code too_large} or {@code invalid_layout}; {@code detail} is the JSON path of the first problem. */
     public record Result(@Nullable JsonObject layout, @Nullable String error, @Nullable String detail) {
@@ -102,9 +105,10 @@ public final class LayoutValidator {
                     v1(card, path);
                 } else {
                     if (entry.getKey().startsWith(CUSTOM_PREFIX) && !CUSTOM_CARD.matcher(entry.getKey()).matches()) throw new Invalid(path);
-                    keys(card, path, Set.of("page", "x", "y", "w", "h", "title", "hidden", "color", "icon", "style"), false);
+                    keys(card, path, CARD_KEYS_V2, false);
                     box(card, path, MIN_CARD_W, MAX_CARD_H);
                     if (card.has("style") && !STYLES.contains(string(card.get("style"), path + ".style"))) throw new Invalid(path + ".style");
+                    design(card, path);
                 }
                 if (card.has("page") && string(card.get("page"), path + ".page").length() > 32) throw new Invalid(path + ".page");
                 common(card, path, "title", Limits.TITLE);
@@ -192,6 +196,13 @@ public final class LayoutValidator {
         Integer w = obj.has("w") ? integer(obj.get("w"), path + ".w", minW, COLS) : null;
         if (obj.has("h")) integer(obj.get("h"), path + ".h", 1, maxH);
         if (x != null && w != null && x + w > COLS) throw new Invalid(path + ".w");
+    }
+
+    /** v2 card design: a background option, a {@code #rrggbb} colour and custom CSS that passes {@link CardStyle#cssProblem}. */
+    private static void design(JsonObject card, String path) throws Invalid {
+        if (card.has("bg") && !CardStyle.BACKGROUNDS.contains(string(card.get("bg"), path + ".bg"))) throw new Invalid(path + ".bg");
+        if (card.has("bgColor") && !CardStyle.isHexColor(string(card.get("bgColor"), path + ".bgColor"))) throw new Invalid(path + ".bgColor");
+        if (card.has("css") && CardStyle.cssProblem(string(card.get("css"), path + ".css")) != null) throw new Invalid(path + ".css");
     }
 
     private static void common(JsonObject obj, String path, String textKey, int maxText) throws Invalid {
