@@ -212,6 +212,33 @@ class LayoutValidatorTest {
     }
 
     @Test
+    void keepsAndChecksTheCardParts() {
+        String parts = "{\"title\":\"color: var(--accent); font-size: 15px\",\"gauge_fill\":\"color: #5ef0c4; filter: drop-shadow(0 0 3px #5ef0c4)\"}";
+        var result = validate(v2Card("{\"x\":0,\"w\":4,\"parts\":" + parts + "}"));
+        assertTrue(result.ok(), String.valueOf(result.detail()));
+        var card = result.layout().getAsJsonObject("cards").getAsJsonObject(UPLINK);
+        assertEquals("color: var(--accent); font-size: 15px", card.getAsJsonObject("parts").get("title").getAsString());
+        assertTrue(validate(v2Card("{\"parts\":{}}")).ok());
+        for (String bad : new String[] {
+            "{\"parts\":\"color: red\"}",
+            "{\"parts\":[]}",
+            "{\"parts\":null}",
+            "{\"parts\":{\"title\":42}}",
+            "{\"parts\":{\"card\":\"color: red\"}}",
+            "{\"parts\":{\"title\":\"background: red\"}}",
+            "{\"parts\":{\"button\":\"background-image: url(https://x.test/a.png)\"}}",
+            "{\"parts\":{\"value\":\"color: red; } .pin { display: none\"}}",
+            "{\"parts\":{\"screen\":\"--cp-title-color: red\"}}",
+            "{\"parts\":{\"title\":\"" + "color: red;".repeat(50) + "\"}}",
+        }) {
+            var r = validate(v2Card(bad));
+            assertEquals("invalid_layout", r.error(), bad);
+            assertEquals("cards[" + UPLINK + "].parts", r.detail(), bad);
+        }
+        assertFalse(validate("{\"v\":1,\"pages\":[],\"cards\":{\"a\":{\"parts\":{}}},\"widgets\":{}}").ok(), "v1 has no parts");
+    }
+
+    @Test
     void aDesignedV2LayoutIsNotMigrated() {
         var layout = JsonParser.parseString(v2Card("{\"bg\":\"pat-grid\",\"css\":\"color: var(--text)\"}")).getAsJsonObject();
         assertTrue(LayoutValidator.validate(layout).ok());

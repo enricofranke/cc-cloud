@@ -1,7 +1,11 @@
 package ai.ezfox.cccloud.layout;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -13,6 +17,11 @@ import org.jspecify.annotations.Nullable;
  * sanitiser, whoever sends it. Same rules as {@code serverCssProblem} there; the shared fixture
  * src/test/resources/layout/card_style_fixture.json keeps both in step. Number ranges and what the browser supports are
  * left to the browser. Pure Java, unit tested.
+ *
+ * <p>Parts ({@link #PARTS}) are named pieces of a card (the title bar, the gauges' fill, the buttons …), each with its own
+ * declaration list and its own short property list, checked the same way ({@link #partProblem}). {@link #designProblem}
+ * checks a whole design, as a Lua script ({@code cloud_uplink.setStyle}) or a Cloud Script ({@code cloud.setStyle})
+ * sends it.
  */
 public final class CardStyle {
     /** Background options; {@code custom} uses the card's {@code bgColor}. */
@@ -40,6 +49,49 @@ public final class CardStyle {
         "--accent", "--bg", "--panel", "--panel-2", "--panel-3", "--screen", "--line", "--line-2", "--text", "--muted",
         "--faint", "--gold", "--gold-hi", "--gold-dk", "--gold-text", "--cyan", "--cyan-hi", "--cyan-dk", "--green",
         "--yellow", "--red", "--red-text", "--link", "--gray", "--purple", "--orange", "--on-color");
+
+    /** Parts of a card and the properties each may set, in the dashboard's order (PART_PROPERTIES in cardstyle.ts). */
+    public static final Map<String, Set<String>> PARTS = parts();
+    /** Longest CSS of one part, in characters. */
+    public static final int MAX_PART_CSS = 512;
+    /** Functions only a part may call (a glow); together with {@link #FUNCTIONS}. */
+    public static final Set<String> PART_FUNCTIONS = Set.of("drop-shadow");
+    private static final Set<String> ALL_FUNCTIONS = union(FUNCTIONS, PART_FUNCTIONS);
+    /** The keys of a design. */
+    public static final Set<String> DESIGN_KEYS = Set.of("bg", "bgColor", "css", "parts");
+
+    private static Map<String, Set<String>> parts() {
+        var fill = List.of("background", "background-color", "background-image");
+        var text = List.of("color", "font-family", "font-weight", "font-style", "letter-spacing", "text-transform", "text-shadow");
+        var map = new LinkedHashMap<String, Set<String>>();
+        map.put("title_bar", set(fill, List.of("border-bottom", "box-shadow")));
+        map.put("title", set(text, List.of("font-size")));
+        map.put("screen", set(fill, List.of("border", "border-color", "border-radius", "box-shadow")));
+        map.put("row", set(fill, List.of("border", "border-color", "border-radius", "box-shadow")));
+        map.put("label", set(text));
+        map.put("value", set(text));
+        map.put("gauge_track", set(List.of("color"), fill, List.of("border", "border-color", "border-radius", "box-shadow")));
+        map.put("gauge_fill", set(List.of("color"), fill, List.of("border-radius", "box-shadow", "filter")));
+        map.put("chart_line", set(List.of("color", "filter")));
+        map.put("button", set(List.of("background-color", "background-image", "color", "border", "border-color", "border-radius", "box-shadow",
+            "font-family", "font-weight", "letter-spacing", "text-transform", "text-shadow")));
+        map.put("toggle", set(fill, List.of("border", "border-color", "border-radius", "box-shadow")));
+        map.put("toggle_on", set(fill, List.of("border-color", "box-shadow")));
+        return java.util.Collections.unmodifiableMap(map);
+    }
+
+    @SafeVarargs
+    private static Set<String> set(List<String>... lists) {
+        var out = new java.util.LinkedHashSet<String>();
+        for (var list : lists) out.addAll(list);
+        return java.util.Collections.unmodifiableSet(out);
+    }
+
+    private static Set<String> union(Set<String> a, Set<String> b) {
+        var out = new java.util.HashSet<>(a);
+        out.addAll(b);
+        return Set.copyOf(out);
+    }
 
     private record Forbidden(Pattern pattern, String reason) {
     }
@@ -74,18 +126,86 @@ public final class CardStyle {
      * {@code property}), or null when it may be stored.
      */
     public static @Nullable String cssProblem(String css) {
-        if (css.length() > MAX_CSS) return "too_long";
+        return problem(css, PROPERTIES, FUNCTIONS, MAX_CSS);
+    }
+
+    /**
+     * The reason one part's CSS is refused: {@code part} for a part that does not exist, else the reasons of
+     * {@link #cssProblem} against that part's properties (and {@link #PART_FUNCTIONS}); null when it may be stored.
+     */
+    public static @Nullable String partProblem(String part, String css) {
+        var properties = PARTS.get(part);
+        if (properties == null) return "part";
+        return problem(css, properties, ALL_FUNCTIONS, MAX_PART_CSS);
+    }
+
+    /** The reason a card's {@code parts} are refused ({@code parts} when it is no object of strings), or null. */
+    public static @Nullable String partsProblem(JsonElement parts) {
+        if (!parts.isJsonObject()) return "parts";
+        for (var entry : parts.getAsJsonObject().entrySet()) {
+            var css = entry.getValue();
+            if (!css.isJsonPrimitive() || !css.getAsJsonPrimitive().isString()) return "parts";
+            String problem = partProblem(entry.getKey(), css.getAsString());
+            if (problem != null) return problem;
+        }
+        return null;
+    }
+
+    /**
+     * The problem of a whole design ({@code {bg, bgColor, css, parts}}, as scripts send it) as {@code "<key>: <reason>"}
+     * (e.g. {@code "parts.title: network"}), or null when it is fine.
+     */
+    public static @Nullable String designProblem(JsonObject design) {
+        for (var key : design.keySet()) if (!DESIGN_KEYS.contains(key)) return key + ": unknown";
+        if (design.has("bg") && !(isString(design.get("bg")) && BACKGROUNDS.contains(design.get("bg").getAsString()))) return "bg: background";
+        if (design.has("bgColor") && !(isString(design.get("bgColor")) && isHexColor(design.get("bgColor").getAsString()))) return "bgColor: colour";
+        if (design.has("css")) {
+            if (!isString(design.get("css"))) return "css: string";
+            String problem = cssProblem(design.get("css").getAsString());
+            if (problem != null) return "css: " + problem;
+        }
+        if (design.has("parts")) {
+            var parts = design.get("parts");
+            if (!parts.isJsonObject()) return "parts: object";
+            for (var entry : parts.getAsJsonObject().entrySet()) {
+                if (!isString(entry.getValue())) return "parts." + entry.getKey() + ": string";
+                String problem = partProblem(entry.getKey(), entry.getValue().getAsString());
+                if (problem != null) return "parts." + entry.getKey() + ": " + problem;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Replaces a layout card's design keys with those of {@code design} (null: removes them), the way the editor saves
+     * a design: as a whole. Returns whether anything changed.
+     */
+    public static boolean putDesign(JsonObject card, @Nullable JsonObject design) {
+        var before = card.deepCopy();
+        for (var key : DESIGN_KEYS) card.remove(key);
+        if (design != null) {
+            for (var key : DESIGN_KEYS) if (design.has(key)) card.add(key, design.get(key).deepCopy());
+        }
+        return !card.equals(before);
+    }
+
+    private static boolean isString(JsonElement e) {
+        return e.isJsonPrimitive() && e.getAsJsonPrimitive().isString();
+    }
+
+    private static @Nullable String problem(String css, Set<String> properties, Set<String> functions, int max) {
+        if (css.length() > max) return "too_long";
         for (var f : FORBIDDEN) if (f.pattern().matcher(css).find()) return f.reason();
         if (!CHARS.matcher(css).matches()) return "chars";
         String lower = css.toLowerCase(Locale.ROOT);
-        var functions = FUNCTION.matcher(lower);
-        while (functions.find()) if (!FUNCTIONS.contains(functions.group(1))) return "function";
+        var calls = FUNCTION.matcher(lower);
+        while (calls.find()) if (!functions.contains(calls.group(1))) return "function";
         var tokens = TOKEN.matcher(lower);
         while (tokens.find()) if (!TOKENS.contains(tokens.group())) return "token";
         for (String decl : lower.split(";", -1)) {
             if (decl.isBlank()) continue;
             var m = DECLARATION.matcher(decl);
-            if (!m.lookingAt() || !PROPERTIES.contains(m.group(1)) || decl.indexOf(':') != decl.lastIndexOf(':')) return "property";
+            if (!m.lookingAt() || !properties.contains(m.group(1)) || decl.indexOf(':') != decl.lastIndexOf(':')) return "property";
         }
         return null;
     }

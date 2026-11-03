@@ -75,6 +75,11 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
     /** Lua API v2: cloud.page() / cloud.group() declarations. */
     private final LinkedHashMap<String, JsonObject> pages = new LinkedHashMap<>();
     private final LinkedHashMap<String, JsonObject> groups = new LinkedHashMap<>();
+    /**
+     * The section's card design from Lua ({@code setStyle}, checked by CardStyle.designProblem), or null. Like the
+     * title it belongs to the Lua section: it goes when the automatic card, a template or a device card takes over.
+     */
+    private @Nullable JsonObject style;
     /** Direct mode: attached to a Cloud Bridge, the section is the ready-made Storage template. */
     private boolean template;
     private String templateKind = "";
@@ -279,6 +284,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             }
             readDeclarations(input.getStringOr("pages", "[]"), pages);
             readDeclarations(input.getStringOr("groups", "[]"), groups);
+            style = readStyle(input.getStringOr("style", ""));
             widgets.clear();
             try {
                 var array = JsonParser.parseString(input.getStringOr("widgets", "[]")).getAsJsonArray();
@@ -325,9 +331,21 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             }
             output.putString("pages", Json.GSON.toJson(declarations(pages)));
             output.putString("groups", Json.GSON.toJson(declarations(groups)));
+            if (style != null) output.putString("style", Json.GSON.toJson(style));
             var array = new JsonArray();
             for (var widget : widgets.values()) array.add(widget.toSaveJson());
             output.putString("widgets", Json.GSON.toJson(array));
+        }
+    }
+
+    /** A saved style, checked again (saved data can be edited): null when it is missing or not a valid design. */
+    private static @Nullable JsonObject readStyle(String json) {
+        if (json.isEmpty()) return null;
+        try {
+            var obj = JsonParser.parseString(json).getAsJsonObject();
+            return ai.ezfox.cccloud.layout.CardStyle.designProblem(obj) == null ? obj : null;
+        } catch (RuntimeException e) {
+            return null;
         }
     }
 
@@ -670,6 +688,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         deviceKind = "";
         templateKind = kind;
         title = StorageTemplate.title(kind);
+        style = null;
         widgets.clear();
         pages.clear();
         groups.clear();
@@ -682,6 +701,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         template = false;
         templateKind = "";
         title = "";
+        style = null;
         widgets.clear();
         structureDirty = chartsDirty = true;
         setChanged();
@@ -938,6 +958,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             deviceCard = null;
             deviceKind = "";
             title = "";
+            style = null;
             widgets.clear();
         } else {
             if (deviceCard != card && cardSettings != null && cardSettingsFor.equals(readBlockId())) {
@@ -955,6 +976,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             deviceRevision = ai.ezfox.cccloud.compat.card.DeviceCards.revision(card);
             String t = ai.ezfox.cccloud.compat.card.DeviceCards.title(card);
             title = t.length() > Limits.TITLE ? t.substring(0, Limits.TITLE) : t;
+            style = null;
             widgets.clear();
             pages.clear();
             groups.clear();
@@ -1032,6 +1054,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         widgets.clear();
         groups.clear();
         title = "";
+        style = null;
         structureDirty = chartsDirty = true;
         setChanged();
     }
@@ -1067,6 +1090,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             deviceKind = "";
             widgets.clear();
             title = "";
+            style = null;
             structureDirty = chartsDirty = true;
         }
         if (auto) {
@@ -1075,6 +1099,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
             pages.clear();
             groups.clear();
             title = "";
+            style = null;
             structureDirty = chartsDirty = true;
         }
         return true;
@@ -1330,6 +1355,7 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (block != null) json.add("blocked", ai.ezfox.cccloud.claims.ClaimGuard.json(block));
         if (!pages.isEmpty()) json.add("pages", declarations(pages));
         if (!groups.isEmpty()) json.add("groups", declarations(groups));
+        if (style != null && block == null && !template && deviceKind.isEmpty() && !auto) json.add("style", style.deepCopy());
         json.addProperty("mode", template || !deviceKind.isEmpty() ? "direct" : auto ? "auto" : "lua");
         if (template) {
             json.addProperty("template", "storage");
@@ -1411,6 +1437,17 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
         if (this.title.equals(title)) return;
         this.title = title;
         structureDirty = chartsDirty = true;
+    }
+
+    /** The section's card design (null: none), already checked by CardStyle.designProblem. */
+    public synchronized void setStyle(@Nullable JsonObject style) {
+        if (java.util.Objects.equals(this.style, style)) return;
+        this.style = style;
+        structureDirty = chartsDirty = true;
+    }
+
+    public synchronized @Nullable JsonObject getStyle() {
+        return style == null ? null : style.deepCopy();
     }
 
     @Override

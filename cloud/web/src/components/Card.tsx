@@ -256,7 +256,7 @@ export function Card({ card: full, conn, locked, viewOnly, children, edit, lazy,
   const [term, setTerm] = useState(false);
   const [program, setProgram] = useState(false);
   const shown = card.widgets.filter((w) => !w.hidden);
-  const skin = useCardSkin(card, ref);
+  const skin = useCardSkin(card, ref, near ? shown.length : -1);
   return (
     <article
       ref={ref}

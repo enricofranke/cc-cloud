@@ -31,6 +31,7 @@ dash:run()
 |---|---|
 | `ui.connect([uplink])` | finds the uplink (or takes a name / wrapped peripheral), returns `dash` |
 | `dash:title(text)` | card title |
+| `dash:style(design)` | the card's [design](dashboard.md): `{bg=, bgColor=, css=, parts={...}}`, nil removes it |
 | `dash:page(id, title, opts)`, `dash:group(id, title, opts)` | layout |
 | `dash:canvas(id, label, opts, handler)` | a surface to draw on: [canvas](lua.md) |
 | `ui.mainframe()`, `ui.readCards(mainframe)` | the mainframe peripheral, and the [values of the other cards](lua.md) by title and widget id |

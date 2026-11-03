@@ -160,6 +160,41 @@ class WidgetFactoryV2Test {
     }
 
     @Test
+    void cardStylesFromLua() throws Exception {
+        var style = WidgetFactory.style(Map.of("bg", "custom", "bgColor", "#0b1a2a", "css", "border-radius: 12px;",
+            "parts", Map.of("title", "color: #5ef0c4;", "gauge_fill", "color: #5ef0c4; filter: drop-shadow(0 0 3px #5ef0c4);")));
+        assertEquals("custom", style.get("bg").getAsString());
+        assertEquals("color: #5ef0c4;", style.getAsJsonObject("parts").get("title").getAsString());
+        assertEquals("{}", WidgetFactory.style(Map.of()).toString());
+        for (Map<?, ?> bad : new Map<?, ?>[] {
+            Map.of("colour", "red"),
+            Map.of(1.0, "x"),
+            Map.of("bg", "neon"),
+            Map.of("bg", 1.0),
+            Map.of("css", "background: url(https://x.test/a.png)"),
+            Map.of("css", "color: red; } body { display: none"),
+            Map.of("css", Map.of("color", "red")),
+            Map.of("parts", "color: red"),
+            Map.of("parts", Map.of("title", 1.0)),
+            Map.of("parts", Map.of(1.0, "color: red")),
+            Map.of("parts", Map.of("body", "color: red")),
+            Map.of("parts", Map.of("title", "background: red")),
+            Map.of("parts", Map.of("button", "background-image: url(x)")),
+            Map.of("parts", Map.of("screen", "--cp-title-color: red")),
+            Map.of("parts", Map.of("value", "color: attr(data-x)")),
+        }) {
+            assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.style(bad), bad.toString());
+        }
+        var e = assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.style(Map.of("parts", Map.of("title", "background: red"))));
+        assertTrue(e.getMessage().contains("parts.title: property"), e.getMessage());
+        // a group may carry its own design
+        var group = WidgetFactory.group("fuel", "Fuel", Map.of("style", Map.of("parts", Map.of("gauge_fill", "color: var(--green)"))));
+        assertEquals("color: var(--green)", group.getAsJsonObject("style").getAsJsonObject("parts").get("gauge_fill").getAsString());
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("style", "color: red")));
+        assertThrows(WidgetFactory.WidgetException.class, () -> WidgetFactory.group("g", "G", Map.of("style", Map.of("css", "position: fixed"))));
+    }
+
+    @Test
     void maximalOptionsFitIntoTheOptsLimit() {
         var big = new HashMap<Object, Object>();
         for (int i = 0; i < Limits.MAX_OPTIONS; i++) big.put((double) (i + 1), "x".repeat(Limits.OPTION - 2) + (10 + i));

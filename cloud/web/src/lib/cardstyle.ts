@@ -11,6 +11,12 @@
 // The server checks the same forbidden tokens, characters, properties, functions and theme tokens (CardStyle.java,
 // used by LayoutValidator.java; serverCssProblem() here is the same check), and the shared fixture
 // src/test/resources/layout/card_style_fixture.json keeps both in step. Pure functions only (no DOM), so the attack corpus runs in Vitest.
+//
+// Parts (CARD_PARTS) style named pieces of a card: the title bar, the gauges' fill, the buttons … Each part has its own
+// short whitelist and goes through the same checks. CardSkin.tsx sets the kept declarations as custom properties
+// (--cp-<part>-<property>) on the card element and lists them in its data-cp attribute; fixed rules in styles.css read
+// them for the elements of that part (never for a dialog a widget opens). Selectors stay ours: a part's CSS can only
+// say how its own elements look.
 
 /** Background options of a card. `custom` uses the card's `bgColor`. */
 export const CARD_BACKGROUNDS = [
@@ -112,8 +118,8 @@ export const CARD_FONTS: Record<string, string> = {
   "system-ui": "system-ui, sans-serif",
 };
 
-/** Where a property goes: the skin behind the content (clipped to the card) or the card element (text and corners). */
-export type CssLayer = "skin" | "card";
+/** Where a property goes: the skin behind the content (clipped to the card), the card element (text and corners) or a part. */
+export type CssLayer = "skin" | "card" | "part";
 
 type Limits = { px?: [number, number]; em?: [number, number]; pct?: [number, number]; num?: [number, number] };
 
@@ -149,7 +155,9 @@ export type Reason =
   | "keyword"
   | "shadow"
   | "unsupported"
-  | "contrast";
+  | "contrast"
+  | "glow"
+  | "part";
 
 export interface CssDecl {
   prop: string;
@@ -165,6 +173,8 @@ export interface DroppedDecl {
   reason: Reason;
   /** e.g. the property, function or token at fault */
   detail?: string;
+  /** dropped from this part's CSS (not the card's own) */
+  part?: CardPart;
 }
 export interface SanitizedCss {
   decls: CssDecl[];
@@ -321,13 +331,13 @@ function numbersProblem(value: string, limits?: Limits): Reason | null {
 }
 
 /** Functions and parentheses of a value: only whitelisted functions, balanced, not nested deeper than 4. */
-function functionsProblem(value: string): { reason: Reason; detail?: string } | null {
+function functionsProblem(value: string, functions: readonly string[] = CSS_FUNCTIONS): { reason: Reason; detail?: string } | null {
   let depth = 0;
   for (let i = 0; i < value.length; i++) {
     const c = value[i];
     if (c === "(") {
       const name = /[a-z-]*$/.exec(value.slice(0, i))![0];
-      if (!(CSS_FUNCTIONS as readonly string[]).includes(name)) return { reason: "function", detail: name ? `${name}()` : "(" };
+      if (!functions.includes(name)) return { reason: "function", detail: name ? `${name}()` : "(" };
       if (++depth > 4) return { reason: "function", detail: "nesting" };
     } else if (c === ")" && --depth < 0) return { reason: "syntax" };
   }
@@ -345,7 +355,16 @@ function tokensProblem(value: string): { reason: Reason; detail?: string } | nul
 
 const shorten = (s: string) => (s.length > 80 ? `${s.slice(0, 79)}…` : s);
 
-function checkDecl(raw: string, env: CssEnv): CssDecl | DroppedDecl {
+/** What a declaration list may contain: the card's own CSS or one part's. */
+interface Ruleset {
+  props: Record<string, PropRule>;
+  functions: readonly string[];
+  /** the layer every kept declaration goes to (else the property's own) */
+  layer?: CssLayer;
+}
+const CARD_RULES: Ruleset = { props: PROPS, functions: CSS_FUNCTIONS };
+
+function checkDecl(raw: string, env: CssEnv, rules: Ruleset = CARD_RULES): CssDecl | DroppedDecl {
   const text = shorten(raw.replace(/\s+/g, " ").trim());
   const fail = (reason: Reason, detail?: string): DroppedDecl => (detail ? { text, reason, detail } : { text, reason });
   if (!ASCII.test(raw)) return fail("unicode");
@@ -360,18 +379,19 @@ function checkDecl(raw: string, env: CssEnv): CssDecl | DroppedDecl {
   if (prop.startsWith("--")) return fail("property", prop);
   if (!PROP_NAME.test(prop) || !value) return fail("syntax");
   if (ESCAPES.has(prop) || ESCAPE_PREFIX.test(prop)) return fail("escape_card", prop);
-  const rule = Object.hasOwn(PROPS, prop) ? PROPS[prop] : undefined;
+  const rule = Object.hasOwn(rules.props, prop) ? rules.props[prop] : undefined;
   if (!rule) return fail("property", prop);
+  const layer = rules.layer ?? rule.layer;
   if (prop === "font-family") {
     const name = value.replace(/^(["'])([a-z -]+)\1$/, "$2").trim();
-    return Object.hasOwn(CARD_FONTS, name) ? { prop, value: name, apply: CARD_FONTS[name], layer: rule.layer } : fail("font", name);
+    return Object.hasOwn(CARD_FONTS, name) ? { prop, value: name, apply: CARD_FONTS[name], layer } : fail("font", name);
   }
   if (/["']/.test(value)) return fail("strings");
   // two declarations without the `;` between them
   if (value.includes(":")) return fail("syntax", "missing ;");
   if (!VALUE_CHARS.test(value)) return fail("chars");
   if (value.length > 400) return fail("too_long");
-  const fn = functionsProblem(value);
+  const fn = functionsProblem(value, rules.functions);
   if (fn) return fail(fn.reason, fn.detail);
   const tok = tokensProblem(value);
   if (tok) return fail(tok.reason, tok.detail);
@@ -383,7 +403,7 @@ function checkDecl(raw: string, env: CssEnv): CssDecl | DroppedDecl {
   const own = rule.check?.(value);
   if (own) return fail(own);
   if (!env.supports(prop, value)) return fail("unsupported");
-  return { prop, value, apply: value, layer: rule.layer };
+  return { prop, value, apply: value, layer };
 }
 
 /**
@@ -391,18 +411,22 @@ function checkDecl(raw: string, env: CssEnv): CssDecl | DroppedDecl {
  * longer than {@link MAX_CARD_CSS} is dropped whole: cutting it could change what it means.
  */
 export function sanitizeCardCss(input: unknown, env: CssEnv = browserCssEnv()): SanitizedCss {
+  return sanitize(input, env, CARD_RULES, MAX_CARD_CSS, MAX_DECLARATIONS);
+}
+
+function sanitize(input: unknown, env: CssEnv, rules: Ruleset, maxLength: number, maxDecls: number): SanitizedCss {
   const out: SanitizedCss = { decls: [], dropped: [] };
   if (typeof input !== "string" || !input.trim()) return out;
-  if (input.length > MAX_CARD_CSS) {
+  if (input.length > maxLength) {
     out.dropped.push({ text: `${input.length} characters`, reason: "too_long" });
     return out;
   }
   // without quotes, escapes and comments (all refused), a `;` can only end a declaration
   for (const raw of input.split(";")) {
     if (!raw.trim()) continue;
-    const r = checkDecl(raw, env);
+    const r = checkDecl(raw, env, rules);
     if ("prop" in r) {
-      if (out.decls.length >= MAX_DECLARATIONS) out.dropped.push({ text: shorten(raw.trim()), reason: "too_many" });
+      if (out.decls.length >= maxDecls) out.dropped.push({ text: shorten(raw.trim()), reason: "too_many" });
       else out.decls.push(r);
     } else out.dropped.push(r);
   }
@@ -424,19 +448,235 @@ export function cleanCardCss(input: unknown, env: CssEnv = STRUCTURAL_ENV): stri
  * whitelisted functions and theme tokens. Number ranges and CSS.supports stay with the browser.
  */
 export function serverCssProblem(css: string): string | null {
-  if (css.length > MAX_CARD_CSS) return "too_long";
+  return structuralProblem(css, CSS_PROPERTIES, CSS_FUNCTIONS, MAX_CARD_CSS);
+}
+
+function structuralProblem(css: string, properties: readonly string[], functions: readonly string[], maxLength: number): string | null {
+  if (css.length > maxLength) return "too_long";
   const bad = forbiddenIn(css);
   if (bad) return bad;
   if (!/^[A-Za-z0-9 \t\n\r#%.,()+\-/:;]*$/.test(css)) return "chars";
   const lower = css.toLowerCase();
-  for (const m of lower.matchAll(/([a-z-]*)\s*\(/g)) if (!(CSS_FUNCTIONS as readonly string[]).includes(m[1])) return "function";
+  for (const m of lower.matchAll(/([a-z-]*)\s*\(/g)) if (!functions.includes(m[1])) return "function";
   for (const m of lower.matchAll(/--[a-z0-9-]+/g)) if (!(THEME_TOKENS as readonly string[]).includes(m[0])) return "token";
   for (const decl of lower.split(";")) {
     if (!decl.trim()) continue;
     const m = /^\s*([a-z-]+)\s*:\s*\S/.exec(decl);
-    if (!m || !CSS_PROPERTIES.includes(m[1]) || decl.indexOf(":") !== decl.lastIndexOf(":")) return "property";
+    if (!m || !properties.includes(m[1]) || decl.indexOf(":") !== decl.lastIndexOf(":")) return "property";
   }
   return null;
+}
+
+// --------------------------------------------------------------------- parts
+/**
+ * Named parts of a card, each with its own declaration list (a card's `parts`). The order is the editor's. Warning and
+ * critical states keep the dashboard's colours: a part's colours apply to the normal zone only.
+ */
+export const CARD_PARTS = ["title_bar", "title", "screen", "row", "label", "value", "gauge_track", "gauge_fill", "chart_line", "button", "toggle", "toggle_on"] as const;
+export type CardPart = (typeof CARD_PARTS)[number];
+export type CardParts = Partial<Record<CardPart, string>>;
+export const isCardPart = (v: unknown): v is CardPart => typeof v === "string" && (CARD_PARTS as readonly string[]).includes(v);
+
+/** What each part is, in the editor's words. */
+export const PART_TEXT: Record<CardPart, { name: string; hint: string }> = {
+  title_bar: { name: "Title bar", hint: "The strip with the card's title." },
+  title: { name: "Title", hint: "The card's title text." },
+  screen: { name: "Screens", hint: "The dark tiles of gauges, numbers and lamps." },
+  row: { name: "Rows", hint: "The boxes of label rows and indicators." },
+  label: { name: "Labels", hint: "Every widget's caption." },
+  value: { name: "Values", hint: "The readings: numbers, texts, states. Warning colours stay." },
+  gauge_track: { name: "Gauge track", hint: "The unlit part of gauges and bars. Use color for the dial." },
+  gauge_fill: { name: "Gauge fill", hint: "The lit part of gauges and bars in the normal zone. Use color for the dial." },
+  chart_line: { name: "Chart line", hint: "The line of charts in the normal zone (color tints the area below)." },
+  button: { name: "Buttons", hint: "Every button widget. background-image lies over each button's own colour." },
+  toggle: { name: "Switch", hint: "The switches of toggles (background when off)." },
+  toggle_on: { name: "Switch on", hint: "A switch while it is on." },
+};
+
+/** Longest CSS of one part (characters), and most declarations kept. */
+export const MAX_PART_CSS = 512;
+export const MAX_PART_DECLARATIONS = 12;
+/** Functions only a part may call: a glow around a gauge's fill or a chart line. Nothing that loads or reads anything. */
+export const PART_FUNCTIONS = ["drop-shadow"] as const;
+const ALL_FUNCTIONS: readonly string[] = [...CSS_FUNCTIONS, ...PART_FUNCTIONS];
+
+/** How far an outer glow may reach, in px: the card body's padding is at least 8px, so it stays inside the card. */
+export const GLOW = { offset: 2, blur: 6, spread: 2, reach: 8 } as const;
+
+/** The text between parentheses blanked out: what a value says at its top level. */
+function topLevel(value: string): string {
+  let depth = 0;
+  let out = "";
+  for (const c of value) {
+    if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (depth === 0) out += c;
+    if (c === "(" && depth === 1) out += " ";
+  }
+  return out;
+}
+
+/** One outer shadow (box-shadow layer or drop-shadow()): lengths in px only and within {@link GLOW}. */
+function glowProblem(layer: string, spread: boolean): Reason | null {
+  const lens = [...topLevel(layer).matchAll(NUMBER)];
+  if (lens.length < 2 || lens.length > (spread ? 4 : 3)) return "glow";
+  const px: number[] = [];
+  for (const m of lens) {
+    const n = Number(m[1]);
+    if (m[2] || (m[3] !== "px" && !(m[3] === "" && n === 0))) return "glow";
+    px.push(n);
+  }
+  const [x, y, blur = 0, grow = 0] = px;
+  if (Math.abs(x) > GLOW.offset || Math.abs(y) > GLOW.offset || blur < 0 || blur > GLOW.blur || Math.abs(grow) > GLOW.spread) return "glow";
+  return Math.max(Math.abs(x), Math.abs(y)) + blur + Math.max(0, grow) > GLOW.reach ? "glow" : null;
+}
+
+/** box-shadow of a part that may glow: up to 3 layers; inset ones like the card's, outer ones within {@link GLOW}. */
+function glowShadow(value: string): Reason | null {
+  if (value === "none") return null;
+  const layers = splitTop(value);
+  if (layers.length > 3) return "range";
+  for (const l of layers) if (!/(^|\s)inset(\s|$)/.test(l)) {
+    const r = glowProblem(l, true);
+    if (r) return r;
+  }
+  return null;
+}
+
+/** The calls of a filter value at its top level (name and arguments), or null when something else is there. */
+function filterCalls(value: string): { name: string; args: string }[] | null {
+  const out: { name: string; args: string }[] = [];
+  let i = 0;
+  while (i < value.length) {
+    if (value[i] === " ") {
+      i++;
+      continue;
+    }
+    const m = /^[a-z-]+\(/.exec(value.slice(i));
+    if (!m) return null;
+    let depth = 0;
+    let j = i + m[0].length - 1;
+    for (; j < value.length; j++) {
+      if (value[j] === "(") depth++;
+      else if (value[j] === ")" && --depth === 0) break;
+    }
+    if (depth !== 0) return null;
+    out.push({ name: m[0].slice(0, -1), args: value.slice(i + m[0].length, j) });
+    i = j + 1;
+  }
+  return out;
+}
+
+/** filter of a part: the skin's gentle filters plus up to two drop-shadow() glows within {@link GLOW}. */
+function partFilterCheck(value: string): Reason | null {
+  if (value === "none") return null;
+  const calls = filterCalls(value);
+  if (!calls) return "function";
+  if (calls.length > 4) return "range";
+  let glows = 0;
+  for (const { name, args } of calls) {
+    if (name === "drop-shadow") {
+      if (++glows > 2) return "range";
+      const r = glowProblem(args, false);
+      if (r) return r;
+    } else if (!Object.hasOwn(FILTERS, name)) return "function";
+    else if (numbersProblem(args, FILTERS[name])) return "range";
+  }
+  return null;
+}
+
+const RADIUS: PropRule = PROPS["border-radius"];
+const INSET: PropRule = PROPS["box-shadow"];
+const GLOWING: PropRule = { layer: "part", limits: lengths(64, 4), check: glowShadow };
+const PART_FILTER: PropRule = { layer: "part", check: partFilterCheck };
+const FONT_SIZE: PropRule = { layer: "part", limits: { px: [10, 22], em: [0.75, 1.5], pct: [75, 150] }, check: (v) => (/^[\d.]+(px|em|rem|%)$/.test(v) ? null : "keyword") };
+const props = (...names: string[]) => Object.fromEntries(names.map((n) => [n, PROPS[n]]));
+const TEXT = props("color", "font-family", "font-weight", "font-style", "letter-spacing", "text-transform", "text-shadow");
+const FILL = props("background", "background-color", "background-image");
+
+/** The whitelist of each part (CardStyle.PARTS has the same lists). */
+const PART_RULES: Record<CardPart, Record<string, PropRule>> = {
+  title_bar: { ...FILL, "border-bottom": PROPS["border-bottom"], "box-shadow": INSET },
+  title: { ...TEXT, "font-size": FONT_SIZE },
+  screen: { ...FILL, ...props("border", "border-color"), "border-radius": RADIUS, "box-shadow": GLOWING },
+  row: { ...FILL, ...props("border", "border-color"), "border-radius": RADIUS, "box-shadow": GLOWING },
+  label: TEXT,
+  value: TEXT,
+  gauge_track: { color: PROPS.color, ...FILL, ...props("border", "border-color"), "border-radius": RADIUS, "box-shadow": INSET },
+  gauge_fill: { color: PROPS.color, ...FILL, "border-radius": RADIUS, "box-shadow": GLOWING, filter: PART_FILTER },
+  chart_line: { color: PROPS.color, filter: PART_FILTER },
+  button: {
+    ...props("background-color", "background-image", "color", "border", "border-color"),
+    "border-radius": RADIUS,
+    "box-shadow": GLOWING,
+    ...props("font-family", "font-weight", "letter-spacing", "text-transform", "text-shadow"),
+  },
+  toggle: { ...FILL, ...props("border", "border-color"), "border-radius": RADIUS, "box-shadow": INSET },
+  toggle_on: { ...FILL, "border-color": PROPS["border-color"], "box-shadow": GLOWING },
+};
+/** Property names of each part (CardStyle.PARTS has the same lists). */
+export const PART_PROPERTIES = Object.fromEntries(CARD_PARTS.map((p) => [p, Object.keys(PART_RULES[p])])) as Record<CardPart, string[]>;
+const PART_RULESETS = Object.fromEntries(CARD_PARTS.map((p) => [p, { props: PART_RULES[p], functions: ALL_FUNCTIONS, layer: "part" }])) as Record<CardPart, Ruleset>;
+
+/** The declarations of one part that may be applied, and the ones dropped with the reason. Never throws. */
+export function sanitizePartCss(part: CardPart, input: unknown, env: CssEnv = browserCssEnv()): SanitizedCss {
+  return sanitize(input, env, PART_RULESETS[part], MAX_PART_CSS, MAX_PART_DECLARATIONS);
+}
+
+/** A card's parts, sanitised (structure only, see STRUCTURAL_ENV): unknown parts and empty lists are left out. */
+export function cleanParts(input: unknown, env: CssEnv = STRUCTURAL_ENV): CardParts | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return undefined;
+  const raw = input as Record<string, unknown>;
+  const out: CardParts = {};
+  for (const part of CARD_PARTS) {
+    if (!Object.hasOwn(raw, part)) continue;
+    const css = serializeCss(sanitizePartCss(part, raw[part], env).decls);
+    if (css) out[part] = css;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** The server's check of one part's CSS (CardStyle.partProblem): like {@link serverCssProblem}, `part` for an unknown part. */
+export function serverPartProblem(part: string, css: string): string | null {
+  if (!isCardPart(part)) return "part";
+  return structuralProblem(css, PART_PROPERTIES[part], ALL_FUNCTIONS, MAX_PART_CSS);
+}
+
+/** The server's check of a card's `parts` (CardStyle.partsProblem): an object of known parts to strings. */
+export function serverPartsProblem(parts: unknown): string | null {
+  if (!parts || typeof parts !== "object" || Array.isArray(parts)) return "parts";
+  for (const [part, css] of Object.entries(parts)) {
+    if (typeof css !== "string") return "parts";
+    const r = serverPartProblem(part, css);
+    if (r) return r;
+  }
+  return null;
+}
+
+// -------------------------------------------------------------------- design
+/** A card's whole design: what a layout card, a preset card or a script's style carries. */
+export interface CardDesign {
+  bg?: CardBackground;
+  bgColor?: string;
+  css?: string;
+  parts?: CardParts;
+}
+export const DESIGN_KEYS = ["bg", "bgColor", "css", "parts"] as const;
+/** Whether a design changes anything (a colour without the `custom` option does not). */
+export const hasDesign = (d: CardDesign | undefined) => !!d && !!(d.bg || d.css || d.parts);
+
+/** An untrusted design (a layout card, a script's style), sanitised (structure only); undefined when nothing is left. */
+export function cleanDesign(raw: unknown): CardDesign | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const r = raw as Record<string, unknown>;
+  const out: CardDesign = {};
+  if (isCardBackground(r.bg)) out.bg = r.bg;
+  if (out.bg === "custom" && isHexColor(r.bgColor)) out.bgColor = r.bgColor.toLowerCase();
+  const css = cleanCardCss(r.css);
+  if (css) out.css = css;
+  const parts = cleanParts(r.parts);
+  if (parts) out.parts = parts;
+  return hasDesign(out) ? out : undefined;
 }
 
 // --------------------------------------------------------------- readability
@@ -550,4 +790,6 @@ export const REASON_TEXT: Record<Reason, string> = {
   shadow: "Only inset shadows: a shadow may not paint outside the card.",
   unsupported: "Not valid CSS for this property.",
   contrast: "Text colour too faint or too close to the background.",
+  glow: `A glow reaches at most ${GLOW.reach}px: offsets up to ${GLOW.offset}px, blur up to ${GLOW.blur}px, spread up to ${GLOW.spread}px, in px.`,
+  part: "Not a part of a card.",
 };

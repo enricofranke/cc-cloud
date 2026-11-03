@@ -56,6 +56,7 @@ for _, m in ipairs({ "button", "toggle", "slider", "gauge", "chart", "progress",
     uplink[m] = uplink_method(m)
 end
 function uplink.setTitle(t) assert(type(t) == "string" and #t <= 48, "bad title") calls[#calls + 1] = { "setTitle", t } end
+function uplink.setStyle(d) assert(d == nil or type(d) == "table", "bad style") calls[#calls + 1] = { "setStyle", d } end
 function uplink.clear() calls[#calls + 1] = { "clear" } end
 function uplink.remove(id) calls[#calls + 1] = { "remove", id } return true end
 function uplink.notify(text, level) calls[#calls + 1] = { "notify", text, level } return true end

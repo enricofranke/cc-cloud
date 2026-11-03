@@ -149,6 +149,7 @@ function buildCard(card: PresetCard, device: Uplink | undefined, filled: Map<str
       ...(card.bg ? { bg: card.bg } : {}),
       ...(card.bg === "custom" && card.bgColor ? { bgColor: card.bgColor } : {}),
       ...(card.css ? { css: card.css } : {}),
+      ...(card.parts ? { parts: card.parts } : {}),
     },
     box: { id: key, x: placed ? card.x! : 0, y: placed ? card.y! : 0, w: card.w, h, placed },
     widgets,

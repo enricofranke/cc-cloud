@@ -7,7 +7,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -113,6 +115,105 @@ class CardStyleTest {
         assertEquals("token", CardStyle.cssProblem("color: var(--x);"));
         assertEquals("token", CardStyle.cssProblem("color: var(--text, var(--evil));"), "fallbacks are checked too");
         assertNull(CardStyle.cssProblem("color: var(--text, var(--muted));"));
+    }
+
+    @Test
+    void partsMatchTheDashboard() throws Exception {
+        var f = fixture();
+        var parts = f.getAsJsonObject("parts");
+        assertEquals(new ArrayList<>(parts.keySet()), new ArrayList<>(CardStyle.PARTS.keySet()), "same parts, same order");
+        for (var part : parts.keySet()) {
+            var list = new ArrayList<String>();
+            parts.getAsJsonArray(part).forEach(e -> list.add(e.getAsString()));
+            assertEquals(list, new ArrayList<>(CardStyle.PARTS.get(part)), part);
+            assertTrue(CardStyle.PROPERTIES.containsAll(CardStyle.PARTS.get(part)) || part.equals("title"), part + ": the card's own properties");
+        }
+        assertEquals(strings(f.getAsJsonArray("partFunctions")), CardStyle.PART_FUNCTIONS);
+        assertEquals(f.get("maxPartCss").getAsInt(), CardStyle.MAX_PART_CSS);
+    }
+
+    @Test
+    void partFixtureCasesComeOutTheSame() throws Exception {
+        var f = fixture();
+        var accepted = new HashSet<String>();
+        for (var e : f.getAsJsonArray("partAccept")) {
+            var c = e.getAsJsonObject();
+            assertNull(CardStyle.partProblem(c.get("part").getAsString(), c.get("css").getAsString()), c.toString());
+            accepted.add(c.get("part").getAsString());
+        }
+        assertEquals(CardStyle.PARTS.keySet(), accepted, "every part has an accepted case");
+        for (var e : f.getAsJsonArray("partReject")) {
+            var c = e.getAsJsonObject();
+            assertEquals(c.get("reason").getAsString(), CardStyle.partProblem(c.get("part").getAsString(), c.get("css").getAsString()), c.toString());
+        }
+    }
+
+    @Test
+    void theAttackCorpusFailsTheSameInEveryPart() throws Exception {
+        var f = fixture();
+        int checked = 0;
+        for (var e : f.getAsJsonArray("reject")) {
+            var c = e.getAsJsonObject();
+            String css = c.get("css").getAsString();
+            for (var part : CardStyle.PARTS.keySet()) {
+                assertEquals(c.get("reason").getAsString(), CardStyle.partProblem(part, css), part + ": " + css);
+                checked++;
+            }
+        }
+        assertTrue(checked >= 30 * 12);
+    }
+
+    @Test
+    void partLengthCap() {
+        String decl = "color: red;\n";
+        String fits = decl.repeat(CardStyle.MAX_PART_CSS / decl.length());
+        assertNull(CardStyle.partProblem("title", fits));
+        assertEquals("too_long", CardStyle.partProblem("title", fits + " ".repeat(CardStyle.MAX_PART_CSS - fits.length() + 1)));
+    }
+
+    @Test
+    void partsAreAnObjectOfStrings() {
+        assertNull(CardStyle.partsProblem(JsonParser.parseString("{}")));
+        assertNull(CardStyle.partsProblem(JsonParser.parseString("{\"title\":\"color: red\",\"gauge_fill\":\"filter: drop-shadow(0 0 2px red)\"}")));
+        for (String bad : List.of("[]", "\"color: red\"", "{\"title\":42}", "{\"title\":null}", "{\"title\":{\"color\":\"red\"}}", "{\"title\":[\"color: red\"]}")) {
+            assertEquals("parts", CardStyle.partsProblem(JsonParser.parseString(bad)), bad);
+        }
+        assertEquals("part", CardStyle.partsProblem(JsonParser.parseString("{\"body\":\"color: red\"}")));
+        assertEquals("network", CardStyle.partsProblem(JsonParser.parseString("{\"button\":\"background-image: url(x)\"}")));
+    }
+
+    @Test
+    void aWholeDesign() {
+        assertNull(CardStyle.designProblem(new JsonObject()));
+        var ok = JsonParser.parseString("{\"bg\":\"custom\",\"bgColor\":\"#0b1a2a\",\"css\":\"border-radius: 12px\",\"parts\":{\"title\":\"color: var(--accent)\"}}").getAsJsonObject();
+        assertNull(CardStyle.designProblem(ok));
+        String[][] cases = {
+            {"{\"bg\":\"neon\"}", "bg: background"},
+            {"{\"bg\":1}", "bg: background"},
+            {"{\"bgColor\":\"red\"}", "bgColor: colour"},
+            {"{\"css\":42}", "css: string"},
+            {"{\"css\":\"background: url(x)\"}", "css: network"},
+            {"{\"parts\":[]}", "parts: object"},
+            {"{\"parts\":{\"title\":1}}", "parts.title: string"},
+            {"{\"parts\":{\"title\":\"background: red\"}}", "parts.title: property"},
+            {"{\"parts\":{\"evil\":\"color: red\"}}", "parts.evil: part"},
+            {"{\"style\":\"x\"}", "style: unknown"},
+        };
+        for (var c : cases) assertEquals(c[1], CardStyle.designProblem(JsonParser.parseString(c[0]).getAsJsonObject()), c[0]);
+    }
+
+    @Test
+    void aDesignIsReplacedAsAWhole() {
+        var card = JsonParser.parseString("{\"x\":0,\"title\":\"Core\",\"bg\":\"glass\",\"css\":\"border-radius: 4px\"}").getAsJsonObject();
+        var design = JsonParser.parseString("{\"parts\":{\"title\":\"color: #ff5a4f\"}}").getAsJsonObject();
+        assertTrue(CardStyle.putDesign(card, design));
+        assertEquals(JsonParser.parseString("{\"x\":0,\"title\":\"Core\",\"parts\":{\"title\":\"color: #ff5a4f\"}}"), card, "bg and css go, the rest stays");
+        assertFalse(CardStyle.putDesign(card, design.deepCopy()), "the same design again changes nothing");
+        design.getAsJsonObject("parts").addProperty("title", "color: red");
+        assertEquals("color: #ff5a4f", card.getAsJsonObject("parts").get("title").getAsString(), "a copy, not the caller's object");
+        assertTrue(CardStyle.putDesign(card, null));
+        assertEquals(JsonParser.parseString("{\"x\":0,\"title\":\"Core\"}"), card);
+        assertFalse(CardStyle.putDesign(card, null));
     }
 
     @Test

@@ -82,6 +82,17 @@ public final class UplinkPeripheral implements IPeripheral {
         uplink.setTitle(wrap(() -> WidgetFactory.checkText("title", args.get(0), Limits.TITLE)));
     }
 
+    /**
+     * {@code setStyle({bg=, bgColor=, css=, parts={...}})} – the design of this section's cards (a group's own
+     * {@code style} wins on its card); nil removes it. A design saved in the dashboard's layout editor wins over it.
+     */
+    @LuaFunction
+    public final void setStyle(IArguments args) throws LuaException {
+        checkEditable();
+        Map<?, ?> raw = opts(args, 0);
+        uplink.setStyle(raw == null ? null : wrap(() -> WidgetFactory.style(raw)));
+    }
+
     @LuaFunction
     public final void button(IArguments args) throws LuaException {
         add(WidgetType.BUTTON, args);

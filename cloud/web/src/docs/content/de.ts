@@ -263,7 +263,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 - **Verschieben:** eine Karte an ihrer Kopfzeile ziehen, ein Widget an beliebiger Stelle. Die anderen machen Platz und gleiten zur Seite; ein gestrichelter Rahmen zeigt, wo es landet. Ein Widget auf eine andere Karte ziehen, auf freie Fläche (es bekommt seine **eigene neue Karte**) oder auf einen Seiten-Tab (kurz darüber halten öffnet die Seite).
 - **Größe ändern:** rechten Rand, unteren Rand oder die Ecke ziehen – das Schild zeigt die Größe (Karten nutzen 12 Spalten der Seite, Widgets 12 Spalten ihrer Karte).
 - **Mehrere Widgets auswählen** mit Shift-Klick und eines davon ziehen, um alle zu verschieben.
-- **Einstellungen** (✎ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent, den Stil kompakt oder komfortabel und ein [Design](#card-design) (Hintergrund, eigenes CSS); eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
+- **Einstellungen** (✎ oder Klick): Beschriftung, Akzentfarbe (ein Button nimmt sie als seine Farbe – auch der eines Cloud Buttons, standardmäßig cyan), Icon, Größe und Darstellung mit Live-Vorschau – ein Gauge als Skala, Balken oder große Zahl, ein Label als Zeile oder große Zahl, ein Chart als Diagramm oder Sparkline, ein Indikator als Chip oder Lampe. Karten bekommen Titel, Icon, Akzent, den Stil kompakt oder komfortabel und ein [Design](#card-design) (Hintergrund, eigenes CSS, Kartenteile); eine [Peripherie-Karte](#widgets) auch ihre Werte und ihren Schalter.
 - **Toolbox:** öffnet sich an der Seite (auf Handys als Sheet; Taste **A**). **Cards** enthält eine leere Karte und fertige Vorlagen, **Widgets** jeden Widget-Typ: eines auf eine Karte oder freie Fläche ziehen und dann seine Daten wählen. **Hidden** listet alles Ausgeblendete.
 - **Ausblenden** mit × oder per Ziehen auf die Toolbox. Zurück holst du es mit einem Klick unter **Hidden** oder per Herausziehen.
 - **Touch:** gedrückt halten zum Aufnehmen (kurze Vibration), dann ziehen – normales Wischen scrollt weiter. **Tastatur:** mit Tab zu Karte oder Widget, Leertaste nimmt auf, Pfeiltasten verschieben, Shift + Pfeiltasten ändern die Größe, Bild auf/ab verschieben ein Widget zur vorigen/nächsten Karte, Leertaste legt ab, Esc bricht ab. **?** zeigt alle Kürzel.
@@ -275,7 +275,7 @@ Programme können Widgets auf **Seiten** (Tabs: oben in breiten Fenstern, unten 
 
 ## Kartendesign {#card-design}
 
-In den Einstellungen einer Karte wählst du einen **Hintergrund** und, wenn du magst, ein paar Zeilen **eigenes CSS**. Beides wird mit dem Layout gespeichert, reist in Teilen-Codes und Vorlagen mit und funktioniert im hellen und im dunklen Theme.
+In den Einstellungen einer Karte wählst du einen **Hintergrund** und, wenn du magst, ein paar Zeilen **eigenes CSS** für die Karte und ihre [Teile](#card-parts). Alles wird mit dem Layout gespeichert, reist in Teilen-Codes und Vorlagen mit und funktioniert im hellen und im dunklen Theme. Ein Programm kann ein [eigenes Design](#card-script-design) mitbringen.
 
 - **Hintergrund:** Standard, eine **Tönung** in einer der acht Akzentfarben, vier **Verläufe** (Accent, Aurora, Ember, Lagoon), vier **Muster** (Grid, Stripes, Dots, Circuit) oder **Custom** mit deiner eigenen Farbe. Tönungen, Verläufe und Muster folgen dem Theme und dem Akzent der Karte. Bei einer eigenen Farbe wählt die Karte selbst helle oder dunkle Schrift und legt, wo nötig, einen leichten Schleier über die Farbe, damit die Schrift lesbar bleibt.
 - **Icons:** das Icon eines Widgets (in seinen Einstellungen) steht vor seiner Beschriftung – bei Zeilen, großen Zahlen, Gauges, Charts, Schaltern, Slidern und Eingabefeldern –, genau wie das Icon einer Karte in der Kopfzeile. Widgets ohne Beschriftung, etwa die Artikelsuche, haben keine Icon-Einstellung.
@@ -305,9 +305,48 @@ Werte dürfen Farben sein (\`#hex\`, \`rgb()\`, \`hsl()\`, \`oklch()\`, \`color-
 **Warum so streng?** Ein Layout kann von jedem mit Bearbeitungsrecht stammen, aus einem Teilen-Code oder aus dem Store. Das Dashboard behandelt jede Zeile als nicht vertrauenswürdig und prüft sie bei jedem Zeichnen der Karte neu:
 
 - **Nichts lädt oder läuft:** kein \`url()\`, \`image-set()\`, \`attr()\`, \`expression\` oder \`javascript:\`, keine Kommentare, Backslash-Escapes, Anführungszeichen oder \`!important\`, nur einfaches ASCII. Eine Karte kann nichts nachladen und nicht erfahren, wer sie ansieht.
-- **Nichts verlässt die Karte:** kein \`position\`, \`top\`/\`left\`/\`inset\`, \`z-index\`, \`transform\`, \`margin\`, \`width\`/\`height\`, \`content\`, \`pointer-events\`, \`cursor\` und keine äußeren Schatten, und Zahlen haben Grenzen. Der Hintergrund liegt auf einer eigenen Ebene, auf die Karte zugeschnitten und nie einem Klick im Weg – eine Karte kann also keine anderen Karten, die PIN-Abfrage oder den Login verdecken.
+- **Nichts verlässt die Karte:** kein \`position\`, \`top\`/\`left\`/\`inset\`, \`z-index\`, \`transform\`, \`margin\`, \`width\`/\`height\`, \`content\`, \`pointer-events\`, \`cursor\` und keine äußeren Schatten (das kleine Leuchten eines Teils bleibt in der Karte), und Zahlen haben Grenzen. Der Hintergrund liegt auf einer eigenen Ebene, auf die Karte zugeschnitten und nie einem Klick im Weg – eine Karte kann also keine anderen Karten, die PIN-Abfrage oder den Login verdecken.
 - **Schrift bleibt lesbar:** eine Schriftfarbe zu nah am Hintergrund wird verworfen (und angezeigt).
 - Der Server prüft dieselben Regeln, bevor er ein Layout speichert.
+
+### Kartenteile {#card-parts}
+
+Unter **Parts**, unter Custom CSS, gestaltest du die Teile in einer Karte einzeln: Teil wählen, dann Deklarationen dafür schreiben wie oben. Ein Punkt markiert die Teile mit CSS. Jedes Teil nimmt nur die Eigenschaften seiner Zeile:
+
+| Teil | Was es ist | Eigenschaften |
+|---|---|---|
+| title_bar | die Leiste mit dem Kartentitel | background, background-color, -image, border-bottom, box-shadow (inset) |
+| title | der Titeltext | Schrift, font-size (10–22 px) |
+| screen | die dunklen Kacheln von Gauges, Zahlen und Lampen | background, background-color, -image, border, border-color, border-radius, box-shadow |
+| row | die Kästen von Label-Zeilen und Indikatoren | wie screen |
+| label | die Beschriftung jedes Widgets | Schrift |
+| value | die Werte: Zahlen, Texte, Zustände | Schrift |
+| gauge_track | der unbeleuchtete Teil von Gauges und Balken | color (die Skala), background, background-color, -image, border, border-color, border-radius, box-shadow (inset) |
+| gauge_fill | der beleuchtete Teil von Gauges und Balken | color (die Skala), background, background-color, -image, border-radius, box-shadow, filter |
+| chart_line | die Linie von Charts | color (tönt auch die Fläche darunter), filter |
+| button | jeder Button | background-color, background-image, color, border, border-color, border-radius, box-shadow, font-family, font-weight, letter-spacing, text-transform, text-shadow |
+| toggle | der Schalter von Toggles (sein Hintergrund, solange er aus ist) | background, background-color, -image, border, border-color, border-radius, box-shadow (inset) |
+| toggle_on | ein Schalter, solange er an ist | background, background-color, -image, border-color, box-shadow |
+
+*Schrift* heißt color, font-family, font-weight, font-style, letter-spacing, text-transform und text-shadow. Ein leuchtendes Gauge, als **gauge_fill**:
+
+\`\`\`css
+color: #5ef0ff;
+box-shadow: 0 0 6px rgba(94, 240, 255, 0.7);
+filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));
+\`\`\`
+
+- **Leuchten:** screen, row, gauge_fill, button und toggle_on dürfen einen äußeren box-shadow haben, gauge_fill und chart_line ein \`drop-shadow()\` in filter. Nur px, Versatz bis 2 px, Unschärfe bis 6 px, Ausdehnung bis 2 px und zusammen höchstens 8 px – so bleibt es in der Karte.
+- **Warnungen bleiben:** die Farben von gauge_fill, chart_line und value gelten im normalen Bereich. Im Warn- und im kritischen Bereich zeigt das Dashboard sein Gelb und Rot.
+- Bis 512 Zeichen und 12 Deklarationen pro Teil, mit denselben Prüfungen wie Custom CSS. Eine Schriftfarbe zu nah am Hintergrund wird auch hier verworfen. Dialoge, die ein Widget öffnet (Artikelsuche, PIN-Feld, Bestätigungen), werden nie gestaltet.
+
+### Das Design eines Programms {#card-script-design}
+
+Ein Programm kann seiner Karte ein Design geben: \`dash:style{...}\` in [cloud.ui](/docs/ui-library#api) (eine Gruppe nimmt \`style\` in ihren Optionen), oder \`setStyle\` am [Uplink](/docs/lua#layout). Ein Design ist eine Tabelle mit \`bg\`, \`bgColor\`, \`css\` und \`parts\` und wird geprüft wie im Editor:
+
+${code("lua", C.UI_STYLE)}
+
+- Die Karte zeigt das Design des Programms, bis jemand das Design im Editor ändert. Die erste Änderung übernimmt das Design des Programms ins Layout, du änderst also nur, was anders sein soll. Ab dann gilt das Design aus dem Layout als Ganzes, und **Use the script's design** in den Einstellungen der Karte kehrt zum Design des Programms zurück.
 
 ## Meldungen {#alerts}
 
@@ -540,6 +579,7 @@ Jedes Widget bekommt eine **ID** (1–32 Zeichen: a–z, 0–9, _), eine Beschri
 | Methode | Optionen |
 |---|---|
 | \`cloud.setTitle(text)\` | Kartentitel (max. 48 Zeichen) |
+| \`cloud.setStyle(design)\` | das [Design](/docs/dashboard#card-script-design) der Karte: \`{bg=, bgColor=, css=, parts={...}}\`, nil entfernt es |
 | \`cloud.button(id, label, opts)\` | color, confirm, pin |
 | \`cloud.toggle(id, label, opts)\` | value, confirm, pin |
 | \`cloud.slider(id, label, opts)\` | min, max, step, value, unit, pin |
@@ -591,7 +631,7 @@ ${code("lua", C.LUA_EVENT)}
 ${code("lua", C.LUA_LAYOUT)}
 
 - \`cloud.page(id, title, {icon=})\` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
-- \`cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})\` – eine Karte; Widgets kommen mit \`group=\` hinein.
+- \`cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=, style=})\` – eine Karte; Widgets kommen mit \`group=\` hinein. \`style\` ist das [Design](/docs/dashboard#card-script-design) der Gruppenkarte (ohne eines nimmt sie das des Uplinks).
 - Jedes Widget akzeptiert außerdem \`page\`, \`group\`, \`span\` (1–4), \`order\` (0–10000), \`color\`, \`icon\` und eine Box \`x\`, \`y\`, \`w\`, \`h\`.
 - Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
@@ -733,6 +773,7 @@ ${code("lua", C.UI_QUICK)}
 |---|---|
 | \`ui.connect([uplink])\` | findet den Uplink (oder nimmt einen Namen / ein Peripheral), liefert \`dash\` |
 | \`dash:title(text)\` | Kartentitel |
+| \`dash:style(design)\` | das [Design](/docs/dashboard#card-script-design) der Karte: \`{bg=, bgColor=, css=, parts={...}}\`, nil entfernt es |
 | \`dash:page(id, title, opts)\`, \`dash:group(id, title, opts)\` | Layout |
 | \`dash:canvas(id, label, opts, handler)\` | eine Fläche zum Zeichnen: [Canvas](/docs/lua#canvas) |
 | \`ui.mainframe()\`, \`ui.readCards(mainframe)\` | das Mainframe-Peripheral und die [Werte der anderen Karten](/docs/lua#read-cards) nach Titel und Widget-ID |

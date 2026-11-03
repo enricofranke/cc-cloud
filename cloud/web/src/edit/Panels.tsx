@@ -20,6 +20,7 @@ import {
   moveCardTo,
   moveWidgetsTo,
   removeCustomCard,
+  resetCardDesign,
   resizeCard,
   resizeWidget,
   updateCard,
@@ -36,8 +37,25 @@ import { IconPicker } from "../components/PageTabs.tsx";
 import { PixelIcon } from "../components/PixelIcon.tsx";
 import { CopyButton } from "../components/CodeBlock.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
-import { cardStyleNotes, sanitizedCss } from "../components/CardSkin.tsx";
-import { CARD_BACKGROUNDS, MAX_CARD_CSS, REASON_TEXT, browserCssEnv, isHexColor, sanitizeCardCss, serializeCss, type CardBackground, type DroppedDecl } from "../lib/cardstyle.ts";
+import { cardStyleNotes, sanitizedCss, sanitizedPart } from "../components/CardSkin.tsx";
+import {
+  CARD_BACKGROUNDS,
+  CARD_PARTS,
+  MAX_CARD_CSS,
+  MAX_PART_CSS,
+  PART_PROPERTIES,
+  PART_TEXT,
+  REASON_TEXT,
+  browserCssEnv,
+  isHexColor,
+  sanitizeCardCss,
+  sanitizePartCss,
+  serializeCss,
+  type CardBackground,
+  type CardPart,
+  type CardParts,
+  type DroppedDecl,
+} from "../lib/cardstyle.ts";
 import { t } from "../lib/i18n.ts";
 import { PresetsTab } from "./Presets.tsx";
 import { Sheet } from "../components/Overlays.tsx";
@@ -316,7 +334,7 @@ function CustomCss({ card, onChange }: { card: ResolvedCard; onChange: (css: str
     if ((serializeCss(checked.decls) || undefined) !== card.css) setText(card.css ?? "");
   }, [card.css]);
   const kept = sanitizedCss(card.css).decls.length;
-  const dropped = [...checked.dropped, ...(cardStyleNotes.value[card.key] ?? [])];
+  const dropped = [...checked.dropped, ...(cardStyleNotes.value[card.key] ?? []).filter((d) => !d.part)];
   return (
     <details class="ed-css">
       <summary>
@@ -355,6 +373,118 @@ function CustomCss({ card, onChange }: { card: ResolvedCard; onChange: (css: str
         )}
       </div>
     </details>
+  );
+}
+
+/**
+ * The CSS of the card's parts (title bar, gauge fill, buttons …), next to the card's own: pick a part, write its
+ * declarations. Each part has its own short list of properties; checked as you type with the sanitiser the card uses.
+ */
+function PartsCss({ card, onChange }: { card: ResolvedCard; onChange: (parts: CardParts | undefined, part: CardPart) => void }) {
+  const [part, setPart] = useState<CardPart>(() => CARD_PARTS.find((p) => card.parts?.[p]) ?? "title");
+  const styled = CARD_PARTS.filter((p) => sanitizedPart(p, card.parts?.[p]).decls.length > 0);
+  return (
+    <details class="ed-css ed-parts">
+      <summary>
+        Parts{styled.length > 0 && <span class="ed-css-count">{styled.length} styled</span>}
+      </summary>
+      <div class="ed-css-body">
+        <div class="ed-part-pick" role="radiogroup" aria-label="Part of the card">
+          {CARD_PARTS.map((p) => (
+            <button key={p} type="button" role="radio" aria-checked={p === part} class={`ed-part ${p === part ? "on" : ""} ${styled.includes(p) ? "styled" : ""}`} onClick={() => setPart(p)}>
+              {PART_TEXT[p].name}
+            </button>
+          ))}
+        </div>
+        <PartCss
+          key={part}
+          part={part}
+          card={card}
+          onChange={(css) => {
+            const next: CardParts = { ...card.parts };
+            if (css) next[part] = css;
+            else delete next[part];
+            onChange(Object.keys(next).length ? next : undefined, part);
+          }}
+        />
+      </div>
+    </details>
+  );
+}
+
+function PartCss({ part, card, onChange }: { part: CardPart; card: ResolvedCard; onChange: (css: string | undefined) => void }) {
+  const saved = card.parts?.[part];
+  const [text, setText] = useState(saved ?? "");
+  const checked = useMemo(() => sanitizePartCss(part, text, browserCssEnv()), [part, text]);
+  // undo/redo and reset change the CSS from outside: show what the part has then
+  useEffect(() => {
+    if ((serializeCss(checked.decls) || undefined) !== saved) setText(saved ?? "");
+  }, [saved]);
+  const dropped = [...checked.dropped, ...(cardStyleNotes.value[card.key] ?? []).filter((d) => d.part === part)];
+  const id = `part-hint-${card.key}-${part}`;
+  return (
+    <>
+      <span class="field-hint" id={id}>
+        {PART_TEXT[part].hint} Properties: {PART_PROPERTIES[part].join(", ")}. {text.length}/{MAX_PART_CSS} · <DocsLink to="/docs/dashboard#card-parts">Parts</DocsLink>
+      </span>
+      <textarea
+        class="input mono ed-css-input"
+        rows={4}
+        maxLength={MAX_PART_CSS}
+        spellcheck={false}
+        autocomplete="off"
+        autocapitalize="off"
+        aria-label={`CSS of the part ${PART_TEXT[part].name}`}
+        aria-describedby={id}
+        placeholder={PART_EXAMPLE[part]}
+        value={text}
+        onInput={(e) => {
+          const v = (e.target as HTMLTextAreaElement).value;
+          setText(v);
+          onChange(serializeCss(sanitizePartCss(part, v, browserCssEnv()).decls) || undefined);
+        }}
+      />
+      {dropped.length > 0 && (
+        <ul class="ed-css-dropped" aria-live="polite">
+          {dropped.map((d, i) => (
+            <li key={i}>
+              <code>{d.text}</code> <span>{reasonText(d)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** A starting point for each part, shown while its field is empty. */
+const PART_EXAMPLE: Record<CardPart, string> = {
+  title_bar: "background: linear-gradient(90deg, var(--panel-3), transparent);\nborder-bottom: 1px solid var(--accent);",
+  title: "color: var(--accent);\nletter-spacing: 0.12em;\ntext-shadow: 0 0 6px var(--accent);",
+  screen: "background: rgb(6 12 18 / 85%);\nborder: 1px solid var(--line-2);\nborder-radius: 8px;",
+  row: "background: var(--panel-3);\nborder-radius: 6px;",
+  label: "color: var(--muted);\ntext-transform: uppercase;\nletter-spacing: 0.08em;",
+  value: "font-family: monospace;\ncolor: var(--accent);",
+  gauge_track: "color: var(--panel-3);\nborder-radius: 7px;",
+  gauge_fill: "color: var(--accent);\nfilter: drop-shadow(0 0 3px var(--accent));",
+  chart_line: "color: var(--accent);\nfilter: drop-shadow(0 0 2px var(--accent));",
+  button: "background-image: linear-gradient(180deg, rgb(255 255 255 / 20%), rgb(0 0 0 / 25%));\nborder-radius: 6px;",
+  toggle: "background: var(--screen);\nborder-radius: 16px;",
+  toggle_on: "background: var(--accent);\nbox-shadow: 0 0 6px var(--accent);",
+};
+
+/** Where the card's design comes from, when its script sets one (cloud.ui dash:style, a group's style). */
+function DesignSource({ card, onReset }: { card: ResolvedCard; onReset: () => void }) {
+  if (!card.scriptDesign) return null;
+  return card.designFrom === "script" ? (
+    <span class="field-hint">This card's script sets its design. A change here keeps a copy in the layout, which then wins.</span>
+  ) : (
+    <span class="field-hint ed-design-src">
+      The layout's design wins over the one this card's script sets.{" "}
+      <button type="button" class="link-btn" onClick={onReset}>
+        Use the script's design
+      </button>
+    </span>
   );
 }
 
@@ -578,6 +708,8 @@ export function CardSettings({
       </div>
       <BackgroundPicker card={card} onChange={(patch, key) => onChange(updateCard(pages, k, patch), key)} />
       <CustomCss card={card} onChange={(css) => onChange(updateCard(pages, k, { css }), `css:${k}`)} />
+      <PartsCss card={card} onChange={(parts, part) => onChange(updateCard(pages, k, { parts }), `part:${k}:${part}`)} />
+      <DesignSource card={card} onReset={() => onChange(resetCardDesign(pages, k))} />
       <label class="field">
         <span class="field-label">Page</span>
         <select

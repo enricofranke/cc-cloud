@@ -47,6 +47,7 @@ Every widget takes an **id** (1–32 characters: a–z, 0–9, _), a label and a
 | Method | Options |
 |---|---|
 | `cloud.setTitle(text)` | card title (max 48 characters) |
+| `cloud.setStyle(design)` | the card's [design](dashboard.md): `{bg=, bgColor=, css=, parts={...}}`, nil removes it |
 | `cloud.button(id, label, opts)` | color, confirm, pin |
 | `cloud.toggle(id, label, opts)` | value, confirm, pin |
 | `cloud.slider(id, label, opts)` | min, max, step, value, unit, pin |
@@ -114,7 +115,7 @@ cloud.indicator("running", "Running", {value=true, onColor="green", page="power"
 ```
 
 - `cloud.page(id, title, {icon=})` – a tab. With pages an uplink may hold 64 widgets instead of 32.
-- `cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})` – a card; widgets join it with `group=`.
+- `cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=, style=})` – a card; widgets join it with `group=`. `style` is the group card's [design](dashboard.md) (without one it takes the uplink's).
 - Every widget also accepts `page`, `group`, `span` (1–4), `order` (0–10000), `color`, `icon` and a box `x`, `y`, `w`, `h`.
 - Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 

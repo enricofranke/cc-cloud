@@ -15,6 +15,7 @@ import { isCanvasValue } from "./canvas.ts";
 import { WIDGET_TYPES, type Blocked, type CardSettingsInfo, type ClaimsOverlay, type DimInfo, type PeripheralSettings, type RedstoneChannel, type RedstoneInfo, type WaystonesOverlay, type PowerInfo, type NetworkInfo, type NetNode, type NetLink, type ActionValue, type Alert, type ItemRow, type MainframeInfo, type Row, type Scalar, type Uplink, type Widget, type WidgetValue } from "./types.ts";
 import { ApiError, fetchMainframes } from "./api.ts";
 import { normalizeLayout, type LayoutDoc } from "./layout.ts";
+import { cleanDesign } from "./cardstyle.ts";
 
 /**
  * Bumped when a server says its feature switches changed (`{"t":"config"}` after a config reload without a restart):
@@ -1592,6 +1593,7 @@ function normalizeBlockedWidgets(raw: any): Record<string, Blocked> | undefined 
 export function normalizeUplink(u: any): Uplink | null {
   if (!u || typeof u.uplinkId !== "string") return null;
   const widgets = Array.isArray(u.widgets) ? u.widgets : [];
+  const style = cleanDesign(u.style);
   return {
     uplinkId: u.uplinkId,
     title: typeof u.title === "string" ? u.title : "",
@@ -1627,20 +1629,26 @@ export function normalizeUplink(u: any): Uplink | null {
     ...(normalizeClaims(u.claims) ? { claims: normalizeClaims(u.claims) } : {}),
     ...(normalizeWaystones(u.waystones) ? { waystones: normalizeWaystones(u.waystones) } : {}),
     ...(normalizeCardSettings(u.cardSettings) ? { cardSettings: normalizeCardSettings(u.cardSettings) } : {}),
+    // the program's card design (dash:style): sanitised again where the card is drawn
+    ...(style ? { style } : {}),
     groups: Array.isArray(u.groups)
       ? u.groups
           .filter((g: any) => g && typeof g.id === "string")
           .slice(0, 32)
-          .map((g: any) => ({
-            id: g.id,
-            title: str(g.title),
-            page: str(g.page),
-            cols: typeof g.cols === "number" ? g.cols : undefined,
-            // layout hints from Lua: resolveLayout checks their ranges
-            ...Object.fromEntries(["x", "y", "w", "h", "order"].filter((k) => typeof g[k] === "number").map((k) => [k, g[k]])),
-            color: str(g.color),
-            icon: str(g.icon),
-          }))
+          .map((g: any) => {
+            const style = cleanDesign(g.style);
+            return {
+              id: g.id,
+              title: str(g.title),
+              page: str(g.page),
+              cols: typeof g.cols === "number" ? g.cols : undefined,
+              // layout hints from Lua: resolveLayout checks their ranges
+              ...Object.fromEntries(["x", "y", "w", "h", "order"].filter((k) => typeof g[k] === "number").map((k) => [k, g[k]])),
+              color: str(g.color),
+              icon: str(g.icon),
+              ...(style ? { style } : {}),
+            };
+          })
       : undefined,
   };
 }

@@ -15,8 +15,9 @@ Examples: run "cloud-demo" (every widget), "cloud-storage" (storage dashboard fo
 
 Raw peripheral (local cloud = peripheral.find("cloud_uplink")):
 cloud.setTitle(text)
+cloud.setStyle({bg=, bgColor=, css=, parts={title=, gauge_fill=, button=, ...}})   the card's design (dash:style); nil removes it
 cloud.page(id, title, {icon=})          pages/tabs; allows up to 64 widgets
-cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})
+cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=, style=})
 cloud.button(id, label, {confirm, pin})
 cloud.toggle(id, label, {value, confirm, pin})
 cloud.slider(id, label, {min, max, step, value, unit, pin})

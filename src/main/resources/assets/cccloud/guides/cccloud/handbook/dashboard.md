@@ -39,7 +39,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 - **Move:** drag a card by its header, or a widget anywhere. The others make room and glide aside; a dashed outline shows where it lands. Drop a widget on another card, on empty space (it gets its **own new card**) or on a page tab (hover a moment to open that page).
 - **Resize:** drag the right edge, the bottom edge or the corner – the badge shows the size (cards use 12 columns of the page, widgets 12 columns of their card).
 - **Select several widgets** with Shift-click and drag one of them to move them together.
-- **Settings** (✎ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent, a compact or comfortable style and a [design](#card-design) (background, custom CSS); a [Peripheral card](#widgets) also its values and switch.
+- **Settings** (✎ or click): label, accent colour (a button takes it as its colour – also a Cloud Button's, which is cyan by default), icon, size and the display style with a live preview – a gauge as dial, bar or big number, a label as row or big number, a chart as chart or sparkline, an indicator as chip or lamp. Cards get a title, icon, accent, a compact or comfortable style and a [design](#card-design) (background, custom CSS, card parts); a [Peripheral card](#widgets) also its values and switch.
 - **Toolbox:** opens on the side (a sheet on phones; press **A**). **Cards** has an empty card and ready-made templates, **Widgets** has every widget type: drag one onto a card or free space, then pick its data. **Hidden** lists what you hid.
 - **Hide** with ×, or drag it onto the toolbox. To bring it back, click it under **Hidden** or drag it out.
 - **Touch:** press and hold to pick up (a short vibration), then drag – a normal swipe still scrolls. **Keyboard:** Tab to a card or widget, Space picks it up, arrow keys move, Shift + arrow keys resize, Page Up/Down move a widget to the previous/next card, Space drops, Esc cancels. Press **?** for all shortcuts.
@@ -51,7 +51,7 @@ Programs can put widgets on **pages** (tabs: on top in wide windows, at the bott
 
 ## Card design
 
-In a card's settings you choose a **background** and, if you like, a few lines of **custom CSS**. Both are saved with the layout, travel with share codes and presets, and work in the light and the dark theme.
+In a card's settings you choose a **background** and, if you like, a few lines of **custom CSS** for the card and for its [parts](#card-parts). All of it is saved with the layout, travels with share codes and presets, and works in the light and the dark theme. A program can bring a [design of its own](#card-script-design).
 
 - **Background:** Default, a **tint** of one of the eight accent colours, four **gradients** (Accent, Aurora, Ember, Lagoon), four **patterns** (Grid, Stripes, Dots, Circuit) or **Custom** with a colour of your own. Tints, gradients and patterns follow the theme and the card's accent. A custom colour chooses light or dark text by itself and lays a faint veil over the colour where that is needed to keep text readable.
 - **Icons:** a widget's icon (in its settings) shows in front of its label – on rows, big numbers, gauges, charts, switches, sliders and inputs – just like a card's icon in the header. Widgets without a label, such as item search, have no icon setting.
@@ -81,9 +81,60 @@ Values can be colours (`#hex`, `rgb()`, `hsl()`, `oklch()`, `color-mix()` …), 
 **Why so strict?** A layout can come from anyone with edit rights, from a share code or from the store. The dashboard treats every line as untrusted and checks it again each time it draws a card:
 
 - **Nothing loads or runs:** no `url()`, `image-set()`, `attr()`, `expression` or `javascript:`, no comments, backslash escapes, quotes or `!important`, plain ASCII only. A card can't fetch anything or learn who is looking at it.
-- **Nothing leaves the card:** no `position`, `top`/`left`/`inset`, `z-index`, `transform`, `margin`, `width`/`height`, `content`, `pointer-events`, `cursor` or outer shadows, and numbers have limits. The background is painted on its own layer, clipped to the card and never in the way of a click, so a card can't cover other cards, the PIN prompt or the login.
+- **Nothing leaves the card:** no `position`, `top`/`left`/`inset`, `z-index`, `transform`, `margin`, `width`/`height`, `content`, `pointer-events`, `cursor` or outer shadows (a part's small glow stays inside the card), and numbers have limits. The background is painted on its own layer, clipped to the card and never in the way of a click, so a card can't cover other cards, the PIN prompt or the login.
 - **Text stays readable:** a text colour too close to the background is dropped (and listed).
 - The server checks the same rules before it stores a layout.
+
+### Card parts
+
+Under **Parts**, below Custom CSS, you style the pieces inside a card one at a time: pick a part, then write declarations for it as above. A dot marks the parts that have CSS. Each part takes only the properties in its row:
+
+| Part | What it is | Properties |
+|---|---|---|
+| title_bar | the strip with the card's title | background, background-color, -image, border-bottom, box-shadow (inset) |
+| title | the title text | text, font-size (10–22 px) |
+| screen | the dark tiles of gauges, numbers and lamps | background, background-color, -image, border, border-color, border-radius, box-shadow |
+| row | the boxes of label rows and indicators | like screen |
+| label | every widget's caption | text |
+| value | the readings: numbers, texts, states | text |
+| gauge_track | the unlit part of gauges and bars | color (the dial), background, background-color, -image, border, border-color, border-radius, box-shadow (inset) |
+| gauge_fill | the lit part of gauges and bars | color (the dial), background, background-color, -image, border-radius, box-shadow, filter |
+| chart_line | the line of charts | color (also tints the area below), filter |
+| button | every button | background-color, background-image, color, border, border-color, border-radius, box-shadow, font-family, font-weight, letter-spacing, text-transform, text-shadow |
+| toggle | the switch of toggles (its background while off) | background, background-color, -image, border, border-color, border-radius, box-shadow (inset) |
+| toggle_on | a switch while it is on | background, background-color, -image, border-color, box-shadow |
+
+*Text* is color, font-family, font-weight, font-style, letter-spacing, text-transform and text-shadow. A glowing gauge, as **gauge_fill**:
+
+```css
+color: #5ef0ff;
+box-shadow: 0 0 6px rgba(94, 240, 255, 0.7);
+filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));
+```
+
+- **Glow:** screen, row, gauge_fill, button and toggle_on may have an outer box-shadow, gauge_fill and chart_line a `drop-shadow()` in filter. Only px, an offset of up to 2 px, blur up to 6 px, spread up to 2 px and 8 px in all, so it stays inside the card.
+- **Warnings stay:** the colours of gauge_fill, chart_line and value apply in the normal range. In the warning and critical range the dashboard's yellow and red show.
+- Up to 512 characters and 12 declarations per part, with the same checks as Custom CSS. A text colour too close to the background is dropped here too. Dialogs a widget opens (item search, the PIN pad, confirmations) are never styled.
+
+### A program's design
+
+A program can give its card a design: `dash:style{...}` in [cloud.ui](ui-library.md) (a group takes `style` in its options), or `setStyle` on the [uplink](lua.md). A design is a table with `bg`, `bgColor`, `css` and `parts`, checked like the editor's:
+
+```lua
+-- the Reactor Console look: dark glass, a glowing gauge, monospace read-outs
+dash:style({
+  bg = "custom", bgColor = "#07121c",
+  css = "border: 1px solid rgba(94, 240, 255, 0.3); border-radius: 14px;",
+  parts = {
+    title = "color: #7ff3ff; font-family: monospace; letter-spacing: 3px; text-transform: uppercase;",
+    value = "color: #e9fdff; font-family: monospace; font-weight: 700;",
+    gauge_fill = "color: #5ef0ff; filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));",
+    button = "border: 1px solid rgba(255, 130, 120, 0.65); box-shadow: 0 0 6px rgba(255, 80, 70, 0.6); letter-spacing: 4px;",
+  },
+})
+```
+
+- The card shows the program's design until someone changes the design in the editor. The first change copies the program's design into the layout, so you only edit what you want different. From then on the layout's design is used as a whole, and **Use the script's design** in the card's settings goes back to the program's.
 
 ## Alerts
 

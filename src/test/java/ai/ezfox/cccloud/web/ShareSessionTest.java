@@ -47,6 +47,7 @@ class ShareSessionTest {
         json.addProperty("title", "Reactor");
         json.addProperty("online", true);
         json.addProperty("mode", "lua");
+        json.add("style", style());
         var widgets = new JsonArray();
         widgets.add(widget("temp", "gauge"));
         widgets.add(widget("search", "item_search"));
@@ -141,6 +142,13 @@ class ShareSessionTest {
         assertEquals(1, widgets.size(), "no item_search, and with hideNumbers no label");
         assertEquals("temp", widgets.get(0).getAsJsonObject().get("id").getAsString());
         assertFalse(snapshot.getAsJsonArray("uplinks").get(0).getAsJsonObject().has("mode"), "script details are not shared");
+        assertEquals(style(), snapshot.getAsJsonArray("uplinks").get(0).getAsJsonObject().get("style"), "the card looks the same in a share");
+    }
+
+    private static JsonObject style() {
+        var style = new JsonObject();
+        style.addProperty("css", "border-radius: 12px");
+        return style;
     }
 
     @Test

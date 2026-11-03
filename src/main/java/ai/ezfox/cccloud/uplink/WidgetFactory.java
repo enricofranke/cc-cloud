@@ -280,7 +280,7 @@ public final class WidgetFactory {
         json.addProperty("id", checkId("group id", id));
         json.addProperty("title", checkText("group title", title, Limits.TITLE));
         Map<?, ?> o = rawOpts == null ? Map.of() : rawOpts;
-        allowKeys("group", o, List.of("page", "cols", "x", "y", "w", "h", "color", "icon", "order"));
+        allowKeys("group", o, List.of("page", "cols", "x", "y", "w", "h", "color", "icon", "order", "style"));
         if (o.get("page") != null) json.addProperty("page", checkId("page id", o.get("page")));
         if (o.get("cols") != null) json.addProperty("cols", intIn("cols", o.get("cols"), 1, 1, 4));
         box(json, o, ai.ezfox.cccloud.layout.LayoutValidator.MIN_CARD_W, ai.ezfox.cccloud.layout.LayoutValidator.MAX_CARD_H);
@@ -289,6 +289,43 @@ public final class WidgetFactory {
         }
         if (o.get("icon") != null) json.addProperty("icon", icon(o.get("icon")));
         if (o.get("order") != null) json.addProperty("order", intIn("order", o.get("order"), 0, 0, Limits.ORDER_MAX));
+        if (o.get("style") != null) {
+            if (!(o.get("style") instanceof Map<?, ?> style)) throw new WidgetException("group style must be a table {bg=, bgColor=, css=, parts={...}}");
+            json.add("style", style(style));
+        }
+        return json;
+    }
+
+    /**
+     * A card design from Lua ({@code {bg=, bgColor=, css=, parts={title=, gauge_fill=, ...}}}), checked like a design in
+     * the layout (CardStyle.designProblem). The dashboard sanitises it again every time it draws the card.
+     */
+    public static JsonObject style(Map<?, ?> raw) throws WidgetException {
+        var json = new JsonObject();
+        for (var entry : raw.entrySet()) {
+            if (!(entry.getKey() instanceof String key) || !ai.ezfox.cccloud.layout.CardStyle.DESIGN_KEYS.contains(key)) {
+                throw new WidgetException("unknown style key " + describe(entry.getKey()) + " (allowed: bg, bgColor, css, parts)");
+            }
+            var value = entry.getValue();
+            if (key.equals("parts")) {
+                if (!(value instanceof Map<?, ?> parts)) throw new WidgetException("style.parts must be a table of part = CSS, got " + describe(value));
+                if (parts.size() > ai.ezfox.cccloud.layout.CardStyle.PARTS.size()) throw new WidgetException("style.parts has more entries than there are parts");
+                var out = new JsonObject();
+                for (var part : parts.entrySet()) {
+                    if (!(part.getKey() instanceof String name) || !(part.getValue() instanceof String css)) {
+                        throw new WidgetException("style.parts must map part names to CSS strings, got " + describe(part.getKey()) + " = " + describe(part.getValue()));
+                    }
+                    out.addProperty(name, css);
+                }
+                json.add("parts", out);
+            } else if (value instanceof String text) {
+                json.addProperty(key, text);
+            } else {
+                throw new WidgetException("style." + key + " must be a string, got " + describe(value));
+            }
+        }
+        String problem = ai.ezfox.cccloud.layout.CardStyle.designProblem(json);
+        if (problem != null) throw new WidgetException("bad style (" + problem + "); allowed parts and properties: see the handbook, Card design");
         return json;
     }
 

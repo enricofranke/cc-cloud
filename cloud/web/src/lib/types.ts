@@ -137,7 +137,9 @@ export interface Uplink {
   lastSeen?: number;
   /** Lua v2: cloud.page() / cloud.group() declarations */
   pages?: { id: string; title?: string; icon?: string }[];
-  groups?: { id: string; title?: string; page?: string; cols?: number; x?: number; y?: number; w?: number; h?: number; color?: string; icon?: string; order?: number }[];
+  groups?: { id: string; title?: string; page?: string; cols?: number; x?: number; y?: number; w?: number; h?: number; color?: string; icon?: string; order?: number; style?: unknown }[];
+  /** Lua: the section's card design (dash:style{…}), untrusted like any design: lib/layout.ts sanitises it */
+  style?: unknown;
   /** only sent to sessions with view.positions (Server, claims, waystones …); never on a display unless that display allows it */
   restricted?: boolean;
   /** claim guard: the machine is in another team's claim, so nothing is read or controlled (no widgets) */

@@ -31,6 +31,7 @@ dash:run()
 |---|---|
 | `ui.connect([uplink])` | findet den Uplink (oder nimmt einen Namen / ein Peripheral), liefert `dash` |
 | `dash:title(text)` | Kartentitel |
+| `dash:style(design)` | das [Design](dashboard.md) der Karte: `{bg=, bgColor=, css=, parts={...}}`, nil entfernt es |
 | `dash:page(id, title, opts)`, `dash:group(id, title, opts)` | Layout |
 | `dash:canvas(id, label, opts, handler)` | eine Fläche zum Zeichnen: [Canvas](lua.md) |
 | `ui.mainframe()`, `ui.readCards(mainframe)` | das Mainframe-Peripheral und die [Werte der anderen Karten](lua.md) nach Titel und Widget-ID |

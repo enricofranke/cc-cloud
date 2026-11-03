@@ -160,6 +160,18 @@ end)
 
 dash:run()`;
 
+export const UI_STYLE = `-- the Reactor Console look: dark glass, a glowing gauge, monospace read-outs
+dash:style({
+  bg = "custom", bgColor = "#07121c",
+  css = "border: 1px solid rgba(94, 240, 255, 0.3); border-radius: 14px;",
+  parts = {
+    title = "color: #7ff3ff; font-family: monospace; letter-spacing: 3px; text-transform: uppercase;",
+    value = "color: #e9fdff; font-family: monospace; font-weight: 700;",
+    gauge_fill = "color: #5ef0ff; filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));",
+    button = "border: 1px solid rgba(255, 130, 120, 0.65); box-shadow: 0 0 6px rgba(255, 80, 70, 0.6); letter-spacing: 4px;",
+  },
+})`;
+
 export const SHELL_EDIT = `edit startup.lua`;
 export const SHELL_RUN = `startup`;
 export const SHELL_LUA = `lua

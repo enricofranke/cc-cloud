@@ -5,10 +5,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   CARD_BACKGROUNDS,
+  CARD_PARTS,
   CSS_FUNCTIONS,
   CSS_PROPERTIES,
   MAX_CARD_CSS,
   MAX_DECLARATIONS,
+  MAX_PART_CSS,
+  PART_FUNCTIONS,
+  PART_PROPERTIES,
   REASON_TEXT,
   STRUCTURAL_ENV,
   THEME_TOKENS,
@@ -21,9 +25,11 @@ import {
   parseHex,
   readableLook,
   sanitizeCardCss,
+  sanitizePartCss,
   scrimColor,
   serializeCss,
   serverCssProblem,
+  serverPartProblem,
   type CssEnv,
   type Reason,
   type Rgb,
@@ -40,11 +46,18 @@ const run = (css: unknown, env: CssEnv = ok) => sanitizeCardCss(css, env);
 /** The reasons of the dropped declarations. */
 const reasons = (css: unknown, env: CssEnv = ok) => run(css, env).dropped.map((d) => d.reason);
 const kept = (css: unknown, env: CssEnv = ok) => run(css, env).decls.map((d) => `${d.prop}: ${d.value}`);
-/** Nothing of it is applied, and this is why. */
+/** Reasons found before the property is even looked at: the same in a card's CSS and in every part's. */
+const EARLY = new Set<Reason>(["escape", "comment", "block", "important", "network", "script", "unicode"]);
+/** Nothing of it is applied, and this is why; neither in any part of the card (CardStyle parts). */
 const refused = (css: string, reason: Reason) => {
   const r = run(css);
   expect(r.decls, css).toEqual([]);
   expect(r.dropped.map((d) => d.reason), css).toContain(reason);
+  for (const part of CARD_PARTS) {
+    const p = sanitizePartCss(part, css, ok);
+    expect(p.decls, `${part}: ${css}`).toEqual([]);
+    if (EARLY.has(reason)) expect(p.dropped.map((d) => d.reason), `${part}: ${css}`).toContain(reason);
+  }
 };
 
 describe("card CSS: what is kept", () => {
@@ -326,6 +339,11 @@ describe("the server's check (shared with CardStyle.java)", () => {
     maxCss: number;
     accept: string[];
     reject: { css: string; reason: string }[];
+    parts: Record<string, string[]>;
+    partFunctions: string[];
+    maxPartCss: number;
+    partAccept: { part: string; css: string }[];
+    partReject: { part: string; css: string; reason: string }[];
   };
 
   it("has the same lists", () => {
@@ -337,6 +355,25 @@ describe("the server's check (shared with CardStyle.java)", () => {
   });
   it.each(fixture.accept)("accepts %j", (css) => expect(serverCssProblem(css)).toBeNull());
   it.each(fixture.reject)("refuses $css ($reason)", ({ css, reason }) => expect(serverCssProblem(css)).toBe(reason));
+
+  it("has the same parts", () => {
+    expect(Object.keys(fixture.parts)).toEqual([...CARD_PARTS]);
+    for (const part of CARD_PARTS) expect(fixture.parts[part], part).toEqual(PART_PROPERTIES[part]);
+    expect(fixture.partFunctions).toEqual([...PART_FUNCTIONS]);
+    expect(fixture.maxPartCss).toBe(MAX_PART_CSS);
+  });
+  it.each(fixture.partAccept)("accepts $part: $css", ({ part, css }) => expect(serverPartProblem(part, css)).toBeNull());
+  it.each(fixture.partReject)("refuses $part: $css ($reason)", ({ part, css, reason }) => expect(serverPartProblem(part, css)).toBe(reason));
+  it("refuses every attack of the card in every part, for the same reason", () => {
+    for (const { css, reason } of fixture.reject) for (const part of CARD_PARTS) expect(serverPartProblem(part, css), `${part}: ${css}`).toBe(reason);
+  });
+  it("keeps every accepted part whole in the sanitiser", () => {
+    for (const { part, css } of fixture.partAccept) {
+      const r = sanitizePartCss(part as (typeof CARD_PARTS)[number], css, ok);
+      expect(r.dropped, `${part}: ${css}`).toEqual([]);
+      expect(serverPartProblem(part, serializeCss(r.decls))).toBeNull();
+    }
+  });
 
   it("accepts everything the sanitiser keeps", () => {
     const samples = [

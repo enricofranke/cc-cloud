@@ -165,6 +165,19 @@ function Dash:title(text)
     return self
 end
 
+--- Sets the design of this section's cards, or removes it with nil:
+--
+--     dash:style{ bg = "custom", bgColor = "#0b1a2a", css = "border-radius: 12px;",
+--       parts = { gauge_fill = "color: #5ef0c4; filter: drop-shadow(0 0 3px #5ef0c4);" } }
+--
+-- `css` and every part take declarations only (`property: value;`), checked like the layout editor's custom CSS;
+-- a group's own `style` wins on its card, and a design saved in the layout editor wins over both.
+function Dash:style(design)
+    expect(1, design, "table", "nil")
+    self.uplink.setStyle(design)
+    return self
+end
+
 --- Declares a page (tab). With pages an uplink may have up to 64 widgets.
 function Dash:page(id, title, opts)
     self.uplink.page(id, title, opts)

@@ -3,6 +3,12 @@ local dash = ui.connect()
 assert(dash:peripheral() == uplink)
 
 dash:title("Test")
+-- the card design goes to the uplink as it is (the uplink checks it), nil removes it
+assert(dash:style({ bg = "custom", bgColor = "#0b1a2a", parts = { gauge_fill = "color: #5ef0c4;" } }) == dash)
+assert(calls[#calls][1] == "setStyle" and calls[#calls][2].parts.gauge_fill == "color: #5ef0c4;", "style passed on")
+dash:style(nil)
+assert(calls[#calls][1] == "setStyle" and calls[#calls][2] == nil, "style removed")
+assert(not pcall(dash.style, dash, "color: red"), "a style is a table")
 dash:page("main", "Main", { icon = "home" })
 local temp = dash:gauge("temp", "Temp", { max = 1200, unit = "K", page = "main" })
 local pressed, toggled, mode = {}, nil, nil

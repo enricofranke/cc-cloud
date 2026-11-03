@@ -10,7 +10,7 @@
 import { canvasSize } from "./canvas.ts";
 import { WIDGET_TYPES, type Uplink, type Widget, type WidgetType } from "./types.ts";
 import { bottom, clampItem, compact, flowPack, freeSpot, insertItem, moveItem, placeAll, resizeItem, type GridItem } from "./grid.ts";
-import { cleanCardCss, isCardBackground, isHexColor, type CardBackground } from "./cardstyle.ts";
+import { cleanDesign, hasDesign, type CardBackground, type CardDesign, type CardParts } from "./cardstyle.ts";
 
 export const LAYOUT_VERSION = 2;
 export const MAX_LAYOUT_BYTES = 256 * 1024;
@@ -65,10 +65,11 @@ export interface CardPatch extends Partial<Box> {
   color?: Accent;
   icon?: IconName;
   style?: CardStyle;
-  /** card design (lib/cardstyle.ts): a background option, its colour for `custom`, and sanitised custom CSS */
+  /** card design (lib/cardstyle.ts): a background option, its colour for `custom`, sanitised custom CSS and parts */
   bg?: CardBackground;
   bgColor?: string;
   css?: string;
+  parts?: CardParts;
   /** v1 only (migrated on read) */
   order?: number;
   span?: number;
@@ -106,6 +107,8 @@ export interface LuaGroup {
   title?: string;
   page?: string;
   cols?: number;
+  /** the group card's design (`style` of cloud.group()) */
+  style?: unknown;
 }
 
 export interface ResolvedWidget {
@@ -141,6 +144,14 @@ export interface ResolvedCard {
   bg?: CardBackground;
   bgColor?: string;
   css?: string;
+  parts?: CardParts;
+  /**
+   * "script": the design above is the script's (the uplink's or the group's `style`) and is not saved with the layout.
+   * A design saved in the layout wins as a whole; the editor's first change copies the script's into the layout.
+   */
+  designFrom?: "script";
+  /** the script's design, for the editor's "Use the script's design" */
+  scriptDesign?: CardDesign;
   widgets: ResolvedWidget[];
 }
 export interface ResolvedPage extends LayoutPage {
@@ -241,11 +252,8 @@ export function normalizeLayout(raw: unknown): LayoutDoc {
       if (isAccent(c.color)) patch.color = c.color;
       if (isIcon(c.icon)) patch.icon = c.icon;
       if (c.style === "compact") patch.style = "compact";
-      if (isCardBackground(c.bg)) patch.bg = c.bg;
-      if (patch.bg === "custom" && isHexColor(c.bgColor)) patch.bgColor = c.bgColor.toLowerCase();
-      // custom CSS is untrusted: only sanitised declarations stay (Card.tsx checks them again when it renders)
-      const css = cleanCardCss(c.css);
-      if (css) patch.css = css;
+      // custom CSS and parts are untrusted: only sanitised declarations stay (Card.tsx checks them again when it renders)
+      Object.assign(patch, cleanDesign(c));
       if (int(c.order, 0, 10_000) !== undefined) patch.order = int(c.order, 0, 10_000);
       if (int(c.span, 1, 4) !== undefined) patch.span = int(c.span, 1, 4);
       out.cards[k] = patch;
@@ -401,8 +409,11 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
   const cards = new Map<string, Draft>();
   const widgets: WDraft[] = [];
   let natural = 0;
-  const makeCard = (key: string, u: Uplink, defaultTitle: string, luaPage: string | undefined, cols: number | undefined, wide: boolean, o: Record<string, unknown>, lua: Partial<Box> = {}): Draft => {
+  const makeCard = (key: string, u: Uplink, defaultTitle: string, luaPage: string | undefined, cols: number | undefined, wide: boolean, o: Record<string, unknown>, lua: Partial<Box> = {}, script?: CardDesign): Draft => {
     const saved = doc.cards[key] ?? {};
+    // the layout's design wins as a whole; without one the script's
+    const own = hasDesign(saved);
+    const design: CardDesign = own ? saved : (script ?? {});
     // what the editor saved wins, field by field, over the box a script asked for
     const patch = { ...saved, x: saved.x ?? lua.x, y: saved.y ?? lua.y, ...(saved.h !== undefined || lua.h !== undefined ? { h: saved.h ?? lua.h } : {}) };
     const spanHint = saved.span ?? cols;
@@ -420,9 +431,9 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       color: patch.color ?? (isAccent(o.color) && o.color !== "gray" ? (o.color as Accent) : "gold"),
       icon: patch.icon ?? (isIcon(o.icon) ? (o.icon as IconName) : undefined),
       style: patch.style ?? "comfortable",
-      ...(patch.bg ? { bg: patch.bg } : {}),
-      ...(patch.bg === "custom" && patch.bgColor ? { bgColor: patch.bgColor } : {}),
-      ...(patch.css ? { css: patch.css } : {}),
+      ...designOf(design),
+      ...(!own && script ? { designFrom: "script" as const } : {}),
+      ...(script ? { scriptDesign: script } : {}),
       order: patch.order ?? 1000 + natural++,
       widgets: [],
     };
@@ -430,6 +441,8 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
 
   uplinks.forEach((u) => {
     const groups = new Map(((u as Uplink & { groups?: LuaGroup[] }).groups ?? []).filter((g) => g && typeof g.id === "string").map((g) => [g.id, g]));
+    // the section's design (dash:style) on all its cards; a group's own design (cloud.group's style) on that group's card
+    const uplinkStyle = scriptStyle(u.style);
     u.widgets.forEach((w, wi) => {
       const key = cardKeyOf(u.uplinkId, w);
       if (!cards.has(key)) {
@@ -438,7 +451,7 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
         const wide = u.widgets.some((x) => cardKeyOf(u.uplinkId, x) === key && (x.type === "item_search" || x.type === "chart" || x.type === "canvas"));
         // a group's own colour, icon and box from Lua; without them the first widget's colour and icon, as before
         const look = group ? { ...o, ...(group.color ? { color: group.color } : {}), ...(group.icon ? { icon: group.icon } : {}) } : o;
-        const card = makeCard(key, u, group?.title ?? u.title ?? "Uplink", group?.page ?? str(o.page), group?.cols, wide, look, luaBox(group));
+        const card = makeCard(key, u, group?.title ?? u.title ?? "Uplink", group?.page ?? str(o.page), group?.cols, wide, look, luaBox(group), (group && scriptStyle(group.style)) ?? uplinkStyle);
         if (typeof group?.order === "number" && doc.cards[key]?.order === undefined) card.order = group.order;
         cards.set(key, card);
       }
@@ -472,7 +485,7 @@ export function resolveLayout(uplinks: Uplink[], layout: LayoutDoc | null, opts:
       });
     });
     // an uplink without widgets still gets its (empty) card
-    if (!u.widgets.length && !cards.has(u.uplinkId)) cards.set(u.uplinkId, makeCard(u.uplinkId, u, u.title || "Uplink", undefined, undefined, false, {}));
+    if (!u.widgets.length && !cards.has(u.uplinkId)) cards.set(u.uplinkId, makeCard(u.uplinkId, u, u.title || "Uplink", undefined, undefined, false, {}, {}, uplinkStyle));
   });
   // custom cards from the editor
   for (const [key, patch] of Object.entries(doc.cards)) {
@@ -620,9 +633,8 @@ function fullSnapshot(pages: ResolvedPage[]): LayoutDoc {
         ...(c.color !== "gold" ? { color: c.color } : {}),
         ...(c.icon ? { icon: c.icon } : {}),
         ...(c.style !== "comfortable" ? { style: c.style } : {}),
-        ...(c.bg ? { bg: c.bg } : {}),
-        ...(c.bg === "custom" && c.bgColor ? { bgColor: c.bgColor } : {}),
-        ...(c.css ? { css: c.css } : {}),
+        // the script's design stays the script's: it follows the script, not the layout
+        ...(c.designFrom === "script" ? {} : designOf(c)),
       };
       for (const w of c.widgets) {
         doc.widgets[w.key] = {
@@ -659,6 +671,38 @@ export function migrateLayout(uplinks: Uplink[], v1: LayoutDoc): LayoutDoc {
     doc.widgets[k] = rest;
   }
   return doc;
+}
+
+/** The design keys of a card or patch that change anything, as a layout card stores them. */
+function designOf(d: CardDesign): CardDesign {
+  return {
+    ...(d.bg ? { bg: d.bg } : {}),
+    ...(d.bg === "custom" && d.bgColor ? { bgColor: d.bgColor } : {}),
+    ...(d.css ? { css: d.css } : {}),
+    ...(d.parts && Object.keys(d.parts).length ? { parts: d.parts } : {}),
+  };
+}
+
+/** A script's design (cloud.ui's dash:style, the style of cloud.group()), sanitised once per snapshot object. */
+const scriptStyles = new WeakMap<object, CardDesign | null>();
+function scriptStyle(raw: unknown): CardDesign | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  let d = scriptStyles.get(raw);
+  if (d === undefined) {
+    d = cleanDesign(raw) ?? null;
+    scriptStyles.set(raw, d);
+  }
+  return d ?? undefined;
+}
+
+/** Drops the layout's design of a card: it shows the script's design again (or none). */
+export function resetCardDesign(pages: ResolvedPage[], cardKey: string): ResolvedPage[] {
+  const next = clone(pages);
+  const f = findCard(next, cardKey);
+  if (!f) return pages;
+  for (const k of ["bg", "bgColor", "css", "parts"] as const) delete f.card[k];
+  if (f.card.scriptDesign) Object.assign(f.card, designOf(f.card.scriptDesign), { designFrom: "script" });
+  return next;
 }
 
 const clone = (pages: ResolvedPage[]): ResolvedPage[] =>
@@ -736,12 +780,14 @@ export function resizeCard(pages: ResolvedPage[], cardKey: string, w: number, h:
   return next;
 }
 
-export function updateCard(pages: ResolvedPage[], cardKey: string, patch: Partial<Pick<ResolvedCard, "title" | "hidden" | "color" | "icon" | "style" | "bg" | "bgColor" | "css">>): ResolvedPage[] {
+export function updateCard(pages: ResolvedPage[], cardKey: string, patch: Partial<Pick<ResolvedCard, "title" | "hidden" | "color" | "icon" | "style" | "bg" | "bgColor" | "css" | "parts">>): ResolvedPage[] {
   const next = clone(pages);
   const f = findCard(next, cardKey);
   if (!f) return pages;
   const wasHidden = f.card.hidden;
   Object.assign(f.card, patch);
+  // a change to the design makes the whole design the layout's (the rest of the script's design comes along)
+  if (["bg", "bgColor", "css", "parts"].some((k) => k in patch)) delete f.card.designFrom;
   if (patch.hidden !== undefined && patch.hidden !== wasHidden) {
     const others = asItems(f.page.cards.filter((c) => c !== f.card));
     if (patch.hidden) applyCards(f.page, compact(others));

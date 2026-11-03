@@ -810,6 +810,288 @@ pre {
   text-transform: none;
   text-shadow: none;
 }
+/* ---- card parts (CardSkin.tsx, lib/cardstyle.ts PART_RULES)
+   A part's kept declarations arrive as custom properties on the card (--cp-<part>-<property>, set one by one with
+   style.setProperty) and data-cp lists which ones are there. These fixed rules hand them to that part's elements; the
+   selectors are ours, never the CSS's. Nothing inside a dialog a widget opens (.backdrop), and the colours of the fill,
+   the chart line and the values only in the normal zone: warning and critical keep the dashboard's colours.
+   cloud/test/card-parts.test.ts checks that every part:property has its rule here, and nothing else. */
+/* title_bar */
+.card[data-cp~="title_bar:background"] > .card-head {
+  background: var(--cp-title_bar-background) !important;
+}
+.card[data-cp~="title_bar:background-color"] > .card-head {
+  background-color: var(--cp-title_bar-background-color) !important;
+}
+.card[data-cp~="title_bar:background-image"] > .card-head {
+  background-image: var(--cp-title_bar-background-image) !important;
+}
+.card[data-cp~="title_bar:border-bottom"] > .card-head {
+  border-bottom: var(--cp-title_bar-border-bottom) !important;
+}
+.card[data-cp~="title_bar:box-shadow"] > .card-head {
+  box-shadow: var(--cp-title_bar-box-shadow) !important;
+}
+/* title */
+.card[data-cp~="title:color"] > .card-head .card-title {
+  color: var(--cp-title-color) !important;
+}
+.card[data-cp~="title:font-family"] > .card-head .card-title {
+  font-family: var(--cp-title-font-family) !important;
+}
+.card[data-cp~="title:font-weight"] > .card-head .card-title {
+  font-weight: var(--cp-title-font-weight) !important;
+}
+.card[data-cp~="title:font-style"] > .card-head .card-title {
+  font-style: var(--cp-title-font-style) !important;
+}
+.card[data-cp~="title:letter-spacing"] > .card-head .card-title {
+  letter-spacing: var(--cp-title-letter-spacing) !important;
+}
+.card[data-cp~="title:text-transform"] > .card-head .card-title {
+  text-transform: var(--cp-title-text-transform) !important;
+}
+.card[data-cp~="title:text-shadow"] > .card-head .card-title {
+  text-shadow: var(--cp-title-text-shadow) !important;
+}
+.card[data-cp~="title:font-size"] > .card-head .card-title {
+  font-size: var(--cp-title-font-size) !important;
+}
+/* screen */
+.card[data-cp~="screen:background"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  background: var(--cp-screen-background) !important;
+}
+.card[data-cp~="screen:background-color"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  background-color: var(--cp-screen-background-color) !important;
+}
+.card[data-cp~="screen:background-image"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  background-image: var(--cp-screen-background-image) !important;
+}
+.card[data-cp~="screen:border"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  border: var(--cp-screen-border) !important;
+}
+.card[data-cp~="screen:border-color"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  border-color: var(--cp-screen-border-color) !important;
+}
+.card[data-cp~="screen:border-radius"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  border-radius: var(--cp-screen-border-radius) !important;
+}
+.card[data-cp~="screen:box-shadow"] .wcell:is(.t-gauge, .d-number, .d-big, .d-lamp) > .wcontent:not(.backdrop *) {
+  box-shadow: var(--cp-screen-box-shadow) !important;
+}
+/* row */
+.card[data-cp~="row:background"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  background: var(--cp-row-background) !important;
+}
+.card[data-cp~="row:background-color"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  background-color: var(--cp-row-background-color) !important;
+}
+.card[data-cp~="row:background-image"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  background-image: var(--cp-row-background-image) !important;
+}
+.card[data-cp~="row:border"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  border: var(--cp-row-border) !important;
+}
+.card[data-cp~="row:border-color"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  border-color: var(--cp-row-border-color) !important;
+}
+.card[data-cp~="row:border-radius"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  border-radius: var(--cp-row-border-radius) !important;
+}
+.card[data-cp~="row:box-shadow"] :is(.wcell.t-label.d-row > .wcontent, .wcell.t-label.d-auto > .wcontent, .indicator):not(.backdrop *) {
+  box-shadow: var(--cp-row-box-shadow) !important;
+}
+/* label */
+.card[data-cp~="label:color"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  color: var(--cp-label-color) !important;
+}
+.card[data-cp~="label:font-family"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  font-family: var(--cp-label-font-family) !important;
+}
+.card[data-cp~="label:font-weight"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  font-weight: var(--cp-label-font-weight) !important;
+}
+.card[data-cp~="label:font-style"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  font-style: var(--cp-label-font-style) !important;
+}
+.card[data-cp~="label:letter-spacing"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  letter-spacing: var(--cp-label-letter-spacing) !important;
+}
+.card[data-cp~="label:text-transform"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  text-transform: var(--cp-label-text-transform) !important;
+}
+.card[data-cp~="label:text-shadow"] :is(.kv-key, .w2-label, .gauge-label, .bignum-label, .row-label):not(.backdrop *) {
+  text-shadow: var(--cp-label-text-shadow) !important;
+}
+/* value */
+.card[data-cp~="value:color"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *):not(:is(.zone-warn, .zone-crit) *) {
+  color: var(--cp-value-color) !important;
+}
+.card[data-cp~="value:font-family"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *) {
+  font-family: var(--cp-value-font-family) !important;
+}
+.card[data-cp~="value:font-weight"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *) {
+  font-weight: var(--cp-value-font-weight) !important;
+}
+.card[data-cp~="value:font-style"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *) {
+  font-style: var(--cp-value-font-style) !important;
+}
+.card[data-cp~="value:letter-spacing"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *) {
+  letter-spacing: var(--cp-value-letter-spacing) !important;
+}
+.card[data-cp~="value:text-transform"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *) {
+  text-transform: var(--cp-value-text-transform) !important;
+}
+.card[data-cp~="value:text-shadow"] :is(.kv-val, .kv-text, .w2-value, .chart-now, .gauge-value, .bignum-value, .row-value:not(.dragging), .ind-state):not(.backdrop *):not(:is(.zone-warn, .zone-crit) *) {
+  text-shadow: var(--cp-value-text-shadow) !important;
+}
+/* gauge_track */
+.card[data-cp~="gauge_track:color"] .gauge .seg-ok:not(.on):not(.backdrop *) {
+  stroke: var(--cp-gauge_track-color) !important;
+}
+.card[data-cp~="gauge_track:color"] .pbar:not(.backdrop *) {
+  background: var(--cp-gauge_track-color) !important;
+}
+.card[data-cp~="gauge_track:background"] .pbar:not(.backdrop *) {
+  background: var(--cp-gauge_track-background) !important;
+}
+.card[data-cp~="gauge_track:background-color"] .pbar:not(.backdrop *) {
+  background-color: var(--cp-gauge_track-background-color) !important;
+}
+.card[data-cp~="gauge_track:background-image"] .pbar:not(.backdrop *) {
+  background-image: var(--cp-gauge_track-background-image) !important;
+}
+.card[data-cp~="gauge_track:border"] .pbar:not(.backdrop *) {
+  border: var(--cp-gauge_track-border) !important;
+}
+.card[data-cp~="gauge_track:border-color"] .pbar:not(.backdrop *) {
+  border-color: var(--cp-gauge_track-border-color) !important;
+}
+.card[data-cp~="gauge_track:border-radius"] .pbar:not(.backdrop *) {
+  border-radius: var(--cp-gauge_track-border-radius) !important;
+}
+.card[data-cp~="gauge_track:box-shadow"] .pbar:not(.backdrop *) {
+  box-shadow: var(--cp-gauge_track-box-shadow) !important;
+}
+/* a rounded track rounds its fill too (a radius of the fill itself wins) */
+.card[data-cp~="gauge_track:border-radius"] .pbar-fill:not(.backdrop *) {
+  border-radius: inherit;
+}
+/* gauge_fill */
+.card[data-cp~="gauge_fill:color"] .gauge .seg-ok.on:not(.backdrop *) {
+  stroke: var(--cp-gauge_fill-color) !important;
+}
+.card[data-cp~="gauge_fill:color"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  background: var(--cp-gauge_fill-color) !important;
+}
+.card[data-cp~="gauge_fill:background"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  background: var(--cp-gauge_fill-background) !important;
+}
+.card[data-cp~="gauge_fill:background-color"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  background-color: var(--cp-gauge_fill-background-color) !important;
+}
+.card[data-cp~="gauge_fill:background-image"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  background-image: var(--cp-gauge_fill-background-image) !important;
+}
+.card[data-cp~="gauge_fill:border-radius"] :is(.gauge-bar, .progress) .pbar-fill:not(.backdrop *) {
+  border-radius: var(--cp-gauge_fill-border-radius) !important;
+}
+.card[data-cp~="gauge_fill:box-shadow"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  box-shadow: var(--cp-gauge_fill-box-shadow) !important;
+}
+.card[data-cp~="gauge_fill:filter"] .gauge .seg-ok.on:not(.backdrop *),
+.card[data-cp~="gauge_fill:filter"] :is(.gauge-bar.zone-ok, .progress) .pbar-fill:not(.backdrop *) {
+  filter: var(--cp-gauge_fill-filter) !important;
+}
+/* chart_line */
+.card[data-cp~="chart_line:color"] .chart.zone-ok .chart-line:not(.backdrop *) {
+  stroke: var(--cp-chart_line-color) !important;
+}
+.card[data-cp~="chart_line:filter"] .chart.zone-ok .chart-line:not(.backdrop *) {
+  filter: var(--cp-chart_line-filter) !important;
+}
+.card[data-cp~="chart_line:color"] .chart.zone-ok .chart-area:not(.backdrop *) {
+  fill: color-mix(in srgb, var(--cp-chart_line-color) 16%, transparent) !important;
+}
+/* button */
+.card[data-cp~="button:background-color"] .wcell .pxbtn:not(.backdrop *) {
+  background-color: var(--cp-button-background-color) !important;
+}
+.card[data-cp~="button:background-image"] .wcell .pxbtn:not(.backdrop *) {
+  background-image: var(--cp-button-background-image) !important;
+}
+.card[data-cp~="button:color"] .wcell .pxbtn:not(.backdrop *) {
+  color: var(--cp-button-color) !important;
+}
+.card[data-cp~="button:border"] .wcell .pxbtn:not(.backdrop *) {
+  border: var(--cp-button-border) !important;
+}
+.card[data-cp~="button:border-color"] .wcell .pxbtn:not(.backdrop *) {
+  border-color: var(--cp-button-border-color) !important;
+}
+.card[data-cp~="button:border-radius"] .wcell .pxbtn:not(.backdrop *) {
+  border-radius: var(--cp-button-border-radius) !important;
+}
+.card[data-cp~="button:box-shadow"] .wcell .pxbtn:not(.backdrop *) {
+  box-shadow: var(--cp-button-box-shadow) !important;
+}
+.card[data-cp~="button:font-family"] .wcell .pxbtn:not(.backdrop *) {
+  font-family: var(--cp-button-font-family) !important;
+}
+.card[data-cp~="button:font-weight"] .wcell .pxbtn:not(.backdrop *) {
+  font-weight: var(--cp-button-font-weight) !important;
+}
+.card[data-cp~="button:letter-spacing"] .wcell .pxbtn:not(.backdrop *) {
+  letter-spacing: var(--cp-button-letter-spacing) !important;
+}
+.card[data-cp~="button:text-transform"] .wcell .pxbtn:not(.backdrop *) {
+  text-transform: var(--cp-button-text-transform) !important;
+}
+.card[data-cp~="button:text-shadow"] .wcell .pxbtn:not(.backdrop *) {
+  text-shadow: var(--cp-button-text-shadow) !important;
+}
+/* toggle */
+.card[data-cp~="toggle:background"] .switch:not(.on):not(.backdrop *) {
+  background: var(--cp-toggle-background) !important;
+}
+.card[data-cp~="toggle:background-color"] .switch:not(.on):not(.backdrop *) {
+  background-color: var(--cp-toggle-background-color) !important;
+}
+.card[data-cp~="toggle:background-image"] .switch:not(.on):not(.backdrop *) {
+  background-image: var(--cp-toggle-background-image) !important;
+}
+.card[data-cp~="toggle:border"] .switch:not(.backdrop *) {
+  border: var(--cp-toggle-border) !important;
+}
+.card[data-cp~="toggle:border-color"] .switch:not(.backdrop *) {
+  border-color: var(--cp-toggle-border-color) !important;
+}
+.card[data-cp~="toggle:border-radius"] .switch:not(.backdrop *) {
+  border-radius: var(--cp-toggle-border-radius) !important;
+}
+.card[data-cp~="toggle:box-shadow"] .switch:not(.backdrop *) {
+  box-shadow: var(--cp-toggle-box-shadow) !important;
+}
+/* the knob follows a rounded switch */
+.card[data-cp~="toggle:border-radius"] .switch-knob:not(.backdrop *) {
+  border-radius: var(--cp-toggle-border-radius);
+}
+/* toggle_on */
+.card[data-cp~="toggle_on:background"] .switch.on:not(.backdrop *) {
+  background: var(--cp-toggle_on-background) !important;
+}
+.card[data-cp~="toggle_on:background-color"] .switch.on:not(.backdrop *) {
+  background-color: var(--cp-toggle_on-background-color) !important;
+}
+.card[data-cp~="toggle_on:background-image"] .switch.on:not(.backdrop *) {
+  background-image: var(--cp-toggle_on-background-image) !important;
+}
+.card[data-cp~="toggle_on:border-color"] .switch.on:not(.backdrop *) {
+  border-color: var(--cp-toggle_on-border-color) !important;
+}
+.card[data-cp~="toggle_on:box-shadow"] .switch.on:not(.backdrop *) {
+  box-shadow: var(--cp-toggle_on-box-shadow) !important;
+}
 /* background options: theme tokens only, so each one works in the light and the dark theme */
 :is(.card-skin, .bg-swatch).bg-tint-gold { background: color-mix(in srgb, var(--gold) 14%, var(--panel)); }
 :is(.card-skin, .bg-swatch).bg-tint-cyan { background: color-mix(in srgb, var(--cyan) 14%, var(--panel)); }
@@ -6982,6 +7264,39 @@ fieldset.field {
 .ed-css-dropped code {
   color: var(--text);
   overflow-wrap: anywhere;
+}
+/* the parts of a card: one small button each, a dot on the ones with CSS */
+.ed-part-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ed-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 12px;
+}
+.ed-part.styled::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+}
+.ed-part.on {
+  border-color: var(--cyan);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--cyan);
+}
+.ed-design-src {
+  display: block;
 }
 /* grid guides while editing */
 .pgrid.editing:not(.narrow) {

@@ -256,7 +256,7 @@ public final class ShareFilter {
         for (var entry : uplink.entrySet()) {
             // Only what the dashboard needs to render cards; script modes and bridge details are not shared.
             switch (entry.getKey()) {
-                case "uplinkId", "title", "online", "pages", "groups" -> copy.add(entry.getKey(), entry.getValue().deepCopy());
+                case "uplinkId", "title", "online", "pages", "groups", "style" -> copy.add(entry.getKey(), entry.getValue().deepCopy());
                 default -> {
                 }
             }

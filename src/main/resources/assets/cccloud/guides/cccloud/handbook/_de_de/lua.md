@@ -47,6 +47,7 @@ Jedes Widget bekommt eine **ID** (1–32 Zeichen: a–z, 0–9, _), eine Beschri
 | Methode | Optionen |
 |---|---|
 | `cloud.setTitle(text)` | Kartentitel (max. 48 Zeichen) |
+| `cloud.setStyle(design)` | das [Design](dashboard.md) der Karte: `{bg=, bgColor=, css=, parts={...}}`, nil entfernt es |
 | `cloud.button(id, label, opts)` | color, confirm, pin |
 | `cloud.toggle(id, label, opts)` | value, confirm, pin |
 | `cloud.slider(id, label, opts)` | min, max, step, value, unit, pin |
@@ -114,7 +115,7 @@ cloud.indicator("running", "Running", {value=true, onColor="green", page="power"
 ```
 
 - `cloud.page(id, title, {icon=})` – ein Tab. Mit Seiten darf ein Uplink 64 statt 32 Widgets haben.
-- `cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=})` – eine Karte; Widgets kommen mit `group=` hinein.
+- `cloud.group(id, title, {page=, cols=1..4, x=, y=, w=3..12, h=1..60, color=, icon=, order=, style=})` – eine Karte; Widgets kommen mit `group=` hinein. `style` ist das [Design](dashboard.md) der Gruppenkarte (ohne eines nimmt sie das des Uplinks).
 - Jedes Widget akzeptiert außerdem `page`, `group`, `span` (1–4), `order` (0–10000), `color`, `icon` und eine Box `x`, `y`, `w`, `h`.
 - Icons: home, bolt, flame, drop, box, fan, lock, warning, gear, chart, star, leaf, heart, cpu, shield, pick, lever, button, lamp, sensor.
 
