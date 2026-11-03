@@ -231,7 +231,9 @@ class ScriptRuntimeTest {
     }
 
     @Test
-    void scriptsSetACardsDesignWithTheEditorsChecks() throws InterruptedException {
+    void scriptsSetACardsDesignWithTheEditorsChecks() throws Exception {
+        // load the CSS checks first: class loading is not what the script's short test time budget is about
+        ai.ezfox.cccloud.uplink.WidgetFactory.style(java.util.Map.of("css", "border-radius: 4px", "parts", java.util.Map.of("title", "color: red")));
         var run = scripts.run("""
             print(cloud.setStyle("reactor", {bg = "custom", bgColor = "#0b1a2a", parts = {gauge_fill = "color: #4ff0ff"}}))
             print(cloud.setStyle("Reactor"))
