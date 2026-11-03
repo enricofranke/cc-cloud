@@ -4,6 +4,7 @@
 //   --approve-ms 3000  auto-approve pairings after this delay (-1 = never; names containing "deny" are denied)
 //   --lan-only         simulate webAllowInternet=false (non-LAN Host headers get 403)
 //   --no-extras        only one mainframe, no offline uplink
+//   --console          add the "Reactor Console" card (a program's own design with card parts)
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -16,6 +17,7 @@ const { values } = parseArgs({
     "lan-only": { type: "boolean", default: false },
     "no-extras": { type: "boolean", default: false },
     "no-static": { type: "boolean", default: false },
+    console: { type: "boolean", default: false },
   },
 });
 const here = fileURLToPath(new URL(".", import.meta.url));
@@ -24,6 +26,7 @@ const mock = await createMockServer({
   extras: !values["no-extras"],
   approveDelayMs: Number(values["approve-ms"]),
   lanOnly: values["lan-only"],
+  console: values.console,
   staticDir: values["no-static"] ? undefined : resolve(here, "../../src/main/resources/cccloud_web"),
 });
 console.log("[mock] PIN for PIN-protected widgets: 1234");

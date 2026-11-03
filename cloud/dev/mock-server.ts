@@ -12,7 +12,7 @@ import { serveStatic } from "./static.ts";
 import { mockIcon } from "./icons.ts";
 import { createMockCore, type MockOptions as CoreOptions } from "./mock-core.ts";
 
-export { REACTOR, STORAGE, TURBINE, ME, CONTROL, COMPUTER, DEEP_COMPUTER, DEEP_RS, GREENHOUSE, CANVAS } from "./mock-core.ts";
+export { REACTOR, STORAGE, TURBINE, ME, CONTROL, COMPUTER, DEEP_COMPUTER, DEEP_RS, GREENHOUSE, CANVAS, CONSOLE, CONSOLE_STYLE } from "./mock-core.ts";
 
 export interface MockOptions extends CoreOptions {
   port?: number;

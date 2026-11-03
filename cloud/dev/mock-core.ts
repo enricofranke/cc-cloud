@@ -14,7 +14,7 @@ const SFM_SAMPLE = `NAME "Ore processing"\n\nEVERY 20 TICKS DO\n    INPUT raw_ir
 import { FakeTerminal } from "./terminal-sim.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
-import { DESIGN_KEYS } from "../web/src/lib/cardstyle.ts";
+import { DESIGN_KEYS, type CardDesign } from "../web/src/lib/cardstyle.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
 import { DEEP_BASE, ground, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
@@ -50,7 +50,7 @@ interface Uplink {
   loaded?: boolean;
   lastSeen?: number;
   pages?: { id: string; title: string; icon?: string }[];
-  groups?: { id: string; title: string; page?: string; cols?: number }[];
+  groups?: { id: string; title: string; page?: string; cols?: number; style?: CardDesign }[];
   /** v0.5 B mainframe cards / compat cards */
   template?: string;
   /** coordinates inside: only for sessions with view.positions */
@@ -60,6 +60,8 @@ interface Uplink {
   waystones?: unknown;
   /** v0.10 sections the mainframe publishes itself (Scenes, Production) */
   source?: "mainframe";
+  /** the program's card design (dash:style), and per group in groups[].style */
+  style?: CardDesign;
 }
 /** What the simulation needs from a connection: the part of a `ws` socket it uses. */
 export interface MockSocket {
@@ -266,6 +268,8 @@ export interface MockOptions {
   computer?: boolean;
   /** Add the "Canvas" uplink: a Lua-drawn reactor mimic with click input (default false). */
   canvas?: boolean;
+  /** Add the "Reactor Console" uplink: a program card with its own design and card parts (dash:style; default false). */
+  console?: boolean;
   /** "sides" = one redstone_sides widget (SPEC), "widgets" = per-side indicator/toggle/slider widgets in groups. */
   computerFormat?: "sides" | "widgets";
   /** Simulated in-game approval: auto-approve after this delay (-1 = only via /dev/control). Names containing "deny" are denied. */
@@ -331,6 +335,35 @@ export const DEEP_COMPUTER = "0d0c0e00-deep-computer";
 export const DEEP_RS = "0d0c0e01-deep-rs";
 export const GREENHOUSE = "91d0aa3c-greenhouse";
 export const CANVAS = "2e6b1f90-canvas";
+export const CONSOLE = "e5c0a7f3-console";
+/**
+ * The Reactor Console's design (what `dash:style{...}` sends): dark glass with scanlines, a glowing gauge fill and
+ * chart line, monospace read-outs and a raised SCRAM key. Every declaration passes the card and part whitelists.
+ */
+export const CONSOLE_STYLE: CardDesign = {
+  bg: "custom",
+  bgColor: "#07121c",
+  css: [
+    "background-image: linear-gradient(160deg, rgba(94, 240, 255, 0.12), rgba(7, 18, 28, 0) 45%), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px);",
+    "border: 1px solid rgba(94, 240, 255, 0.3);",
+    "border-radius: 14px;",
+    "box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 0 28px rgba(94, 240, 255, 0.07);",
+  ].join("\n"),
+  parts: {
+    title_bar: "background: linear-gradient(90deg, rgba(94, 240, 255, 0.16), rgba(94, 240, 255, 0)); border-bottom: 1px solid rgba(94, 240, 255, 0.25);",
+    title: "color: #7ff3ff; font-family: monospace; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 6px rgba(94, 240, 255, 0.6);",
+    screen: "background: rgba(2, 10, 16, 0.75); border: 1px solid rgba(94, 240, 255, 0.2); border-radius: 10px; box-shadow: inset 0 0 18px rgba(94, 240, 255, 0.1);",
+    row: "background: rgba(2, 10, 16, 0.55); border: 1px solid rgba(94, 240, 255, 0.15); border-radius: 8px;",
+    label: "color: #7fa7b8; font-family: monospace; letter-spacing: 1px; text-transform: uppercase;",
+    value: "color: #e9fdff; font-family: monospace; font-weight: 700; text-shadow: 0 0 6px rgba(94, 240, 255, 0.5);",
+    gauge_track: "color: #123240; background: rgba(94, 240, 255, 0.08); border-radius: 6px;",
+    gauge_fill: "color: #5ef0ff; background-image: linear-gradient(90deg, #1fb6ff, #5ef0ff); border-radius: 6px; box-shadow: 0 0 6px rgba(94, 240, 255, 0.7); filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));",
+    chart_line: "color: #5ef0ff; filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.8));",
+    button: "background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(0, 0, 0, 0.28)); border: 1px solid rgba(255, 130, 120, 0.65); border-radius: 8px; box-shadow: 0 0 6px rgba(255, 80, 70, 0.6); font-family: monospace; font-weight: 700; letter-spacing: 4px; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);",
+    toggle: "background: #0d2230; border: 1px solid rgba(94, 240, 255, 0.3);",
+    toggle_on: "background: linear-gradient(90deg, #138fb8, #5ef0ff); box-shadow: 0 0 6px rgba(94, 240, 255, 0.6);",
+  },
+};
 
 /** The base mainframe's Cloud Scripts: one guarding the reactor (autostart), a stopped one and one that failed. */
 function seedScripts(): SeedScript[] {
@@ -1757,6 +1790,54 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
       setValue(base, CONTROL, "io", Math.round((rand() - 0.45) * 40));
       const charge = cr.widgets.find((w) => w.id === "charge")!;
       setValue(base, CONTROL, "charge", Math.max(0, Math.min(500, Number(charge.value) + Math.round((rand() - 0.4) * 6))));
+    };
+  }
+
+  // ---- a program card with its own design: dark glass, a glowing dial, mono read-outs, a hardware SCRAM key ----
+  if (opts.console) {
+    const flux = Array.from({ length: 40 }, (_, i) => Math.round(96 + 3 * Math.sin(i / 3) + 2 * Math.sin(i / 1.3)));
+    let core = 642;
+    let running = true;
+    let n = 0;
+    base.uplinks.set(CONSOLE, {
+      uplinkId: CONSOLE,
+      title: "Reactor Console",
+      online: true,
+      mode: "lua",
+      style: CONSOLE_STYLE,
+      widgets: [
+        { id: "core", type: "gauge", label: "Core", opts: { min: 0, max: 1500, unit: "K", warn: 1000, crit: 1250 }, value: core },
+        { id: "coolant", type: "progress", label: "Coolant", opts: { min: 0, max: 100, unit: "%" }, value: 86 },
+        { id: "flux", type: "chart", label: "Neutron flux", opts: { min: 0, max: 120, unit: "%", points: 40 }, value: flux.at(-1)!, history: flux },
+        { id: "output", type: "label", label: "Output", value: "1.84 MFE/t" },
+        { id: "shield", type: "indicator", label: "Shield", opts: { onColor: "green" }, value: true },
+        { id: "pumps", type: "toggle", label: "Coolant pumps", value: true },
+        { id: "scram", type: "button", label: "SCRAM", opts: { color: "red", confirm: true, pin: true } },
+      ],
+    });
+    const value = (id: string) => base.uplinks.get(CONSOLE)!.widgets.find((w) => w.id === id)!.value;
+    const prevAction = base.onAction;
+    base.onAction = (uplinkId, id, v, user) => {
+      if (uplinkId !== CONSOLE) return prevAction?.(uplinkId, id, v, user);
+      if (id === "pumps") setValue(base, CONSOLE, id, v);
+      if (id === "scram" && running) {
+        running = false;
+        alert(base, CONSOLE, `SCRAM by ${user}: control rods in`, "crit");
+      }
+    };
+    const prevTick = base.tick;
+    base.tick = () => {
+      prevTick?.();
+      n++;
+      const pumps = value("pumps") === true;
+      const target = !running ? 300 : pumps ? 640 + 14 * Math.sin(n / 5) : 1180;
+      core += (target - core) * (pumps || !running ? 0.25 : 0.06);
+      setValue(base, CONSOLE, "core", Math.round(core));
+      const coolant = Number(value("coolant"));
+      setValue(base, CONSOLE, "coolant", Math.round(Math.max(0, Math.min(100, coolant + (pumps ? (86 - coolant) * 0.3 : -1.5)))));
+      setValue(base, CONSOLE, "flux", running ? Math.round(96 + 3 * Math.sin(n / 3) + 2 * Math.sin(n / 1.3)) : 0);
+      setValue(base, CONSOLE, "output", running ? `${(1.8 + 0.06 * Math.sin(n / 4)).toFixed(2)} MFE/t` : "0.00 MFE/t");
+      setValue(base, CONSOLE, "shield", core < 1250);
     };
   }
 

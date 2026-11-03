@@ -1,7 +1,7 @@
 // Card parts: the per-part whitelists against the attack corpus, glows that stay inside the card, the fixed rules in
 // styles.css that hand each part's custom properties to its elements (and never to a dialog), and a script's design
-// (cloud.ui dash:style, a group's style) next to the layout's.
-import { describe, expect, it } from "vitest";
+// (cloud.ui dash:style, a group's style) next to the layout's, cloud.setStyle and the mock's Reactor Console.
+import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -14,7 +14,9 @@ import {
   STRUCTURAL_ENV,
   cleanDesign,
   cleanParts,
+  sanitizeCardCss,
   sanitizePartCss,
+  serverCssProblem,
   serializeCss,
   serverPartProblem,
   serverPartsProblem,
@@ -27,6 +29,9 @@ import type { Uplink, Widget } from "../web/src/lib/types.ts";
 import { PRESET_FORMAT, PresetError, parsePreset } from "../web/src/lib/presets/format.ts";
 import { decodePreset, encodePreset } from "../web/src/lib/presets/code.ts";
 import { pageToPreset } from "../web/src/lib/presets/export.ts";
+import { CONSOLE, CONSOLE_STYLE, createMockServer, type MockServer } from "../dev/mock-server.ts";
+import { MainframeConn } from "../web/src/lib/conn.ts";
+import { sleep } from "./helpers.ts";
 
 const run = (part: CardPart, css: unknown) => sanitizePartCss(part, css, STRUCTURAL_ENV);
 const kept = (part: CardPart, css: unknown) => run(part, css).decls.map((d) => `${d.prop}: ${d.value}`);
@@ -349,5 +354,82 @@ describe("a script's design", () => {
     const cleared = cardOf(resetCardDesign(plain, "r1"));
     expect(cleared.css).toBeUndefined();
     expect(cleared.parts).toBeUndefined();
+  });
+});
+
+describe("the Reactor Console (mock) and cloud.setStyle", () => {
+  let mock: MockServer | undefined;
+  const conns: MainframeConn[] = [];
+  afterEach(async () => {
+    conns.splice(0).forEach((c) => c.stop());
+    await mock?.close();
+    mock = undefined;
+  });
+  const until = async (pred: () => boolean, ms = 4000) => {
+    for (const end = Date.now() + ms; !pred(); await sleep(20)) if (Date.now() > end) throw new Error("timeout");
+  };
+  const open = async (opts: { console?: boolean } = {}) => {
+    mock = await createMockServer({ port: 0, host: "127.0.0.1", tickMs: 0, actionDelayMs: 5, log: () => {}, ...opts });
+    const token = (await (await fetch(`http://127.0.0.1:${mock.port}/dev/token`, { method: "POST", body: JSON.stringify({ account: "Enrico" }) })).json()).token as string;
+    const conn = new MainframeConn({ baseUrl: `http://127.0.0.1:${mock.port}`, token, mainframeId: mock.base.id } as never);
+    conns.push(conn);
+    conn.start();
+    await until(() => conn.status.value === "open" && conn.uplinks.value.length > 0);
+    return conn;
+  };
+  const consoleCard = (conn: MainframeConn) => cardOf(resolveLayout(conn.uplinks.value, conn.layout.value), CONSOLE);
+
+  it("its design passes every check whole, nothing is dropped", () => {
+    expect(sanitizeCardCss(CONSOLE_STYLE.css, STRUCTURAL_ENV).dropped).toEqual([]);
+    expect(serverCssProblem(CONSOLE_STYLE.css!)).toBeNull();
+    expect(serverPartsProblem(CONSOLE_STYLE.parts)).toBeNull();
+    for (const [part, css] of Object.entries(CONSOLE_STYLE.parts!)) {
+      const r = sanitizePartCss(part as CardPart, css, STRUCTURAL_ENV);
+      expect(r.dropped, part).toEqual([]);
+      expect(r.decls.length, part).toBe(css.split(";").filter((d) => d.trim()).length);
+    }
+    expect(cleanDesign(CONSOLE_STYLE)?.parts && Object.keys(cleanDesign(CONSOLE_STYLE)!.parts!)).toEqual(CARD_PARTS.filter((p) => CONSOLE_STYLE.parts![p]));
+  });
+
+  it("is only there when asked for, and shows its program's design", async () => {
+    const plain = await open();
+    expect(plain.uplinks.value.some((u) => u.uplinkId === CONSOLE)).toBe(false);
+    await mock!.close();
+    mock = undefined;
+    const conn = await open({ console: true });
+    expect(consoleCard(conn)).toMatchObject({ designFrom: "script", bg: "custom", bgColor: "#07121c" });
+    expect(Object.keys(consoleCard(conn).parts ?? {})).toHaveLength(Object.keys(CONSOLE_STYLE.parts!).length);
+    expect(conn.uplinks.value.some((u) => u.uplinkId === "8a1f2c4e-reactor"), "the other mock cards stay").toBe(true);
+  });
+
+  it("cloud.setStyle saves a design into the layout, checks it like the editor and removes it again", async () => {
+    const conn = await open({ console: true });
+    const src = [
+      'print("set", cloud.setStyle("Reactor Console", {parts = {title = "color: #ff5a4f"}}))',
+      'print("same", cloud.setStyle("Reactor Console", {parts = {title = "color: #ff5a4f"}}))',
+      'print("bad", pcall(cloud.setStyle, "Reactor Console", {parts = {title = "background: url(x)"}}))',
+      'print("key", pcall(cloud.setStyle, "Reactor Console", {color = "red"}))',
+      'print("nope", cloud.setStyle("Nope", {css = "border-radius: 4px"}))',
+      'print("mf", cloud.setStyle("mainframe", {css = "border-radius: 4px"}))',
+      "cloud.sleep(0.3)",
+      'print("reset", cloud.setStyle("Reactor Console"))',
+    ].join("\n");
+    await conn.codeOp("list");
+    const { id } = await conn.codeOp<{ id: string }>("save", { name: "Alarm look", source: src });
+    await conn.codeOp("logs", { id });
+    await conn.codeOp("start", { id });
+    const texts = () => (conn.codeLogs.value[id] ?? []).map((l) => l.text);
+    await until(() => texts().some((t) => t.startsWith("mf")));
+    expect(texts()).toEqual(expect.arrayContaining(["set true nil", "same true nil", "nope false unknown_card", "mf false not_supported"]));
+    expect(texts().find((t) => t.startsWith("bad"))).toMatch(/^bad false .*bad style/);
+    expect(texts().find((t) => t.startsWith("key"))).toMatch(/^key false .*unknown style key 'color'/);
+    await until(() => consoleCard(conn).designFrom === undefined);
+    expect(consoleCard(conn).parts).toEqual({ title: "color: #ff5a4f;" });
+    expect(consoleCard(conn).bg, "the layout's design replaces the program's as a whole").toBeUndefined();
+    await until(() => texts().some((t) => t.startsWith("reset")));
+    expect(texts()).toContain("reset true nil");
+    await until(() => consoleCard(conn).designFrom === "script");
+    expect(mock!.base.layout).not.toBeNull();
+    expect((mock!.base.layout as { cards: Record<string, unknown> }).cards[CONSOLE], "nothing left of the card's entry").toBeUndefined();
   });
 });
