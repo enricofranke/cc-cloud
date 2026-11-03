@@ -62,7 +62,8 @@ async function clearToasts(page: Page) {
 }
 async function pinEnter(page: Page, digits: string) {
   for (const d of digits) await page.click(`.keypad .key:text-is("${d}")`);
-  await page.click(".key-ok");
+  // with the PIN's length known the last digit sends it; OK only while it is not
+  if (await page.locator(".key-ok").count()) await page.click(".key-ok");
 }
 
 try {

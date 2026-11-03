@@ -338,6 +338,7 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose,
       )}
       {pinAsk && (
         <PinDialog
+          length={conn.pinLength.value}
           title="Mainframe PIN"
           text="Changing files on a computer needs the mainframe PIN."
           color="gold"

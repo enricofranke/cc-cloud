@@ -44,6 +44,7 @@ export function RemoteUnlock({ conn }: { conn: MainframeConn }) {
   const connect = publicConfig.value.internet.mode === "connect";
   return (
     <PinDialog
+      length={conn.pinLength.value}
       title="Control from the internet"
       text={
         connect

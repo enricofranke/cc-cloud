@@ -229,6 +229,12 @@ export class MainframeConn {
   /** Set after too many wrong PINs: PIN-protected controls are locked until then (ms epoch). */
   readonly pinLockedUntil = signal(0);
   /**
+   * Digits of the mainframe PIN (4–8) from the server's `pin` message: the PIN dialog shows exactly that many slots and
+   * sends once the last one is filled. 0 = not known (no PIN, an old PIN whose length the server learns on its next
+   * correct entry, or a read-only session): the dialog's field grows with the input instead.
+   */
+  readonly pinLength = signal(0);
+  /**
    * Plain-HTTP internet access (internetAccess = http): the server refused a write from this internet session.
    * "locked" = enter the mainframe PIN first (unlock()), "no_pin" = the mainframe has no PIN (nothing can be controlled).
    */
@@ -404,6 +410,8 @@ export class MainframeConn {
     ws.onopen = () => {
       if (this.ws !== ws) return;
       this.armSilence();
+      // the server says it again after the login when the mainframe has a PIN
+      this.pinLength.value = 0;
       ws.send(
         JSON.stringify(
           this.o.share
@@ -698,6 +706,12 @@ export class MainframeConn {
         const { [id]: _gone, ...rest } = this.terminals.value;
         this.terminals.value = rest;
         this.termClosed.value = { ...this.termClosed.value, [id]: typeof msg.reason === "string" ? msg.reason.slice(0, 32) : "closed" };
+        break;
+      }
+      case "pin": {
+        // {"t":"pin","set","length"}: the mainframe PIN's digits, 0 = unknown
+        const n = msg.set === true && typeof msg.length === "number" && Number.isInteger(msg.length) ? msg.length : 0;
+        this.pinLength.value = n >= 4 && n <= 8 ? n : 0;
         break;
       }
       case "internet": {

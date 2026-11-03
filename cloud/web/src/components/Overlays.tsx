@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { dismissToast, toasts } from "../lib/ui.ts";
 import { IconAlert, IconClose, IconInfo } from "./Icons.tsx";
+import { canSubmit, knownLength, pinKey, pinPaste, pinSlots, pinStatus, type PinStep } from "../lib/pin.ts";
 
 function useEscape(onClose: () => void) {
   useEffect(() => {
@@ -130,64 +131,117 @@ export function Toasts() {
 
 export type PinState = { kind: "idle" } | { kind: "checking" } | { kind: "error"; text: string } | { kind: "locked"; text: string };
 
-/** Numeric keypad for PIN-protected widgets (opts.pin). 4–8 digits. */
+/**
+ * Numeric keypad for the mainframe PIN (lib/pin.ts has the rules). `length` (conn.pinLength): with the PIN's 4–8 digits
+ * the dialog shows exactly that many slots and sends as soon as the last one is filled; without it the field grows with
+ * the input and OK sends. Digits, Backspace, Enter and paste work from the keyboard too.
+ */
 export function PinDialog(props: {
   title: string;
   text: string;
   color: string;
   state: PinState;
+  /** digits of the mainframe PIN; 0 or undefined = not known */
+  length?: number;
   onCancel: () => void;
   onSubmit: (pin: string) => void;
 }) {
   const [pin, setPin] = useState("");
+  const [errors, setErrors] = useState(0);
   const { state } = props;
+  const length = knownLength(props.length);
   const blocked = state.kind === "checking" || state.kind === "locked";
   useEscape(props.onCancel);
   useEffect(() => {
-    if (state.kind === "error") setPin("");
+    if (state.kind !== "error") return;
+    setPin("");
+    setErrors((n) => n + 1);
   }, [state]);
-  const press = (d: string) => !blocked && setPin((p) => (p.length < 8 ? p + d : p));
-  const back = () => !blocked && setPin((p) => p.slice(0, -1));
-  const submit = () => !blocked && pin.length >= 4 && props.onSubmit(pin);
+  const step = (next: PinStep) => {
+    if (blocked) return;
+    setPin(next.pin);
+    if (next.submit) props.onSubmit(next.pin);
+  };
+  const key = (k: string) => step(pinKey(pin, k, length));
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if (/^\d$/.test(e.key)) press(e.key);
-      else if (e.key === "Backspace") back();
-      else if (e.key === "Enter") submit();
+    const down = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      // Enter on a focused button presses that button (Tab to Cancel, a keypad key); elsewhere it sends
+      if (e.key === "Enter" && document.activeElement instanceof HTMLButtonElement) return;
+      if (/^\d$/.test(e.key) || e.key === "Backspace" || e.key === "Enter") {
+        e.preventDefault();
+        key(e.key);
+      }
     };
-    addEventListener("keydown", h);
-    return () => removeEventListener("keydown", h);
+    const paste = (e: ClipboardEvent) => {
+      const text = e.clipboardData?.getData("text") ?? "";
+      if (!/\d/.test(text)) return;
+      e.preventDefault();
+      step(pinPaste(pin, text, length));
+    };
+    addEventListener("keydown", down);
+    addEventListener("paste", paste);
+    return () => {
+      removeEventListener("keydown", down);
+      removeEventListener("paste", paste);
+    };
   });
 
+  const slots = pinSlots(length, pin.length);
+  // red until the next digit is typed
+  const look = state.kind === "error" && !pin ? "is-error" : state.kind === "checking" ? "is-checking" : state.kind === "locked" ? "is-locked" : "";
   return (
     <div class="backdrop" onClick={(e) => e.target === e.currentTarget && props.onCancel()}>
-      <div class={`dialog pin-dialog ${state.kind === "error" ? "shake" : ""}`} role="dialog" aria-modal="true" aria-labelledby="pin-title">
+      <div class={`dialog pin-dialog accent-${props.color}`} role="dialog" aria-modal="true" aria-labelledby="pin-title">
         <div class={`dialog-stripe stripe-${props.color}`} />
         <h2 id="pin-title" class="dialog-title">{props.title}</h2>
         <p class="dialog-text">{props.text}</p>
-        <div class="pin-dots" aria-label={`${pin.length} digits entered`}>
-          {Array.from({ length: Math.max(4, Math.min(8, pin.length + (pin.length >= 4 ? 1 : 0))) }, (_, i) => (
-            <span key={i} class={`pin-dot ${i < pin.length ? "filled" : ""}`} />
+        <div
+          key={errors}
+          class={`pin-slots ${length === undefined ? "grow" : "fixed"} ${look} ${errors && state.kind === "error" ? "shake" : ""}`}
+          style={{ "--n": String(length ?? Math.max(1, pin.length)) }}
+          role="img"
+          aria-label={pinStatus(length, pin.length)}
+        >
+          {slots.map((s, i) => (
+            <span key={i} class={`pin-slot ${s}`} aria-hidden="true" />
           ))}
+          {length === undefined && !blocked && <span class="pin-caret" aria-hidden="true" />}
         </div>
         <p class={`pin-msg ${state.kind === "error" ? "err" : state.kind === "locked" ? "locked" : ""}`} role="alert">
-          {state.kind === "error" || state.kind === "locked" ? state.text : state.kind === "checking" ? "Checking…" : "Enter the mainframe PIN"}
+          {state.kind === "error" || state.kind === "locked"
+            ? state.text
+            : state.kind === "checking"
+              ? "Checking…"
+              : length
+                ? `Enter the ${length}-digit mainframe PIN`
+                : "Enter the mainframe PIN, then OK"}
         </p>
         <div class="keypad">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-            <button key={d} type="button" class="key" disabled={blocked} onClick={() => press(d)}>
+            <button key={d} type="button" class="key" disabled={blocked} onClick={() => key(d)}>
               {d}
             </button>
           ))}
-          <button type="button" class="key key-fn" disabled={blocked || !pin} onClick={back} aria-label="Delete digit">
-            ⌫
-          </button>
-          <button type="button" class="key" disabled={blocked} onClick={() => press("0")}>
+          {length === undefined ? (
+            <button type="button" class="key key-fn" disabled={blocked || !pin} onClick={() => key("Backspace")} aria-label="Delete digit">
+              ⌫
+            </button>
+          ) : (
+            <span class="key-spacer" aria-hidden="true" />
+          )}
+          <button type="button" class="key" disabled={blocked} onClick={() => key("0")}>
             0
           </button>
-          <button type="button" class="key key-ok" disabled={blocked || pin.length < 4} onClick={submit} aria-label="Send">
-            OK
-          </button>
+          {length === undefined ? (
+            <button type="button" class="key key-ok" disabled={blocked || !canSubmit(pin, length)} onClick={() => key("Enter")} aria-label="Send">
+              OK
+            </button>
+          ) : (
+            <button type="button" class="key key-fn" disabled={blocked || !pin} onClick={() => key("Backspace")} aria-label="Delete digit">
+              ⌫
+            </button>
+          )}
         </div>
         <button type="button" class="btn btn-ghost pin-cancel" onClick={props.onCancel}>
           {state.kind === "locked" ? "Close" : "Cancel"}

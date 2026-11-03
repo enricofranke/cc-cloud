@@ -184,6 +184,7 @@ export default function TerminalSheet({ conn, uplinkId, title, onClose }: { conn
       </div>
       {pinAsk && (
         <PinDialog
+          length={conn.pinLength.value}
           title="Mainframe PIN"
           text="The terminal needs the mainframe PIN."
           color="gold"

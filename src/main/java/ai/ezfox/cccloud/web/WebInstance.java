@@ -109,6 +109,8 @@ final class WebInstance {
         this.port = port;
         this.limiter = new ConnectionLimiter(this);
         pinExecutor.allowCoreThreadTimeOut(true);
+        // a PIN set in game, removed, or its length learnt: open dashboards show the new number of slots right away
+        auth.onPinChange(WebHub.INSTANCE::recheckPin);
     }
 
     WebPolicy policy() {

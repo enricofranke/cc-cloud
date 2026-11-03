@@ -143,6 +143,12 @@ The dashboard can be reachable from the internet and can trigger things in-game 
 - **In-game device approval (like LuckPerms' trust prompt):** after a correct pairing code, the device is `pending`. The player who issued the code gets a clickable chat message "[device] wants to connect from [ip] – [Allow] [Deny]" (valid 2 minutes). Only then is the token activated. The browser shows "Waiting for approval in-game…" (the WS/HTTP flow must support this pending state; `POST /api/pair` returns `{"status":"pending","pairingId"}` and the client polls `GET /api/pair/<pairingId>` or waits on a short-lived WS until it gets the token).
 - **Devices belong to a player:** each token stores the approving player's UUID. Effective rights = that player's current rights on the mainframe (owner, trusted or op). If the player is banned, untrusted or loses op, their devices stop working immediately (checked on every action and on connect).
 - **PIN for critical widgets:** `opts.pin = true` on button/toggle/slider. The owner sets a 4–8 digit PIN per mainframe with `/cccloud pin set` (stored as PBKDF2 or another slow hash with salt). Actions on PIN widgets must include `pin`; 5 wrong PINs per device → that device is locked for 5 minutes and the owner is notified in-game.
+- **PIN length (2026-11-03):** the length is stored next to the hash (`WebAuthData` field `length`; PINs saved before
+  have none and learn it on their next correct entry). Every session that can control gets
+  `{"t":"pin","set":true,"length":n}` after login, right away when the PIN is set, cleared or learns its length, and
+  on the 5-second re-check when it changed (`length` 0 = not known yet; viewers always get 0, share links nothing). The
+  PIN dialog shows exactly that many slots and sends the PIN when the last one is filled; with an unknown length the
+  field grows with the input and OK sends it. Tests: `AuthStoreTest`, `PinMessageTest`, `cloud/test/pin.test.ts`.
 - **Deny-by-default routing (Dynmap CVE lesson):** one central auth layer in front of every route and WebSocket message type. Only `/`, static assets, `POST /api/pair` and `GET /api/pair/<id>` are public. A test walks every registered route without a token and expects 401/403.
 - **Trusted proxies:** `webTrustedProxies` (default empty). X-Forwarded-For / CF-Connecting-IP are only honored when the direct peer is in that list; otherwise the socket address is used for rate limits and the LAN check.
 - **Bans:** connections from IPs banned on the MC server are rejected; banned players' devices are dead.

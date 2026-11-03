@@ -2,6 +2,7 @@ package ai.ezfox.cccloud.web;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -179,6 +180,54 @@ class AuthStoreTest {
         now.addAndGet(2 * AuthStore.PIN_LOCK_MS + 1);
         assertEquals(AuthStore.PinResult.OK, store.verifyPin(mainframe, "fresh-device", "4711"));
         assertEquals(0, store.mainframePinLockedFor(mainframe));
+    }
+
+    @Test
+    void pinKeepsItsLength() {
+        var changes = new java.util.ArrayList<UUID>();
+        store.onPinChange(changes::add);
+        assertEquals(0, store.pinLength(mainframe), "no PIN");
+        store.setPin(mainframe, store.hashPin("123456"));
+        assertEquals(6, store.pinLength(mainframe));
+        assertEquals(List.of(mainframe), changes, "the dashboards are told");
+        store.setPin(mainframe, store.hashPin("4711"));
+        assertEquals(4, store.pinLength(mainframe));
+        store.setPin(mainframe, null);
+        assertEquals(0, store.pinLength(mainframe));
+        assertEquals(3, changes.size(), "set, changed, removed");
+    }
+
+    @Test
+    void anOldPinLearnsItsLengthOnTheNextCorrectEntry() {
+        var changes = new java.util.ArrayList<UUID>();
+        var stored = store.hashPin("13579");
+        // saved before the length was kept
+        store.load(java.util.Map.of(), List.of(), java.util.Map.of(mainframe, stored.withLength(0)));
+        store.onPinChange(changes::add);
+        assertTrue(store.hasPin(mainframe));
+        assertEquals(0, store.pinLength(mainframe), "unknown: the dashboard grows the field with the input");
+        assertEquals(AuthStore.PinResult.WRONG, store.verifyPin(mainframe, "d", "1357"));
+        assertEquals(AuthStore.PinResult.WRONG, store.verifyPin(mainframe, "d", "135790"));
+        assertEquals(0, store.pinLength(mainframe), "a wrong PIN teaches nothing");
+        assertTrue(changes.isEmpty());
+        assertEquals(AuthStore.PinResult.OK, store.verifyPin(mainframe, "d", "13579"));
+        assertEquals(5, store.pinLength(mainframe));
+        assertEquals(List.of(mainframe), changes);
+        assertEquals(stored.hash(), store.pins().get(mainframe).hash(), "the hash stays");
+        assertEquals(AuthStore.PinResult.OK, store.verifyPin(mainframe, "d", "13579"));
+        assertEquals(1, changes.size(), "learnt once");
+    }
+
+    @Test
+    void oldSavesWithoutALengthStillLoad() {
+        var json = com.google.gson.JsonParser.parseString("{\"salt\":\"00\",\"hash\":\"11\",\"iterations\":1000}");
+        var old = WebAuthData.PIN_CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, json).getOrThrow();
+        assertEquals(0, old.length());
+        var now = WebAuthData.PIN_CODEC.encodeStart(com.mojang.serialization.JsonOps.INSTANCE, store.hashPin("12345678")).getOrThrow();
+        assertEquals(8, WebAuthData.PIN_CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, now).getOrThrow().length());
+        var odd = com.google.gson.JsonParser.parseString("{\"salt\":\"00\",\"hash\":\"11\",\"iterations\":1000,\"length\":42}");
+        store.load(java.util.Map.of(), List.of(), java.util.Map.of(mainframe, WebAuthData.PIN_CODEC.parse(com.mojang.serialization.JsonOps.INSTANCE, odd).getOrThrow()));
+        assertEquals(0, store.pinLength(mainframe), "a length out of range counts as unknown");
     }
 
     @Test

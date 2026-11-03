@@ -368,6 +368,7 @@ function ScriptDetail(props: { conn: MainframeConn; url: string; sc: StoreScript
       )}
       {pinAsk && (
         <PinDialog
+          length={conn.pinLength.value}
           title="Mainframe PIN"
           text="Installing scripts needs the mainframe PIN."
           color="gold"

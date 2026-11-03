@@ -342,6 +342,7 @@ function SceneRun({ s, conn, running }: { s: SceneState; conn: MainframeConn; ru
       )}
       {pin && (
         <PinDialog
+          length={conn.pinLength.value}
           title={s.name}
           text={t("sc.pinText")}
           color={s.color ?? "gold"}

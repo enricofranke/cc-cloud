@@ -132,6 +132,7 @@ const STEPS: Step[] = [
         first(".keypad .key", (el) => el.textContent === digit)?.click();
       }
       await sleep(150);
+      // the last digit sends a PIN of known length; OK is only there while it is not known
       first(".key-ok")?.click();
     },
   },

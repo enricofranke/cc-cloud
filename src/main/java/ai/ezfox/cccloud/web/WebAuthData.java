@@ -53,10 +53,13 @@ public final class WebAuthData extends SavedData {
         UUIDUtil.STRING_CODEC.listOf().optionalFieldOf("trusted", List.of()).forGetter(a -> List.copyOf(a.trusted()))
     ).apply(i, (owner, trusted) -> new AuthStore.Acl(owner.orElse(null), new HashSet<>(trusted))));
 
-    private static final Codec<AuthStore.PinHash> PIN_CODEC = RecordCodecBuilder.create(i -> i.group(
+    /** Package-private for the tests of old saves. */
+    static final Codec<AuthStore.PinHash> PIN_CODEC = RecordCodecBuilder.create(i -> i.group(
         Codec.STRING.fieldOf("salt").forGetter(AuthStore.PinHash::salt),
         Codec.STRING.fieldOf("hash").forGetter(AuthStore.PinHash::hash),
-        Codec.INT.fieldOf("iterations").forGetter(AuthStore.PinHash::iterations)
+        Codec.INT.fieldOf("iterations").forGetter(AuthStore.PinHash::iterations),
+        // 0 for PINs saved before the length was kept (learnt on the next correct entry)
+        Codec.INT.optionalFieldOf("length", 0).forGetter(AuthStore.PinHash::length)
     ).apply(i, AuthStore.PinHash::new));
 
     private static final Codec<Role> ROLE_CODEC = Codec.STRING.comapFlatMap(s -> {

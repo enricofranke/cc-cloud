@@ -382,6 +382,7 @@ export default function ScriptSheet({ conn, uplinkId, title, onClose }: { conn: 
       )}
       {pinAsk && (
         <PinDialog
+          length={conn.pinLength.value}
           title="Mainframe PIN"
           text="Changing files on a computer needs the mainframe PIN."
           color="gold"

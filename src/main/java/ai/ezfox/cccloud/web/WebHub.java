@@ -1434,6 +1434,13 @@ public final class WebHub {
         }
     }
 
+    /** Tells the sessions of a mainframe about its PIN again ({@link HubSession#recheckPin}). Any thread. */
+    public void recheckPin(UUID mainframeId) {
+        var view = views.get(mainframeId);
+        if (view == null) return;
+        for (var session : view.sessions) session.recheckPin();
+    }
+
     /** All connected sessions (for periodic rights checks). */
     public List<HubSession> sessions() {
         var list = new ArrayList<HubSession>();

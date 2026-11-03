@@ -308,6 +308,8 @@ export interface MockOptions {
   /** webAllowInternet=false. All test traffic is loopback, so the mock decides by the Host header. */
   lanOnly?: boolean;
   pin?: string;
+  /** The PIN length the `pin` message reports: default the PIN's, 0 = not known (a PIN saved before lengths were kept). */
+  pinLength?: number;
   /** Writing a machine's program asks for the PIN (a mainframe with a PIN set). */
   requirePin?: boolean;
   pinLockMs?: number;
@@ -2278,6 +2280,8 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
           t.pinFails = t.pinFails ?? 0;
           mf.clients.add(client);
           sendTo(ws, snapshot(mf, client));
+          // the mainframe PIN's digits for the PIN dialog (one PIN for every mock mainframe; pinLength 0 = an old PIN)
+          sendTo(ws, { t: "pin", set: true, length: client.canControl ? (opts.pinLength ?? pin.length) : 0 });
           return;
         }
         const c = client;

@@ -1955,22 +1955,105 @@ pre {
 .pin-dialog .dialog-text {
   margin-bottom: 14px;
 }
-.pin-dots {
-  display: flex;
+/* the PIN's slots (lib/pin.ts): exactly as many as the PIN has digits, or a field that grows with the input while
+   the length is not known yet; dark "screen" tiles in both themes, lit in the dialog's colour */
+.pin-slots {
+  --c: var(--accent, var(--gold));
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 44px));
   justify-content: center;
-  gap: 10px;
-  min-height: 18px;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
 }
-.pin-dot {
-  width: 14px;
-  height: 14px;
+.pin-slots.grow {
+  grid-template-columns: repeat(var(--n), minmax(0, 34px)) 10px;
+  gap: 6px;
+}
+.pin-slot {
+  position: relative;
+  height: 54px;
   border: 2px solid var(--line-2);
+  border-radius: 4px;
   background: var(--screen);
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.35);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-.pin-dot.filled {
-  background: var(--gold);
-  border-color: var(--gold-dk);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 55%, transparent);
+.pin-slots.grow .pin-slot {
+  height: 46px;
+}
+/* a filled slot: a lit square pixel, no digit (the PIN never shows) */
+.pin-slot.filled::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  background: var(--c);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--c) 70%, transparent);
+  animation: pin-fill 0.14s ease-out;
+}
+.pin-slot.filled {
+  border-color: color-mix(in srgb, var(--c) 45%, var(--line-2));
+}
+/* the slot the next digit goes into */
+.pin-slot.active {
+  border-color: var(--c);
+  box-shadow:
+    inset 0 3px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 3px color-mix(in srgb, var(--c) 28%, transparent);
+}
+.pin-slot.active::after,
+.pin-caret {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 3px;
+  height: 24px;
+  margin: -12px 0 0 -1.5px;
+  background: var(--c);
+  animation: pin-caret 1.05s steps(1) infinite;
+}
+.pin-caret {
+  position: relative;
+  inset: auto;
+  margin: 0;
+  justify-self: start;
+}
+.pin-slots.is-checking .pin-slot.filled::after {
+  animation: pin-wait 0.9s ease-in-out infinite alternate;
+}
+.pin-slots.is-error .pin-slot {
+  border-color: var(--red);
+}
+.pin-slots.is-locked {
+  opacity: 0.45;
+}
+@keyframes pin-fill {
+  from {
+    transform: scale(0.2);
+  }
+}
+@keyframes pin-caret {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes pin-wait {
+  to {
+    opacity: 0.35;
+  }
+}
+@media (max-width: 380px) {
+  .pin-slots {
+    gap: 6px;
+  }
+  .pin-slot {
+    height: 48px;
+  }
 }
 .pin-msg {
   min-height: 20px;
@@ -2009,6 +2092,12 @@ pre {
 }
 .key:disabled {
   opacity: 0.4;
+}
+.key {
+  touch-action: manipulation;
+}
+.key-spacer {
+  min-height: 54px;
 }
 .key-fn {
   font-size: 18px;

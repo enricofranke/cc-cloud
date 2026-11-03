@@ -99,7 +99,14 @@ public final class AuthStore {
     public record Acl(@Nullable UUID owner, Set<UUID> trusted) {
     }
 
-    public record PinHash(String salt, String hash, int iterations) {
+    /**
+     * A PIN as it is stored: salted slow hash, and its number of digits (4–8) so the dashboard can show exactly that many
+     * slots. {@code length} 0: a PIN set before the length was kept; the next correct entry stores it.
+     */
+    public record PinHash(String salt, String hash, int iterations, int length) {
+        public PinHash withLength(int length) {
+            return new PinHash(salt, hash, iterations, length);
+        }
     }
 
     public enum PinResult { OK, WRONG, LOCKED, NOT_SET }
@@ -130,6 +137,9 @@ public final class AuthStore {
     /** Told about every revoked device (not about expired ones): API keys made with it end too (v0.10). */
     private volatile java.util.function.Consumer<Device> onRevoke = d -> {
     };
+    /** Told when a mainframe's PIN is set, removed or its length learnt: open dashboards get the new number of slots. */
+    private volatile java.util.function.Consumer<UUID> onPinChange = id -> {
+    };
 
     public AuthStore(LongSupplier clock, Runnable onChange) {
         this.clock = clock;
@@ -139,6 +149,19 @@ public final class AuthStore {
     /** Replaces the revocation listener (one per server start). */
     public void onRevoke(java.util.function.Consumer<Device> listener) {
         this.onRevoke = listener;
+    }
+
+    /** Replaces the PIN listener (one per server start). Called on any thread, must not block. */
+    public void onPinChange(java.util.function.Consumer<UUID> listener) {
+        this.onPinChange = listener;
+    }
+
+    private void pinChanged(UUID mainframeId) {
+        try {
+            onPinChange.accept(mainframeId);
+        } catch (RuntimeException e) {
+            ai.ezfox.cccloud.CloudLog.LOGGER.error("[cccloud] Error while announcing the PIN change of {}", mainframeId, e);
+        }
     }
 
     private void revoked(Device device) {
@@ -470,17 +493,35 @@ public final class AuthStore {
     public PinHash hashPin(String pin) {
         byte[] salt = new byte[16];
         random.nextBytes(salt);
-        return new PinHash(HexFormat.of().formatHex(salt), HexFormat.of().formatHex(pbkdf2(pin, salt, PIN_ITERATIONS)), PIN_ITERATIONS);
+        return new PinHash(HexFormat.of().formatHex(salt), HexFormat.of().formatHex(pbkdf2(pin, salt, PIN_ITERATIONS)), PIN_ITERATIONS, pin.length());
     }
 
-    public synchronized void setPin(UUID mainframeId, @Nullable PinHash pin) {
-        if (pin == null) pins.remove(mainframeId);
-        else pins.put(mainframeId, pin);
-        onChange.run();
+    public void setPin(UUID mainframeId, @Nullable PinHash pin) {
+        synchronized (this) {
+            if (pin == null) pins.remove(mainframeId);
+            else pins.put(mainframeId, pin);
+            onChange.run();
+        }
+        pinChanged(mainframeId);
     }
 
     public boolean hasPin(UUID mainframeId) {
         return pins.containsKey(mainframeId);
+    }
+
+    /** Digits of the mainframe's PIN (4–8), or 0 when it has none or the length is not known yet. */
+    public int pinLength(UUID mainframeId) {
+        var pin = pins.get(mainframeId);
+        return pin == null || pin.length() < 4 || pin.length() > 8 ? 0 : pin.length();
+    }
+
+    /** A correct entry of a PIN stored without its length: keep the length (unless the PIN changed meanwhile). */
+    private void learnLength(UUID mainframeId, PinHash stored, int length) {
+        synchronized (this) {
+            if (!pins.replace(mainframeId, stored, stored.withLength(length))) return;
+            onChange.run();
+        }
+        pinChanged(mainframeId);
     }
 
     /** Verifies a PIN for a device, with lockout after 5 failures. Slow on purpose: call off the server thread. */
@@ -503,6 +544,7 @@ public final class AuthStore {
         if (ok) {
             pinFailures.remove(deviceHash);
             mainframePinFailures.remove(mainframeId);
+            if (stored.length() != pin.length()) learnLength(mainframeId, stored, pin.length());
             return new PinCheck(PinResult.OK, PIN_MAX_FAILURES, 0);
         }
         var mfUpdated = mainframePinFailures.compute(mainframeId, (k, f) -> {

@@ -488,6 +488,7 @@ public final class CloudWebServer {
                 continue;
             }
             session.recheckInternet();
+            session.recheckPin();
             var access = instance.bridge.access(device, session.mainframeId());
             var role = access.role();
             if (role == ai.ezfox.cccloud.access.Role.NONE) {

@@ -59,6 +59,10 @@ public interface HubSession {
     default void recheckInternet() {
     }
 
+    /** How many digits the mainframe PIN has, for the PIN dialog: after the login, on every change and in the 5-second re-check. */
+    default void recheckPin() {
+    }
+
     void send(List<String> messages);
 
     void close(int code, String reason);

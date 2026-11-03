@@ -94,6 +94,7 @@ export function usePinGate(conn: MainframeConn, uplink: Uplink, w: Widget, optim
 
   const dialog = ask && (
     <PinDialog
+      length={conn.pinLength.value}
       title={`${w.label ?? w.id}`}
       text={`PIN-protected control on ${uplink.title || "this uplink"}.`}
       color={w.opts?.color ?? "gold"}

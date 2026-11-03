@@ -45,6 +45,8 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     private final TokenBucket unlockLimit = new TokenBucket(1, 1);
     /** What this session was last told by {@code {"t":"internet"}} ("" = nothing yet). */
     private volatile String internetState = "";
+    /** What the last {@code pin} message said ({@code set:length}), empty before the first. */
+    private String pinState = "";
     /** Item searches: 5 per second (docs/SPEC.md). */
     private final TokenBucket queryLimit = new TokenBucket(5, 5);
     /** Terminal input: 20 messages per second (each up to 32 events). */
@@ -241,6 +243,30 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
     }
 
     /**
+     * The mainframe PIN for the PIN dialog: {@code {"t":"pin","set":true,"length":6}}, so it shows exactly that many slots
+     * and sends the PIN once the last one is filled. {@code length} 0: not known yet (a PIN set before the length was
+     * kept; the next correct entry stores it) or this session may not control anything. Sent after the login when the
+     * mainframe has a PIN, then whenever it changes.
+     */
+    @Override
+    public synchronized void recheckPin() {
+        if (state != State.READY || share != null) return;
+        boolean set = instance.auth.hasPin(mainframeId);
+        int length = set && canControl() ? instance.auth.pinLength(mainframeId) : 0;
+        String now = set + ":" + length;
+        if (now.equals(pinState) || (pinState.isEmpty() && !set)) {
+            pinState = now;
+            return;
+        }
+        pinState = now;
+        var json = new JsonObject();
+        json.addProperty("t", "pin");
+        json.addProperty("set", set);
+        json.addProperty("length", length);
+        send(List.of(Json.GSON.toJson(json)));
+    }
+
+    /**
      * Plain-HTTP internet access: why a write from this (internet) session is refused, or null if it may go ahead.
      * {@code remote_no_pin}: the mainframe has no PIN, so nothing can be controlled from the internet;
      * {@code remote_locked}: enter the PIN first ({@code unlock}, or with the action itself).
@@ -377,6 +403,7 @@ final class WebSocketSession extends SimpleChannelInboundHandler<WebSocketFrame>
                     if (authDeadline != null) authDeadline.cancel(false);
                     WebHub.INSTANCE.addSession(this);
                     recheckInternet();
+                    recheckPin();
                 });
             });
         } catch (RejectedExecutionException e) {
