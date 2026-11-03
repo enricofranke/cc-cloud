@@ -342,11 +342,12 @@ filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));
 
 ### A program's design {#card-script-design}
 
-A program can give its card a design: \`dash:style{...}\` in [cloud.ui](/docs/ui-library#api) (a group takes \`style\` in its options), or \`setStyle\` on the [uplink](/docs/lua#layout). A design is a table with \`bg\`, \`bgColor\`, \`css\` and \`parts\`, checked like the editor's:
+A program can give its card a design: \`dash:style{...}\` in [cloud.ui](/docs/ui-library#api) (a group takes \`style\` in its options), \`setStyle\` on the [uplink](/docs/lua#layout), or \`cloud.setStyle(card, design)\` in a [Cloud Script](/docs/scripts). A design is a table with \`bg\`, \`bgColor\`, \`css\` and \`parts\`, checked like the editor's:
 
 ${code("lua", C.UI_STYLE)}
 
 - The card shows the program's design until someone changes the design in the editor. The first change copies the program's design into the layout, so you only edit what you want different. From then on the layout's design is used as a whole, and **Use the script's design** in the card's settings goes back to the program's.
+- \`cloud.setStyle\` from a Cloud Script saves the design in the layout, like the editor (it needs the right to edit the layout); \`cloud.setStyle(card)\` removes it again.
 
 ## Alerts {#alerts}
 
@@ -1078,7 +1079,7 @@ If the file was changed on the computer since you opened it, saving asks before 
   // ---------------------------------------------------------------- Cloud Scripts
   scripts: `# Cloud Scripts
 
-Cloud Scripts are Lua scripts that run **inside the mainframe** – no computer, no disk, no chunk of their own. They read the cards of the dashboard, react when a value changes, run on timers and act with **your** rights: press buttons, set sliders and toggles, start scenes, craft, send alerts. They keep running when nobody has the dashboard open.
+Cloud Scripts are Lua scripts that run **inside the mainframe** – no computer, no disk, no chunk of their own. They read the cards of the dashboard, react when a value changes, run on timers and act with **your** rights: press buttons, set sliders and toggles, start scenes, craft, change a card's [design](/docs/dashboard#card-script-design), send alerts. They keep running when nobody has the dashboard open.
 
 Use them for the logic that is too much for a [rule](/docs/automation#rules) – state, loops, several cards at once – and that should not depend on a computer staying loaded.
 

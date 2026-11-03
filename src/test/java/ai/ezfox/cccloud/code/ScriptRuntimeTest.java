@@ -231,6 +231,37 @@ class ScriptRuntimeTest {
     }
 
     @Test
+    void scriptsSetACardsDesignWithTheEditorsChecks() throws InterruptedException {
+        var run = scripts.run("""
+            print(cloud.setStyle("reactor", {bg = "custom", bgColor = "#0b1a2a", parts = {gauge_fill = "color: #4ff0ff"}}))
+            print(cloud.setStyle("Reactor"))
+            print(cloud.setStyle("Reactor", {}))
+            print(cloud.setStyle("Nope", {css = "border-radius: 4px"}))
+            print(cloud.setStyle("mainframe", {css = "border-radius: 4px"}))
+            for _, bad in ipairs({{parts = {title = "background: url(x)"}}, {parts = {evil = "color: red"}}, {color = "red"}, {css = 1}, {parts = "color: red"}}) do
+              local ok, err = pcall(cloud.setStyle, "Reactor", bad)
+              print("refused", ok, err)
+            end
+            """);
+        assertTrue(run.await(5000), run.logText());
+        assertNull(run.error(), () -> run.error().getMessage());
+        String log = run.logText();
+        assertTrue(log.contains("info: false unknown_card"), log);
+        assertTrue(log.contains("info: false not_supported"), log);
+        assertEquals(5, log.split("refused false", -1).length - 1, log);
+        assertTrue(log.contains("bad style (parts.title: network)"), log);
+        assertTrue(log.contains("bad style (parts.evil: part)"), log);
+        assertTrue(log.contains("unknown style key 'color'"), log);
+        var styles = scripts.world.actions.stream().filter(a -> a instanceof WorldAction.SetStyle).map(a -> (WorldAction.SetStyle) a).toList();
+        assertEquals(3, styles.size(), "nothing refused reaches the world: " + styles);
+        assertEquals(TestScripts.REACTOR, styles.getFirst().cardId());
+        assertEquals("color: #4ff0ff", styles.getFirst().design().getAsJsonObject("parts").get("gauge_fill").getAsString());
+        assertNull(styles.get(1).design(), "no design: the card's own design is removed");
+        assertNull(styles.get(2).design(), "an empty table is the same");
+        assertTrue(scripts.world.audits.getFirst().contains("set the design of Reactor"), scripts.world.audits.toString());
+    }
+
+    @Test
     void refusedActionsAreLoggedAndAuditBursts() throws InterruptedException {
         scripts.world.answer = a -> new Object[]{false, "not_allowed"};
         var run = scripts.run("for i = 1, 10 do cloud.set('Reactor', 'active', i % 2 == 0) end");

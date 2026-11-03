@@ -1,5 +1,6 @@
 package ai.ezfox.cccloud.code.world;
 
+import com.google.gson.JsonObject;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -92,6 +93,17 @@ public sealed interface WorldAction {
 
         public String describe() {
             return "ran rule " + ruleName;
+        }
+    }
+
+    /** {@code design}: bg, bgColor, css and parts (already checked like a layout design), or null to remove the card's own design. */
+    record SetStyle(String cardId, String cardTitle, @Nullable JsonObject design) implements WorldAction {
+        public String perm() {
+            return "layout.edit";
+        }
+
+        public String describe() {
+            return (design == null ? "reset the design of " : "set the design of ") + cardTitle;
         }
     }
 

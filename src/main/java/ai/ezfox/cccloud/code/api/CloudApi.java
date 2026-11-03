@@ -4,6 +4,9 @@ import ai.ezfox.cccloud.code.world.ScriptWorld;
 import ai.ezfox.cccloud.code.world.WorldAction;
 import ai.ezfox.cccloud.code.world.WorldEvents;
 import ai.ezfox.cccloud.code.world.WorldSnapshot;
+import ai.ezfox.cccloud.uplink.WidgetFactory;
+import ai.ezfox.cccloud.uplink.WidgetFactory.WidgetException;
+import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -215,6 +218,19 @@ public final class CloudApi {
             var r = h.snapshot().rule(a.string(0));
             if (r == null) return fail("unknown_rule");
             return h.act(new WorldAction.RunRule(r.id(), r.name()));
+        });
+        add("setStyle", (h, a) -> {
+            var raw = a.optTable(1);
+            JsonObject design;
+            try {
+                design = raw == null || raw.isEmpty() ? null : WidgetFactory.style(raw);
+            } catch (WidgetException e) {
+                throw a.bad(1, e.getMessage());
+            }
+            var c = h.snapshot().card(a.string(0));
+            if (c == null) return fail("unknown_card");
+            if (c.id().equals(WorldSnapshot.MAINFRAME_CARD)) return fail("not_supported");
+            return h.act(new WorldAction.SetStyle(c.id(), c.title(), design));
         });
 
         // ---- events ----

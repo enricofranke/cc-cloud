@@ -8,7 +8,7 @@ navigation:
 
 # Cloud Scripts
 
-Cloud Scripts sind Lua-Skripte, die **im Mainframe** laufen – ohne Computer, ohne Diskette, ohne eigenen Chunk. Sie lesen die Karten des Dashboards, reagieren, wenn sich ein Wert ändert, laufen nach Timern und handeln mit **deinen** Rechten: Knöpfe drücken, Schieberegler und Schalter stellen, Szenen starten, craften, Meldungen schicken. Sie laufen weiter, auch wenn niemand das Dashboard offen hat.
+Cloud Scripts sind Lua-Skripte, die **im Mainframe** laufen – ohne Computer, ohne Diskette, ohne eigenen Chunk. Sie lesen die Karten des Dashboards, reagieren, wenn sich ein Wert ändert, laufen nach Timern und handeln mit **deinen** Rechten: Knöpfe drücken, Schieberegler und Schalter stellen, Szenen starten, craften, das [Design](dashboard.md) einer Karte ändern, Meldungen schicken. Sie laufen weiter, auch wenn niemand das Dashboard offen hat.
 
 Nimm sie für Logik, die für eine [Regel](automation.md) zu viel ist – Zustand, Schleifen, mehrere Karten auf einmal – und die nicht davon abhängen soll, dass ein Computer geladen bleibt.
 
@@ -252,6 +252,16 @@ Schaltet eine Regel ein oder aus (wie beim Peripheral cloud_mainframe).
 Führt die Aktionen einer Regel jetzt aus, wie „Jetzt ausführen“ auf dem Dashboard.
 
 - `rule` (string) – Regel-ID oder Name
+
+**`cloud.setStyle(card, design?)`** → `boolean, string?` · braucht `layout.edit` · wartet auf den Server (einen Tick)
+
+Setzt das Design einer Karte im Dashboard-Layout, wie der Layout-Editor: Hintergrund, eigenes CSS und Kartenteile, geprüft wie im Editor. Es ersetzt das ganze Design der Karte, auch das, das ihr Programm mit dash:style setzt.
+
+- `design` (table, optional) – \{bg=, bgColor=, css=, parts=\{title=, gauge_fill=, button=, …\}\}; nil entfernt das eigene Design der Karte
+
+```lua
+cloud.setStyle("Reactor", {parts = {title = "color: #ff5a4f", gauge_fill = "color: #ff5a4f"}})
+```
 
 ### Ereignisse
 

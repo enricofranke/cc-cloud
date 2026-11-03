@@ -99,6 +99,42 @@ public final class LayoutData extends SavedData {
         WebHub.INSTANCE.publishLayout(mainframeId, layout);
     }
 
+    /**
+     * Sets (with null: removes) a card's own design in the mainframe's layout, as the editor saves it: bg, bgColor, css
+     * and parts are replaced as a whole, so the card no longer shows its program's design ({@code dash:style}) until
+     * the design is removed again. For Cloud Scripts ({@code cloud.setStyle}); {@code design} is already checked. A
+     * design equal to the saved one changes nothing and does not count against the layout save limit. A mainframe
+     * without a layout gets an empty v2 document; a v1 layout is migrated first. Returns null or an error code.
+     */
+    public static @Nullable String setCardDesign(MinecraftServer server, UUID mainframeId, String cardKey, @Nullable JsonObject design) {
+        var current = WebHub.INSTANCE.layout(mainframeId);
+        var layout = current != null ? current : emptyLayout();
+        if (layout.get("v").getAsInt() != 2) {
+            layout = migrate(layout, WebHub.INSTANCE.sectionSnapshots(mainframeId));
+            if (layout == null) return "old_layout";
+        }
+        if (!(layout.get("cards") instanceof JsonObject cards)) return "invalid_layout";
+        var card = cards.get(cardKey) instanceof JsonObject c ? c : new JsonObject();
+        if (!CardStyle.putDesign(card, design)) return null;
+        if (!WebHub.INSTANCE.tryLayoutSave(mainframeId)) return "rate_limited";
+        if (card.isEmpty()) cards.remove(cardKey);
+        else cards.add(cardKey, card);
+        var result = LayoutValidator.validate(layout);
+        if (result.layout() == null) return "invalid_layout";
+        get(server).set(mainframeId, result.layout());
+        return null;
+    }
+
+    /** An empty v2 layout: no pages, every card in its automatic place. */
+    public static JsonObject emptyLayout() {
+        var layout = new JsonObject();
+        layout.addProperty("v", 2);
+        layout.add("pages", new com.google.gson.JsonArray());
+        layout.add("cards", new JsonObject());
+        layout.add("widgets", new JsonObject());
+        return layout;
+    }
+
     /** Whether a mainframe has a stored layout (removal tests). */
     public boolean has(UUID mainframeId) {
         return layouts.containsKey(mainframeId);

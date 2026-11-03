@@ -6,6 +6,7 @@ import ai.ezfox.cccloud.code.world.ScriptIdentity;
 import ai.ezfox.cccloud.code.world.ScriptWorld;
 import ai.ezfox.cccloud.code.world.WorldAction;
 import ai.ezfox.cccloud.code.world.WorldSnapshot;
+import ai.ezfox.cccloud.layout.LayoutData;
 import ai.ezfox.cccloud.network.CloudNetwork;
 import ai.ezfox.cccloud.push.PushService;
 import ai.ezfox.cccloud.push.PushTarget;
@@ -168,6 +169,11 @@ final class GameWorld implements ScriptWorld {
             case WorldAction.RunRule r -> {
                 if (!perms.contains(Perm.RULES_TOGGLE)) yield fail("not_allowed");
                 yield result(RuleService.runNow(server, id, r.ruleId()));
+            }
+            case WorldAction.SetStyle s -> {
+                if (!perms.contains(Perm.LAYOUT_EDIT)) yield fail("not_allowed");
+                if (hidden(id, s.cardId(), perms)) yield fail("unknown_card");
+                yield result(LayoutData.setCardDesign(server, id, s.cardId(), s.design()));
             }
             case WorldAction.ItemCount c -> {
                 if (!perms.contains(Perm.STORAGE_SEARCH) || hidden(id, c.cardId(), perms)) yield new Object[]{null};

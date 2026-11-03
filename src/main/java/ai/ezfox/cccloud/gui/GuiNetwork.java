@@ -306,7 +306,7 @@ public final class GuiNetwork {
     public static @Nullable String renameCard(MinecraftServer server, UUID mainframeId, String cardKey, String title) {
         if (!WebHub.INSTANCE.tryLayoutSave(mainframeId)) return "rate_limited";
         var current = WebHub.INSTANCE.layout(mainframeId);
-        var layout = current != null ? current : emptyLayout();
+        var layout = current != null ? current : ai.ezfox.cccloud.layout.LayoutData.emptyLayout();
         if (!(layout.get("cards") instanceof com.google.gson.JsonObject cards)) return "invalid_layout";
         var card = cards.get(cardKey) instanceof com.google.gson.JsonObject c ? c : new com.google.gson.JsonObject();
         if (title.isEmpty()) card.remove("title");
@@ -317,15 +317,6 @@ public final class GuiNetwork {
         if (result.layout() == null) return "invalid_layout";
         ai.ezfox.cccloud.layout.LayoutData.get(server).set(mainframeId, result.layout());
         return null;
-    }
-
-    private static com.google.gson.JsonObject emptyLayout() {
-        var layout = new com.google.gson.JsonObject();
-        layout.addProperty("v", 2);
-        layout.add("pages", new com.google.gson.JsonArray());
-        layout.add("cards", new com.google.gson.JsonObject());
-        layout.add("widgets", new com.google.gson.JsonObject());
-        return layout;
     }
 
     private static final GuiActions.MainframeOps DENY_ALL = new GuiActions.MainframeOps() {

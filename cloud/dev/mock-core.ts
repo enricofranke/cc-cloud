@@ -14,6 +14,7 @@ const SFM_SAMPLE = `NAME "Ore processing"\n\nEVERY 20 TICKS DO\n    INPUT raw_ir
 import { FakeTerminal } from "./terminal-sim.ts";
 import { PLAYERS, RANK, TEAMS, DEFAULT_MAPPING, accessDoc, grant, isPerm, presetPerms, resolvePerms, createShare, deviceType, newAccess, playerByName, playerByUuid, resolveRole, sha as sha256, type Access, type Role, type Share } from "./access-sim.ts";
 import { cardKeyOf, resolveLayout, normalizeLayout } from "../web/src/lib/layout.ts";
+import { DESIGN_KEYS } from "../web/src/lib/cardstyle.ts";
 import { computeNetwork, exampleNodes, RANGES, RELAY_FE, type SimNode } from "./network-sim.ts";
 import { terrain } from "./terrain-sim.ts";
 import { DEEP_BASE, ground, mapTile, surfaceY, voxelSection } from "./world-sim.ts";
@@ -1163,6 +1164,35 @@ export function createMockCore(opts: MockOptions = {}, platform: MockPlatform = 
         if (sc.confirm && (a[1] as { confirm?: unknown } | null)?.confirm !== true) return [false, "confirm_required"];
         const err = startScene(mf, sc, { by, device: "Cloud Script", source: "script", perms: who.perms, pinVerified: false });
         return err ? [false, err] : [true, null];
+      }
+      case "setStyle": {
+        // like LayoutData.setCardDesign: the card's own design in the layout, replaced as a whole (nil removes it)
+        const raw = a[1] ?? null;
+        if (raw !== null && (typeof raw !== "object" || (Array.isArray(raw) && raw.length > 0))) throw new Error("bad argument #2 to 'cloud.setStyle' (table with names expected)");
+        const design = (Array.isArray(raw) ? {} : (raw ?? {})) as Record<string, unknown>;
+        const unknown = Object.keys(design).find((k) => !(DESIGN_KEYS as readonly string[]).includes(k));
+        if (unknown) throw new Error(`bad argument #2 to 'cloud.setStyle' (unknown style key '${unknown}' (allowed: bg, bgColor, css, parts))`);
+        if (a[0] === "mainframe") return [false, "not_supported"];
+        const u = cardOf(mf, a[0]);
+        if (!u) return [false, "unknown_card"];
+        if (!who.perms.includes("layout.edit")) return [false, "not_allowed"];
+        const base = (mf.layout ?? { v: 2, pages: [], cards: {}, widgets: {} }) as { v: number; cards: Record<string, Record<string, unknown>> };
+        if (base.v !== 2) return [false, "old_layout"];
+        const before = base.cards[u.uplinkId] ?? {};
+        const { bg: _bg, bgColor: _bc, css: _css, parts: _parts, ...rest } = before;
+        const card = { ...rest, ...design };
+        const next = layoutDoc.safeParse({ ...base, cards: { ...base.cards, [u.uplinkId]: card } });
+        if (!next.success) throw new Error("bad argument #2 to 'cloud.setStyle' (bad style; allowed parts and properties: see the handbook, Card design)");
+        if (JSON.stringify(Object.entries(before).sort()) === JSON.stringify(Object.entries(card).sort())) return [true, null];
+        const now = Date.now();
+        mf.layoutSaves = mf.layoutSaves.filter((t) => now - t < 10_000);
+        if (over(mf.layoutSaves.length, 5)) return [false, "rate_limited"];
+        mf.layoutSaves.push(now);
+        if (Object.keys(card).length === 0) delete (next.data.cards as Record<string, unknown>)[u.uplinkId];
+        mf.layout = next.data;
+        log(`[cccloud] ${by} ${Object.keys(design).length ? "set" : "reset"} the design of ${u.title} (audit)`);
+        broadcast(mf, { t: "layout", layout: mf.layout });
+        return [true, null];
       }
       case "setRuleEnabled":
       case "runRule": {

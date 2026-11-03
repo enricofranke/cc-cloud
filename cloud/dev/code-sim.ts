@@ -286,7 +286,7 @@ export function createCodeSim(world: CodeWorld, limits: Limits = LIMITS) {
         }
         if (name.startsWith("store.")) return storeCall(s, name.slice(6), args);
         if (name === "push" && !args[2]) args[2] = s.name;
-        const action = ["press", "set", "setRedstone", "craft", "setEnabled", "runScene", "setRuleEnabled", "runRule"].includes(name);
+        const action = ["press", "set", "setRedstone", "craft", "setEnabled", "runScene", "setRuleEnabled", "runRule", "setStyle"].includes(name);
         if (action) {
           const now = Date.now();
           s.actions = s.actions.filter((t) => now - t < 1000);

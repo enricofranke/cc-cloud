@@ -261,6 +261,14 @@
       "perm": "rules.toggle"
     },
     {
+      "name": "setStyle", "group": "act", "kind": "await",
+      "params": [{ "name": "card", "type": "CardRef" }, { "name": "design", "type": "table", "optional": true, "doc": { "en": "{bg=, bgColor=, css=, parts={title=, gauge_fill=, button=, …}}; nil removes the card's own design", "de": "{bg=, bgColor=, css=, parts={title=, gauge_fill=, button=, …}}; nil entfernt das eigene Design der Karte" } }],
+      "returns": [{ "type": "boolean" }, { "type": "string?" }],
+      "doc": { "en": "Sets a card's design in the dashboard layout, like the layout editor: background, custom CSS and card parts, checked like the editor's. It replaces the card's whole design, including the one its program sets with dash:style.", "de": "Setzt das Design einer Karte im Dashboard-Layout, wie der Layout-Editor: Hintergrund, eigenes CSS und Kartenteile, geprüft wie im Editor. Es ersetzt das ganze Design der Karte, auch das, das ihr Programm mit dash:style setzt." },
+      "perm": "layout.edit",
+      "example": "cloud.setStyle(\"Reactor\", {parts = {title = \"color: #ff5a4f\", gauge_fill = \"color: #ff5a4f\"}})"
+    },
+    {
       "name": "on", "group": "events", "kind": "sync",
       "params": [{ "name": "event", "type": "string", "doc": { "en": "change, above, below, online, offline or redstone", "de": "change, above, below, online, offline oder redstone" } }, { "name": "filter", "type": "table", "optional": true, "doc": { "en": "{card=, widget=} (above/below also value=), {channel=} for redstone", "de": "{card=, widget=} (above/below auch value=), {channel=} für redstone" } }, { "name": "handler", "type": "function", "doc": { "en": "Called with the Event", "de": "Wird mit dem Event aufgerufen" } }],
       "returns": [{ "type": "integer", "doc": { "en": "Handler id for cloud.off", "de": "Handler-ID für cloud.off" } }],

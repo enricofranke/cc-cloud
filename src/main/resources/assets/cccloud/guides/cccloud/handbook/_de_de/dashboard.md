@@ -118,7 +118,7 @@ filter: drop-shadow(0 0 3px rgba(94, 240, 255, 0.9));
 
 ### Das Design eines Programms
 
-Ein Programm kann seiner Karte ein Design geben: `dash:style{...}` in [cloud.ui](ui-library.md) (eine Gruppe nimmt `style` in ihren Optionen), oder `setStyle` am [Uplink](lua.md). Ein Design ist eine Tabelle mit `bg`, `bgColor`, `css` und `parts` und wird geprüft wie im Editor:
+Ein Programm kann seiner Karte ein Design geben: `dash:style{...}` in [cloud.ui](ui-library.md) (eine Gruppe nimmt `style` in ihren Optionen), `setStyle` am [Uplink](lua.md) oder `cloud.setStyle(card, design)` in einem [Cloud Script](scripts.md). Ein Design ist eine Tabelle mit `bg`, `bgColor`, `css` und `parts` und wird geprüft wie im Editor:
 
 ```lua
 -- the Reactor Console look: dark glass, a glowing gauge, monospace read-outs
@@ -135,6 +135,7 @@ dash:style({
 ```
 
 - Die Karte zeigt das Design des Programms, bis jemand das Design im Editor ändert. Die erste Änderung übernimmt das Design des Programms ins Layout, du änderst also nur, was anders sein soll. Ab dann gilt das Design aus dem Layout als Ganzes, und **Use the script's design** in den Einstellungen der Karte kehrt zum Design des Programms zurück.
+- `cloud.setStyle` aus einem Cloud Script speichert das Design im Layout, wie der Editor (es braucht das Recht, das Layout zu bearbeiten); `cloud.setStyle(card)` entfernt es wieder.
 
 ## Meldungen
 

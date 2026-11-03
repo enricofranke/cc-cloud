@@ -8,7 +8,7 @@ navigation:
 
 # Cloud Scripts
 
-Cloud Scripts are Lua scripts that run **inside the mainframe** – no computer, no disk, no chunk of their own. They read the cards of the dashboard, react when a value changes, run on timers and act with **your** rights: press buttons, set sliders and toggles, start scenes, craft, send alerts. They keep running when nobody has the dashboard open.
+Cloud Scripts are Lua scripts that run **inside the mainframe** – no computer, no disk, no chunk of their own. They read the cards of the dashboard, react when a value changes, run on timers and act with **your** rights: press buttons, set sliders and toggles, start scenes, craft, change a card's [design](dashboard.md), send alerts. They keep running when nobody has the dashboard open.
 
 Use them for the logic that is too much for a [rule](automation.md) – state, loops, several cards at once – and that should not depend on a computer staying loaded.
 
@@ -252,6 +252,16 @@ Switches a rule on or off (as on the cloud_mainframe peripheral).
 Runs a rule's actions now, like "Run now" on the dashboard.
 
 - `rule` (string) – Rule id or name
+
+**`cloud.setStyle(card, design?)`** → `boolean, string?` · needs `layout.edit` · waits for the server (one tick)
+
+Sets a card's design in the dashboard layout, like the layout editor: background, custom CSS and card parts, checked like the editor's. It replaces the card's whole design, including the one its program sets with dash:style.
+
+- `design` (table, optional) – \{bg=, bgColor=, css=, parts=\{title=, gauge_fill=, button=, …\}\}; nil removes the card's own design
+
+```lua
+cloud.setStyle("Reactor", {parts = {title = "color: #ff5a4f", gauge_fill = "color: #ff5a4f"}})
+```
 
 ### Events
 
