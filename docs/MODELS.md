@@ -82,6 +82,7 @@ Mainframe: north = none, east = y90, south = y180, west = y270 (front with the g
 | `block/cloud_lamp_dim` | 13 |
 | `block/cloud_lamp_mid` | 13 |
 | `block/cloud_lamp_on` | 13 |
+| `computer models` | 4 |
 
 
 ## Compact uplink (non-full faces)

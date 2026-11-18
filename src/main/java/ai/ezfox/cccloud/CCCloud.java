@@ -72,6 +72,8 @@ public class CCCloud {
         ai.ezfox.cccloud.compat.Integrations.init(modEventBus, modContainer);
         // v0.7 in-game clients: Cloud Tablet and Cloud Display (ingame/, tablet/, display/).
         ai.ezfox.cccloud.ingame.InGameRegistry.init(modEventBus);
+        // Cloud Computers: the computer block and its in-game terminal (computer/block), no CC: Tweaked needed.
+        ai.ezfox.cccloud.computer.block.ComputerBlocks.init(modEventBus);
     }
 
     private static void registerCapabilities(RegisterCapabilitiesEvent event) {

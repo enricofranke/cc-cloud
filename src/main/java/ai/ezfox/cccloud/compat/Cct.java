@@ -62,9 +62,13 @@ public final class Cct {
         return hooks;
     }
 
-    /** The computer block at {@code pos} (server side), or null: no computer there, a turtle, or no CC: Tweaked. */
+    /**
+     * The computer block at {@code pos} (server side): a Cloud Computer (always there, docs/SPEC.md "Cloud Computers") or
+     * a CC: Tweaked computer (only with CC: Tweaked); null when there is none (or a turtle).
+     */
     public static @Nullable ComputerHandle computer(Level level, BlockPos pos) {
-        return hooks.computer(level, pos);
+        var own = ai.ezfox.cccloud.computer.block.ComputerBlocks.computer(level, pos);
+        return own != null ? own : hooks.computer(level, pos);
     }
 
     /**

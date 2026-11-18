@@ -127,6 +127,7 @@ public class CloudUplinkBlock extends Block implements EntityBlock {
      * Whether the uplink is attached directly to a machine rather than to a computer or a wired network block.
      */
     public static boolean isDirect(BlockState attached) {
+        if (attached.getBlock() instanceof ai.ezfox.cccloud.computer.block.CloudComputerBlock) return false;
         var id = BuiltInRegistries.BLOCK.getKey(attached.getBlock());
         if (!id.getNamespace().equals("computercraft")) return true;
         String path = id.getPath();

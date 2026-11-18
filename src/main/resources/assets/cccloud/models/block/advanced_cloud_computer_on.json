@@ -1,0 +1,9 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "cccloud:block/advanced_cloud_computer_front_on",
+    "side": "cccloud:block/advanced_cloud_computer_side",
+    "top": "cccloud:block/advanced_cloud_computer_top",
+    "particle": "cccloud:block/advanced_cloud_computer_side"
+  }
+}
