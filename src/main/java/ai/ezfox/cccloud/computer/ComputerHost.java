@@ -20,6 +20,11 @@ public interface ComputerHost {
 
     RedstoneIo redstone();
 
+    /** An advanced computer: colour screen and mouse input. Read once when the computer is created. */
+    default boolean advanced() {
+        return true;
+    }
+
     /** Something the block shows changed (on/off, label, redstone outputs): sync and update neighbours. */
     default void changed() {
     }

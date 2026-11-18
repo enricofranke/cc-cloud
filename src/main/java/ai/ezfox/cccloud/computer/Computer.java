@@ -13,8 +13,9 @@ final class Computer implements CloudComputer {
 
     private final ComputerRegistry registry;
     private final int id;
-    private final ComputerTerminal terminal = new ComputerTerminal();
+    private final ComputerTerminal terminal;
     private final ArrayDeque<Object[]> events = new ArrayDeque<>();
+    private final InputLimiter limiter = new InputLimiter(System::nanoTime);
     private volatile ComputerHost host;
     private volatile boolean on;
     private volatile @Nullable String lastError;
@@ -23,6 +24,7 @@ final class Computer implements CloudComputer {
         this.registry = registry;
         this.id = id;
         this.host = host;
+        this.terminal = new ComputerTerminal(ComputerTerminal.DEFAULT_WIDTH, ComputerTerminal.DEFAULT_HEIGHT, host.advanced());
     }
 
     void setHost(ComputerHost host) {
@@ -86,13 +88,22 @@ final class Computer implements CloudComputer {
     }
 
     @Override
-    public void input(InputEvent event) {
+    public boolean input(InputEvent event, String source) {
+        if (!limiter.allow(source)) return false;
+        if (event.name().startsWith("mouse_") && !terminal.colour()) return false;
         switch (event.name()) {
             case "turn_on" -> turnOn();
             case "shutdown" -> shutdown();
             case "reboot" -> reboot();
-            default -> queueEvent(event.name(), event.args());
+            case "paste" -> {
+                String text = InputEvent.cleanPaste((String) event.args()[0]);
+                return !text.isEmpty() && queueEvent("paste", text);
+            }
+            default -> {
+                return queueEvent(event.name(), event.args());
+            }
         }
+        return true;
     }
 
     @Override

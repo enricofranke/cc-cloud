@@ -63,6 +63,21 @@ public record InputEvent(String name, Object[] args) {
         return new InputEvent(name, new Object[0]);
     }
 
+    /** Longest paste in characters. */
+    public static final int MAX_PASTE = 512;
+
+    /** A paste as one line: up to the first line break, without control characters, at most {@link #MAX_PASTE}. */
+    public static String cleanPaste(String text) {
+        int nl = text.indexOf('\n');
+        if (nl >= 0) text = text.substring(0, nl);
+        var out = new StringBuilder(Math.min(text.length(), MAX_PASTE));
+        for (int i = 0; i < text.length() && out.length() < MAX_PASTE; i++) {
+            char c = text.charAt(i);
+            if (c >= 0x20 && c != 0x7f && c <= 0xff) out.append(c);
+        }
+        return out.toString();
+    }
+
     /** From an already validated browser event ({@link TerminalInput#parse}); null for a name we do not take. */
     public static @Nullable InputEvent of(TerminalInput.Event event) {
         if (!CONTROLS.contains(event.name()) && !EVENTS.contains(event.name())) return null;

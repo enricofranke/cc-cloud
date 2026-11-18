@@ -36,8 +36,14 @@ public interface CloudComputer {
     /** Queues an event for the program (any thread). Dropped while off or when the queue is full; false then. */
     boolean queueEvent(String name, @Nullable Object... args);
 
-    /** Input from the screen or browser: controls act, the rest is queued (any thread). */
-    void input(InputEvent event);
+    /**
+     * Input from the screen or browser (any thread). The one place for input limits: a paste is cut to 512 characters
+     * without control characters, every {@code source} has its own rate limit, controls act, the rest is queued. The
+     * caller has already checked that {@code source} may operate this computer (in-game: screen open, in reach, block
+     * there; browser: the dashboard's rights). {@code source} identifies who typed: a player's UUID or a browser session id.
+     * Returns false if the input was dropped (rate limit, queue full, off).
+     */
+    boolean input(InputEvent event, String source);
 
     /** The terminal (thread-safe). Kept while off; cleared on boot and shutdown. */
     ComputerTerminal terminal();
