@@ -12,7 +12,9 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
+import ai.ezfox.cccloud.code.api.HostModule;
 import org.squiddev.cobalt.LuaError;
 import org.squiddev.cobalt.LuaState;
 import org.squiddev.cobalt.compiler.CompileException;
@@ -48,5 +50,10 @@ public final class LuaEngine implements ScriptEngine {
     @Override
     public EngineInstance create(String name, ScriptHost host, Budget budget) {
         return new LuaInstance(name, host, budget, ApiSpec.get(), CloudApi.standard(), zone.get());
+    }
+
+    @Override
+    public EngineInstance createProgram(String name, List<HostModule> modules, Budget budget, DoubleSupplier clock) {
+        return new LuaInstance(name, modules, budget, ApiSpec.get(), zone.get(), clock);
     }
 }

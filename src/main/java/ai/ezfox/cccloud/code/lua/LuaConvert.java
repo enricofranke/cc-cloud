@@ -2,6 +2,7 @@ package ai.ezfox.cccloud.code.lua;
 
 import ai.ezfox.cccloud.code.api.ApiError;
 import ai.ezfox.cccloud.code.api.ScriptFunction;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
@@ -37,36 +38,49 @@ final class LuaConvert {
     }
 
     static LuaString str(String s) {
-        return ValueFactory.valueOf(s.getBytes(StandardCharsets.UTF_8));
+        return str(s, StandardCharsets.UTF_8);
+    }
+
+    static LuaString str(String s, Charset charset) {
+        return ValueFactory.valueOf(s.getBytes(charset));
     }
 
     static String text(LuaString s) {
+        return text(s, StandardCharsets.UTF_8);
+    }
+
+    static String text(LuaString s, Charset charset) {
         byte[] bytes = new byte[s.length()];
         s.copyTo(bytes, 0);
-        return new String(bytes, StandardCharsets.UTF_8);
+        return new String(bytes, charset);
     }
 
     // ---- Java → Lua --------------------------------------------------------------------------------------------------
 
     static LuaValue toLua(@Nullable Object value) {
-        return toLua(value, 0);
+        return toLua(value, 0, StandardCharsets.UTF_8);
     }
 
-    private static LuaValue toLua(@Nullable Object value, int depth) {
+    /** Like {@link #toLua(Object)} with strings encoded in {@code charset} (ISO-8859-1 for computer programs: one byte per char). */
+    static LuaValue toLua(@Nullable Object value, Charset charset) {
+        return toLua(value, 0, charset);
+    }
+
+    private static LuaValue toLua(@Nullable Object value, int depth, Charset charset) {
         return switch (value) {
             case null -> Constants.NIL;
             case Boolean b -> ValueFactory.valueOf(b);
             case Integer i -> ValueFactory.valueOf(i);
             case Long l -> LuaInteger.valueOf(l);
             case Number n -> ValueFactory.valueOf(n.doubleValue());
-            case String s -> str(s);
+            case String s -> str(s, charset);
             case Function f -> f.function();
             case LuaValue v -> v;
             case Map<?, ?> map -> {
                 if (depth > MAX_DEPTH) yield Constants.NIL;
                 var table = new LuaTable(0, map.size());
                 for (var e : map.entrySet()) {
-                    if (e.getValue() != null) table.rawset(String.valueOf(e.getKey()), toLua(e.getValue(), depth + 1));
+                    if (e.getValue() != null) table.rawset(String.valueOf(e.getKey()), toLua(e.getValue(), depth + 1, charset));
                 }
                 yield table;
             }
@@ -74,32 +88,40 @@ final class LuaConvert {
                 if (depth > MAX_DEPTH) yield Constants.NIL;
                 var table = new LuaTable(list.size(), 0);
                 int i = 1;
-                for (var item : list) table.rawset(i++, toLua(item, depth + 1));
+                for (var item : list) table.rawset(i++, toLua(item, depth + 1, charset));
                 yield table;
             }
-            default -> str(value.toString());
+            default -> str(value.toString(), charset);
         };
     }
 
     /** A handler's result: nothing, one value or several ({@code Object[]}). */
     static Varargs results(@Nullable Object result, boolean declared) {
+        return results(result, declared, StandardCharsets.UTF_8);
+    }
+
+    static Varargs results(@Nullable Object result, boolean declared, Charset charset) {
         if (result instanceof Object[] array) {
             var values = new LuaValue[array.length];
-            for (int i = 0; i < array.length; i++) values[i] = toLua(array[i]);
+            for (int i = 0; i < array.length; i++) values[i] = toLua(array[i], charset);
             return ValueFactory.varargsOf(values);
         }
         if (result == null) return declared ? Constants.NIL : Constants.NONE;
-        return toLua(result);
+        return toLua(result, charset);
     }
 
     // ---- Lua → Java --------------------------------------------------------------------------------------------------
 
     /** Any script value as plain Java; functions become {@link Function}. */
     static @Nullable Object toJava(LuaValue value) throws LuaError {
-        return toJava(value, 0, new int[]{0}, new IdentityHashMap<>());
+        return toJava(value, StandardCharsets.UTF_8);
     }
 
-    private static @Nullable Object toJava(LuaValue value, int depth, int[] items, IdentityHashMap<LuaTable, Boolean> seen) throws LuaError {
+    static @Nullable Object toJava(LuaValue value, Charset charset) throws LuaError {
+        return toJava(value, 0, new int[]{0}, new IdentityHashMap<>(), charset);
+    }
+
+    private static @Nullable Object toJava(LuaValue value, int depth, int[] items, IdentityHashMap<LuaTable, Boolean> seen, Charset charset) throws LuaError {
         switch (value.type()) {
             case Constants.TNIL:
                 return null;
@@ -111,17 +133,17 @@ final class LuaConvert {
                 return d == Math.rint(d) && Math.abs(d) < 0x1p53 ? (Object) (long) d : (Object) d;
             }
             case Constants.TSTRING:
-                return text((LuaString) value);
+                return text((LuaString) value, charset);
             case Constants.TFUNCTION:
                 return new Function((LuaFunction) value);
             case Constants.TTABLE:
-                return table((LuaTable) value, depth, items, seen);
+                return table((LuaTable) value, depth, items, seen, charset);
             default:
                 throw new ApiError("cannot pass a " + value.typeName());
         }
     }
 
-    private static Object table(LuaTable table, int depth, int[] items, IdentityHashMap<LuaTable, Boolean> seen) throws LuaError {
+    private static Object table(LuaTable table, int depth, int[] items, IdentityHashMap<LuaTable, Boolean> seen, Charset charset) throws LuaError {
         if (depth >= MAX_DEPTH) throw new ApiError("table nested more than " + MAX_DEPTH + " levels deep");
         if (seen.put(table, Boolean.TRUE) != null) throw new ApiError("table contains itself");
         int length = table.length();
@@ -141,18 +163,18 @@ final class LuaConvert {
         Object out;
         if (count > 0 && count == length) {
             var list = new ArrayList<Object>(length);
-            for (int i = 1; i <= length; i++) list.add(toJava(table.rawget(i), depth + 1, items, seen));
+            for (int i = 1; i <= length; i++) list.add(toJava(table.rawget(i), depth + 1, items, seen, charset));
             out = list;
         } else {
             var map = new LinkedHashMap<String, Object>();
             for (int i = 0; i < keys.size(); i++) {
                 LuaValue key = keys.get(i);
                 String name = switch (key.type()) {
-                    case Constants.TSTRING -> text((LuaString) key);
+                    case Constants.TSTRING -> text((LuaString) key, charset);
                     case Constants.TNUMBER -> key.toString();
                     default -> throw new ApiError("table keys must be strings or numbers, not " + key.typeName());
                 };
-                map.put(name, toJava(values.get(i), depth + 1, items, seen));
+                map.put(name, toJava(values.get(i), depth + 1, items, seen, charset));
             }
             out = map;
         }

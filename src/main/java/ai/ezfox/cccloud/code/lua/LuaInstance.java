@@ -11,11 +11,15 @@ import ai.ezfox.cccloud.code.engine.RunResult;
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.code.engine.Task;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.function.DoubleSupplier;
+import ai.ezfox.cccloud.code.api.HostModule;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -47,7 +51,7 @@ final class LuaInstance implements EngineInstance {
     static final long BLOCKING_WAIT_MS = 5_000;
 
     private final String chunk;
-    private final ScriptHost host;
+    private final @Nullable ScriptHost host;
     private final Budget budget;
     private final LuaState state;
     private final Set<LuaTask> live = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -95,7 +99,22 @@ final class LuaInstance implements EngineInstance {
         }
     }
 
+    /** A computer program: the same sandbox, the modules as globals instead of {@code cloud}, strings as bytes. */
+    LuaInstance(String name, List<HostModule> modules, Budget budget, ApiSpec spec, ZoneId zone, DoubleSupplier clock) {
+        this.chunk = name;
+        this.host = null;
+        this.budget = budget;
+        this.state = LuaState.builder().interruptHandler(this::interrupted).build();
+        try {
+            LuaSandbox.install(state, spec, zone, clock);
+            ModuleBinding.install(state, modules, this);
+        } catch (LuaError e) {
+            throw new IllegalStateException("cannot set up the Lua sandbox: " + e.getMessage(), e);
+        }
+    }
+
     ScriptHost host() {
+        if (host == null) throw new IllegalStateException("a program has no cloud host");
         return host;
     }
 
@@ -123,7 +142,8 @@ final class LuaInstance implements EngineInstance {
     public Task call(ScriptFunction function, String label, @Nullable Object... args) {
         if (!(function instanceof LuaConvert.Function f)) throw new IllegalArgumentException("not a Lua function");
         var values = new LuaValue[args.length];
-        for (int i = 0; i < args.length; i++) values[i] = LuaConvert.toLua(args[i]);
+        var charset = host == null ? StandardCharsets.ISO_8859_1 : StandardCharsets.UTF_8;
+        for (int i = 0; i < args.length; i++) values[i] = LuaConvert.toLua(args[i], charset);
         return task(f.function(), label, ValueFactory.varargsOf(values));
     }
 
@@ -156,7 +176,7 @@ final class LuaInstance implements EngineInstance {
             resumeFailure = new LuaError(cause instanceof ApiError || cause instanceof TimeoutException ? cause.getMessage() : "internal error: " + cause);
             return go(t, t.thread, Constants.NONE);
         }
-        return go(t, t.thread, LuaConvert.results(value, true));
+        return go(t, t.thread, LuaConvert.results(value, true, host == null ? StandardCharsets.ISO_8859_1 : StandardCharsets.UTF_8));
     }
 
     private RunResult go(LuaTask task, LuaThread thread, Varargs args) {
@@ -198,36 +218,43 @@ final class LuaInstance implements EngineInstance {
 
     /** A call returned a future: pause the task until it completes (or, inside a coroutine, wait for an action). */
     Varargs await(LuaState state, ApiSpec.Function function, CompletableFuture<?> future) throws LuaError, UnwindThrowable {
-        boolean declared = !function.returns().isEmpty();
-        if (future.isDone()) return now(future, declared);
+        return await(state, "cloud." + function.name(), !function.returns().isEmpty(), function.kind() == ApiSpec.Kind.AWAIT, future, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * A call named {@code name} returned a future: on the task's own coroutine the task waits for it; inside another
+     * coroutine it blocks for at most {@link #BLOCKING_WAIT_MS} when {@code mayBlock}, else it is an error.
+     */
+    Varargs await(LuaState state, String name, boolean declared, boolean mayBlock, CompletableFuture<?> future, Charset charset) throws LuaError, UnwindThrowable {
+        if (future.isDone()) return now(future, declared, charset);
         var task = current;
         if (task != null && state.getCurrentThread() == task.thread) {
             pending = future;
             return LuaThread.yield(state, Constants.NONE);
         }
-        if (function.kind() == ApiSpec.Kind.AWAIT) {
+        if (mayBlock) {
             long start = System.nanoTime();
             try {
                 future.get(BLOCKING_WAIT_MS, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
-                throw new LuaError("cloud." + function.name() + " timed out");
+                throw new LuaError(name + " timed out");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new LuaError("cloud." + function.name() + " was interrupted");
+                throw new LuaError(name + " was interrupted");
             } catch (ExecutionException ignored) {
                 // reported by now()
             } finally {
                 budget.blocked(System.nanoTime() - start);
             }
-            return now(future, declared);
+            return now(future, declared, charset);
         }
         future.cancel(false);
-        throw new LuaError("cloud." + function.name() + " cannot pause inside a coroutine: call it from the script itself or from a handler");
+        throw new LuaError(name + " cannot pause inside a coroutine: call it from the script itself or from a handler");
     }
 
-    private static Varargs now(CompletableFuture<?> future, boolean declared) throws LuaError {
+    private static Varargs now(CompletableFuture<?> future, boolean declared, Charset charset) throws LuaError {
         try {
-            return LuaConvert.results(future.getNow(null), declared);
+            return LuaConvert.results(future.getNow(null), declared, charset);
         } catch (CompletionException e) {
             var cause = e.getCause() == null ? e : e.getCause();
             throw new LuaError(cause instanceof ApiError ? cause.getMessage() : "internal error: " + cause);
@@ -297,7 +324,7 @@ final class LuaInstance implements EngineInstance {
         return new ScriptError(kind, message, ScriptError.lineOf(message, chunk), e.getMessage());
     }
 
-    private static ByteArrayInputStream stream(String source) {
-        return new ByteArrayInputStream(source.getBytes(StandardCharsets.UTF_8));
+    private ByteArrayInputStream stream(String source) {
+        return new ByteArrayInputStream(source.getBytes(host == null ? StandardCharsets.ISO_8859_1 : StandardCharsets.UTF_8));
     }
 }
