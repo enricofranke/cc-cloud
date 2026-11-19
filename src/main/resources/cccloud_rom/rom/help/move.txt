@@ -1,0 +1,1 @@
+move <from> <to>: moves or renames a file or folder. Also: mv.

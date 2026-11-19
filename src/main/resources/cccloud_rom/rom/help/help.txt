@@ -1,0 +1,1 @@
+help [program]: lists the programs or shows the help of one.

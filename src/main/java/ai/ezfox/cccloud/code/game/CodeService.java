@@ -217,6 +217,21 @@ public final class CodeService {
         };
     }
 
+    /** The Lua engine, shared with Cloud Computers. */
+    public static ScriptEngine lua() {
+        return ENGINE;
+    }
+
+    /** The script threads while the server runs (shared with Cloud Computers), else null. */
+    public static @Nullable ScriptScheduler scheduler() {
+        return scheduler;
+    }
+
+    /** Why Lua cannot run on this server (an incompatible Cobalt), or null. */
+    public static @Nullable String vmProblem() {
+        return vmProblem;
+    }
+
     /** The mainframe was broken for good: its scripts stop and are deleted. */
     public static void forget(MinecraftServer srv, UUID mainframeId) {
         for (var slot : slots(mainframeId)) {

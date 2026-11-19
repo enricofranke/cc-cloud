@@ -1,0 +1,1 @@
+delete <path> ...: deletes files or folders with everything in them. Also: rm, del.

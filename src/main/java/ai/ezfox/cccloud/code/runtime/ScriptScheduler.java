@@ -27,6 +27,12 @@ import org.jspecify.annotations.Nullable;
  * calls; stopping it is the budget's abort or an interrupt of its thread.
  */
 public final class ScriptScheduler implements AutoCloseable {
+    /** Something running on the workers that the watchdog pokes while it runs (a Cloud Script, a Cloud Computer). */
+    public interface Watched {
+        /** Watchdog thread: make the engine check its budget soon. */
+        void poke();
+    }
+
     /** How often the watchdog makes running scripts check their budget. */
     static final long WATCHDOG_NANOS = 1_000_000;
     /** Threads of scripts that cannot suspend (WebAssembly), on the whole server. */
@@ -36,7 +42,7 @@ public final class ScriptScheduler implements AutoCloseable {
 
     private final ExecutorService workers;
     private final ScheduledThreadPoolExecutor timers;
-    private final Set<ScriptRuntime> running = ConcurrentHashMap.newKeySet();
+    private final Set<Watched> running = ConcurrentHashMap.newKeySet();
     private final Thread watchdog;
     private volatile boolean closed;
     private final Set<Thread> threads = ConcurrentHashMap.newKeySet();
@@ -72,7 +78,7 @@ public final class ScriptScheduler implements AutoCloseable {
         }
     }
 
-    @Nullable ScheduledFuture<?> schedule(Runnable task, long delayNanos) {
+    public @Nullable ScheduledFuture<?> schedule(Runnable task, long delayNanos) {
         if (closed) return null;
         try {
             return timers.schedule(task, Math.max(0, delayNanos), TimeUnit.NANOSECONDS);
@@ -132,12 +138,12 @@ public final class ScriptScheduler implements AutoCloseable {
         return threadCount.get();
     }
 
-    void enter(ScriptRuntime runtime) {
+    public void enter(Watched runtime) {
         running.add(runtime);
         LockSupport.unpark(watchdog);
     }
 
-    void exit(ScriptRuntime runtime) {
+    public void exit(Watched runtime) {
         running.remove(runtime);
     }
 

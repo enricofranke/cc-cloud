@@ -51,7 +51,7 @@ import org.jspecify.annotations.Nullable;
  * waiting, timers, handlers, tasks); memory is the engine's hard cap. Stopping it sets the flag its next check sees and
  * interrupts its thread.
  */
-public final class ScriptRuntime implements ScriptHost, Budget {
+public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.Watched {
     public enum Status { STARTING, RUNNING, STOPPED, ERROR }
 
     public interface Listener {
@@ -313,7 +313,8 @@ public final class ScriptRuntime implements ScriptHost, Budget {
     }
 
     /** The watchdog: make the engine look at the budget if a task runs right now. */
-    void poke() {
+    @Override
+    public void poke() {
         var i = instance;
         if (jobActive && i != null) i.interrupt();
     }

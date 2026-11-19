@@ -40,4 +40,14 @@ public interface ScriptEngine {
 
     /** A fresh instance for one script run; {@code budget.memoryBytes()} is its memory cap. */
     EngineInstance create(String name, ScriptHost host, Budget budget);
+
+    /**
+     * A fresh instance for a Cloud Computer program: the language's sandbox plus these modules as globals (no
+     * {@code cloud} table). {@code clock} is the seconds since the computer booted. The program's {@link EngineInstance#load}
+     * source is its boot code; it waits for events through a module function that returns a future.
+     */
+    default EngineInstance createProgram(String name, java.util.List<ai.ezfox.cccloud.code.api.HostModule> modules, Budget budget,
+                                         java.util.function.DoubleSupplier clock) {
+        throw new UnsupportedOperationException(language() + " cannot run computer programs");
+    }
 }

@@ -1,0 +1,1 @@
+exit: ends the shell. When it is the computer's first shell, the computer turns off.
