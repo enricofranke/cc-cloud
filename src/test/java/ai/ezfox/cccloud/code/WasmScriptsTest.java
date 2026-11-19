@@ -116,13 +116,14 @@ class WasmScriptsTest {
     }
 
     @Test
-    void threadsAreBoundedOnTheServer() throws InterruptedException {
+    void onePlayersScriptsTakeAtMostTheirShareOfThreads() throws InterruptedException {
         var runs = new ArrayList<TestScripts.Run>();
-        for (int i = 0; i < ScriptScheduler.MAX_THREADS + 2; i++) runs.add(run("stop"));
+        int share = ScriptScheduler.MAX_THREADS_PER_OWNER;
+        for (int i = 0; i < share + 2; i++) runs.add(run("stop")); // all by the same author
         TestScripts.until(() -> runs.stream().filter(r -> r.runtime().isEnded()).count() >= 2, 5000, "refusals");
-        long refused = runs.stream().filter(r -> r.error() != null && r.error().getMessage().contains("too many wasm scripts")).count();
-        assertEquals(2, refused, "at most " + ScriptScheduler.MAX_THREADS + " threads");
-        assertTrue(scripts.scheduler.threadCount() <= ScriptScheduler.MAX_THREADS);
+        long refused = runs.stream().filter(r -> r.error() != null && r.error().getMessage().contains("of this player")).count();
+        assertEquals(2, refused, "at most " + share + " threads per player");
+        assertTrue(scripts.scheduler.threadCount() <= share);
         for (var r : runs) r.runtime().stop("test");
         TestScripts.until(() -> scripts.scheduler.threadCount() == 0, 5000, "threads ended");
     }

@@ -61,6 +61,12 @@ final class Computer implements CloudComputer {
         return runtime;
     }
 
+    /** Whose share of the WebAssembly threads this computer's programs take: its owner (else the computer itself). */
+    Object threadOwner() {
+        var owner = host.owner();
+        return owner != null ? owner : "computer " + id;
+    }
+
     /** The engine of WebAssembly programs started from the shell, or null. */
     @Nullable ScriptEngine wasmEngine() {
         return registry.env().wasm();

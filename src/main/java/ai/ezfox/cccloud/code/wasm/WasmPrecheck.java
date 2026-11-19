@@ -13,14 +13,16 @@ package ai.ezfox.cccloud.code.wasm;
  *   <li>LEB128 numbers with their length limit (5 bytes for 32 bits) and no overflow.</li>
  *   <li>Function bodies: the sum of their locals at most {@link WasmCheck#MAX_LOCALS}; every instruction known
  *   (WebAssembly 2.0 without SIMD, threads, exceptions and garbage collection), its immediates within the body,
+ *   at most {@link WasmCheck#MAX_TABLE} element entries in all element segments together (Endive keeps an object per
+ *   entry),
  *   {@code br_table} label counts within the body, blocks nested at most {@link #MAX_NESTING} deep, the body ending
  *   exactly at its {@code end}.</li>
  * </ul>
  * Anything else (types, indices, validation) is Endive's job once this passed.
  */
 final class WasmPrecheck {
-    /** Blocks nested inside each other in one function (Endive's validator recurses on them). */
-    static final int MAX_NESTING = 1024;
+    /** Blocks nested inside each other in one function (Endive keeps a frame per level while it reads them). */
+    static final int MAX_NESTING = 256;
 
     /** A structural problem, in words for the editor. */
     static final class Bad extends Exception {
@@ -260,6 +262,7 @@ final class WasmPrecheck {
 
     private void elements(int end) throws Bad {
         long n = count(end, 2, "element segments");
+        long total = 0;
         for (long i = 0; i < n; i++) {
             long flags = u32(end);
             if (flags > 7) throw new Bad("unsupported element segment kind");
@@ -275,6 +278,8 @@ final class WasmPrecheck {
                 else if (u8(end) != 0x00) throw new Bad("unsupported element kind");
             }
             long items = count(end, 1, "elements");
+            total += items;
+            if (total > WasmCheck.MAX_TABLE) throw new Bad("more than " + WasmCheck.MAX_TABLE + " table elements");
             for (long k = 0; k < items; k++) {
                 if (exprs) expr(end);
                 else u32(end);

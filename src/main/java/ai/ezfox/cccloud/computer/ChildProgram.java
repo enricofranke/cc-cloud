@@ -37,6 +37,7 @@ final class ChildProgram implements Budget {
     private final ComputerLimits limits;
     private final long memoryCap;
     private final Done done;
+    private final Object owner;
     private final long startNanos = System.nanoTime();
     private final BlockingRunner runner;
 
@@ -57,7 +58,8 @@ final class ChildProgram implements Budget {
      *                {@code __native.args} added (the program's name and arguments)
      */
     ChildProgram(int id, String name, ScriptEngine engine, String source, List<Object> args, List<HostModule> modules, ScriptScheduler scheduler,
-                 ComputerLimits limits, long memoryCap, Done done) {
+                 ComputerLimits limits, long memoryCap, Object owner, Done done) {
+        this.owner = owner;
         this.id = id;
         this.name = name;
         this.engine = engine;
@@ -81,10 +83,9 @@ final class ChildProgram implements Budget {
 
     /** Starts the program's thread; false (and {@link Done} told) if the server has no thread left. */
     boolean start() {
-        var refusal = runner.start(this::main);
+        var refusal = runner.start(this::main, owner); // the computer owner's share of the threads
         if (refusal == null) return true;
-        finish(refusal == ScriptScheduler.Refusal.CLOSED ? "the server is stopping"
-            : "too many WebAssembly programs are running on this server (at most " + ScriptScheduler.MAX_THREADS + ")");
+        finish(BlockingRunner.refusalText(refusal, "WebAssembly", "programs"));
         return false;
     }
 

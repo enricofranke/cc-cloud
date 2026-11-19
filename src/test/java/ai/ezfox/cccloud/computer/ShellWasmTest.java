@@ -125,6 +125,29 @@ class ShellWasmTest {
     }
 
     @Test
+    void sizeAndOpenFileBuffersAreChecked() {
+        var c = withProgram("greet.wasm", "computer-args");
+        var big = new byte[ai.ezfox.cccloud.code.wasm.WasmCheck.MAX_MODULE + 1];
+        big[1] = 'a';
+        c.fs().writeFile("huge.wasm", big);
+        // an open file that holds almost the whole drive: the program's module no longer fits the shared allowance
+        file(c, "startup.lua", """
+            shell.run("huge")
+            local h = fs.open("big.txt", "w")
+            h.write(string.rep("x", 1030 * 1000)) -- with the 24 KB program more than the 1 MiB drive
+            shell.run("greet")
+            pcall(h.close) -- the drive cannot take it either
+            local f = fs.open("done", "w") f.close()
+            """);
+        c.turnOn();
+        until(c, 30_000, "both refusals", () -> c.fs().exists("done"));
+        String screen = screen(c);
+        assertTrue(screen.contains("larger than 160 KB"), screen);
+        assertTrue(screen.contains("Out of space"), screen);
+        assertFalse(screen.contains("args greet"), screen);
+    }
+
+    @Test
     void onlyOneProgramAtATime() {
         var c = withProgram("wait.wasm", "computer-forever");
         // a second start from inside the first is impossible (the shell waits); from Lua directly it is refused

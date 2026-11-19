@@ -273,6 +273,15 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
      * Returns the id. At most one at a time.
      */
     public long startWasm(ScriptEngine wasm, String name, String source, List<Object> args) {
+        return startWasm(wasm, name, source, args, name, () -> {
+        });
+    }
+
+    /**
+     * {@link #startWasm} with the player whose share of the threads it takes ({@code owner}, the computer's owner) and
+     * {@code released} run once when the program ended (or did not start).
+     */
+    public long startWasm(ScriptEngine wasm, String name, String source, List<Object> args, Object owner, Runnable released) {
         ChildProgram started;
         synchronized (lock) {
             if (ended) throw new ApiError("the computer is shutting down");
@@ -281,7 +290,10 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             long memory = limits.memoryBytes() - Math.max(0, budget.heapEstimate());
             if (memory < 1L << 20) throw new ApiError("not enough memory left for a WebAssembly program");
             int id = nextChild++;
-            started = new ChildProgram(id, name, wasm, source, args, modules, scheduler, limits, memory, this::wasmEnded);
+            started = new ChildProgram(id, name, wasm, source, args, modules, scheduler, limits, memory, owner, (child, error) -> {
+                released.run();
+                wasmEnded(child, error);
+            });
             child = started;
         }
         started.start();
