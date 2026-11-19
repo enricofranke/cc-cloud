@@ -76,6 +76,11 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     private @Nullable Job job;
     /** A WebAssembly program started from the shell ({@link #startWasm}): it gets the events while it runs. */
     private @Nullable ChildProgram child;
+    /**
+     * The Lua side is held while a WebAssembly program runs: no slice, no resume until the program ended, so the
+     * computer never uses its Lua and its WebAssembly share at once and its memory stays one share.
+     */
+    private volatile boolean held;
     private int nextChild = 1;
 
     private volatile @Nullable EngineInstance instance;
@@ -295,16 +300,29 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 wasmEnded(child, error);
             });
             child = started;
+            held = true;
         }
+        // the Lua task that asked stops at its next instruction check (Decision.PAUSE) and waits for the end
+        var i = instance;
+        if (i != null) i.interrupt();
         started.start();
         return started.id;
     }
 
     private void wasmEnded(ChildProgram ended, @Nullable String error) {
         synchronized (lock) {
-            if (child == ended) child = null;
+            if (child == ended) {
+                child = null;
+                held = false;
+            }
         }
         queue("wasm_done", (long) ended.id, error == null, error);
+        schedule(); // a Lua task that was held mid-run goes on
+    }
+
+    /** Whether the Lua side is held for a running WebAssembly program (tests). */
+    public boolean luaHeld() {
+        return held;
     }
 
     /** Whether a WebAssembly program started from the shell is running (tests). */
@@ -362,7 +380,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
 
     private void schedule() {
         synchronized (lock) {
-            if (ended || scheduled || pausedUntil != 0 || job == null) return;
+            if (ended || scheduled || pausedUntil != 0 || job == null || held) return;
             scheduled = true;
         }
         if (!scheduler.submit(this::slice)) {
@@ -386,7 +404,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             while (!stopRequested) {
                 Job next;
                 synchronized (lock) {
-                    if (ended) break;
+                    if (ended || held) break; // held: the job waits for the WebAssembly program's end
                     budget.roll(System.nanoTime());
                     if (budget.shareUsed()) {
                         if (job != null) pauseLocked(budget.pauseForShare());
@@ -410,7 +428,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             synchronized (lock) {
                 scheduled = false;
                 close = ended;
-                resubmit = !ended && job != null && pausedUntil == 0;
+                resubmit = !ended && job != null && pausedUntil == 0 && !held;
             }
             if (close) closeInstance();
             else if (resubmit) schedule();
@@ -466,7 +484,8 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 synchronized (lock) {
                     if (ended) return;
                     job = new Again();
-                    if (!stopRequested && !shareLeft) pauseLocked(budget.pauseForShare());
+                    // held for a WebAssembly program: no timer, its end schedules the job again
+                    if (!stopRequested && !shareLeft && !held) pauseLocked(budget.pauseForShare());
                 }
             }
             case RunResult.Yielded y -> {
@@ -559,6 +578,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 }
             };
         }
+        if (held) return Decision.PAUSE; // a WebAssembly program runs: the Lua side waits
         return switch (budget.check(runCpu)) {
             case CONTINUE -> Decision.CONTINUE;
             case MEASURE_HEAP, PAUSE -> Decision.PAUSE;

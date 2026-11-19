@@ -50,22 +50,41 @@ class QaShellWasmTest {
     }
 
     /**
-     * The shell's os.run waits for wasm_done with os.pullEventRaw, which is a coroutine.yield: a program can run os.run
-     * in a coroutine of its own and keep computing while the WebAssembly program runs. A second program must still be
-     * refused, and the Lua side gets no events meanwhile.
+     * The shell's os.run waits for wasm_done with os.pullEventRaw, which is a coroutine.yield: a program could run os.run
+     * in a coroutine of its own and keep computing while the WebAssembly program runs (N9). The Lua side is held instead
+     * until the program ended: no Lua runs beside it, and afterwards a second program can start again.
      */
     @Test
-    void luaKeepsRunningBesideTheProgramButCannotStartASecond() {
+    void luaWaitsWhileTheProgramRuns() throws InterruptedException {
         var c = computers.create();
-        c.fs().writeFile("forever.wasm", module("computer-forever"));
-        String out = run(c, """
-            local co = coroutine.create(function() return shell.run("forever") end)
+        c.fs().writeFile("greet.wasm", module("computer-args"));
+        file(c, "startup.lua", """
+            local co = coroutine.create(function() return shell.run("greet") end)
             coroutine.resume(co)
-            local second = { pcall(shell.run, "forever") }
             local start, n = os.clock(), 0
             while os.clock() - start < 0.3 do n = n + 1 end
-            report("second=" .. tostring(second[2]) .. " luaLoops=" .. n)""", 30000);
-        assertTrue(out.startsWith("second=false"), out);
+            local second = { pcall(shell.run, "greet") }
+            local f = fs.open("result", "w") f.write("loops=" .. n .. " second=" .. tostring(second[2])) f.close()
+            fs.open("done", "w").close() while true do os.pullEvent() end""");
+        c.turnOn();
+        until(c, 30000, "the program", () -> c.runtimeForTest() != null && c.runtimeForTest().wasmRunning());
+        var rt = c.runtimeForTest();
+        long cpu = rt.cpuTotalNanos();
+        long end = System.nanoTime() + 700_000_000L;
+        while (System.nanoTime() < end) {
+            c.tick();
+            Thread.sleep(5);
+        }
+        assertTrue(rt.luaHeld(), "the Lua side is held while the program runs");
+        assertFalse(c.fs().exists("result"), "no Lua ran beside the program");
+        assertTrue(rt.cpuTotalNanos() - cpu < 20_000_000L, "Lua used no CPU meanwhile: " + (rt.cpuTotalNanos() - cpu) / 1e6 + " ms");
+        c.input(InputEvent.character('a'), "p"); // ends the first program
+        until(c, 30000, "the second program", () -> TestComputers.shows(c, "got a") && rt.wasmRunning());
+        c.input(InputEvent.character('b'), "p");
+        until(c, 30000, "the result", () -> c.fs().exists("done"));
+        String out = read(c, "result");
+        System.out.println("QA shell wasm: " + out);
+        assertTrue(out.endsWith("second=true"), "a second program starts once the first ended: " + out);
     }
 
     /** A program writes a hostile module onto its own drive (no upload check) and runs it: the engine's check refuses it. */
@@ -133,5 +152,41 @@ class QaShellWasmTest {
         until(c, 10000, "the end", () -> c.fs().exists("done"));
         System.out.println("QA shell wasm: terminate took " + (System.nanoTime() - start) / 1_000_000 + " ms");
         assertTrue(c.isOn());
+    }
+
+    /** N9 bypass attempts: whatever Lua does after starting the program in its own coroutine, it uses no CPU meanwhile. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "while true do pcall(function() for i = 1, 1e6 do end end) end",
+        "local c2 = coroutine.wrap(function() while true do end end) c2()",
+        "os.queueEvent('self') while true do os.pullEventRaw() local x = 0 for i = 1, 1e6 do x = x + i end end",
+        "os.startTimer(0.05) while true do os.pullEventRaw('timer') for i = 1, 1e6 do end end",
+        "while true do local s = string.rep('a', 1000000) .. 'b' end",
+        "while true do pcall(error, 'x') end",
+        "local t = {} for i = 1, 1e7 do t[i] = i end",
+    })
+    void luaStaysHeld(String after) throws InterruptedException {
+        var c = computers.create();
+        c.fs().writeFile("forever.wasm", module("computer-forever"));
+        file(c, "startup.lua", "local co = coroutine.create(function() return shell.run('forever') end)\ncoroutine.resume(co)\n" + after
+            + "\nfs.open('done', 'w').close()");
+        c.turnOn();
+        until(c, 30000, "the program", () -> c.runtimeForTest() != null && c.runtimeForTest().wasmRunning());
+        var rt = c.runtimeForTest();
+        Thread.sleep(100);
+        long cpu = rt.cpuTotalNanos();
+        long end = System.nanoTime() + 1_000_000_000L;
+        while (System.nanoTime() < end) {
+            c.tick();
+            Thread.sleep(5);
+        }
+        long used = rt.cpuTotalNanos() - cpu;
+        System.out.println("QA N9 bypass [" + after.substring(0, Math.min(45, after.length())) + "] Lua CPU in 1 s: " + used / 1_000_000 + " ms, held="
+            + rt.luaHeld() + " wasm=" + rt.wasmRunning() + " error=" + c.lastError());
+        assertTrue(rt.wasmRunning() && rt.luaHeld(), "program runs and Lua is held");
+        assertTrue(used < 20_000_000L, "Lua used " + used / 1_000_000 + " ms beside the program");
+        // Ctrl+T ends the program; Lua goes on (and may then run into its own limits), the computer must not hang
+        c.input(InputEvent.control("terminate"), "p");
+        until(c, 30000, "Lua going on", () -> !rt.wasmRunning() && !rt.luaHeld());
     }
 }
