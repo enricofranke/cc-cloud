@@ -24,6 +24,7 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   to the computer, read through the same cards the dashboard shows.
 - **Safe on public servers:** every computer has a CPU and memory budget, a 1 MB drive it cannot leave, limits for
   events, timers, open files, redstone changes and input, and runs off the server thread.
+- `load` compiles at most 256 KB of code, also from a reader function, in Cloud Scripts and on computers.
 
 ### Cloud Computers: the block
 - **Cloud Computer and Advanced Cloud Computer**: a computer you place in the world, without any other mod. Right-click

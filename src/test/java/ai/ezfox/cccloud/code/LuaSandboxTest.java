@@ -68,6 +68,33 @@ class LuaSandboxTest {
     }
 
     @Test
+    void loadHasASizeLimit() throws InterruptedException {
+        // a reader that never ends stops at the limit, before the next piece is read
+        assertEquals("nil chunk too large (more than 256 KB) 263", eval("""
+            local n = 0
+            local f, err = load(function() n = n + 1 return ("x"):rep(1000) end)
+            print(tostring(f) .. " " .. err .. " " .. n)
+            """));
+        assertEquals("nil chunk too large (more than 256 KB)", eval("local f, err = load(('x'):rep(300000)) print(tostring(f) .. ' ' .. err)"));
+        assertEquals("nil reader function must return a string", eval("local f, err = load(function() return {} end) print(tostring(f) .. ' ' .. err)"));
+        // a large allowed chunk, from a string and from a reader
+        assertEquals("20000 20000", eval("""
+            local src = ("n = n + 1\\n"):rep(20000)
+            n = 0 load(src)() local a = n
+            local i = 0
+            n = 0 load(function() i = i + 1 if i <= 20000 then return "n = n + 1\\n" end end)()
+            print(a .. " " .. n)
+            """));
+        // the other arguments pass through: name, mode and an environment; without one the globals stay
+        assertEquals("5 function c:1:", eval("""
+            local a = load("return x", "=c", "t", {x = 5})()
+            local b = load("return type(print)")()
+            local _, err = load("+", "=c")
+            print(a .. " " .. b .. " " .. err:sub(1, 4))
+            """));
+    }
+
+    @Test
     void scriptsDoNotShareGlobals() throws InterruptedException {
         var a = scripts.run("leak = 'secret' string.leak = 1 cloud.leak = 2 cloud.sleep(2)");
         TestScripts.until(() -> a.runtime().handlerCount() >= 0 && a.log().size() > 0, 2000, "first script started");

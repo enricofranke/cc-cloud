@@ -43,6 +43,11 @@ final class LuaSandbox {
     static final int MAX_STRING = 1 << 20;
     static final int MAX_UNPACK = 10_000;
     static final int MAX_MOVE = 1_000_000;
+    /**
+     * Largest chunk {@code load} compiles: the largest file a computer or the dashboard's script import handles
+     * ({@link ai.ezfox.cccloud.script.ScriptFiles#MAX_FILE}, 256 KB; a Cloud Script's source is 32 KB at most).
+     */
+    static final int MAX_CHUNK = ai.ezfox.cccloud.script.ScriptFiles.MAX_FILE;
 
     private LuaSandbox() {
     }
@@ -78,7 +83,51 @@ final class LuaSandbox {
             if (g.rawget(lib.getKey()) instanceof LuaTable t) strip(t, Set.copyOf(lib.getValue()));
         }
         // the string metatable's __index is the same (now stripped) string table
+        boundLoad(state);
     }
+
+    /**
+     * {@code load} with a size limit. Cobalt collects the pieces of a reader function in one Java call, with no budget
+     * check and no size limit, so a reader that never ends would fill the heap; here the reader runs in Lua (budget
+     * checks apply, it can pause), the bytes are counted and loading stops with {@code chunk too large} as soon as the
+     * total goes over {@link #MAX_CHUNK}, before the next piece is read. A string chunk has the same limit. The
+     * arguments after the chunk are passed on as given (an explicit nil environment stays nil, a missing one stays
+     * missing). The original {@code load} is only an upvalue of the new one, scripts cannot reach it.
+     */
+    private static void boundLoad(LuaState state) throws LuaError {
+        String source = LOAD_BOUND.replace("MAX_CHUNK", Integer.toString(MAX_CHUNK)).replace("MAX_KB", Integer.toString(MAX_CHUNK / 1024));
+        try {
+            var fn = org.squiddev.cobalt.compiler.LoadState.load(state, new java.io.ByteArrayInputStream(source.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+                "=load", state.globals());
+            org.squiddev.cobalt.LuaThread.runMain(state, fn);
+        } catch (org.squiddev.cobalt.compiler.CompileException e) {
+            throw new LuaError("cannot set up load: " + e.getMessage());
+        }
+    }
+
+    private static final String LOAD_BOUND = """
+        local raw, type, concat = load, type, table.concat
+        local max = MAX_CHUNK
+        local too_large = "chunk too large (more than MAX_KB KB)"
+        load = function(chunk, ...)
+          if type(chunk) == "function" then
+            local parts, size, n = {}, 0, 0
+            while true do
+              local piece = chunk()
+              if piece == nil or piece == "" then break end
+              if type(piece) ~= "string" then return nil, "reader function must return a string" end
+              size = size + #piece
+              if size > max then return nil, too_large end
+              n = n + 1
+              parts[n] = piece
+            end
+            chunk = concat(parts)
+          elseif type(chunk) == "string" and #chunk > max then
+            return nil, too_large
+          end
+          return raw(chunk, ...)
+        end
+        """;
 
     private static void strip(LuaTable table, Set<String> allowed) throws LuaError {
         var remove = new ArrayList<LuaValue>();

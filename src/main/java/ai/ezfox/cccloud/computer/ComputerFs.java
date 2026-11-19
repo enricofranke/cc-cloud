@@ -304,7 +304,8 @@ public final class ComputerFs {
     public void copy(String from, String to) {
         String a = normalize(from), b = writable(to);
         if (b.isEmpty()) throw new ApiError("/: Access denied");
-        if (b.equals(a) || b.startsWith(a + "/")) throw new ApiError("/" + b + ": Can't copy a directory inside itself");
+        // the top folder holds everything, so any target is inside it
+        if (a.isEmpty() || b.equals(a) || b.startsWith(a + "/")) throw new ApiError("/" + b + ": Can't copy a directory inside itself");
         if (!exists(a)) throw new ApiError("/" + a + ": No such file");
         if (exists(b)) throw new ApiError("/" + b + ": File exists");
         copyTree(a, b, 0);
