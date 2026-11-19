@@ -18,7 +18,7 @@ final class ComputerApis {
 
     static List<HostModule> modules(Computer computer, ComputerRuntime runtime, FileHandles files) {
         return List.of(term(computer.terminal()), os(computer, runtime), fs(computer.fs()), redstone(computer), peripheral(computer.peripherals()),
-            natives(computer, runtime, files));
+            natives(computer, runtime, files, computer.peripherals()));
     }
 
     // ---- term ----------------------------------------------------------------------------------------------------------
@@ -289,21 +289,25 @@ final class ComputerApis {
             var v = p.views().get(side(a));
             return v == null ? null : v.values().get(a.string(1));
         });
-        // asynchronous: the rom's peripheral.call waits for the peripheral_result event with this id
-        b.fn("callAsync", a -> {
-            var value = a.get(2);
-            if (value != null && !(value instanceof Boolean || value instanceof Number || value instanceof String)) {
-                throw a.bad(2, "boolean, number or string expected");
-            }
-            return (long) p.call(side(a), a.string(1), value);
-        });
         return b.build();
     }
 
     // ---- natives (taken by the boot code, then removed from the globals) -----------------------------------------------
 
-    static HostModule natives(Computer computer, ComputerRuntime runtime, FileHandles files) {
+    static HostModule natives(Computer computer, ComputerRuntime runtime, FileHandles files, ComputerPeripherals peripherals) {
         var b = HostModule.builder("__native");
+        // the largest program file the rom's loadfile runs (the size limit of load)
+        b.field("maxProgram", (long) ai.ezfox.cccloud.code.lua.LuaEngine.MAX_CHUNK);
+        // asynchronous: the rom's peripheral.call waits for the peripheral_result event with this id
+        b.fn("peripheralCall", a -> {
+            var value = a.get(2);
+            if (value != null && !(value instanceof Boolean || value instanceof Number || value instanceof String)) {
+                throw new ApiError("bad argument #3 to 'peripheral.call' (boolean, number or string expected)");
+            }
+            var side = ComputerSide.byId(a.string(0));
+            if (side == null) throw new ApiError("bad argument #1 to 'peripheral.call' (unknown side '" + a.string(0) + "')");
+            return (long) peripherals.call(side, a.string(1), value);
+        });
         b.fn("pull", a -> runtime.pull());
         b.fn("open", a -> {
             try {

@@ -29,8 +29,10 @@ final class ModuleBinding {
         var g = state.globals();
         for (var module : modules) {
             LuaTable table = g.rawget(module.name()) instanceof LuaTable t ? t : new LuaTable();
+            // hidden modules ("__native") are called by the rom's own wrappers, which raise their errors at the program's line
+            boolean hidden = module.name().startsWith("__");
             for (var e : module.functions().entrySet()) {
-                table.rawset(e.getKey(), new Bound(module.name() + "." + e.getKey(), e.getValue(), instance));
+                table.rawset(e.getKey(), new Bound(module.name() + "." + e.getKey(), e.getValue(), instance, hidden));
             }
             for (var e : module.fields().entrySet()) table.rawset(e.getKey(), LuaConvert.toLua(e.getValue(), BYTES));
             g.rawset(module.name(), table);
@@ -41,11 +43,14 @@ final class ModuleBinding {
         private final String name;
         private final HostModule.Function function;
         private final LuaInstance instance;
+        /** Errors without a place: the caller (a rom wrapper) adds the program's. */
+        private final boolean bare;
 
-        Bound(String name, HostModule.Function function, LuaInstance instance) {
+        Bound(String name, HostModule.Function function, LuaInstance instance, boolean bare) {
             this.name = name;
             this.function = function;
             this.instance = instance;
+            this.bare = bare;
         }
 
         @Override
@@ -55,14 +60,15 @@ final class ModuleBinding {
                 try {
                     values[i] = LuaConvert.toJava(args.arg(i + 1), BYTES);
                 } catch (ApiError e) {
-                    throw new LuaError("bad argument #" + (i + 1) + " to '" + name + "' (" + e.getMessage() + ")");
+                    String message = "bad argument #" + (i + 1) + " to '" + name + "' (" + e.getMessage() + ")";
+                    throw bare ? new LuaError(message, 0) : new LuaError(message);
                 }
             }
             Object result;
             try {
                 result = function.call(new HostModule.Arguments(name, values));
             } catch (ApiError e) {
-                throw new LuaError(e.getMessage());
+                throw bare ? new LuaError(e.getMessage(), 0) : new LuaError(e.getMessage());
             }
             if (result instanceof CompletableFuture<?> future) return instance.await(state, name, true, false, future, BYTES);
             // nothing comes back as nil, so tostring(f()) and select('#', f()) behave like a function that returns nil

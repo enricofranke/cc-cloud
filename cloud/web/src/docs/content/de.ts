@@ -583,6 +583,10 @@ Programme benennen die Seiten so, wie der Computer sie sieht: **front** (der Bil
 
 Setz einen [Cloud Uplink](/docs/start) auf den Computer und verbinde ihn: er bekommt die automatische **Computer**-Karte (Strom, Name, Redstone je Seite), das Browser-Terminal und den Script-Editor – genau wie ein CC: Tweaked-Computer.
 
+## Dateien und Grenzen {#limits}
+
+Jeder Computer hat ein eigenes Laufwerk mit **1 MB**; \`rom\` enthält die eingebauten Programme und ist schreibgeschützt. Eine **Programmdatei darf höchstens 256 KB** groß sein – eine größere bricht mit *program too large, max 256 KB* ab (größere Daten in eigene Dateien legen und mit \`fs.open\` lesen). Offene Dateien halten zusammen höchstens die Größe des Laufwerks. Ein Programm bekommt einen Anteil der Serverzeit; eines, das zu lange läuft, ohne auf ein Ereignis zu warten (\`os.pullEvent\`, \`sleep\`), bricht mit *too long without yielding* und der Zeile ab, in der es passiert ist, und der Computer geht aus.
+
 ## Rechte {#rights}
 
 - Wer einen Computer aufstellt, besitzt ihn. Besitzer, die Mitglieder seines Teams (FTB Teams) und Server-Admins dürfen den Bildschirm öffnen, tippen und ihn ein- und ausschalten; alle anderen bekommen eine Meldung.

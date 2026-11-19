@@ -240,6 +240,13 @@ end
 
 -- ---- fs.open: file handles as tables ----------------------------------------------------------------------------------
 
+-- The result of pcall(native...): its values, or its error raised at the line of the program that called the function
+-- using it (level 3). Callers must not tail-call it, or that level points past the program.
+local function at_caller(ok, ...)
+  if ok then return ... end
+  error((...), 3)
+end
+
 function fs.open(path, mode)
   expect(1, path, "string")
   expect(2, mode, "string")
@@ -251,24 +258,24 @@ function fs.open(path, mode)
     if closed then error("attempt to use a closed file", 3) end
   end
   if mode:sub(1, 1) == "r" then
-    function handle.read(count) check() return native.read(id, count) end
-    function handle.readLine(withEnd) check() return native.readLine(id, withEnd) end
-    function handle.readAll() check() return native.readAll(id) end
-    function handle.seek(whence, offset) check() return native.seek(id, whence, offset) end
+    function handle.read(count) check() return (at_caller(pcall(native.read, id, count))) end
+    function handle.readLine(withEnd) check() return (at_caller(pcall(native.readLine, id, withEnd))) end
+    function handle.readAll() check() return (at_caller(pcall(native.readAll, id))) end
+    function handle.seek(whence, offset) check() return (at_caller(pcall(native.seek, id, whence, offset))) end
   else
     local binary = mode:find("b", 1, true) ~= nil
     function handle.write(value)
       check()
       if binary and type(value) == "number" then value = string.char(value % 256) end
-      native.write(id, tostring(value))
+      at_caller(pcall(native.write, id, tostring(value)))
     end
-    function handle.writeLine(value) check() native.write(id, tostring(value) .. "\n") end
-    function handle.flush() check() native.flush(id) end
+    function handle.writeLine(value) check() at_caller(pcall(native.write, id, tostring(value) .. "\n")) end
+    function handle.flush() check() at_caller(pcall(native.flush, id)) end
   end
   function handle.close()
     if closed then return end
     closed = true
-    native.close(id)
+    at_caller(pcall(native.close, id))
   end
   return handle
 end
@@ -283,6 +290,9 @@ function loadfile(path, mode, env)
   if type(mode) == "table" and env == nil then env, mode = mode, nil end
   local source, err = read_file(path)
   if not source then return nil, err end
+  if #source > native.maxProgram then
+    return nil, "/" .. fs.combine(path) .. ": program too large, max " .. math.floor(native.maxProgram / 1024) .. " KB"
+  end
   return load(source, "@/" .. fs.combine(path), mode or "t", env or _G)
 end
 
@@ -312,11 +322,10 @@ end
 -- ---- peripheral.call: waits for the answer of the machine ------------------------------------------------------------
 
 do
-  local call_async = peripheral.callAsync
   function peripheral.call(side, widget, value)
     expect(1, side, "string")
     expect(2, widget, "string")
-    local id = call_async(side, widget, value)
+    local id = at_caller(pcall(native.peripheralCall, side, widget, value))
     while true do
       local _, answer, ok, err = os.pullEvent("peripheral_result")
       if answer == id then return ok, err end

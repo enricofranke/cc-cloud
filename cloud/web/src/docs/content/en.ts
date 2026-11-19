@@ -583,6 +583,10 @@ Programs name the sides as the computer sees them: **front** (the screen), **bac
 
 Put a [Cloud Uplink](/docs/start) on the computer and link it: it gets the automatic **Computer** card (power, label, redstone per side), the browser terminal and the script editor – exactly like a CC: Tweaked computer.
 
+## Files and limits {#limits}
+
+Each computer has its own drive of **1 MB**; \`rom\` holds the built-in programs and is read-only. A **program file can be at most 256 KB** – a bigger one stops with *program too large, max 256 KB* (keep larger data in other files and read it with \`fs.open\`). Open files together hold at most the drive's size. A program gets a share of the server's time; one that runs too long without waiting for an event (\`os.pullEvent\`, \`sleep\`) stops with *too long without yielding* and the line where it happened, and the computer turns off.
+
 ## Rights {#rights}
 
 - The player who places a computer owns it. The owner, the members of the owner's team (FTB Teams) and server admins may open its screen, type and switch it on or off; everyone else gets a message.
