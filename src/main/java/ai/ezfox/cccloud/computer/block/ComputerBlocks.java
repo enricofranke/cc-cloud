@@ -62,6 +62,7 @@ public final class ComputerBlocks {
         TESTS.register("computer_place_and_boot", () -> ComputerGameTests::placeAndBoot);
         TESTS.register("computer_terminal_sync", () -> ComputerGameTests::terminalSync);
         TESTS.register("computer_program_writes", () -> ComputerGameTests::programWrites);
+        TESTS.register("computer_screen_picture", () -> ComputerGameTests::screenPicture);
         TESTS.register("computer_redstone", () -> ComputerGameTests::redstone);
         TESTS.register("computer_break_keeps_id", () -> ComputerGameTests::breakKeepsId);
         TESTS.register("computer_rights", () -> ComputerGameTests::rights);

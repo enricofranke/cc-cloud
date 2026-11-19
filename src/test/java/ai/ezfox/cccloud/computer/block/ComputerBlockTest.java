@@ -145,4 +145,18 @@ class ComputerBlockTest {
         assertEquals(ComputerSide.RIGHT, CloudComputerBlockEntity.local(Direction.SOUTH, Direction.WEST));
         assertEquals(ComputerSide.TOP, CloudComputerBlockEntity.local(Direction.EAST, Direction.UP));
     }
+
+    @Test
+    void imageUsesTheFontAndTheColours() throws Exception {
+        var font = TerminalImage.font();
+        assertEquals(16 * TerminalImage.CELL_W, font.getWidth());
+        var frame = frame(0, "A ");
+        var image = TerminalImage.render(frame, font, true, 2);
+        assertEquals(2 * 2 * TerminalImage.CELL_W, image.getWidth());
+        assertTrue(TerminalImage.colours(image) >= 2, "glyph pixels on the background");
+        assertEquals(0x4c4c4c, TerminalImage.shade(0x4c4c4c, false));
+        int grey = TerminalImage.shade(0xff0000, false);
+        assertEquals(grey & 0xff, grey >> 8 & 0xff, "grey shades on the basic computer");
+        assertEquals(0xff0000, TerminalImage.shade(0xff0000, true));
+    }
 }

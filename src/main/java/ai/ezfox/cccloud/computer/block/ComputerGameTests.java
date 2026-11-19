@@ -118,6 +118,63 @@ public final class ComputerGameTests {
             .thenSucceed();
     }
 
+    /**
+     * The screen with a real program, as evidence: the colour test boots, "ls" is typed; the client mirror's picture is
+     * drawn with the real font texture into {@code computer-screen-<kind>.png} (folder: {@code -Dcccloud.terminalShot},
+     * default {@code computer-screenshots} in the run folder). Checks the program's text and that colours arrived.
+     */
+    public static void screenPicture(GameTestHelper helper) {
+        var advanced = place(helper, new BlockPos(2, 1, 2), true, null);
+        var basic = place(helper, new BlockPos(4, 1, 2), false, null);
+        var shots = new java.util.ArrayList<CloudComputerBlockEntity>(java.util.List.of(advanced, basic));
+        for (var be : shots) {
+            try {
+                ComputerDemo.install(be.computer());
+            } catch (java.io.IOException e) {
+                throw helper.assertionException("cannot write startup.lua: " + e);
+            }
+            be.computer().turnOn();
+        }
+        helper.startSequence()
+            .thenWaitUntil(() -> {
+                for (var be : shots) helper.assertTrue(TerminalImage.text(be.computer().terminal().frame()).contains("colour test"), "the colour test ran");
+            })
+            .thenIdle(20)
+            .thenExecute(() -> {
+                for (var be : shots) ComputerDemo.type(be.computer(), "ls", "test");
+            })
+            .thenWaitUntil(() -> {
+                for (var be : shots) helper.assertTrue(TerminalImage.text(be.computer().terminal().frame()).contains("reactor.lua"), "ls listed the files");
+            })
+            .thenExecute(() -> {
+                try {
+                    var font = TerminalImage.font();
+                    var dir = java.nio.file.Path.of(System.getProperty("cccloud.terminalShot", "computer-screenshots"));
+                    java.nio.file.Files.createDirectories(dir);
+                    for (var be : shots) {
+                        var menu = new ComputerMenu(1, be.getBlockPos(), be.advanced());
+                        var mirror = new TerminalMirror();
+                        for (String json : ComputerScreens.updates(menu, be.computer())) {
+                            var msg = JsonParser.parseString(json).getAsJsonObject();
+                            if (!msg.get("t").getAsString().equals("state")) mirror.apply(msg);
+                        }
+                        var frame = mirror.frame();
+                        helper.assertTrue(frame != null && TerminalImage.text(frame).contains("reactor.lua"), "the screen's mirror shows the program");
+                        var image = TerminalImage.render(frame, font, be.advanced() && frame.colour(), 2);
+                        int colours = TerminalImage.colours(image);
+                        helper.assertTrue(be.advanced() ? colours >= 12 : colours >= 4, "colours on the screen: " + colours);
+                        var file = dir.resolve("computer-screen-" + (be.advanced() ? "advanced" : "basic") + ".png");
+                        javax.imageio.ImageIO.write(image, "png", file.toFile());
+                        ai.ezfox.cccloud.CCCloud.LOGGER.info("[cccloud] Computer screen picture: {} ({} colours)\n{}", file.toAbsolutePath(), colours,
+                            TerminalImage.text(frame));
+                    }
+                } catch (java.io.IOException e) {
+                    throw helper.assertionException("cannot write the picture: " + e);
+                }
+            })
+            .thenSucceed();
+    }
+
     private static String row(TerminalMirror m, int y, int n) {
         var line = new StringBuilder();
         for (int x = 0; x < n; x++) line.append(m.charAt(x, y));

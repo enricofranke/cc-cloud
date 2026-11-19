@@ -145,12 +145,8 @@ public class ComputerScreen extends AbstractContainerScreen<ComputerMenu> {
         pose.popMatrix();
     }
 
-    /** The basic computer shows grey shades (its programs still name colours). */
     static int shade(int rgb, boolean colour) {
-        if (colour) return rgb & 0xFFFFFF;
-        int r = rgb >> 16 & 0xFF, gr = rgb >> 8 & 0xFF, b = rgb & 0xFF;
-        int v = (r * 299 + gr * 587 + b * 114) / 1000;
-        return v << 16 | v << 8 | v;
+        return ai.ezfox.cccloud.computer.block.TerminalImage.shade(rgb, colour);
     }
 
     @Override

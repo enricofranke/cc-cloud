@@ -185,29 +185,6 @@ public final class ScreenShots {
         return level.getBlockEntity(pos) instanceof CloudUplinkBlockEntity u ? u : null;
     }
 
-    /** The Cloud Computer's startup program in the screenshots: a title bar and the 16 colours, then the shell. */
-    private static final String COLOUR_TEST = """
-        local names = {"white", "orange", "magenta", "lightBlue", "yellow", "lime", "pink", "gray",
-          "lightGray", "cyan", "purple", "blue", "brown", "green", "red", "black"}
-        term.setBackgroundColour(colors.blue)
-        term.setTextColour(colors.white)
-        print(" CC: Cloud - colour test" .. string.rep(" ", 27))
-        term.setBackgroundColour(colors.black)
-        for _, n in ipairs(names) do
-          term.setBackgroundColour(colors[n])
-          term.write("   ")
-        end
-        term.setBackgroundColour(colors.black)
-        print()
-        for _, n in ipairs(names) do
-          term.setTextColour(colors[n] == colors.black and colors.gray or colors[n])
-          term.write(n:sub(1, 3))
-        end
-        term.setTextColour(colors.white)
-        print()
-        print("{x=[1,2]} ~^|\\ @#$%&*() <ok>")
-        """;
-
     private static void build(ServerLevel level, ServerPlayer player) {
         var server = level.getServer();
         var silent = server.createCommandSourceStack().withSuppressedOutput();
@@ -312,19 +289,13 @@ public final class ScreenShots {
                 computer.handle().setLabel(advanced ? "Reactor control" : "Gate");
                 var c = computer.computer();
                 try {
-                    var files = c.drive();
-                    if (!files.exists("startup.lua")) files.writeNew("startup.lua", COLOUR_TEST.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    if (!files.exists("reactor.lua")) files.writeNew("reactor.lua", "print(\"reactor\")\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    ai.ezfox.cccloud.computer.block.ComputerDemo.install(c);
                 } catch (java.io.IOException e) {
                     CCCloud.LOGGER.warn("[cccloud] Screen shots: cannot write the computer's files", e);
                 }
                 c.turnOn();
                 // once the shell is up, type "ls" and Enter like a player
-                later(server, 60, () -> {
-                    for (char ch : "ls".toCharArray()) c.input(ai.ezfox.cccloud.computer.InputEvent.character(ch), "screenshots");
-                    c.input(ai.ezfox.cccloud.computer.InputEvent.key(257, false), "screenshots");
-                    c.input(ai.ezfox.cccloud.computer.InputEvent.keyUp(257), "screenshots");
-                });
+                later(server, 60, () -> ai.ezfox.cccloud.computer.block.ComputerDemo.type(c, "ls", "screenshots"));
                 shots.add(new Shot(advanced ? "computer-advanced" : "computer", at,
                     p -> ai.ezfox.cccloud.computer.block.ComputerScreens.open(p, computer)));
             }
