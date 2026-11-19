@@ -36,10 +36,12 @@ import org.jspecify.annotations.Nullable;
  * script at a time; snapshots, timer fires and completed actions arrive from other threads and only queue work.
  *
  * <h2>Budget</h2>
- * Each script gets {@code cpuMsPerSecond} of worker time per second (then it is paused, invisibly, until the next
+ * Each script gets {@code cpuMsPerSecond} of CPU time per second (then it is paused, invisibly, until the next
  * second) and a task may run {@code cpuMsPerResume} in total without waiting for anything (a sleep, an event, an action)
- * before it is stopped with an error the script cannot catch. Allocation (when the JVM can measure it per thread) is
- * capped per second, and the reachable heap is estimated every few seconds. An uncaught error ends the whole script.
+ * before it is stopped with an error the script cannot catch. CPU time is the worker thread's own CPU time
+ * ({@link CpuClock}): a lagging server or a GC pause does not use up a script's budget. Allocation (when the JVM can
+ * measure it per thread) is capped per second, and the reachable heap is estimated every few seconds. An uncaught
+ * error ends the whole script.
  */
 public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.Watched {
     public enum Status { STARTING, RUNNING, STOPPED, ERROR }
@@ -70,6 +72,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private final ScriptStore store;
     private final Listener listener;
     private final Supplier<ZoneId> zone;
+    /** The CPU budget's clock: thread CPU time, read on the worker that runs the script. */
+    private final CpuClock cpu;
     private final long startedAt = System.currentTimeMillis();
     private final long startNanos = System.nanoTime();
     private final TokenBucket actions;
@@ -124,6 +128,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private volatile boolean heapRequested;
     private volatile long heapEstimate;
     private volatile long totalCpuNanos;
+    /** How often the script was paused because its CPU share of a second was used up. */
+    private volatile int sharePauses;
 
     private static final class Run {
         final Task task;
@@ -186,6 +192,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         this.store = store;
         this.listener = listener;
         this.zone = zone;
+        this.cpu = scheduler.clock();
         this.snapshot = snapshot;
         this.eventBase = snapshot.seq() == 0 ? null : snapshot;
         this.actions = new TokenBucket(limits.actionsPerSecond(), limits.actionsPerSecond());
@@ -297,6 +304,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                 long now = System.nanoTime();
                 roll(now);
                 if (windowUsed >= limits.cpuMsPerSecond() * 1_000_000L) {
+                    sharePauses++;
                     pause(windowStart + SECOND);
                     break;
                 }
@@ -335,7 +343,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     }
 
     private boolean load() {
-        jobStart = System.nanoTime();
+        jobStart = cpu.now();
         if (engine.preemption() != ScriptEngine.Preemption.SUSPEND) {
             // see ScriptEngine.Preemption: engines that block in host calls need a thread per script, not built yet
             end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": the " + engine.language() + " engine cannot run here yet", null, null));
@@ -357,7 +365,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                 ready.addFirst(new Call(main, null, main.label(), null, null));
             }
             log.system("system", "started (version " + version + ") by " + who.starterName() + ", acting with the rights of " + who.authorName());
-            windowUsed += System.nanoTime() - jobStart;
+            windowUsed += cpu.now() - jobStart;
             return true;
         } catch (ScriptError e) {
             end("error", e);
@@ -374,7 +382,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             case Again a -> a.run();
         };
         currentRun = run;
-        jobStart = System.nanoTime();
+        jobStart = cpu.now();
         jobBlocked = 0;
         jobAllocStart = allocated();
         RunResult result;
@@ -389,7 +397,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             jobActive = false;
             scheduler.exit(this);
         }
-        long used = Math.max(0, System.nanoTime() - jobStart - jobBlocked);
+        long used = Math.max(0, cpu.now() - jobStart - jobBlocked);
         long alloc = allocated() - jobAllocStart;
         windowUsed += used;
         windowAlloc += alloc;
@@ -409,7 +417,10 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                 }
                 // paused for a heap measurement only: go on right after it, within the CPU share
                 boolean shareLeft = heapRequested && windowUsed < limits.cpuMsPerSecond() * 1_000_000L;
-                if (!stopRequested && !shareLeft) pause(windowStart + SECOND);
+                if (!stopRequested && !shareLeft) {
+                    sharePauses++;
+                    pause(windowStart + SECOND);
+                }
             }
             case RunResult.Yielded y -> {
                 run.cpu = 0;
@@ -496,6 +507,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         boolean due = heapRequested || (ALLOC != null ? allocSinceHeap > heapThreshold || allocSinceHeap > 0 && since > 10 * SECOND : since > 10 * SECOND);
         heapRequested = false;
         if (!due) return;
+        long cpuStart = cpu.now();
         List<ScriptFunction> roots;
         synchronized (lock) {
             roots = new ArrayList<>();
@@ -504,7 +516,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         }
         long estimate = i.heapEstimate(limits.memoryBytes(), roots);
         long end = System.nanoTime();
-        windowUsed += end - now;
+        windowUsed += cpu.now() - cpuStart;
         lastHeapCheck = end;
         allocSinceHeap = 0;
         heapEstimate = estimate;
@@ -529,7 +541,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             abortKind = ScriptError.Kind.KILLED;
             return Decision.ABORT;
         }
-        long used = System.nanoTime() - jobStart - jobBlocked;
+        long used = cpu.now() - jobStart - jobBlocked;
         long jobAlloc = ALLOC == null ? 0 : allocated() - jobAllocStart;
         if (ALLOC != null && allocSinceHeap + jobAlloc > heapThreshold) {
             heapRequested = true;
@@ -567,7 +579,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     @Override
     public void blocked(long nanos) {
-        jobBlocked += nanos;
+        // thread CPU time does not run while the engine waits; wall time does and has to be given back
+        if (cpu.wall()) jobBlocked += nanos;
     }
 
     private static long allocated() {
@@ -927,6 +940,11 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     public long cpuTotalNanos() {
         return totalCpuNanos;
+    }
+
+    /** How often the script was paused until the next second because its CPU share was used up. */
+    public int sharePauses() {
+        return sharePauses;
     }
 
     public long heapEstimate() {
