@@ -115,6 +115,9 @@ class ComputerFsTest {
         fs.makeDir("a/b");
         assertThrows(ApiError.class, () -> fs.move("a", "a/b/c"));
         assertThrows(ApiError.class, () -> fs.copy("a", "a/c"));
+        assertThrows(ApiError.class, () -> fs.copy("/", "a/c"), "the top folder holds every target");
+        assertThrows(ApiError.class, () -> fs.copy("", "x"));
+        assertFalse(fs.exists("a/c"));
         fs.move("a", "z");
         assertTrue(fs.isDir("z/b"));
         assertThrows(ApiError.class, () -> fs.move("nothing", "q"));

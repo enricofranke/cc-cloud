@@ -145,7 +145,7 @@ class CloudComputerTest {
         assertNotNull(run);
         until(c, 10_000, "the stop", () -> !c.isOn());
         assertNotNull(c.lastError());
-        assertTrue(c.lastError().contains("too long without yielding"), c.lastError());
+        assertTrue(c.lastError().contains("startup.lua:1: too long without yielding"), "the player's line, not the boot code: " + c.lastError());
         assertTrue(shows(c, "too long without yielding"), screen(c));
         // 150 ms at 50 ms per second: the share pauses it in between. Counted, not timed: on a loaded machine a late
         // check can see 50 ms and more at once, so fewer pauses and less wall time are fine.
@@ -156,10 +156,10 @@ class CloudComputerTest {
     void pcallCannotKeepAnEndlessLoopAlive() {
         computers.limits = new ComputerLimits(50, 150, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
         var c = computers.create();
-        file(c, "startup.lua", "while true do pcall(function() while true do end end) end");
+        file(c, "startup.lua", "local n = 0\nwhile true do pcall(function() while true do n = n + 1 end end) end");
         c.turnOn();
         until(c, 10_000, "the stop", () -> !c.isOn());
-        assertTrue(c.lastError().contains("too long without yielding"), c.lastError());
+        assertTrue(c.lastError().contains("startup.lua:2: too long without yielding"), "the line where the limit was hit: " + c.lastError());
     }
 
     @Test
@@ -285,6 +285,30 @@ class CloudComputerTest {
     }
 
     @Test
+    void openFilesTogetherHoldAtMostTheDriveSize() {
+        computers.limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+        var c = computers.create();
+        runStartup(c, """
+            local piece = ("x"):rep(400 * 1024)
+            local results, handles = {}, {}
+            for i = 1, 4 do
+              local f = fs.open("w" .. i, "w")
+              handles[i] = f
+              results[i] = tostring((pcall(f.write, piece)))
+            end
+            for i = 1, 4 do handles[i].close() end
+            fs.delete("w1") fs.delete("w2")
+            -- closed handles give their share back
+            local again = fs.open("again", "w")
+            results[5] = tostring((pcall(again.write, ("y"):rep(300 * 1024))))
+            again.close()
+            local o = fs.open("out", "w") o.write(table.concat(results, " ")) o.close()
+            fs.open("done", "w").close()
+            """, 15_000);
+        assertEquals("true true false false true", read(c, "out"));
+    }
+
+    @Test
     void programsCannotReachTheHost() {
         var c = computers.create();
         runStartup(c, """
@@ -306,6 +330,29 @@ class CloudComputerTest {
         assertTrue(out.contains("nilnilnil"), out);
         assertTrue(out.contains("escape"), "the file landed on the drive: " + out);
         assertFalse(tmp.resolve("escape").toFile().exists());
+    }
+
+    @Test
+    void endlessLoadReaderIsStoppedAndLeavesNoHeap() {
+        var c = computers.create();
+        runStartup(c, """
+            local errors = {}
+            for round = 1, 40 do
+              local f, err = load(function() return ("x"):rep(4096) end)
+              errors[err] = true
+              sleep(0)
+            end
+            local o = fs.open("out", "w") for k in pairs(errors) do o.write(k) end o.close()
+            fs.open("done", "w").close()
+            sleep(30)
+            """, 30_000);
+        assertEquals("chunk too large (more than 256 KB)", read(c, "out"));
+        assertTrue(c.isOn());
+        var rt = c.runtime();
+        assertNotNull(rt);
+        // about 10 MB were allocated in 40 rounds, nothing of it is kept: the estimate stays far below the 16 MB cap
+        until(c, 15_000, "a heap measurement", () -> rt.heapEstimate() > 0);
+        assertTrue(rt.heapEstimate() < 4L << 20, "heap " + rt.heapEstimate());
     }
 
     @Test
