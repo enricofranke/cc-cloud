@@ -351,6 +351,8 @@ export const RECIPES = {
   cloudSwitch: byFile("cloud_switch"),
   cloudButton: byFile("cloud_button"),
   cloudLamp: byFile("cloud_lamp"),
+  cloudComputer: byFile("cloud_computer"),
+  advancedCloudComputer: byFile("advanced_cloud_computer"),
   cloudSensor: byFile("cloud_sensor"),
   advancedSensor: byFile("advanced_cloud_sensor"),
   advancedSensorFallback: byFile("advanced_cloud_sensor_fallback"),

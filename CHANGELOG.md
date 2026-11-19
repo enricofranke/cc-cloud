@@ -23,6 +23,15 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Safe on public servers:** every computer has a CPU and memory budget, a 1 MB drive it cannot leave, limits for
   events, timers, open files, redstone changes and input, and runs off the server thread.
 
+### Cloud Computers: the block
+- **Cloud Computer and Advanced Cloud Computer**: a computer you place in the world, without any other mod. Right-click
+  opens its screen with CC: Cloud's own pixel font: type, paste a line with Ctrl+V and, on the advanced one, click, drag
+  and scroll in 16 colours. Hold Ctrl+T to stop a program, Ctrl+R to restart, Ctrl+S to shut down.
+- **Redstone on every side**, named as the computer sees them (front is the screen).
+- **Breaking it keeps it:** the item remembers number and label and brings the files back – for its owner only.
+- **On the dashboard like any computer:** put an uplink on it for the Computer card, the browser terminal and the editor.
+- **Safe on servers:** only the owner, their team and admins may use it; another team's claim shuts it down.
+
 ### CC: Tweaked is optional
 - **CC: Cloud runs on its own.** Mainframes, uplinks on machines, probes, relays, Fiber Cable, upgrades, every machine,
   storage and redstone card, the bridges, sensors, tablet, display, rules, scenes, presets, reports and the API work
@@ -99,6 +108,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ### Fixes
 - **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.
+- **Cloud Scripts are no longer stopped by server lag.** Their CPU limits count the CPU time a script really used, not
+  the time that passed: on a lagging server or during a garbage collection pause even a tiny script could end with
+  "ran for more than … ms without pausing".
 
 ### Layout editor
 - **Programs started while the editor is open show up in it.** Before, their new cards and widgets only appeared after

@@ -1,0 +1,31 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:copy_components",
+              "source": "block_entity",
+              "include": [
+                "cccloud:computer",
+                "minecraft:custom_name"
+              ]
+            }
+          ],
+          "name": "cccloud:advanced_cloud_computer"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "cccloud:blocks/advanced_cloud_computer"
+}

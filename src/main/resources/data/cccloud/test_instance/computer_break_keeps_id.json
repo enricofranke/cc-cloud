@@ -1,0 +1,7 @@
+{
+  "type": "minecraft:function",
+  "environment": "minecraft:default",
+  "function": "cccloud:computer_break_keeps_id",
+  "max_ticks": 400,
+  "structure": "cccloud:test_floor"
+}

@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Lua-Referenz"
-  position: 5
+  position: 6
   icon: cccloud:advanced_cloud_uplink
 ---
 

@@ -44,12 +44,19 @@ public final class ScriptScheduler implements AutoCloseable {
     private final ScheduledThreadPoolExecutor timers;
     private final Set<Watched> running = ConcurrentHashMap.newKeySet();
     private final Thread watchdog;
+    private final CpuClock clock;
     private volatile boolean closed;
     private final Set<Thread> threads = ConcurrentHashMap.newKeySet();
     private final AtomicInteger threadCount = new AtomicInteger();
     private final AtomicInteger threadNames = new AtomicInteger();
 
     public ScriptScheduler(int threads) {
+        this(threads, CpuClock.system());
+    }
+
+    /** {@code clock}: what the scripts' CPU budget is measured with (tests pass their own). */
+    public ScriptScheduler(int threads, CpuClock clock) {
+        this.clock = clock;
         workers = Executors.newFixedThreadPool(Math.max(1, threads), factory("cccloud-script-", Thread.NORM_PRIORITY - 1));
         timers = new ScheduledThreadPoolExecutor(1, factory("cccloud-script-timer-", Thread.NORM_PRIORITY));
         timers.setRemoveOnCancelPolicy(true);
@@ -94,6 +101,11 @@ public final class ScriptScheduler implements AutoCloseable {
         } catch (RejectedExecutionException e) {
             return null;
         }
+    }
+
+    /** The clock of the scripts' CPU budget. */
+    public CpuClock clock() {
+        return clock;
     }
 
     ScheduledExecutorService timers() {

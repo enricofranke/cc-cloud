@@ -27,15 +27,15 @@ class ScriptRuntimeTest {
 
     @Test
     void infiniteLoopIsStoppedWithAClearError() throws InterruptedException {
-        long start = System.nanoTime();
         var run = scripts.runFast("local n = 0\nwhile true do n = n + 1 end");
         assertTrue(run.await(10_000), "the loop was not stopped");
         assertNotNull(run.error());
         assertTrue(run.error().getMessage().contains("ran for more than 120 ms without pausing"), run.error().getMessage());
         assertEquals(2, run.error().line());
         assertEquals(ScriptRuntime.Status.ERROR, run.runtime().status());
-        // 120 ms at 50 ms per second: paused twice in between, so it took about two seconds, never stalling anything
-        assertTrue(System.nanoTime() - start > 1_500_000_000L, "the per-second share paused it in between");
+        // 120 ms at 50 ms per second: the share pauses it in between (twice when the watchdog is on time). Counted, not timed:
+        // on a loaded machine a late check can see 50 ms and more at once, so fewer pauses and less wall time are fine.
+        assertTrue(run.runtime().sharePauses() >= 1, "the per-second share never paused it");
         // about 120 ms of CPU; the watchdog notices a little late on a loaded machine (CI runners: up to a few hundred ms),
         // so the bound only proves it was stopped within a few slices instead of running on
         assertTrue(run.runtime().cpuTotalNanos() < 600_000_000L, "used " + run.runtime().cpuTotalNanos() / 1e6 + " ms");

@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Netzwerk, Relays & Reichweite"
-  position: 7
+  position: 8
   icon: cccloud:cloud_relay
 item_ids:
   - cccloud:cloud_relay

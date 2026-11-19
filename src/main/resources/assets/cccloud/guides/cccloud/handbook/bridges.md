@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Bridges (AE2 / RS)"
-  position: 13
+  position: 14
   icon: cccloud:cloud_core
 item_ids:
   - cccloud:me_cloud_bridge

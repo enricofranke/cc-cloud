@@ -12,7 +12,9 @@ import org.jspecify.annotations.Nullable;
  * WebAssembly) on a thread of its own, shared by Cloud Scripts ({@link ScriptRuntime}) and Cloud Computers: the thread
  * ({@link ScriptScheduler#startThread}), the CPU book of the running task (a stretch from one wait to the next, over
  * nested tasks), the per-second share (the thread blocks itself until the next second, {@link #holdForShare}) and the
- * wait for a host call's future ({@link #await}), during which the owner may run its other tasks.
+ * wait for a host call's future ({@link #await}), during which the owner may run its other tasks. CPU time is the run's
+ * thread CPU time ({@link ScriptScheduler#clock()}): waiting, a GC pause or a loaded server is not charged; the windows of
+ * a second are wall time.
  *
  * <p>All methods but {@link #start}, {@link #interrupt} and the readers are called on the run's own thread.
  */
@@ -39,6 +41,7 @@ public final class BlockingRunner {
     }
 
     private final ScriptScheduler scheduler;
+    private final CpuClock cpu;
     private final long sharePerSecond;
     private final long perStretch;
     private final BooleanSupplier stopping;
@@ -61,6 +64,7 @@ public final class BlockingRunner {
      */
     public BlockingRunner(ScriptScheduler scheduler, int cpuMsPerSecond, int cpuMsPerStretch, BooleanSupplier stopping, Object lock, Seconds seconds) {
         this.scheduler = scheduler;
+        this.cpu = scheduler.clock();
         this.sharePerSecond = cpuMsPerSecond * 1_000_000L;
         this.perStretch = cpuMsPerStretch * 1_000_000L;
         this.stopping = stopping;
@@ -97,7 +101,7 @@ public final class BlockingRunner {
     /** A task starts (possibly inside another task's wait): a fresh stretch; returns the book to {@link #leave} with. */
     public Stretch enter() {
         var outer = new Stretch(stretchStart, stretchBlocked, stretchCpu);
-        stretchStart = System.nanoTime();
+        stretchStart = cpu.now();
         stretchBlocked = 0;
         stretchCpu = 0;
         return outer;
@@ -105,7 +109,7 @@ public final class BlockingRunner {
 
     /** The task ended: books its CPU time and returns to the interrupted stretch. Returns the CPU time it used. */
     public long leave(Stretch outer) {
-        long used = book(System.nanoTime());
+        long used = book(cpu.now());
         stretchStart = outer.start();
         stretchBlocked = outer.blocked();
         stretchCpu = outer.cpu();
@@ -122,9 +126,9 @@ public final class BlockingRunner {
         return used;
     }
 
-    /** Time inside a call that was not CPU for the script (counted out of the stretch). */
+    /** Time inside a call that was not CPU for the script (only counted out with the wall-time fallback clock). */
     public void blocked(long nanos) {
-        stretchBlocked += nanos;
+        if (cpu.wall()) stretchBlocked += nanos;
     }
 
     /**
@@ -133,14 +137,14 @@ public final class BlockingRunner {
      */
     public Verdict check() {
         if (stopping.getAsBoolean()) return Verdict.STOPPED;
-        long now = System.nanoTime();
+        long now = cpu.now();
         long used = Math.max(0, now - stretchStart - stretchBlocked);
         if (stretchCpu + used > perStretch) return Verdict.TOO_LONG;
-        roll(now);
+        roll(System.nanoTime());
         if (windowUsed + used >= sharePerSecond) {
             book(now);
             holdForShare();
-            stretchStart = System.nanoTime();
+            stretchStart = cpu.now();
             stretchBlocked = 0;
             if (stopping.getAsBoolean() || Thread.currentThread().isInterrupted()) return Verdict.STOPPED;
         }
@@ -181,7 +185,7 @@ public final class BlockingRunner {
      * (its stretch starts again afterwards); {@code pump} (may be null) runs the owner's other tasks meanwhile.
      */
     public <T> T await(CompletableFuture<T> future, @Nullable Pump pump) throws InterruptedException, ExecutionException {
-        book(System.nanoTime());
+        book(cpu.now());
         stretchCpu = 0;
         try {
             if (pump != null) pump.runUntil(future);
@@ -197,7 +201,7 @@ public final class BlockingRunner {
             if (stopping.getAsBoolean()) throw new InterruptedException();
             return future.get();
         } finally {
-            stretchStart = System.nanoTime();
+            stretchStart = cpu.now();
             stretchBlocked = 0;
         }
     }

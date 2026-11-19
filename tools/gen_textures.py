@@ -1536,6 +1536,231 @@ def gen_redstone_family():
     gen_redstone_lamp()
 
 
+# --------------------------------------------------------------------------- Cloud Computer
+def _computer_palette(advanced):
+    return (GOLD, GOLD_L, EDGE) if advanced else (GREY, GREY_L, EDGE)
+
+
+def _computer_casing(cv, advanced, seed):
+    body, light, edge = _computer_palette(advanced)
+    cv.noise(0, 0, 16, 16, body, seed)
+    cv.hline(1, 14, 14, light, seed + 1)          # lighter lower band
+    cv.outline(0, 0, 16, 16, edge, seed + 2)
+
+
+def gen_computer(advanced: bool):
+    """Cloud Computer (and the advanced, gold one): a full block in CC: Cloud's casing language. Front: a recessed
+    12x9 screen, below it a cyan cloud mark and the power LED; sides with vent slits; top with a seam."""
+    name = "advanced_cloud_computer" if advanced else "cloud_computer"
+    seed = 700 if advanced else 720
+    # side
+    cv = Canvas(16, 16)
+    _computer_casing(cv, advanced, seed)
+    for y in (4, 6, 8):
+        cv.hline(4, y, 8, RECESS, seed + 3)
+    cv.save(os.path.join(TEX, "block", f"{name}_side.png"))
+    # top
+    cv = Canvas(16, 16)
+    _computer_casing(cv, advanced, seed + 10)
+    cv.hline(2, 7, 12, SLOT, seed + 11)
+    cv.set(7, 4, CYAN_D)
+    cv.set(8, 4, CYAN_D)
+    cv.save(os.path.join(TEX, "block", f"{name}_top.png"))
+    # fronts
+    cloud = [" cc ", "cCCc"]
+    for on in (False, True):
+        cv = Canvas(16, 16)
+        _computer_casing(cv, advanced, seed + 20)
+        cv.outline(1, 1, 14, 11, RECESS, seed + 21)
+        if on:
+            cv.rect(2, 2, 12, 9, hx("0d1b22"))
+            for x in range(3, 9):
+                cv.set(x, 4, hx("8fd0de") if (x % 3) else hx("5e8d99"))
+            cv.set(3, 7, CYAN)
+            cv.set(5, 7, GREEN_L)
+            cv.set(6, 7, GREEN_L)
+        else:
+            cv.rect(2, 2, 12, 9, BLACK[0])
+            cv.set(12, 3, grey(0x1c))
+        cv.ascii(2, 12, cloud, {"c": CYAN_D, "C": CYAN if on else CYAN_D})
+        cv.set(13, 13, GREEN if on else OFF)
+        cv.set(12, 13, GREEN_D if on else OFF_L)
+        cv.save(os.path.join(TEX, "block", f"{name}_front_{'on' if on else 'off'}.png"))
+
+
+# CC: Cloud's own terminal font: 6x9 cells (5x8 glyph box + 1 px gap to the right and below). Rows 0-6 hold capitals
+# and digits, row 7 the descenders. '#' = lit.
+TERMINAL_GLYPHS = {
+    " ": [],
+    "!": ["  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "     ", "  #  "],
+    '"': [" # # ", " # # ", " # # "],
+    "#": [" # # ", " # # ", "#####", " # # ", "#####", " # # ", " # # "],
+    "$": ["  #  ", " ####", "# #  ", " ### ", "  # #", "#### ", "  #  "],
+    "%": ["##   ", "##  #", "   # ", "  #  ", " #   ", "#  ##", "   ##"],
+    "&": [" ##  ", "#  # ", "# #  ", " #   ", "# # #", "#  # ", " ## #"],
+    "'": ["  #  ", "  #  ", "  #  "],
+    "(": ["   # ", "  #  ", " #   ", " #   ", " #   ", "  #  ", "   # "],
+    ")": [" #   ", "  #  ", "   # ", "   # ", "   # ", "  #  ", " #   "],
+    "*": ["     ", "  #  ", "# # #", " ### ", "# # #", "  #  "],
+    "+": ["     ", "  #  ", "  #  ", "#####", "  #  ", "  #  "],
+    ",": ["     ", "     ", "     ", "     ", "     ", "  #  ", "  #  ", " #   "],
+    "-": ["     ", "     ", "     ", "#####"],
+    ".": ["     ", "     ", "     ", "     ", "     ", "     ", "  #  "],
+    "/": ["    #", "    #", "   # ", "  #  ", " #   ", "#    ", "#    "],
+    "0": [" ### ", "#   #", "#  ##", "# # #", "##  #", "#   #", " ### "],
+    "1": ["  #  ", " ##  ", "  #  ", "  #  ", "  #  ", "  #  ", " ### "],
+    "2": [" ### ", "#   #", "    #", "   # ", "  #  ", " #   ", "#####"],
+    "3": [" ### ", "#   #", "    #", "  ## ", "    #", "#   #", " ### "],
+    "4": ["   # ", "  ## ", " # # ", "#  # ", "#####", "   # ", "   # "],
+    "5": ["#####", "#    ", "#### ", "    #", "    #", "#   #", " ### "],
+    "6": ["  ## ", " #   ", "#    ", "#### ", "#   #", "#   #", " ### "],
+    "7": ["#####", "    #", "   # ", "  #  ", " #   ", " #   ", " #   "],
+    "8": [" ### ", "#   #", "#   #", " ### ", "#   #", "#   #", " ### "],
+    "9": [" ### ", "#   #", "#   #", " ####", "    #", "   # ", " ##  "],
+    ":": ["     ", "  #  ", "     ", "     ", "     ", "  #  "],
+    ";": ["     ", "  #  ", "     ", "     ", "     ", "  #  ", "  #  ", " #   "],
+    "<": ["    #", "   # ", "  #  ", " #   ", "  #  ", "   # ", "    #"],
+    "=": ["     ", "     ", "#####", "     ", "#####"],
+    ">": ["#    ", " #   ", "  #  ", "   # ", "  #  ", " #   ", "#    "],
+    "?": [" ### ", "#   #", "    #", "   # ", "  #  ", "     ", "  #  "],
+    "@": [" ### ", "#   #", "# ###", "# # #", "# ###", "#    ", " ####"],
+    "A": [" ### ", "#   #", "#   #", "#####", "#   #", "#   #", "#   #"],
+    "B": ["#### ", "#   #", "#   #", "#### ", "#   #", "#   #", "#### "],
+    "C": [" ### ", "#   #", "#    ", "#    ", "#    ", "#   #", " ### "],
+    "D": ["#### ", "#   #", "#   #", "#   #", "#   #", "#   #", "#### "],
+    "E": ["#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#####"],
+    "F": ["#####", "#    ", "#    ", "#### ", "#    ", "#    ", "#    "],
+    "G": [" ### ", "#   #", "#    ", "# ###", "#   #", "#   #", " ####"],
+    "H": ["#   #", "#   #", "#   #", "#####", "#   #", "#   #", "#   #"],
+    "I": [" ### ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", " ### "],
+    "J": ["  ###", "   # ", "   # ", "   # ", "   # ", "#  # ", " ##  "],
+    "K": ["#   #", "#  # ", "# #  ", "##   ", "# #  ", "#  # ", "#   #"],
+    "L": ["#    ", "#    ", "#    ", "#    ", "#    ", "#    ", "#####"],
+    "M": ["#   #", "## ##", "# # #", "# # #", "#   #", "#   #", "#   #"],
+    "N": ["#   #", "##  #", "# # #", "#  ##", "#   #", "#   #", "#   #"],
+    "O": [" ### ", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "],
+    "P": ["#### ", "#   #", "#   #", "#### ", "#    ", "#    ", "#    "],
+    "Q": [" ### ", "#   #", "#   #", "#   #", "# # #", "#  # ", " ## #"],
+    "R": ["#### ", "#   #", "#   #", "#### ", "# #  ", "#  # ", "#   #"],
+    "S": [" ####", "#    ", "#    ", " ### ", "    #", "    #", "#### "],
+    "T": ["#####", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  "],
+    "U": ["#   #", "#   #", "#   #", "#   #", "#   #", "#   #", " ### "],
+    "V": ["#   #", "#   #", "#   #", "#   #", "#   #", " # # ", "  #  "],
+    "W": ["#   #", "#   #", "#   #", "# # #", "# # #", "# # #", " # # "],
+    "X": ["#   #", "#   #", " # # ", "  #  ", " # # ", "#   #", "#   #"],
+    "Y": ["#   #", "#   #", " # # ", "  #  ", "  #  ", "  #  ", "  #  "],
+    "Z": ["#####", "    #", "   # ", "  #  ", " #   ", "#    ", "#####"],
+    "[": [" ### ", " #   ", " #   ", " #   ", " #   ", " #   ", " ### "],
+    "\\": ["#    ", "#    ", " #   ", "  #  ", "   # ", "    #", "    #"],
+    "]": [" ### ", "   # ", "   # ", "   # ", "   # ", "   # ", " ### "],
+    "^": ["  #  ", " # # ", "#   #"],
+    "_": ["     ", "     ", "     ", "     ", "     ", "     ", "     ", "#####"],
+    "`": [" #   ", "  #  "],
+    "a": ["     ", "     ", " ### ", "    #", " ####", "#   #", " ####"],
+    "b": ["#    ", "#    ", "#### ", "#   #", "#   #", "#   #", "#### "],
+    "c": ["     ", "     ", " ### ", "#    ", "#    ", "#   #", " ### "],
+    "d": ["    #", "    #", " ####", "#   #", "#   #", "#   #", " ####"],
+    "e": ["     ", "     ", " ### ", "#   #", "#####", "#    ", " ### "],
+    "f": ["  ## ", " #   ", "#### ", " #   ", " #   ", " #   ", " #   "],
+    "g": ["     ", "     ", " ####", "#   #", "#   #", " ####", "    #", " ### "],
+    "h": ["#    ", "#    ", "#### ", "#   #", "#   #", "#   #", "#   #"],
+    "i": ["  #  ", "     ", " ##  ", "  #  ", "  #  ", "  #  ", " ### "],
+    "j": ["   # ", "     ", "  ## ", "   # ", "   # ", "   # ", "#  # ", " ##  "],
+    "k": ["#    ", "#    ", "#  # ", "# #  ", "##   ", "# #  ", "#  # "],
+    "l": [" ##  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", " ### "],
+    "m": ["     ", "     ", "## # ", "# # #", "# # #", "# # #", "#   #"],
+    "n": ["     ", "     ", "#### ", "#   #", "#   #", "#   #", "#   #"],
+    "o": ["     ", "     ", " ### ", "#   #", "#   #", "#   #", " ### "],
+    "p": ["     ", "     ", "#### ", "#   #", "#   #", "#### ", "#    ", "#    "],
+    "q": ["     ", "     ", " ####", "#   #", "#   #", " ####", "    #", "    #"],
+    "r": ["     ", "     ", "# ## ", "##  #", "#    ", "#    ", "#    "],
+    "s": ["     ", "     ", " ####", "#    ", " ### ", "    #", "#### "],
+    "t": [" #   ", " #   ", "#### ", " #   ", " #   ", " #  #", "  ## "],
+    "u": ["     ", "     ", "#   #", "#   #", "#   #", "#  ##", " ## #"],
+    "v": ["     ", "     ", "#   #", "#   #", "#   #", " # # ", "  #  "],
+    "w": ["     ", "     ", "#   #", "#   #", "# # #", "# # #", " # # "],
+    "x": ["     ", "     ", "#   #", " # # ", "  #  ", " # # ", "#   #"],
+    "y": ["     ", "     ", "#   #", "#   #", "#   #", " ####", "    #", " ### "],
+    "z": ["     ", "     ", "#####", "   # ", "  #  ", " #   ", "#####"],
+    "{": ["   ##", "  #  ", "  #  ", "##   ", "  #  ", "  #  ", "   ##"],
+    "|": ["  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "  #  "],
+    "}": ["##   ", "  #  ", "  #  ", "   ##", "  #  ", "  #  ", "##   "],
+    "~": ["     ", "     ", " #   ", "# # #", "   # "],
+}
+TERMINAL_CELL = (6, 9)
+# Latin-1 letters drawn as their base letter with a mark in the free top row (lowercase) or without (capitals).
+_LATIN1_BASE = {
+    0xC0: "A", 0xC1: "A", 0xC2: "A", 0xC3: "A", 0xC4: "A", 0xC5: "A", 0xC7: "C", 0xC8: "E", 0xC9: "E", 0xCA: "E",
+    0xCB: "E", 0xCC: "I", 0xCD: "I", 0xCE: "I", 0xCF: "I", 0xD1: "N", 0xD2: "O", 0xD3: "O", 0xD4: "O", 0xD5: "O",
+    0xD6: "O", 0xD9: "U", 0xDA: "U", 0xDB: "U", 0xDC: "U", 0xDD: "Y",
+    0xE0: "a", 0xE1: "a", 0xE2: "a", 0xE3: "a", 0xE4: "a", 0xE5: "a", 0xE7: "c", 0xE8: "e", 0xE9: "e", 0xEA: "e",
+    0xEB: "e", 0xEC: "i", 0xED: "i", 0xEE: "i", 0xEF: "i", 0xF1: "n", 0xF2: "o", 0xF3: "o", 0xF4: "o", 0xF5: "o",
+    0xF6: "o", 0xF9: "u", 0xFA: "u", 0xFB: "u", 0xFC: "u", 0xFD: "y", 0xFF: "y",
+}
+_UMLAUTS = {0xC4, 0xD6, 0xDC, 0xE4, 0xEB, 0xEF, 0xF6, 0xFC, 0xFF, 0xCB, 0xCF}
+_ACUTE = {0xC1, 0xC9, 0xCD, 0xD3, 0xDA, 0xDD, 0xE1, 0xE9, 0xED, 0xF3, 0xFA, 0xFD}
+_GRAVE = {0xC0, 0xC8, 0xCC, 0xD2, 0xD9, 0xE0, 0xE8, 0xEC, 0xF2, 0xF9}
+
+
+def terminal_glyph(code: int):
+    """The lit pixels (x, y) of a character in its 6x9 cell, or None for an empty cell."""
+    if 0x80 <= code <= 0x9F:
+        # block graphics: 2x3 sub-blocks (3x3 px each), bit 0 = top left .. bit 4 = bottom left (bottom right stays off)
+        bits = code - 0x80
+        lit = set()
+        for i in range(6):
+            on = bool(bits >> i & 1) if i < 5 else False
+            col, row = i % 2, i // 2
+            for y in range(row * 3, row * 3 + 3):
+                for x in range(col * 3, col * 3 + 3):
+                    if on:
+                        lit.add((x, y))
+        return lit
+    ch = chr(code)
+    rows = TERMINAL_GLYPHS.get(ch)
+    marks = set()
+    if rows is None and code in _LATIN1_BASE:
+        base = _LATIN1_BASE[code]
+        rows = TERMINAL_GLYPHS[base]
+        if base.islower():
+            if code in _UMLAUTS:
+                marks = {(1, 0), (3, 0)}
+            elif code in _ACUTE:
+                marks = {(3, 0)}
+            elif code in _GRAVE:
+                marks = {(1, 0)}
+            elif code in (0xE2, 0xEA, 0xEE, 0xF4, 0xFB):
+                marks = {(2, 0)}
+    if rows is None and code == 0xDF:  # sharp s
+        rows = [" ##  ", "#  # ", "# #  ", "##   ", "#  # ", "#  # ", "# ## ", "#    "]
+    if rows is None and code == 0xB0:  # degree
+        rows = [" ##  ", "#  # ", " ##  "]
+    if rows is None and code == 0xA7:  # section
+        rows = [" ### ", "#    ", " ##  ", "#  # ", "  ## ", "    #", " ### "]
+    if rows is None:
+        if code < 0x20 or code == 0x7F:
+            return set()
+        rows = ["#####", "#   #", "#   #", "#   #", "#   #", "#   #", "#####"]  # unknown: a box
+    lit = set(marks)
+    for y, row in enumerate(rows):
+        for x, c in enumerate(row):
+            if c == "#":
+                lit.add((x, y))
+    return lit
+
+
+def gen_terminal_font():
+    """textures/gui/terminal_font.png: 16x16 cells of 6x9 px, white on transparent (tinted when drawn)."""
+    cw, ch = TERMINAL_CELL
+    cv = Canvas(16 * cw, 16 * ch)
+    white = (255, 255, 255, 255)
+    for code in range(256):
+        ox, oy = (code % 16) * cw, (code // 16) * ch
+        for (x, y) in terminal_glyph(code):
+            cv.set(ox + x, oy + y, white)
+    cv.save(os.path.join(TEX, "gui", "terminal_font.png"))
+
+
 def main():
     gen_mainframe()
     gen_mainframe_glass()
@@ -1572,6 +1797,9 @@ def main():
     gen_gui_widgets()
     gen_items()
     gen_redstone_family()
+    gen_computer(False)
+    gen_computer(True)
+    gen_terminal_font()
     print("textures written to", TEX)
 
 

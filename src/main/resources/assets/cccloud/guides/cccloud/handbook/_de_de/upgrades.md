@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Upgrades, Tablet & Display"
-  position: 8
+  position: 9
   icon: cccloud:cloud_tablet
 item_ids:
   - cccloud:cloud_tablet

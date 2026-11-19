@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "All recipes"
-  position: 11
+  position: 12
 ---
 
 # All recipes
@@ -145,6 +145,12 @@ Modpacks can change recipes (datapacks, KubeJS, CraftTweaker). JEI/EMI and the i
 
 ## Other
 
+### Advanced Cloud Computer
+<RecipesFor id="cccloud:advanced_cloud_computer" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
+### Cloud Computer
+<RecipesFor id="cccloud:cloud_computer" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
+
 ### CC: Cloud Handbook
 <Recipe id="cccloud:handbook" fallbackText="This recipe is not available in this modpack (a required mod is missing or the pack changed it)." />
 
@@ -190,6 +196,7 @@ ServerEvents.recipes(event => {
 
 | Recipe id | Makes | Loaded |
 |---|---|---|
+| `cccloud:advanced_cloud_computer` | Advanced Cloud Computer | always |
 | `cccloud:advanced_cloud_relay` | Advanced Cloud Relay | always |
 | `cccloud:advanced_cloud_sensor` | Advanced Cloud Sensor | with AllTheModium |
 | `cccloud:advanced_cloud_sensor_fallback` | Advanced Cloud Sensor | without AllTheModium |
@@ -200,6 +207,7 @@ ServerEvents.recipes(event => {
 | `cccloud:cloud_analyzer` | Cloud Analyzer | with CC: Tweaked |
 | `cccloud:cloud_analyzer_no_cct` | Cloud Analyzer | without CC: Tweaked |
 | `cccloud:cloud_button` | Cloud Button | always |
+| `cccloud:cloud_computer` | Cloud Computer | always |
 | `cccloud:cloud_core` | Cloud Core ×2 | always |
 | `cccloud:cloud_display` | Cloud Display ×4 | with CC: Tweaked |
 | `cccloud:cloud_display_no_cct` | Cloud Display ×4 | without CC: Tweaked |

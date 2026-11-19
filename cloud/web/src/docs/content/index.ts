@@ -19,6 +19,7 @@ export const PAGES: DocPageMeta[] = [
   { id: "dashboard", icon: "chart", title: { en: "The dashboard", de: "Das Dashboard" } },
   { id: "presets", icon: "star", title: { en: "Dashboard presets", de: "Dashboard-Vorlagen" } },
   { id: "redstone", icon: "lamp", title: { en: "Redstone devices", de: "Redstone-Geräte" } },
+  { id: "computers", icon: "cpu", title: { en: "Cloud Computers", de: "Cloud-Computer" } },
   { id: "lua", icon: "gear", title: { en: "Lua reference", de: "Lua-Referenz" } },
   { id: "ui-library", icon: "star", title: { en: "cloud.ui library", de: "cloud.ui-Bibliothek" } },
   { id: "network", icon: "fan", title: { en: "Network, relays & range", de: "Netzwerk, Relays & Reichweite" } },

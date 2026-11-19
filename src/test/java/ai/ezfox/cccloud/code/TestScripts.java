@@ -2,6 +2,7 @@ package ai.ezfox.cccloud.code;
 
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.code.lua.LuaEngine;
+import ai.ezfox.cccloud.code.runtime.CpuClock;
 import ai.ezfox.cccloud.code.runtime.Limits;
 import ai.ezfox.cccloud.code.runtime.ScriptLog;
 import ai.ezfox.cccloud.code.runtime.ScriptRuntime;
@@ -35,14 +36,26 @@ final class TestScripts implements AutoCloseable {
     /** FAST with a CPU share no test script reaches (1 s per second, 5 s per resume): the default of {@link #run(String)}. */
     static final Limits ROOMY_CPU = new Limits(16, 8, 32 * 1024, 1000, 5000, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 30, 4L << 20, 20, 32, 6, 5, 0.2, 2000, 64 * 1024);
 
-    final ScriptScheduler scheduler = new ScriptScheduler(2);
+    final ScriptScheduler scheduler;
     final FakeWorld world = new FakeWorld();
     final List<ScriptRuntime> started = new ArrayList<>();
+
+    TestScripts() {
+        this(CpuClock.system());
+    }
+
+    /** {@code clock}: what the scripts' CPU budget is measured with. */
+    TestScripts(CpuClock clock) {
+        scheduler = new ScriptScheduler(2, clock);
+    }
 
     static final class FakeWorld implements ScriptWorld {
         final List<WorldAction> actions = Collections.synchronizedList(new ArrayList<>());
         final List<String> notes = Collections.synchronizedList(new ArrayList<>());
         final List<String> audits = Collections.synchronizedList(new ArrayList<>());
+        /** Runs inside {@code cloud.notify}, on the script's worker thread. */
+        volatile Runnable onNotify = () -> {
+        };
         volatile Function<WorldAction, Object[]> answer = a -> a instanceof WorldAction.ItemCount ? new Object[]{42L} : new Object[]{true};
 
         @Override
@@ -54,6 +67,7 @@ final class TestScripts implements AutoCloseable {
 
         @Override
         public boolean notify(ScriptIdentity who, Channel channel, String text, String level, @Nullable String title) {
+            onNotify.run();
             notes.add(channel + ":" + level + ":" + text);
             return true;
         }
@@ -81,8 +95,8 @@ final class TestScripts implements AutoCloseable {
     }
 
     /**
-     * A script with {@link #ROOMY_CPU}: tests of everything but the CPU limit, so a loaded machine (the runtime counts
-     * wall-clock time while a script runs) cannot stop them with "ran for more than 120 ms".
+     * A script with {@link #ROOMY_CPU}: tests of everything but the CPU limit, so a slow machine cannot stop them with
+     * "ran for more than 120 ms".
      */
     Run run(String source) {
         return run(source, ROOMY_CPU, snapshot(1, 20.0, true));

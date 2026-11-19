@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "G": "#c:ingots/gold",
+    "C": "cccloud:cloud_computer",
+    "P": "#c:glass_panes"
+  },
+  "pattern": [
+    "GGG",
+    "GCG",
+    "GPG"
+  ],
+  "result": {
+    "id": "cccloud:advanced_cloud_computer"
+  }
+}

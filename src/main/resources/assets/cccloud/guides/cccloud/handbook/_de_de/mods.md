@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Unterstützte Mods"
-  position: 12
+  position: 13
 ---
 
 # Unterstützte Mods

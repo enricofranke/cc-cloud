@@ -279,6 +279,28 @@ public final class ScreenShots {
             }
         }
 
+        // Cloud Computers: an advanced one with a colour picture and a basic one (grey shades), screens open.
+        for (boolean advanced : new boolean[]{true, false}) {
+            var at = base.offset(advanced ? 4 : 8, 0, -8);
+            var block = advanced ? ai.ezfox.cccloud.computer.block.ComputerBlocks.ADVANCED_CLOUD_COMPUTER.get()
+                : ai.ezfox.cccloud.computer.block.ComputerBlocks.CLOUD_COMPUTER.get();
+            level.setBlockAndUpdate(at, block.defaultBlockState().setValue(ai.ezfox.cccloud.computer.block.CloudComputerBlock.FACING, Direction.NORTH));
+            if (level.getBlockEntity(at) instanceof ai.ezfox.cccloud.computer.block.CloudComputerBlockEntity computer && computer.handle() != null) {
+                computer.handle().setLabel(advanced ? "Reactor control" : "Gate");
+                var c = computer.computer();
+                try {
+                    ai.ezfox.cccloud.computer.block.ComputerDemo.install(c);
+                } catch (java.io.IOException e) {
+                    CCCloud.LOGGER.warn("[cccloud] Screen shots: cannot write the computer's files", e);
+                }
+                c.turnOn();
+                // once the shell is up, type "ls" and Enter like a player
+                later(server, 60, () -> ai.ezfox.cccloud.computer.block.ComputerDemo.type(c, "ls", "screenshots"));
+                shots.add(new Shot(advanced ? "computer-advanced" : "computer", at,
+                    p -> ai.ezfox.cccloud.computer.block.ComputerScreens.open(p, computer)));
+            }
+        }
+
         // An uplink that is not linked yet (on a plain block).
         var loose = uplinkOn(level, base.offset(-4, 0, 0), Blocks.POLISHED_ANDESITE.defaultBlockState(), false);
         if (loose != null) shots.add(new Shot("uplink-unlinked", loose.getBlockPos(), p -> ai.ezfox.cccloud.gui.GuiNetwork.openUplink(p, loose)));

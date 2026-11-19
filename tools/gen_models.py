@@ -1061,6 +1061,28 @@ ALL6 = {"north": {}, "east": {"y": 90}, "south": {"y": 180}, "west": {"y": 270},
         "up": {"x": 270}, "down": {"x": 90}}
 
 
+
+def write_computers():
+    """Cloud Computer and Advanced Cloud Computer: full cubes (vanilla orientable parent), front texture by
+    {@code on}; blockstates for 4 facings x on/off; the item shows the block switched off."""
+    count = 0
+    for name in ("cloud_computer", "advanced_cloud_computer"):
+        variants = {}
+        for on in ("false", "true"):
+            model = f"block/{name}_{'on' if on == 'true' else 'off'}"
+            write(f"models/{model}.json", {"parent": "minecraft:block/orientable", "textures": {
+                "front": f"{NS}:block/{name}_front_{'on' if on == 'true' else 'off'}",
+                "side": f"{NS}:block/{name}_side",
+                "top": f"{NS}:block/{name}_top",
+                "particle": f"{NS}:block/{name}_side"}})
+            count += 1
+            for facing, rot in HORIZONTAL.items():
+                variants[f"facing={facing},on={on}"] = {"model": f"{NS}:{model}", **rot}
+        write(f"blockstates/{name}.json", {"variants": variants})
+        write(f"items/{name}.json", {"model": {"type": "minecraft:model", "model": f"{NS}:block/{name}_off"}})
+    return {"computer models": count}
+
+
 def main():
     lower, upper, fan = mainframe_half("lower"), mainframe_half("upper"), mainframe_fan()
     holo = mainframe_hologram()
@@ -1214,6 +1236,7 @@ def main():
         {"type": "minecraft:model", "model": f"{NS}:block/uplink_advanced_core"}]}})
 
     counts.update(write_redstone_family())
+    counts.update(write_computers())
     write_docs(counts)
     problems = validate()
     for k, v in counts.items():

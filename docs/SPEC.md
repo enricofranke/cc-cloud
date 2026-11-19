@@ -2494,7 +2494,7 @@ Scripts can also be WebAssembly modules (language `wasm`, `code/wasm`), uploaded
 
 ### Runtime and limits
 - **Threads:** `cloudScriptThreads` workers (2, restart), a timer thread and a watchdog that interrupts running scripts about once a millisecond so they check their budget; never the server thread.
-- **CPU:** `cloudScriptCpuMsPerSecond` (50) per script, after which it pauses until the next second; one run between two waits at most `cloudScriptCpuMsPerResume` (200) ms, else `CPU_LIMIT` (`pcall` cannot catch it: once the budget says abort, every later check aborts too).
+- **CPU:** `cloudScriptCpuMsPerSecond` (50) per script, after which it pauses until the next second; one run between two waits at most `cloudScriptCpuMsPerResume` (200) ms, else `CPU_LIMIT` (`pcall` cannot catch it: once the budget says abort, every later check aborts too). CPU time is the CPU time of the thread that runs the script (`runtime/CpuClock`, `ThreadMXBean` thread CPU time), so time the thread does not run (server under load, GC pauses) and time an engine waits inside a call is not counted; the one-second windows and the 20 ms slices between scripts are wall time. A JVM without thread CPU time falls back to wall time minus the waits the engine reports, with one warning in the log.
 - **Memory:** 16 MB per script (fixed) as an estimate of what it keeps (strings, table slots, closures reachable from its globals, tasks and handlers; `lua/LuaHeap`, stops counting over the cap). Measured again whenever the thread allocated max(cap / 4, 2 × the last estimate) since the last measurement (HotSpot's per-thread allocation counter; the budget check pauses the task, measures, then continues within the CPU share), and every 10 s; over the cap is `MEMORY_LIMIT`. A backstop stops a script that allocates over 1 GB within one second. Without a per-thread allocation counter (not HotSpot) only the 10 s measurement applies.
 - **Big things in one call:** `string.rep`, `table.concat`, `string.gsub` (string, table or function replacements; still resumable) and `string.format` refuse results over 1 MB (`lua/LuaBounds`), `table.unpack` over 10 000 values, `table.move` over 1 000 000 elements; `string.pack`/`packsize`/`unpack` are not offered.
 - **Quotas (config `cloudScripts.*`, live):** `maxCloudScriptsPerMainframe` 16, `maxRunningCloudScripts` 8, source 32 KB, `cloudScriptVersionsKept` 20 (and at most 256 KB of history per script), `cloudScriptMaxTimers` 32, `cloudScriptMaxHandlers` 64, `cloudScriptStorageBytes` 16 KB, `cloudScriptLogLinesPerSecond` 20 (200 lines kept); fixed: 20 actions a second, 6 audited actions a minute (then one summary a minute), notifications 5 at once then one per 5 s, timers at least 0.25 s apart.
@@ -2532,7 +2532,7 @@ CC: Cloud's own computers: a block you place, a terminal and programs on the Clo
 ### Runtime
 - One boot = one `ComputerRuntime`: the rom's boot code as one task of a program instance (`ScriptEngine.createProgram`: the Cloud Scripts sandbox, the APIs as `HostModule`s instead of `cloud`), run in slices on the shared Cloud Script workers, never on the server thread. Lua strings cross as bytes (ISO-8859-1), so files and the terminal's 8-bit characters survive.
 - Events: the boot code waits for the next event in the runtime (`pull`: an event at once or a future); programs below it wait with `coroutine.yield` (`os.pullEventRaw`), so nested coroutines work. `os.pullEvent` raises `Terminated` on `terminate`. The boot code runs `rom/programs/shell.lua`; when it ends, the computer turns off.
-- Limits (`ComputerLimits`, per computer): CPU 100 ms a second (then the program pauses until the next second), 1000 ms of CPU between two event waits (else "too long without yielding" – an error `pcall` cannot catch; the computer turns off and shows it), memory estimate 16 MB (measured like Cloud Scripts) and the 1 GB-per-second allocation backstop, 256 queued events (more are dropped), 128 timers, 32 open files, drive 1 MB, redstone 20 output changes a second (burst 40, then an error).
+- Limits (`ComputerLimits`, per computer): CPU 100 ms a second (then the program pauses until the next second; twice a Cloud Script's share because a computer boots a shell and its programs interactively, and at 50 ms the boot alone took seconds), 1000 ms of CPU between two event waits (else "too long without yielding" – an error `pcall` cannot catch; the computer turns off and shows it), memory estimate 16 MB (measured like Cloud Scripts) and the 1 GB-per-second allocation backstop, 256 queued events (more are dropped), 128 timers, 32 open files, drive 1 MB, redstone 20 output changes a second (burst 40, then an error).
 - Power: `os.shutdown`/`os.reboot` and the controls are requests the next server tick carries out; an ended or failed program turns the computer off on the next tick (a failure stays on the screen in red and in `lastError`). Turning off clears the terminal (unless it shows a failure), closes and writes open files and sets every redstone output to 0.
 
 ### APIs
@@ -2548,3 +2548,48 @@ CC: Cloud's own computers: a block you place, a terminal and programs on the Clo
 
 ### Engines
 `HostModule` (name, functions, fields) is engine-neutral: Lua makes tables of them, a WebAssembly engine binds them as imports. `ScriptEngine.createProgram(name, modules, budget, clock)` is optional (default: unsupported); `ComputerRuntime` runs `SUSPEND` engines.
+
+## Cloud Computer block and screen (2026-11-19)
+
+The world side of the Cloud Computers (the program side: `computer` package, its own section). No CC: Tweaked needed.
+
+- **Blocks:** `cccloud:cloud_computer` (51×19, grey shades, no mouse) and `cccloud:advanced_cloud_computer` (16 colours,
+  mouse). `HorizontalDirectionalBlock` with `facing` (the screen side, towards the placer) and `on`; full cube, light 6
+  while on. One block entity type `cccloud:cloud_computer` (`computer/block`), which is the computer's `ComputerHost`:
+  it saves `computer_id`, `on` and `owner`, loads the computer through `ComputerRegistry.load` on its first server tick,
+  calls `CloudComputer.tick()` every tick and `ComputerRegistry.unload` on removal and chunk unload. `ComputerBlocks`
+  keeps which block hosts which id, so one computer never runs in two blocks (a copied block gets a new id).
+- **Redstone:** `RedstoneIo.Memory`. Sides are computer-local as the computer sees them: front = `facing`, left =
+  `facing.getCounterClockWise()`. Inputs are read from the world (`level.getSignal`) on neighbour changes; outputs set by
+  a program are applied on the server thread (neighbour updates when the change counter moves), strong and weak alike.
+- **Item and loot:** the loot table copies the data component `cccloud:computer` (`ComputerItemData`: id, label) and the
+  custom name. Placing such an item restores that computer only when `ComputerAccess.mayRestore` allows it: the id
+  exists, no loaded block hosts it, and the placer is its owner (`ComputerOwners`, SavedData
+  `cloud_computer_owners`); otherwise the block gets a new id. The id on the item is never trusted otherwise.
+- **Recipes** (no CC parts): stone, a glass pane, a Cloud Core and redstone; the advanced one is a Cloud Computer in gold
+  ingots with a glass pane.
+- **Rights** (`ComputerAccess.mayUse`): the owner (placer), members of the owner's team (team mod) and players with
+  `cccloud.admin.operate`; a computer without owner (machine, command) is open. The claim guard (docs/SECURITY.md
+  "Claims") watches the block: blocked, the computer shuts down, its outputs read 0, the screen and the dashboard handle
+  refuse power and input until the claim allows it.
+- **Dashboard:** `Cct.computer(level, pos)` answers a Cloud Computer first (`CloudComputerHandle`), then CC: Tweaked's.
+  So an uplink on a Cloud Computer gets the automatic Computer card, browser terminal and editor without changes;
+  `saveDir` is `cccloud/computers/<id>`. The uplink treats it like a CC computer (`direct=false`).
+- **Screen** (`ComputerMenu`, `client/computer/ComputerScreen`): right-click opens it for players who may use it; the
+  menu stays valid within 8 blocks while the block stands and the right holds. Server → client: payload
+  `cccloud:computer_view` with either a `term` message (`TerminalFrame.diff`, the browser terminal's format: only changed
+  rows, cursor, palette) or a `state` message (`on`, `id`, `title`, `error`), sent only to players with the screen open
+  and only when something changed (checked every tick against the terminal's change counter). The client keeps a
+  `TerminalMirror` that rejects messages that do not fit. Client → server: payload `cccloud:computer_input`, a JSON
+  array in the browser's format (`TerminalInput.parse`, ≤ 32 events, ≤ 16 KB), batched once per client tick. The
+  handler checks the open container id, range, block and rights, then hands each event to
+  `CloudComputer.input(event, playerUuid)`, where the limits are (paste length, rate per player).
+- **Input:** keys as GLFW codes (`key` with `held` on repeat, `key_up`; held keys go up when the screen closes), `char`
+  (0x20–0xff), Ctrl+V `paste`, on the advanced computer `mouse_click`/`mouse_drag`/`mouse_up`/`mouse_scroll` in 1-based
+  cells (buttons 1 left, 2 right, 3 middle; scroll up = -1). Holding Ctrl+T, Ctrl+R or Ctrl+S for one second sends
+  `terminate`, `reboot` or `shutdown` once (`HoldShortcut`); a click on the screen of a computer that is off sends
+  `turn_on`.
+- **Font:** `textures/gui/terminal_font.png`, drawn by `tools/gen_textures.py` (`TERMINAL_GLYPHS`): 16×16 cells of 6×9
+  px, CC: Cloud's own 5×7 glyphs with descenders, Latin-1 letters from their base letter with a mark, 0x80–0x9f as 2×3
+  block graphics, a box for anything else. Tinted per cell; backgrounds drawn as runs. The terminal scales to the window
+  (whole steps up to 2×, smaller when the window is small).
