@@ -121,6 +121,12 @@ public final class VoxelTests {
      * Changed sections are rebuilt, unchanged ones come from the cache: the cache is validated by the section's
      * content, so even a change that fires no neighbor update (flag 2 only, like block movers) shows on the next
      * request, and a dashboard that sends the current hash gets "same".
+     * <p>
+     * The cache key is the section plus the touching layers of its six neighbors, so this test needs a section nobody
+     * else changes between two requests. In the shared default batch there is none: the test structures are 5×4×5, so
+     * several tests share a chunk column, and others put blocks at the very heights above their structures (an uplink at
+     * +30, a row at +40, relays at +48 and +80). So it runs alone in its own environment ({@code cccloud:voxel_cache}),
+     * and the 3×3 chunks around the section stay loaded while it runs (a neighbor chunk that unloads changes the key too).
      */
     public static void dirtyInvalidation(GameTestHelper helper) {
         var server = helper.getLevel().getServer();
@@ -139,6 +145,7 @@ public final class VoxelTests {
         int cx = abs.getX() >> 4, cy = abs.getY() >> 4, cz = abs.getZ() >> 4;
         int i = VoxelSection.index(abs.getX() & 15, abs.getY() & 15, abs.getZ() & 15);
         var section = java.util.List.of(new int[]{cx, cy, cz});
+        for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) level.setChunkForced(cx + dx, cz + dz, true);
         @SuppressWarnings("unchecked") CompletableFuture<java.util.List<VoxelSection.Encoded>>[] step = new CompletableFuture[4];
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.VoxelBatchResult>[] batch = new CompletableFuture[1];
         java.util.function.Function<Integer, String> idAt = n -> {
@@ -149,6 +156,11 @@ public final class VoxelTests {
         helper.startSequence()
             .thenWaitUntil(() -> helper.assertTrue(mainframe.isOnline() && ai.ezfox.cccloud.network.NetworkService.result(mainframe.getMainframeId()) != null,
                 "mainframe online with its network"))
+            .thenWaitUntil(() -> {
+                for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
+                    helper.assertTrue(level.getChunkSource().getChunkNow(cx + dx, cz + dz) != null, "the chunks around the section are loaded");
+                }
+            })
             .thenExecute(() -> {
                 VoxelService.clearForTest(mainframe.getMainframeId());
                 step[0] = VoxelService.encode(level, section, mainframe.getMainframeId());
@@ -186,6 +198,7 @@ public final class VoxelTests {
                 helper.assertTrue(read.size() == 1 && read.getFirst().status() == ai.ezfox.cccloud.voxel.VoxelBatch.Status.SAME,
                     "the dashboard's current hash gets same: " + read);
                 helper.setBlock(spot, Blocks.AIR); // outside the structure: not cleaned up by the framework
+                for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) level.setChunkForced(cx + dx, cz + dz, false);
             })
             .thenSucceed();
     }
@@ -502,7 +515,9 @@ public final class VoxelTests {
             Block.UPDATE_ALL);
         java.util.function.Predicate<BlockPos> inArea = pos -> Arrays.stream(VoxelAreas.points(id, dim)).anyMatch(p -> Math.floor(p[0]) == pos.getX() && Math.floor(p[1]) == pos.getY() && Math.floor(p[2]) == pos.getZ());
         var seen = mainframe.getBlockPos().above().east();
-        var placedLater = seen.offset((seen.getX() & 15) == 15 ? -1 : 1, 0, 0);
+        // in the same section as "seen", and never on the mainframe: one step in z (a step back in x from a "seen" on the
+        // chunk's edge was the mainframe's upper half, which broke the mainframe in about 1 of 16 runs)
+        var placedLater = seen.offset(0, 0, (seen.getZ() & 15) == 15 ? -1 : 1);
         int[] section = {seen.getX() >> 4, seen.getY() >> 4, seen.getZ() >> 4};
         @SuppressWarnings("unchecked") CompletableFuture<GameBridge.VoxelBatchResult>[] batch = new CompletableFuture[2];
         helper.startSequence()

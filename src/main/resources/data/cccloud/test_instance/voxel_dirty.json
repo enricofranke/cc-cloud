@@ -1,6 +1,6 @@
 {
   "type": "minecraft:function",
-  "environment": "minecraft:default",
+  "environment": "cccloud:voxel_cache",
   "function": "cccloud:voxel_dirty",
   "max_ticks": 2400,
   "structure": "cccloud:test_floor"
