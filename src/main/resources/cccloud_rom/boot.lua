@@ -305,6 +305,22 @@ end
 function os.run(env, path, ...)
   expect(1, env, "table")
   expect(2, path, "string")
+  if path:lower():sub(-5) == ".wasm" then
+    -- a WebAssembly program: it runs on its own and gets the events until it ends (Ctrl+T ends it)
+    local name = type(env.arg) == "table" and type(env.arg[0]) == "string" and env.arg[0] or fs.getName(path)
+    local started, id = pcall(native.runWasm, path, name, ...)
+    if not started then
+      printError(id)
+      return false
+    end
+    while true do
+      local event, done, ok, problem = os.pullEventRaw("wasm_done")
+      if event == "wasm_done" and done == id then
+        if not ok and problem and problem ~= "" then printError(problem) end
+        return ok
+      end
+    end
+  end
   setmetatable(env, { __index = _G })
   local fn, err = loadfile(path, nil, env)
   if not fn then

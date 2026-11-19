@@ -37,6 +37,8 @@ public final class ScriptScheduler implements AutoCloseable {
     static final long WATCHDOG_NANOS = 1_000_000;
     /** Threads of scripts that cannot suspend (WebAssembly), on the whole server. */
     public static final int MAX_THREADS = 32;
+    /** Threads of scripts and programs that cannot suspend one player may hold at once. */
+    public static final int MAX_THREADS_PER_OWNER = 8;
     /** Stack size of such a thread. */
     public static final long THREAD_STACK = 1L << 20;
 
@@ -49,6 +51,7 @@ public final class ScriptScheduler implements AutoCloseable {
     private final Set<Thread> threads = ConcurrentHashMap.newKeySet();
     private final AtomicInteger threadCount = new AtomicInteger();
     private final AtomicInteger threadNames = new AtomicInteger();
+    private final java.util.concurrent.ConcurrentHashMap<Object, AtomicInteger> perOwner = new java.util.concurrent.ConcurrentHashMap<>();
 
     public ScriptScheduler(int threads) {
         this(threads, CpuClock.system());
@@ -112,14 +115,30 @@ public final class ScriptScheduler implements AutoCloseable {
         return timers;
     }
 
-    /** Why {@link #startThread} did not start a thread. */
-    public enum Refusal { CLOSED, FULL }
+    /** Why {@link #startThread} did not start a thread: the server stops, all threads are taken, the owner has its share. */
+    public enum Refusal { CLOSED, FULL, OWNER_FULL }
 
     /** Starts the thread of a script that cannot suspend; null if it started. */
     @Nullable Refusal startThread(Runnable body) {
+        return startThread(body, null);
+    }
+
+    /**
+     * {@link #startThread} for an owner (a player: the script's author, the computer's owner): at most
+     * {@link #MAX_THREADS_PER_OWNER} each, so one player cannot take every thread of the server.
+     */
+    @Nullable Refusal startThread(Runnable body, @Nullable Object owner) {
         if (closed) return Refusal.CLOSED;
+        if (owner != null) {
+            var count = perOwner.computeIfAbsent(owner, k -> new AtomicInteger());
+            if (count.incrementAndGet() > MAX_THREADS_PER_OWNER) {
+                release(owner);
+                return Refusal.OWNER_FULL;
+            }
+        }
         if (threadCount.incrementAndGet() > MAX_THREADS) {
             threadCount.decrementAndGet();
+            if (owner != null) release(owner);
             return Refusal.FULL;
         }
         var holder = new Thread[1];
@@ -129,6 +148,7 @@ public final class ScriptScheduler implements AutoCloseable {
             } finally {
                 threads.remove(holder[0]);
                 threadCount.decrementAndGet();
+                if (owner != null) release(owner);
             }
         }, "cccloud-script-wasm-" + threadNames.incrementAndGet(), THREAD_STACK);
         holder[0] = t;
@@ -140,9 +160,20 @@ public final class ScriptScheduler implements AutoCloseable {
         } catch (OutOfMemoryError | IllegalThreadStateException e) {
             threads.remove(t);
             threadCount.decrementAndGet();
+            if (owner != null) release(owner);
             return Refusal.FULL;
         }
         return null;
+    }
+
+    private void release(Object owner) {
+        perOwner.computeIfPresent(owner, (k, count) -> count.decrementAndGet() <= 0 ? null : count);
+    }
+
+    /** Threads an owner holds now (tests). */
+    public int threadCount(Object owner) {
+        var count = perOwner.get(owner);
+        return count == null ? 0 : count.get();
     }
 
     /** Threads of scripts that cannot suspend running now. */

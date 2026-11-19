@@ -73,6 +73,7 @@ function api.resolveProgram(name)
     local p = api.resolve(name)
     if fs.exists(p) and not fs.isDir(p) then return p end
     if fs.exists(p .. ".lua") and not fs.isDir(p .. ".lua") then return p .. ".lua" end
+    if fs.exists(p .. ".wasm") and not fs.isDir(p .. ".wasm") then return p .. ".wasm" end
     return nil
   end
   for entry in path:gmatch("[^:]+") do
@@ -80,6 +81,7 @@ function api.resolveProgram(name)
     local p = fs.combine(base, name)
     if fs.exists(p) and not fs.isDir(p) then return p end
     if fs.exists(p .. ".lua") and not fs.isDir(p .. ".lua") then return p .. ".lua" end
+    if fs.exists(p .. ".wasm") and not fs.isDir(p .. ".wasm") then return p .. ".wasm" end
   end
   return nil
 end
@@ -93,7 +95,7 @@ function api.programs(hidden)
       for _, file in ipairs(fs.list(base)) do
         local p = fs.combine(base, file)
         if not fs.isDir(p) and (hidden or file:sub(1, 1) ~= ".") then
-          local name = file:gsub("%.lua$", "")
+          local name = file:gsub("%.lua$", ""):gsub("%.wasm$", "")
           if not seen[name] then
             seen[name] = true
             list[#list + 1] = name

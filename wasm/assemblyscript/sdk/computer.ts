@@ -43,6 +43,11 @@ export namespace term {
 }
 
 export namespace os {
+  /** How the shell started this program: [name, arg1, arg2, …] (empty when it is the computer's boot program). */
+  export function args(): Value {
+    return invokeProgram("__native.args", []).at(0);
+  }
+
   /**
    * Waits for the next event and returns it as an array: [name, args…], e.g. ["char", "a"] or ["timer", 3].
    * With a filter, other events are dropped while waiting (like os.pullEventRaw with a filter).

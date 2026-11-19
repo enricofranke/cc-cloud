@@ -215,14 +215,14 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             schedule();
             return;
         }
-        var refusal = runner.start(this::threadMain);
+        var refusal = runner.start(this::threadMain, who.author()); // a player's share: the author's scripts
         if (refusal != null) {
             synchronized (lock) {
                 inSlice = false;
             }
             if (refusal == ScriptScheduler.Refusal.CLOSED) end("server_stopping", null);
-            else end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": too many " + engine.language()
-                + " scripts are running on this server (at most " + ScriptScheduler.MAX_THREADS + ")", null, null));
+            else end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": " + BlockingRunner.refusalText(refusal, engine.language(), "scripts"),
+                null, null));
         }
     }
 

@@ -27,6 +27,11 @@ public final class WasmEngine implements ScriptEngine {
         this.limits = limits;
     }
 
+    /** The host imports a module may have (for checks outside the engine, e.g. a .wasm upload). */
+    public static java.util.Map<String, java.util.Map<String, run.endive.wasm.types.FunctionType>> imports() {
+        return WasmInstance.IMPORTS;
+    }
+
     @Override
     public String language() {
         return LANGUAGE;
