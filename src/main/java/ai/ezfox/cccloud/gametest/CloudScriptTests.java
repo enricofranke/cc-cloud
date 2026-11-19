@@ -188,8 +188,9 @@ public final class CloudScriptTests {
             .thenIdle(10)
             .thenExecute(() -> level.setBlock(lever, level.getBlockState(lever).setValue(LeverBlock.POWERED, true), Block.UPDATE_ALL))
             .thenWaitUntil(() -> helper.assertTrue(level.getBlockState(lamp).getLightEmission() == 15, "the script turned the lamp on: " + logText(mf, name)))
+            // the lamp is lit on the server thread; the script logs the answer a moment later on its own thread
+            .thenWaitUntil(() -> helper.assertTrue(logText(mf, name).contains("lamp true true nil"), "the action went through: " + logText(mf, name)))
             .thenExecute(() -> {
-                helper.assertTrue(logText(mf, name).contains("lamp true true nil"), "the action went through: " + logText(mf, name));
                 var runtime = CodeService.runtimeForTest(mf, name);
                 helper.assertTrue(runtime != null && runtime.cpuTotalNanos() > 0, "it runs on its own thread and books CPU time");
                 var stopped = code(server, ownerDevice, mf, "stop", ids[0], null, null, null).join();
