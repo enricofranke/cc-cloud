@@ -15,7 +15,13 @@ import org.jspecify.annotations.Nullable;
  */
 public final class CpuBudget {
     public static final long SECOND = 1_000_000_000L;
+    /** For the allocation and memory arguments: no limit (an engine with a hard memory cap of its own). */
+    public static final long UNLIMITED = Long.MAX_VALUE / 4;
     private static final com.sun.management.@Nullable ThreadMXBean ALLOC = allocationBean();
+
+    /** The book of a job that another one interrupts (a task that starts inside another task's wait). */
+    public record Job(long start, long blocked, long allocStart) {
+    }
 
     /** What the budget says while a job runs. */
     public enum Verdict {
@@ -116,6 +122,18 @@ public final class CpuBudget {
         jobAllocStart = allocated();
     }
 
+    /** The current job's book, to {@link #resume} it after a nested job. */
+    public Job job() {
+        return new Job(jobStart, jobBlocked, jobAllocStart);
+    }
+
+    /** Goes on with a job saved by {@link #job()}. */
+    public void resume(Job job) {
+        jobStart = job.start();
+        jobBlocked = job.blocked();
+        jobAllocStart = job.allocStart();
+    }
+
     /** The job ended: books its CPU time and allocation; returns the CPU time (for the caller's run). */
     public long endJob() {
         long used = Math.max(0, clock.now() - jobStart - jobBlocked);
@@ -175,6 +193,11 @@ public final class CpuBudget {
         heapEstimate = value;
         heapThreshold = Math.max(memoryBytes / 4, 2 * Math.min(value, memoryBytes));
         return value;
+    }
+
+    /** An estimate the engine measured itself (an engine with its own heap): shown, not checked here. */
+    public void heapMeasured(long estimate) {
+        heapEstimate = estimate;
     }
 
     // ---- status (any thread) -------------------------------------------------------------------------------------------

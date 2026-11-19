@@ -9,8 +9,8 @@ import ai.ezfox.cccloud.code.engine.ScriptEngine;
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.code.engine.Task;
 import ai.ezfox.cccloud.code.runtime.BlockingRunner;
+import ai.ezfox.cccloud.code.runtime.CpuBudget;
 import ai.ezfox.cccloud.code.runtime.ScriptScheduler;
-import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,19 +31,19 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Budget like Cloud Scripts ({@link ComputerLimits}): a CPU share per second (then the task pauses), a longest run
  * between two waits (then the program fails), a memory estimate cap measured after allocation and an allocation
- * backstop. A program that ends or fails ends the run; the {@link Owner} decides what the computer does.
+ * backstop, all kept by a {@link CpuBudget} in the CPU time of the thread that runs the program (a lagging server or a
+ * GC pause does not count). A program that ends or fails ends the run; the {@link Owner} decides what the computer does.
  *
  * <p>An engine that cannot suspend ({@link ScriptEngine.Preemption#ABORT}, WebAssembly) runs the program on a thread of
  * its own instead ({@link BlockingRunner}): the same CPU share and longest run between waits, {@link #pull}'s future
  * blocks that thread, the memory cap is the engine's own.
  */
 public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
-    static final long SECOND = 1_000_000_000L;
+    static final long SECOND = CpuBudget.SECOND;
     static final long SLICE_NANOS = 20_000_000L;
     /** Shortest timer: one server tick. */
     static final double MIN_TIMER = 0.05;
     static final double MAX_TIMER = 86_400 * 7;
-    private static final com.sun.management.@Nullable ThreadMXBean ALLOC = allocationBean();
 
     /** Told once when the run ended. {@code error} null: the program ended or was stopped. */
     public interface Owner {
@@ -60,6 +60,8 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     /** The program's own thread, for engines that cannot suspend; null on the workers. */
     private final @Nullable BlockingRunner runner;
     private final long startNanos = System.nanoTime();
+    /** CPU share, longest run, allocation and heap timing; thread CPU time, read on the thread that runs the program. */
+    private final CpuBudget budget;
 
     private final Object lock = new Object();
     // ---- guarded by lock ----
@@ -81,19 +83,8 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
 
     // ---- worker thread ----
     private @Nullable Task main;
-    private long windowStart;
-    private long windowUsed;
-    private long windowAlloc;
-    private long jobStart;
-    private long jobBlocked;
-    private long jobAllocStart;
     /** CPU since the last wait (over pauses). */
     private long runCpu;
-    private long lastHeapCheck;
-    private long allocSinceHeap;
-    private volatile long heapThreshold;
-    private volatile boolean heapRequested;
-    private volatile long heapEstimate;
 
     private sealed interface Job permits Start, Resume, Again {
     }
@@ -119,11 +110,12 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
         this.limits = limits;
         this.boot = boot;
         this.owner = owner;
-        this.heapThreshold = Math.max(1, limits.memoryBytes() / 4);
-        this.runner = engine.preemption() == ScriptEngine.Preemption.ABORT
-            ? new BlockingRunner(scheduler, limits.cpuMsPerSecond(), limits.cpuMsPerResume(), () -> stopRequested, lock, (used, seconds) -> {
-            })
-            : null;
+        boolean blocking = engine.preemption() == ScriptEngine.Preemption.ABORT;
+        // an engine that cannot suspend has a hard memory cap of its own: no allocation or heap limits in the budget
+        this.budget = new CpuBudget(scheduler.clock(), limits.cpuMsPerSecond(), limits.cpuMsPerResume(),
+            blocking ? CpuBudget.UNLIMITED : limits.allocBytesPerSecond(), blocking ? CpuBudget.UNLIMITED : limits.memoryBytes());
+        this.runner = blocking ? new BlockingRunner(scheduler, budget, () -> stopRequested, lock, (used, seconds) -> {
+        }) : null;
         this.modules = List.copyOf(modules.apply(this));
     }
 
@@ -171,7 +163,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             } finally {
                 r.leave(outer);
             }
-            heapEstimate = i.heapEstimate(limits.memoryBytes(), List.of());
+            budget.heapMeasured(i.heapEstimate(limits.memoryBytes(), List.of()));
             switch (result) {
                 case RunResult.Failed f -> {
                     if (!(stopRequested && f.aborted())) end(f.error(), false);
@@ -211,7 +203,17 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     }
 
     public long heapEstimate() {
-        return heapEstimate;
+        return budget.heapEstimate();
+    }
+
+    /** CPU time the program used so far (any thread). */
+    public long cpuTotalNanos() {
+        return budget.totalCpuNanos();
+    }
+
+    /** How often the program was paused until the next second because its CPU share was used up (any thread). */
+    public int sharePauses() {
+        return budget.sharePauses();
     }
 
     // ---- events ------------------------------------------------------------------------------------------------------
@@ -323,9 +325,9 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 Job next;
                 synchronized (lock) {
                     if (ended) break;
-                    roll(System.nanoTime());
-                    if (windowUsed >= limits.cpuMsPerSecond() * 1_000_000L) {
-                        if (job != null) pauseLocked(windowStart + SECOND);
+                    budget.roll(System.nanoTime());
+                    if (budget.shareUsed()) {
+                        if (job != null) pauseLocked(budget.pauseForShare());
                         break;
                     }
                     next = job;
@@ -362,7 +364,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     private void execute(Job next) {
         var i = instance;
         if (next instanceof Start) {
-            jobStart = System.nanoTime();
+            long loadStart = budget.mark();
             try {
                 i = engine.createProgram(name, modules, this, this::clock);
                 instance = i;
@@ -371,12 +373,10 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 end(e, false);
                 return;
             }
-            windowUsed += System.nanoTime() - jobStart;
+            budget.chargeSince(loadStart);
         }
         if (i == null || main == null) return;
-        jobStart = System.nanoTime();
-        jobBlocked = 0;
-        jobAllocStart = allocated();
+        budget.startJob();
         RunResult result;
         jobActive = true;
         scheduler.enter(this);
@@ -386,12 +386,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             jobActive = false;
             scheduler.exit(this);
         }
-        long used = Math.max(0, System.nanoTime() - jobStart - jobBlocked);
-        long alloc = allocated() - jobAllocStart;
-        windowUsed += used;
-        windowAlloc += alloc;
-        allocSinceHeap += alloc;
-        runCpu += used;
+        runCpu += budget.endJob();
         switch (result) {
             case RunResult.Done d -> end(null, false);
             case RunResult.Waiting w -> {
@@ -405,11 +400,11 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 });
             }
             case RunResult.Paused p -> {
-                boolean shareLeft = heapRequested && windowUsed < limits.cpuMsPerSecond() * 1_000_000L;
+                boolean shareLeft = budget.heapPauseOnly();
                 synchronized (lock) {
                     if (ended) return;
                     job = new Again();
-                    if (!stopRequested && !shareLeft) pauseLocked(windowStart + SECOND);
+                    if (!stopRequested && !shareLeft) pauseLocked(budget.pauseForShare());
                 }
             }
             case RunResult.Yielded y -> {
@@ -439,29 +434,10 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
         }
     }
 
-    private void roll(long now) {
-        if (windowStart == 0) windowStart = now;
-        if (now - windowStart < SECOND) return;
-        windowStart += (now - windowStart) / SECOND * SECOND;
-        windowUsed = 0;
-        windowAlloc = 0;
-    }
-
     private void heap() {
         var i = instance;
         if (i == null || !running()) return;
-        long now = System.nanoTime();
-        long since = now - lastHeapCheck;
-        boolean due = heapRequested || (ALLOC != null ? allocSinceHeap > heapThreshold || allocSinceHeap > 0 && since > 10 * SECOND : since > 10 * SECOND);
-        heapRequested = false;
-        if (!due) return;
-        long estimate = i.heapEstimate(limits.memoryBytes(), List.of());
-        long end = System.nanoTime();
-        windowUsed += end - now;
-        lastHeapCheck = end;
-        allocSinceHeap = 0;
-        heapEstimate = estimate;
-        heapThreshold = Math.max(limits.memoryBytes() / 4, 2 * Math.min(estimate, limits.memoryBytes()));
+        long estimate = budget.measureHeap(System.nanoTime(), () -> i.heapEstimate(limits.memoryBytes(), List.of()));
         if (estimate > limits.memoryBytes()) {
             end(new ScriptError(ScriptError.Kind.MEMORY_LIMIT, "out of memory (more than " + (limits.memoryBytes() >> 20) + " MB)", null, null), false);
         }
@@ -517,24 +493,20 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
                 }
             };
         }
-        long used = System.nanoTime() - jobStart - jobBlocked;
-        long jobAlloc = ALLOC == null ? 0 : allocated() - jobAllocStart;
-        if (ALLOC != null && allocSinceHeap + jobAlloc > heapThreshold) {
-            heapRequested = true;
-            return Decision.PAUSE;
-        }
-        if (ALLOC != null && windowAlloc + jobAlloc > limits.allocBytesPerSecond()) {
-            abortMessage = "out of memory (allocated more than " + (limits.allocBytesPerSecond() >> 20) + " MB within a second)";
-            abortKind = ScriptError.Kind.MEMORY_LIMIT;
-            return Decision.ABORT;
-        }
-        if (runCpu + used > limits.cpuMsPerResume() * 1_000_000L) {
-            abortMessage = "too long without yielding";
-            abortKind = ScriptError.Kind.CPU_LIMIT;
-            return Decision.ABORT;
-        }
-        if (windowUsed + used >= limits.cpuMsPerSecond() * 1_000_000L) return Decision.PAUSE;
-        return Decision.CONTINUE;
+        return switch (budget.check(runCpu)) {
+            case CONTINUE -> Decision.CONTINUE;
+            case MEASURE_HEAP, PAUSE -> Decision.PAUSE;
+            case TOO_MUCH_ALLOCATION -> {
+                abortMessage = "out of memory (allocated more than " + (limits.allocBytesPerSecond() >> 20) + " MB within a second)";
+                abortKind = ScriptError.Kind.MEMORY_LIMIT;
+                yield Decision.ABORT;
+            }
+            case TOO_LONG -> {
+                abortMessage = "too long without yielding";
+                abortKind = ScriptError.Kind.CPU_LIMIT;
+                yield Decision.ABORT;
+            }
+        };
     }
 
     @Override
@@ -554,8 +526,8 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
 
     @Override
     public void blocked(long nanos) {
-        if (runner != null) runner.blocked(nanos);
-        else jobBlocked += nanos;
+        // one budget for both paths: thread CPU time does not run while the engine waits, wall time is given back
+        budget.blocked(nanos);
     }
 
     /** Engines that cannot suspend wait here for a host call ({@link #pull}'s event, an action); not CPU time. */
@@ -563,21 +535,5 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     public <T> T await(CompletableFuture<T> future) throws InterruptedException, java.util.concurrent.ExecutionException {
         var r = runner;
         return r == null ? Budget.super.await(future) : r.await(future, null);
-    }
-
-    private static long allocated() {
-        return ALLOC == null ? 0 : ALLOC.getCurrentThreadAllocatedBytes();
-    }
-
-    private static com.sun.management.@Nullable ThreadMXBean allocationBean() {
-        try {
-            if (ManagementFactory.getThreadMXBean() instanceof com.sun.management.ThreadMXBean bean && bean.isThreadAllocatedMemorySupported()) {
-                if (!bean.isThreadAllocatedMemoryEnabled()) bean.setThreadAllocatedMemoryEnabled(true);
-                return bean.getCurrentThreadAllocatedBytes() >= 0 ? bean : null;
-            }
-        } catch (RuntimeException | LinkageError e) {
-            // not HotSpot: only the 10 s measurement
-        }
-        return null;
     }
 }

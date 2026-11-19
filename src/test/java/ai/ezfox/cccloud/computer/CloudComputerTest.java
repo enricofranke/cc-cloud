@@ -140,13 +140,16 @@ class CloudComputerTest {
         computers.limits = new ComputerLimits(50, 150, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
         var c = computers.create();
         file(c, "startup.lua", "while true do end");
-        long start = System.nanoTime();
         c.turnOn();
+        var run = c.runtime();
+        assertNotNull(run);
         until(c, 10_000, "the stop", () -> !c.isOn());
         assertNotNull(c.lastError());
         assertTrue(c.lastError().contains("too long without yielding"), c.lastError());
         assertTrue(shows(c, "too long without yielding"), screen(c));
-        assertTrue(System.nanoTime() - start > 1_500_000_000L, "the per-second share paused it in between");
+        // 150 ms at 50 ms per second: the share pauses it in between. Counted, not timed: on a loaded machine a late
+        // check can see 50 ms and more at once, so fewer pauses and less wall time are fine.
+        assertTrue(run.sharePauses() >= 1, "the per-second share never paused it");
     }
 
     @Test

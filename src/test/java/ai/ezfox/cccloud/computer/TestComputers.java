@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import ai.ezfox.cccloud.code.engine.ScriptEngine;
 import ai.ezfox.cccloud.code.lua.LuaEngine;
+import ai.ezfox.cccloud.code.runtime.CpuClock;
 import ai.ezfox.cccloud.code.runtime.ScriptScheduler;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -13,18 +14,28 @@ import org.jspecify.annotations.Nullable;
 
 /** Computers on real script threads and the real rom, with the test thread acting as the server thread. */
 final class TestComputers implements AutoCloseable {
-    final ScriptScheduler scheduler = new ScriptScheduler(2);
+    final ScriptScheduler scheduler;
     final ScriptEngine engine;
     final ComputerRegistry registry;
     /** More CPU than the default so functional tests boot fast on a busy machine; limit tests set their own. */
     ComputerLimits limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
 
     TestComputers(Path root) {
-        this(root, new LuaEngine(ZoneId::systemDefault), null);
+        this(root, CpuClock.system());
+    }
+
+    /** {@code clock}: what the computers' CPU budget is measured with. */
+    TestComputers(Path root, CpuClock clock) {
+        this(root, new LuaEngine(ZoneId::systemDefault), null, clock);
     }
 
     /** Computers whose program runs on {@code engine}; {@code boot} null = the rom's boot code. */
     TestComputers(Path root, ScriptEngine engine, @Nullable String boot) {
+        this(root, engine, boot, CpuClock.system());
+    }
+
+    TestComputers(Path root, ScriptEngine engine, @Nullable String boot, CpuClock clock) {
+        this.scheduler = new ScriptScheduler(2, clock);
         this.engine = engine;
         registry = new ComputerRegistry(new ComputerData(), root, new ComputerRegistry.Environment() {
             @Override
@@ -50,7 +61,7 @@ final class TestComputers implements AutoCloseable {
     }
 
     /** A new computer (off) with plain redstone. */
-    Computer create(RedstoneIo.Memory redstone) {
+    Computer create(RedstoneIo redstone) {
         int id = registry.create();
         return (Computer) registry.load(id, ComputerHost.detached(redstone), false);
     }
