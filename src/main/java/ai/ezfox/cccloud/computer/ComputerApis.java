@@ -4,7 +4,6 @@ import ai.ezfox.cccloud.code.api.ApiError;
 import ai.ezfox.cccloud.code.api.HostModule;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * The Java side of a computer program's APIs, as {@link HostModule}s: {@code term}, {@code os} (added to the sandbox's
@@ -159,11 +158,11 @@ final class ComputerApis {
         });
         b.fn("shutdown", a -> {
             computer.requestPower(Computer.Power.SHUTDOWN);
-            return new CompletableFuture<>(); // the program does not go on
+            return null; // the rom's os.shutdown then waits until the next tick stops the program
         });
         b.fn("reboot", a -> {
             computer.requestPower(Computer.Power.REBOOT);
-            return new CompletableFuture<>();
+            return null;
         });
         return b.build();
     }

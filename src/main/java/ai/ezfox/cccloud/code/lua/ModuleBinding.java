@@ -65,7 +65,8 @@ final class ModuleBinding {
                 throw new LuaError(e.getMessage());
             }
             if (result instanceof CompletableFuture<?> future) return instance.await(state, name, true, false, future, BYTES);
-            return LuaConvert.results(result, false, BYTES);
+            // nothing comes back as nil, so tostring(f()) and select('#', f()) behave like a function that returns nil
+            return LuaConvert.results(result, true, BYTES);
         }
 
         @Override

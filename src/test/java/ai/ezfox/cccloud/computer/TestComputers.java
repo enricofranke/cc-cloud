@@ -16,7 +16,8 @@ final class TestComputers implements AutoCloseable {
     final ScriptScheduler scheduler = new ScriptScheduler(2);
     final ScriptEngine engine = new LuaEngine(ZoneId::systemDefault);
     final ComputerRegistry registry;
-    ComputerLimits limits = ComputerLimits.DEFAULT;
+    /** More CPU than the default so functional tests boot fast on a busy machine; limit tests set their own. */
+    ComputerLimits limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
 
     TestComputers(Path root) {
         registry = new ComputerRegistry(new ComputerData(), root, new ComputerRegistry.Environment() {

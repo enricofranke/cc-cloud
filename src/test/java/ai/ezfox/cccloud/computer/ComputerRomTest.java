@@ -3,7 +3,6 @@ package ai.ezfox.cccloud.computer;
 import static org.junit.jupiter.api.Assertions.*;
 
 import ai.ezfox.cccloud.code.lua.LuaEngine;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,10 +13,11 @@ import org.junit.jupiter.api.Test;
 
 /** The rom: index.txt lists exactly the files that are there, every Lua file compiles, every program has help. */
 class ComputerRomTest {
-    private static final Path ROM = Path.of("src", "main", "resources", "cccloud_rom", "rom");
-
     @Test
-    void indexListsEveryFile() throws IOException {
+    void indexListsEveryFile() throws Exception {
+        var index = ClasspathRom.class.getResource("/cccloud_rom/index.txt");
+        assertNotNull(index);
+        Path ROM = Path.of(index.toURI()).resolveSibling("rom");
         var onDisk = new TreeSet<String>();
         try (Stream<Path> files = Files.walk(ROM)) {
             files.filter(Files::isRegularFile).forEach(p -> onDisk.add(ROM.relativize(p).toString().replace('\\', '/')));

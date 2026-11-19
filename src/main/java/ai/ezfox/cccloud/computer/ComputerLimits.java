@@ -17,7 +17,7 @@ package ai.ezfox.cccloud.computer;
  */
 public record ComputerLimits(int cpuMsPerSecond, int cpuMsPerResume, long memoryBytes, long allocBytesPerSecond, int maxEvents, int maxTimers,
                              long diskBytes, int maxOpenFiles, int redstonePerSecond) {
-    public static final ComputerLimits DEFAULT = new ComputerLimits(50, 1000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+    public static final ComputerLimits DEFAULT = new ComputerLimits(100, 1000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
 
     public ComputerLimits {
         if (cpuMsPerSecond < 1 || cpuMsPerResume < 1 || memoryBytes < 1 || maxEvents < 1 || maxTimers < 1 || diskBytes < 0 || maxOpenFiles < 1

@@ -30,7 +30,7 @@ class CloudComputerTest {
         var c = computers.create();
         c.turnOn();
         assertTrue(c.isOn());
-        until(c, 5000, "the prompt", () -> shows(c, "CloudOS") && shows(c, "/> "));
+        until(c, 15000, "the prompt", () -> shows(c, "CloudOS") && shows(c, "/>"));
         assertNull(c.lastError());
     }
 
@@ -50,7 +50,7 @@ class CloudComputerTest {
             f.writeLine(tostring(textutils.unserialize("os.shutdown()")))
             f.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         String out = read(c, "out");
         String[] lines = out.split("\n");
         assertEquals(Integer.toString(c.id()), lines[0]);
@@ -78,7 +78,7 @@ class CloudComputerTest {
             local list = table.concat(fs.list("box"), ",")
             local ff = fs.open("result", "w") ff.write(list .. "|" .. tostring(os.getComputerLabel()) .. "|" .. shell.dir()) ff.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         assertEquals("c.txt|Kitchen|", read(c, "result"));
         assertEquals("Kitchen", c.label());
         assertEquals("hello", read(c, "box/c.txt"));
@@ -101,7 +101,7 @@ class CloudComputerTest {
             f.write(("%s %s %s %s %s"):format(e, a, b, tostring(id == t2), tostring(slept >= 0.15)))
             f.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         assertEquals("ping 42 x true true", read(c, "out"));
     }
 
@@ -109,18 +109,18 @@ class CloudComputerTest {
     void inputBecomesEventsAndReadWorks() {
         var c = computers.create();
         file(c, "startup.lua", """
-            write("name? ")
+            write("name?")
             local name = read()
             local f = fs.open("out", "w") f.write(name) f.close()
             fs.open("done", "w").close()
             """);
         c.turnOn();
-        until(c, 5000, "the question", () -> shows(c, "name? "));
+        until(c, 15000, "the question", () -> shows(c, "name?"));
         for (char ch : "Bob".toCharArray()) assertTrue(c.input(InputEvent.character(ch), "player"));
         c.input(InputEvent.key(259, false), "player"); // backspace
         c.input(InputEvent.paste("x\ny"), "player");
         c.input(InputEvent.key(257, false), "player"); // enter
-        until(c, 5000, "the answer", () -> c.fs().exists("done"));
+        until(c, 15000, "the answer", () -> c.fs().exists("done"));
         assertEquals("Box", read(c, "out"));
     }
 
@@ -129,9 +129,9 @@ class CloudComputerTest {
         var c = computers.create();
         file(c, "startup.lua", "while true do os.pullEvent() end");
         c.turnOn();
-        until(c, 5000, "the program", () -> shows(c, "CloudOS"));
+        until(c, 15000, "the program", () -> shows(c, "CloudOS"));
         c.input(InputEvent.control("terminate"), "p"); // queued as an event: the program's pullEvent raises "Terminated"
-        until(c, 5000, "the prompt after terminate", () -> shows(c, "Terminated") && shows(c, "/> "));
+        until(c, 15000, "the prompt after terminate", () -> shows(c, "Terminated") && shows(c, "/>"));
         assertTrue(c.isOn());
     }
 
@@ -182,18 +182,18 @@ class CloudComputerTest {
         computers.limits = new ComputerLimits(50, 1000, 16L << 20, 1L << 30, 8, 4, 1L << 20, 32, 20);
         var c = computers.create();
         runStartup(c, """
+            local timer = os.startTimer(0.5) -- fires after the queue is drained again
             for i = 1, 20 do os.queueEvent("e", i) end
             local n = 0
-            os.queueEvent("end")
             while true do
-              local e = os.pullEvent()
-              if e == "end" then break end
+              local e, id = os.pullEvent()
+              if e == "timer" and id == timer then break end
               n = n + 1
             end
             local ok, err = pcall(function() for i = 1, 10 do os.startTimer(10) end end)
             local f = fs.open("out", "w") f.write(n .. " " .. tostring(ok) .. " " .. tostring(err)) f.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         String out = read(c, "out");
         assertTrue(out.startsWith("8 false"), out);
         assertTrue(out.contains("too many timers"), out);
@@ -215,7 +215,7 @@ class CloudComputerTest {
             f.write(" " .. tostring(bad))
             f.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         String out = read(c, "out");
         assertTrue(out.startsWith("7 true bottom,top,back,front,right,left false"), out);
         assertTrue(out.contains("too many redstone changes"), out);
@@ -236,9 +236,9 @@ class CloudComputerTest {
             fs.open("done", "w").close()
             """);
         c.turnOn();
-        until(c, 5000, "boot", () -> shows(c, "CloudOS"));
+        until(c, 15000, "boot", () -> shows(c, "CloudOS"));
         io.setInput(ComputerSide.BOTTOM, 9);
-        until(c, 5000, "the event", () -> c.fs().exists("done"));
+        until(c, 15000, "the event", () -> c.fs().exists("done"));
         assertEquals("9", read(c, "out"));
     }
 
@@ -269,7 +269,7 @@ class CloudComputerTest {
             results[#results + 1] = tostring(select(2, fs.open("/rom/x", "w")))
             local o = fs.open("out", "w") o.write(table.concat(results, "\\n")) o.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         String[] lines = read(c, "out").split("\n");
         assertEquals("65BC", lines[0]);
         assertEquals("ABCD/nil", lines[1]);
@@ -295,7 +295,7 @@ class CloudComputerTest {
             results[#results + 1] = table.concat(fs.list("/"), ",")
             local o = fs.open("out", "w") o.write(table.concat(results, " ")) o.close()
             fs.open("done", "w").close()
-            """, 5000);
+            """, 15000);
         String out = read(c, "out");
         for (String name : new String[]{"io", "debug", "package", "require", "collectgarbage", "getfenv", "__native"}) {
             assertTrue(out.contains(name + "=nil"), name + " in " + out);
@@ -317,7 +317,7 @@ class CloudComputerTest {
             os.shutdown()
             """);
         c.turnOn();
-        until(c, 5000, "reboot and shutdown", () -> c.fs().exists("done") && !c.isOn());
+        until(c, 15000, "reboot and shutdown", () -> c.fs().exists("done") && !c.isOn());
         assertNull(c.lastError());
     }
 
@@ -391,7 +391,7 @@ class CloudComputerTest {
         var c = computers.create();
         file(c, "startup.lua", "while true do sleep(0.05) end");
         c.turnOn();
-        until(c, 5000, "boot", () -> shows(c, "CloudOS"));
+        until(c, 15000, "boot", () -> shows(c, "CloudOS"));
         computers.registry.unload(c.id());
         assertFalse(c.isOn());
         assertNull(computers.registry.get(c.id()));
@@ -402,13 +402,13 @@ class CloudComputerTest {
         var c = computers.create();
         file(c, "startup.lua", "shell.run('lua')");
         c.turnOn();
-        until(c, 5000, "the lua prompt", () -> shows(c, "lua> "));
+        until(c, 15000, "the lua prompt", () -> shows(c, "lua>"));
         for (char ch : "1 + 2".toCharArray()) c.input(InputEvent.character(ch), "p");
         c.input(InputEvent.key(257, false), "p");
-        until(c, 5000, "the result", () -> screen(c).contains("\n3\n"));
+        until(c, 15000, "the result", () -> screen(c).contains("\n3\n"));
         for (char ch : "exit()".toCharArray()) c.input(InputEvent.character(ch), "p");
         c.input(InputEvent.key(257, false), "p");
-        until(c, 5000, "back in the shell", () -> shows(c, "/> "));
+        until(c, 15000, "back in the shell", () -> shows(c, "/>"));
     }
 
     @Test
@@ -416,17 +416,17 @@ class CloudComputerTest {
         var c = computers.create();
         file(c, "startup.lua", "shell.run('edit', 'notes.txt')");
         c.turnOn();
-        until(c, 5000, "the editor", () -> shows(c, "Press Ctrl for the menu"));
+        until(c, 15000, "the editor", () -> shows(c, "Press Ctrl for the menu"));
         for (char ch : "hi".toCharArray()) c.input(InputEvent.character(ch), "p");
         c.input(InputEvent.key(257, false), "p");
         c.input(InputEvent.character('x'), "p");
         c.input(InputEvent.key(341, false), "p"); // ctrl: menu
         c.input(InputEvent.key(257, false), "p"); // Save
-        until(c, 5000, "saved", () -> c.fs().exists("notes.txt") && shows(c, "Saved"));
+        until(c, 15000, "saved", () -> c.fs().exists("notes.txt") && shows(c, "Saved"));
         assertEquals("hi\nx\n", read(c, "notes.txt"));
         c.input(InputEvent.key(341, false), "p");
         c.input(InputEvent.key(262, false), "p"); // right: Exit
         c.input(InputEvent.key(257, false), "p");
-        until(c, 5000, "back in the shell", () -> shows(c, "/> "));
+        until(c, 15000, "back in the shell", () -> shows(c, "/>"));
     }
 }

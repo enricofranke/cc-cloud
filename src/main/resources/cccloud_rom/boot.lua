@@ -43,6 +43,15 @@ function os.time(kind)
   error("bad argument #1 to 'os.time' (unsupported operation)", 2)
 end
 
+-- shutdown and reboot happen on the next server tick; until then the program does not go on
+for _, name in ipairs({ "shutdown", "reboot" }) do
+  local request = os[name]
+  os[name] = function()
+    request()
+    while true do co_yield() end
+  end
+end
+
 function os.sleep(seconds)
   local timer = os.startTimer(seconds or 0)
   repeat
