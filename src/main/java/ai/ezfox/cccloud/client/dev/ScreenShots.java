@@ -312,9 +312,9 @@ public final class ScreenShots {
                 computer.handle().setLabel(advanced ? "Reactor control" : "Gate");
                 var c = computer.computer();
                 try {
-                    var drive = c.drive();
-                    if (!drive.exists("startup.lua")) drive.writeNew("startup.lua", COLOUR_TEST.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                    if (!drive.exists("reactor.lua")) drive.writeNew("reactor.lua", "print(\"reactor\")\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    var files = c.drive();
+                    if (!files.exists("startup.lua")) files.writeNew("startup.lua", COLOUR_TEST.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    if (!files.exists("reactor.lua")) files.writeNew("reactor.lua", "print(\"reactor\")\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 } catch (java.io.IOException e) {
                     CCCloud.LOGGER.warn("[cccloud] Screen shots: cannot write the computer's files", e);
                 }
