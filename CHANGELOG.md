@@ -80,6 +80,9 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ### Fixes
 - **"Ask before switching" now also asks on dashboard toggles.** It only worked for buttons, a toggle switched at once.
+- **Cloud Scripts are no longer stopped by server lag.** Their CPU limits count the CPU time a script really used, not
+  the time that passed: on a lagging server or during a garbage collection pause even a tiny script could end with
+  "ran for more than … ms without pausing".
 
 ### Layout editor
 - **Programs started while the editor is open show up in it.** Before, their new cards and widgets only appeared after
