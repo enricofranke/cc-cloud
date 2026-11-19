@@ -12,4 +12,5 @@ export function main(): void {
   const e = os.pullEvent("char");
   term.setCursorPos(1, 3);
   term.write("got " + e.at(1).asString());
+  os.sleep(60); // stays on until shut down (a computer whose program ended turns off and clears its screen)
 }

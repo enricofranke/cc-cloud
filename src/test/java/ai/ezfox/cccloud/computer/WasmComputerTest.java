@@ -53,8 +53,9 @@ class WasmComputerTest {
         assertTrue(c.isOn(), "it waits for a character: " + c.lastError());
         assertTrue(c.input(InputEvent.character('q'), "player"));
         until(c, 20_000, "the character", () -> shows(c, "got q"));
-        until(c, 10_000, "the program to end", () -> !c.isOn());
         assertNull(c.lastError(), screen(c));
+        c.shutdown();
+        assertFalse(c.isOn());
     }
 
     @Test
