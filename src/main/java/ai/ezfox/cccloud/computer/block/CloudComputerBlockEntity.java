@@ -241,7 +241,8 @@ public class CloudComputerBlockEntity extends BlockEntity implements ComputerHos
         return redstone;
     }
 
-    /** The world direction of a computer-local side (front = where the screen looks). Overrides ComputerHost#direction. */
+    /** The world direction of a computer-local side (front = where the screen looks). */
+    @Override
     public @Nullable Direction direction(ComputerSide side) {
         return isRemoved() ? null : world(facing(), side);
     }

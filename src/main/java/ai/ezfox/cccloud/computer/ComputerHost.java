@@ -20,6 +20,14 @@ public interface ComputerHost {
 
     RedstoneIo redstone();
 
+    /**
+     * The world direction of a computer side (from the block's facing), or null without a world. Programs reach the
+     * machines next to the computer through it ({@code peripheral}).
+     */
+    default net.minecraft.core.@Nullable Direction direction(ComputerSide side) {
+        return null;
+    }
+
     /** An advanced computer: colour screen and mouse input. Read once when the computer is created. */
     default boolean advanced() {
         return true;

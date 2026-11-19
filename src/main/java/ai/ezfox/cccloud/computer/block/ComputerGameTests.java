@@ -57,14 +57,14 @@ public final class ComputerGameTests {
             .thenSucceed();
     }
 
+    /** The screen's sync on a computer that is off (no program writes in between): exact diffs. */
     public static void terminalSync(GameTestHelper helper) {
         var be = place(helper, new BlockPos(2, 1, 2), true, null);
         var computer = be.computer();
-        computer.turnOn();
         var menu = new ComputerMenu(1, be.getBlockPos(), true);
         var first = ComputerScreens.updates(menu, computer);
         helper.assertTrue(first.size() == 2, "first sync: state and the full terminal, got " + first.size());
-        helper.assertTrue(first.get(0).contains("\"on\":true"), "state says on");
+        helper.assertTrue(first.get(0).contains("\"on\":false"), "state says off");
         var mirror = new TerminalMirror();
         helper.assertTrue(mirror.apply(JsonParser.parseString(first.get(1)).getAsJsonObject()), "full frame applies");
         helper.assertTrue(ComputerScreens.updates(menu, computer).isEmpty(), "nothing changed, nothing sent");
@@ -73,9 +73,7 @@ public final class ComputerGameTests {
         var delta = ComputerScreens.updates(menu, computer);
         helper.assertTrue(delta.size() == 1 && delta.get(0).contains("\"full\":false"), "a write sends a delta");
         helper.assertTrue(mirror.apply(JsonParser.parseString(delta.get(0)).getAsJsonObject()), "delta applies");
-        var line = new StringBuilder();
-        for (int x = 0; x < 5; x++) line.append(mirror.charAt(x, 3));
-        helper.assertTrue("hello".equals(line.toString()), "the screen shows what was written: " + line);
+        helper.assertTrue("hello".equals(row(mirror, 3, 5)), "the screen shows what was written: " + row(mirror, 3, 5));
 
         // input: the browser's format, strict
         var ok = ComputerScreens.parseInput("[{\"type\":\"char\",\"c\":\"a\"},{\"type\":\"mouse_click\",\"button\":1,\"x\":3,\"y\":4}]", true, 51, 19);
@@ -84,11 +82,52 @@ public final class ComputerGameTests {
             "a basic computer refuses mouse input");
         helper.assertTrue(ComputerScreens.parseInput("[{\"type\":\"exec\",\"cmd\":\"x\"}]", true, 51, 19) == null, "unknown events drop the message");
         helper.assertTrue(ComputerScreens.parseInput("not json", true, 51, 19) == null, "garbage drops the message");
-        for (var e : ok) computer.input(e, "test");
-        computer.input(InputEvent.control("shutdown"), "test");
-        helper.assertTrue(!computer.isOn(), "the shutdown control turns it off");
-        helper.assertTrue(ComputerScreens.updates(menu, computer).getFirst().contains("\"on\":false"), "the screen learns it is off");
         helper.succeed();
+    }
+
+    /** A real program: the computer boots its shell, which writes its prompt; the screen gets it; shutdown reaches the screen. */
+    public static void programWrites(GameTestHelper helper) {
+        var be = place(helper, new BlockPos(2, 1, 2), true, null);
+        var computer = be.computer();
+        var menu = new ComputerMenu(1, be.getBlockPos(), true);
+        var mirror = new TerminalMirror();
+        computer.input(InputEvent.control("turn_on"), "test");
+        helper.startSequence()
+            .thenWaitUntil(() -> {
+                for (String json : ComputerScreens.updates(menu, computer)) {
+                    var msg = JsonParser.parseString(json).getAsJsonObject();
+                    if (!msg.get("t").getAsString().equals("state")) mirror.apply(msg);
+                }
+                helper.assertTrue(mirror.ready() && !screenText(mirror).isBlank(), "the booted shell wrote to the screen");
+            })
+            .thenExecute(() -> {
+                helper.assertTrue(computer.isOn(), "on");
+                for (String json : ComputerScreens.updates(menu, computer)) {
+                    var msg = JsonParser.parseString(json).getAsJsonObject();
+                    if (!msg.get("t").getAsString().equals("state")) mirror.apply(msg);
+                }
+                var frame = Cct.computer(helper.getLevel(), be.getBlockPos()).frame();
+                helper.assertTrue(frame != null && String.join("", frame.text()).equals(String.join("", mirror.frame().text())),
+                    "the browser terminal sees the same picture");
+                computer.input(InputEvent.control("shutdown"), "test");
+            })
+            .thenWaitUntil(() -> {
+                ComputerScreens.updates(menu, computer);
+                helper.assertTrue(menu.sentState != null && menu.sentState.contains("\"on\":false"), "the screen learns it is off");
+            })
+            .thenSucceed();
+    }
+
+    private static String row(TerminalMirror m, int y, int n) {
+        var line = new StringBuilder();
+        for (int x = 0; x < n; x++) line.append(m.charAt(x, y));
+        return line.toString();
+    }
+
+    private static String screenText(TerminalMirror m) {
+        var all = new StringBuilder();
+        for (int y = 0; y < m.height(); y++) all.append(row(m, y, m.width()));
+        return all.toString();
     }
 
     public static void redstone(GameTestHelper helper) {

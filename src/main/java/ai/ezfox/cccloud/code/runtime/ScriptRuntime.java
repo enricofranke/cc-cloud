@@ -41,7 +41,7 @@ import org.jspecify.annotations.Nullable;
  * before it is stopped with an error the script cannot catch. Allocation (when the JVM can measure it per thread) is
  * capped per second, and the reachable heap is estimated every few seconds. An uncaught error ends the whole script.
  */
-public final class ScriptRuntime implements ScriptHost, Budget {
+public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.Watched {
     public enum Status { STARTING, RUNNING, STOPPED, ERROR }
 
     public interface Listener {
@@ -272,7 +272,8 @@ public final class ScriptRuntime implements ScriptHost, Budget {
     }
 
     /** The watchdog: make the engine look at the budget if a task runs right now. */
-    void poke() {
+    @Override
+    public void poke() {
         var i = instance;
         if (jobActive && i != null) i.interrupt();
     }

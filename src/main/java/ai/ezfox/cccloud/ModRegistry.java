@@ -233,6 +233,7 @@ public final class ModRegistry {
         TEST_FUNCTIONS.register("canvas_real_computer", () -> ai.ezfox.cccloud.gametest.CanvasTests::realComputer);
         TEST_FUNCTIONS.register("rules_widget_redstone", () -> ai.ezfox.cccloud.gametest.RuleTests::widgetThresholdSetsRedstone);
         TEST_FUNCTIONS.register("cloud_scripts_sensor_lamp", () -> ai.ezfox.cccloud.gametest.CloudScriptTests::sensorTurnsLampOn);
+        TEST_FUNCTIONS.register("computer_boots_and_runs_startup", () -> ai.ezfox.cccloud.computer.ComputerGameTests::bootsAndRunsStartup);
         TEST_FUNCTIONS.register("terminal_type_and_see", () -> ai.ezfox.cccloud.gametest.TerminalTests::typeAndSee);
         TEST_FUNCTIONS.register("history_widget_series", () -> ai.ezfox.cccloud.gametest.HistoryTests::widgetSeries);
         TEST_FUNCTIONS.register("security_no_escalation", () -> ai.ezfox.cccloud.gametest.SecurityTests::noEscalationInGame);

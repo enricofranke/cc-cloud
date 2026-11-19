@@ -1,0 +1,1 @@
+label get | label set <text> | label clear: shows, sets or removes the computer's name. The label stays when the computer is broken and placed again.

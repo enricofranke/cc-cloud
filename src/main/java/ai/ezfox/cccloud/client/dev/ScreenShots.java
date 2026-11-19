@@ -185,39 +185,28 @@ public final class ScreenShots {
         return level.getBlockEntity(pos) instanceof CloudUplinkBlockEntity u ? u : null;
     }
 
-    /** A screen full of text and colours, written the way a program would (no runtime needed). */
-    private static void computerDemo(ai.ezfox.cccloud.computer.ComputerTerminal t) {
-        int w = t.width();
-        t.setCursor(0, 0);
-        t.blit(pad(" CC: Cloud OS                          Reactor  ON ", w), "0".repeat(w), "b".repeat(w));
-        String[] lines = {"> status", "  core temp    412 K   [########--]", "  output    2.4 kFE/t", "  coolant      87 %",
-            "> redstone.setOutput(\"back\", 15)", "  ok", "", "  Grüße aus der Cloud: äöü ß é", "  {x=[1,2]} ~^|\\ @#$%&*()", "> _"};
-        String[] colours = {"4", "0", "0", "0", "4", "5", "0", "3", "8", "4"};
-        for (int i = 0; i < lines.length; i++) {
-            t.setCursor(0, 2 + i);
-            String line = pad(lines[i], w);
-            t.blit(line, colours[i].repeat(w), "f".repeat(w));
-        }
-        t.setCursor(15, 3);
-        t.blit("########", "e".repeat(8), "f".repeat(8));
-        t.setCursor(0, 14);
-        var bar = new StringBuilder();
-        var fg = new StringBuilder();
-        String digits = "0123456789abcdef";
-        for (int i = 0; i < 16; i++) {
-            bar.append("   ");
-            fg.append("000");
-        }
-        var bg = new StringBuilder();
-        for (int i = 0; i < 16; i++) bg.append(String.valueOf(digits.charAt(i)).repeat(3));
-        t.blit(bar.toString(), fg.toString(), bg.toString());
-        t.setCursor(2, 11);
-        t.setBlink(true);
-    }
-
-    private static String pad(String s, int w) {
-        return s.length() >= w ? s.substring(0, w) : s + " ".repeat(w - s.length());
-    }
+    /** The Cloud Computer's startup program in the screenshots: a title bar and the 16 colours, then the shell. */
+    private static final String COLOUR_TEST = """
+        local names = {"white", "orange", "magenta", "lightBlue", "yellow", "lime", "pink", "gray",
+          "lightGray", "cyan", "purple", "blue", "brown", "green", "red", "black"}
+        term.setBackgroundColour(colors.blue)
+        term.setTextColour(colors.white)
+        print(" CC: Cloud - colour test" .. string.rep(" ", 27))
+        term.setBackgroundColour(colors.black)
+        for _, n in ipairs(names) do
+          term.setBackgroundColour(colors[n])
+          term.write("   ")
+        end
+        term.setBackgroundColour(colors.black)
+        print()
+        for _, n in ipairs(names) do
+          term.setTextColour(colors[n] == colors.black and colors.gray or colors[n])
+          term.write(n:sub(1, 3))
+        end
+        term.setTextColour(colors.white)
+        print()
+        print("{x=[1,2]} ~^|\\ @#$%&*() <ok>")
+        """;
 
     private static void build(ServerLevel level, ServerPlayer player) {
         var server = level.getServer();
@@ -321,8 +310,21 @@ public final class ScreenShots {
             level.setBlockAndUpdate(at, block.defaultBlockState().setValue(ai.ezfox.cccloud.computer.block.CloudComputerBlock.FACING, Direction.NORTH));
             if (level.getBlockEntity(at) instanceof ai.ezfox.cccloud.computer.block.CloudComputerBlockEntity computer && computer.handle() != null) {
                 computer.handle().setLabel(advanced ? "Reactor control" : "Gate");
-                computer.computer().turnOn();
-                computerDemo(computer.computer().terminal());
+                var c = computer.computer();
+                try {
+                    var drive = c.drive();
+                    if (!drive.exists("startup.lua")) drive.writeNew("startup.lua", COLOUR_TEST.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    if (!drive.exists("reactor.lua")) drive.writeNew("reactor.lua", "print(\"reactor\")\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                } catch (java.io.IOException e) {
+                    CCCloud.LOGGER.warn("[cccloud] Screen shots: cannot write the computer's files", e);
+                }
+                c.turnOn();
+                // once the shell is up, type "ls" and Enter like a player
+                later(server, 60, () -> {
+                    for (char ch : "ls".toCharArray()) c.input(ai.ezfox.cccloud.computer.InputEvent.character(ch), "screenshots");
+                    c.input(ai.ezfox.cccloud.computer.InputEvent.key(257, false), "screenshots");
+                    c.input(ai.ezfox.cccloud.computer.InputEvent.keyUp(257), "screenshots");
+                });
                 shots.add(new Shot(advanced ? "computer-advanced" : "computer", at,
                     p -> ai.ezfox.cccloud.computer.block.ComputerScreens.open(p, computer)));
             }

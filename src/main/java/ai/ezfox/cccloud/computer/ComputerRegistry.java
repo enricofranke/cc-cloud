@@ -1,5 +1,8 @@
 package ai.ezfox.cccloud.computer;
 
+import ai.ezfox.cccloud.code.engine.ScriptEngine;
+import ai.ezfox.cccloud.code.game.CodeService;
+import ai.ezfox.cccloud.code.runtime.ScriptScheduler;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,17 +28,71 @@ public final class ComputerRegistry {
 
     private final ComputerData data;
     private final Path root;
+    private final Environment env;
     private final Map<Integer, CloudComputer> loaded = new ConcurrentHashMap<>();
 
+    /**
+     * What computers run on: the engine, the shared script threads (null while none run, e.g. Lua is unavailable), the
+     * limits and the rom.
+     */
+    public interface Environment {
+        ScriptEngine engine();
+
+        @Nullable ScriptScheduler scheduler();
+
+        /** Why programs cannot run on this server, or null. */
+        default @Nullable String problem() {
+            return null;
+        }
+
+        ComputerLimits limits();
+
+        default ComputerFs.Rom rom() {
+            return ClasspathRom.standard();
+        }
+
+        default String boot() {
+            return ClasspathRom.standard().boot();
+        }
+    }
+
+    /** The game's environment: Lua and the threads of Cloud Scripts, limits from the config. */
+    public static final Environment GAME = new Environment() {
+        @Override
+        public ScriptEngine engine() {
+            return CodeService.lua();
+        }
+
+        @Override
+        public @Nullable ScriptScheduler scheduler() {
+            return CodeService.scheduler();
+        }
+
+        @Override
+        public @Nullable String problem() {
+            return CodeService.vmProblem();
+        }
+
+        @Override
+        public ComputerLimits limits() {
+            return ComputerLimits.DEFAULT;
+        }
+    };
+
     /** A registry over this data with drive folders under {@code root} (tests; the game uses {@link #get}). */
-    public ComputerRegistry(ComputerData data, Path root) {
+    public ComputerRegistry(ComputerData data, Path root, Environment env) {
         this.data = data;
         this.root = root;
+        this.env = env;
     }
 
     public static ComputerRegistry get(MinecraftServer server) {
         return BY_SERVER.computeIfAbsent(server, s -> new ComputerRegistry(s.getDataStorage().computeIfAbsent(ComputerData.TYPE),
-            s.getWorldPath(LevelResource.ROOT).resolve(FOLDER)));
+            s.getWorldPath(LevelResource.ROOT).resolve(FOLDER), GAME));
+    }
+
+    Environment env() {
+        return env;
     }
 
     /** Server stopping: every computer stops, the registry is forgotten. */

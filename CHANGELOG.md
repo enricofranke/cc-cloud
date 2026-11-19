@@ -4,6 +4,16 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Cloud Computers
+- **Computers of our own.** Programs run on the mod's own Lua runtime, no CC: Tweaked needed: a shell with `ls`, `cd`,
+  `cat`, `cp`, `mv`, `rm`, `mkdir`, `label`, `id`, `help`, an interactive `lua` prompt and the `edit` editor. A
+  `startup.lua` runs when the computer boots.
+- **Familiar APIs:** `term` (colours, cursor, scroll, blit), `os` (events, timers, sleep, time, label), `fs` (files and
+  folders on the computer's own drive), `redstone`, `textutils`, `colors`, `keys`, and `peripheral` for the machines next
+  to the computer, read through the same cards the dashboard shows.
+- **Safe on public servers:** every computer has a CPU and memory budget, a 1 MB drive it cannot leave, limits for
+  events, timers, open files, redstone changes and input, and runs off the server thread.
+
 ### Cloud Computers: the block
 - **Cloud Computer and Advanced Cloud Computer**: a computer you place in the world, without any other mod. Right-click
   opens its screen with CC: Cloud's own pixel font: type, paste a line with Ctrl+V and, on the advanced one, click, drag
