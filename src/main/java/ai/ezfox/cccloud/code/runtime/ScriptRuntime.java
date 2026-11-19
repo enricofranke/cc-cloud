@@ -15,7 +15,6 @@ import ai.ezfox.cccloud.code.world.WorldAction;
 import ai.ezfox.cccloud.code.world.WorldEvents;
 import ai.ezfox.cccloud.code.world.WorldSnapshot;
 import ai.ezfox.cccloud.web.TokenBucket;
-import java.lang.management.ManagementFactory;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayDeque;
@@ -65,13 +64,12 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         }
     }
 
-    static final long SECOND = 1_000_000_000L;
+    static final long SECOND = CpuBudget.SECOND;
     /** A worker gives other scripts a turn after this long. */
     static final long SLICE_NANOS = 20_000_000L;
     static final double MIN_SLEEP = 0.05;
     /** How deep handlers may run inside waits of other tasks (ABORT engines). */
     static final int MAX_NESTING = 4;
-    private static final com.sun.management.@Nullable ThreadMXBean ALLOC = allocationBean();
 
     private final ScriptIdentity who;
     private final int version;
@@ -86,8 +84,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private final ScriptStore store;
     private final Listener listener;
     private final Supplier<ZoneId> zone;
-    /** The CPU budget's clock: thread CPU time, read on the worker that runs the script. */
-    private final CpuClock cpu;
+    /** CPU share, longest run, allocation and heap timing; thread CPU time, read on the thread that runs the script. */
+    private final CpuBudget budget;
     private final long startedAt = System.currentTimeMillis();
     private final long startNanos = System.nanoTime();
     private final TokenBucket actions;
@@ -123,30 +121,14 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private volatile ScriptError.Kind abortKind = ScriptError.Kind.KILLED;
 
     // ---- worker thread (one slice at a time) ----
-    private long windowStart;
-    private long windowUsed;
-    private long windowAlloc;
     private final long[] lastSeconds = new long[10];
     private int secondsSeen;
     private volatile long lastSecondNanos;
     private volatile long averageNanos;
-    private long jobStart;
-    private long jobBlocked;
-    private long jobAllocStart;
     private @Nullable Run currentRun;
-    private long lastHeapCheck;
-    private long allocSinceHeap;
-    /** Allocation after which the next heap estimate is due: max(memory / 4, twice the last estimate). */
-    private volatile long heapThreshold;
-    /** The budget check paused a task so the heap can be measured (not because the CPU share is used up). */
-    private volatile boolean heapRequested;
-    private volatile long heapEstimate;
-    private volatile long totalCpuNanos;
     // ---- own thread (ABORT engines) ----
     private final @Nullable BlockingRunner runner;
     private int nesting;
-    /** How often the script was paused because its CPU share of a second was used up. */
-    private volatile int sharePauses;
 
     private static final class Run {
         final Task task;
@@ -203,7 +185,10 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         this.source = source;
         this.engine = engine;
         this.blocking = engine.preemption() == ScriptEngine.Preemption.ABORT;
-        this.runner = blocking ? new BlockingRunner(scheduler, limits.cpuMsPerSecond(), limits.cpuMsPerResume(), () -> stopRequested, lock, this::secondClosed) : null;
+        // an engine that cannot suspend has a hard memory cap of its own: no allocation or heap limits in the budget
+        this.budget = new CpuBudget(scheduler.clock(), limits.cpuMsPerSecond(), limits.cpuMsPerResume(),
+            blocking ? CpuBudget.UNLIMITED : limits.allocBytesPerSecond(), blocking ? CpuBudget.UNLIMITED : limits.memoryBytes());
+        this.runner = blocking ? new BlockingRunner(scheduler, budget, () -> stopRequested, lock, this::secondClosed) : null;
         this.scheduler = scheduler;
         this.world = world;
         this.limits = limits;
@@ -211,13 +196,11 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         this.store = store;
         this.listener = listener;
         this.zone = zone;
-        this.cpu = scheduler.clock();
         this.snapshot = snapshot;
         this.eventBase = snapshot.seq() == 0 ? null : snapshot;
         this.actions = new TokenBucket(limits.actionsPerSecond(), limits.actionsPerSecond());
         this.notifications = new TokenBucket(limits.notifyBurst(), limits.notifyPerSecond());
         this.audit = new AuditThrottle(limits.auditPerMinute(), System::currentTimeMillis);
-        this.heapThreshold = Math.max(1, limits.memoryBytes() / 4);
     }
 
     // ---- life cycle ----------------------------------------------------------------------------------------------------
@@ -344,9 +327,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             while (!stopRequested) {
                 long now = System.nanoTime();
                 roll(now);
-                if (windowUsed >= limits.cpuMsPerSecond() * 1_000_000L) {
-                    sharePauses++;
-                    pause(windowStart + SECOND);
+                if (budget.shareUsed()) {
+                    pause(budget.pauseForShare());
                     break;
                 }
                 Job job;
@@ -384,7 +366,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     }
 
     private boolean load() {
-        jobStart = cpu.now();
+        long loadStart = budget.mark();
         if (limits.memoryBytes() < engine.minimumMemory()) {
             end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": " + engine.language() + " needs at least "
                 + (engine.minimumMemory() >> 20) + " MB of memory, the server allows " + (limits.memoryBytes() >> 20) + " MB", null, null));
@@ -401,7 +383,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                 ready.addFirst(new Call(main, null, main.label(), null, null));
             }
             log.system("system", "started (version " + version + ") by " + who.starterName() + ", acting with the rights of " + who.authorName());
-            windowUsed += cpu.now() - jobStart;
+            budget.chargeSince(loadStart);
             return true;
         } catch (ScriptError e) {
             end("error", e);
@@ -418,9 +400,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             case Again a -> a.run();
         };
         currentRun = run;
-        jobStart = cpu.now();
-        jobBlocked = 0;
-        jobAllocStart = allocated();
+        budget.startJob();
         RunResult result;
         jobActive = true;
         scheduler.enter(this);
@@ -433,13 +413,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             jobActive = false;
             scheduler.exit(this);
         }
-        long used = Math.max(0, cpu.now() - jobStart - jobBlocked);
-        long alloc = allocated() - jobAllocStart;
-        windowUsed += used;
-        windowAlloc += alloc;
-        allocSinceHeap += alloc;
-        run.cpu += used;
-        totalCpuNanos += used;
+        run.cpu += budget.endJob();
         currentRun = null;
         switch (result) {
             case RunResult.Done d -> finished(run);
@@ -452,11 +426,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                     if (!ended) ready.addFirst(new Again(run));
                 }
                 // paused for a heap measurement only: go on right after it, within the CPU share
-                boolean shareLeft = heapRequested && windowUsed < limits.cpuMsPerSecond() * 1_000_000L;
-                if (!stopRequested && !shareLeft) {
-                    sharePauses++;
-                    pause(windowStart + SECOND);
-                }
+                if (!stopRequested && !budget.heapPauseOnly()) pause(budget.pauseForShare());
             }
             case RunResult.Yielded y -> {
                 run.cpu = 0;
@@ -518,13 +488,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     /** Starts a new CPU window when a second has passed; keeps the last ten seconds for the dashboard. */
     private void roll(long now) {
-        if (windowStart == 0) windowStart = now;
-        if (now - windowStart < SECOND) return;
-        long seconds = (now - windowStart) / SECOND;
-        secondClosed(windowUsed, seconds);
-        windowStart += seconds * SECOND;
-        windowUsed = 0;
-        windowAlloc = 0;
+        long seconds = budget.roll(now);
+        if (seconds > 0) secondClosed(budget.lastWindowUsed(), seconds);
     }
 
     /** A CPU window closed: the dashboard's last second and ten-second average. */
@@ -541,27 +506,15 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private void heap() {
         var i = instance;
         if (i == null || ended()) return;
-        long now = System.nanoTime();
-        long since = now - lastHeapCheck;
-        // With per-thread allocation counts: whenever the script allocated max(memory / 4, 2 × its last size) since the last
-        // estimate (so the walk costs at most about as much as the allocation it follows), else every 10 seconds.
-        boolean due = heapRequested || (ALLOC != null ? allocSinceHeap > heapThreshold || allocSinceHeap > 0 && since > 10 * SECOND : since > 10 * SECOND);
-        heapRequested = false;
-        if (!due) return;
-        long cpuStart = cpu.now();
-        List<ScriptFunction> roots;
-        synchronized (lock) {
-            roots = new ArrayList<>();
-            for (var h : handlers.values()) roots.add(h.function());
-            for (var t : timers.values()) roots.add(t.function);
-        }
-        long estimate = i.heapEstimate(limits.memoryBytes(), roots);
-        long end = System.nanoTime();
-        windowUsed += cpu.now() - cpuStart;
-        lastHeapCheck = end;
-        allocSinceHeap = 0;
-        heapEstimate = estimate;
-        heapThreshold = Math.max(limits.memoryBytes() / 4, 2 * Math.min(estimate, limits.memoryBytes()));
+        long estimate = budget.measureHeap(System.nanoTime(), () -> {
+            List<ScriptFunction> roots;
+            synchronized (lock) {
+                roots = new ArrayList<>();
+                for (var h : handlers.values()) roots.add(h.function());
+                for (var t : timers.values()) roots.add(t.function);
+            }
+            return i.heapEstimate(limits.memoryBytes(), roots);
+        });
         if (estimate > limits.memoryBytes()) {
             end("error", new ScriptError(ScriptError.Kind.MEMORY_LIMIT, who.scriptName() + ": uses more than " + (limits.memoryBytes() >> 20) + " MB of memory",
                 null, null));
@@ -596,25 +549,21 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
                 }
             };
         }
-        long used = cpu.now() - jobStart - jobBlocked;
-        long jobAlloc = ALLOC == null ? 0 : allocated() - jobAllocStart;
-        if (ALLOC != null && allocSinceHeap + jobAlloc > heapThreshold) {
-            heapRequested = true;
-            return Decision.PAUSE;
-        }
-        if (ALLOC != null && windowAlloc + jobAlloc > limits.allocBytesPerSecond()) {
-            abortMessage = "allocated more than " + (limits.allocBytesPerSecond() >> 20) + " MB within a second";
-            abortKind = ScriptError.Kind.MEMORY_LIMIT;
-            return Decision.ABORT;
-        }
         var run = currentRun;
-        if (run != null && run.cpu + used > limits.cpuMsPerResume() * 1_000_000L) {
-            abortMessage = "ran for more than " + limits.cpuMsPerResume() + " ms without pausing (wait with cloud.sleep or react to events)";
-            abortKind = ScriptError.Kind.CPU_LIMIT;
-            return Decision.ABORT;
-        }
-        if (windowUsed + used >= limits.cpuMsPerSecond() * 1_000_000L) return Decision.PAUSE;
-        return Decision.CONTINUE;
+        return switch (budget.check(run == null ? 0 : run.cpu)) {
+            case CONTINUE -> Decision.CONTINUE;
+            case MEASURE_HEAP, PAUSE -> Decision.PAUSE;
+            case TOO_MUCH_ALLOCATION -> {
+                abortMessage = "allocated more than " + (limits.allocBytesPerSecond() >> 20) + " MB within a second";
+                abortKind = ScriptError.Kind.MEMORY_LIMIT;
+                yield Decision.ABORT;
+            }
+            case TOO_LONG -> {
+                abortMessage = "ran for more than " + limits.cpuMsPerResume() + " ms without pausing (wait with cloud.sleep or react to events)";
+                abortKind = ScriptError.Kind.CPU_LIMIT;
+                yield Decision.ABORT;
+            }
+        };
     }
 
     @Override
@@ -634,9 +583,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     @Override
     public void blocked(long nanos) {
-        if (runner != null) runner.blocked(nanos);
-        // thread CPU time does not run while the engine waits; wall time does and has to be given back
-        else if (cpu.wall()) jobBlocked += nanos;
+        // one budget for both paths: thread CPU time does not run while the engine waits, wall time is given back
+        budget.blocked(nanos);
     }
 
     // ---- own thread (ABORT engines) -------------------------------------------------------------------------------------
@@ -700,7 +648,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             run.cpu += r.leave(outer);
             currentRun = outerRun;
         }
-        heapEstimate = i.heapEstimate(limits.memoryBytes(), List.of());
+        budget.heapMeasured(i.heapEstimate(limits.memoryBytes(), List.of()));
         switch (result) {
             case RunResult.Done d -> finished(run);
             case RunResult.Failed f -> {
@@ -743,25 +691,9 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         }
     }
 
-    private static long allocated() {
-        return ALLOC == null ? 0 : ALLOC.getCurrentThreadAllocatedBytes();
-    }
-
-    private static com.sun.management.@Nullable ThreadMXBean allocationBean() {
-        try {
-            if (ManagementFactory.getThreadMXBean() instanceof com.sun.management.ThreadMXBean bean && bean.isThreadAllocatedMemorySupported()) {
-                if (!bean.isThreadAllocatedMemoryEnabled()) bean.setThreadAllocatedMemoryEnabled(true);
-                return bean.getCurrentThreadAllocatedBytes() >= 0 ? bean : null;
-            }
-        } catch (RuntimeException | LinkageError ignored) {
-            // not a HotSpot-like JVM: memory is only bounded by the heap estimate
-        }
-        return null;
-    }
-
     /** Whether allocation per second can be limited on this JVM. */
     public static boolean allocationLimited() {
-        return ALLOC != null;
+        return CpuBudget.allocationLimited();
     }
 
     // ---- events --------------------------------------------------------------------------------------------------------
@@ -1099,16 +1031,16 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     }
 
     public long cpuTotalNanos() {
-        return runner != null ? runner.total() : totalCpuNanos;
+        return budget.totalCpuNanos();
     }
 
     /** How often the script was paused until the next second because its CPU share was used up. */
     public int sharePauses() {
-        return sharePauses;
+        return budget.sharePauses();
     }
 
     public long heapEstimate() {
-        return heapEstimate;
+        return budget.heapEstimate();
     }
 
     private static String format(double seconds) {

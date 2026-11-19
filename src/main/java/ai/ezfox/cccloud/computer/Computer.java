@@ -128,6 +128,11 @@ final class Computer implements CloudComputer {
         else for (var side : ComputerSide.all()) host.redstone().setOutput(side, 0);
     }
 
+    /** The current run (null while off). */
+    @Nullable ComputerRuntime runtime() {
+        return runtime;
+    }
+
     /** Worker or timer thread: the program ended (null error: normally) or failed. */
     private void runEnded(ComputerRuntime rt, @Nullable ScriptError error) {
         if (rt != runtime) return; // stopped on purpose

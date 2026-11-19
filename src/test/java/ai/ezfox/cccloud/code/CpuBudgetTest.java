@@ -4,10 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.code.runtime.CpuClock;
+import ai.ezfox.cccloud.code.runtime.HandClock;
 import java.lang.management.ManagementFactory;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -18,26 +18,6 @@ class CpuBudgetTest {
     /** Longer than the 120 ms per resume of {@link TestScripts#FAST}. */
     private static final long STALL_MS = 400;
     private static final long MS = 1_000_000L;
-
-    /** A clock the test moves by hand. */
-    private static final class HandClock implements CpuClock {
-        final AtomicLong nanos = new AtomicLong();
-
-        @Override
-        public long now() {
-            return nanos.get();
-        }
-
-        @Override
-        public long of(long threadId) {
-            return nanos.get();
-        }
-
-        @Override
-        public boolean wall() {
-            return false;
-        }
-    }
 
     private static TestScripts.Run runStalled(TestScripts scripts, Runnable insideNotify) throws InterruptedException {
         scripts.world.onNotify = insideNotify;
@@ -169,7 +149,7 @@ class CpuBudgetTest {
     void cpuTimeUsesTheBudget() throws InterruptedException {
         var clock = new HandClock();
         try (var scripts = new TestScripts(clock)) {
-            var run = runStalled(scripts, () -> clock.nanos.addAndGet(STALL_MS * MS));
+            var run = runStalled(scripts, () -> clock.advanceMs(STALL_MS));
             assertNotNull(run.error(), run.logText());
             assertEquals(ScriptError.Kind.CPU_LIMIT, run.error().kind());
             assertTrue(run.error().getMessage().contains("ran for more than 120 ms without pausing"), run.error().getMessage());
