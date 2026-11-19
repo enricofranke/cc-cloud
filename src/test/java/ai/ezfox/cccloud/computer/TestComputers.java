@@ -16,6 +16,8 @@ import org.jspecify.annotations.Nullable;
 final class TestComputers implements AutoCloseable {
     final ScriptScheduler scheduler;
     final ScriptEngine engine;
+    /** The engine of WebAssembly programs started from the shell (null: none). */
+    @Nullable ScriptEngine wasm;
     final ComputerRegistry registry;
     /** More CPU than the default so functional tests boot fast on a busy machine; limit tests set their own. */
     ComputerLimits limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
@@ -51,6 +53,11 @@ final class TestComputers implements AutoCloseable {
             @Override
             public ComputerLimits limits() {
                 return limits;
+            }
+
+            @Override
+            public @Nullable ScriptEngine wasm() {
+                return wasm;
             }
 
             @Override

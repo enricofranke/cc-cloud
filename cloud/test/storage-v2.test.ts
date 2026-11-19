@@ -133,7 +133,7 @@ describe("stuck crafts and orders (mock)", () => {
   it("shows a stuck job and retries the same craft", async () => {
     await start();
     const conn = await connect();
-    const jobs = () => (conn.uplinks.value.find((u) => u.uplinkId === ME)?.widgets.find((w) => w.id === "jobs")?.value ?? []) as JobInfo[];
+    const jobs = () => (conn.uplinks.value.find((u) => u.uplinkId === ME)?.widgets.find((w) => w.id === "jobs")?.value ?? []) as unknown as JobInfo[];
     for (let i = 0; i < 100 && !jobs().length; i++) await sleep(5);
     const job = jobs().find((j) => j.status === "stuck")!;
     expect(job).toMatchObject({ error: "no_machine", retryable: true, source: "dashboard" });
@@ -160,7 +160,7 @@ describe("stuck crafts and orders (mock)", () => {
     expect(outcome.ok).toBe(true);
     expect(outcome.missing?.[0]).toMatchObject({ have: expect.any(Number), need: expect.any(Number) });
     await sleep(30);
-    const jobs = conn.uplinks.value.find((u) => u.uplinkId === ME)!.widgets.find((w) => w.id === "jobs")!.value as JobInfo[];
+    const jobs = conn.uplinks.value.find((u) => u.uplinkId === ME)!.widgets.find((w) => w.id === "jobs")!.value as unknown as JobInfo[];
     const order = jobs.find((j) => j.jobId === outcome.jobId)!;
     expect(order).toMatchObject({ status: "waiting", error: "not_enough_items", missing: [expect.objectContaining({ have: expect.any(Number) }), expect.anything()] });
     await conn.storage(ME, "cancel", { jobId: order.jobId });

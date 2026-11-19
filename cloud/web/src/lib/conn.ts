@@ -161,6 +161,7 @@ export const REJECT_TEXT: Record<string, string> = {
   unknown_uplink: "This uplink no longer exists.",
   unknown_widget: "This control no longer exists.",
   not_interactive: "This widget is read-only.",
+  computer_off: "The computer is off – turn it on first.",
   invalid_value: "The value was not accepted.",
   invalid_message: "The server did not understand the request.",
   timeout: "No answer from the server.",

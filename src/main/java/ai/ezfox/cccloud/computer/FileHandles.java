@@ -157,6 +157,15 @@ final class FileHandles {
         }
     }
 
+    /** A running WebAssembly program's module counts like an open file's buffer while it runs ({@link #unhold} after). */
+    synchronized void hold(long bytes) {
+        reserve(bytes);
+    }
+
+    synchronized void unhold(long bytes) {
+        buffered = Math.max(0, buffered - bytes);
+    }
+
     /** Takes {@code bytes} from the shared allowance of all open handles, or fails like a full disk. */
     private void reserve(long bytes) {
         if (buffered + bytes > fs.capacity()) throw new ApiError("Out of space (open files hold too much)");

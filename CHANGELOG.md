@@ -9,6 +9,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
   "WebAssembly (.wasm)". They use the same `cloud` API as Lua scripts, with the same rights, actions, events, timers and
   storage, and run inside the mainframe like them. The SDK and a build guide are in `wasm/assemblyscript`.
 - The source you upload with the module is shown in the editor (read-only), so everyone with access sees what runs.
+- **WebAssembly programs on Cloud Computers:** upload a `.wasm` in the computer's editor (“+ .wasm”) and run it from the
+  shell by its name, with arguments. It gets the keyboard while it runs; Ctrl+T ends it.
 - **Safe on public servers:** each script gets a hard memory cap, the same CPU share as Lua scripts, a limit on host
   calls, and only CC: Cloud's own host functions (no WASI, no file or network access). Modules are checked when they are
   saved and again before every start. New config: `cloudScriptWasmMaxBytes`, `cloudScriptWasmSourceBytes`.
@@ -32,6 +34,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Breaking it keeps it:** the item remembers number and label and brings the files back – for its owner only.
 - **On the dashboard like any computer:** put an uplink on it for the Computer card, the browser terminal and the editor.
 - **Safe on servers:** only the owner, their team and admins may use it; another team's claim shuts it down.
+- **Off means off:** a computer that is off emits no redstone, and the Computer card says so instead of setting an output.
+- **Windows-safe file names:** `con`, `nul`, `com1` and the other Windows device names are refused on a computer's drive.
 
 ### CC: Tweaked is optional
 - **CC: Cloud runs on its own.** Mainframes, uplinks on machines, probes, relays, Fiber Cable, upgrades, every machine,

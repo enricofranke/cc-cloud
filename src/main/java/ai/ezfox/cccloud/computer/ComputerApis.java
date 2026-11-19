@@ -309,6 +309,37 @@ final class ComputerApis {
             return (long) peripherals.call(side, a.string(1), value);
         });
         b.fn("pull", a -> runtime.pull());
+        b.fn("args", a -> java.util.List.of()); // a boot program has no shell arguments (ChildProgram gives its own)
+        // a WebAssembly program from the shell: runWasm(path, name, args...) -> id; "wasm_done", id, ok, error when it ended
+        b.fn("runWasm", a -> {
+            var wasm = computer.wasmEngine();
+            if (wasm == null) throw new ApiError("WebAssembly programs cannot run on this server");
+            String path = a.string(0);
+            // size first (nothing larger than a module may be is read), and the module's bytes count like an open file's
+            // buffer while the program runs
+            long size = computer.fs().size(path);
+            if (size > ai.ezfox.cccloud.code.wasm.WasmCheck.MAX_MODULE) {
+                throw new ApiError(path + ": larger than " + ai.ezfox.cccloud.code.wasm.WasmCheck.MAX_MODULE / 1024 + " KB, not a program this computer runs");
+            }
+            files.hold(size);
+            byte[] module;
+            try {
+                module = computer.fs().readFile(path);
+            } catch (RuntimeException e) {
+                files.unhold(size);
+                throw e;
+            }
+            var args = new java.util.ArrayList<Object>();
+            args.add(a.has(1) ? a.string(1) : ComputerFs.name(path)); // what it was called as, then its arguments
+            for (int i = 2; i < a.count(); i++) args.add(a.get(i));
+            String source = new ai.ezfox.cccloud.code.wasm.WasmSource(module, null, null).encode();
+            try {
+                return runtime.startWasm(wasm, ComputerFs.name(path), source, args, computer.threadOwner(), () -> files.unhold(size));
+            } catch (RuntimeException e) {
+                files.unhold(size);
+                throw e;
+            }
+        });
         b.fn("open", a -> {
             try {
                 return (long) files.open(a.string(0), a.string(1));

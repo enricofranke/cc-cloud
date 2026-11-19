@@ -1,6 +1,6 @@
 // Builds the WebAssembly modules the mod's tests use from their AssemblyScript sources, with the pinned compiler
 // (package-lock.json): tests/*.ts -> src/test/resources/wasm/*.wasm (unit tests) and examples/porch-light.ts ->
-// src/main/resources/cccloud_gametest/wasm/porch-light.wasm (GameTest). Run from this folder: npm ci && npm run build
+// src/main/resources/cccloud_gametest/wasm/porch-light.wasm and computer-args.wasm (GameTests). Run from this folder: npm ci && npm run build
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -27,3 +27,4 @@ for (const file of readdirSync(join(root, "tests")).filter((f) => f.endsWith(".t
   build(`tests/${file}`, `../../src/test/resources/wasm/${file.replace(/\.ts$/, ".wasm")}`);
 }
 build("examples/porch-light.ts", "../../src/main/resources/cccloud_gametest/wasm/porch-light.wasm");
+build("tests/computer-args.ts", "../../src/main/resources/cccloud_gametest/wasm/computer-args.wasm");

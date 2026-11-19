@@ -64,6 +64,11 @@ public final class BlockingRunner {
 
     /** Starts the run's thread; null if it started. */
     public ScriptScheduler.@Nullable Refusal start(Runnable body) {
+        return start(body, null);
+    }
+
+    /** {@link #start} counted against {@code owner}'s share of the threads ({@link ScriptScheduler#MAX_THREADS_PER_OWNER}). */
+    public ScriptScheduler.@Nullable Refusal start(Runnable body, @Nullable Object owner) {
         return scheduler.startThread(() -> {
             thread = Thread.currentThread();
             try {
@@ -72,7 +77,16 @@ public final class BlockingRunner {
                 thread = null;
                 Thread.interrupted();
             }
-        });
+        }, owner);
+    }
+
+    /** Words for a refusal ({@code what}: "scripts", "programs"). */
+    public static String refusalText(ScriptScheduler.Refusal refusal, String language, String what) {
+        return switch (refusal) {
+            case CLOSED -> "the server is stopping";
+            case OWNER_FULL -> "too many " + language + " " + what + " of this player are running (at most " + ScriptScheduler.MAX_THREADS_PER_OWNER + ")";
+            case FULL -> "too many " + language + " " + what + " are running on this server (at most " + ScriptScheduler.MAX_THREADS + ")";
+        };
     }
 
     /** Any thread: wakes the run's thread out of a wait (a stop). */

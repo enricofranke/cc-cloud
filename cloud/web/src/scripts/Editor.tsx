@@ -137,6 +137,9 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose,
   };
 
   async function openFile(path: string) {
+    if (/\.wasm$/i.test(path)) {
+      return pushToast({ level: "info", title: path, text: "A WebAssembly program: run it in the computer's shell by its name. To change it, upload a new build (+ .wasm)." });
+    }
     if (dirty && !(await ask({ title: "Discard changes?", text: `${open?.path} has unsaved changes.`, label: "Discard", color: "red" }))) return;
     setBusy(true);
     try {
@@ -203,6 +206,28 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose,
       fail(e);
     }
   }
+  /** A WebAssembly program onto the computer's drive (the server checks size and module; the drive's quota applies). */
+  async function uploadWasm(file: File) {
+    const name = file.name.toLowerCase().endsWith(".wasm") ? file.name : `${file.name}.wasm`;
+    const bad = pathError(name, 8);
+    if (bad) return pushToast({ level: "warn", title: "Editor", text: bad });
+    const data = new Uint8Array(await file.arrayBuffer());
+    if (data.length < 8 || data[0] !== 0 || data[1] !== 0x61 || data[2] !== 0x73 || data[3] !== 0x6d) {
+      return pushToast({ level: "warn", title: name, text: "That is not a WebAssembly module (.wasm)." });
+    }
+    const exists = (tree?.files ?? []).some((f) => f.path === name);
+    if (exists && !(await ask({ title: `Replace ${name}?`, text: "The program on the computer is replaced by the uploaded one.", label: "Replace", color: "red" }))) return;
+    setBusy(true);
+    try {
+      await withPin((p) => api.upload(name, data, { overwrite: exists, pin: p }));
+      pushToast({ level: "info", title: name, text: `Uploaded (${fmtBytes(data.length)}). Run it in the shell: ${name.replace(/\.wasm$/i, "")}` });
+      refresh();
+    } catch (e) {
+      fail(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function rename(entry: FileEntry) {
     const to = prompt(`Move or rename ${entry.path} to`, entry.path)?.trim();
     if (!to || to === entry.path) return;
@@ -266,6 +291,20 @@ export default function LuaEditor({ conn, uplinkId, title, initialPath, onClose,
               <button type="button" class="btn btn-s" onClick={() => create(true)}>
                 + Folder
               </button>
+              <label class="btn btn-s" title="Upload a WebAssembly program (.wasm) to run in the computer's shell">
+                + .wasm
+                <input
+                  type="file"
+                  accept=".wasm,application/wasm"
+                  class="sr-only"
+                  onChange={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    const f = input.files?.[0];
+                    input.value = "";
+                    if (f) void uploadWasm(f);
+                  }}
+                />
+              </label>
             </div>
           )}
           {error && <p class="form-error small">{error}</p>}

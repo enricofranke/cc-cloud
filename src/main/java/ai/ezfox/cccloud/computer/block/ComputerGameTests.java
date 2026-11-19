@@ -192,6 +192,12 @@ public final class ComputerGameTests {
         var be = place(helper, rel, false, null);
         var pos = be.getBlockPos();
         var level = helper.getLevel();
+        // off: no outputs, also not through the dashboard
+        var handle = Cct.computer(level, pos);
+        helper.assertTrue(!handle.setOutput("left", 15) && !handle.canSetOutputs(), "an off computer refuses outputs from the dashboard");
+        be.redstone().setOutput(ComputerSide.LEFT, 15);
+        helper.assertTrue(be.outputToward(Direction.WEST) == 0, "an off computer emits nothing");
+        be.computer().turnOn();
         // facing north: left = west, right = east, back = south
         be.redstone().setOutput(ComputerSide.LEFT, 15);
         be.redstone().setOutput(ComputerSide.BACK, 7);
@@ -206,6 +212,9 @@ public final class ComputerGameTests {
             })
             .thenExecute(() -> helper.setBlock(rel.east(), Blocks.AIR))
             .thenWaitUntil(() -> helper.assertTrue(be.redstone().input(ComputerSide.RIGHT) == 0, "input follows the world"))
+            .thenExecute(() -> be.computer().shutdown())
+            .thenWaitUntil(() -> helper.assertTrue(level.getSignal(pos, Direction.EAST) == 0 && level.getSignal(pos, Direction.NORTH) == 0,
+                "shutting down turns every output off"))
             .thenSucceed();
     }
 
@@ -278,6 +287,7 @@ public final class ComputerGameTests {
         helper.assertTrue(handle.id() == be.computerId() && handle.title().equals("Computer #" + be.computerId()), "id and title");
         helper.assertTrue(handle.advanced(), "advanced");
         helper.assertTrue(handle.frame() == null, "no picture while off");
+        helper.assertTrue(!handle.setOutput("top", 5) && !handle.canSetOutputs() && handle.output("top") == 0, "no outputs while off");
         handle.turnOn();
         helper.assertTrue(handle.isOn() && handle.frame() != null && handle.frame().width() == 51, "on: the browser terminal gets a frame");
         handle.setLabel("Reactor");

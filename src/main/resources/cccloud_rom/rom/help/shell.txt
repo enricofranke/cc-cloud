@@ -1,1 +1,1 @@
-The shell runs programs. Type a program name and its arguments, e.g. "edit startup.lua". "help" lists all programs. A file called startup or startup.lua on the computer runs when it boots.
+The shell runs programs. Type a program name and its arguments, e.g. "edit startup.lua". "help" lists all programs. A file called startup or startup.lua on the computer runs when it boots. WebAssembly programs (name.wasm, uploaded in the dashboard's editor) run the same way: "name" or "name.wasm"; Ctrl+T ends them.

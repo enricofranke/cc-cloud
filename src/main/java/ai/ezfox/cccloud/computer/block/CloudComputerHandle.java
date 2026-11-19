@@ -120,14 +120,14 @@ public final class CloudComputerHandle implements ComputerHandle {
     @Override
     public boolean setOutput(String side, int level) {
         var s = ComputerSide.byId(side);
-        if (s == null || be.blocked()) return false;
+        if (s == null || be.blocked() || !isOn()) return false; // off: no outputs, like the computer's own shutdown
         be.redstone().setOutput(s, level);
         return true;
     }
 
     @Override
     public boolean canSetOutputs() {
-        return !be.blocked();
+        return !be.blocked() && isOn();
     }
 
     @Override
