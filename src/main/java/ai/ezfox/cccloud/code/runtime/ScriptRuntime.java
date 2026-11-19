@@ -128,6 +128,8 @@ public final class ScriptRuntime implements ScriptHost, Budget {
     private volatile boolean heapRequested;
     private volatile long heapEstimate;
     private volatile long totalCpuNanos;
+    /** How often the script was paused because its CPU share of a second was used up. */
+    private volatile int sharePauses;
 
     private static final class Run {
         final Task task;
@@ -301,6 +303,7 @@ public final class ScriptRuntime implements ScriptHost, Budget {
                 long now = System.nanoTime();
                 roll(now);
                 if (windowUsed >= limits.cpuMsPerSecond() * 1_000_000L) {
+                    sharePauses++;
                     pause(windowStart + SECOND);
                     break;
                 }
@@ -413,7 +416,10 @@ public final class ScriptRuntime implements ScriptHost, Budget {
                 }
                 // paused for a heap measurement only: go on right after it, within the CPU share
                 boolean shareLeft = heapRequested && windowUsed < limits.cpuMsPerSecond() * 1_000_000L;
-                if (!stopRequested && !shareLeft) pause(windowStart + SECOND);
+                if (!stopRequested && !shareLeft) {
+                    sharePauses++;
+                    pause(windowStart + SECOND);
+                }
             }
             case RunResult.Yielded y -> {
                 run.cpu = 0;
@@ -933,6 +939,11 @@ public final class ScriptRuntime implements ScriptHost, Budget {
 
     public long cpuTotalNanos() {
         return totalCpuNanos;
+    }
+
+    /** How often the script was paused until the next second because its CPU share was used up. */
+    public int sharePauses() {
+        return sharePauses;
     }
 
     public long heapEstimate() {
