@@ -145,7 +145,7 @@ class WasmScriptsTest {
         assertTrue(log.contains("info: tick"), log);
         assertTrue(log.contains("info: change heat 55"), log);
         assertTrue(log.contains("info: slept 1"), log);
-        assertTrue(scripts.world.actions.stream().anyMatch(a -> a instanceof WorldAction.Set s && s.widget().equals("active") && Boolean.FALSE.equals(s.value())),
+        assertTrue(scripts.world.actions.stream().anyMatch(a -> a instanceof WorldAction.Set s && s.widgetId().equals("active") && Boolean.FALSE.equals(s.value())),
             "the action reached the world: " + scripts.world.actions);
     }
 

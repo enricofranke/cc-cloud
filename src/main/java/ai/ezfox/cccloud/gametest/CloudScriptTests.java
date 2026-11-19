@@ -175,7 +175,7 @@ public final class CloudScriptTests {
                 helper.assertTrue(saved.error() == null, "save: " + saved.error() + " " + saved.detail());
                 helper.assertTrue(saved.data().getAsJsonArray("diagnostics").isEmpty(), "the example passes the check: " + saved.data());
                 ids[0] = saved.data().get("id").getAsString();
-                var record = CodeService.book(mf).get(ids[0]);
+                var record = CodeService.all().getOrDefault(mf, List.of()).stream().filter(r -> r.id().equals(ids[0])).findFirst().orElse(null);
                 helper.assertTrue(record != null && "wasm".equals(record.language()), "stored as a WebAssembly script");
                 var started = code(server, ownerDevice, mf, "start", ids[0], null, null, null).join();
                 helper.assertTrue(started.error() == null, "started: " + started.error() + " " + started.detail());

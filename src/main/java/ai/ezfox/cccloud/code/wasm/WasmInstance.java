@@ -74,6 +74,7 @@ final class WasmInstance implements EngineInstance {
     private int maxPages;
     private byte @Nullable [] pending;
     private int countdown = CHECK_EVERY;
+    private boolean growRefused;
     private volatile boolean poked;
 
     /** Stops the running module from inside a host call or the instruction hook: not catchable by the script. */
@@ -150,7 +151,7 @@ final class WasmInstance implements EngineInstance {
                 .withImportValues(imports)
                 .withMemoryLimits(new MemoryLimits(checked.memoryPages(), Math.max(checked.memoryPages(), checked.maxPages())))
                 .withMemoryFactory(ByteArrayMemory::new)
-                .withUnsafeExecutionListener((instruction, stack) -> tick())
+                .withUnsafeExecutionListener(this::tick)
                 .withStart(false)
                 .build();
             instance = built;
@@ -228,9 +229,15 @@ final class WasmInstance implements EngineInstance {
         }
     }
 
-    private boolean memoryFull() {
+    private void grows(long pages) {
         var m = memory;
-        return m != null && maxPages > 0 && m.pages() >= maxPages && (long) maxPages * Memory.PAGE_SIZE >= memoryCap - Memory.PAGE_SIZE;
+        long delta = pages & 0xFFFF_FFFFL; // memory.grow takes an unsigned page count
+        if (m != null && delta > 0 && m.pages() + delta > maxPages) growRefused = true;
+    }
+
+    /** The module asked for more memory than its cap allows (it then traps or aborts: a memory limit, not its bug). */
+    private boolean memoryFull() {
+        return growRefused;
     }
 
     private ScriptError memoryLimit() {
@@ -246,8 +253,12 @@ final class WasmInstance implements EngineInstance {
         poked = true;
     }
 
-    /** The instruction hook: every few thousand instructions (or soon after {@link #interrupt}), ask the budget. */
-    private void tick() {
+    /**
+     * The instruction hook: notes a {@code memory.grow} past the cap (so the trap that follows is a memory limit), and every
+     * few thousand instructions (or soon after {@link #interrupt}) asks the budget.
+     */
+    private void tick(run.endive.wasm.types.Instruction instruction, run.endive.runtime.MStack stack) {
+        if (instruction.opcode() == run.endive.wasm.types.OpCode.MEMORY_GROW) grows(stack.peek());
         if (--countdown > 0 && !poked) return;
         countdown = CHECK_EVERY;
         poked = false;
