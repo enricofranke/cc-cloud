@@ -7,8 +7,9 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Open files of one computer run. A read handle holds the file's bytes; a write handle collects bytes in memory (at
- * most the drive's capacity) and writes the whole file on flush and close, so the quota is checked by
+ * Open files of one computer run. A read handle holds the file's bytes; a write handle collects bytes in memory and
+ * writes the whole file on flush and close. All open handles together hold at most the drive's capacity (these bytes are
+ * not in the program's memory estimate, so the bound is here), so the quota is checked by
  * {@link ComputerFs#writeFile}. Handles are numbers; the rom's {@code fs.open} wraps them in a table. One run at a
  * time uses it (the program's worker thread).
  */
@@ -17,6 +18,8 @@ final class FileHandles {
     private final int max;
     private final Map<Integer, Handle> open = new HashMap<>();
     private int next = 1;
+    /** Bytes all open handles hold together; at most the drive's capacity (they live outside the memory estimate). */
+    private long buffered;
 
     private static final class Handle {
         final String path;
@@ -51,13 +54,19 @@ final class FileHandles {
         if (m.equals("r")) {
             if (!fs.exists(p) || fs.isDir(p)) throw new ApiError("/" + p + ": No such file");
             h = new Handle(p, false, binary);
-            h.data = fs.readFile(p);
+            byte[] data = fs.readFile(p);
+            reserve(data.length);
+            h.data = data;
         } else {
             if (fs.isReadOnly(p)) throw new ApiError("/" + p + ": Access denied");
             if (fs.isDir(p)) throw new ApiError("/" + p + ": Cannot write to directory");
             h = new Handle(p, true, binary);
             h.out = new ByteArrayOutputStream();
-            if (m.equals("a") && fs.exists(p)) h.out.writeBytes(fs.readFile(p));
+            if (m.equals("a") && fs.exists(p)) {
+                byte[] old = fs.readFile(p);
+                reserve(old.length);
+                h.out.writeBytes(old);
+            }
             if (m.equals("w")) fs.writeFile(p, new byte[0]); // like any file system: opening for writing truncates now
             else if (!fs.exists(p)) fs.writeFile(p, new byte[0]);
         }
@@ -107,6 +116,7 @@ final class FileHandles {
         var out = h.out;
         if (out == null) throw new ApiError("attempt to use a closed file");
         if (out.size() + (long) text.length() > fs.capacity()) throw new ApiError("Out of space");
+        reserve(text.length());
         for (int i = 0; i < text.length(); i++) out.write(text.charAt(i) & 0xff);
         h.dirty = true;
     }
@@ -140,13 +150,24 @@ final class FileHandles {
     synchronized void close(int id) {
         var h = open.remove(id);
         if (h == null) return;
-        if (h.write) {
-            try {
-                flush(h);
-            } finally {
-                h.out = null;
-            }
+        try {
+            if (h.write) flush(h);
+        } finally {
+            release(h);
         }
+    }
+
+    /** Takes {@code bytes} from the shared allowance of all open handles, or fails like a full disk. */
+    private void reserve(long bytes) {
+        if (buffered + bytes > fs.capacity()) throw new ApiError("Out of space (open files hold too much)");
+        buffered += bytes;
+    }
+
+    private void release(Handle h) {
+        buffered -= h.write ? (h.out == null ? 0 : h.out.size()) : h.data.length;
+        if (buffered < 0) buffered = 0;
+        h.out = null;
+        h.data = new byte[0];
     }
 
     /** End of the run: everything still open is written and closed (errors are dropped). */
@@ -160,6 +181,7 @@ final class FileHandles {
             }
         }
         open.clear();
+        buffered = 0;
     }
 
     synchronized int openCount() {

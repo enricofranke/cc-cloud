@@ -278,7 +278,8 @@ final class LuaInstance implements EngineInstance {
     private InterruptAction interrupted() throws LuaError {
         if (aborting) {
             state.interrupt(); // again at the next instruction, until the error leaves every pcall
-            throw new LuaError(abortMessage);
+            // level 0: the place stays the one where the limit was hit, not the outer frame this throw comes from
+            throw new LuaError(abortMessage, 0);
         }
         if (!running) return InterruptAction.CONTINUE;
         return switch (budget.check()) {
@@ -286,11 +287,27 @@ final class LuaInstance implements EngineInstance {
             case PAUSE -> InterruptAction.SUSPEND;
             case ABORT -> {
                 aborting = true;
-                abortMessage = budget.abortMessage();
+                abortMessage = where() + budget.abortMessage();
                 state.interrupt();
-                throw new LuaError(abortMessage);
+                throw new LuaError(abortMessage, 0);
             }
         };
+    }
+
+    /**
+     * {@code chunk:line: } of the code running when a limit was hit (the player's program), or nothing: not for Java
+     * code and not for the instance's own main chunk when that is a computer's boot code, whose lines mean nothing to
+     * the player (the limit can trip there right after a program used up the time).
+     */
+    private String where() {
+        try {
+            String at = org.squiddev.cobalt.debug.DebugHelpers.fileLine(state.getCurrentThread());
+            if (at == null || at.isEmpty() || at.startsWith("[C]") || at.startsWith("?")) return "";
+            if (host == null && at.startsWith(chunk + ":")) return "";
+            return at + ": ";
+        } catch (RuntimeException e) {
+            return "";
+        }
     }
 
     @Override
