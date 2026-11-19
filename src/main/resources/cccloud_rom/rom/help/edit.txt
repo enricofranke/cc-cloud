@@ -1,0 +1,1 @@
+edit <file>: a text editor. Arrow keys, Home, End, Page Up and Page Down move the cursor. Ctrl opens the menu: Save, Exit (left/right to choose, Enter to pick).

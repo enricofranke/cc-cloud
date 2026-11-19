@@ -1,0 +1,1 @@
+cd <folder>: makes another folder the current one. "cd .." goes one up, "cd /" to the top.

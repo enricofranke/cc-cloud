@@ -1,0 +1,1 @@
+cat <file> ...: prints the content of files.

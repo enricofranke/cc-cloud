@@ -18,7 +18,8 @@ final class ComputerApis {
     }
 
     static List<HostModule> modules(Computer computer, ComputerRuntime runtime, FileHandles files) {
-        return List.of(term(computer.terminal()), os(computer, runtime), fs(computer.fs()), redstone(computer), natives(computer, runtime, files));
+        return List.of(term(computer.terminal()), os(computer, runtime), fs(computer.fs()), redstone(computer), peripheral(computer.peripherals()),
+            natives(computer, runtime, files));
     }
 
     // ---- term ----------------------------------------------------------------------------------------------------------
@@ -253,6 +254,51 @@ final class ComputerApis {
         var side = ComputerSide.byId(a.string(0));
         if (side == null) throw a.bad(0, "unknown side '" + a.string(0) + "'");
         return side;
+    }
+
+    // ---- peripheral: the machines next to the computer, through their dashboard cards -----------------------------------
+
+    static HostModule peripheral(ComputerPeripherals p) {
+        var b = HostModule.builder("peripheral");
+        b.fn("getNames", a -> {
+            var out = new ArrayList<Object>();
+            for (var side : ComputerSide.all()) if (p.views().containsKey(side)) out.add(side.id());
+            return out;
+        });
+        b.fn("isPresent", a -> p.views().containsKey(side(a)));
+        b.fn("getType", a -> {
+            var v = p.views().get(side(a));
+            return v == null ? null : v.kind();
+        });
+        b.fn("getTitle", a -> {
+            var v = p.views().get(side(a));
+            return v == null ? null : v.title();
+        });
+        b.fn("isBlocked", a -> {
+            var v = p.views().get(side(a));
+            return v != null && v.blocked();
+        });
+        b.fn("getWidgets", a -> {
+            var v = p.views().get(side(a));
+            return v == null ? null : v.widgets();
+        });
+        b.fn("getValues", a -> {
+            var v = p.views().get(side(a));
+            return v == null ? null : v.values();
+        });
+        b.fn("getValue", a -> {
+            var v = p.views().get(side(a));
+            return v == null ? null : v.values().get(a.string(1));
+        });
+        // asynchronous: the rom's peripheral.call waits for the peripheral_result event with this id
+        b.fn("callAsync", a -> {
+            var value = a.get(2);
+            if (value != null && !(value instanceof Boolean || value instanceof Number || value instanceof String)) {
+                throw a.bad(2, "boolean, number or string expected");
+            }
+            return (long) p.call(side(a), a.string(1), value);
+        });
+        return b.build();
     }
 
     // ---- natives (taken by the boot code, then removed from the globals) -----------------------------------------------

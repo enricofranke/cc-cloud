@@ -20,6 +20,7 @@ final class Computer implements CloudComputer {
     private final InputLimiter limiter = new InputLimiter(System::nanoTime);
     private final AtomicReference<@Nullable Power> power = new AtomicReference<>();
     private final int[] lastInputs = new int[6];
+    private final ComputerPeripherals peripherals = new ComputerPeripherals();
     private volatile ComputerHost host;
     private volatile @Nullable ComputerFs fs;
     private volatile boolean on;
@@ -261,6 +262,7 @@ final class Computer implements CloudComputer {
                 }
             }
         }
+        peripherals.tick(host, on, this::queueEvent);
         if (on) {
             var io = host.redstone();
             boolean changed = false;
@@ -289,8 +291,13 @@ final class Computer implements CloudComputer {
         return lastError;
     }
 
+    ComputerPeripherals peripherals() {
+        return peripherals;
+    }
+
     /** Unloaded: the program stops, open files are written. */
     synchronized void close() {
         if (on) stopRun();
+        peripherals.clear();
     }
 }

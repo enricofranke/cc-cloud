@@ -1,0 +1,1 @@
+list [folder] [-a]: shows the files (white) and folders (green) of a folder. Also: ls, dir. -a shows names starting with a dot.

@@ -4,6 +4,16 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Cloud Computers
+- **Computers of our own.** Programs run on the mod's own Lua runtime, no CC: Tweaked needed: a shell with `ls`, `cd`,
+  `cat`, `cp`, `mv`, `rm`, `mkdir`, `label`, `id`, `help`, an interactive `lua` prompt and the `edit` editor. A
+  `startup.lua` runs when the computer boots.
+- **Familiar APIs:** `term` (colours, cursor, scroll, blit), `os` (events, timers, sleep, time, label), `fs` (files and
+  folders on the computer's own drive), `redstone`, `textutils`, `colors`, `keys`, and `peripheral` for the machines next
+  to the computer, read through the same cards the dashboard shows.
+- **Safe on public servers:** every computer has a CPU and memory budget, a 1 MB drive it cannot leave, limits for
+  events, timers, open files, redstone changes and input, and runs off the server thread.
+
 ### CC: Tweaked is optional
 - **CC: Cloud runs on its own.** Mainframes, uplinks on machines, probes, relays, Fiber Cable, upgrades, every machine,
   storage and redstone card, the bridges, sensors, tablet, display, rules, scenes, presets, reports and the API work
