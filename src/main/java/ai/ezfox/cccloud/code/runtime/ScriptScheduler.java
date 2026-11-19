@@ -19,21 +19,29 @@ import org.jspecify.annotations.Nullable;
  * run script slices, one timer thread (sleeps, {@code every}, {@code at}, wait timeouts, CPU windows) and a watchdog
  * that interrupts every running script about once a millisecond so its engine checks its budget.
  *
- * <p>This is the path for engines that can suspend ({@link ai.ezfox.cccloud.code.engine.ScriptEngine.Preemption#SUSPEND}).
- * An engine that cannot ({@code ABORT}, WebAssembly) needs a second path, not built yet: one thread per running script
- * (with its own stack size, compiled guest code recurses on the JVM stack), a fair run permit shared with the workers'
- * budget, host calls that block on their futures and hand the permit back while they wait, and the watchdog arming a
- * deadline per stretch of running that interrupts the thread, which ends the run (the instance is not reused).
+ * <p>The workers run engines that can suspend ({@link ai.ezfox.cccloud.code.engine.ScriptEngine.Preemption#SUSPEND}).
+ * An engine that cannot ({@code ABORT}, WebAssembly) gets a thread of its own per running script
+ * ({@link #startThread}, at most {@link #MAX_THREADS} on the server, each with a fixed stack of {@link #THREAD_STACK}
+ * bytes so recursion in the guest ends in a stack overflow error, not a deep JVM stack). Such a script checks its budget
+ * itself (from the engine's instruction hook), waits for its share of CPU by blocking its own thread, and blocks in host
+ * calls; stopping it is the budget's abort or an interrupt of its thread.
  */
 public final class ScriptScheduler implements AutoCloseable {
     /** How often the watchdog makes running scripts check their budget. */
     static final long WATCHDOG_NANOS = 1_000_000;
+    /** Threads of scripts that cannot suspend (WebAssembly), on the whole server. */
+    public static final int MAX_THREADS = 32;
+    /** Stack size of such a thread. */
+    public static final long THREAD_STACK = 1L << 20;
 
     private final ExecutorService workers;
     private final ScheduledThreadPoolExecutor timers;
     private final Set<ScriptRuntime> running = ConcurrentHashMap.newKeySet();
     private final Thread watchdog;
     private volatile boolean closed;
+    private final Set<Thread> threads = ConcurrentHashMap.newKeySet();
+    private final AtomicInteger threadCount = new AtomicInteger();
+    private final AtomicInteger threadNames = new AtomicInteger();
 
     public ScriptScheduler(int threads) {
         workers = Executors.newFixedThreadPool(Math.max(1, threads), factory("cccloud-script-", Thread.NORM_PRIORITY - 1));
@@ -86,6 +94,44 @@ public final class ScriptScheduler implements AutoCloseable {
         return timers;
     }
 
+    /** Why {@link #startThread} did not start a thread. */
+    public enum Refusal { CLOSED, FULL }
+
+    /** Starts the thread of a script that cannot suspend; null if it started. */
+    @Nullable Refusal startThread(Runnable body) {
+        if (closed) return Refusal.CLOSED;
+        if (threadCount.incrementAndGet() > MAX_THREADS) {
+            threadCount.decrementAndGet();
+            return Refusal.FULL;
+        }
+        var holder = new Thread[1];
+        var t = new Thread(null, () -> {
+            try {
+                body.run();
+            } finally {
+                threads.remove(holder[0]);
+                threadCount.decrementAndGet();
+            }
+        }, "cccloud-script-wasm-" + threadNames.incrementAndGet(), THREAD_STACK);
+        holder[0] = t;
+        t.setDaemon(true);
+        t.setPriority(Thread.NORM_PRIORITY - 1);
+        threads.add(t);
+        try {
+            t.start();
+        } catch (OutOfMemoryError | IllegalThreadStateException e) {
+            threads.remove(t);
+            threadCount.decrementAndGet();
+            return Refusal.FULL;
+        }
+        return null;
+    }
+
+    /** Threads of scripts that cannot suspend running now. */
+    public int threadCount() {
+        return threadCount.get();
+    }
+
     void enter(ScriptRuntime runtime) {
         running.add(runtime);
         LockSupport.unpark(watchdog);
@@ -117,6 +163,7 @@ public final class ScriptScheduler implements AutoCloseable {
         LockSupport.unpark(watchdog);
         timers.shutdownNow();
         workers.shutdownNow();
+        for (var t : threads) t.interrupt();
         try {
             workers.awaitTermination(2, TimeUnit.SECONDS);
         } catch (InterruptedException e) {

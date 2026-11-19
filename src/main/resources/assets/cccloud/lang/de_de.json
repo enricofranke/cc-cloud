@@ -485,6 +485,8 @@
   "cccloud.configuration.cloudScriptMaxHandlers": "Event-Handler pro Skript",
   "cccloud.configuration.cloudScriptStorageBytes": "Speicher pro Skript (Bytes)",
   "cccloud.configuration.cloudScriptLogLinesPerSecond": "Logzeilen pro Sekunde pro Skript",
+  "cccloud.configuration.cloudScriptWasmMaxBytes": "Größtes WebAssembly-Modul (Bytes)",
+  "cccloud.configuration.cloudScriptWasmSourceBytes": "Größter gespeicherter WebAssembly-Quelltext (Bytes)",
   "cccloud.configuration.cloudScriptThreads": "Worker-Threads für Cloud Scripts",
   "cccloud.configuration.production": "Produktionsstatistik",
   "cccloud.configuration.productionEnabled": "Produktionsstatistik aufzeichnen",

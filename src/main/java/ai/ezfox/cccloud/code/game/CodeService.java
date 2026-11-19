@@ -110,6 +110,7 @@ public final class CodeService {
     private static @Nullable GameWorld world;
     private static @Nullable String vmProblem;
     private static final ScriptEngine ENGINE = new LuaEngine(RuleService::zone);
+    private static final ScriptEngine WASM = new ai.ezfox.cccloud.code.wasm.WasmEngine(CodeService::limits);
     private static final Map<UUID, ScriptBook> BOOKS = new HashMap<>();
     private static final Map<Key, Slot> SLOTS = new LinkedHashMap<>();
     private static final Map<UUID, Set<CodeViewer>> LISTENERS = new HashMap<>();
@@ -200,11 +201,20 @@ public final class CodeService {
         return Limits.DEFAULT.withConfig(CloudConfig.get(CloudConfig.CLOUD_SCRIPTS_PER_MAINFRAME), CloudConfig.get(CloudConfig.CLOUD_SCRIPTS_RUNNING),
             CloudConfig.get(CloudConfig.CLOUD_SCRIPT_CPU_MS), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_CPU_MS_PER_RESUME), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_VERSIONS),
             CloudConfig.get(CloudConfig.CLOUD_SCRIPT_TIMERS), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_HANDLERS), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_STORAGE),
-            CloudConfig.get(CloudConfig.CLOUD_SCRIPT_LOG_LINES));
+            CloudConfig.get(CloudConfig.CLOUD_SCRIPT_LOG_LINES), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_WASM_BYTES), CloudConfig.get(CloudConfig.CLOUD_SCRIPT_WASM_SOURCE));
     }
 
     static ScriptEngine engine() {
         return ENGINE;
+    }
+
+    /** The engine of a script language, or null for one this server cannot run. */
+    static @Nullable ScriptEngine engine(String language) {
+        return switch (language) {
+            case "lua" -> ENGINE;
+            case ai.ezfox.cccloud.code.wasm.WasmEngine.LANGUAGE -> WASM;
+            default -> null;
+        };
     }
 
     /** The mainframe was broken for good: its scripts stop and are deleted. */
@@ -327,7 +337,9 @@ public final class CodeService {
         slot.log.limits(limits.logKept(), limits.logLinesPerSecond());
         slot.store.limit(limits.storageBytes());
         var snapshot = GameSnapshots.snapshot(GameSnapshots.base(srv, mainframe, nextSeq(mainframeId)), positions);
-        var runtime = new ScriptRuntime(who, record.version(), record.source(), ENGINE, sched, w, limits, slot.log, slot.store, LISTENER, RuleService::zone, snapshot);
+        var engine = engine(record.language());
+        if (engine == null) return new Refusal("disabled", "language " + record.language());
+        var runtime = new ScriptRuntime(who, record.version(), record.source(), engine, sched, w, limits, slot.log, slot.store, LISTENER, RuleService::zone, snapshot);
         slot.runtime = runtime;
         slot.status = "running";
         slot.reason = null;
@@ -644,11 +656,18 @@ public final class CodeService {
 
     /** Compiles off the server thread (a script worker); completes with the diagnostics. */
     static CompletableFuture<List<Diagnostic>> compile(String name, String source) {
+        return compile(name, source, "lua");
+    }
+
+    /** {@link #compile(String, String)} for a language ({@code lua}, {@code wasm}). */
+    static CompletableFuture<List<Diagnostic>> compile(String name, String source, String language) {
         var future = new CompletableFuture<List<Diagnostic>>();
+        var engine = engine(language);
+        if (engine == null) return CompletableFuture.completedFuture(List.of(Diagnostic.error(1, "unknown language " + language)));
         var sched = scheduler;
         boolean submitted = sched != null && sched.submit(() -> {
             try {
-                future.complete(ENGINE.check(name, source));
+                future.complete(engine.check(name, source));
             } catch (StackOverflowError e) {
                 future.complete(List.of(Diagnostic.error(1, "the code is nested too deeply")));
             } catch (RuntimeException e) {

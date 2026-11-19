@@ -18,6 +18,9 @@ import type { EditorHandle } from "../code/CodeEditor.tsx";
 import { IconBack, IconPlus } from "../components/Icons.tsx";
 import { ConfirmDialog, Sheet } from "../components/Overlays.tsx";
 import { DocsLink } from "../components/DocsLink.tsx";
+import { decodeWasm, encodeWasm, isWasmModule, languageOfFile, wasmView } from "../lib/wasm.ts";
+
+const decodeWasmSize = (stored: string) => decodeWasm(stored)?.moduleBytes ?? 0;
 
 const base = (mf: string) => `/m/${encodeURIComponent(mf)}/scripts`;
 const fail = (title: string, e: unknown) => pushToast({ level: "warn", title, text: codeErrText(e) });
@@ -123,7 +126,7 @@ function Scripts({ conn, mf, script }: { conn: MainframeConn; mf: string; script
           )}
         </>
       )}
-      {creating && doc && <NewScript conn={conn} mf={mf} taken={doc.scripts.map((s) => s.name)} onClose={() => setCreating(false)} />}
+      {creating && doc && <NewScript conn={conn} mf={mf} limits={doc.limits} taken={doc.scripts.map((s) => s.name)} onClose={() => setCreating(false)} />}
     </main>
   );
 }
@@ -269,6 +272,7 @@ function ScriptRow({ s, conn, mf }: { s: ScriptSummary; conn: MainframeConn; mf:
         <a class="rule-name code-name" href={href}>
           {s.name}
         </a>
+        <LangTag s={s} />
         <StatusTag s={s} />
         <span class="rule-tools">
           <RunButtons conn={conn} s={s} />
@@ -304,7 +308,58 @@ function ScriptRow({ s, conn, mf }: { s: ScriptSummary; conn: MainframeConn; mf:
   );
 }
 
-function NewScript({ conn, mf, taken, onClose }: { conn: MainframeConn; mf: string; taken: string[]; onClose: () => void }) {
+/** The language of a script: Lua, or WebAssembly (with the language it was written in when known). */
+function LangTag({ s }: { s: ScriptSummary }) {
+  return <span class={`tag code-lang code-lang-${s.language}`}>{s.language === "wasm" ? "WASM" : "Lua"}</span>;
+}
+
+/**
+ * Picks a .wasm module and, optionally, the source it was built from (shown in the dashboard; the server never compiles
+ * it). Reports the stored form, or why the files cannot be used.
+ */
+function WasmFiles({ limits, onChange }: { limits: CodeLimits; onChange: (r: { stored: string | null; error: string | null }) => void }) {
+  const [module, setModule] = useState<{ name: string; bytes: Uint8Array } | null>(null);
+  const [source, setSource] = useState<{ name: string; text: string } | null>(null);
+  useEffect(() => {
+    if (!module) return onChange({ stored: null, error: null });
+    if (!isWasmModule(module.bytes)) return onChange({ stored: null, error: ct("wasmNotModule") });
+    if (module.bytes.length > limits.maxWasmBytes) return onChange({ stored: null, error: ct("wasmTooLarge", { max: fmtBytes(limits.maxWasmBytes) }) });
+    if (source && byteSize(source.text) > limits.maxWasmSource) return onChange({ stored: null, error: ct("wasmSourceTooLarge", { max: fmtBytes(limits.maxWasmSource) }) });
+    onChange({ stored: encodeWasm(module.bytes, source?.text ?? null, source ? languageOfFile(source.name) : null), error: null });
+  }, [module, source]);
+  return (
+    <div class="code-wasm-files">
+      <label class="field">
+        <span class="field-label">{ct("wasmModule")}</span>
+        <input
+          class="input"
+          type="file"
+          accept=".wasm,application/wasm"
+          onChange={async (e) => {
+            const f = (e.target as HTMLInputElement).files?.[0];
+            setModule(f ? { name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) } : null);
+          }}
+        />
+        {module && <span class="field-hint">{`${module.name} · ${fmtBytes(module.bytes.length)}`}</span>}
+      </label>
+      <label class="field">
+        <span class="field-label">{ct("wasmSource")}</span>
+        <input
+          class="input"
+          type="file"
+          accept=".ts,.as,.rs,.txt"
+          onChange={async (e) => {
+            const f = (e.target as HTMLInputElement).files?.[0];
+            setSource(f ? { name: f.name, text: await f.text() } : null);
+          }}
+        />
+        <span class="field-hint">{ct("wasmSourceHint")}</span>
+      </label>
+    </div>
+  );
+}
+
+function NewScript({ conn, mf, limits, taken, onClose }: { conn: MainframeConn; mf: string; limits: CodeLimits; taken: string[]; onClose: () => void }) {
   const L = lang.value;
   const list = useMemo(() => templates(L), [L]);
   const [pick, setPick] = useState<string>(list[0]?.id ?? "");
@@ -312,19 +367,22 @@ function NewScript({ conn, mf, taken, onClose }: { conn: MainframeConn; mf: stri
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wasm, setWasm] = useState<{ stored: string | null; error: string | null }>({ stored: null, error: null });
   const choose = (id: string) => {
     setPick(id);
     const tp = list.find((x) => x.id === id);
-    if (!touched) setName(uniqueName(tp?.name ?? "Script", taken));
+    if (!touched) setName(uniqueName(id === WASM_PICK ? "WebAssembly" : (tp?.name ?? "Script"), taken));
   };
   const create = async () => {
     const n = cleanName(name);
     if (!n) return setError(ct("nameBad", { max: MAX_NAME }));
     const tp = list.find((x) => x.id === pick);
+    if (pick === WASM_PICK && !wasm.stored) return setError(wasm.error ?? ct("wasmPick"));
     setBusy(true);
     setError(null);
     try {
-      const r = await conn.codeOp<{ id: string }>("save", { name: n, source: tp?.source ?? BLANK_SOURCE });
+      const fields = pick === WASM_PICK ? { name: n, source: wasm.stored, language: "wasm" } : { name: n, source: tp?.source ?? BLANK_SOURCE };
+      const r = await conn.codeOp<{ id: string }>("save", fields, 30_000);
       onClose();
       navigate(`${base(mf)}/${encodeURIComponent(r.id)}`);
     } catch (e) {
@@ -333,7 +391,11 @@ function NewScript({ conn, mf, taken, onClose }: { conn: MainframeConn; mf: stri
       setBusy(false);
     }
   };
-  const options = [...list.map((x) => ({ id: x.id, title: x.title, doc: x.doc })), { id: "", title: ct("blank"), doc: ct("blankDoc") }];
+  const options = [
+    ...list.map((x) => ({ id: x.id, title: x.title, doc: x.doc })),
+    { id: "", title: ct("blank"), doc: ct("blankDoc") },
+    { id: WASM_PICK, title: ct("wasmTitle"), doc: ct("wasmDoc") },
+  ];
   return (
     <Sheet title={ct("newTitle")} onClose={onClose}>
       <form
@@ -357,6 +419,7 @@ function NewScript({ conn, mf, taken, onClose }: { conn: MainframeConn; mf: stri
             ))}
           </div>
         </fieldset>
+        {pick === WASM_PICK && <WasmFiles limits={limits} onChange={setWasm} />}
         <label class="field">
           <span class="field-label">{ct("name")}</span>
           <input
@@ -382,6 +445,63 @@ function NewScript({ conn, mf, taken, onClose }: { conn: MainframeConn; mf: stri
           </button>
           <button type="submit" class="pxbtn pxbtn-gold" disabled={busy}>
             <span>{busy ? ct("creating") : ct("create")}</span>
+          </button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+const WASM_PICK = "wasm";
+
+/** A new version of a WebAssembly script: pick the files, then save. */
+function WasmUpload({ conn, s, limits, version, onSaved, onClose }: {
+  conn: MainframeConn;
+  s: ScriptSummary;
+  limits: CodeLimits;
+  version: number;
+  onSaved: (version: number, diagnostics: Diagnostic[], stored: string) => void;
+  onClose: () => void;
+}) {
+  const [wasm, setWasm] = useState<{ stored: string | null; error: string | null }>({ stored: null, error: null });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const save = async () => {
+    if (!wasm.stored) return setError(wasm.error ?? ct("wasmPick"));
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await conn.codeOp<{ version: number; diagnostics: unknown }>("save", { id: s.id, name: s.name, source: wasm.stored, language: "wasm", baseVersion: version }, 30_000);
+      onSaved(Number(r.version) || version + 1, parseDiagnostics(r.diagnostics), wasm.stored);
+      onClose();
+    } catch (e) {
+      setError(codeErrText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Sheet title={ct("wasmUploadTitle", { name: s.name })} onClose={onClose}>
+      <form
+        class="rule-editor"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <WasmFiles limits={limits} onChange={setWasm} />
+        {(error || wasm.error) && (
+          <p class="form-error" role="alert">
+            {error ?? wasm.error}
+          </p>
+        )}
+        <div class="perm-actions">
+          <span class="perm-spacer" />
+          <button type="button" class="btn" onClick={onClose}>
+            {ct("back")}
+          </button>
+          <button type="submit" class="pxbtn pxbtn-gold" disabled={busy || !wasm.stored}>
+            <span>{busy ? ct("saving") : ct("save")}</span>
           </button>
         </div>
       </form>
@@ -497,6 +617,11 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
   const [versionsKey, setVersionsKey] = useState(0);
   const dirty = !!loaded && text !== loaded.source;
   const readOnly = !conn.can("code.edit");
+  // a WebAssembly script shows the source it was built from, read-only; a new version is an upload
+  const isWasm = s.language === "wasm";
+  const [uploading, setUploading] = useState(false);
+  const [moduleSize, setModuleSize] = useState(0);
+  const shown = (src: string) => (isWasm ? wasmView(src, ct("wasmNoSource")) : src);
   const open = conn.status.value === "open";
 
   // load the source; again when the socket comes back (the log subscription is per socket)
@@ -505,7 +630,9 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
   const load = async () => {
     try {
       const r = await conn.codeOp<{ script: { source?: string; version?: number; author?: string } }>("get", { id: s.id });
-      const src = typeof r.script?.source === "string" ? r.script.source : "";
+      const raw = typeof r.script?.source === "string" ? r.script.source : "";
+      if (isWasm) setModuleSize(decodeWasmSize(raw));
+      const src = shown(raw);
       const l = { source: src, version: Number(r.script?.version) || s.version, author: String(r.script?.author ?? s.author) };
       setLoaded(l);
       setText(src);
@@ -536,7 +663,7 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
 
   // the compile check, debounced; only for text that changed since the last check
   useEffect(() => {
-    if (!loaded || readOnly || !open) return;
+    if (!loaded || readOnly || !open || isWasm) return;
     if (diags?.text === text) return;
     const timer = setTimeout(async () => {
       setChecking(true);
@@ -570,7 +697,7 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
 
   const saveRef = useRef<(force?: number) => void>(() => {});
   const save = async (baseOverride?: number) => {
-    if (!loaded || saving || readOnly) return;
+    if (!loaded || saving || readOnly || isWasm) return;
     const source = handle.current?.text() ?? text;
     if (byteSize(source) > limits.maxSource) return pushToast({ level: "warn", title: s.name, text: ct("err.too_large") });
     setSaving(true);
@@ -637,9 +764,16 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
         <StatusTag s={s} />
       </Head>
       <div class="code-toolbar" role="toolbar" aria-label={s.name}>
-        <button type="button" class="pxbtn pxbtn-gold code-save" disabled={!dirty || saving || readOnly} onClick={() => save()} title="Ctrl+S / ⌘S">
-          <span>{saving ? ct("saving") : ct("save")}</span>
-        </button>
+        {isWasm ? (
+          <button type="button" class="pxbtn pxbtn-gold code-save" disabled={readOnly || !loaded} onClick={() => setUploading(true)}>
+            <span>{ct("wasmUpload")}</span>
+          </button>
+        ) : (
+          <button type="button" class="pxbtn pxbtn-gold code-save" disabled={!dirty || saving || readOnly} onClick={() => save()} title="Ctrl+S / ⌘S">
+            <span>{saving ? ct("saving") : ct("save")}</span>
+          </button>
+        )}
+        <LangTag s={s} />
         <RunButtons conn={conn} s={s} />
         <AutostartToggle conn={conn} s={s} />
         <span class="code-toolbar-gap" />
@@ -708,8 +842,8 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
               <Editor
                 initial={loaded.source}
                 lang={L}
-                readOnly={readOnly}
-                label={`${s.name} – Lua`}
+                readOnly={readOnly || isWasm}
+                label={`${s.name} – ${isWasm ? "WebAssembly" : "Lua"}`}
                 markers={markers}
                 markersText={text}
                 onChange={setText}
@@ -722,7 +856,11 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
           </div>
           <div class="code-editor-foot muted small">
             {dirty && <span class="code-dirty">● {ct("unsaved")}</span>}
-            <span class={size > limits.maxSource ? "t-red" : ""}>{ct("size", { size: fmtBytes(size), max: fmtBytes(limits.maxSource) })}</span>
+            {isWasm ? (
+              <span>{ct("wasmSize", { size: fmtBytes(moduleSize), max: fmtBytes(limits.maxWasmBytes) })}</span>
+            ) : (
+              <span class={size > limits.maxSource ? "t-red" : ""}>{ct("size", { size: fmtBytes(size), max: fmtBytes(limits.maxSource) })}</span>
+            )}
             <span>{checking ? ct("checking") : problems === 0 ? ct("noProblems") : problems === 1 ? ct("problem1") : ct("problems", { n: problems })}</span>
             {problems > 0 && (
               <button type="button" class="link-btn" onClick={() => goLine(lineOf(text, markers[0].from))}>
@@ -744,6 +882,7 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
               s={s}
               limits={limits}
               current={loaded?.source ?? ""}
+              view={shown}
               onReverted={async (v) => {
                 pushToast({ level: "info", title: s.name, text: ct("reverted", { v }) });
                 await load();
@@ -796,6 +935,24 @@ function Workspace({ conn, mf, s, limits }: { conn: MainframeConn; mf: string; s
       )}
       {renaming && <RenameScript conn={conn} s={s} onClose={() => setRenaming(false)} />}
       {deleting && <DeleteScript conn={conn} s={s} onClose={() => setDeleting(false)} onDone={() => navigate(base(mf))} />}
+      {uploading && loaded && (
+        <WasmUpload
+          conn={conn}
+          s={s}
+          limits={limits}
+          version={loaded.version}
+          onClose={() => setUploading(false)}
+          onSaved={(v, list, stored) => {
+            const src = shown(stored);
+            setModuleSize(decodeWasmSize(stored));
+            setLoaded({ source: src, version: v, author: loaded.author });
+            setText(src);
+            handle.current?.setText(src);
+            setNote(list.some((d) => d.severity === "error") ? { kind: "warn", text: `${ct("savedErrors", { v })} ${list[0]?.message ?? ""}` } : { kind: "ok", text: ct("saved", { v }) });
+            setVersionsKey((k) => k + 1);
+          }}
+        />
+      )}
     </main>
   );
 }
@@ -858,7 +1015,7 @@ function LogPanel({ lines }: { lines: LogLine[] | null }) {
 
 // ------------------------------------------------------------------ versions
 
-function VersionsPanel(props: { conn: MainframeConn; s: ScriptSummary; limits: CodeLimits; current: string; onReverted: (v: number) => void }) {
+function VersionsPanel(props: { conn: MainframeConn; s: ScriptSummary; limits: CodeLimits; current: string; view?: (stored: string) => string; onReverted: (v: number) => void }) {
   const { conn, s } = props;
   const L = lang.value;
   const [list, setList] = useState<VersionMeta[] | null>(null);
@@ -877,7 +1034,8 @@ function VersionsPanel(props: { conn: MainframeConn; s: ScriptSummary; limits: C
     if (sources[v] !== undefined) return;
     try {
       const r = await conn.codeOp<{ source: string }>("version", { id: s.id, version: v });
-      setSources((x) => ({ ...x, [v]: String(r.source ?? "") }));
+      const raw = String(r.source ?? "");
+      setSources((x) => ({ ...x, [v]: props.view ? props.view(raw) : raw }));
     } catch (e) {
       fail(s.name, e);
     }

@@ -437,6 +437,13 @@ dependencies {
         localRuntime "cc.tweaked:cobalt:${cobalt_version}"
     }
     jarJar("cc.tweaked:cobalt:${cobalt_version}")
+    // Cloud Scripts in WebAssembly (ai.ezfox.cccloud.code.wasm) run on Endive, a WebAssembly interpreter in plain Java
+    // (Apache-2.0, no native code, no further dependencies; docs/BUILD.md "Endive"). Shipped as jar-in-jar; dev runs and
+    // unit tests have it on the classpath.
+    implementation "run.endive:runtime:${endive_version}"
+    implementation "run.endive:wasm:${endive_version}"
+    jarJar("run.endive:runtime:${endive_version}")
+    jarJar("run.endive:wasm:${endive_version}")
 
     // Soft dependencies for the Cloud Bridges (compat/ae2, compat/rs). Compile-only: the mod runs without them.
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}:api"

@@ -60,9 +60,11 @@ public final class CodeProtocol {
             }
             case "check" -> {
                 if (!CodeService.enabled()) yield done(CodeReply.fail("disabled"));
-                if (c.source().getBytes(StandardCharsets.UTF_8).length > limits.maxSource()) yield done(CodeReply.fail("too_large", String.valueOf(limits.maxSource())));
+                String checkLanguage = record != null ? record.language() : c.languageOr();
+                int checkMax = limits.maxSource(checkLanguage);
+                if (c.source().getBytes(StandardCharsets.UTF_8).length > checkMax) yield done(CodeReply.fail("too_large", String.valueOf(checkMax)));
                 String name = c.name() != null && ScriptBook.validName(c.name()) != null ? ScriptBook.validName(c.name()) : "script";
-                yield CodeService.compile(name, c.source()).handle((diagnostics, failure) -> {
+                yield CodeService.compile(name, c.source(), checkLanguage).handle((diagnostics, failure) -> {
                     if (failure != null) return CodeReply.fail("offline");
                     var data = new JsonObject();
                     data.add("diagnostics", diagnostics(diagnostics));
@@ -186,17 +188,20 @@ public final class CodeProtocol {
         var limits = CodeService.limits();
         String name = ScriptBook.validName(c.name());
         if (name == null) return done(CodeReply.fail("invalid", "name"));
-        if (c.source().getBytes(StandardCharsets.UTF_8).length > limits.maxSource()) return done(CodeReply.fail("too_large", String.valueOf(limits.maxSource())));
+        String language = before != null ? before.language() : c.languageOr();
+        if (before != null && c.language() != null && !c.language().equals(language)) return done(CodeReply.fail("invalid", "language"));
+        int max = limits.maxSource(language);
+        if (c.source().getBytes(StandardCharsets.UTF_8).length > max) return done(CodeReply.fail("too_large", String.valueOf(max)));
         if (before != null && c.baseVersion() != null && c.baseVersion() != before.version()) {
             return done(CodeReply.fail("changed", String.valueOf(before.version())));
         }
         if (before == null && CodeService.book(mainframeId).size() >= limits.maxScripts()) return done(CodeReply.fail("too_many", String.valueOf(limits.maxScripts())));
-        CompletableFuture<List<Diagnostic>> compiled = CodeService.enabled() ? CodeService.compile(name, c.source())
+        CompletableFuture<List<Diagnostic>> compiled = CodeService.enabled() ? CodeService.compile(name, c.source(), language)
             : CompletableFuture.completedFuture(List.of());
         return compiled.exceptionally(e -> List.of()).thenApplyAsync(diagnostics -> {
             if (CodeService.server() != server) return CodeReply.fail("offline");
             var book = CodeService.book(mainframeId);
-            var result = book.save(before == null ? null : before.id(), name, c.source(), c.baseVersion(), device.player(), device.playerName(),
+            var result = book.save(before == null ? null : before.id(), name, language, c.source(), c.baseVersion(), device.player(), device.playerName(),
                 System.currentTimeMillis(), limits, CodeService::newId);
             if (result.error() != null) return CodeReply.fail(result.error(), result.detail());
             var record = result.script();

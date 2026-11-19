@@ -1,0 +1,13 @@
+{
+  "name": "cccloud-wasm-assemblyscript",
+  "private": true,
+  "description": "AssemblyScript SDK for CC: Cloud scripts and the build of the test modules",
+  "type": "module",
+  "scripts": {
+    "gen": "node tools/gen-api.mjs",
+    "build": "node tools/build.mjs"
+  },
+  "devDependencies": {
+    "assemblyscript": "0.28.20"
+  }
+}

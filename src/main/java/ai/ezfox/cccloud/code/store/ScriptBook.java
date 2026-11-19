@@ -97,9 +97,21 @@ public final class ScriptBook {
      */
     public Result save(@Nullable String id, String rawName, String source, @Nullable Integer baseVersion, UUID author, String authorName, long now, Limits limits,
                        Supplier<String> newId) {
+        return save(id, rawName, "lua", source, baseVersion, author, authorName, now, limits, newId);
+    }
+
+    /**
+     * {@link #save} with the language of a new script ({@code lua}, {@code wasm}); an existing script keeps its own
+     * language, a save in another one is {@code invalid} (detail {@code language}).
+     */
+    public Result save(@Nullable String id, String rawName, String language, String source, @Nullable Integer baseVersion, UUID author, String authorName, long now,
+                       Limits limits, Supplier<String> newId) {
         String name = validName(rawName);
         if (name == null) return Result.fail("invalid", "name");
-        if (bytes(source) > limits.maxSource()) return Result.fail("too_large", String.valueOf(limits.maxSource()));
+        var existing = id == null ? null : get(id);
+        if (existing != null && !existing.language().equals(language)) return Result.fail("invalid", "language");
+        int max = limits.maxSource(language);
+        if (bytes(source) > max) return Result.fail("too_large", String.valueOf(max));
         String taken = nameError(name, id);
         if (taken != null) return Result.fail(taken, name);
         if (id == null) {
@@ -108,7 +120,7 @@ public final class ScriptBook {
             do {
                 fresh = newId.get();
             } while (get(fresh) != null);
-            var record = new ScriptRecord(fresh, name, "lua", false, null, "", now, List.of(new ScriptVersion(1, now, author, authorName, source, null)), Map.of());
+            var record = new ScriptRecord(fresh, name, language, false, null, "", now, List.of(new ScriptVersion(1, now, author, authorName, source, null)), Map.of());
             scripts.add(record);
             return Result.ok(record);
         }

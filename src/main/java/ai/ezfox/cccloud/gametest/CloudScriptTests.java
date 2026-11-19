@@ -72,6 +72,27 @@ public final class CloudScriptTests {
         return CodeProtocol.handle(server, device, mainframeId, command, NOBODY);
     }
 
+    private static CompletableFuture<CodeReply> saveWasm(MinecraftServer server, AuthStore.Device device, UUID mainframeId, String name, String stored) {
+        var command = new ClientMessages.CodeCommand("r1", "save", null, name, stored, null, null, null, null, "wasm");
+        return CodeProtocol.handle(server, device, mainframeId, command, NOBODY);
+    }
+
+    private static byte[] resource(String path) {
+        try (var in = CloudScriptTests.class.getResourceAsStream(path)) {
+            if (in == null) throw new IllegalStateException("missing " + path);
+            return in.readAllBytes();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** A module that imports WASI's fd_write: the server must refuse it. */
+    private static final byte[] WASI_MODULE = {0, 'a', 's', 'm', 1, 0, 0, 0,
+        1, 4, 1, 0x60, 0, 0, // type 0: () -> ()
+        2, 0x23, 1, 22, 'w', 'a', 's', 'i', '_', 's', 'n', 'a', 'p', 's', 'h', 'o', 't', '_', 'p', 'r', 'e', 'v', 'i', 'e', 'w', '1', 8, 'f', 'd', '_', 'w', 'r',
+        'i', 't', 'e', 0, 0, // the import
+        7, 8, 1, 4, 'm', 'a', 'i', 'n', 0, 0}; // export main = the import
+
     private static String logText(UUID mainframeId, String name) {
         ScriptLog log = CodeService.logForTest(mainframeId, name);
         if (log == null) return "";
@@ -96,6 +117,86 @@ public final class CloudScriptTests {
     private static boolean ready(UUID mainframeId, RsDeviceBlockEntity device) {
         var section = RsDevices.sectionOfDevice(mainframeId, device.deviceId());
         return device.status() == CloudStatus.ONLINE && section != null && section.isOnline();
+    }
+
+    /**
+     * The same scene with a WebAssembly script: the AssemblyScript example {@code porch-light.wasm} (built from
+     * {@code wasm/assemblyscript/examples/porch-light.ts}) finds the card with the sensor and the lamp itself and turns the
+     * lamp on when the lever switches the sensor; a module with a WASI import is refused when saved and cannot start.
+     */
+    public static void wasmSensorTurnsLampOn(GameTestHelper helper) {
+        CloudGameTests.throttleForComputers(helper);
+        var level = helper.getLevel();
+        var server = level.getServer();
+        var owner = helper.makeMockPlayer(GameType.SURVIVAL);
+        CloudMainframeBlockEntity mainframe = CloudGameTests.placeMainframe(helper, owner, new BlockPos(2, 0, 2));
+        mainframe.setEnabled(true);
+        CloudGameTests.keepPowered(helper, mainframe);
+        UUID mf = mainframe.getMainframeId();
+        var link = new MainframeLink(GlobalPos.of(level.dimension(), mainframe.getBlockPos()), mf);
+        var base = mainframe.getBlockPos();
+        var sensor = base.west(2).north(2).above(1);
+        var lever = sensor.west();
+        var lamp = base.east(2).north(2).above(1);
+        var placed = new ArrayList<BlockPos>(List.of(lever, lever.below(), lamp, sensor.below(), sensor));
+        level.setBlock(lever.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(lever, Blocks.LEVER.defaultBlockState().setValue(LeverBlock.FACE, AttachFace.FLOOR), Block.UPDATE_ALL);
+        level.setBlock(sensor.below(), Blocks.STONE.defaultBlockState(), Block.UPDATE_ALL);
+        level.setBlock(sensor, ModRegistry.CLOUD_SENSOR.get().defaultBlockState().setValue(RsPlateBlock.FACING, Direction.DOWN), Block.UPDATE_ALL);
+        level.setBlock(lamp, ModRegistry.CLOUD_LAMP.get().defaultBlockState(), Block.UPDATE_ALL);
+        var ownerDevice = device(owner.getUUID(), "Owner", mf);
+        String name = "Porch light wasm";
+        String[] ids = {null, null};
+        @SuppressWarnings("unchecked") CompletableFuture<CodeReply>[] pending = new CompletableFuture[2];
+
+        helper.startSequence()
+            .thenWaitUntil(() -> helper.assertTrue(CloudNetwork.mainframe(mf) != null && mainframe.isOnline(), "mainframe registered and online"))
+            .thenExecute(() -> {
+                for (var pos : List.of(sensor, lamp)) at(helper, pos).bind(link, owner);
+                helper.assertTrue(CodeService.enabled(), "Cloud Scripts are on");
+            })
+            .thenWaitUntil(() -> helper.assertTrue(ready(mf, at(helper, sensor)) && ready(mf, at(helper, lamp)), "sensor and lamp online"))
+            .thenExecute(() -> {
+                var wasi = new ai.ezfox.cccloud.code.wasm.WasmSource(WASI_MODULE, null, null).encode();
+                pending[0] = saveWasm(server, ownerDevice, mf, "Wasi", wasi);
+                var stored = new ai.ezfox.cccloud.code.wasm.WasmSource(resource("/cccloud_gametest/wasm/porch-light.wasm"), "// porch-light.ts", "assemblyscript").encode();
+                pending[1] = saveWasm(server, ownerDevice, mf, name, stored);
+            })
+            .thenWaitUntil(() -> helper.assertTrue(pending[0].isDone() && pending[1].isDone(), "saved (checked on a script worker)"))
+            .thenExecute(() -> {
+                var wasi = pending[0].join();
+                helper.assertTrue(wasi.error() == null, "a module with problems is still saved: " + wasi.error());
+                String problems = wasi.data().getAsJsonArray("diagnostics").toString();
+                helper.assertTrue(problems.contains("wasi_snapshot_preview1.fd_write"), "the WASI import is named: " + problems);
+                ids[1] = wasi.data().get("id").getAsString();
+                var refused = code(server, ownerDevice, mf, "start", ids[1], null, null, null).join();
+                helper.assertTrue("has_errors".equals(refused.error()), "a refused module cannot start: " + refused.error());
+                var saved = pending[1].join();
+                helper.assertTrue(saved.error() == null, "save: " + saved.error() + " " + saved.detail());
+                helper.assertTrue(saved.data().getAsJsonArray("diagnostics").isEmpty(), "the example passes the check: " + saved.data());
+                ids[0] = saved.data().get("id").getAsString();
+                var record = CodeService.book(mf).get(ids[0]);
+                helper.assertTrue(record != null && "wasm".equals(record.language()), "stored as a WebAssembly script");
+                var started = code(server, ownerDevice, mf, "start", ids[0], null, null, null).join();
+                helper.assertTrue(started.error() == null, "started: " + started.error() + " " + started.detail());
+            })
+            .thenWaitUntil(() -> helper.assertTrue(logText(mf, name).contains("sees "), "the script found the card: " + logText(mf, name)))
+            .thenIdle(10)
+            .thenExecute(() -> level.setBlock(lever, level.getBlockState(lever).setValue(LeverBlock.POWERED, true), Block.UPDATE_ALL))
+            .thenWaitUntil(() -> helper.assertTrue(level.getBlockState(lamp).getLightEmission() == 15, "the script turned the lamp on: " + logText(mf, name)))
+            .thenExecute(() -> {
+                helper.assertTrue(logText(mf, name).contains("lamp true true nil"), "the action went through: " + logText(mf, name));
+                var runtime = CodeService.runtimeForTest(mf, name);
+                helper.assertTrue(runtime != null && runtime.cpuTotalNanos() > 0, "it runs on its own thread and books CPU time");
+                var stopped = code(server, ownerDevice, mf, "stop", ids[0], null, null, null).join();
+                helper.assertTrue(stopped.error() == null, "stop: " + stopped.error());
+            })
+            .thenWaitUntil(() -> helper.assertTrue(CodeService.runtimeForTest(mf, name) == null, "stopped"))
+            .thenExecute(() -> {
+                for (var id : ids) if (id != null) code(server, ownerDevice, mf, "delete", id, null, null, null).join();
+                for (var pos : placed) level.setBlock(pos, Blocks.AIR.defaultBlockState(), Block.UPDATE_ALL);
+            })
+            .thenSucceed();
     }
 
     public static void sensorTurnsLampOn(GameTestHelper helper) {

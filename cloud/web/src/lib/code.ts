@@ -14,7 +14,8 @@ export interface ScriptError {
 export interface ScriptSummary {
   id: string;
   name: string;
-  language: "lua";
+  /** lua, or wasm: a WebAssembly module uploaded with its source text (lib/wasm.ts) */
+  language: "lua" | "wasm";
   status: ScriptStatus;
   /** why it stopped: stopped, finished, kill_switch, offline, unloaded, command, author_lost_access, server_stopping, deleted */
   reason: string | null;
@@ -49,6 +50,9 @@ export interface CodeLimits {
   /** allocation rate and estimated retained size per script, bytes */
   allocBytesPerSecond: number;
   memoryBytes: number;
+  /** WebAssembly scripts: largest module and largest stored source text, bytes */
+  maxWasmBytes: number;
+  maxWasmSource: number;
 }
 export interface Diagnostic {
   line: number;
@@ -83,6 +87,8 @@ export const DEFAULT_LIMITS: CodeLimits = {
   logLinesPerSecond: 20,
   allocBytesPerSecond: 32 * 1024 * 1024,
   memoryBytes: 16 * 1024 * 1024,
+  maxWasmBytes: 128 * 1024,
+  maxWasmSource: 32 * 1024,
 };
 /** The server keeps this many log lines per script. */
 export const LOG_KEEP = 200;
@@ -102,7 +108,7 @@ export function parseSummary(raw: unknown): ScriptSummary | null {
   return {
     id: r.id,
     name: str(r.name, 64) || r.id,
-    language: "lua",
+    language: r.language === "wasm" ? "wasm" : "lua",
     status,
     reason: typeof r.reason === "string" ? r.reason.slice(0, 40) : null,
     autostart: r.autostart === true,
