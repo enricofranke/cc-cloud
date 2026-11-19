@@ -158,4 +158,81 @@ class QaProbeTest {
         System.out.println("QA lua endless reader: live heap peak +" + (peak >> 20) + " MB, error=" + c.lastError());
         assertTrue(peak < 64L << 20, "live heap grew by " + (peak >> 20) + " MB for one computer with a 16 MB cap");
     }
+
+    // ---- attempts to get around the fixes of 6550e807 ------------------------------------------------------------------
+
+    /** Runs a startup program that writes its findings to "result" and creates "done"; returns the result. */
+    private String probe(String program) {
+        var c = computers.create();
+        file(c, "startup.lua", "local function report(v) local f = fs.open('result', 'w') f.write(tostring(v)) f.close() end\n" + program
+            + "\nfs.open('done', 'w').close() while true do os.pullEvent() end");
+        c.turnOn();
+        until(c, 60000, "the probe", () -> c.fs().exists("done") || c.lastError() != null || shows(c, "startup.lua:"));
+        String out = c.fs().exists("result") ? read(c, "result") : "-";
+        System.out.println("QA fix probe: " + out + " | error=" + c.lastError() + "\n" + screen(c).strip());
+        return out;
+    }
+
+    @Test
+    void loadLimitCannotBeBypassed() {
+        // pieces just under the limit, many times
+        assertEquals("nil chunk too large (more than 256 KB)", probe("""
+            local piece = string.rep('a=1;', 60000)
+            local f, e = load(function() return piece end)
+            report(tostring(f) .. ' ' .. tostring(e))"""));
+        // one piece over the limit, and a string over the limit
+        assertEquals("nil nil", probe("""
+            local f1 = load(string.rep(' ', 300000) .. 'return 1')
+            local big = string.rep(' ', 300000)
+            local f2 = load(function() local b = big big = nil return b end)
+            report(tostring(f1) .. ' ' .. tostring(f2))"""));
+        // the original load must not be reachable from a program
+        assertEquals("ok", probe("""
+            local found = {}
+            if debug then found[#found + 1] = 'debug' end
+            if getfenv or setfenv then found[#found + 1] = 'fenv' end
+            if string.dump then found[#found + 1] = 'dump' end
+            if loadstring then found[#found + 1] = 'loadstring' end
+            if _G.__native then found[#found + 1] = 'native' end
+            -- a reader that changes the global load on the way must not change the limit
+            local piece = string.rep('a=1;', 60000)
+            local n = 0
+            local f = load(function() n = n + 1 load = nil if n > 10 then return nil end return piece end)
+            if f then found[#found + 1] = 'load accepted ' .. (n * #piece) end
+            report(#found == 0 and 'ok' or table.concat(found, ','))"""));
+        // a 200 KB program file on the drive still runs
+        var c = computers.create();
+        file(c, "big.lua", "local x = 1\n" + "-- filler\n".repeat(20_000) + "fs.open('ran', 'w').close()");
+        file(c, "startup.lua", "shell.run('big') fs.open('done', 'w').close() while true do os.pullEvent() end");
+        c.turnOn();
+        until(c, 60000, "the big program", () -> c.fs().exists("done"));
+        assertTrue(c.fs().exists("ran"), "a 200 KB program does not run any more:\n" + screen(c));
+    }
+
+    @Test
+    void openFilesTogetherStayWithinTheDrive() {
+        computers.limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+        // read handles: a 700 KB file opened twice
+        assertEquals("1", probe("""
+            local f = fs.open('a', 'w') f.write(string.rep('x', 700000)) f.close()
+            local ok = 0
+            local h = {}
+            for i = 1, 4 do local r = fs.open('a', 'r') if r then ok = ok + 1 h[i] = r end end
+            report(ok)"""));
+        // close gives the allowance back
+        assertEquals("10", probe("""
+            local ok = 0
+            for i = 1, 10 do
+              local f = fs.open('w', 'w')
+              if f and pcall(f.write, string.rep('y', 600000)) then ok = ok + 1 end
+              if f then f.close() end
+            end
+            report(ok)"""));
+        // append mode counts the old content
+        assertEquals("false", probe("""
+            local f = fs.open('b', 'w') f.write(string.rep('z', 600000)) f.close()
+            local a = fs.open('b', 'a')
+            local w = fs.open('c', 'w')
+            report(pcall(w.write, string.rep('q', 500000)))"""));
+    }
 }
