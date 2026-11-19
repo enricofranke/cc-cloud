@@ -32,6 +32,8 @@ final class TestScripts implements AutoCloseable {
 
     /** Short limits so tests are quick: 50 ms/s, 120 ms per resume, 4 MB heap. */
     static final Limits FAST = new Limits(16, 8, 32 * 1024, 50, 120, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 30, 4L << 20, 20, 32, 6, 5, 0.2, 2000, 64 * 1024);
+    /** FAST with a CPU share no test script reaches (1 s per second, 5 s per resume): the default of {@link #run(String)}. */
+    static final Limits ROOMY_CPU = new Limits(16, 8, 32 * 1024, 1000, 5000, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 30, 4L << 20, 20, 32, 6, 5, 0.2, 2000, 64 * 1024);
 
     final ScriptScheduler scheduler = new ScriptScheduler(2);
     final FakeWorld world = new FakeWorld();
@@ -78,7 +80,16 @@ final class TestScripts implements AutoCloseable {
         }
     }
 
+    /**
+     * A script with {@link #ROOMY_CPU}: tests of everything but the CPU limit, so a loaded machine (the runtime counts
+     * wall-clock time while a script runs) cannot stop them with "ran for more than 120 ms".
+     */
     Run run(String source) {
+        return run(source, ROOMY_CPU, snapshot(1, 20.0, true));
+    }
+
+    /** A script with {@link #FAST}: for the tests of the CPU limit itself (50 ms per second, 120 ms per resume). */
+    Run runFast(String source) {
         return run(source, FAST, snapshot(1, 20.0, true));
     }
 

@@ -93,15 +93,24 @@ class LuaSandboxTest {
         assertEquals("1 1 2 3", eval("local t = table.move({1, 2, 3}, 1, 3, 2) print(t[1], t[2], t[3], t[4])"));
     }
 
+    /** A script that must hit the 1 MB bound (CPU has room by default, so the bound is what stops it on any machine). */
+    private void hitsOneMb(String source, String what) throws InterruptedException {
+        var run = scripts.run(source);
+        assertTrue(run.await(10_000), "script did not end: " + run.logText());
+        assertNotNull(run.error(), "expected an error:\n" + run.logText());
+        String message = run.error().getMessage();
+        assertTrue(message.contains("over 1 MB"), what + ": " + message);
+    }
+
     @Test
     void gsubAndFormatAreBounded() throws InterruptedException {
         // one call each that would build terabytes in Java, without a budget check in between
-        assertTrue(fails("local s = ('x'):rep(1000000) s:gsub('.', s)").contains("over 1 MB"));
-        assertTrue(fails("local s = ('x'):rep(1000) s:gsub('.', ('%0'):rep(2000))").contains("over 1 MB"), "repeated captures");
-        assertTrue(fails("local s = ('x'):rep(1000000) s:gsub('.', function() return s end)").contains("over 1 MB"), "a replacement function");
-        assertTrue(fails("local s = ('x'):rep(1000000) s:gsub('.', {x = s})").contains("over 1 MB"), "a replacement table");
-        assertTrue(fails("local s = ('x'):rep(600000) string.format('%s%s', s, s)").contains("over 1 MB"));
-        assertTrue(fails("local s = ('x'):rep(300000) string.format('%q', s)").contains("over 1 MB"), "%q can make four bytes of one");
+        hitsOneMb("local s = ('x'):rep(1000000) s:gsub('.', s)", "a replacement string");
+        hitsOneMb("local s = ('x'):rep(1000) s:gsub('.', ('%0'):rep(2000))", "repeated captures");
+        hitsOneMb("local s = ('x'):rep(1000000) s:gsub('.', function() return s end)", "a replacement function");
+        hitsOneMb("local s = ('x'):rep(1000000) s:gsub('.', {x = s})", "a replacement table");
+        hitsOneMb("local s = ('x'):rep(600000) string.format('%s%s', s, s)", "format %s");
+        hitsOneMb("local s = ('x'):rep(300000) string.format('%q', s)", "%q can make four bytes of one");
         // big sources with few matches, and ordinary use, still work
         // (the quick bound says up to 1.4 MB, the exact count of matches lets it through)
         assertEquals("200006 1", eval("local s = ('x'):rep(200000) .. 'y' local r, n = s:gsub('y', 'zzzzzz') print(#r, n)"));
