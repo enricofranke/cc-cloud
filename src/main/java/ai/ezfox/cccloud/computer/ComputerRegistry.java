@@ -54,6 +54,11 @@ public final class ComputerRegistry {
         default String boot() {
             return ClasspathRom.standard().boot();
         }
+
+        /** The engine of WebAssembly programs started from the shell ({@code foo.wasm}), or null if there is none. */
+        default @Nullable ScriptEngine wasm() {
+            return null;
+        }
     }
 
     /** The game's environment: Lua and the threads of Cloud Scripts, limits from the config. */
@@ -71,6 +76,11 @@ public final class ComputerRegistry {
         @Override
         public @Nullable String problem() {
             return CodeService.vmProblem();
+        }
+
+        @Override
+        public ScriptEngine wasm() {
+            return CodeService.wasm();
         }
 
         @Override

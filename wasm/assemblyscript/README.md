@@ -49,6 +49,22 @@ it, build again and use "Upload new version".
 The module may only import what the SDK imports (`cccloud.call`, `cccloud.take`, and `env.abort`, `env.trace`,
 `env.seed` from AssemblyScript's runtime). WASI is not available: build without it.
 
+## Programs for Cloud Computers
+
+```ts
+import { term, os } from "./sdk/computer";
+
+export function main(): void {
+  const args = os.args(); // ["hello", "world"] for "hello world" in the shell
+  term.write("Hello " + args.at(1).asString());
+  const e = os.pullEvent("char");
+}
+```
+
+Build it the same way, upload `hello.wasm` in the computer's editor in the dashboard (“+ .wasm”) and type `hello world`
+in the computer's shell. While it runs it gets the keyboard; Ctrl+T ends it. `term`, `os` and `redstone` are typed in
+`sdk/computer.ts`; every other function of the computer's APIs is `call("fs.list", [Value.string("/")])`.
+
 ## In this repository
 
 - `sdk/cloud.ts` is generated from the mod's API descriptor: `npm run gen` after a change of

@@ -217,6 +217,11 @@ public final class CodeService {
         };
     }
 
+    /** The WebAssembly engine, shared with Cloud Computers (programs started from the shell). */
+    public static ScriptEngine wasm() {
+        return WASM;
+    }
+
     /** The Lua engine, shared with Cloud Computers. */
     public static ScriptEngine lua() {
         return ENGINE;

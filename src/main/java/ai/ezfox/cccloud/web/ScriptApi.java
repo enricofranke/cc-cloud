@@ -100,6 +100,20 @@ public final class ScriptApi {
         return new AccessApi.Response(200, new JsonObject(), data);
     }
 
+    /** Why a .wasm upload is refused (too large, not a module, refused by the module check), or null. */
+    static AccessApi.@org.jspecify.annotations.Nullable Response wasmRefusal(byte[] body, ai.ezfox.cccloud.code.runtime.Limits limits) {
+        if (body.length > limits.maxWasmBytes()) return AccessApi.error(413, "too_large");
+        try {
+            ai.ezfox.cccloud.code.wasm.WasmCheck.check(body, ai.ezfox.cccloud.code.wasm.WasmEngine.imports(), limits.memoryBytes());
+        } catch (ai.ezfox.cccloud.code.wasm.WasmCheck.Refused e) {
+            var json = new JsonObject();
+            json.addProperty("error", "invalid_wasm");
+            json.addProperty("detail", e.getMessage());
+            return new AccessApi.Response(400, json);
+        }
+        return null;
+    }
+
     private static AccessApi.Response write(MinecraftServer server, GameBridge.ScriptRequest request, ComputerTarget target, ScriptFiles.Store store,
                                             String mainframeName) throws IOException {
         String path = ScriptFiles.validate(request.file());
@@ -120,12 +134,19 @@ public final class ScriptApi {
             byte[] current = store.exists(path) && !store.isDirectory(path) ? ScriptFiles.read(store, path) : null;
             if (current == null || !ScriptFiles.hash(current).equals(ifMatch)) return AccessApi.error(409, "changed");
         }
-        // Text only: the body must be valid UTF-8 (Lua sources); binary uploads are refused.
-        var decoder = StandardCharsets.UTF_8.newDecoder();
-        try {
-            decoder.decode(java.nio.ByteBuffer.wrap(request.body()));
-        } catch (java.nio.charset.CharacterCodingException e) {
-            return AccessApi.error(400, "not_text");
+        if (path.toLowerCase(java.util.Locale.ROOT).endsWith(".wasm")) {
+            // WebAssembly programs for Cloud Computers: binary, checked like a WebAssembly Cloud Script before it is stored
+            // (size first, then the module check), so nothing unbounded reaches the drive or, later, the engine.
+            var refusal = wasmRefusal(request.body(), ai.ezfox.cccloud.code.game.CodeService.limits());
+            if (refusal != null) return refusal;
+        } else {
+            // Text only: the body must be valid UTF-8 (Lua sources); binary uploads are refused.
+            var decoder = StandardCharsets.UTF_8.newDecoder();
+            try {
+                decoder.decode(java.nio.ByteBuffer.wrap(request.body()));
+            } catch (java.nio.charset.CharacterCodingException e) {
+                return AccessApi.error(400, "not_text");
+            }
         }
         boolean overwrite = "true".equals(request.query().get("overwrite"));
         var result = ScriptFiles.write(store, path, request.body(), overwrite);

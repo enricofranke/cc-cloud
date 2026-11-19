@@ -74,6 +74,9 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     private boolean ended;
     private long pausedUntil;
     private @Nullable Job job;
+    /** A WebAssembly program started from the shell ({@link #startWasm}): it gets the events while it runs. */
+    private @Nullable ChildProgram child;
+    private int nextChild = 1;
 
     private volatile @Nullable EngineInstance instance;
     private volatile boolean jobActive;
@@ -226,6 +229,18 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
         var event = new Object[(args == null ? 0 : args.length) + 1];
         event[0] = name;
         if (args != null) System.arraycopy(args, 0, event, 1, args.length);
+        ChildProgram running;
+        synchronized (lock) {
+            running = child;
+        }
+        if (running != null) {
+            // a WebAssembly program runs: its events (Ctrl+T ends it; the shell then gets "wasm_done")
+            if (name.equals("terminate")) {
+                running.stop("Terminated");
+                return true;
+            }
+            if (running.queue(event)) return true;
+        }
         CompletableFuture<@Nullable Object> wake;
         synchronized (lock) {
             if (ended) return false;
@@ -249,6 +264,41 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     public int dropped() {
         synchronized (lock) {
             return dropped;
+        }
+    }
+
+    /**
+     * Starts a WebAssembly program from the shell (boot code, {@code __native.runWasm}): it runs on its own thread with
+     * this computer's modules and gets the events until it ends; then the shell gets {@code wasm_done, id, ok, error}.
+     * Returns the id. At most one at a time.
+     */
+    public long startWasm(ScriptEngine wasm, String name, String source, List<Object> args) {
+        ChildProgram started;
+        synchronized (lock) {
+            if (ended) throw new ApiError("the computer is shutting down");
+            if (child != null) throw new ApiError("a WebAssembly program is already running");
+            // the program's memory is what the computer's Lua does not use (it waits meanwhile)
+            long memory = limits.memoryBytes() - Math.max(0, budget.heapEstimate());
+            if (memory < 1L << 20) throw new ApiError("not enough memory left for a WebAssembly program");
+            int id = nextChild++;
+            started = new ChildProgram(id, name, wasm, source, args, modules, scheduler, limits, memory, this::wasmEnded);
+            child = started;
+        }
+        started.start();
+        return started.id;
+    }
+
+    private void wasmEnded(ChildProgram ended, @Nullable String error) {
+        synchronized (lock) {
+            if (child == ended) child = null;
+        }
+        queue("wasm_done", (long) ended.id, error == null, error);
+    }
+
+    /** Whether a WebAssembly program started from the shell is running (tests). */
+    public boolean wasmRunning() {
+        synchronized (lock) {
+            return child != null;
         }
     }
 
@@ -445,9 +495,12 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
 
     private void end(@Nullable ScriptError error, boolean stopped) {
         var cancel = new ArrayList<java.util.concurrent.Future<?>>();
+        ChildProgram running;
         synchronized (lock) {
             if (ended) return;
             ended = true;
+            running = child;
+            child = null;
             job = null;
             events.clear();
             cancel.addAll(timers.values());
@@ -456,6 +509,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             waiter = null;
         }
         stopRequested = true;
+        if (running != null) running.stop("stopped");
         for (var f : cancel) f.cancel(false);
         boolean idle;
         synchronized (lock) {

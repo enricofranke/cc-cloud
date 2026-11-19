@@ -90,12 +90,15 @@ export class ScriptError extends Error {
   readonly status: number;
   readonly attemptsLeft?: number;
   readonly retryAfter?: number;
-  constructor(status: number, code: string, extra: { attemptsLeft?: number; retryAfter?: number } = {}) {
+  /** what exactly is wrong (invalid_wasm: the server's module check) */
+  readonly detail?: string;
+  constructor(status: number, code: string, extra: { attemptsLeft?: number; retryAfter?: number; detail?: string } = {}) {
     super(code);
     this.code = code;
     this.status = status;
     this.attemptsLeft = extra.attemptsLeft;
     this.retryAfter = extra.retryAfter;
+    this.detail = typeof extra.detail === "string" ? extra.detail.slice(0, 300) : undefined;
   }
 }
 
@@ -107,7 +110,8 @@ export const SCRIPT_ERRORS: Record<string, string> = {
   offline: "The mainframe is offline.",
   invalid_path: "That file name is not allowed.",
   exists: "A file with that name already exists.",
-  too_large: "The file is too large (max 256 KB).",
+  too_large: "The file is too large (max 256 KB; WebAssembly programs 128 KB).",
+  invalid_wasm: "That is not a WebAssembly module CC: Cloud runs:",
   quota: "The computer's disk is full.",
   not_found: "The file does not exist (any more).",
   rate_limited: "Too many changes – wait a minute.",
@@ -128,7 +132,9 @@ export const SCRIPT_ERRORS: Record<string, string> = {
   unreachable: "Server not reachable.",
 };
 export const scriptErrorText = (e: unknown) =>
-  e instanceof ScriptError ? (SCRIPT_ERRORS[e.code] ?? `Error: ${e.code}`) : "Something went wrong. Try again.";
+  e instanceof ScriptError
+    ? `${SCRIPT_ERRORS[e.code] ?? `Error: ${e.code}`}${e.detail ? ` ${e.detail}` : ""}`
+    : "Something went wrong. Try again.";
 
 export interface ScriptApi {
   list(): Promise<FileList>;
@@ -142,6 +148,8 @@ export interface ScriptApi {
   /** `store` = "<id>@<version>" for store installs (the server checks the signed index); `storeFile` when the path differs from the store's. */
   write(path: string, code: string, opts: { overwrite?: boolean; startup?: boolean; pin?: string; store?: string; storeFile?: string }): Promise<{ path: string; size: number }>;
   remove(path: string, pin?: string): Promise<void>;
+  /** A WebAssembly program (.wasm) for a Cloud Computer: binary, checked by the server like a WebAssembly script. */
+  upload(path: string, data: Uint8Array, o: { overwrite?: boolean; pin?: string }): Promise<{ path: string; size: number }>;
   run(path: string, mode: "auto" | "event" | "reboot", pin?: string): Promise<"event" | "reboot">;
 }
 
@@ -159,7 +167,7 @@ export function scriptApi(base: string, token: string, mainframeId: string, upli
       throw new ScriptError(0, "unreachable");
     }
     if (!res.ok) {
-      let b: { error?: string; attemptsLeft?: number; retryAfter?: number } = {};
+      let b: { error?: string; attemptsLeft?: number; retryAfter?: number; detail?: string } = {};
       try {
         b = await res.json();
       } catch {}
@@ -189,6 +197,11 @@ export function scriptApi(base: string, token: string, mainframeId: string, upli
       if (o.storeFile && o.storeFile !== path) q.set("storeFile", o.storeFile);
       const res = await call(`/files/${enc(path)}${q.size ? `?${q}` : ""}`, { method: "PUT", body: code, pin: o.pin, headers: { "content-type": "text/plain; charset=utf-8" } });
       return res.json();
+    },
+    upload: async (path, data, o) => {
+      const q = o.overwrite ? "?overwrite=true" : "";
+      const body = new Uint8Array(data).buffer;
+      return (await call(`/files/${enc(path)}${q}`, { method: "PUT", body, pin: o.pin, headers: { "content-type": "application/wasm" } })).json();
     },
     remove: async (path, pin) => {
       await call(`/files/${enc(path)}`, { method: "DELETE", pin });

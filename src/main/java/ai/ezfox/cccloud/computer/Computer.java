@@ -1,6 +1,7 @@
 package ai.ezfox.cccloud.computer;
 
 import ai.ezfox.cccloud.code.api.ApiError;
+import ai.ezfox.cccloud.code.engine.ScriptEngine;
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.script.ScriptFiles;
 import java.util.concurrent.atomic.AtomicReference;
@@ -53,6 +54,16 @@ final class Computer implements CloudComputer {
     @Override
     public int id() {
         return id;
+    }
+
+    /** The current run (tests). */
+    @Nullable ComputerRuntime runtimeForTest() {
+        return runtime;
+    }
+
+    /** The engine of WebAssembly programs started from the shell, or null. */
+    @Nullable ScriptEngine wasmEngine() {
+        return registry.env().wasm();
     }
 
     @Override
