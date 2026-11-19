@@ -3,6 +3,10 @@
 navigation:
   title: "Cloud-Computer"
   position: 5
+  icon: cccloud:advanced_cloud_computer
+item_ids:
+  - cccloud:cloud_computer
+  - cccloud:advanced_cloud_computer
 ---
 
 # Cloud-Computer

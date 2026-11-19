@@ -36,6 +36,7 @@ const ICONS: Record<string, string> = {
   dashboard: "cccloud:cloud_uplink",
   presets: "cccloud:cloud_display",
   redstone: "cccloud:cloud_lamp",
+  computers: "cccloud:advanced_cloud_computer",
   lua: "cccloud:advanced_cloud_uplink",
   "ui-library": "cccloud:cloud_uplink",
   network: "cccloud:cloud_relay",
@@ -71,6 +72,7 @@ const UPGRADES = ["bandwidth", "capacity", "efficiency", "memory", "range"].flat
 export const ITEM_PAGES: Record<string, string[]> = {
   start: ["cloud_mainframe", "cloud_uplink", "advanced_cloud_uplink", "cloud_link_card", "cloud_core", "cloud_probe", "cloud_analyzer"],
   redstone: ["cloud_lamp", "cloud_switch", "cloud_button", "cloud_sensor", "advanced_cloud_sensor"],
+  computers: ["cloud_computer", "advanced_cloud_computer"],
   network: ["cloud_relay", "advanced_cloud_relay", "ender_relay", "ender_fiber_link", "fiber_cable", "fiber_junction"],
   upgrades: ["cloud_tablet", "advanced_cloud_tablet", "cloud_display", "quantum_core", "upgrade_chunk_anchor", ...UPGRADES],
   bridges: ["me_cloud_bridge", "rs_cloud_bridge"],
