@@ -32,6 +32,8 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 - **Breaking it keeps it:** the item remembers number and label and brings the files back – for its owner only.
 - **On the dashboard like any computer:** put an uplink on it for the Computer card, the browser terminal and the editor.
 - **Safe on servers:** only the owner, their team and admins may use it; another team's claim shuts it down.
+- **Off means off:** a computer that is off emits no redstone, and the Computer card says so instead of setting an output.
+- **Windows-safe file names:** `con`, `nul`, `com1` and the other Windows device names are refused on a computer's drive.
 
 ### CC: Tweaked is optional
 - **CC: Cloud runs on its own.** Mainframes, uplinks on machines, probes, relays, Fiber Cable, upgrades, every machine,

@@ -208,9 +208,9 @@ public class CloudComputerBlockEntity extends BlockEntity implements ComputerHos
         }
     }
 
-    /** The level this computer emits towards {@code world} (0 while blocked by a claim). */
+    /** The level this computer emits towards {@code world} (0 while it is off or blocked by a claim). */
     public int outputToward(Direction world) {
-        if (claimBlock != null) return 0;
+        if (claimBlock != null || computer == null || !computer.isOn()) return 0;
         return redstone.output(local(facing(), world));
     }
 

@@ -1122,6 +1122,8 @@ public class CloudUplinkBlockEntity extends BlockEntity implements ai.ezfox.cccl
                 CCCloud.LOGGER.info("[cccloud] {}: {} on computer #{}", user, power.what(), computer.id());
             }
             case ComputerCard.SetOutput set -> {
+                // an off computer has no outputs (docs/SPEC.md "Cloud Computer block and screen")
+                if (!computer.isOn()) return "computer_off";
                 if (!computer.setOutput(set.side(), set.level())) return "unsupported";
             }
         }
