@@ -180,7 +180,11 @@ public final class CloudScriptTests {
                 var started = code(server, ownerDevice, mf, "start", ids[0], null, null, null).join();
                 helper.assertTrue(started.error() == null, "started: " + started.error() + " " + started.detail());
             })
-            .thenWaitUntil(() -> helper.assertTrue(logText(mf, name).contains("sees "), "the script found the card: " + logText(mf, name)))
+            .thenWaitUntil(() -> {
+                var runtime = CodeService.runtimeForTest(mf, name);
+                helper.assertTrue(logText(mf, name).contains("sees ") && runtime != null && runtime.handlerCount() > 0,
+                    "the script found the card and listens: " + logText(mf, name));
+            })
             .thenIdle(10)
             .thenExecute(() -> level.setBlock(lever, level.getBlockState(lever).setValue(LeverBlock.POWERED, true), Block.UPDATE_ALL))
             .thenWaitUntil(() -> helper.assertTrue(level.getBlockState(lamp).getLightEmission() == 15, "the script turned the lamp on: " + logText(mf, name)))
@@ -300,7 +304,8 @@ public final class CloudScriptTests {
                 var player = server.createCommandSourceStack().withPermission(LevelBasedPermissionSet.ALL).withSuppressedOutput();
                 helper.assertTrue(run(dispatcher, "cccloud scripts stop " + name, player) < 0, "without op level 2 nobody may stop scripts");
                 var admin = server.createCommandSourceStack().withSuppressedOutput();
-                helper.assertTrue(run(dispatcher, "cccloud scripts list", admin) == 1, "listed");
+                // the number of running scripts on the server: other script tests may run at the same time
+                helper.assertTrue(run(dispatcher, "cccloud scripts list", admin) >= 1, "listed");
                 helper.assertTrue(run(dispatcher, "cccloud scripts stop porch", admin) == 0, "names must match whole (case aside)");
                 helper.assertTrue(run(dispatcher, "cccloud scripts stop porch light", admin) == 1, "/cccloud scripts stop <name>");
             })
