@@ -54,6 +54,16 @@ public final class WasmEngine implements ScriptEngine {
         }
     }
 
+    /**
+     * A Cloud Computer program in WebAssembly: the boot code is the stored module ({@link WasmSource}), the program's
+     * modules are reached through {@code cccloud.call} as {@code term.write}, {@code os.startTimer}, …
+     */
+    @Override
+    public EngineInstance createProgram(String name, List<ai.ezfox.cccloud.code.api.HostModule> modules, Budget budget, java.util.function.DoubleSupplier clock) {
+        var l = limits.get();
+        return new WasmInstance(name, new ProgramHostApi(modules), budget, l.maxWasmBytes(), l.hostCallBytes(), l.hostCallsPerSecond());
+    }
+
     @Override
     public EngineInstance create(String name, ScriptHost host, Budget budget) {
         var l = limits.get();

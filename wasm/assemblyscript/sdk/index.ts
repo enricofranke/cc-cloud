@@ -9,3 +9,4 @@
 export { Value, Kind } from "./value";
 export { Result, EventHandler, TimerHandler, invoke, cccloud_handle } from "./host";
 export { cloud } from "./cloud";
+// Cloud Computer programs: import { term, os } from "../sdk/computer";

@@ -241,7 +241,7 @@ final class WasmInstance implements EngineInstance {
     }
 
     private ScriptError memoryLimit() {
-        return error(ScriptError.Kind.MEMORY_LIMIT, "uses more than " + (memoryCap >> 20) + " MB of memory");
+        return error(ScriptError.Kind.MEMORY_LIMIT, "out of memory (uses more than " + (memoryCap >> 20) + " MB)");
     }
 
     private ScriptError error(ScriptError.Kind kind, String message) {

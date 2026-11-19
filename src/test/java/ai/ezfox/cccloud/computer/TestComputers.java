@@ -14,12 +14,18 @@ import org.jspecify.annotations.Nullable;
 /** Computers on real script threads and the real rom, with the test thread acting as the server thread. */
 final class TestComputers implements AutoCloseable {
     final ScriptScheduler scheduler = new ScriptScheduler(2);
-    final ScriptEngine engine = new LuaEngine(ZoneId::systemDefault);
+    final ScriptEngine engine;
     final ComputerRegistry registry;
     /** More CPU than the default so functional tests boot fast on a busy machine; limit tests set their own. */
     ComputerLimits limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
 
     TestComputers(Path root) {
+        this(root, new LuaEngine(ZoneId::systemDefault), null);
+    }
+
+    /** Computers whose program runs on {@code engine}; {@code boot} null = the rom's boot code. */
+    TestComputers(Path root, ScriptEngine engine, @Nullable String boot) {
+        this.engine = engine;
         registry = new ComputerRegistry(new ComputerData(), root, new ComputerRegistry.Environment() {
             @Override
             public ScriptEngine engine() {
@@ -34,6 +40,11 @@ final class TestComputers implements AutoCloseable {
             @Override
             public ComputerLimits limits() {
                 return limits;
+            }
+
+            @Override
+            public String boot() {
+                return boot != null ? boot : ClasspathRom.standard().boot();
             }
         });
     }

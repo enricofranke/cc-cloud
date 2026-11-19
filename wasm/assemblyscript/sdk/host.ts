@@ -14,11 +14,33 @@ export class Result {
   constructor(public ok: bool, public error: string | null) {}
 }
 
-function take(length: i32): string {
+function takeBytes(length: i32): ArrayBuffer {
   const buffer = new ArrayBuffer(length);
   if (length > 0) hostTake(changetype<usize>(buffer));
   else hostTake(0);
-  return String.UTF8.decode(buffer);
+  return buffer;
+}
+
+function take(length: i32): string {
+  return String.UTF8.decode(takeBytes(length));
+}
+
+/** One byte per character (Cloud Computers: the terminal's 8-bit characters); characters above 255 become "?". */
+function latin1(s: string): ArrayBuffer {
+  const out = new ArrayBuffer(s.length);
+  const view = Uint8Array.wrap(out);
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    view[i] = c < 256 ? <u8>c : 0x3f;
+  }
+  return out;
+}
+
+function fromLatin1(buffer: ArrayBuffer): string {
+  const view = Uint8Array.wrap(buffer);
+  const parts = new Array<string>();
+  for (let i = 0; i < view.length; i++) parts.push(String.fromCharCode(view[i]));
+  return parts.join("");
 }
 
 /**
@@ -31,6 +53,15 @@ export function invoke(name: string, args: Array<Value>): Value {
   const r = hostCall(changetype<usize>(n), n.byteLength, changetype<usize>(a), a.byteLength);
   if (r < 0) throw new Error(take(-r - 1));
   return Value.parse(take(r));
+}
+
+/** {@link invoke} for Cloud Computer programs: strings as one byte per character. */
+export function invokeProgram(name: string, args: Array<Value>): Value {
+  const n = String.UTF8.encode(name);
+  const a = latin1(Value.array(args).toString());
+  const r = hostCall(changetype<usize>(n), n.byteLength, changetype<usize>(a), a.byteLength);
+  if (r < 0) throw new Error(take(-r - 1));
+  return Value.parse(fromLatin1(takeBytes(r)));
 }
 
 export function first(results: Value): Value {

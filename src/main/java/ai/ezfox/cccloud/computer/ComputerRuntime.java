@@ -8,6 +8,7 @@ import ai.ezfox.cccloud.code.engine.RunResult;
 import ai.ezfox.cccloud.code.engine.ScriptEngine;
 import ai.ezfox.cccloud.code.engine.ScriptError;
 import ai.ezfox.cccloud.code.engine.Task;
+import ai.ezfox.cccloud.code.runtime.BlockingRunner;
 import ai.ezfox.cccloud.code.runtime.ScriptScheduler;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayDeque;
@@ -31,6 +32,10 @@ import org.jspecify.annotations.Nullable;
  * <p>Budget like Cloud Scripts ({@link ComputerLimits}): a CPU share per second (then the task pauses), a longest run
  * between two waits (then the program fails), a memory estimate cap measured after allocation and an allocation
  * backstop. A program that ends or fails ends the run; the {@link Owner} decides what the computer does.
+ *
+ * <p>An engine that cannot suspend ({@link ScriptEngine.Preemption#ABORT}, WebAssembly) runs the program on a thread of
+ * its own instead ({@link BlockingRunner}): the same CPU share and longest run between waits, {@link #pull}'s future
+ * blocks that thread, the memory cap is the engine's own.
  */
 public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     static final long SECOND = 1_000_000_000L;
@@ -52,6 +57,8 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
     private final String boot;
     private final Owner owner;
     private final List<HostModule> modules;
+    /** The program's own thread, for engines that cannot suspend; null on the workers. */
+    private final @Nullable BlockingRunner runner;
     private final long startNanos = System.nanoTime();
 
     private final Object lock = new Object();
@@ -113,15 +120,74 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
         this.boot = boot;
         this.owner = owner;
         this.heapThreshold = Math.max(1, limits.memoryBytes() / 4);
+        this.runner = engine.preemption() == ScriptEngine.Preemption.ABORT
+            ? new BlockingRunner(scheduler, limits.cpuMsPerSecond(), limits.cpuMsPerResume(), () -> stopRequested, lock, (used, seconds) -> {
+            })
+            : null;
         this.modules = List.copyOf(modules.apply(this));
     }
 
     public void start() {
+        var r = runner;
         synchronized (lock) {
-            if (ended || job != null) return;
-            job = new Start();
+            if (ended || job != null || scheduled) return;
+            if (r != null) scheduled = true; // the thread closes the instance when it ends
+            else job = new Start();
         }
-        schedule();
+        if (r == null) {
+            schedule();
+            return;
+        }
+        var refusal = r.start(this::threadMain);
+        if (refusal != null) {
+            synchronized (lock) {
+                scheduled = false;
+            }
+            end(refusal == ScriptScheduler.Refusal.CLOSED ? null : new ScriptError(ScriptError.Kind.ENGINE, name + ": too many " + engine.language()
+                + " programs are running on this server (at most " + ScriptScheduler.MAX_THREADS + ")", null, null), refusal == ScriptScheduler.Refusal.CLOSED);
+        }
+    }
+
+    /** The program's own thread (engines that cannot suspend): load the boot code and run it to its end. */
+    private void threadMain() {
+        var r = runner;
+        try {
+            if (r == null || stopRequested) return;
+            EngineInstance i;
+            Task task;
+            var outer = r.enter();
+            try {
+                i = engine.createProgram(name, modules, this, this::clock);
+                instance = i;
+                task = i.load(boot);
+            } catch (ScriptError e) {
+                r.leave(outer);
+                end(e, false);
+                return;
+            }
+            RunResult result;
+            try {
+                result = i.run(task);
+            } finally {
+                r.leave(outer);
+            }
+            heapEstimate = i.heapEstimate(limits.memoryBytes(), List.of());
+            switch (result) {
+                case RunResult.Failed f -> {
+                    if (!(stopRequested && f.aborted())) end(f.error(), false);
+                }
+                default -> end(null, false);
+            }
+        } catch (RuntimeException | StackOverflowError e) {
+            ai.ezfox.cccloud.CloudLog.LOGGER.error("[cccloud] Cloud Computer '{}' crashed the runtime", name, e);
+            end(new ScriptError(ScriptError.Kind.ENGINE, name + ": internal error (" + e + ")", null, null), false);
+        } finally {
+            if (stopRequested) end(null, true);
+            synchronized (lock) {
+                scheduled = false;
+            }
+            closeInstance();
+        }
     }
 
     /** Ends the run (shutdown, reboot, unload): a running slice stops at its next check. Any thread. */
@@ -129,6 +195,7 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
         stopRequested = true;
         var i = instance;
         if (i != null) i.interrupt();
+        if (runner != null) runner.interrupt();
         end(null, true);
     }
 
@@ -435,6 +502,21 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
             abortKind = ScriptError.Kind.KILLED;
             return Decision.ABORT;
         }
+        if (runner != null) {
+            return switch (runner.check()) {
+                case CONTINUE -> Decision.CONTINUE;
+                case STOPPED -> {
+                    abortMessage = "stopped";
+                    abortKind = ScriptError.Kind.KILLED;
+                    yield Decision.ABORT;
+                }
+                case TOO_LONG -> {
+                    abortMessage = "too long without yielding";
+                    abortKind = ScriptError.Kind.CPU_LIMIT;
+                    yield Decision.ABORT;
+                }
+            };
+        }
         long used = System.nanoTime() - jobStart - jobBlocked;
         long jobAlloc = ALLOC == null ? 0 : allocated() - jobAllocStart;
         if (ALLOC != null && allocSinceHeap + jobAlloc > heapThreshold) {
@@ -472,7 +554,15 @@ public final class ComputerRuntime implements Budget, ScriptScheduler.Watched {
 
     @Override
     public void blocked(long nanos) {
-        jobBlocked += nanos;
+        if (runner != null) runner.blocked(nanos);
+        else jobBlocked += nanos;
+    }
+
+    /** Engines that cannot suspend wait here for a host call ({@link #pull}'s event, an action); not CPU time. */
+    @Override
+    public <T> T await(CompletableFuture<T> future) throws InterruptedException, java.util.concurrent.ExecutionException {
+        var r = runner;
+        return r == null ? Budget.super.await(future) : r.await(future, null);
     }
 
     private static long allocated() {
