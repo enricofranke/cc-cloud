@@ -125,6 +125,8 @@ public final class CloudConfig {
     public static final ModConfigSpec.IntValue CLOUD_SCRIPT_HANDLERS;
     public static final ModConfigSpec.IntValue CLOUD_SCRIPT_STORAGE;
     public static final ModConfigSpec.IntValue CLOUD_SCRIPT_LOG_LINES;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_WASM_BYTES;
+    public static final ModConfigSpec.IntValue CLOUD_SCRIPT_WASM_SOURCE;
     public static final ModConfigSpec.IntValue CLOUD_SCRIPT_THREADS;
     public static final ModConfigSpec.BooleanValue PRODUCTION_ENABLED;
     public static final ModConfigSpec.IntValue PRODUCTION_SAMPLE_SECONDS;
@@ -494,6 +496,13 @@ public final class CloudConfig {
         CLOUD_SCRIPT_LOG_LINES = b.comment("Log lines per second one script may write; more are dropped and counted.")
             .translation("cccloud.configuration.cloudScriptLogLinesPerSecond")
             .defineInRange("cloudScriptLogLinesPerSecond", 20, 1, 200);
+        CLOUD_SCRIPT_WASM_BYTES = b.comment("Largest WebAssembly module (.wasm, bytes) a Cloud Script may have (uploads travel as base64 in one dashboard",
+                "message of at most 256 KB, module and source text together).")
+            .translation("cccloud.configuration.cloudScriptWasmMaxBytes")
+            .defineInRange("cloudScriptWasmMaxBytes", 131072, 4096, 163840);
+        CLOUD_SCRIPT_WASM_SOURCE = b.comment("Largest source text (bytes) stored with a WebAssembly script so the dashboard can show it (0 = none).")
+            .translation("cccloud.configuration.cloudScriptWasmSourceBytes")
+            .defineInRange("cloudScriptWasmSourceBytes", 32768, 0, 49152);
         CLOUD_SCRIPT_THREADS = b.restart().comment("Worker threads that run all Cloud Scripts of the server (each script gets its share in slices).")
             .translation("cccloud.configuration.cloudScriptThreads")
             .defineInRange("cloudScriptThreads", 2, 1, 8);

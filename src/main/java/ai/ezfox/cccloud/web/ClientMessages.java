@@ -70,9 +70,21 @@ public final class ClientMessages {
      * ({@code rename}), {@code enabled} ({@code autostart}), {@code version} ({@code version}, {@code revert}). Names and
      * sizes are checked by {@link ai.ezfox.cccloud.code.store.ScriptBook}. A malformed request keeps its {@code reqId} and
      * carries {@code error} ({@code invalid}, {@code unknown_script}, {@code too_large}), answered after the rights check.
+     * {@code language} ({@code save}, {@code check}): {@code lua} (default) or {@code wasm} (the source is the stored form
+     * of {@code code.wasm.WasmSource}: the module in base64 and its source text); an existing script keeps its language.
      */
     public record CodeCommand(String reqId, String op, @Nullable String id, @Nullable String name, @Nullable String source, @Nullable Integer baseVersion,
-                              @Nullable Integer version, @Nullable Boolean enabled, @Nullable String error) implements Message {
+                              @Nullable Integer version, @Nullable Boolean enabled, @Nullable String error, @Nullable String language) implements Message {
+        public CodeCommand(String reqId, String op, @Nullable String id, @Nullable String name, @Nullable String source, @Nullable Integer baseVersion,
+                           @Nullable Integer version, @Nullable Boolean enabled, @Nullable String error) {
+            this(reqId, op, id, name, source, baseVersion, version, enabled, error, null);
+        }
+
+        /** The language of a new script or a check: {@code lua} unless given. */
+        public String languageOr() {
+            return language == null ? "lua" : language;
+        }
+
         /** Ops that only read (everything else changes a script or its run). */
         public static final java.util.Set<String> READ_OPS = java.util.Set.of("list", "get", "check", "versions", "version", "logs", "unwatch");
 
@@ -86,6 +98,10 @@ public final class ClientMessages {
         "rename", "versions", "version", "revert", "logs", "unwatch");
     /** Longest {@code code} message: a source of up to 32 KB plus its escaping. */
     static final int MAX_CODE_FRAME = 64 * 1024;
+    /** Longest {@code code} message with a WebAssembly script (module in base64 and its source text, see Limits). */
+    static final int MAX_WASM_CODE_FRAME = MAX_LAYOUT_FRAME;
+    /** Script languages the dashboard can save. */
+    public static final java.util.Set<String> CODE_LANGUAGES = java.util.Set.of("lua", "wasm");
     private static final Pattern SCRIPT_ID = Pattern.compile("[a-f0-9]{8}");
 
     /** Card settings are small: at most this many characters of JSON. */
@@ -295,7 +311,7 @@ public final class ClientMessages {
         String t = string(obj, "t");
         if (t == null) return new Invalid("invalid_message", null);
         if (text.length() > MAX_FRAME && !"layout_set".equals(t) && !("card_write".equals(t) && text.length() <= MAX_CARD_WRITE_FRAME)
-            && !("code".equals(t) && text.length() <= MAX_CODE_FRAME)) {
+            && !("code".equals(t) && text.length() <= ("wasm".equals(string(obj, "language")) ? MAX_WASM_CODE_FRAME : MAX_CODE_FRAME))) {
             return new Invalid("too_large", null);
         }
         return switch (t) {
@@ -422,20 +438,22 @@ public final class ClientMessages {
         Integer baseVersion = smallInt(obj, "baseVersion");
         Integer version = smallInt(obj, "version");
         Boolean enabled = flag(obj, "enabled");
+        String language = string(obj, "language");
         String error = null;
         if (op == null || !CODE_OPS.contains(op)) {
             op = "invalid";
             error = "invalid";
-        } else if (!java.util.Set.of("t", "reqId", "op", "id", "name", "source", "baseVersion", "version", "enabled").containsAll(obj.keySet())
+        } else if (!java.util.Set.of("t", "reqId", "op", "id", "name", "source", "baseVersion", "version", "enabled", "language").containsAll(obj.keySet())
             // a field that is there must have its type
             || (obj.has("id") && id == null) || (obj.has("name") && name == null) || (obj.has("source") && source == null)
             || (obj.has("enabled") && enabled == null) || (obj.has("version") && version == null)
             || (obj.has("baseVersion") && !obj.get("baseVersion").isJsonNull() && baseVersion == null)
+            || (obj.has("language") && (language == null || !CODE_LANGUAGES.contains(language)))
             || (name != null && name.length() > 64)) {
             error = "invalid";
         } else if (id != null && !SCRIPT_ID.matcher(id).matches()) {
             error = "unknown_script";
-        } else if (source != null && source.length() > MAX_PROGRAM) {
+        } else if (source != null && source.length() > ("wasm".equals(language) ? MAX_WASM_CODE_FRAME : MAX_PROGRAM)) {
             error = "too_large";
         } else if (!java.util.Set.of("list", "check", "save").contains(op) && id == null) {
             error = "invalid";
@@ -450,7 +468,7 @@ public final class ClientMessages {
             };
             if (!ok) error = "invalid";
         }
-        return new CodeCommand(reqId, op, id, name, source, baseVersion, version, enabled, error);
+        return new CodeCommand(reqId, op, id, name, source, baseVersion, version, enabled, error, language);
     }
 
     private static Message parseCardWrite(JsonObject obj) {

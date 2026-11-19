@@ -4,6 +4,15 @@ All notable changes to CC: Cloud. Versions before 0.9.0 were development milesto
 
 ## Unreleased
 
+### Cloud Scripts in WebAssembly
+- **Write scripts in AssemblyScript** (TypeScript syntax) and upload the compiled `.wasm` in the dashboard: "New script" →
+  "WebAssembly (.wasm)". They use the same `cloud` API as Lua scripts, with the same rights, actions, events, timers and
+  storage, and run inside the mainframe like them. The SDK and a build guide are in `wasm/assemblyscript`.
+- The source you upload with the module is shown in the editor (read-only), so everyone with access sees what runs.
+- **Safe on public servers:** each script gets a hard memory cap, the same CPU share as Lua scripts, a limit on host
+  calls, and only CC: Cloud's own host functions (no WASI, no file or network access). Modules are checked when they are
+  saved and again before every start. New config: `cloudScriptWasmMaxBytes`, `cloudScriptWasmSourceBytes`.
+
 ### Cloud Computers
 - **Computers of our own.** Programs run on the mod's own Lua runtime, no CC: Tweaked needed: a shell with `ls`, `cd`,
   `cat`, `cp`, `mv`, `rm`, `mkdir`, `label`, `id`, `help`, an interactive `lua` prompt and the `edit` editor. A

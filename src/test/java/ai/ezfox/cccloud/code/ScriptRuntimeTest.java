@@ -62,7 +62,7 @@ class ScriptRuntimeTest {
 
     @Test
     void busyScriptGetsItsShareOnly() throws InterruptedException {
-        var limits = new Limits(16, 8, 32 * 1024, 30, 100_000, 20, 32, 64, 1024, 20, 200, 1L << 40, 1L << 30, 20, 32, 6, 5, 0.2);
+        var limits = new Limits(16, 8, 32 * 1024, 30, 100_000, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 40, 1L << 30, 20, 32, 6, 5, 0.2, 2000, 64 * 1024);
         var run = scripts.run("while true do end", limits, TestScripts.snapshot(1, 20, true));
         Thread.sleep(2500);
         long used = run.runtime().cpuTotalNanos();
@@ -159,11 +159,8 @@ class ScriptRuntimeTest {
     }
 
     @Test
-    void enginesItCannotHoldAreRefused() throws InterruptedException {
-        var abort = scripts.run("x", TestScripts.FAST, TestScripts.snapshot(1, 20, true), refusedEngine(ScriptEngine.Preemption.ABORT, 0));
-        assertTrue(abort.await(5000));
-        assertEquals(ScriptError.Kind.ENGINE, abort.error().kind());
-        assertTrue(abort.error().getMessage().contains("cannot run here yet"), abort.error().getMessage());
+    void enginesBelowTheirMinimumMemoryAreRefused() throws InterruptedException {
+        // (engines that cannot suspend run on their own thread: WasmScriptsTest)
         var small = scripts.run("x", TestScripts.FAST, TestScripts.snapshot(1, 20, true), refusedEngine(ScriptEngine.Preemption.SUSPEND, 64L << 20));
         assertTrue(small.await(5000));
         assertEquals(ScriptError.Kind.ENGINE, small.error().kind());

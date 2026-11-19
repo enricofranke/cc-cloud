@@ -78,7 +78,7 @@ class ScriptBookTest {
 
     @Test
     void quotaAndIdCollisions() {
-        var limits = Limits.DEFAULT.withConfig(2, 8, 50, 200, 20, 32, 64, 16384, 20);
+        var limits = Limits.DEFAULT.withConfig(2, 8, 50, 200, 20, 32, 64, 16384, 20, 128 * 1024, 32 * 1024);
         var book = new ScriptBook(List.of());
         assertEquals("aaaa0001", book.save(null, "A", "", null, STEVE, "Steve", 1, limits, ids("aaaa0001")).script().id());
         assertEquals("aaaa0002", book.save(null, "B", "", null, STEVE, "Steve", 2, limits, ids("aaaa0001", "aaaa0002")).script().id(), "a taken id is drawn again");
@@ -92,7 +92,7 @@ class ScriptBookTest {
 
     @Test
     void historyIsPrunedAndRevertAddsAVersion() {
-        var limits = Limits.DEFAULT.withConfig(16, 8, 50, 200, 3, 32, 64, 16384, 20);
+        var limits = Limits.DEFAULT.withConfig(16, 8, 50, 200, 3, 32, 64, 16384, 20, 128 * 1024, 32 * 1024);
         var book = new ScriptBook(List.of());
         book.save(null, "S", "v1", null, STEVE, "Steve", 1, limits, ids("aaaa0001"));
         for (int v = 2; v <= 5; v++) book.save("aaaa0001", "S", "v" + v, null, STEVE, "Steve", v, limits, ids());
@@ -111,7 +111,7 @@ class ScriptBookTest {
 
     @Test
     void historyIsCappedInBytes() {
-        var big = new Limits(16, 8, 200_000, 50, 200, 20, 32, 64, 16384, 20, 200, 1L << 30, 16L << 20, 20, 32, 6, 5, 0.2);
+        var big = new Limits(16, 8, 200_000, 50, 200, 20, 32, 64, 16384, 20, 128 * 1024, 32 * 1024, 200, 1L << 30, 16L << 20, 20, 32, 6, 5, 0.2, 2000, 64 * 1024);
         var record = new ScriptRecord("aaaa0001", "S", "lua", false, null, "", 0, List.of(new ScriptVersion(1, 0, STEVE, "Steve", "a".repeat(100_000), null)), Map.of());
         for (int v = 2; v <= 4; v++) record = ScriptBook.withVersion(record, new ScriptVersion(v, v, STEVE, "Steve", String.valueOf(v).repeat(100_000), null), big);
         assertEquals(List.of(3, 4), record.versions().stream().map(ScriptVersion::version).toList(), "at most 256 KB of history");

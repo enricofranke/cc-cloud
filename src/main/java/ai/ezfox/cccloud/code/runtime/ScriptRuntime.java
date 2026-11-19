@@ -42,6 +42,16 @@ import org.jspecify.annotations.Nullable;
  * ({@link CpuClock}): a lagging server or a GC pause does not use up a script's budget. Allocation (when the JVM can
  * measure it per thread) is capped per second, and the reachable heap is estimated every few seconds. An uncaught
  * error ends the whole script.
+ *
+ * <h2>Engines that cannot suspend</h2>
+ * A {@link ScriptEngine.Preemption#ABORT} engine (WebAssembly) runs on a thread of its own
+ * ({@link ScriptScheduler#startThread}) instead of the workers: the thread runs one task at a time to its end. The
+ * engine calls {@link #check()} from inside the guest; when the per-second share is used up, the check blocks the thread
+ * until the next second. Host calls that wait (sleep, events, actions) block in {@link #await}, which meanwhile runs the
+ * script's handlers and timers on the same thread (nested at most {@link #MAX_NESTING} deep), so a script that loops
+ * with {@code cloud.sleep} still reacts to events. The same limits apply (CPU per second and per stretch without
+ * waiting, timers, handlers, tasks); memory is the engine's hard cap. Stopping it sets the flag its next check sees and
+ * interrupts its thread.
  */
 public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.Watched {
     public enum Status { STARTING, RUNNING, STOPPED, ERROR }
@@ -59,12 +69,16 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     /** A worker gives other scripts a turn after this long. */
     static final long SLICE_NANOS = 20_000_000L;
     static final double MIN_SLEEP = 0.05;
+    /** How deep handlers may run inside waits of other tasks (ABORT engines). */
+    static final int MAX_NESTING = 4;
     private static final com.sun.management.@Nullable ThreadMXBean ALLOC = allocationBean();
 
     private final ScriptIdentity who;
     private final int version;
     private final String source;
     private final ScriptEngine engine;
+    /** The engine cannot suspend: the script runs on its own thread (see the class comment). */
+    private final boolean blocking;
     private final ScriptScheduler scheduler;
     private final ScriptWorld world;
     private final Limits limits;
@@ -128,6 +142,9 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     private volatile boolean heapRequested;
     private volatile long heapEstimate;
     private volatile long totalCpuNanos;
+    // ---- own thread (ABORT engines) ----
+    private final @Nullable BlockingRunner runner;
+    private int nesting;
     /** How often the script was paused because its CPU share of a second was used up. */
     private volatile int sharePauses;
 
@@ -185,6 +202,8 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         this.version = version;
         this.source = source;
         this.engine = engine;
+        this.blocking = engine.preemption() == ScriptEngine.Preemption.ABORT;
+        this.runner = blocking ? new BlockingRunner(scheduler, limits.cpuMsPerSecond(), limits.cpuMsPerResume(), () -> stopRequested, lock, this::secondClosed) : null;
         this.scheduler = scheduler;
         this.world = world;
         this.limits = limits;
@@ -207,8 +226,21 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     public void start() {
         synchronized (lock) {
             if (ended) return;
+            if (blocking) inSlice = true; // the thread closes the instance when it ends
         }
-        schedule();
+        if (!blocking) {
+            schedule();
+            return;
+        }
+        var refusal = runner.start(this::threadMain);
+        if (refusal != null) {
+            synchronized (lock) {
+                inSlice = false;
+            }
+            if (refusal == ScriptScheduler.Refusal.CLOSED) end("server_stopping", null);
+            else end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": too many " + engine.language()
+                + " scripts are running on this server (at most " + ScriptScheduler.MAX_THREADS + ")", null, null));
+        }
     }
 
     /** Stops the script ({@code reason}: stopped, kill_switch, offline, command, …); a running slice ends at its next check. */
@@ -217,6 +249,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         stopRequested = true;
         var i = instance;
         if (i != null) i.interrupt();
+        if (runner != null) runner.interrupt();
         end(reason, null);
     }
 
@@ -239,6 +272,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             handlers.clear();
             liveTasks = 0;
             close = !inSlice;
+            lock.notifyAll();
         }
         stopRequested = true;
         for (var f : cancel) f.cancel(false);
@@ -266,6 +300,13 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     }
 
     private void schedule() {
+        if (blocking) {
+            // the script's own thread picks the work up
+            synchronized (lock) {
+                lock.notifyAll();
+            }
+            return;
+        }
         synchronized (lock) {
             if (ended || scheduled || pausedUntil != 0) return;
             scheduled = true;
@@ -344,11 +385,6 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     private boolean load() {
         jobStart = cpu.now();
-        if (engine.preemption() != ScriptEngine.Preemption.SUSPEND) {
-            // see ScriptEngine.Preemption: engines that block in host calls need a thread per script, not built yet
-            end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": the " + engine.language() + " engine cannot run here yet", null, null));
-            return false;
-        }
         if (limits.memoryBytes() < engine.minimumMemory()) {
             end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": " + engine.language() + " needs at least "
                 + (engine.minimumMemory() >> 20) + " MB of memory, the server allows " + (limits.memoryBytes() >> 20) + " MB", null, null));
@@ -485,16 +521,21 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
         if (windowStart == 0) windowStart = now;
         if (now - windowStart < SECOND) return;
         long seconds = (now - windowStart) / SECOND;
-        lastSecondNanos = windowUsed;
-        lastSeconds[secondsSeen++ % lastSeconds.length] = windowUsed;
+        secondClosed(windowUsed, seconds);
+        windowStart += seconds * SECOND;
+        windowUsed = 0;
+        windowAlloc = 0;
+    }
+
+    /** A CPU window closed: the dashboard's last second and ten-second average. */
+    private void secondClosed(long used, long seconds) {
+        lastSecondNanos = used;
+        lastSeconds[secondsSeen++ % lastSeconds.length] = used;
         for (long s = 1; s < Math.min(seconds, lastSeconds.length); s++) lastSeconds[secondsSeen++ % lastSeconds.length] = 0;
         long sum = 0;
         int n = Math.min(secondsSeen, lastSeconds.length);
         for (int k = 0; k < n; k++) sum += lastSeconds[k];
         averageNanos = n == 0 ? 0 : sum / n;
-        windowStart += seconds * SECOND;
-        windowUsed = 0;
-        windowAlloc = 0;
     }
 
     private void heap() {
@@ -541,6 +582,20 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
             abortKind = ScriptError.Kind.KILLED;
             return Decision.ABORT;
         }
+        if (runner != null) {
+            return switch (runner.check()) {
+                case CONTINUE -> Decision.CONTINUE;
+                case STOPPED -> {
+                    abortKind = ScriptError.Kind.KILLED;
+                    yield Decision.ABORT;
+                }
+                case TOO_LONG -> {
+                    abortMessage = "ran for more than " + limits.cpuMsPerResume() + " ms without pausing (wait with cloud.sleep or react to events)";
+                    abortKind = ScriptError.Kind.CPU_LIMIT;
+                    yield Decision.ABORT;
+                }
+            };
+        }
         long used = cpu.now() - jobStart - jobBlocked;
         long jobAlloc = ALLOC == null ? 0 : allocated() - jobAllocStart;
         if (ALLOC != null && allocSinceHeap + jobAlloc > heapThreshold) {
@@ -579,8 +634,113 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
 
     @Override
     public void blocked(long nanos) {
+        if (runner != null) runner.blocked(nanos);
         // thread CPU time does not run while the engine waits; wall time does and has to be given back
-        if (cpu.wall()) jobBlocked += nanos;
+        else if (cpu.wall()) jobBlocked += nanos;
+    }
+
+    // ---- own thread (ABORT engines) -------------------------------------------------------------------------------------
+
+    /** The script's thread: loads it and runs its tasks until it ends. */
+    private void threadMain() {
+        try {
+            if (!stopRequested && load()) pump(null);
+        } catch (InterruptedException e) {
+            // stopped
+        } catch (RuntimeException | StackOverflowError e) {
+            ai.ezfox.cccloud.CloudLog.LOGGER.error("[cccloud] Cloud Script '{}' crashed the runtime", who.scriptName(), e);
+            end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": internal error (" + e + ")", null, null));
+        } finally {
+            synchronized (lock) {
+                inSlice = false;
+            }
+            if (!ended()) end("finished", null);
+            closeInstance();
+        }
+    }
+
+    /**
+     * Runs the script's ready tasks on this thread until {@code until} completes (null: until the script ends). New
+     * events, timers and completed futures wake it ({@link #schedule}).
+     */
+    private void pump(@Nullable CompletableFuture<?> until) throws InterruptedException {
+        if (until != null) until.whenComplete((v, f) -> schedule());
+        while (!stopRequested) {
+            if (until != null && until.isDone()) return;
+            events();
+            Job job;
+            synchronized (lock) {
+                if (ended) return;
+                job = ready.poll();
+                if (job == null) {
+                    if (until != null && until.isDone()) return;
+                    if (pendingSnapshot == null) lock.wait(1000);
+                    continue;
+                }
+            }
+            runOnThread(job);
+        }
+    }
+
+    /** Runs one task to its end (the engine cannot pause it) and books its CPU time. */
+    private void runOnThread(Job job) {
+        var i = instance;
+        var r = runner;
+        if (i == null || r == null || !(job instanceof Call c)) return;
+        r.holdForShare();
+        if (stopRequested) return;
+        var outerRun = currentRun;
+        var run = new Run(c.main() != null ? c.main() : i.call(c.function(), c.label(), c.arg() == null ? new Object[0] : new Object[]{c.arg()}), c.timer());
+        currentRun = run;
+        var outer = r.enter();
+        RunResult result;
+        try {
+            result = i.run(run.task);
+        } finally {
+            run.cpu += r.leave(outer);
+            currentRun = outerRun;
+        }
+        heapEstimate = i.heapEstimate(limits.memoryBytes(), List.of());
+        switch (result) {
+            case RunResult.Done d -> finished(run);
+            case RunResult.Failed f -> {
+                if (!(stopRequested && f.aborted())) end("error", f.error());
+                finished(run);
+            }
+            default -> end("error", new ScriptError(ScriptError.Kind.ENGINE, who.scriptName() + ": the " + engine.language()
+                + " engine paused a task it cannot continue", null, null));
+        }
+    }
+
+    /**
+     * Waits for a host call's future on the script's thread; meanwhile runs the script's other tasks (handlers, timers),
+     * nested at most {@link #MAX_NESTING} deep. The waiting is not CPU time, and the task counts as having waited.
+     */
+    @Override
+    public <T> T await(CompletableFuture<T> future) throws InterruptedException, java.util.concurrent.ExecutionException {
+        var r = runner;
+        if (r == null) return Budget.super.await(future);
+        var run = currentRun;
+        synchronized (lock) {
+            if (ended) throw new InterruptedException();
+            waiting.add(future);
+        }
+        try {
+            BlockingRunner.Pump pump = nesting < MAX_NESTING ? until -> {
+                nesting++;
+                try {
+                    pump(until);
+                } finally {
+                    nesting--;
+                }
+            } : null;
+            return r.await(future, pump);
+        } finally {
+            synchronized (lock) {
+                waiting.remove(future);
+            }
+            currentRun = run;
+        }
     }
 
     private static long allocated() {
@@ -939,7 +1099,7 @@ public final class ScriptRuntime implements ScriptHost, Budget, ScriptScheduler.
     }
 
     public long cpuTotalNanos() {
-        return totalCpuNanos;
+        return runner != null ? runner.total() : totalCpuNanos;
     }
 
     /** How often the script was paused until the next second because its CPU share was used up. */
