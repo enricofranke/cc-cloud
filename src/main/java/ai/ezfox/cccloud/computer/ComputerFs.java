@@ -75,13 +75,27 @@ public final class ComputerFs {
                 char c = part.charAt(i);
                 if (c < 0x20 || c == 0x7f || c > 0xff || BAD_CHARS.indexOf(c) >= 0) throw new ApiError("/" + cut(path) + ": Invalid Path");
             }
-            if (part.endsWith(".") || part.endsWith(" ")) throw new ApiError("/" + cut(path) + ": Invalid Path");
+            if (part.endsWith(".") || part.endsWith(" ") || windowsDevice(part)) throw new ApiError("/" + cut(path) + ": Invalid Path");
             parts.add(part);
             if (parts.size() > MAX_DEPTH) throw new ApiError("/" + cut(path) + ": Path too deep");
         }
         String out = String.join("/", parts);
         if (out.length() > MAX_PATH) throw new ApiError("/" + cut(path) + ": Path too long");
         return out;
+    }
+
+    /**
+     * Names Windows treats as devices, with any extension and trailing spaces ({@code con}, {@code NUL.txt},
+     * {@code com1 .log}, {@code LPT¹}): a world on a Windows host must never open one (the {@code .~tmp} file of an atomic
+     * write would be one too).
+     */
+    static boolean windowsDevice(String name) {
+        int dot = name.indexOf('.');
+        String base = (dot < 0 ? name : name.substring(0, dot)).stripTrailing().toUpperCase(java.util.Locale.ROOT);
+        return switch (base) {
+            case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$" -> true;
+            default -> base.length() == 4 && (base.startsWith("COM") || base.startsWith("LPT")) && "0123456789\u00b9\u00b2\u00b3".indexOf(base.charAt(3)) >= 0;
+        };
     }
 
     public static String combine(String a, String b) {
