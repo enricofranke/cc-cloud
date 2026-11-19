@@ -318,4 +318,16 @@ class QaProbeTest {
             if rawget(_G, "__native") ~= nil or __native ~= nil then hits[#hits + 1] = "global" end
             report(#hits == 0 and "clean" or table.concat(hits, ","))"""));
     }
+
+    /** N1: Windows device names are no file names, with any case, extension or trailing space; near misses still work. */
+    @Test
+    void windowsDeviceNames() {
+        for (String bad : new String[]{"con", "NUL", "nul.txt", "Aux.lua", "prn", "com1", "COM9.log", "lpt1", "LPT3 .x", "a/con/b", "conin$", "CONOUT$.x",
+            "com\u00b9", "con ", "nul.tar.gz"}) {
+            assertThrows(ai.ezfox.cccloud.code.api.ApiError.class, () -> ComputerFs.normalize(bad), bad);
+        }
+        for (String ok : new String[]{"console", "con1", "nullable", "com10", "lpt", "comx", "a.con", "auxiliary.txt", "x/prn1"}) {
+            assertDoesNotThrow(() -> ComputerFs.normalize(ok), ok);
+        }
+    }
 }
