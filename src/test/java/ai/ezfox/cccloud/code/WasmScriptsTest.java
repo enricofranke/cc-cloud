@@ -41,7 +41,12 @@ class WasmScriptsTest {
         return new WasmSource(module(name), "// " + name + ".ts", "assemblyscript").encode();
     }
 
+    /** With room on the CPU (a loaded machine and a cold JIT must not trip the limits); {@link #runFast} for the CPU tests. */
     private TestScripts.Run run(String name) {
+        return run(name, TestScripts.ROOMY_CPU);
+    }
+
+    private TestScripts.Run runFast(String name) {
         return run(name, TestScripts.FAST);
     }
 
@@ -54,7 +59,7 @@ class WasmScriptsTest {
     @Test
     void endlessLoopIsStoppedByTheCpuLimit() throws InterruptedException {
         long start = System.nanoTime();
-        var run = run("loop");
+        var run = runFast("loop");
         assertTrue(run.await(10_000), "the loop was not stopped: " + run.logText());
         assertNotNull(run.error());
         assertEquals(ScriptError.Kind.CPU_LIMIT, run.error().kind(), run.error().getMessage());
@@ -102,12 +107,12 @@ class WasmScriptsTest {
 
     @Test
     void tooManyHostCallsAreStopped() throws InterruptedException {
-        var limits = new Limits(16, 8, 32 * 1024, 500, 5000, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 40, 4L << 20, 20, 32, 6, 5, 0.2,
-            300, 64 * 1024);
+        var limits = new Limits(16, 8, 32 * 1024, 1000, 100_000, 20, 32, 64, 1024, 20, 128 * 1024, 32 * 1024, 200, 1L << 40, 4L << 20, 20, 32, 6, 5, 0.2,
+            50, 64 * 1024);
         var run = run("hostcalls", limits);
         assertTrue(run.await(10_000), run.logText());
         assertNotNull(run.error());
-        assertTrue(run.error().getMessage().contains("more than 300 host calls within a second"), run.error().getMessage());
+        assertTrue(run.error().getMessage().contains("more than 50 host calls within a second"), run.error().getMessage());
     }
 
     @Test
@@ -127,10 +132,11 @@ class WasmScriptsTest {
     @Test
     void cloudApiWorksLikeInLua() throws InterruptedException {
         var run = run("api");
-        TestScripts.until(() -> run.logText().contains("store "), 5000, "the script ran: " + run.logText());
+        TestScripts.until(() -> run.runtime().handlerCount() > 0 || run.runtime().isEnded(), 30_000, "the script ran up to cloud.on");
+        assertNull(run.error(), () -> run.error().getMessage() + "\n" + run.logText());
         // a change of the heat widget while main sleeps runs the handler inside the sleep
         run.runtime().offer(TestScripts.snapshot(2, 55, true));
-        assertTrue(run.await(10_000), run.logText());
+        assertTrue(run.await(20_000), run.logText());
         assertNull(run.error(), () -> run.error().getMessage());
         String log = run.logText();
         assertTrue(log.contains("info: card Reactor true 4 heat °C"), log);

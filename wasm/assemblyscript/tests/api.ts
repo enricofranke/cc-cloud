@@ -30,8 +30,9 @@ export function main(): void {
   const obj = Value.object().set("a", "x\"y\n").set("n", 1.5).set("list", [1, 2, 3]);
   cloud.store.set("obj", obj);
   cloud.log("obj " + cloud.store.get("obj").toString());
-  cloud.on("change", Value.object().set("widget", "heat"), onChange);
+  const handler = cloud.on("change", Value.object().set("widget", "heat"), onChange);
   cloud.after(0.1, tick);
-  cloud.sleep(0.3);
+  cloud.sleep(2);
   cloud.log("slept " + changes.toString());
+  cloud.off(handler); // nothing left to wait for: the script finishes
 }
