@@ -22,6 +22,8 @@ import org.squiddev.cobalt.compiler.LoadState;
 
 /** Lua 5.2 (with the bits of 5.3 Cobalt has) on Cobalt, the VM CC: Tweaked uses; independent of CC: Tweaked itself. */
 public final class LuaEngine implements ScriptEngine {
+    /** The largest chunk {@code load} compiles (and so the largest program file a computer runs): 256 KB. */
+    public static final int MAX_CHUNK = LuaSandbox.MAX_CHUNK;
     private final Supplier<ZoneId> zone;
 
     public LuaEngine(Supplier<ZoneId> zone) {

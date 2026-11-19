@@ -309,6 +309,37 @@ class CloudComputerTest {
     }
 
     @Test
+    void fileErrorsPointAtTheProgramLine() {
+        computers.limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 4096, 32, 20);
+        var c = computers.create();
+        file(c, "a.lua", "local f = fs.open('w1', 'w')\nf.write(('x'):rep(5000))\n");
+        file(c, "b.lua", "local f = fs.open('w2', 'w')\nf.write(('x'):rep(3000))\nf.close()\n");
+        c.fs().writeFile("filler", new byte[2000]);
+        runStartup(c, """
+            shell.run("a")
+            shell.run("b")
+            fs.open("done", "w").close()
+            """, 15_000);
+        until(c, 15_000, "both errors", () -> shows(c, "/a.lua:2:") && shows(c, "/b.lua:3:"));
+        assertFalse(shows(c, "computer "), "no line of the boot code: " + screen(c));
+        assertTrue(shows(c, "/b.lua:3: /w2: Out of space"), screen(c));
+    }
+
+    @Test
+    void programsOverTheLoadLimitSaySo() {
+        var c = computers.create();
+        file(c, "big.lua", "-- " + "x".repeat(300 * 1024) + "\n");
+        runStartup(c, """
+            shell.run("big")
+            local fn, err = loadfile("big.lua")
+            local o = fs.open("out", "w") o.write(tostring(fn) .. " " .. err) o.close()
+            fs.open("done", "w").close()
+            """, 15_000);
+        assertEquals("nil /big.lua: program too large, max 256 KB", read(c, "out"));
+        assertTrue(shows(c, "program too large, max 256 KB"), screen(c));
+    }
+
+    @Test
     void programsCannotReachTheHost() {
         var c = computers.create();
         runStartup(c, """
