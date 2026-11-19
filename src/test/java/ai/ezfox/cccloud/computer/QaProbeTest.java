@@ -235,4 +235,87 @@ class QaProbeTest {
             local w = fs.open('c', 'w')
             report(pcall(w.write, string.rep('q', 500000)))"""));
     }
+
+    // ---- N8 (fb43aa7c): error lines, and the wrappers must not swallow the runtime's stops -------------------------------
+
+    @Test
+    void handleErrorsPointAtTheProgram() {
+        computers.limits = new ComputerLimits(500, 2000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+        var c = computers.create();
+        file(c, "startup.lua", "local f = fs.open('a', 'w')\nf.write(string.rep('x', 900000))\nlocal g = fs.open('b', 'w')\ng.write(string.rep('y', 200000))\nf.close()\ng.close()\n");
+        c.turnOn();
+        until(c, 30000, "the error", () -> shows(c, "Out of space") || c.lastError() != null);
+        System.out.println("QA N8 handle: " + screen(c).strip());
+        assertTrue(shows(c, "startup.lua:4"), screen(c));
+        var d = computers.create();
+        file(d, "startup.lua", "\n\nperipheral.call('nowhere', 'x')\n");
+        d.turnOn();
+        until(d, 30000, "the error", () -> shows(d, "/>") && shows(d, "nowhere"));
+        System.out.println("QA N8 peripheral: " + screen(d).strip());
+        assertTrue(shows(d, "startup.lua:3"), screen(d));
+        var e = computers.create();
+        file(e, "big.lua", "-- x\n".repeat(70_000));
+        file(e, "startup.lua", "shell.run('big')");
+        e.turnOn();
+        until(e, 30000, "the error", () -> shows(e, "too large"));
+        System.out.println("QA N8 big: " + screen(e).strip());
+    }
+
+    @Test
+    void wrappedCallsStillStopOnTheCpuLimit() {
+        computers.limits = new ComputerLimits(200, 500, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+        var c = computers.create();
+        file(c, "startup.lua", "local f = fs.open('a', 'w') while true do pcall(f.write, 'x') pcall(f.flush) pcall(peripheral.call, 'top', 'x') end");
+        c.turnOn();
+        until(c, 60000, "the CPU limit", () -> c.lastError() != null || !c.isOn());
+        System.out.println("QA wrapped loop: " + c.lastError());
+        assertTrue(String.valueOf(c.lastError()).contains("too long without yielding"), String.valueOf(c.lastError()));
+    }
+
+    /** Programs must not reach the boot code's __native table (it bypasses the load limit and the wrappers). */
+    @Test
+    void nativeTableIsUnreachable() {
+        assertEquals("clean", probe("""
+            local marks = { pull = true, peripheralCall = true, maxProgram = true, readFile = true, gameTime = true }
+            local seen, hits = {}, {}
+            local function scan(v, path, depth)
+              if depth > 12 then return end
+              local t = type(v)
+              if t ~= "table" and t ~= "string" and t ~= "function" and t ~= "thread" then return end
+              if seen[v] then return end
+              seen[v] = true
+              local mt = getmetatable(v)
+              if mt ~= nil then scan(mt, path .. "<mt>", depth + 1) end
+              if t ~= "table" then return end
+              for k, x in pairs(v) do
+                if type(k) == "string" and marks[k] then hits[#hits + 1] = path .. "." .. k end
+                scan(k, path .. "[key]", depth + 1)
+                scan(x, path .. "." .. tostring(k), depth + 1)
+              end
+            end
+            scan(_G, "_G", 0)
+            scan(_ENV, "_ENV", 0)
+            scan(getmetatable(""), "string-mt", 0)
+            -- values that come back from calls
+            local results = {}
+            local function add(...) for i = 1, select("#", ...) do results[#results + 1] = (select(i, ...)) end end
+            add(pcall(fs.open("nope", "r")))
+            local f = fs.open("x", "w") add(pcall(f.write, {})) f.close() add(pcall(f.write, "a"))
+            add(pcall(peripheral.call, "top", "x")) add(pcall(peripheral.call))
+            add(pcall(error, setmetatable({}, {})))
+            add(pcall(load, "return __native"))
+            add(load("return __native")())
+            add(load("return _ENV.__native")())
+            add(load("return ...", "x", "t", nil))
+            add(pcall(os.run, {}, "nope"))
+            add(coroutine.running())
+            local co = coroutine.create(function(...) return __native, _ENV, ... end)
+            add(coroutine.resume(co, 1))
+            add(term.native(), term.current())
+            os.queueEvent("probe")
+            add(os.pullEventRaw("probe"))
+            for i, v in ipairs(results) do scan(v, "result" .. i, 0) end
+            if rawget(_G, "__native") ~= nil or __native ~= nil then hits[#hits + 1] = "global" end
+            report(#hits == 0 and "clean" or table.concat(hits, ","))"""));
+    }
 }
