@@ -104,4 +104,58 @@ class QaProbeTest {
         c.turnOn();
         until(c, 30000, "a normal boot afterwards", () -> c.fs().exists("done"));
     }
+
+    /** The Lua compiler's own allocations: big sources, long literals, a reader function that never ends. */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+        "local s = string.rep('a=1;', 250000) local f = load(s) report(f ~= nil)",
+        "local s = 'return \\'' .. string.rep('x', 1000000 - 20) .. '\\'' local f = load(s) report(f ~= nil)",
+        "local s = 'return {' .. string.rep('1,', 450000) .. '}' local f = load(s) report(f ~= nil)",
+        "local piece = string.rep('a=1;', 250000) local f = load(function() return piece end) report(f ~= nil)",
+        "local piece = string.rep('-', 1000000) local n = 0 local f = load(function() n = n + 1 if n == 1 then return '--[[' end return piece end) report(f ~= nil)",
+        "local s = 'return ' .. string.rep('(', 100000) .. '1' .. string.rep(')', 100000) local f, e = load(s) report(tostring(e))",
+        "local s = 'local x = ' .. string.rep('1+', 400000) .. '1' local f = load(s) report(f ~= nil)",
+    })
+    void luaCompilerAllocations(String program) {
+        computers.limits = new ComputerLimits(200, 1000, 16L << 20, 1L << 30, 256, 128, 1L << 20, 32, 20);
+        var c = computers.create();
+        file(c, "startup.lua", "local function report(v) local f = fs.open('result', 'w') f.write(tostring(v)) f.close() end\n" + program
+            + "\nfs.open('done', 'w').close() while true do os.pullEvent() end");
+        var bean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+        long before = 0;
+        for (long id : bean.getAllThreadIds()) before += Math.max(0, bean.getThreadAllocatedBytes(id));
+        long start = System.nanoTime();
+        c.turnOn();
+        until(c, 60000, "the program", () -> c.fs().exists("done") || c.lastError() != null || shows(c, "startup.lua:"));
+        long after = 0;
+        for (long id : bean.getAllThreadIds()) after += Math.max(0, bean.getThreadAllocatedBytes(id));
+        System.out.println("QA lua compile [" + program.substring(0, Math.min(50, program.length())) + "] "
+            + (System.nanoTime() - start) / 1_000_000 + " ms, allocated ~" + ((after - before) >> 20) + " MB, result="
+            + (c.fs().exists("result") ? read(c, "result") : "-") + " error=" + c.lastError() + "\n" + screen(c).strip());
+    }
+
+    /**
+     * load() with a reader function that keeps returning code: the compiler keeps what it read, inside one Java call the
+     * memory estimate cannot pause. The live heap must stay near the program's 16 MB cap.
+     */
+    @Test
+    void endlessLoadReaderStaysWithinTheMemoryCap() throws Exception {
+        computers.limits = ComputerLimits.DEFAULT;
+        var c = computers.create();
+        file(c, "startup.lua", "local piece = string.rep('a=1;', 250000) local f = load(function() return piece end)\nfs.open('done', 'w').close()");
+        System.gc();
+        var rt = Runtime.getRuntime();
+        long base = rt.totalMemory() - rt.freeMemory();
+        long peak = 0;
+        c.turnOn();
+        long end = System.nanoTime() + 60_000_000_000L;
+        while (System.nanoTime() < end && c.isOn() && c.lastError() == null) {
+            c.tick();
+            Thread.sleep(250);
+            System.gc();
+            peak = Math.max(peak, rt.totalMemory() - rt.freeMemory() - base);
+        }
+        System.out.println("QA lua endless reader: live heap peak +" + (peak >> 20) + " MB, error=" + c.lastError());
+        assertTrue(peak < 64L << 20, "live heap grew by " + (peak >> 20) + " MB for one computer with a 16 MB cap");
+    }
 }
