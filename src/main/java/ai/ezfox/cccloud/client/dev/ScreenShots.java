@@ -185,6 +185,40 @@ public final class ScreenShots {
         return level.getBlockEntity(pos) instanceof CloudUplinkBlockEntity u ? u : null;
     }
 
+    /** A screen full of text and colours, written the way a program would (no runtime needed). */
+    private static void computerDemo(ai.ezfox.cccloud.computer.ComputerTerminal t) {
+        int w = t.width();
+        t.setCursor(0, 0);
+        t.blit(pad(" CC: Cloud OS                          Reactor  ON ", w), "0".repeat(w), "b".repeat(w));
+        String[] lines = {"> status", "  core temp    412 K   [########--]", "  output    2.4 kFE/t", "  coolant      87 %",
+            "> redstone.setOutput(\"back\", 15)", "  ok", "", "  Grüße aus der Cloud: äöü ß é", "  {x=[1,2]} ~^|\\ @#$%&*()", "> _"};
+        String[] colours = {"4", "0", "0", "0", "4", "5", "0", "3", "8", "4"};
+        for (int i = 0; i < lines.length; i++) {
+            t.setCursor(0, 2 + i);
+            String line = pad(lines[i], w);
+            t.blit(line, colours[i].repeat(w), "f".repeat(w));
+        }
+        t.setCursor(15, 3);
+        t.blit("########", "e".repeat(8), "f".repeat(8));
+        t.setCursor(0, 14);
+        var bar = new StringBuilder();
+        var fg = new StringBuilder();
+        String digits = "0123456789abcdef";
+        for (int i = 0; i < 16; i++) {
+            bar.append("   ");
+            fg.append("000");
+        }
+        var bg = new StringBuilder();
+        for (int i = 0; i < 16; i++) bg.append(String.valueOf(digits.charAt(i)).repeat(3));
+        t.blit(bar.toString(), fg.toString(), bg.toString());
+        t.setCursor(2, 11);
+        t.setBlink(true);
+    }
+
+    private static String pad(String s, int w) {
+        return s.length() >= w ? s.substring(0, w) : s + " ".repeat(w - s.length());
+    }
+
     private static void build(ServerLevel level, ServerPlayer player) {
         var server = level.getServer();
         var silent = server.createCommandSourceStack().withSuppressedOutput();
@@ -276,6 +310,21 @@ public final class ScreenShots {
                 host.onPlacedBy(player);
                 links.add(() -> host.bridgeSection().bind(link, player));
                 shots.add(new Shot("bridge", at, p -> ai.ezfox.cccloud.gui.GuiNetwork.openBridge(p, host)));
+            }
+        }
+
+        // Cloud Computers: an advanced one with a colour picture and a basic one (grey shades), screens open.
+        for (boolean advanced : new boolean[]{true, false}) {
+            var at = base.offset(advanced ? 4 : 8, 0, -8);
+            var block = advanced ? ai.ezfox.cccloud.computer.block.ComputerBlocks.ADVANCED_CLOUD_COMPUTER.get()
+                : ai.ezfox.cccloud.computer.block.ComputerBlocks.CLOUD_COMPUTER.get();
+            level.setBlockAndUpdate(at, block.defaultBlockState().setValue(ai.ezfox.cccloud.computer.block.CloudComputerBlock.FACING, Direction.NORTH));
+            if (level.getBlockEntity(at) instanceof ai.ezfox.cccloud.computer.block.CloudComputerBlockEntity computer && computer.handle() != null) {
+                computer.handle().setLabel(advanced ? "Reactor control" : "Gate");
+                computer.computer().turnOn();
+                computerDemo(computer.computer().terminal());
+                shots.add(new Shot(advanced ? "computer-advanced" : "computer", at,
+                    p -> ai.ezfox.cccloud.computer.block.ComputerScreens.open(p, computer)));
             }
         }
 

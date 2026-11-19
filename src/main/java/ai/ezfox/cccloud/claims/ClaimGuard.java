@@ -32,7 +32,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * One claim guard for every device that reads or controls a block (docs/SECURITY.md "Claims"): uplinks (the block they
  * stick to, for a computer the computer), Cloud Probes (their target), Cloud Bridges (their own block), Cloud Redstone
- * devices (their own block) and the cards of wired machines (the machine).
+ * devices (their own block), Cloud Computers (their own block) and the cards of wired machines (the machine).
  * <p>
  * <b>Rule</b> ({@link #rule}): a device is <i>blocked</i> while that block is in a chunk claimed by a team that none of
  * its owners belongs to or is allied with. Its owners are the player who linked it (a probe: who set its target) and
@@ -432,6 +432,7 @@ public final class ClaimGuard {
         var list = new ArrayList<Guarded>();
         for (var section : CloudNetwork.sections()) if (section instanceof Guarded g) list.add(g);
         for (var device : ai.ezfox.cccloud.rsdevice.RsDevices.loadedDevices()) if (device instanceof Guarded g) list.add(g);
+        list.addAll(ai.ezfox.cccloud.computer.block.ComputerBlocks.loaded());
         return list;
     }
 

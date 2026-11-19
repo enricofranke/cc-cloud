@@ -1,6 +1,20 @@
 {
  "recipes": [
   {
+   "file": "advanced_cloud_computer",
+   "result": "cccloud:advanced_cloud_computer",
+   "grid": [
+    "GGG",
+    "GCG",
+    "GPG"
+   ],
+   "key": {
+    "G": "#c:ingots/gold",
+    "C": "cccloud:cloud_computer",
+    "P": "#c:glass_panes"
+   }
+  },
+  {
    "file": "advanced_cloud_relay",
    "result": "cccloud:advanced_cloud_relay",
    "grid": [
@@ -156,6 +170,21 @@
     "B": "minecraft:stone_button",
     "S": "minecraft:stone",
     "P": "minecraft:prismarine_crystals"
+   }
+  },
+  {
+   "file": "cloud_computer",
+   "result": "cccloud:cloud_computer",
+   "grid": [
+    "SPS",
+    "SKS",
+    "SRS"
+   ],
+   "key": {
+    "S": "minecraft:stone",
+    "K": "cccloud:cloud_core",
+    "P": "#c:glass_panes",
+    "R": "minecraft:redstone"
    }
   },
   {
@@ -1367,6 +1396,14 @@
   "cccloud:cloud_lamp": {
    "en": "Cloud Lamp",
    "de": "Cloud-Lampe"
+  },
+  "cccloud:cloud_computer": {
+   "en": "Cloud Computer",
+   "de": "Cloud-Computer"
+  },
+  "cccloud:advanced_cloud_computer": {
+   "en": "Advanced Cloud Computer",
+   "de": "Erweiterter Cloud-Computer"
   },
   "cccloud:cloud_sensor": {
    "en": "Cloud Sensor",

@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Alle Rezepte"
-  position: 11
+  position: 12
 ---
 
 # Alle Rezepte
@@ -145,6 +145,12 @@ Modpacks können Rezepte ändern (Datapacks, KubeJS, CraftTweaker). JEI/EMI und 
 
 ## Sonstiges
 
+### Erweiterter Cloud-Computer
+<RecipesFor id="cccloud:advanced_cloud_computer" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
+### Cloud-Computer
+<RecipesFor id="cccloud:cloud_computer" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
+
 ### CC: Cloud-Handbuch
 <Recipe id="cccloud:handbook" fallbackText="Dieses Rezept gibt es in diesem Modpack nicht (eine benötigte Mod fehlt oder das Pack hat es geändert)." />
 
@@ -190,6 +196,7 @@ ServerEvents.recipes(event => {
 
 | Rezept-ID | Ergebnis | Geladen |
 |---|---|---|
+| `cccloud:advanced_cloud_computer` | Erweiterter Cloud-Computer | immer |
 | `cccloud:advanced_cloud_relay` | Erweitertes Cloud-Relais | immer |
 | `cccloud:advanced_cloud_sensor` | Erweiterter Cloud-Sensor | mit AllTheModium |
 | `cccloud:advanced_cloud_sensor_fallback` | Erweiterter Cloud-Sensor | ohne AllTheModium |
@@ -200,6 +207,7 @@ ServerEvents.recipes(event => {
 | `cccloud:cloud_analyzer` | Cloud-Analysator | mit CC: Tweaked |
 | `cccloud:cloud_analyzer_no_cct` | Cloud-Analysator | ohne CC: Tweaked |
 | `cccloud:cloud_button` | Cloud-Taster | immer |
+| `cccloud:cloud_computer` | Cloud-Computer | immer |
 | `cccloud:cloud_core` | Cloud-Kern ×2 | immer |
 | `cccloud:cloud_display` | Cloud-Display ×4 | mit CC: Tweaked |
 | `cccloud:cloud_display_no_cct` | Cloud-Display ×4 | ohne CC: Tweaked |

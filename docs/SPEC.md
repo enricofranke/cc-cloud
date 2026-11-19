@@ -2507,3 +2507,48 @@ Lua scripts written in the dashboard's editor that run inside the mainframe on t
 
 ### Tests
 See docs/BUILD.md "Tests" (Cloud Scripts) and "Cobalt".
+
+## Cloud Computer block and screen (2026-11-19)
+
+The world side of the Cloud Computers (the program side: `computer` package, its own section). No CC: Tweaked needed.
+
+- **Blocks:** `cccloud:cloud_computer` (51×19, grey shades, no mouse) and `cccloud:advanced_cloud_computer` (16 colours,
+  mouse). `HorizontalDirectionalBlock` with `facing` (the screen side, towards the placer) and `on`; full cube, light 6
+  while on. One block entity type `cccloud:cloud_computer` (`computer/block`), which is the computer's `ComputerHost`:
+  it saves `computer_id`, `on` and `owner`, loads the computer through `ComputerRegistry.load` on its first server tick,
+  calls `CloudComputer.tick()` every tick and `ComputerRegistry.unload` on removal and chunk unload. `ComputerBlocks`
+  keeps which block hosts which id, so one computer never runs in two blocks (a copied block gets a new id).
+- **Redstone:** `RedstoneIo.Memory`. Sides are computer-local as the computer sees them: front = `facing`, left =
+  `facing.getCounterClockWise()`. Inputs are read from the world (`level.getSignal`) on neighbour changes; outputs set by
+  a program are applied on the server thread (neighbour updates when the change counter moves), strong and weak alike.
+- **Item and loot:** the loot table copies the data component `cccloud:computer` (`ComputerItemData`: id, label) and the
+  custom name. Placing such an item restores that computer only when `ComputerAccess.mayRestore` allows it: the id
+  exists, no loaded block hosts it, and the placer is its owner (`ComputerOwners`, SavedData
+  `cloud_computer_owners`); otherwise the block gets a new id. The id on the item is never trusted otherwise.
+- **Recipes** (no CC parts): stone, a glass pane, a Cloud Core and redstone; the advanced one is a Cloud Computer in gold
+  ingots with a glass pane.
+- **Rights** (`ComputerAccess.mayUse`): the owner (placer), members of the owner's team (team mod) and players with
+  `cccloud.admin.operate`; a computer without owner (machine, command) is open. The claim guard (docs/SECURITY.md
+  "Claims") watches the block: blocked, the computer shuts down, its outputs read 0, the screen and the dashboard handle
+  refuse power and input until the claim allows it.
+- **Dashboard:** `Cct.computer(level, pos)` answers a Cloud Computer first (`CloudComputerHandle`), then CC: Tweaked's.
+  So an uplink on a Cloud Computer gets the automatic Computer card, browser terminal and editor without changes;
+  `saveDir` is `cccloud/computers/<id>`. The uplink treats it like a CC computer (`direct=false`).
+- **Screen** (`ComputerMenu`, `client/computer/ComputerScreen`): right-click opens it for players who may use it; the
+  menu stays valid within 8 blocks while the block stands and the right holds. Server → client: payload
+  `cccloud:computer_view` with either a `term` message (`TerminalFrame.diff`, the browser terminal's format: only changed
+  rows, cursor, palette) or a `state` message (`on`, `id`, `title`, `error`), sent only to players with the screen open
+  and only when something changed (checked every tick against the terminal's change counter). The client keeps a
+  `TerminalMirror` that rejects messages that do not fit. Client → server: payload `cccloud:computer_input`, a JSON
+  array in the browser's format (`TerminalInput.parse`, ≤ 32 events, ≤ 16 KB), batched once per client tick. The
+  handler checks the open container id, range, block and rights, then hands each event to
+  `CloudComputer.input(event, playerUuid)`, where the limits are (paste length, rate per player).
+- **Input:** keys as GLFW codes (`key` with `held` on repeat, `key_up`; held keys go up when the screen closes), `char`
+  (0x20–0xff), Ctrl+V `paste`, on the advanced computer `mouse_click`/`mouse_drag`/`mouse_up`/`mouse_scroll` in 1-based
+  cells (buttons 1 left, 2 right, 3 middle; scroll up = -1). Holding Ctrl+T, Ctrl+R or Ctrl+S for one second sends
+  `terminate`, `reboot` or `shutdown` once (`HoldShortcut`); a click on the screen of a computer that is off sends
+  `turn_on`.
+- **Font:** `textures/gui/terminal_font.png`, drawn by `tools/gen_textures.py` (`TERMINAL_GLYPHS`): 16×16 cells of 6×9
+  px, CC: Cloud's own 5×7 glyphs with descenders, Latin-1 letters from their base letter with a mark, 0x80–0x9f as 2×3
+  block graphics, a box for anything else. Tinted per cell; backgrounds drawn as runs. The terminal scales to the window
+  (whole steps up to 2×, smaller when the window is small).

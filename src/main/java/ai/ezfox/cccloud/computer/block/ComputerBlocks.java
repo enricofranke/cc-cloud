@@ -100,6 +100,13 @@ public final class ComputerBlocks {
         return be;
     }
 
+    /** The Cloud Computer blocks with a running computer (the claim guard's safety pass). */
+    public static java.util.List<CloudComputerBlockEntity> loaded() {
+        var out = new java.util.ArrayList<CloudComputerBlockEntity>(HOSTS.size());
+        for (var be : HOSTS.values()) if (!be.isRemoved()) out.add(be);
+        return out;
+    }
+
     static void setHost(int id, CloudComputerBlockEntity be) {
         HOSTS.put(id, be);
     }

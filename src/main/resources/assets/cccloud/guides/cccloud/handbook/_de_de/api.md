@@ -2,7 +2,7 @@
 # Aus der Dashboard-Doku erzeugt (tools/gen_handbook.ts) – Änderungen in cloud/web/src/docs/content machen.
 navigation:
   title: "Öffentliche API"
-  position: 15
+  position: 16
 ---
 
 # Öffentliche API

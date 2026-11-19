@@ -2,7 +2,7 @@
 # Generated from the dashboard docs by tools/gen_handbook.ts – edit cloud/web/src/docs/content instead.
 navigation:
   title: "Supported mods"
-  position: 12
+  position: 13
 ---
 
 # Supported mods

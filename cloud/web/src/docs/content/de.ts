@@ -556,6 +556,46 @@ Spielernamen sind auf einem gemeinsamen Server persönliche Daten, deshalb:
 - Reichweite 32 Blöcke wie die anderen Redstone-Geräte; er zählt **0,5** Geräte gegen die Kapazität des Mainframes (\`advancedSensorCapacityWeight\`) und kostet **4 FE/t, solange er scharf ist** (\`mainframePerAdvancedSensorFE\`), unscharf 1 FE/t.
 `,
 
+  // ---------------------------------------------------------------- computers
+  computers: `# Cloud-Computer
+
+Ein Computer, den du in die Welt stellst – ohne weitere Mod. Er führt Programme auf der eigenen Script-Engine von CC: Cloud aus, zeigt sie auf seinem Bildschirm, liest und setzt Redstone und erscheint im Dashboard wie jeder Computer.
+
+| Block | Bildschirm | Maus |
+|---|---|---|
+| **Cloud-Computer** | 51×19 Zeichen, Graustufen | – |
+| **Erweiterter Cloud-Computer** | 51×19 Zeichen, 16 Farben | Klicken, Ziehen, Scrollen |
+
+## Benutzen {#use}
+
+1. Herstellen und aufstellen (Rezepte [unten](/docs/computers#recipes)). Er schaut dich an; die Bildschirmseite ist **vorne**.
+2. **Rechtsklick** öffnet den Bildschirm. Ist er aus, klick auf den Bildschirm, um ihn einzuschalten.
+3. Tippen wie auf einer Tastatur; **Strg+V** fügt eine Zeile ein (bis 512 Zeichen). **Esc** schließt den Bildschirm, der Computer läuft weiter.
+4. Eine Sekunde **halten**: **Strg+T** stoppt das laufende Programm, **Strg+R** startet den Computer neu, **Strg+S** fährt ihn herunter.
+
+Abbauen behält den Computer: das Item merkt sich Nummer und Namen, und wieder aufgestellt sind seine Dateien wieder da. Zurück bekommt ihn nur sein Besitzer – stellt ein anderer Spieler das Item auf, bekommt er einen neuen, leeren Computer.
+
+## Redstone {#redstone}
+
+Programme benennen die Seiten so, wie der Computer sie sieht: **front** (der Bildschirm), **back**, **left**, **right**, **top** und **bottom**. Ausgänge versorgen wie ein Redstone-Block (stark, 0–15); Eingänge lesen das stärkste Signal auf der Seite. Herunterfahren schaltet alle Ausgänge ab.
+
+## Im Dashboard {#dashboard}
+
+Setz einen [Cloud Uplink](/docs/start) auf den Computer und verbinde ihn: er bekommt die automatische **Computer**-Karte (Strom, Name, Redstone je Seite), das Browser-Terminal und den Script-Editor – genau wie ein CC: Tweaked-Computer.
+
+## Rechte {#rights}
+
+- Wer einen Computer aufstellt, besitzt ihn. Besitzer, die Mitglieder seines Teams (FTB Teams) und Server-Admins dürfen den Bildschirm öffnen, tippen und ihn ein- und ausschalten; alle anderen bekommen eine Meldung.
+- Ein Computer, den eine Maschine oder ein Befehl aufgestellt hat, hat keinen Besitzer und ist für alle offen.
+- Ein Computer im Claim eines anderen Teams fährt herunter und lässt sich nicht benutzen, bis der Claim es erlaubt – siehe [Claims](/docs/faq#claims).
+
+## Rezepte {#recipes}
+
+${recipe(R.cloudComputer)}
+
+${recipe(R.advancedCloudComputer)}
+`,
+
   // ------------------------------------------------------------------ lua
   lua: `# Lua-Referenz
 
