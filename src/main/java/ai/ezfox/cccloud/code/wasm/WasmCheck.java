@@ -1,7 +1,6 @@
 package ai.ezfox.cccloud.code.wasm;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import run.endive.wasm.Parser;
 import run.endive.wasm.WasmModule;
@@ -25,6 +24,8 @@ public final class WasmCheck {
     /** Functions (imports included). */
     public static final int MAX_FUNCTIONS = 20_000;
     public static final String MAIN = "main";
+    /** No module is read beyond this size, whatever the config says (the config allows at most 160 KB). */
+    public static final int MAX_MODULE = 160 * 1024;
 
     /** A module that passed, with its parts the engine needs. */
     public record Checked(WasmModule module, int memoryPages, int maxPages, boolean hasMain, boolean hasStart) {
@@ -45,6 +46,13 @@ public final class WasmCheck {
      * allowed); {@code memoryBytes}: the script's memory cap.
      */
     public static Checked check(byte[] bytes, Map<String, Map<String, FunctionType>> imports, long memoryBytes) throws Refused {
+        // Endive sizes its arrays from what a module declares: its structure is read and bounded first (WasmPrecheck)
+        if (bytes.length > MAX_MODULE) throw new Refused("the module is larger than " + MAX_MODULE / 1024 + " KB");
+        try {
+            WasmPrecheck.check(bytes);
+        } catch (WasmPrecheck.Bad e) {
+            throw new Refused("not a valid WebAssembly module: " + e.getMessage());
+        }
         WasmModule module;
         try {
             module = Parser.parse(bytes);
@@ -185,7 +193,4 @@ public final class WasmCheck {
         return m.length() > 200 ? m.substring(0, 199) + "…" : m;
     }
 
-    static List<String> list(String... s) {
-        return List.of(s);
-    }
 }
