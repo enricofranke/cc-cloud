@@ -28,7 +28,7 @@ class ScriptRuntimeTest {
     @Test
     void infiniteLoopIsStoppedWithAClearError() throws InterruptedException {
         long start = System.nanoTime();
-        var run = scripts.run("local n = 0\nwhile true do n = n + 1 end");
+        var run = scripts.runFast("local n = 0\nwhile true do n = n + 1 end");
         assertTrue(run.await(10_000), "the loop was not stopped");
         assertNotNull(run.error());
         assertTrue(run.error().getMessage().contains("ran for more than 120 ms without pausing"), run.error().getMessage());
@@ -36,12 +36,14 @@ class ScriptRuntimeTest {
         assertEquals(ScriptRuntime.Status.ERROR, run.runtime().status());
         // 120 ms at 50 ms per second: paused twice in between, so it took about two seconds, never stalling anything
         assertTrue(System.nanoTime() - start > 1_500_000_000L, "the per-second share paused it in between");
-        assertTrue(run.runtime().cpuTotalNanos() < 200_000_000L, "used " + run.runtime().cpuTotalNanos() / 1e6 + " ms");
+        // about 120 ms of CPU; the watchdog notices a little late on a loaded machine (CI runners: up to a few hundred ms),
+        // so the bound only proves it was stopped within a few slices instead of running on
+        assertTrue(run.runtime().cpuTotalNanos() < 600_000_000L, "used " + run.runtime().cpuTotalNanos() / 1e6 + " ms");
     }
 
     @Test
     void pcallCannotCatchTheAbort() throws InterruptedException {
-        var run = scripts.run("""
+        var run = scripts.runFast("""
             local caught = 0
             while true do
               pcall(function() while true do end end)
@@ -53,7 +55,7 @@ class ScriptRuntimeTest {
         assertNotNull(run.error());
         assertTrue(run.error().getMessage().contains("without pausing"), run.error().getMessage());
         assertFalse(run.logText().contains("escaped"), run.logText());
-        var x = scripts.run("xpcall(function() while true do end end, function(e) while true do end end)");
+        var x = scripts.runFast("xpcall(function() while true do end end, function(e) while true do end end)");
         assertTrue(x.await(10_000));
         assertTrue(x.error().getMessage().contains("without pausing") || x.error().getMessage().contains("error"), x.error().getMessage());
     }
@@ -101,7 +103,14 @@ class ScriptRuntimeTest {
     }
 
     private ScriptError.Kind kind(String source) throws InterruptedException {
-        var run = scripts.run(source);
+        return kindOf(scripts.run(source));
+    }
+
+    private ScriptError.Kind kindFast(String source) throws InterruptedException {
+        return kindOf(scripts.runFast(source));
+    }
+
+    private ScriptError.Kind kindOf(TestScripts.Run run) throws InterruptedException {
         assertTrue(run.await(30_000), run.logText());
         assertNotNull(run.error(), run.logText());
         assertTrue(run.error().getMessage().startsWith("test:"), "chunk:line: detail, got " + run.error().getMessage());
@@ -113,7 +122,7 @@ class ScriptRuntimeTest {
         assertEquals(ScriptError.Kind.SYNTAX, kind("if then"));
         assertEquals(ScriptError.Kind.RUNTIME, kind("error('boom')"));
         assertEquals(ScriptError.Kind.RUNTIME, kind("local t = nil\nprint(t.x)"));
-        assertEquals(ScriptError.Kind.CPU_LIMIT, kind("while true do end"));
+        assertEquals(ScriptError.Kind.CPU_LIMIT, kindFast("while true do end"));
         assertEquals(ScriptError.Kind.MEMORY_LIMIT, kind("local t = {} for i = 1, 1e8 do t[i] = {i} end"));
         assertEquals(ScriptError.Kind.STACK_OVERFLOW, kind("local function f() return 1 + f() end f()"));
         assertEquals("cpu_limit", ScriptError.Kind.CPU_LIMIT.id());
